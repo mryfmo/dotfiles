@@ -1,0 +1,15 @@
+security-audit sweep a442694c439b035e5d27c1213fc4bc2801e24998: 5 findings, advisory
+needs_validation	claude-sandbox:allow-write-covers-seat-launch-inputs	home/.chezmoitemplates/claude-settings-managed.json:575	Claude Code sandbox write roots expose hcom launch inputs and seat sandbox files that later run unsandboxed
+needs_validation	hcom-seat:srt-write-roots-share-operator-claude-config	scripts/orchestrator/hcom-seat:1369	Seat srt sandbox can write the operator's Claude Code config (~/.claude.json, ~/.claude/rules) that unsandboxed Claude Code sessions load
+needs_validation	hcom-seat:srt-deny-write-misses-claude-hook-package	scripts/orchestrator/hcom-seat:1682	Orchestrator seat can rewrite the Python package that the checkout's Claude Code project hooks import
+needs_validation	disk-gc:worktree-porcelain-path-field-split	home/dot_local/bin/common/executable_disk-gc:184	disk-gc splits worktree paths on whitespace and can rm -rf a different directory
+needs_validation	hcom-bus:sender-identity-caller-asserted	scripts/orchestrator/hcom-dispatch:136	Bus sender identity is caller-asserted while the seats treat a row's from as identity
+
+locations: the root-cause line of each record (each is a trace or evidence entry in findings.json)
+origin: all 5 are carried (run-1 via run-7) with unchanged fingerprints and re-verified at a442694c; this head is an empty commit on c44a7c6c (same tree d711989c, no path differs), so no candidate is new. Run-2's hardening note on the kwp connector gates and outward actions stands.
+counts by severity: critical 0, high 0, medium 0, low 0, informational 0 (no confirmed record); needs_validation 5 (no severity by schema); rejected 0
+note: report-schema.json forbids severity on needs_validation records; the severity column carries the verdict instead. Each record's description ends with the smallest fix if validated.
+coverage: partial; 38 ledger units: covered 20, candidate 5, deferred 8, not_applicable 5; final critic not clean
+independence: no delegation tool on this seat (task and eval blocked); one agent ran every role in sequence
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt; agents/<id>/{scratch,artifacts} per role (critic results and the parent build tools under agents/*/scratch; artifacts empty)
+wall time: 64 s (1.1 min), start epoch 1793759536, end epoch 1793759600

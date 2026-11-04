@@ -1,0 +1,15 @@
+security-audit sweep ac4af099ad03c9ba747fe9e675f03499572c7407: 5 findings, advisory
+needs_validation	claude-sandbox:allow-write-covers-seat-launch-inputs	home/.chezmoitemplates/claude-settings-managed.json:575	Claude Code sandbox write roots expose hcom launch inputs and seat sandbox files that later run unsandboxed
+needs_validation	hcom-seat:srt-write-roots-share-operator-claude-config	scripts/orchestrator/hcom-seat:1369	Seat srt sandbox can write the operator's Claude Code config (~/.claude.json, ~/.claude/rules) that unsandboxed Claude Code sessions load
+needs_validation	hcom-seat:srt-deny-write-misses-claude-hook-package	scripts/orchestrator/hcom-seat:1682	Orchestrator seat can rewrite the Python package that the checkout's Claude Code project hooks import
+needs_validation	disk-gc:worktree-porcelain-path-field-split	home/dot_local/bin/common/executable_disk-gc:184	disk-gc splits worktree paths on whitespace and can rm -rf a different directory
+needs_validation	hcom-bus:sender-identity-caller-asserted	scripts/orchestrator/hcom-dispatch:136	Bus sender identity is caller-asserted while the seats treat a row's from as identity
+
+locations: the root-cause line of each record (each is a trace or evidence entry in findings.json)
+origin: all 5 are carried (run-1 via run-10) with unchanged fingerprints and re-verified at ac4af099; the merge of main 30e94d9b brings the U147 sweep-row gate (byte-equal to run-9's 84b4e984, its unit carried and re-checked against the merged manifest, agent-config.yaml:1292-1315) and the U149 docs page, and adds no lead. assets.graphify:installer-skips-pinned-sha256 stays a rejected record (not counted above) on the unchanged installer and its tests (test_graphify_asset.py:175-229). Run-6's and run-9's hardening notes stand.
+counts by severity: critical 0, high 0, medium 0, low 0, informational 0 (no confirmed record); needs_validation 5 (no severity by schema); rejected 1 (not a finding)
+note: report-schema.json forbids severity on needs_validation records; the severity column carries the verdict instead. Each record's description ends with the smallest fix if validated.
+coverage: partial; 39 ledger units: covered 20, candidate 6 (one of them links the rejected record), deferred 8, not_applicable 5; final critic not clean
+independence: no delegation tool on this seat (task and eval blocked); one agent ran every role in sequence
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt; agents/<id>/{scratch,artifacts} per role (critic results, the merge diff of the manifest and the new page, the changed-path list and the parent build tools under agents/*/scratch; artifacts empty)
+wall time: 358 s (6.0 min), start epoch 1793760344, end epoch 1793760702

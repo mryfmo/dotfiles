@@ -80,6 +80,14 @@ SAMPLES = {
             'snap-revision/62rRwo_VHrOdajhLlnNTqUJ8gfWoZZNSFWhxn2AszCKyUAD0d8guxddMFeW5LVKP?max-format=0")'
         ),
     ),
+    "linearity-runner-clock": (
+        "test (ubuntu-26.04, client)",
+        (
+            "2026-11-04T02:32:54.3509732Z FAIL: test_the_report_of_many_findings_in_one_file_is_linear_in_the_findings"
+            " (test_validate_agent_assets.ValidateAgentAssetsTest."
+            "test_the_report_of_many_findings_in_one_file_is_linear_in_the_findings) (step='8,000 to 32,000')"
+        ),
+    ),
 }
 # measure.md: run 39079197825's test_validate_agent_assets failure, and a plain test assertion failure.
 REAL_FAILURES = (

@@ -868,6 +868,31 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_mcp_parity({"mcp_servers": {}}, {"mcp_servers": {"x": {}}})
         self.assertIn("MCP server names differ", stderr.getvalue())
 
+    def test_the_hosted_graphify_route_is_refused_in_every_enabled_form(self) -> None:
+        # graphify's hosted OAuth MCP route stays out of the shared manifest until a credentials, scope and network
+        # review is written as a decisions row (knowledge-graph decision of 2026-11-02): every form that would enable
+        # it or hand it to Claude trips one of the manifest's standing MCP checks.
+        hosted = {
+            "transport": "http",
+            "url": "https://api.graphify.com/mcp",
+            "enabled": True,
+            "agents": {"codex": True},
+            "sampling": False,
+        }
+        cases = (
+            ({}, "must be disabled by default in the shared manifest"),
+            ({"enabled": False, "agents": {"claude": True}}, "cannot target claude"),
+            ({"enabled": False, "agents": {}}, "must be exposed to Codex"),
+        )
+        for overrides, message in cases:
+            with self.subTest(message=message):
+                manifest = self.write_valid_agent_manifest()
+                manifest["mcp_servers"]["graphify"] = {**hosted, **overrides}
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn(f"MCP server graphify {message}", stderr.getvalue())
+
     def test_assets_scan_setup_sh_for_unrendered_versions(self) -> None:
         self.write_text_file("setup.sh", 'declare -r CHEZMOI_VERSION="2.70.4"\n')
         stderr = io.StringIO()

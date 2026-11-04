@@ -1322,6 +1322,41 @@ assets:
     render:
       file: scripts/update-agent-assets.sh
       constants: {SECURITY_AUDIT_SKILL_COMMIT: pin, SECURITY_AUDIT_SKILL_SHA256: sha256}
+  graphifyy:
+    source: github-release
+    upstream: Graphify-Labs/graphify
+    pin: 0.9.99
+    verify: sha256
+    sha256: be8e68ca7e8d2115599167cff82d4a3afc8c5f312c45f707fa5d1a35cc9fb7a7
+    files:
+      any: https://files.pythonhosted.org/packages/py3/g/graphifyy/graphifyy-0.9.99-py3-none-any.whl
+    note: >-
+      The pin is the PyPI release graphifyy 0.9.99 (GitHub tag v0.9.99); sha256 is the digest of its one wheel
+      graphifyy-0.9.99-py3-none-any.whl from the PyPI release JSON read 2026-11-04, the newest release at least
+      72 hours old at that read. The package name has two y's; the other graphify* packages on PyPI are
+      unaffiliated. An optional per-project tool for code navigation, installed by hand for one trial project
+      and never by make update. The project-scoped install (graphify install --project --platform claude|codex)
+      writes only inside that project, and the graph is built code-only (graphify extract . --code-only or
+      GRAPHIFY_BACKEND=none) so no provider key is read. The installer downloads that one wheel, checks its sha256
+      with shasum -a 256 against the digest above and installs the local file, so a wheel that differs from the
+      reviewed one is never installed. The host's uv config (home/dot_config/uv/uv.toml) sets exclude-newer to
+      7 days, so a resolve of 0.9.99 by version fails until 2026-11-06; the install goes through the downloaded
+      wheel instead, which that window does not gate (it still gates the dependencies uv resolves for it).
+    reason: >-
+      graphify is pre-1.0 and releases every few days (0.9.98 and 0.9.99 on 2026-10-30, 0.9.100 on 2026-11-01,
+      0.9.101 on 2026-11-02), so no release is followed and no update step installs it; PyPI serves a sha256 per
+      file from the same index and no signature or attestation, so the reviewed sha256 of the exact wheel is the
+      check. No graphify MCP server is declared here, and the hosted OAuth MCP route at api.graphify.com is
+      refused until a credentials, scope and network review is written as a decisions row of the program.
+    install_path: ~/.local/share/uv/tools/graphifyy
+    installer: >-
+      d="$(mktemp -d)" &&
+      curl -fsSL https://files.pythonhosted.org/packages/py3/g/graphifyy/graphifyy-0.9.99-py3-none-any.whl
+      -o "$d/graphifyy-0.9.99-py3-none-any.whl" &&
+      h="$(shasum -a 256 "$d/graphifyy-0.9.99-py3-none-any.whl")" || exit 1 &&
+      [ "${h%% *}" = be8e68ca7e8d2115599167cff82d4a3afc8c5f312c45f707fa5d1a35cc9fb7a7 ] &&
+      uv tool install --force "$d/graphifyy-0.9.99-py3-none-any.whl"
+      (an explicit operator step for one trial project; make update and scripts/update-agent-assets.sh never run it)
   crit:
     source: github-release
     upstream: tomasz-tomczyk/crit

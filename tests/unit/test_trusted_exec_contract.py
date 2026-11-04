@@ -611,6 +611,44 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         self.assertEqual("", opened())
         self.assertEqual(f"by pid 4242 (cat, ppid 77: /bin/cat {probe.input} )", record["value"])
 
+    def test_the_holder_scan_waits_for_a_reader_whose_open_has_not_returned(self):
+        # 2026-11-04 on the ubuntu-26.04 canary: the in-thread reader counted for the write-open while still inside
+        # its blocking open(), so its descriptor was not in its table when the scan looked, and the record named
+        # nobody. The holder appears 50 ms into the scan, built aside and renamed in whole so no pass sees it half made.
+        import threading
+
+        probe = self.worker_root_probe()
+        proc = probe.base / "proc"
+        proc.mkdir()
+        probe.PROC_ROOT = str(proc)
+        self.assertEqual([], list(proc.iterdir()))
+
+        def late_holder():
+            time.sleep(0.05)
+            building = proc / "building"  # not numeric, so a pass that lands here skips it
+            (building / "fd").mkdir(parents=True)
+            os.symlink(probe.input, building / "fd" / "7")
+            (building / "comm").write_text("cat\n")
+            (building / "status").write_text("Name:\tcat\nPPid:\t77\n")
+            (building / "cmdline").write_bytes(b"/bin/cat\0" + os.fsencode(probe.input) + b"\0")
+            os.rename(building, proc / "4242")
+
+        late = threading.Thread(target=late_holder, daemon=True)
+        late.start()
+        self.addCleanup(late.join, 5)
+        self.assertEqual(f"by pid 4242 (cat, ppid 77: /bin/cat {probe.input} )", self.holder_scan(probe))
+        late.join(5)
+        self.assertFalse(late.is_alive())
+        never = self.worker_root_probe()
+        (never.base / "proc").mkdir()
+        never.PROC_ROOT = str(never.base / "proc")
+        started = time.monotonic()
+        record = self.holder_scan(never)
+        waited = time.monotonic() - started
+        self.assertEqual("by no process whose descriptors this user can read (0 unreadable)", record)
+        self.assertGreaterEqual(waited, 0.2)
+        self.assertLess(waited, 2)
+
     def test_a_replacement_present_at_a_poll_fails_even_when_restored(self):
         # Audit round 6 of 0b99fa84: a write-open that landed on another file was discarded, so swapping the FIFO out
         # and back during the step passed. The swap is held for two probe attempts: a replacement present at a poll is

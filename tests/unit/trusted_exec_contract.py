@@ -157,6 +157,7 @@ class WorkerRoot:
     """
 
     POLL_S, DEADLINE_S, GRACE_S = 0.001, 30.0, 2.0
+    HOLDER_WAIT_S = 0.2  # how long a holder scan keeps rescanning before it settles for naming no holder
     PROC_ROOT = "/proc"  # an instance attribute points a test's scan at a scratch tree of the same shape
 
     def __init__(self, base):
@@ -227,7 +228,9 @@ class WorkerRoot:
         sentinel (a scan that did would record its own read). Every read of the tree tolerates OSError as a class,
         because a pid that exits between its fd listing and its field reads answers ESRCH from /proc and a scan that
         let that escape would abort the attempt and lose the read it had already detected; a holder whose fields are
-        gone is still named by its pid."""
+        gone is still named by its pid. A scan that names nobody is repeated every POLL_S for HOLDER_WAIT_S before
+        its answer stands, because a reader the write-open just woke has no descriptor until its `open()` returns
+        (the kernel counts it as a reader before that), so the first scan can look before the entry exists."""
         root = self.PROC_ROOT
         me = str(os.getpid())
 
@@ -238,38 +241,49 @@ class WorkerRoot:
             except OSError:
                 return "?"
 
-        try:
-            entries = os.listdir(root)
-        except OSError:
-            return f"reader not identified (no {root})"
-        holders, unreadable = [], 0
-        for pid in entries:
-            if not pid.isdigit():
-                continue
+        def scan():
+            """One pass over the tree: the record when it names a holder, else the no-holder or no-root record."""
             try:
-                descriptors = os.listdir(os.path.join(root, pid, "fd"))
-            except PermissionError:  # another user's process (or one not dumpable)
-                unreadable += 1
-                continue
-            except OSError:  # exited mid-scan, or an entry that is no descriptor table
-                continue
-            for n in descriptors:
-                if pid == me and n == str(writer):
+                entries = os.listdir(root)
+            except OSError:
+                return None, f"reader not identified (no {root})"
+            holders, unreadable = [], 0
+            for pid in entries:
+                if not pid.isdigit():
                     continue
                 try:
-                    st = os.stat(os.path.join(root, pid, "fd", n))
-                except OSError:  # closed mid-scan, or a descriptor whose target no stat describes
+                    descriptors = os.listdir(os.path.join(root, pid, "fd"))
+                except PermissionError:  # another user's process (or one not dumpable)
+                    unreadable += 1
                     continue
-                if (st.st_dev, st.st_ino) != self._dev_ino:
+                except OSError:  # exited mid-scan, or an entry that is no descriptor table
                     continue
-                status = (line for line in field(pid, "status").splitlines() if line.startswith("PPid:"))
-                ppid = next((line.split(":", 1)[1].strip() for line in status), "?")
-                cmdline = field(pid, "cmdline").replace("\0", " ")[:200]
-                holders.append(f"by pid {pid} ({field(pid, 'comm').strip()}, ppid {ppid}: {cmdline})")
-                break
-        if holders:
-            return ", ".join(holders)
-        return f"by no process whose descriptors this user can read ({unreadable} unreadable)"
+                for n in descriptors:
+                    if pid == me and n == str(writer):
+                        continue
+                    try:
+                        st = os.stat(os.path.join(root, pid, "fd", n))
+                    except OSError:  # closed mid-scan, or a descriptor whose target no stat describes
+                        continue
+                    if (st.st_dev, st.st_ino) != self._dev_ino:
+                        continue
+                    status = (line for line in field(pid, "status").splitlines() if line.startswith("PPid:"))
+                    ppid = next((line.split(":", 1)[1].strip() for line in status), "?")
+                    cmdline = field(pid, "cmdline").replace("\0", " ")[:200]
+                    holders.append(f"by pid {pid} ({field(pid, 'comm').strip()}, ppid {ppid}: {cmdline})")
+                    break
+            if holders:
+                return ", ".join(holders), None
+            return None, f"by no process whose descriptors this user can read ({unreadable} unreadable)"
+
+        settle = time.monotonic() + self.HOLDER_WAIT_S
+        while True:
+            named, none_named = scan()
+            if named is not None:
+                return named
+            if time.monotonic() >= settle:
+                return none_named
+            time.sleep(self.POLL_S)
 
     def _attempt(self):
         """One attempt while the consumer runs: record a reader, then release any writer waiting for a reader."""

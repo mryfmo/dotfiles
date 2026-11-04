@@ -804,12 +804,15 @@ class CheckoutGuardTest(unittest.TestCase):
         self.assert_refused(status, err)
         self.assertEqual(self.git("rev-parse", "HEAD", cwd=checkout), before)
         # Why the symlink: a `gitdir:` pointer naming the LF directory resolves to the stripped sibling, which is no
-        # repository, so git refuses the pointer and the LF directory is unreachable through it.
+        # repository, so git refuses the pointer and the LF directory is unreachable through it. Git's wording for the
+        # refusal differs by version (2026-11-04: `fatal: not a git repository: (null)` on runner images 20261015.610
+        # and the ubuntu-26.04 canary), so the test pins the refusal and admits both.
         (checkout / ".git").unlink()
         (checkout / ".git").write_text(f"gitdir: {lf}\n")
         status, _, err = self.git_status("rev-parse", "--git-dir", cwd=checkout)
         self.assertNotEqual(status, 0, err)
-        self.assertIn("gitfile does not point to a valid repository", err)
+        wordings = ("gitfile does not point to a valid repository", "not a git repository")
+        self.assertTrue(any(wording in err for wording in wordings), err)
 
     def test_a_linked_worktree_of_a_checkout_whose_git_directory_is_a_symlink_target_is_guarded(self):
         """U129's filed P1 (`:415`): a main checkout whose `.git` is a symlink to a separate git directory, a store under

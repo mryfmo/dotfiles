@@ -1894,7 +1894,7 @@ function update_security_audit_skill() (
 #   the existing install is unchanged.
 #
 function update_deepseek_harness() (
-    local recorded download_dir tarball actual staging="" version install_dir previous physical expected
+    local recorded download_dir tarball actual staging="" version install_dir previous="" physical expected installed repair="" late_step=""
     section "DeepSeek harness"
     if [ -z "${DSH_HOME:-}" ] || [ ! -d "${DSH_HOME}" ]; then
         printf 'Skipping DeepSeek harness: DSH_HOME is unset or names no directory (export it and create it to opt in).\n'
@@ -1907,52 +1907,100 @@ function update_deepseek_harness() (
         return 0
     fi
     install_dir="${DSH_HOME}/dsh/${DSH_PIN_TAG}"
-    # A record that cannot be read is no record: the verified install runs again and writes it.
-    recorded="$(jq -r '.steps["update_deepseek_harness"].source_version // empty' "${HOME}/.agents/.installed-manifest.json" 2> /dev/null)" || recorded=""
-    if [ "${recorded}" = "${DSH_PIN_TAG}" ] && [ -f "${DSH_HOME}/dsh/current/package.json" ]; then
-        printf 'DeepSeek harness %s is already installed.\n' "${DSH_PIN_TAG}"
-        return 0
+    # A receipt file jq cannot read is a failed read, not an empty receipt: installing over a record the step could
+    # not consult would hide the corruption. A missing file is the fresh host and installs.
+    if [ -f "${HOME}/.agents/.installed-manifest.json" ]; then
+        recorded="$(jq -r '.steps["update_deepseek_harness"].source_version // empty' "${HOME}/.agents/.installed-manifest.json" 2> /dev/null)" || {
+            printf 'update_deepseek_harness: the installed-manifest receipt could not be read; step refused.\n' >&2
+            return 1
+        }
+    else
+        recorded=""
     fi
-    download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
-    trap 'rm -rf "${download_dir}" ${staging:+"${staging}"}' EXIT
-    tarball="${download_dir}/deepseek-harness-${DSH_PIN_TAG}.tar.gz"
-    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${DSH_ARCHIVE_URL}" -o "${tarball}" || {
-        printf 'WARN: update_deepseek_harness: the DeepSeek harness archive could not be downloaded (%s); nothing installed, nothing recorded; the existing install is unchanged and the next make update retries.\n' "${DSH_ARCHIVE_URL}" >&2
-        return 0
-    }
-    actual="$(shasum -a 256 "${tarball}")" || return 1
-    if [ "${actual%% *}" != "${DSH_ARCHIVE_SHA256}" ]; then
-        printf 'DeepSeek harness checksum mismatch: expected %s, got %s.\n' "${DSH_ARCHIVE_SHA256}" "${actual%% *}" >&2
+    # Installed means converged: the receipt at the pin, the pin's tree carrying the pin's version, current linked to
+    # it and an executable wrapper. The doctor's repair runs this step when the wrapper alone is gone, so a tree at
+    # the pin gets its link and wrapper back without a download; any other state installs.
+    if [ "${recorded}" = "${DSH_PIN_TAG}" ] && [ -f "${install_dir}/package.json" ]; then
+        installed="$(jq -r '.version // empty' "${install_dir}/package.json")" || {
+            printf 'update_deepseek_harness: the version of the installed tree %s could not be read; step refused.\n' "${install_dir}" >&2
+            return 1
+        }
+        if [ "${installed}" = "${DSH_PIN_TAG#dsh-v}" ]; then
+            if [ -L "${DSH_HOME}/dsh/current" ] && [ "${DSH_HOME}/dsh/current" -ef "${install_dir}" ] && [ -f "${DSH_HOME}/bin/dsh" ] && [ -x "${DSH_HOME}/bin/dsh" ]; then
+                printf 'DeepSeek harness %s is already installed.\n' "${DSH_PIN_TAG}"
+                return 0
+            fi
+            mkdir -p "${DSH_HOME}/bin" || return 1
+            repair=1
+        fi
+    fi
+    if [ -z "${repair}" ]; then
+        download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
+        trap 'rm -rf "${download_dir}" ${staging:+"${staging}"}' EXIT
+        tarball="${download_dir}/deepseek-harness-${DSH_PIN_TAG}.tar.gz"
+        curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${DSH_ARCHIVE_URL}" -o "${tarball}" || {
+            printf 'WARN: update_deepseek_harness: the DeepSeek harness archive could not be downloaded (%s); nothing installed, nothing recorded; the existing install is unchanged and the next make update retries.\n' "${DSH_ARCHIVE_URL}" >&2
+            return 0
+        }
+        actual="$(shasum -a 256 "${tarball}")" || return 1
+        if [ "${actual%% *}" != "${DSH_ARCHIVE_SHA256}" ]; then
+            printf 'DeepSeek harness checksum mismatch: expected %s, got %s.\n' "${DSH_ARCHIVE_SHA256}" "${actual%% *}" >&2
+            return 1
+        fi
+        # Staged beside the target so the final rename stays on one filesystem; the one leading component
+        # (<repository>-<tag>) is stripped so the package tree lands at the install path itself.
+        mkdir -p "${DSH_HOME}/dsh" "${DSH_HOME}/bin" && staging="$(mktemp -d "${DSH_HOME}/dsh/.staging.XXXXXX")" || return
+        tar xzf "${tarball}" -C "${staging}" --strip-components=1 || return
+        version="$(jq -r '.version // empty' "${staging}/package.json")" || return 1
+        if [ "${version}" != "${DSH_PIN_TAG#dsh-v}" ]; then
+            printf 'DeepSeek harness archive version %s is not the pin %s; install refused.\n' "${version}" "${DSH_PIN_TAG#dsh-v}" >&2
+            return 1
+        fi
+        (cd "${staging}" && mise exec -- pnpm install --frozen-lockfile && mise exec -- pnpm run build) || return 1
+        previous="${install_dir}.previous"
+        rm -rf "${previous}"
+        if [ -e "${install_dir}" ]; then
+            mv "${install_dir}" "${previous}" || return
+        fi
+        mv "${staging}" "${install_dir}" || {
+            [ ! -e "${previous}" ] || mv "${previous}" "${install_dir}"
+            return 1
+        }
+        staging=""
+    fi
+    # The previous tree stays on disk until the record is written: when the link, the wrapper or the profile install
+    # fails, it goes back under its name and onto the current link, so a failed step leaves the previous install as
+    # it was. The wrapper carries the home expanded at write time: the harness runs under mise's node, nothing of it
+    # on PATH.
+    if ! ln -sfn "${install_dir}" "${DSH_HOME}/dsh/current"; then
+        late_step="the current link"
+    elif ! printf '#!/bin/bash\nexec mise exec -- node "%s/dsh/current/apps/cli/lib/bin.js" "$@"\n' "${DSH_HOME}" > "${DSH_HOME}/bin/dsh"; then
+        late_step="the wrapper write"
+    elif ! chmod +x "${DSH_HOME}/bin/dsh"; then
+        late_step="the wrapper mode"
+    elif [ -z "${repair}" ] && ! (cd "${DSH_HOME}/profiles/thak" && mise exec -- pnpm install); then
+        late_step="the profile install"
+    fi
+    if [ -n "${late_step}" ]; then
+        if [ -n "${previous}" ] && [ -e "${previous}" ]; then
+            if mv "${install_dir}" "${install_dir}.failed" && mv "${previous}" "${install_dir}" && ln -sfn "${install_dir}" "${DSH_HOME}/dsh/current"; then
+                rm -rf "${install_dir}.failed"
+                printf 'update_deepseek_harness: %s failed after the rename; the previous install is back at %s and on the current link; nothing recorded.\n' "${late_step}" "${install_dir}" >&2
+            else
+                printf 'update_deepseek_harness: %s failed after the rename and the previous install could not be put back from %s; nothing recorded.\n' "${late_step}" "${previous}" >&2
+            fi
+        else
+            printf 'update_deepseek_harness: %s failed; nothing recorded; the next make update retries.\n' "${late_step}" >&2
+        fi
         return 1
     fi
-    # Staged beside the target so the final rename stays on one filesystem; the one leading component
-    # (<repository>-<tag>) is stripped so the package tree lands at the install path itself.
-    mkdir -p "${DSH_HOME}/dsh" "${DSH_HOME}/bin" && staging="$(mktemp -d "${DSH_HOME}/dsh/.staging.XXXXXX")" || return
-    tar xzf "${tarball}" -C "${staging}" --strip-components=1 || return
-    version="$(jq -r '.version // empty' "${staging}/package.json")" || return 1
-    if [ "${version}" != "${DSH_PIN_TAG#dsh-v}" ]; then
-        printf 'DeepSeek harness archive version %s is not the pin %s; install refused.\n' "${version}" "${DSH_PIN_TAG#dsh-v}" >&2
-        return 1
+    if [ -n "${repair}" ]; then
+        printf 'DeepSeek harness %s is at %s; its current link and wrapper are rewritten.\n' "${DSH_PIN_TAG}" "${install_dir}"
+    else
+        printf 'DeepSeek harness %s installed into %s.\n' "${DSH_PIN_TAG}" "${install_dir}"
     fi
-    (cd "${staging}" && mise exec -- pnpm install --frozen-lockfile && mise exec -- pnpm run build) || return 1
-    previous="${install_dir}.previous"
-    rm -rf "${previous}"
-    if [ -e "${install_dir}" ]; then
-        mv "${install_dir}" "${previous}" || return
-    fi
-    mv "${staging}" "${install_dir}" || {
-        [ ! -e "${previous}" ] || mv "${previous}" "${install_dir}"
-        return 1
-    }
-    staging=""
-    rm -rf "${previous}"
-    ln -sfn "${install_dir}" "${DSH_HOME}/dsh/current" || return 1
-    # The wrapper carries the home expanded at write time: the harness runs under mise's node, nothing of it on PATH.
-    printf '#!/bin/bash\nexec mise exec -- node "%s/dsh/current/apps/cli/lib/bin.js" "$@"\n' "${DSH_HOME}" > "${DSH_HOME}/bin/dsh" || return 1
-    chmod +x "${DSH_HOME}/bin/dsh" || return 1
-    (cd "${DSH_HOME}/profiles/thak" && mise exec -- pnpm install) || return 1
-    printf 'DeepSeek harness %s installed into %s.\n' "${DSH_PIN_TAG}" "${install_dir}"
     manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/${DSH_PIN_TAG}" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "tar xzf <archive> -C <staging> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "mv <staging> ${DSH_HOME}/dsh/${DSH_PIN_TAG}" "pnpm install in ${DSH_HOME}/profiles/thak"
+    [ -z "${previous}" ] || rm -rf "${previous}"
 )
 
 #

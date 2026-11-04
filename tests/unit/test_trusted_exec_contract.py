@@ -470,6 +470,147 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 with self.assertRaises(AssertionError):
                     self.assert_eof(result)
 
+    def test_a_recorded_read_names_its_holder(self):
+        # U166: two 2026-11-04 runs on the ubuntu-24.04 server cell recorded a read no step of the test made, and the
+        # record could not say who. It now names the holders /proc shows at the scan: a subprocess reader by its own
+        # pid, an in-process thread by ours; a host without /proc says so. The host's form is asserted, nothing skipped.
+        import re
+
+        probe = self.worker_root_probe()
+        self.assert_eof(probe.consume(lambda: run(["/bin/cat", str(probe.input)], ALLOWED_ENV)))
+        with self.assertRaises(AssertionError) as by_cat:
+            probe.assert_untouched()
+        probe = self.worker_root_probe()
+        self.assertEqual(b"", probe.consume(lambda: in_thread(lambda: Path(probe.input).read_bytes())))
+        with self.assertRaises(AssertionError) as by_thread:
+            probe.assert_untouched()
+        if os.path.isdir("/proc"):
+            cat = re.search(r"opened for reading by pid (\d+) \(cat, ppid \d+: /bin/cat ", str(by_cat.exception))
+            self.assertIsNotNone(cat, str(by_cat.exception))
+            self.assertNotEqual(os.getpid(), int(cat.group(1)))
+            self.assertRegex(str(by_thread.exception), rf"opened for reading by pid {os.getpid()} \(")
+        else:
+            self.assertRegex(str(by_cat.exception), r"opened for reading reader not identified \(no /proc\)$")
+            self.assertRegex(str(by_thread.exception), r"opened for reading reader not identified \(no /proc\)$")
+
+    def holder_scan(self, probe):
+        """probe._holders with a writer descriptor obtained the way _attempt does: our own reader of the sentinel is
+        what makes the write-open succeed, and both descriptors are closed again before the record is returned."""
+        reader = os.open(probe.input, os.O_RDONLY | os.O_NONBLOCK)
+        try:
+            writer = probe._open_writer()
+            self.assertIsNotNone(writer, f"a reader of {probe.input} did not make the write-open succeed")
+            try:
+                return probe._holders(writer)
+            finally:
+                os.close(writer)
+        finally:
+            os.close(reader)
+
+    def test_the_holder_scan_names_a_holder_from_the_descriptor_table(self):
+        # The scan reads PROC_ROOT, so a scratch tree of the same shape proves the record on every host: a symlink
+        # stats to the sentinel's own (st_dev, st_ino) whether or not this one has a real /proc.
+        probe = self.worker_root_probe()
+        probe.consume(lambda: None)  # opens nothing, so no write-open of the sentinel succeeds by itself
+        self.assertEqual([], probe.reads)
+        proc = probe.base / "proc"
+        probe.PROC_ROOT = str(proc)
+        holder = proc / "4242"
+        (holder / "fd").mkdir(parents=True)
+        os.symlink(probe.input, holder / "fd" / "7")
+        (holder / "comm").write_text("cat\n")
+        (holder / "status").write_text("Name:\tcat\nPPid:\t77\n")
+        (holder / "cmdline").write_bytes(b"/bin/cat\0" + os.fsencode(probe.input) + b"\0")
+        self.assertEqual(f"by pid 4242 (cat, ppid 77: /bin/cat {probe.input} )", self.holder_scan(probe))
+        blocked = proc / "4343" / "fd"
+        blocked.mkdir(parents=True)
+        blocked.chmod(0o000)
+        self.addCleanup(blocked.chmod, 0o700)
+        with self.assertRaises(PermissionError):  # root could list it, and the count below would be 0 instead
+            os.listdir(blocked)
+        shutil.rmtree(holder)
+        self.assertEqual("by no process whose descriptors this user can read (1 unreadable)", self.holder_scan(probe))
+
+    def test_the_holder_scan_tolerates_a_pid_that_exits_mid_scan(self):
+        # Round 1 finding f1 s4: a pid that exits between its fd listing and its field reads answers ESRCH, which
+        # escaped the scan and aborted the attempt, losing the read it had already detected. The three fields fail
+        # three ways here: comm by permission, status by absence, cmdline by ESRCH itself.
+        probe = self.worker_root_probe()
+        proc = probe.base / "proc"
+        probe.PROC_ROOT = str(proc)
+        holder = proc / "4242"
+        (holder / "fd").mkdir(parents=True)
+        os.symlink(probe.input, holder / "fd" / "7")
+        (holder / "comm").write_text("cat\n")
+        (holder / "comm").chmod(0o000)
+        self.addCleanup((holder / "comm").chmod, 0o600)
+        with self.assertRaises(PermissionError):  # root could read it, and the record would name cat instead of ?
+            (holder / "comm").read_bytes()
+        read_bytes = tec.Path.read_bytes
+
+        def exiting(path, *args, **kwargs):
+            if path == holder / "cmdline":
+                raise ProcessLookupError(errno.ESRCH, "no such process")
+            return read_bytes(path, *args, **kwargs)
+
+        record = "by pid 4242 (?, ppid ?: ?)"
+        with mock.patch.object(tec.Path, "read_bytes", exiting):
+            self.assertEqual(record, self.holder_scan(probe))
+            self.assert_eof(probe.consume(lambda: run(["/bin/cat", str(probe.input)], ALLOWED_ENV)))
+        with self.assertRaisesRegex(AssertionError, "worker root: read ") as exited:
+            probe.assert_untouched()
+        self.assertIn(f"{probe.input} opened for reading {record}", str(exited.exception))
+        self.assertEqual([], probe.errors)
+
+    def test_the_holder_scan_opens_no_fifo(self):
+        # The scan must read the descriptor table without opening what it finds in it: os.stat follows a link without
+        # opening its target. A planted FIFO nobody reads is the witness, because a non-blocking write-open answers
+        # ENXIO only while the FIFO has no reader. The decoys make the scan last long enough to be polled inside.
+        import threading
+
+        probe = self.worker_root_probe()
+        probe.consume(lambda: None)
+        self.assertEqual([], probe.reads)
+        proc, planted = probe.base / "proc", probe.base / "planted.fifo"
+        probe.PROC_ROOT = str(proc)
+        os.mkfifo(planted, 0o600)
+        for pid in range(5000, 5500):
+            decoy = proc / str(pid) / "fd"
+            decoy.mkdir(parents=True)
+            os.symlink(planted, decoy / "3")
+        holder = proc / "4242"
+        (holder / "fd").mkdir(parents=True)
+        os.symlink(planted, holder / "fd" / "3")
+        os.symlink(probe.input, holder / "fd" / "4")
+        os.symlink(probe.input, holder / "fd" / "5")  # a second match: the break names the pid once, not twice
+        (holder / "comm").write_text("cat\n")
+        (holder / "status").write_text("PPid:\t77\n")
+        (holder / "cmdline").write_bytes(b"/bin/cat\0" + os.fsencode(probe.input) + b"\0")
+
+        def opened():
+            """What the scan has opened for reading, nothing being the empty string."""
+            writer = probe._open_writer()
+            if writer is not None:
+                os.close(writer)
+                return "the scan opened the sentinel for reading"
+            try:
+                os.close(os.open(planted, os.O_WRONLY | os.O_NONBLOCK))
+            except OSError as error:
+                return "" if error.errno == errno.ENXIO else f"the planted FIFO answered {error!r}"
+            return "the scan opened the planted FIFO for reading"
+
+        record, polls = {}, 0
+        scan = threading.Thread(target=lambda: record.update(value=probe._holders(None)), daemon=True)
+        scan.start()
+        while scan.is_alive():
+            self.assertEqual("", opened())
+            polls += 1
+        scan.join(30)
+        self.assertFalse(scan.is_alive())
+        self.assertGreater(polls, 0, "no poll landed inside the scan")
+        self.assertEqual("", opened())
+        self.assertEqual(f"by pid 4242 (cat, ppid 77: /bin/cat {probe.input} )", record["value"])
+
     def test_a_replacement_present_at_a_poll_fails_even_when_restored(self):
         # Audit round 6 of 0b99fa84: a write-open that landed on another file was discarded, so swapping the FIFO out
         # and back during the step passed. The swap is held for two probe attempts: a replacement present at a poll is

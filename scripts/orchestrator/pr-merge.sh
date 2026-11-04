@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file pr-merge.sh
-# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, and CI passed, the orchestrator seat's merge lever.
+# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, with the unit's `sweep` row at that head when its brief carries the `TRUST` section, and CI passed, the orchestrator seat's merge lever.
 # @description
 #   Regime-cutover U71 (finding F010), the orchestrator seat's only merge path: `home/dot_agents/omp/policies/orchestrator.yml`
 #   allows `~/.local/bin/common/pr-merge.sh *` and denies the `gh pr merge` command text (a speed bump: text rows do
@@ -73,21 +73,70 @@
 #   else made after the pinned one failed) is a failure with no receipt that names both shas. The
 #   thread check (`pr-threads-check.sh`) stays a separate step before this lever (`hcom-orchestration` SKILL step 6).
 #   Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
+#   Since regime-cutover U147 the lever also reads the unit's brief, the one file `<store>/briefs/<unit>-*.md` of the
+#   same store (`briefs/` a directory of this user and no symlink, as `verdicts/` is; `<unit>` the body's; a fix unit
+#   writes its parent's id there, standing order 24, so the parent's brief, which carries the class, is read), for the
+#   trust-boundary mark: a `TRUST` section as the brief checker's own `sections()` finds it. The brief is read by the
+#   checkout's `scripts/orchestrator/brief-check.py` itself (U147 round 2): one python probe (`trust_probe`, run as
+#   `python3 -I -S -c`) loads that module by path and runs its `sections()` over the text read as its `main()` reads
+#   it, so the lever has no line grammar of its own (round 1 split the text on LF alone, while the checker's
+#   `splitlines()` also ends a line at a form feed, a vertical tab, a bare CR, NEL or U+2028). The probe exits 0 for
+#   the mark, 3 for a brief without it, and 2 (one stderr line naming the file) for a file that is not a brief (none
+#   of `GOAL`, `CHANGE`, `CONTEXT`), a heading that appears twice, bytes that are not UTF-8, a failed read, or a
+#   checker that cannot be loaded or run (a syntax error, an empty or foreign file, an exit at import; round 3). The
+#   probe compiles the checker from its source text into a fresh module and never through importlib's file loader,
+#   so no `__pycache__` entry of the checker is read or written (round 4: `dont_write_bytecode` stopped writes, not
+#   reads, and a stale timestamp-valid cache answered no mark for a source that had the section), and an exit at
+#   import that wrote nothing on stderr is named with the checker and its code. The
+#   lever maps the statuses as it maps the reader's: 2 is a refusal carrying the line, any other exit, 1 included, is
+#   a failure. "No mark" is 3 and never 1 because 1 is also what the interpreter exits with on an uncaught exception
+#   (round 3: a checker that did not compile read as "no mark" and a `TRUST` brief merged with no sweep row), so the
+#   two answers are statuses the interpreter never produces on its own.
+#   With the mark the unit is of the trust-boundary class and
+#   must have its `security-audit` sweep before it merges: the checkout's `ledger.py sweep <unit> <audited head>`
+#   prints the newest row of the unit or a fix unit of it at the audited head whose verdict starts with the word
+#   `sweep` (pr `-`, verifier the skill and its pin, evidence the findings file under the store), or `none`, which is
+#   a refusal naming the unit, the head and the brief, before the checks read and the one write; an exit-0 answer
+#   that is neither `none` nor one row of four tab-separated fields with a ts is a refusal naming the reader and the
+#   answer (round 2). Since round 4 (Codex thread 4457544811) the row must be the exact row the rule defines: pr `-`,
+#   verifier the two words `security-audit-skill <pin>` with the pin word, 8 or more lowercase hex, a prefix of the
+#   `assets.security-audit-skill.pin` of the manifest the self-check read (one probe, `sweep_pin_probe`, run as
+#   `python3 -I -S -c` over `LEVER_MANIFEST`), and evidence whose first `;`-separated field names a findings file
+#   `sweeps/<path>.json` that is a regular file of this user under the store (never opened); the reader refuses any
+#   other `sweep` row as a malformed store, and a pin that is no prefix or a findings file that is missing, a symlink
+#   or another user's is a refusal naming it, so a row written by hand with another verifier admits nothing. The
+#   audited head is
+#   the one `require_verdict_row` set, so a head moved under a `carried` row needs no second sweep. No brief, two
+#   briefs, a `briefs/` or a brief that is a symlink or not this user's, and a brief the probe cannot read as a brief
+#   are each a refusal naming the path, never "no TRUST section" (standing order 21); the lever reads nothing else of
+#   the brief, never the findings file a sweep row names, and judges no sweep's content. A unit whose brief has no
+#   `TRUST` section merges as before.
 # @arg $1 int The pull request number.
 # @option --records <dir> The program store holding `ledger.tsv`, `verdicts/`, `dispositions.tsv` and `units.tsv`
 #   (required; must resolve to the checkout's own store, above; a directory outside the checkout is refused).
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
-# @exitcode 1 A `gh` or `git` read, or the merge, failed.
-# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a ledger the
-#   checkout's `ledger.py` cannot read as data (a ts outside `YYYY-MM-DDThh:mm:ssZ` or outside the calendar, a wrong
-#   header or column count, an empty required cell), no python3 or no `scripts/orchestrator/ledger.py` in the
-#   checkout, a `carried` row whose evidence names no `carried <earlier> <head> <sha256>`
-#   for this head or whose earlier head has no `correct`
-#   row, no verdict file for the audited head, a P2 or P3 finding of weight 10 or more without its `residual`
-#   disposition row, a
-#   malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path that is a symlink or outside the
+# @exitcode 1 A `gh` or `git` read, the trust probe (any status but 0, 2 or 3), the manifest pin probe (any status but
+#   0 or 2), or the merge, failed.
+# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, no `sweep` row for
+#   a trust-boundary unit (its brief carries the `TRUST` section) at the audited head, a brief of the body's unit
+#   that is missing, ambiguous (two files match), a symlink, not this user's regular file, or one the brief checker's
+#   probe cannot read as a brief (unreadable, not UTF-8, no `GOAL`, `CHANGE` or `CONTEXT` section, a heading that
+#   appears twice: the probe's exit 2), a `briefs/` directory that is a symlink or not this user's, a sweep answer of
+#   the reader that is neither `none` nor one row of four tab-separated fields with a ts, a sweep row whose verifier
+#   is not `security-audit-skill <pin>` with the pin word a prefix (8 or more characters) of the manifest's
+#   `assets.security-audit-skill.pin`, whose evidence does not name a regular file of this user `sweeps/<path>.json`
+#   under the store, or a manifest without that one pin (round 4), a
+#   ledger the checkout's `ledger.py` cannot read as data (a ts outside `YYYY-MM-DDThh:mm:ssZ` or outside the
+#   calendar, a wrong header or column count, an empty required cell, a sweep or audit row whose head is not 40 hex, a
+#   `sweep` row that is not the exact row of the Audit sweep rule, pr `-`, verifier `security-audit-skill <pin>` and
+#   evidence `sweeps/<path>.json`, round 4:
+#   the reader's exit 2), no python3, no `scripts/orchestrator/ledger.py` or no `scripts/orchestrator/brief-check.py`
+#   in the checkout, a `carried` row whose
+#   evidence names no `carried <earlier> <head> <sha256>` for this head or whose earlier head has no `correct` row,
+#   no verdict file for the audited head, a P2 or P3 finding of weight 10 or more without its `residual` disposition
+#   row, a malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path that is a symlink or outside the
 #   checkout, or CI that is not green on the head.
 # @example
 #   ~/.local/bin/common/pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover
@@ -199,6 +248,136 @@ path_re='^[^[:space:]:]+$'
 # whose path matches path_re; an empty section, `- none` beside a finding line, or `- none` twice is a malformed
 # verdict (round 2). The two readers are run over one fixture set by tests.unit.test_pr_levers.
 findings_grammar="the leading '## Findings' section is one '- none' line, or one or more lines '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' with scores 1 to 10 and a path free of colons and whitespace"
+# The trust-boundary mark is read by the brief checker's own module (U147 round 2): this probe, run as `python3 -I -S
+# -c` with the brief and the checker's path as its two arguments, loads `scripts/orchestrator/brief-check.py` by path
+# (its import runs the checker's own pin self-check, so a rewritten checker reads no brief), reads the brief as the
+# checker's `main()` does and asks its `sections()`: exit 0 is the mark, 3 a brief without it, 2 (one stderr line
+# naming the file) a file that is not a brief (none of the checker's JUDGED sections), a heading that appears twice
+# (its BriefError), bytes that are not UTF-8 or a failed read. The whole body runs under one try (round 3): a checker
+# that cannot be loaded or run (a syntax error, conflict markers, an empty file or one without `sections`, a file
+# that is not Python, an exit at import other than the self-check's own exit 2, which passes through with its line)
+# is exit 2 with one line naming the checker, never the interpreter's exit 1 for an uncaught exception. "No mark" is
+# 3 and not 1 for the same reason: 1 is the interpreter's own status for a traceback, so the lever treats it as a
+# failure, and the two answers it acts on are statuses the interpreter never produces by itself. Nothing else of
+# the brief is read, and no grammar of the lever's own touches the text. The checker is compiled from its source text
+# and run in a fresh module, never loaded through importlib's file loader (round 4, the audit of 77b01342): the
+# loader runs a `__pycache__` entry whose recorded mtime and size match the source in the source's place, and
+# `dont_write_bytecode` stops writes alone, so a stale cache of a checker without the section answered no mark while
+# the pinned source had it; compile() and exec() read and write no cache. The checker's stderr is watched during the
+# load, so an exit at import that wrote nothing (round 4, the second finding) is named with the checker and its code
+# instead of an empty refusal. Single-quoted, so the Python holds no single quote.
+trust_probe='import sys
+import types
+
+brief, checker = sys.argv[1], sys.argv[2]
+
+
+class Stderr:
+    def __init__(self, inner):
+        self.inner = inner
+        self.wrote = False
+
+    def write(self, text):
+        if text:
+            self.wrote = True
+        return self.inner.write(text)
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
+
+
+stderr = Stderr(sys.stderr)
+sys.stderr = stderr
+try:
+    with open(checker, encoding="utf-8") as handle:
+        source = handle.read()
+    module = types.ModuleType("brief_check")
+    module.__file__ = checker
+    sys.modules["brief_check"] = module
+    exec(compile(source, checker, "exec"), module.__dict__)
+    try:
+        with open(brief, encoding="utf-8") as handle:
+            text = handle.read()
+        found = module.sections(text)
+    except (OSError, UnicodeDecodeError, module.BriefError) as error:
+        print(f"brief-check: cannot read {brief}: {error}", file=sys.stderr)
+        sys.exit(2)
+    if not any(name in found for name in module.JUDGED):
+        names = ", ".join(module.JUDGED)
+        print(f"brief-check: {brief} is not a brief: none of {names} is a section", file=sys.stderr)
+        sys.exit(2)
+    marked = "TRUST" in found
+except SystemExit as error:
+    if error.code == 2 and stderr.wrote:
+        raise
+    silence = "" if stderr.wrote else " with no message"
+    print(f"brief-check: cannot load {checker}: exited {error.code} at import{silence}", file=sys.stderr)
+    sys.exit(2)
+except BaseException as error:
+    print(f"brief-check: cannot load {checker}: {type(error).__name__}: {error}", file=sys.stderr)
+    sys.exit(2)
+if marked:
+    sys.exit(0)
+sys.exit(3)'
+# The pin the sweep must have run at (U147 round 4, Codex thread 4457544811): `assets.security-audit-skill.pin` of the
+# manifest the self-check read (LEVER_MANIFEST), the one place the skill's pin is declared. This probe, run as
+# `python3 -I -S -c` with the manifest as its argument, prints the pin or exits 2 with one stderr line, and the lever
+# requires the sweep row's pin word to be a prefix of it. `-S` leaves no PyYAML, so the manifest is read as text the way
+# scripts/orchestrator/brief-check.py:113-151 (`manifest_levers`) reads the levers block: a bare `<key>:` line opens a
+# mapping and a line indented no deeper closes it, so `security-audit-skill:` counts only under the top-level `assets:`,
+# and the pin is the one `pin: <40 hex>` line at the indentation of that asset's first field (the field
+# scripts/validate-agent-assets.py:1252-1254 reads as `asset.get("pin")`; a git-commit pin is a 40-hex sha). Nothing
+# else of YAML is read: no anchors, no flow style, no quoted keys. Zero or two pin lines, a manifest that cannot be
+# read or is not UTF-8, and any other exception are exit 2 naming the manifest (standing order 21: never a pass).
+# Single-quoted, so the Python holds no single quote.
+sweep_pin_probe='import re
+import sys
+
+manifest = sys.argv[1]
+MAPPING_KEY = re.compile(r"^(\S+):$")
+PIN = re.compile(r"^pin: ([0-9a-f]{40})$")
+try:
+    try:
+        with open(manifest, encoding="utf-8") as handle:
+            lines = handle.read().splitlines()
+    except (OSError, UnicodeDecodeError) as error:
+        print(f"manifest: cannot read {manifest}: {error}", file=sys.stderr)
+        sys.exit(2)
+    pins = []
+    keys = []
+    asset = None
+    fields = None
+    for line in lines:
+        text = line.lstrip(" ")
+        if not text or text.startswith("#"):
+            continue
+        indent = len(line) - len(text)
+        if asset is not None:
+            if indent > asset:
+                if fields is None:
+                    fields = indent
+                match = PIN.match(text)
+                if match and indent == fields:
+                    pins.append(match.group(1))
+                continue
+            asset = None
+        while keys and indent <= keys[-1][0]:
+            keys.pop()
+        match = MAPPING_KEY.match(text)
+        if match and (keys or indent == 0):
+            keys.append((indent, match.group(1)))
+            if [key for _, key in keys] == ["assets", "security-audit-skill"]:
+                asset = indent
+                fields = None
+    if len(pins) != 1:
+        print(f"manifest: {manifest} holds {len(pins)} assets.security-audit-skill.pin lines of 40 hex, not one", file=sys.stderr)
+        sys.exit(2)
+except SystemExit:
+    raise
+except BaseException as error:
+    print(f"manifest: cannot read {manifest}: {type(error).__name__}: {error}", file=sys.stderr)
+    sys.exit(2)
+print(pins[0])'
 # The reference of a `residual` disposition row, the thread rule's form (pr-threads-check.sh `disposition`).
 residual_re='^unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
 
@@ -492,6 +671,134 @@ require_dispositions() {
     done
 }
 
+# @description Refuse unless the ledger holds the unit's sweep row at `audited_head` when the unit is of the
+#   trust-boundary class (regime-cutover U147; the AGENTS.md Audit sweep rule: every unit whose brief carries a `TRUST`
+#   section gets one sweep of the `security-audit` skill before its pull request merges). The brief is the one file
+#   `<store>/briefs/<unit>-*.md` of the checkout's own store (`briefs/` a directory of this user and no symlink, as
+#   `verdicts/` is in require_dispositions; round 2), `<unit>` the body's unit (a fix unit writes its parent's id
+#   there, standing order 24, so the parent's brief, which carries the class, is read): no match, two or more matches,
+#   a match that is a symlink or not a regular file of this user, and a file the checker's probe cannot read as a
+#   brief are each a refusal naming the path, never "no TRUST section" (standing order 21). The one thing read from
+#   the text is whether the checker's own `sections()` finds `TRUST` (trust_probe: exit 0 the mark, 3 no mark, 2 a
+#   refusal carrying the probe's line, any other exit, 1 included, a failure; round 3: 1 is the interpreter's own
+#   status for an uncaught exception, so a checker that did not compile had read as "no mark"); the sweep row is
+#   then asked of the checkout's ledger.py (`sweep <unit> <head>`, the one reader, its status read as ledger_verdict
+#   reads it and its exit-0 answer
+#   read by its shape, `none` or one row of four tab-separated fields with a ts, as require_verdict_row reads a row;
+#   round 2) at `audited_head`: the head itself, or for a `carried` row the earlier head whose verdict file the merge
+#   reads, so a head moved under a carried row needs no second sweep. Without the mark nothing changes. The lever
+#   reads neither the findings file the row names nor the sweep's content. Since round 4 the row must be the exact
+#   row of the rule (Codex thread 4457544811: a row written by hand with verifier `coordinator` admitted the merge):
+#   the reader already refuses a `sweep` row whose pr is not `-`, whose verifier is not `security-audit-skill <pin>`
+#   or whose evidence is not `sweeps/<path>.json` as a malformed store, and the lever reads the answer by its shape all
+#   the same, then requires the pin word to be a prefix of the manifest's `assets.security-audit-skill.pin`
+#   (sweep_pin_probe over LEVER_MANIFEST: exit 0 the pin, 2 a refusal carrying its line, anything else a failure) and
+#   the findings file to be a regular file of this user under `<store>/sweeps/` (`sweeps/` a directory of this user
+#   and no symlink, the file `-f`, `-O`, `! -L`, as the brief), never opened; a pin that is no prefix or a file that
+#   is missing, a symlink or another user's is a refusal naming it.
+require_sweep_row() {
+    local brief briefs_dir listed status=0 row rest verifier evidence pin_word manifest_pin findings_path sweeps_dir findings_file
+    local briefs=()
+    briefs_dir=${store}/briefs
+    [[ ! -L ${briefs_dir} && -d ${briefs_dir} && -O ${briefs_dir} ]] ||
+        refuse "${briefs_dir} is not a directory of this user (a symlink or missing); the brief is read from the checkout's own store"
+    shopt -s nullglob
+    briefs=("${briefs_dir}/${unit}-"*.md)
+    shopt -u nullglob
+    # The match count is read as a word: no arithmetic on an operand the lever did not assign a decimal to.
+    case ${#briefs[@]} in
+    0) refuse "the brief of ${unit} is not one file: nothing matches ${briefs_dir}/${unit}-*.md; the merge gate reads the brief for the TRUST section (the trust-boundary mark), so a unit without its brief in the store never merges" ;;
+    1) ;;
+    *)
+        listed=''
+        for brief in "${briefs[@]}"; do
+            listed+="${listed:+, }${brief}"
+        done
+        refuse "the brief of ${unit} is not one file: ${listed} all match ${briefs_dir}/${unit}-*.md"
+        ;;
+    esac
+    brief=${briefs[0]}
+    [[ ! -L ${brief} && -f ${brief} && -O ${brief} ]] ||
+        refuse "${brief} is not a regular file of this user (a symlink or missing); the brief is read from the checkout's own store"
+    # The one heading grammar is brief-check.py:264-291 (`heading()` and `sections()`), run by the checker's own
+    # module through trust_probe: a loop of the lever's own split the text on LF alone while `sections()` runs over
+    # `splitlines()`, so a `TRUST` heading after a form feed, a vertical tab, a bare CR, NEL or U+2028 was a section
+    # to the checker and no mark to the lever (round 2, finding 1); the lever defines no grammar and reads no line.
+    status=0
+    row=$("${python}" -I -S -c "${trust_probe}" "${brief}" "${brief_checker}" 2>&1) || status=$?
+    # 3, not 1, is "no mark" (round 3): 1 is also the interpreter's status for an uncaught exception, and a checker
+    # that did not compile had merged a TRUST brief with no sweep row; the probe never exits 1 by its own code.
+    case ${status} in
+    0) ;;
+    3) return 0 ;;
+    2) refuse "${row#brief-check: }; a brief the gate cannot read as a brief is never a brief without a TRUST section" ;;
+    *) fail "the trust probe over ${brief} (${brief_checker}) exited ${status}, neither the mark (0), no mark (3) nor a refusal (2): ${row:-no output}" ;;
+    esac
+    status=0
+    row=$("${python}" -I -S "${ledger_reader}" "${store}" sweep "${unit}" "${audited_head}" 2>&1) || status=$?
+    case ${status} in
+    0) ;;
+    2) refuse "${row#ledger: }" ;;
+    *) fail "${ledger_reader} exited ${status} reading ${ledger} for the sweep row of ${unit}: ${row:-no output}" ;;
+    esac
+    [[ ${row} != none ]] ||
+        refuse "${ledger} has no sweep row for ${unit} (or a fix unit of it) at the audited head ${audited_head}; the brief ${brief} carries the TRUST section, so the unit is of the trust-boundary class, and the AGENTS.md Audit rule says every unit of that class gets one sweep of the security-audit skill before its pull request merges (a row with verdict sweep, pr -, head ${audited_head}); run the sweep and write its row, or wait for it"
+    # The answer is read by its shape, as require_verdict_row reads a row (round 2, finding 3): one line of four
+    # tab-separated fields, `<ts> <unit> <verifier> <evidence>`, with a ts. The tab count is the row with every other
+    # byte removed, read as a word; the ts is the text before the first tab.
+    case ${row//[!$'\t']/} in
+    $'\t\t\t') ;;
+    *) refuse "${ledger_reader} answered the sweep question for ${unit} at ${audited_head} with neither none nor one row of four tab-separated fields (ts, unit, verifier, evidence): ${row:-nothing}" ;;
+    esac
+    [[ ${row} != *$'\n'* && -n ${row%%$'\t'*} ]] ||
+        refuse "${ledger_reader} answered the sweep question for ${unit} at ${audited_head} with text beside the row or an empty ts, not one row of four tab-separated fields: ${row}"
+    # The row's columns as the reader prints them (ts, unit, verifier, evidence), each the text up to the next tab.
+    rest=${row#*$'\t'}
+    rest=${rest#*$'\t'}
+    verifier=${rest%%$'\t'*}
+    evidence=${rest#*$'\t'}
+    # The verifier's two words are the skill's name and the pin word the sweep ran at (round 4): the reader refuses any
+    # other sweep row, and the lever reads the answer by its shape all the same before it compares the pin.
+    case ${verifier} in
+    'security-audit-skill '*) ;;
+    *) refuse "the sweep row of ${unit} at ${audited_head} names '${verifier}' as its verifier, not the pinned skill and its pin (security-audit-skill <pin>); the gate admits the row the AGENTS.md Audit sweep rule defines alone" ;;
+    esac
+    pin_word=${verifier#security-audit-skill }
+    pin_word=${pin_word%%[[:space:]]*}
+    [[ ${pin_word} =~ ^[0-9a-f]{8,}$ ]] ||
+        refuse "the sweep row of ${unit} at ${audited_head} names '${pin_word}' as the skill's pin, not 8 or more lowercase hex characters of it"
+    status=0
+    manifest_pin=$("${python}" -I -S -c "${sweep_pin_probe}" "${LEVER_MANIFEST}" 2>&1) || status=$?
+    case ${status} in
+    0) ;;
+    2) refuse "${manifest_pin#manifest: }; the sweep row's pin is compared with that pin, so a manifest without it admits no sweep" ;;
+    *) fail "the pin probe over ${LEVER_MANIFEST} exited ${status}, neither the pin (0) nor a refusal (2): ${manifest_pin:-no output}" ;;
+    esac
+    [[ ${manifest_pin} =~ ^[0-9a-f]{40}$ ]] ||
+        refuse "the pin probe over ${LEVER_MANIFEST} answered with no 40-hex pin: ${manifest_pin:-nothing}"
+    [[ ${manifest_pin} == "${pin_word}"* ]] ||
+        refuse "the sweep row of ${unit} at ${audited_head} names pin ${pin_word}, which is not a prefix of the manifest's assets.security-audit-skill.pin ${manifest_pin} (${LEVER_MANIFEST}); the sweep ran at another pin than the one the manifest pins, or the row was written by hand"
+    # The findings file is the evidence's first `;`-separated field stripped of whitespace, a relative path under
+    # `sweeps/` ending in `.json` with no `..`, `.` or empty component, checked as the brief is (the directory, then the
+    # file: regular, this user's, no symlink) and never opened.
+    findings_path=${evidence%%;*}
+    findings_path=${findings_path#"${findings_path%%[![:space:]]*}"}
+    findings_path=${findings_path%"${findings_path##*[![:space:]]}"}
+    case ${findings_path} in # lint-comparisons: allow the row's store-relative path is judged as the text it is, then the file is stat'ed under the store
+    sweeps/*.json) ;;
+    *) refuse "the sweep row of ${unit} at ${audited_head} names '${evidence}' as its evidence, not a findings file sweeps/<path>.json under the store" ;;
+    esac
+    case /${findings_path}/ in # lint-comparisons: allow the same text, its components fenced by slashes
+    */../* | */./* | *//*) refuse "the findings file ${findings_path} of the sweep row of ${unit} at ${audited_head} has a '..', '.' or empty path component; the file is read under the store alone" ;;
+    esac
+    sweeps_dir=${store}/sweeps
+    [[ ! -L ${sweeps_dir} && -d ${sweeps_dir} && -O ${sweeps_dir} ]] ||
+        refuse "${sweeps_dir} is not a directory of this user (a symlink or missing); the findings file a sweep row names must be in the checkout's own store"
+    findings_file=${store}/${findings_path}
+    [[ ! -L ${findings_file} && -f ${findings_file} && -O ${findings_file} ]] ||
+        refuse "${findings_file}, the findings file the sweep row of ${unit} at ${audited_head} names, is not a regular file of this user (a symlink or missing); a sweep whose findings file is not in the store admits no merge"
+}
+
 # @description Set `ledger`, `store`, `units_file` and `unit` to the one store the merge may read (U71, bot P1
 #   4370212009: a caller-chosen ledger.tsv could hold a fabricated row): `<toplevel>/.orchestration/orchestrate/
 #   <program>/ledger.tsv` of this main checkout, `<program>` and `U<n>` taken from the pull request body's one
@@ -540,7 +847,7 @@ shift
 [[ $# -eq 2 && $1 == --records && -n $2 ]] || refuse "${usage}"
 records=$2
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
-python=$(command -v python3) || refuse 'no python3 found (it runs the ledger reader, scripts/orchestrator/ledger.py)'
+python=$(command -v python3) || refuse 'no python3 found (it runs the ledger reader, scripts/orchestrator/ledger.py, and the brief checker, scripts/orchestrator/brief-check.py)'
 # The checkout the lever runs in, by its physical path, and it must be the main checkout: a linked worktree (a
 # worker's clone) holds a copy of the store that is not the orchestrator's record (U71, bot P1 4370212009).
 toplevel=$(git_isolated rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout that holds the program store'
@@ -557,6 +864,10 @@ common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_di
 # checkout's rounds-check.py and audit-carry.py; the lever's awk reader is gone with it.
 ledger_reader=${toplevel}/scripts/orchestrator/ledger.py
 [[ -f ${ledger_reader} ]] || refuse "no ${ledger_reader} in the checkout; the ledger is read through it alone"
+# The brief checker, whose own module reads the trust-boundary mark through trust_probe (U147 round 2); the lever
+# names it here and reads no brief by a grammar of its own.
+brief_checker=${toplevel}/scripts/orchestrator/brief-check.py
+[[ -f ${brief_checker} ]] || refuse "no ${brief_checker} in the checkout; the trust-boundary mark is read by its heading grammar alone"
 
 view=$(gh_bounded pr view "${pr}" --json state,baseRefName,headRefOid,isDraft \
     --jq '[.state, .baseRefName, .headRefOid, (.isDraft | tostring)] | @tsv') || fail "cannot read pull request ${pr}"
@@ -569,6 +880,7 @@ resolve_store
 
 require_verdict_row "${head}"
 require_dispositions "${audited_head}" "${audited_unit}"
+require_sweep_row
 
 status=0
 checks=$(gh_bounded pr checks "${pr}" --json bucket,name --jq '.[] | [.bucket, .name] | @tsv') || status=$?

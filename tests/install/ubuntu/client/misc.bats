@@ -4,10 +4,13 @@ readonly SCRIPT_PATH="./install/ubuntu/client/misc.sh"
 
 load "../../helpers/apt_record"
 
-# Every case runs with a fake snap first on PATH (U210): a case that runs the script's main, or the script as a
-# program, reaches `sudo timeout ... snap install chromium`, and on an Ubuntu runner that was the real snap client
-# against the real store, which stalled the whole test leg for nine minutes on 2026-11-05. The fake records its
-# argv and succeeds at once; a case that needs another behaviour overrides it with fake_snap on the same path.
+# @description Every case runs with a fake snap first on PATH (U210): a case that runs the script's main, or the
+#   script as a program, reaches `sudo timeout ... snap install chromium`, and on an Ubuntu runner that was the real
+#   snap client against the real store, which stalled the whole test leg for nine minutes on 2026-11-05. The fake
+#   records its argv and succeeds at once; a case that needs another behaviour overrides it with fake_snap on the
+#   same path.
+# @noargs
+# @set PATH string The fixture's bin first: the fake snap and the PATH-keeping sudo, before anything of the host.
 function setup() {
     source "${SCRIPT_PATH}"
     path_keeping_sudo
@@ -21,10 +24,11 @@ function teardown() {
     remove_real_packages
 }
 
-# Write the fake snap the fixture puts first on PATH. It appends `snap <argv>` to ${BATS_TEST_TMPDIR}/snap_calls
-# and then runs $1, whose status is the fake's. The log path is written into the script, because the real sudo
-# drops the caller's environment; the fake is a program and not a shell function, because install_chromium runs
-# snap through `timeout`.
+# @description Write the fake snap the fixture puts first on PATH. It appends `snap <argv>` to
+#   ${BATS_TEST_TMPDIR}/snap_calls and then runs $1, whose status is the fake's. The log path is written into the
+#   script, because the real sudo drops the caller's environment; the fake is a program and not a shell function,
+#   because install_chromium runs snap through `timeout`.
+# @arg $1 string The shell text the fake runs after logging; its exit status is the fake's (`exit 0` in setup).
 function fake_snap() {
     mkdir -p "${BATS_TEST_TMPDIR}/bin"
     {
@@ -36,9 +40,13 @@ function fake_snap() {
     chmod +x "${BATS_TEST_TMPDIR}/bin/snap"
 }
 
-# Write a sudo in front of the real one that hands the caller's PATH to the command it runs as root. The real
-# sudo replaces PATH with its secure_path, so a case that runs the script as a program would otherwise reach
-# the host's snap through it; the apt install itself still runs as root.
+# @description Write a sudo in front of the real one that hands the caller's PATH to the command it runs as root.
+#   The real sudo replaces PATH with its secure_path, so a case that runs the script as a program would otherwise
+#   reach the host's snap through it; the apt install itself still runs as root.
+# @noargs
+# @stderr `path_keeping_sudo: no sudo on PATH` when the lookup fails.
+# @exitcode 1 No sudo on PATH: a wrapper around nothing would fail every program run with its own name in place of
+#   the real cause, so the fixture refuses here instead of writing it.
 function path_keeping_sudo() {
     local real_sudo
     if ! real_sudo="$(command -v sudo)"; then

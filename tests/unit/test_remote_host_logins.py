@@ -455,7 +455,7 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         result = self.run_lever("--check", "orchestrator")
         self.assertRegex(
             result.stdout,
-            r"^orchestrator claude-bridge: login present \(token file 600, mtime \S+Z; a new login shell exports it\)\n$",
+            r"^orchestrator claude-bridge: login present \(token file 600, mtime \S+Z; the seat shim exports it\)\n$",
         )
         token.unlink()
         credentials = self.home / ".claude/.credentials.json"
@@ -463,16 +463,21 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         credentials.write_text("{}")
         credentials.chmod(0o600)
         result = self.run_lever("--check", "orchestrator")
+        # U190: a host store is still reported, labelled as one the seat's bridge child cannot use; --check exits 0.
+        self.assertEqual(result.returncode, 0, result.stderr)
         self.assertRegex(
-            result.stdout, r"^orchestrator claude-bridge: login present \(credentials file 600, mtime \S+Z\)\n$"
+            result.stdout, r"^orchestrator claude-bridge: host login only \(credentials file 600, mtime \S+Z\)\n$"
         )
         self.assertNotIn(FAKE_OAUTH_VALUE, self.calls_text() + result.stdout + result.stderr)
 
-    @unittest.skipUnless(sys.platform == "darwin", "the Keychain branch runs on macOS only")
     def test_check_reads_only_the_keychain_item_attributes(self) -> None:
+        # The Darwin branch on any runner: a Darwin uname and the fake security, never the host's Keychain.
+        write_exec(self.bin / "uname", "#!/bin/sh\necho Darwin\n")
         write_exec(self.bin / "security", f'#!/bin/sh\necho "security $*" >> "{self.calls}"\nexit 0\n')
         result = self.run_lever("--check", "orchestrator")
-        self.assertEqual(result.stdout, "orchestrator claude-bridge: login present (Keychain item)\n")
+        self.assertEqual(
+            (result.returncode, result.stdout), (0, "orchestrator claude-bridge: host login only (Keychain item)\n")
+        )
         self.assertEqual(self.calls_text(), "security find-generic-password -s Claude Code-credentials\n")
 
     def test_an_unreadable_record_is_never_read_as_absent(self) -> None:
@@ -539,12 +544,17 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         )
         self.assertEqual(list(self.temp.glob("seat-login.*")), [], "the scratch opener directory is removed")
 
-    def test_the_operators_terminal_runs_the_claude_login_with_the_laptop_browser(self) -> None:
+    def test_the_operators_terminal_names_the_token_step_for_claude_and_runs_no_browser_login(self) -> None:
+        """U190: `claude auth login` would store a host login the seat's bridge child never sees, so nothing runs."""
         status, output = self.run_tty("orchestrator", SSH_CONNECTION="100.64.0.2 50000 100.64.0.3 22")
-        self.assertEqual(status, 0, output)
-        self.assertIn("claude auth login BROWSER=regime-open-url\n", self.calls_text())
-        self.assertIn("paste it at the prompt below", output)
-        self.assertIn("orchestrator claude-bridge: login present (credentials file 600", output)
+        self.assertEqual(status, 2, output)
+        self.assertIn(
+            "orchestrator needs a Claude login the seat can use, which is the token file: run `claude setup-token`"
+            " on the laptop and store the token in ~/.config/claude-code/oauth-token on this host (mode 0600)",
+            output,
+        )
+        self.assertEqual(self.calls_text(), "")
+        self.assertFalse((self.home / ".claude/.credentials.json").exists())
 
     def test_a_failed_or_ineffective_login_keeps_the_seat_from_starting(self) -> None:
         remote = "100.64.0.2 50000 100.64.0.3 22"
@@ -700,30 +710,51 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         self.assertIn("no openai-siwc login in", output)
         self.assertIn("after the login", output)
 
-    def test_a_token_file_this_shell_has_not_exported_is_refused(self) -> None:
+    def test_readiness_counts_the_variable_or_the_token_file_and_never_a_host_only_login(self) -> None:
+        """U190: the seat's bridge child runs under its own CLAUDE_CONFIG_DIR and logs in by the token alone, which
+        the seat shim exports from the token file; a Keychain item or credentials file is a host login it cannot use."""
         remote = "100.64.0.2 50000 100.64.0.3 22"
+        advice = (
+            "not visible to the seat's bridge child under its own CLAUDE_CONFIG_DIR; run claude setup-token and"
+            " store it in ~/.config/claude-code/oauth-token (0600); a login is the operator's step"
+        )
+        ready = self.run_lever("orchestrator", SSH_CONNECTION=remote, **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
+        self.assertEqual(ready.returncode, 0, ready.stderr)
+        self.assertIn("orchestrator claude-bridge: login present (env token)", ready.stderr)
         token = self.home / ".config/claude-code/oauth-token"
         token.parent.mkdir(parents=True)
         token.write_text(FAKE_OAUTH_VALUE + "\n")
         token.chmod(0o600)
-        gate = self.run_lever("orchestrator", SSH_CONNECTION=remote)
-        self.assertEqual(gate.returncode, 2, gate.stderr)
+        from_file = self.run_lever("orchestrator", SSH_CONNECTION=remote)
+        self.assertEqual(from_file.returncode, 0, from_file.stderr)
         self.assertRegex(
-            gate.stderr,
-            r"orchestrator claude-bridge: login not in this environment \(token file 600, mtime \S+Z;"
-            r" CLAUDE_CODE_OAUTH_TOKEN is unset here\); .*open a new login shell on this host",
+            from_file.stderr,
+            r"orchestrator claude-bridge: login present \(token file 600, mtime \S+Z; the seat shim exports it\)",
         )
-        status, output = self.run_tty("orchestrator", SSH_CONNECTION=remote)
+        token.unlink()
+        credentials = self.home / ".claude/.credentials.json"
+        credentials.parent.mkdir()
+        credentials.write_text("{}")
+        credentials.chmod(0o600)
+        host_only = self.run_lever("orchestrator", SSH_CONNECTION=remote)
+        self.assertEqual(host_only.returncode, 2, host_only.stderr)
+        self.assertIn("orchestrator claude-bridge: host login only (credentials file 600, mtime ", host_only.stderr)
+        self.assertIn(f"Z): {advice}", host_only.stderr)
+        credentials.unlink()
+        # A Keychain item, on any runner: a Darwin uname and the fake security, never the host's Keychain.
+        write_exec(self.bin / "uname", "#!/bin/sh\necho Darwin\n")
+        write_exec(self.bin / "security", f'#!/bin/sh\necho "security $*" >> "{self.calls}"\nexit 0\n')
+        keychain = self.run_lever("worker", SSH_CONNECTION=remote)
+        self.assertEqual(keychain.returncode, 2, keychain.stderr)
+        self.assertIn(f"worker claude-bridge: host login only (Keychain item): {advice}", keychain.stderr)
+        self.assertEqual(self.calls_text(), "security find-generic-password -s Claude Code-credentials\n")
+        # In the operator's terminal the same state names the token step and runs no login.
+        status, output = self.run_tty("worker", SSH_CONNECTION=remote)
         self.assertEqual(status, 2, output)
-        self.assertEqual(self.calls_text(), "", "no login runs: a login cannot export the file")
-        ready = self.run_lever("orchestrator", SSH_CONNECTION=remote, **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
-        self.assertEqual(ready.returncode, 0, ready.stderr)
-        self.assertIn("orchestrator claude-bridge: login present (env token)", ready.stderr)
-        check = self.run_lever("--check", "orchestrator")
-        self.assertIn("a new login shell exports it", check.stdout)
-        for result in (gate, ready, check):
-            self.assertNotIn(FAKE_OAUTH_VALUE, result.stdout + result.stderr)
-        self.assertNotIn(FAKE_OAUTH_VALUE, output)
+        self.assertIn("run `claude setup-token` on the laptop", output)
+        self.assertNotIn("claude auth login", self.calls_text())
+        for text in (ready.stderr, from_file.stderr, host_only.stderr, keychain.stderr, output):
+            self.assertNotIn(FAKE_OAUTH_VALUE, text)
 
 
 if __name__ == "__main__":

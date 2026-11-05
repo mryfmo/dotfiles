@@ -1356,18 +1356,20 @@ refuse_inside_a_seat "${seats_root%/}/.sandbox"
 
 # @description Print the srt write roots of one seat, one per line in physical form: the list the seat's settings
 #   carry as `allowWrite` (seat_sandbox_write writes exactly this list), followed by the paths srt 0.0.81 makes
-#   writable without a listing (`srt_tmp_roots`: `/tmp/claude`, and `/private/tmp/claude` on macOS; `~/.npm/_logs`,
-#   `~/.claude/debug`).
+#   writable without a listing (`srt_tmp_roots`: `/tmp/claude`, and `/private/tmp/claude` on macOS; `~/.npm/_logs`).
+#   The operator's Claude Code state (`CLAUDE_CONFIG_DIR`, `~/.claude`, `~/.claude.json`) is no root of any seat
+#   (regime-cutover U190): the bridge child keeps its own under `<seats-root>/.state/<name>/claude`, inside the state
+#   slot listed here, which the shim exports as the seat's `CLAUDE_CONFIG_DIR`.
 # @arg $1 string The role.
 # @arg $2 string The seat name.
 # @arg $3 string The seat directory (the worktree, or the checkout for the orchestrator).
 # @stdout The roots.
 # @exitcode 1 A path could not be resolved.
 seat_write_roots() {
-    local path claude=${CLAUDE_CONFIG_DIR:-${HOME}/.claude}
+    local path
     # The seat's own slots come first (seat_overlap_check relies on it): its directory, then its state directory.
     for path in "$3" "${seats_root%/}/.state/$2" "${common}" "${HCOM_DIR}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run" \
-        "${claude}" "${HOME}/.claude.json" "${srt_tmp_roots[@]}" "${HOME}/.npm/_logs" "${HOME}/.claude/debug"; do
+        "${srt_tmp_roots[@]}" "${HOME}/.npm/_logs"; do
         physical_path "${path}" || return 1
     done
 }
@@ -1642,8 +1644,10 @@ esac
 # @description Write the seat's srt settings and its `omp` shim under `<seats-root>/.sandbox/<name>` (regime-cutover
 #   U85), afresh on every launch, after the seat directory exists. The settings name what the seat may write (its
 #   directory, the repository's git common directory, the program's hcom store, its own omp profile and the omp
-#   session leases, the Claude Code state the bridge child writes, a per-seat cache root; the same for both roles, so
-#   no seat writes the seats root or reaches the herdr socket, and none can start a seat), what it may not change
+#   session leases, and its own state slot, which holds the bridge child's Claude Code state (the `CLAUDE_CONFIG_DIR`
+#   the shim exports, regime-cutover U190) and a per-seat cache root; the same for both roles, so no seat writes the
+#   seats root or reaches the herdr socket, and none can start a seat; the operator's `~/.claude` and `~/.claude.json`
+#   are no root, so nothing under them needs a deny), what it may not change
 #   inside those roots (git config and hooks, the hcom store's launch scripts and configuration, agent configuration
 #   that runs outside the seat and the package the checkout's Claude Code hooks import), what it may not read (SSH,
 #   GPG, cloud and codex credentials, the chezmoi sources, `~/Workspace` but its own repository, other omp profiles,
@@ -1653,7 +1657,7 @@ esac
 #   the physical argv `pin_exec` checked.
 # @noargs
 seat_sandbox_write() {
-    local h claude dir_real common_real hcom_real seats_real sandbox_real
+    local h dir_real common_real hcom_real seats_real sandbox_real
     local root path settings shim json base sandbox_state origin_url push_url srt_q omp_q
     local write_json deny_write_json deny_read_json allow_read_json
     local write=() deny_write=() deny_read=() allow_read=()
@@ -1662,15 +1666,14 @@ seat_sandbox_write() {
     # and each is checked again to be a real directory.
     (umask 077 && mkdir -p "${seats_root}" "${HOME}/.omp/profiles/${role}" "${HOME}/.omp/run") ||
         refuse "cannot create the seats root ${seats_root} or omp's state directories"
-    for path in "${seats_root}/.state" "${seats_root}/.state/${name}" "${seats_root}/.sandbox" "${sandbox}" \
-        "${sandbox}/bin"; do
+    for path in "${seats_root}/.state" "${seats_root}/.state/${name}" "${seats_root}/.state/${name}/claude" \
+        "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do
         if [[ ! -e ${path} && ! -L ${path} ]]; then
             (umask 077 && /bin/mkdir "${path}") || refuse "cannot create ${path}"
         fi
         [[ -d ${path} && ! -L ${path} ]] || refuse "${path} is not a real directory"
     done
     h=$(physical_path "${HOME}") || refuse "cannot resolve HOME ${HOME}"
-    claude=${CLAUDE_CONFIG_DIR:-${h}/.claude}
     dir_real=$(cd "${dir}" && pwd -P) || refuse "cannot resolve the seat directory ${dir}"
     common_real=$(cd "${common}" && pwd -P) || refuse "cannot resolve the git common directory ${common}"
     hcom_real=$(cd "${HCOM_DIR}" && pwd -P) || refuse "cannot resolve the hcom store ${HCOM_DIR}"
@@ -1704,9 +1707,6 @@ seat_sandbox_write() {
     fi
     for path in config.toml env config.env .tmp/launch scripts integrations shell_env.json; do
         deny_write+=("${hcom_real}/${path}")
-    done
-    for path in settings.json settings.local.json hooks plugins commands agents skills CLAUDE.md; do
-        deny_write+=("${claude}/${path}")
     done
     deny_read=("${h}/.ssh" "${h}/.gnupg" "${h}/.aws" "${h}/.netrc" "${h}/.docker" "${h}/.kube" "${h}/.config/gcloud"
         "${h}/.codex" "${h}/.omp/agent" "${h}/.omp/profiles" "${h}/.hcom" "${h}/.local/state/hcom"
@@ -1791,6 +1791,22 @@ if [[ ${probe} != 'write-denied read-denied ssh-denied' || -e ${canary} ]]; then
     exit 2
 fi
 export UV_CACHE_DIR=${state}/uv-cache
+# The bridge child's Claude Code state (`.claude.json`, projects, sessions, plugins) lives in the seat's own slot,
+# never in the operator's ~/.claude or ~/.claude.json (regime-cutover U190); under that directory the child reads
+# neither the Keychain nor the operator's credentials file, so it logs in by the token alone, exported here from the
+# operator's token file (the preflight's spelling) because a herdr pane's shell need not be a login shell that
+# exports it. The first line goes from a checked producer into the variable and nowhere else: never printed, never
+# written; a failed read refuses, since the preflight counted that file as the seat's login.
+export CLAUDE_CONFIG_DIR=${state}/claude
+token_file=${HOME}/.config/claude-code/oauth-token
+if [[ -z ${CLAUDE_CODE_OAUTH_TOKEN:-} && -f ${token_file} && -s ${token_file} ]]; then
+    token=$(/usr/bin/head -n 1 -- "${token_file}") || {
+        echo "hcom-seat shim: cannot read the token file ${token_file}; omp not started" >&2
+        exit 2
+    }
+    if [[ -n ${token} ]]; then export CLAUDE_CODE_OAUTH_TOKEN=${token}; fi
+    unset token
+fi
 # omp's Bedrock discovery stats ~/.aws/{credentials,config} unless these name the files, and an EPERM from the read
 # deny ends omp at start (measured, omp 18.11.3 and 18.12.6); /dev/null reads as no AWS profile.
 export AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null

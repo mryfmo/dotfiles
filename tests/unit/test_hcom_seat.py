@@ -13,6 +13,7 @@ import os
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -20,7 +21,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import git_init, quiet_git_env  # noqa: E402
+from scratch_git import git_init, quiet_git_env
 
 ROOT = Path(__file__).resolve().parents[2]
 SEAT = ROOT / "scripts/orchestrator/hcom-seat"
@@ -30,6 +31,8 @@ BUN = shutil.which("bun")
 # A real executable binary (Mach-O on macOS, ELF on Linux), for tools hcom-seat requires to be no script.
 BINARY_STAND_IN = Path(os.path.realpath("/usr/bin/true"))
 SYSTEM_PATH = "/usr/bin:/bin"
+# Built at runtime, so this file never holds a literal a secret scan matches; the value is a fake in every test.
+FAKE_OAUTH_VALUE = "fake-" + "oauth-value-u190"
 
 
 # U100: an env built from scratch carries scratch_git's settings too, so no commit starts background maintenance.
@@ -161,12 +164,31 @@ class HcomSeatTest(unittest.TestCase):
         self.assertFalse(Path(self.seats, "worker").exists())
         self.assertEqual((self.tools / "security").resolve(), (fakes / "security").resolve())
         if sys.platform == "darwin":
-            # The Keychain answer is the fake's, whatever the host's Keychain holds: a login there launches the seat.
+            # The Keychain answer is the fake's, whatever the host's Keychain holds. U190: a Keychain login is the
+            # host's alone; the bridge child under its own CLAUDE_CONFIG_DIR never reads it, so it starts no seat.
             self.assertEqual(queries.read_text(), "find-generic-password -s Claude Code-credentials\n")
             run = launch(FAKE_KEYCHAIN_STATUS="0")
-            self.assertEqual(run.returncode, 0, run.stderr)
-            self.assertIn("worker claude-bridge: login present (Keychain item)", run.stderr)
-            self.assertEqual(len(self.calls_of("hcom")), 1)
+            self.assertEqual(run.returncode, 2, run.stderr)
+            self.assertIn(
+                "worker claude-bridge: host login only (Keychain item): not visible to the seat's bridge child under"
+                " its own CLAUDE_CONFIG_DIR; run claude setup-token and store it in ~/.config/claude-code/oauth-token"
+                " (0600); a login is the operator's step",
+                run.stderr,
+            )
+            self.assertEqual(self.calls_of("hcom"), [])
+            self.assertFalse(Path(self.seats, "worker").exists())
+        # The token file is the login the seat can use (the shim exports it), with or without a Keychain item.
+        token = self.home / ".config/claude-code/oauth-token"
+        token.parent.mkdir(parents=True)
+        token.write_text(FAKE_OAUTH_VALUE + "\n")
+        token.chmod(0o600)
+        run = launch(FAKE_KEYCHAIN_STATUS="0")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertRegex(
+            run.stderr, r"worker claude-bridge: login present \(token file 600, mtime \S+Z; the seat shim exports it\)"
+        )
+        self.assertEqual(len(self.calls_of("hcom")), 1)
+        self.assertNotIn(FAKE_OAUTH_VALUE, run.stdout + run.stderr)
 
     def test_a_remote_siwc_seat_reads_its_registration_with_the_resolved_jq(self):
         """U85 round 22: seat-login-preflight reads the openai-siwc registration with jq, and macOS 14 has no
@@ -552,6 +574,22 @@ class HcomSeatTest(unittest.TestCase):
     def settings_of(self, name):
         return json.loads(Path(self.seats, ".sandbox", name, "srt-settings.json").read_text())
 
+    def plant_claude_env_recorder(self):
+        """Replace the omp fake with one that records the Claude variables the shim handed it (the shared fake keeps
+        HCOM_* only); the record is a file under the scratch tree, never a stream the launch prints."""
+        record = self.calls / "omp-claude-env"
+        (self.bindir / "omp").write_text(
+            "#!/bin/sh\n"
+            "printf 'CLAUDE_CONFIG_DIR=%s\\nCLAUDE_CODE_OAUTH_TOKEN=%s\\n' \"${CLAUDE_CONFIG_DIR-unset}\""
+            f' "${{CLAUDE_CODE_OAUTH_TOKEN-unset}}" >> {shlex.quote(str(record))}\n'
+        )
+        return record
+
+    def claude_env_of(self, record):
+        """The last omp run's record as a dict."""
+        lines = record.read_text().splitlines()
+        return dict(line.split("=", 1) for line in lines[-2:])
+
     def test_omp_runs_under_srt_behind_a_canary_with_the_seat_roots(self):
         """U85: hcom pins the per-seat shim, which proves the sandbox with a canary and then runs omp under srt."""
         run = self.seat("worker", "--seats-root", self.seats)
@@ -592,8 +630,35 @@ class HcomSeatTest(unittest.TestCase):
         self.assertNotIn("example.com", worker["network"]["allowedDomains"])
         # srt 0.0.81 grants local binding on every interface, so no seat gets it (U85 round 3).
         self.assertIs(worker["network"]["allowLocalBinding"], False)
-        # The protected set and the sandbox come from one list: the write roots include the writable file.
-        self.assertIn(str(self.home.resolve() / ".claude.json"), write)
+        # U190: the operator's Claude Code state is no write root of either role, and nothing under ~/.claude is;
+        # the bridge child's state lives in the seat's own slot, a real 0700 directory the launch creates.
+        home = self.home.resolve()
+        for path in (str(home / ".claude.json"), str(home / ".claude")):
+            self.assertNotIn(path, write)
+        self.assertEqual([entry for entry in write if entry.startswith(str(home / ".claude"))], [])
+        state_claude = Path(self.seats, ".state/worker/claude")
+        self.assertTrue(state_claude.is_dir() and not state_claude.is_symlink(), state_claude)
+        self.assertEqual(stat.S_IMODE(os.lstat(state_claude).st_mode), 0o700)
+        self.assertIn(str(Path(self.seats, ".state/worker")), write)
+        # A caller's CLAUDE_CONFIG_DIR is no root either, and the shim hands omp the seat's own.
+        caller_config = self.home / "claude-config"
+        caller_config.mkdir()
+        record = self.plant_claude_env_recorder()
+        run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CONFIG_DIR=str(caller_config))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        write = self.settings_of("worker")["filesystem"]["allowWrite"]
+        self.assertNotIn(str(caller_config), write)
+        self.assertEqual(self.claude_env_of(record)["CLAUDE_CONFIG_DIR"], str(state_claude.resolve()))
+        run = self.seat("orchestrator", "--seats-root", self.seats, CLAUDE_CONFIG_DIR=str(caller_config))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        orchestrator = self.settings_of("orchestrator")
+        for path in (str(home / ".claude.json"), str(home / ".claude"), str(caller_config)):
+            self.assertNotIn(path, orchestrator["filesystem"]["allowWrite"])
+        self.assertEqual(
+            [entry for entry in orchestrator["filesystem"]["allowWrite"] if entry.startswith(str(home / ".claude"))], []
+        )
+        self.assertTrue(Path(self.seats, ".state/orchestrator/claude").is_dir())
+        shutil.copy(FAKE, self.bindir / "omp")
         run = self.seat("orchestrator", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
         orchestrator = self.settings_of("orchestrator")
@@ -604,6 +669,49 @@ class HcomSeatTest(unittest.TestCase):
         self.assertIn(str(Path(self.seats, ".sandbox")), orchestrator["filesystem"]["denyWrite"])
         self.assertIn(str(Path(self.seats, ".sandbox")), orchestrator["filesystem"]["denyRead"])
         self.assertIn(str((self.repo / ".claude/contextdb").resolve()), orchestrator["filesystem"]["denyWrite"])
+
+    def test_the_shim_exports_the_token_file_into_the_seat_and_never_prints_it(self):
+        """U190: the bridge child logs in by CLAUDE_CODE_OAUTH_TOKEN alone, which the shim reads from the operator's
+        token file (first line) when the caller has not exported it; an empty file exports nothing."""
+        token = self.home / ".config/claude-code/oauth-token"
+        token.parent.mkdir(parents=True)
+        record = self.plant_claude_env_recorder()
+        shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        for content, expected in (
+            (FAKE_OAUTH_VALUE + "\n", FAKE_OAUTH_VALUE),
+            (FAKE_OAUTH_VALUE, FAKE_OAUTH_VALUE),  # no final newline: `read` exits 1 with the line assigned
+            (FAKE_OAUTH_VALUE + "\nsecond line\n", FAKE_OAUTH_VALUE),
+            ("", "unset"),
+            ("\n", "unset"),
+        ):
+            with self.subTest(content=content):
+                token.write_text(content)
+                token.chmod(0o600)
+                run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CODE_OAUTH_TOKEN=None)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                env = self.claude_env_of(record)
+                self.assertEqual(env["CLAUDE_CODE_OAUTH_TOKEN"], expected)
+                self.assertEqual(env["CLAUDE_CONFIG_DIR"], str(Path(self.seats, ".state/worker/claude").resolve()))
+                for text in (run.stdout, run.stderr, shim.read_text(), self.settings_of("worker")):
+                    self.assertNotIn(FAKE_OAUTH_VALUE, json.dumps(text))
+        token.unlink()
+        run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CODE_OAUTH_TOKEN=None)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.claude_env_of(record)["CLAUDE_CODE_OAUTH_TOKEN"], "unset")
+
+    def test_the_shim_keeps_a_token_the_caller_already_exported(self):
+        """U190: a CLAUDE_CODE_OAUTH_TOKEN in the caller's environment wins over the token file."""
+        token = self.home / ".config/claude-code/oauth-token"
+        token.parent.mkdir(parents=True)
+        token.write_text(FAKE_OAUTH_VALUE + "\n")
+        token.chmod(0o600)
+        record = self.plant_claude_env_recorder()
+        caller = "fake-" + "caller-value-u190"
+        run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CODE_OAUTH_TOKEN=caller)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.claude_env_of(record)["CLAUDE_CODE_OAUTH_TOKEN"], caller)
+        self.assertNotIn(caller, run.stdout + run.stderr)
+        self.assertNotIn(FAKE_OAUTH_VALUE, run.stdout + run.stderr)
 
     def test_the_canary_runs_under_a_posix_shell(self):
         """U85 round 2: under dash (Ubuntu's /bin/sh) the canary's denied write must not end the shell."""
@@ -1129,14 +1237,15 @@ class HcomSeatTest(unittest.TestCase):
 
     def test_overlap_is_decided_by_identity_never_by_path_text(self):
         """U85 round 14: containment is by (device, inode) only. A seats root spelled through a case alias of a write
-        root (`~/.CLAUDE/seats` for `~/.claude`) is refused when the alias exists, and, when neither exists yet, by the
-        case-folded absent components (U85 round 30); a nonexistent child of an existing alias is caught too."""
-        claude = self.home / ".claude"
-        alias = self.home / ".CLAUDE"
+        root (`~/.OMP/run/seats` for `~/.omp/run`; U190 made `~/.claude` no root) is refused when the alias exists,
+        and, when neither exists yet, by the case-folded absent components (U85 round 30); a nonexistent child of an
+        existing alias is caught too."""
+        root = self.home / ".omp/run"
+        alias = self.home / ".OMP/run"
         run = self.seat("worker", "--seats-root", str(alias / "seats"), "--dry-run")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn(f"write root {self.home / '.claude'} contains the seats root {alias / 'seats'}", run.stderr)
-        claude.mkdir(exist_ok=True)
+        self.assertIn(f"write root {root} contains the seats root {alias / 'seats'}", run.stderr)
+        root.mkdir(parents=True, exist_ok=True)
         if not alias.exists():
             self.skipTest("the file system is case-sensitive, so no case alias exists")
         for seats in (alias / "seats", alias / "new" / "deeper" / "seats"):

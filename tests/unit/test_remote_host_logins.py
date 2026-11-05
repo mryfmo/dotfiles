@@ -511,16 +511,15 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         self.assertEqual(self.calls_text() + self.bun_calls_text(), "")
 
     def test_the_claude_rule_holds_on_a_local_host(self) -> None:
-        """U190b: the seat's bridge child logs in by the token alone wherever it runs, so a local host (macOS, no SSH
-        session) with a credentials file only refuses with the setup-token instruction, and one with a usable token
-        file passes; round 1 exited 0 there before any check, and a credentials-only launch started a seat whose
-        first bridge turn would end `Not logged in`."""
-        write_exec(self.bin / "uname", "#!/bin/sh\necho Darwin\n")
+        """U190b: the seat's bridge child logs in by the token alone wherever it runs, so a local host (no SSH
+        session; a display on Linux) with a credentials file only refuses with the setup-token instruction, and one
+        with a usable token file passes; round 1 exited 0 there before any check, and a credentials-only launch
+        started a seat whose first bridge turn would end `Not logged in`."""
         credentials = self.home / ".claude/.credentials.json"
         credentials.parent.mkdir()
         credentials.write_text("{}")
         credentials.chmod(0o600)
-        host_only = self.run_lever("orchestrator")
+        host_only = self.run_lever("orchestrator", DISPLAY=":0")
         self.assertEqual(host_only.returncode, 2, host_only.stderr)
         self.assertIn("orchestrator claude-bridge: host login only (credentials file 600, mtime ", host_only.stderr)
         self.assertIn(
@@ -530,7 +529,7 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         token.parent.mkdir(parents=True)
         token.write_text(FAKE_OAUTH_VALUE + "\n")
         token.chmod(0o600)
-        ready = self.run_lever("orchestrator")
+        ready = self.run_lever("orchestrator", DISPLAY=":0")
         self.assertEqual(ready.returncode, 0, ready.stderr)
         self.assertRegex(
             ready.stderr,

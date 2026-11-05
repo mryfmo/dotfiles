@@ -1,0 +1,46 @@
+# U180c the digest change is withdrawn: audit-carry.py and its tests return to the raw-record identity of main, the two merge-lever rules of U180 stay (round 3 of U180, closing form remove)
+
+GOAL
+Rounds 1 and 2 of U180 (PR 657; `verdicts/U180-f3a20724.md`, `verdicts/U180-23d9d28b.md`) were each incorrect on one P1 of the same class, the carried digest: round 1 dropped the hunk positions and an identical edit at another occurrence hashed equal; round 2 added three lines of context and an occurrence index measured against each head's own merge base, and an edit moved into an identical window that `main` prepended hashed equal. The mechanism-change row of 2026-11-05 (phase `mechanism-change`, decision `U180 ...`, closing form `remove`) states why the class returns: a digest that ignores anything `main` can change so that a merge of `main` leaves it equal also ignores a worker moving the audited edit into that freedom, and the auditor finds the move each round. The strict identity is the one `main` already has, the raw records of the three-dot diff (old and new blob ids and modes per changed path against the merge base, `scripts/orchestrator/audit-carry.py` at ff6803b7), under which no relocation is invisible and every merge of `main` that touches none of the pull request's files is still carried. After this head `audit-carry.py` and `tests/unit/test_audit_carry.py` are byte-identical to ff6803b7, the README's carried-row sentence is main's again, and the two other U180 changes stand as round 1 left them: `pr-merge.sh` `require_dispositions` holds a `fixed` row whose reference is the head being merged under a carried row, and `carried_evidence_re` admits a note after the digest after whitespace, `;`, `,`, `.` or `)`; their tests, the generated copy, the pin and the outputs file are unchanged from f3a20724.
+
+SCOPE
+The PR branch `fix/carried-rows-read-the-change`, continued from 23d9d28b (your tree's `origin/main` is that head). May write: `scripts/orchestrator/audit-carry.py` and `tests/unit/test_audit_carry.py` (each restored to the bytes of ff6803b7, nothing else), `scripts/orchestrator/README.md` (the carried-row sentence of round 1 restored to main's words; the disposition paragraph's `fixed`-under-carried sentence and the `pr-merge.sh` table row stay, the table row's test list reduced to the two `pr-merge.sh` tests). Nothing else: `pr-merge.sh`, `home/dot_local/bin/common/executable_pr-merge.sh`, `home/dot_agents/agent-config.yaml`, `scripts/generated-agent-outputs.json`, `tests/unit/test_pr_levers.py` and `tests/unit/test_pr_merge.py` stay exactly as they are at 23d9d28b.
+
+CONTEXT
+Measured 2026-11-05. At 23d9d28b `git diff --stat ff6803b7` names eight files; after this round it names six (the two restored files drop out). The bytes to restore are `git show ff6803b7:scripts/orchestrator/audit-carry.py` and `git show ff6803b7:tests/unit/test_audit_carry.py`; ff6803b7 is in your tree's object store (`git cat-file -e ff6803b7^{commit}`). The README at 23d9d28b differs from ff6803b7 in three places (`git diff ff6803b7 -- scripts/orchestrator/README.md`): the disposition paragraph at `:269` (keep: it states the `fixed`-under-carried rule), the carried-row paragraph at `:326` (restore main's sentence on what the digest reads: the raw records, blob ids and modes), and the `pr-merge.sh` row of the table at `:339` (keep the two `pr-merge.sh` tests it names, drop any `audit-carry` test name). Round 1's `tests/unit/test_pr_levers.py` tests `test_a_fixed_row_holds_under_a_carried_row_only_when_its_reference_is_the_head_being_merged` and `test_a_note_may_follow_the_carried_digest_after_one_of_four_characters` and `tests/unit/test_pr_merge.py` are untouched and must still pass. `tests/unit/test_audit_carry.py` at ff6803b7 pins the raw-record digest (`test_equal_digests_under_a_correct_row_print_the_carried_line`, `test_unequal_digests_name_the_first_differing_path`, `test_the_digest_covers_the_whole_tree_from_any_directory_of_the_checkout`, `test_a_repository_local_textconv_converter_does_not_empty_the_digest`).
+
+CHANGE
+1. `git checkout ff6803b7 -- scripts/orchestrator/audit-carry.py tests/unit/test_audit_carry.py` in your tree; `git diff ff6803b7 -- scripts/orchestrator/audit-carry.py tests/unit/test_audit_carry.py` prints nothing.
+2. `scripts/orchestrator/README.md`: restore the carried-row sentence to main's words (take it from `git show ff6803b7:scripts/orchestrator/README.md`), keep the `fixed`-under-carried sentence of the disposition paragraph, and reduce the `pr-merge.sh` table row's named tests to the two `pr-merge.sh` tests; `prettier --check` passes.
+3. The PR body (`../U180c-pr-body.md`, from `../U180b-pr-body.md`, read-only): the Summary says the digest change is withdrawn under the mechanism-change row (the two rounds, the premise, the closing form `remove`) and that the two merge-lever rules land; the Contract's guarantees drop the digest items and keep the `fixed`-row rule, the four-character class, the unchanged sweep rule, receipt line and base; Leaves out gains `the carried digest, which stays the raw-record identity of main: a merge of main that edits a file the pull request edits is audited again`; the Threat table keeps the rows for the six remaining paths and the two lever controls, drops the digest rows (the restored files are not in the diff), and its orchestrator-effect row names the two effects that remain (a coordinator's note after the digest needs no rewritten row; a body fix at an empty commit needs no residual row); the Verification section gains `Round 3 (U180c)` with the ACCEPTANCE lines; `Program-Unit: regime-cutover/U180` stays; the four-column table, every heading and the footer stay.
+4. No red proof is needed for a removal; the proof is ACCEPTANCE 1 and 4.
+
+ACCEPTANCE
+1. `git diff --stat ff6803b7` names exactly `home/dot_agents/agent-config.yaml`, `home/dot_local/bin/common/executable_pr-merge.sh`, `scripts/generated-agent-outputs.json`, `scripts/orchestrator/README.md`, `scripts/orchestrator/pr-merge.sh`, `tests/unit/test_pr_levers.py`; `git diff ff6803b7 -- scripts/orchestrator/audit-carry.py tests/unit/test_audit_carry.py` prints nothing. 2. `uv run --no-project python -m unittest tests.unit.test_audit_carry tests.unit.test_pr_levers tests.unit.test_pr_merge tests.unit.test_lever_self_check tests.unit.test_scratch_git` prints `OK` (skips allowed). 3. `make render-check` exit 0; `cmp scripts/orchestrator/pr-merge.sh home/dot_local/bin/common/executable_pr-merge.sh` exit 0. 4. `prettier --check scripts/orchestrator/README.md` exit 0; `uv run --no-project --with pyyaml scripts/lint-comparisons.py --changed` exit 0.
+
+VERIFY
+The commands of ACCEPTANCE in the worker's tree with their result lines pasted into the PR body's Verification section.
+
+CLOSURE
+remove
+
+TRUST
+TRUST: the unit trusts the two merge-lever rules of round 1 and their tests as judged (no finding named them in two rounds), ff6803b7 as the digest to return to, and the mechanism-change row as the decision; it changes no lever other than restoring one file to main, reads no network and merges nothing.
+
+TIMEBOX
+40 minutes.
+
+FORBIDDEN
+No change to `pr-merge.sh`, its copy or pin, the outputs file, `test_pr_levers.py` or `test_pr_merge.py`; no edit of `audit-carry.py` or `test_audit_carry.py` beyond the restore; no `gh` call; no push; no local bats; no mention of any private design directory in files, commits or the PR body; none of the words in `.orchestration/orchestrate/regime-cutover/redact-words.txt` and no absolute home directory in tracked files or the PR body (write `~/...`).
+
+WORKER RULES (standing orders 27, 29, 31, 34; read `preferences.md` lines 23 to 45 in the store)
+- Never run git or edit files in `~/Workspace/dotfiles` (the coordinator's checkout), never push, never open or edit a PR, never edit the live store; you stop at a committed head in your tree and the coordinator fetches it by path and pushes. Your tree is the one the coordinator names in your task, a repository of its own under `$TMPDIR/dotfiles-wt/U180c`; every command runs with it as cwd; if you believe it is absent, stop and report, never make another. Never `git stash`. No `/tmp` literal in tracked files. Before you report, `git -C ~/Workspace/dotfiles status --porcelain=v1 --untracked-files=all -- . ':!.orchestration/orchestrate' | shasum` must print `7a5f435887f613fe2be5b9f6f4a01d2b9a39a48e  -`.
+- Run every test in the foreground with a timeout and paste its result line; progress line beside your tree (`../U180c-progress.txt`) every ten minutes at most.
+- Commit unsigned: `git -c commit.gpgsign=false commit`. The commit message names the mechanism-change row and ends with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
+- Write the whole new PR body beside your tree (`../U180c-pr-body.md`) per CHANGE 3.
+
+REPORT
+Status, head sha (40 hex), `git diff --stat ff6803b7`, the ACCEPTANCE result lines, deviations. Under 10 lines, ending with `head=<40 hex>`.
+
+STANDING
+`~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/preferences.md` (standing orders 36, 38); the mechanism-change row of 2026-11-05 in `decisions.tsv`; `verdicts/U180-f3a20724.md`; `verdicts/U180-23d9d28b.md`.

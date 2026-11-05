@@ -873,6 +873,51 @@ def render_omp_policies(manifest: dict[str, Any]) -> dict[Path, str]:
     return outputs
 
 
+def render_claude_deny_write(filesystem: dict[str, Any], allow_write: list[str], os_name: str) -> list[str]:
+    """`filesystem.denyWrite`: the launch inputs under each granted hcom store and every seat sandbox, with the
+    directories between a granted root and each denied path, rendered per OS as that OS honours (U195).
+
+    One derivation and no per-OS list. For each granted root R and each denied path p under it (a `store` root carries
+    `<name>`, a `parent` root `*/<name>`, the seats root its `deny_write_seat_sandboxes` patterns), the set is (a) p
+    itself and (b) every directory strictly between R and p, a pin against renaming p's parents inside the root. Per
+    OS: darwin renders (a) as `R/p` and no pin, because an exact directory entry with an interior glob denies the
+    directory's contents and not the directory alone (measured 2026-11-05 with `claude -p --settings`: a denyWrite
+    `~/.local/state/omp-seats/*` refused `echo x > ~/.local/state/omp-seats/<program>/probe`, which every seat
+    worktree write needs), so the rename route stays a residual there; linux renders a file as `R/p` and a directory,
+    (a) or (b), as `R/p/**`, and renders no entry holding a `*`, since the Linux sandbox discards every interior glob
+    and strips a trailing `/**` (the Claude Code settings reference: Linux denyWrite supports a trailing `/**` alone).
+    Sorted and unique; an empty list renders no key.
+    """
+    store_roots = filesystem.get("hcom_store_roots", {})
+    names = filesystem.get("deny_write_under_hcom_stores", {})
+    unknown = {
+        key: value for key, value in {**store_roots, **names}.items() if value not in ("store", "parent", "dir", "file")
+    }
+    if unknown:
+        fail(
+            f"claude.sandbox.filesystem hcom_store_roots values must be store or parent and deny_write_under_hcom_stores values dir or file: {unknown}"
+        )
+    denied: list[tuple[str, str, str]] = []
+    for root in allow_write:
+        kind = store_roots.get(root)
+        if kind is not None:
+            denied.extend((root, name if kind == "store" else f"*/{name}", shape) for name, shape in names.items())
+    seats_root = filesystem.get("seats_root")
+    if seats_root in allow_write:  # lint-comparisons: allow the manifest's own spelling of an allowlisted root
+        denied.extend((seats_root, pattern, "dir") for pattern in filesystem.get("deny_write_seat_sandboxes", []))
+    entries: set[str] = set()
+    for root, relative, shape in denied:
+        parts = relative.split("/")
+        pins = ["/".join(parts[:count]) for count in range(1, len(parts))]
+        for path, kind, is_pin in [(relative, shape, False), *((pin, "dir", True) for pin in pins)]:
+            if os_name == "darwin":
+                if not is_pin:
+                    entries.add(f"{root}/{path}")
+            elif "*" not in path:  # lint-comparisons: allow a glob-character test on a rendered pattern
+                entries.add(f"{root}/{path}" if kind == "file" else f"{root}/{path}/**")
+    return sorted(entries)
+
+
 def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> dict[str, Any]:
     """Render the Claude sandbox; allowWrite reuses the Codex writable roots.
 
@@ -891,6 +936,12 @@ def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> 
         *(filesystem.get("darwin_deny_read", []) if os_name == "darwin" else []),
     ]
     credentials = sandbox.get("credentials", {})
+    allow_write = [
+        *manifest["codex"]["sandbox_workspace_write"]["writable_roots"],
+        *filesystem.get("extra_allow_write", []),
+        *(filesystem.get("darwin_extra_allow_write", []) if os_name == "darwin" else []),
+    ]
+    deny_write = render_claude_deny_write(filesystem, allow_write, os_name)
     return {
         "enabled": sandbox["enabled"],
         "failIfUnavailable": sandbox["failIfUnavailable"],
@@ -899,12 +950,9 @@ def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> 
         "excludedCommands": sandbox["excludedCommands"]
         + (sandbox.get("linux_excluded_commands", []) if os_name == "linux" else []),
         "filesystem": {
-            "allowWrite": [
-                *manifest["codex"]["sandbox_workspace_write"]["writable_roots"],
-                *filesystem.get("extra_allow_write", []),
-                *(filesystem.get("darwin_extra_allow_write", []) if os_name == "darwin" else []),
-            ],
+            "allowWrite": allow_write,
             **({"denyRead": deny_read} if deny_read else {}),
+            **({"denyWrite": deny_write} if deny_write else {}),
         },
         **(
             {

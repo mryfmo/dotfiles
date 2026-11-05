@@ -658,6 +658,127 @@ SANDBOX_WRITE_ROOTS = (
 )
 # mise's macOS cache directory; Linux keeps mise's cache under ~/.cache/mise, which is not listed.
 DARWIN_SANDBOX_WRITE_ROOTS = ("~/Library/Caches/mise",)
+# The inputs an hcom store holds that the next seat launch runs outside any sandbox (U195), in the order of the store
+# deny loop of scripts/orchestrator/hcom-seat (`for path in ...; do` over ${hcom_real}), which
+# validate_hcom_seat_store_denies holds equal to this tuple. The Claude Code sandbox takes them back from its hcom
+# write roots through `filesystem.denyWrite`, rendered per OS by the generator's one derivation
+# (render_claude_deny_write) over these constants: every name under each root on macOS; on Linux the static store's
+# names alone, a file literal, a directory as `<dir>/**` with `.tmp/**` pinned, and nothing with an interior glob,
+# which the Linux sandbox discards (README "Claude Code sandbox").
+HCOM_STORE_CONTROL_NAMES = (
+    "config.toml",
+    "env",
+    "config.env",
+    ".tmp/launch",
+    "scripts",
+    "integrations",
+    "shell_env.json",
+)
+HCOM_STORE_CONTROL_DIRECTORIES = (".tmp/launch", "scripts", "integrations")
+# Which allowlisted root is an hcom store (`<root>/<name>`) and which holds one store per slug (`<root>/*/<name>`).
+HCOM_STORE_ROOTS = {"~/.local/state/hcom-regime": "store", "~/.local/state/hcom": "parent"}
+# The seats root, whose `<program>/.sandbox` holds each seat's srt settings and shim, denied like hcom-seat's
+# `deny_write=("${seats_real}/.sandbox")`.
+SEATS_ROOT = "~/.local/state/omp-seats"
+SEAT_SANDBOX_DENY = "*/.sandbox"
+HCOM_SEAT_PATH = "scripts/orchestrator/hcom-seat"
+HCOM_SEAT_STORE_DENY_LOOP = re.compile(
+    r'^[ \t]*for path in (?P<names>[^;\n]*); do\n[ \t]*deny_write\+=\("\$\{hcom_real\}/\$\{path\}"\)', re.MULTILINE
+)
+HCOM_SEAT_SANDBOX_DENY = 'deny_write=("${seats_real}/.sandbox")'
+
+
+def expected_deny_write(allow_write: list[str], os_name: str) -> dict[str, set[str]]:
+    """The `denyWrite` entries each granted hcom root and the seats root must carry on `os_name`, keyed by root: the
+    generator's derivation run over this script's own constants, so a renamed name, root or shape on either side
+    fails here (a root with no entry on `os_name` maps to an empty set)."""
+    filesystem = {
+        "hcom_store_roots": HCOM_STORE_ROOTS,
+        "deny_write_under_hcom_stores": {
+            name: "dir" if name in HCOM_STORE_CONTROL_DIRECTORIES else "file" for name in HCOM_STORE_CONTROL_NAMES
+        },
+        "seats_root": SEATS_ROOT,
+        "deny_write_seat_sandboxes": [SEAT_SANDBOX_DENY],
+    }
+    expected: dict[str, set[str]] = {}
+    denied_roots = (*HCOM_STORE_ROOTS, SEATS_ROOT)
+    for root in allow_write:
+        if isinstance(root, str) and root in denied_roots:  # lint-comparisons: allow an allowlisted root's exact text
+            expected[root] = set(generator().render_claude_deny_write(filesystem, [root], os_name))
+    return expected
+
+
+def validate_linux_deny_write_forms(deny_write: list[str], wanted: list[str], label: str) -> None:
+    """Refuse a Linux `denyWrite` entry the Linux sandbox would not honour as written (U195b): one holding a `*`
+    before its end, which the sandbox discards whole, and a trailing `/**` on a file, which the sandbox strips to a
+    path that denies the file only by its literal name."""
+    files = {entry for entry in wanted if not entry.endswith("/**")}  # lint-comparisons: allow a suffix test
+    for entry in deny_write:
+        if "*" in entry.removesuffix("/**"):
+            fail(
+                f"{label}.filesystem.denyWrite linux entry {entry!r} holds an interior glob, which the Linux sandbox "
+                "discards whole (its denyWrite honours a trailing /** alone), so it would deny nothing: render no "
+                "such entry on linux"
+            )
+        literal_file = entry.removesuffix("/**")
+        if entry.endswith("/**") and literal_file in files:  # lint-comparisons: allow a member test of the expected set
+            fail(
+                f"{label}.filesystem.denyWrite linux entry {entry!r} puts a trailing /** on a file; the Linux sandbox "
+                f"accepts a literal file deny, so render {literal_file!r}"
+            )
+
+
+def validate_claude_sandbox_deny_write(sandbox: dict[str, Any], label: str, os_name: str) -> None:
+    """Require `filesystem.denyWrite` to be exactly, sorted and unique, the deny set of every granted hcom root and of
+    the seats root for `os_name` (U195): each missing entry is named under its root, each extra entry is named."""
+    filesystem = sandbox.get("filesystem", {})
+    deny_write = filesystem.get("denyWrite", [])
+    if not isinstance(deny_write, list) or not all(isinstance(entry, str) for entry in deny_write):
+        fail(f"{label}.filesystem.denyWrite must be a list of paths: {deny_write!r}")
+    expected = expected_deny_write(filesystem.get("allowWrite", []), os_name)
+    wanted = sorted(set().union(*expected.values())) if expected else []
+    if os_name == "linux":
+        validate_linux_deny_write_forms(deny_write, wanted, label)
+    if deny_write == wanted:
+        return
+    actual = set(deny_write)
+    missing = {root: sorted(entries - actual) for root, entries in expected.items() if entries - actual}
+    extra = sorted(actual - set(wanted))
+    fail(
+        f"{label}.filesystem.denyWrite must hold exactly, sorted and once, the {os_name} deny set of each hcom root in "
+        f"allowWrite ({list(HCOM_STORE_CONTROL_NAMES)}, the list hcom-seat denies its seats; on linux the static "
+        f"store's names alone, a directory as <dir>/** with .tmp/** pinned, nothing with an interior glob) and "
+        f"{SEATS_ROOT}/{SEAT_SANDBOX_DENY}: missing={missing} extra={extra}"
+        + ("" if missing or extra else f" (out of order or repeated: {deny_write})")
+    )
+
+
+def validate_hcom_seat_store_denies() -> None:
+    """Require the store deny loop of hcom-seat to list exactly HCOM_STORE_CONTROL_NAMES in order and its `.sandbox`
+    deny to be present, so the Claude Code sandbox's `denyWrite` and the seats' deny list cannot drift (U195). A read
+    failure refuses: an unreadable lever is not an empty list."""
+    path = ROOT / HCOM_SEAT_PATH
+    try:
+        text = path.read_text()
+    except OSError as error:
+        fail(
+            f"{path} could not be read, so its store deny loop cannot be held equal to HCOM_STORE_CONTROL_NAMES: {error}"
+        )
+    loops = HCOM_SEAT_STORE_DENY_LOOP.findall(text)
+    if len(loops) != 1:
+        fail(
+            f"{path} must hold exactly one store deny loop (`for path in ...; do` over ${{hcom_real}}/${{path}}), "
+            f"found {len(loops)}"
+        )
+    names = tuple(loops[0].split())
+    if names != HCOM_STORE_CONTROL_NAMES:
+        fail(
+            f"{path} store deny loop lists {list(names)} but validate-agent-assets.py HCOM_STORE_CONTROL_NAMES is "
+            f"{list(HCOM_STORE_CONTROL_NAMES)}: the two lists must stay equal in order, since the Claude Code sandbox "
+            "denyWrite renders from the same names (regime-cutover U195)"
+        )
+    if HCOM_SEAT_SANDBOX_DENY not in text:
+        fail(f"{path} must deny every seat's sandbox directory with {HCOM_SEAT_SANDBOX_DENY}")
 
 
 def validate_write_roots(roots: Any, label: str, os_name: str = "linux") -> None:
@@ -754,6 +875,7 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     if missing:
         fail(f"{label}.filesystem.allowWrite must include every Codex writable root: missing={sorted(missing)}")
     validate_write_roots(allow_write, f"{label}.filesystem.allowWrite", os_name)
+    validate_claude_sandbox_deny_write(sandbox, label, os_name)
     deny_read = sandbox.get("filesystem", {}).get("denyRead")
     entries = deny_read if isinstance(deny_read, list) else []
     rooted = [entry for entry in entries if isinstance(entry, str) and entry.startswith(("/", "~/"))]
@@ -2587,6 +2709,7 @@ def main() -> None:
     validate_skill_audience(manifest)
     validate_manifest_home_paths()
     validate_claude_settings(manifest)
+    validate_hcom_seat_store_denies()
     validate_omp_policies(manifest)
     validate_repo_claude_settings_portable()
     validate_compactiondb_project_copy()

@@ -1310,7 +1310,6 @@ verdict_schema='{
           },
           "path": {
             "type": "string",
-            "minLength": 1,
             "pattern": "^[^\\s:]+$",
             "description": "The file, relative to the repository: no colon, no whitespace (the verdict line is read as <path>:<line>: <rationale>, the path its first colon-free token)."
           },

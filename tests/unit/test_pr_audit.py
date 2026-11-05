@@ -1493,8 +1493,9 @@ class PrAuditTest(unittest.TestCase):
         """The two readers of a verdict line take the first colon-free, whitespace-free token as the path (U207), so a
         path the model answers with a colon or whitespace (`file:1: real.sh`, line 9) would be written as
         `file:1: real.sh:9:` and read as `file` line 1, a location the writer never meant, whose disposition row could
-        satisfy the merge gate (U207 round 2, the round-1 verdict's P1). The schema's `pattern` and `minLength` state
-        the rule for codex, and the reader applies them to the field before any line is written: exit 1 naming
+        satisfy the merge gate (U207 round 2, the round-1 verdict's P1). The schema's `pattern` states the rule for
+        codex (the one string keyword the strict structured-output mode is documented to accept; its `+` already
+        requires a character), and the reader applies it to the field before any line is written: exit 1 naming
         verdict.json, the finding and the path as given, no stdout line, no verdict.md. The rationale is free text: a
         `path:line:` inside it is written as it is and read back by audit-carry.py's `findings_of` as the rationale,
         the path staying `file.sh` (the round-table of the writer and the readers)."""
@@ -1509,7 +1510,7 @@ class PrAuditTest(unittest.TestCase):
             ("file:1: real.sh", f'findings[0].path is "file:1: real.sh", {pattern}'),
             ("a b.sh", f'findings[0].path is "a b.sh", {pattern}'),
             ("a.sh\n", f'findings[0].path is "a.sh\\n", {pattern}'),
-            ("", 'findings[0].path is "", shorter than the minLength 1'),
+            ("", f'findings[0].path is "", {pattern}'),
         )
         for path, message in refused:
             with self.subTest(path=path):

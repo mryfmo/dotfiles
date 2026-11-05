@@ -107,25 +107,34 @@ comes from an extension that `omp.extensions` does not list.
 
 ## Operator login
 
-The child Claude Code uses the host's claude.ai login: the Keychain on macOS,
-`~/.claude/.credentials.json` (mode 0600) on Linux (Claude Code authentication
-doc, "Credential management"). Before the first bridge turn, the operator runs
-`claude` once and completes `/login` in their own terminal; no script does this.
-Without the login a bridge turn ends with `Not logged in · Please run /login`.
+The bridge child of a seat runs under its own `CLAUDE_CONFIG_DIR`,
+`<seats-root>/.state/<name>/claude`, which `hcom-seat`'s shim exports (regime-cutover
+U190), so its `.claude.json`, projects, sessions, backups and plugins land in the
+seat's state slot and never in the operator's `~/.claude` or `~/.claude.json`. It logs
+in by `CLAUDE_CODE_OAUTH_TOKEN` alone: the shim exports it from
+`~/.config/claude-code/oauth-token` (first line, mode 0600) when the caller has not
+already set it. The operator makes that token once with `claude setup-token` on the
+laptop and stores it in the file by hand, on every seat host alike (gate G-27).
+`seat-login-preflight <role>` counts only the variable or that file; a Keychain item or
+credentials file is reported as `host login only` and starts no seat, with the
+setup-token instruction. Measured 2026-11-05 (Claude Code 2.1.316): a scratch
+`CLAUDE_CONFIG_DIR` with the host Keychain item and credentials file present answers
+`Not logged in`, so the child cannot borrow a host login. The Agent SDK reads the
+variable, except in bare mode, and the bridge never passes `--bare`: its only extra CLI
+arguments are `model`, `strict-mcp-config` and `thinking-display` (`src/index.ts`,
+`extraArgs`).
 
-A Linux seat host reached over SSH (`herdr --remote`) has no browser of its
-own. There, `claude auth login` sends its URL to `$BROWSER`, which
-`seat-login-preflight <role>` points at `regime-open-url`, so the laptop
-browser opens it. The callback port is random (50903, 50915 and 50920 on three
-runs, Claude Code 2.1.309), so no SSH forward can carry it. The URL asks for
-the code flow (`code=true`), so the page shows a code to paste at the
-terminal's prompt. The fallback is `claude setup-token` on the laptop: the
-operator stores the printed one-year token in `~/.config/claude-code/oauth-token`
-on the seat host, mode 0600, by hand. `~/.zshenv` and `~/.profile` then export
-it as `CLAUDE_CODE_OAUTH_TOKEN` when the file is non-empty. The Agent SDK reads
-that variable, except in bare mode, and the bridge never passes `--bare`: its
-only extra CLI arguments are `model`, `strict-mcp-config` and
-`thinking-display` (`src/index.ts`, `extraArgs`). The steps are in
+A plain `claude` session, and the plain `omp` launch above, use the host's claude.ai
+login instead: the Keychain on macOS, `~/.claude/.credentials.json` (mode 0600) on
+Linux (Claude Code authentication doc, "Credential management"), made by `/login` in
+the operator's own terminal; no script does this, and without it such a turn ends with
+`Not logged in · Please run /login`. On a Linux seat host reached over SSH
+(`herdr --remote`) that login's `claude auth login` sends its URL to `$BROWSER`
+(`regime-open-url` opens it on the laptop); its callback port is random (50903, 50915
+and 50920 on three runs, Claude Code 2.1.309), so the page shows a code to paste at the
+prompt. That is the host's login, not the seat's: the seat route on every host is the
+token file above. `~/.zshenv` and `~/.profile` also export the file as
+`CLAUDE_CODE_OAUTH_TOKEN` for a login shell's own `claude`. The steps are in
 `docs/remote-host-logins.md`.
 
 ## Load check

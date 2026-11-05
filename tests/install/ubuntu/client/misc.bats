@@ -4,14 +4,50 @@ readonly SCRIPT_PATH="./install/ubuntu/client/misc.sh"
 
 load "../../helpers/apt_record"
 
+# Every case runs with a fake snap first on PATH (U210): a case that runs the script's main, or the script as a
+# program, reaches `sudo timeout ... snap install chromium`, and on an Ubuntu runner that was the real snap client
+# against the real store, which stalled the whole test leg for nine minutes on 2026-11-05. The fake records its
+# argv and succeeds at once; a case that needs another behaviour overrides it with fake_snap on the same path.
 function setup() {
     source "${SCRIPT_PATH}"
+    path_keeping_sudo
+    fake_snap 'exit 0'
+    PATH="${BATS_TEST_TMPDIR}/bin:${PATH}"
 }
 
 # Only a case that installed for real removes what it installed (U41): before, every case ran
 # the installer's uninstall function (removed in U46), and the array cases' teardown removed the runner image's own packages.
 function teardown() {
     remove_real_packages
+}
+
+# Write the fake snap the fixture puts first on PATH. It appends `snap <argv>` to ${BATS_TEST_TMPDIR}/snap_calls
+# and then runs $1, whose status is the fake's. The log path is written into the script, because the real sudo
+# drops the caller's environment; the fake is a program and not a shell function, because install_chromium runs
+# snap through `timeout`.
+function fake_snap() {
+    mkdir -p "${BATS_TEST_TMPDIR}/bin"
+    {
+        printf '#!/bin/bash\n'
+        printf 'SNAP_CALLS=%q\n' "${BATS_TEST_TMPDIR}/snap_calls"
+        printf 'printf "snap %%s\\n" "$*" >> "${SNAP_CALLS}"\n'
+        printf '%s\n' "$1"
+    } > "${BATS_TEST_TMPDIR}/bin/snap"
+    chmod +x "${BATS_TEST_TMPDIR}/bin/snap"
+}
+
+# Write a sudo in front of the real one that hands the caller's PATH to the command it runs as root. The real
+# sudo replaces PATH with its secure_path, so a case that runs the script as a program would otherwise reach
+# the host's snap through it; the apt install itself still runs as root.
+function path_keeping_sudo() {
+    local real_sudo
+    if ! real_sudo="$(command -v sudo)"; then
+        printf 'path_keeping_sudo: no sudo on PATH\n' >&2
+        return 1
+    fi
+    mkdir -p "${BATS_TEST_TMPDIR}/bin"
+    printf '#!/bin/bash\nexec %q env "PATH=${PATH}" "$@"\n' "${real_sudo}" > "${BATS_TEST_TMPDIR}/bin/sudo"
+    chmod +x "${BATS_TEST_TMPDIR}/bin/sudo"
 }
 
 @test "[ubuntu-client] PACKAGES for misc" {
@@ -42,10 +78,8 @@ function teardown() {
         [ "${status}" -eq 0 ]
     done
 
-    if command -v snap > /dev/null 2>&1; then
-        run snap list chromium
-        [ "${status}" -eq 0 ]
-    fi
+    # The program reached the fixture's snap, once, through sudo; the store was never asked.
+    [ "$(grep -c '^snap install chromium$' "${BATS_TEST_TMPDIR}/snap_calls")" -eq 1 ]
 }
 
 @test "[ubuntu-client] install_misc refreshes the index before installing" {
@@ -87,21 +121,21 @@ function teardown() {
     fi
 }
 
-# A fake snap first on PATH, since install_chromium runs it through `timeout`, which cannot call a shell
-# function. It logs each call to SNAP_CALLS and then runs $1.
-function fake_snap() {
-    mkdir -p "${BATS_TEST_TMPDIR}/bin"
-    {
-        printf '#!/bin/bash\n'
-        printf 'printf "snap %%s\\n" "$*" >> "${SNAP_CALLS}"\n'
-        printf '%s\n' "$1"
-    } > "${BATS_TEST_TMPDIR}/bin/snap"
-    chmod +x "${BATS_TEST_TMPDIR}/bin/snap"
+@test "[ubuntu-client] main reaches the fixture's snap and returns its status, never the host's" {
+    # A status no snap client returns: a run that reached the host's snap could not produce it, and a case that
+    # loses the fixture shows as an empty snap_calls.
+    fake_snap 'if [ "$1" = install ]; then exit 99; fi'
+    export SNAP_RETRY_DELAY=0
+    run record_apt_calls "${SCRIPT_PATH}" main
+    [ "${status}" -eq 99 ]
+    grep -qxF "apt-get install -y ${PACKAGES[*]}" <<< "${output}"
+    [[ "${output}" == *"install_chromium: snap install chromium failed (attempt 3/3, exit 99)"* ]]
+    [ "$(grep -c '^snap install chromium$' "${BATS_TEST_TMPDIR}/snap_calls")" -eq 3 ]
 }
 
-# Run install_chromium with sudo as a pass-through, the fake snap first on PATH and the given environment.
+# Run install_chromium with sudo as a pass-through and the given environment; the fixture's fake snap is first on PATH.
 function run_install_chromium() {
-    run env SNAP_CALLS="${BATS_TEST_TMPDIR}/snap_calls" PATH="${BATS_TEST_TMPDIR}/bin:${PATH}" "$@" /bin/bash -c '
+    run env "$@" /bin/bash -c '
         source "$1"
         sudo() {
             "$@"

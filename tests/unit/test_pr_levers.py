@@ -1420,6 +1420,39 @@ class PrMergeTest(PrLeverTestCase):
                     ["pr", "checks", "7", "--json", "bucket,name"], self.gh_calls(), "refused before CI is read"
                 )
 
+    def test_a_note_may_follow_the_carried_digest_after_one_of_four_characters(self):
+        """U180: the README's receipt form writes a note after the digest, `carried <a> <b> <digest>; verdicts/...`,
+        and the gate required whitespace or the end of the column after the 64 hex, so such a row was refused and
+        rewritten by hand (decisions 2026-11-04T07:04:58Z). The digest may end at `;`, `,`, `.` or `)` as at
+        whitespace or the end of the column; a 65th hex-like character or any other character after it is no digest,
+        and the row still refuses naming the form, with no write."""
+        digest = "d" * 64
+        earlier = ledger_row(SHA_B)
+        (self.records / f"verdicts/U71-{SHA_A[:8]}.md").unlink()
+        self.verdict(head=SHA_B)
+        for mark in (";", ",", ".", ")"):
+            with self.subTest(mark):
+                self.calls.unlink(missing_ok=True)
+                evidence = f"carried {SHA_B} {SHA_A} {digest}{mark} verdicts/U71-{SHA_B[:8]}.md"
+                self.ledger(earlier, ledger_row(SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=evidence))
+                self.github()
+                run = self.merge()
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        for name, tail in (
+            ("a 65th hex-like character", "x"),
+            ("a 65th hex character", "e"),
+            ("a colon", ": verdicts/U71.md"),
+            ("an opening parenthesis", "(audit-carry.py)"),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                evidence = f"carried {SHA_B} {SHA_A} {digest}{tail}"
+                self.ledger(earlier, ledger_row(SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=evidence))
+                self.github()
+                self.assert_refused(self.merge(), "names no 'carried <earlier head> <head> <sha256>' in its evidence")
+                self.assertEqual(self.writes(), [])
+
     def test_the_newest_ledger_row_is_the_newest_by_ts_not_by_file_position(self):
         """U122 round 5 (P1): `ledger_verdict` kept the last matching line of the file, so an older row appended after
         a newer one (a late re-audit row, a sync that reordered rows) stood for the head's or the earlier head's newest
@@ -1953,6 +1986,56 @@ class PrMergeTest(PrLeverTestCase):
             self.assertIn("cannot read", run.stderr)
             self.assertIn("units.tsv", run.stderr)
             self.assertEqual(run.stdout, "")
+        self.assertEqual(self.writes(), [])
+
+    def test_a_fixed_row_holds_under_a_carried_row_only_when_its_reference_is_the_head_being_merged(self):
+        """U180: a body-only finding of audited head A, closed by a body edit at an empty commit B whose row is
+        `carried` from A, had no holding form: every `fixed` row was skipped with "which is not this head", so U174
+        wrote a `residual` row for a finding that was fixed and U148 took a fourth audit (decisions
+        2026-11-04T07:08:35Z and 02:30:22Z). Under a carried row a `fixed` row keyed on A whose reference's first
+        40-hex token is B, the head being merged, holds: the only fix that can exist at a carried head is the body,
+        since a code change would have changed the digest. A reference naming a third sha, or a 41-hex token whose
+        prefix is B, keeps today's refusal, and without a carried row (A is the head being merged) a `fixed` row
+        naming A is refused as before. Here A is SHA_B, the audited head, and B is SHA_A, the head being merged."""
+        digest = "d" * 64
+        third = "c" * 40
+        earlier = ledger_row(SHA_B)
+        carried = ledger_row(SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest}")
+        (self.records / f"verdicts/U71-{SHA_A[:8]}.md").unlink()
+        self.verdict(P2_LINE, head=SHA_B)
+        self.units("U71", "U72")
+        self.ledger(earlier, carried)
+        for name, reference in (
+            ("the head being merged, then a note", f"{SHA_A} (the body at this head)"),
+            ("the head being merged alone", SHA_A),
+            ("the head being merged, then a colon", f"{SHA_A}: the body"),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.dispositions(disposition_row(head=SHA_B, disposition="fixed", reference=reference))
+                self.github()
+                run = self.merge()
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        for name, reference in (
+            ("a third sha", f"{third} (fixed elsewhere)"),
+            ("the audited head itself", SHA_B),
+            ("a 41-hex token starting with the head being merged", f"{SHA_A}a"),
+            ("the head being merged after a word", f"fixed in {SHA_A}"),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.dispositions(disposition_row(head=SHA_B, disposition="fixed", reference=reference))
+                self.github()
+                self.assert_refused(self.merge(), f"says fixed in {reference}, which is not this head")
+                self.assertEqual(self.writes(), [])
+        # no carried row: the audited head is the head being merged, and a `fixed` row naming it is refused as before
+        self.ledger(ledger_row(SHA_A))
+        self.verdict(P2_LINE)
+        self.dispositions(disposition_row(disposition="fixed", reference=f"{SHA_A} (the body at this head)"))
+        self.calls.unlink(missing_ok=True)
+        self.github()
+        self.assert_refused(self.merge(), f"says fixed in {SHA_A} (the body at this head), which is not this head")
         self.assertEqual(self.writes(), [])
 
     def test_a_malformed_dispositions_file_is_refused_naming_the_line(self):

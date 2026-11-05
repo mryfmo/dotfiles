@@ -98,6 +98,51 @@ statusMessage = "Closing session"
 """
 
 
+# The exact `denyWrite` entries the validator holds each granted root to, per OS (regime-cutover U195, U195b): on
+# macOS the seven inputs hcom-seat denies its seats under the store and under each slug of the parent, and every seat
+# sandbox, as written and with no pin of the directories between (an exact entry with an interior glob denies the
+# directory's contents, measured); on Linux the static store alone, a file literal, a directory as <dir>/**, `.tmp/**`
+# pinned, and nothing with an interior glob, so the parent and the seats root carry no entry there.
+HCOM_DENY_WRITE = {
+    ("darwin", "~/.local/state/hcom-regime"): [
+        "~/.local/state/hcom-regime/.tmp/launch",
+        "~/.local/state/hcom-regime/config.env",
+        "~/.local/state/hcom-regime/config.toml",
+        "~/.local/state/hcom-regime/env",
+        "~/.local/state/hcom-regime/integrations",
+        "~/.local/state/hcom-regime/scripts",
+        "~/.local/state/hcom-regime/shell_env.json",
+    ],
+    ("darwin", "~/.local/state/hcom"): [
+        "~/.local/state/hcom/*/.tmp/launch",
+        "~/.local/state/hcom/*/config.env",
+        "~/.local/state/hcom/*/config.toml",
+        "~/.local/state/hcom/*/env",
+        "~/.local/state/hcom/*/integrations",
+        "~/.local/state/hcom/*/scripts",
+        "~/.local/state/hcom/*/shell_env.json",
+    ],
+    ("darwin", "~/.local/state/omp-seats"): ["~/.local/state/omp-seats/*/.sandbox"],
+    ("linux", "~/.local/state/hcom-regime"): [
+        "~/.local/state/hcom-regime/.tmp/**",
+        "~/.local/state/hcom-regime/.tmp/launch/**",
+        "~/.local/state/hcom-regime/config.env",
+        "~/.local/state/hcom-regime/config.toml",
+        "~/.local/state/hcom-regime/env",
+        "~/.local/state/hcom-regime/integrations/**",
+        "~/.local/state/hcom-regime/scripts/**",
+        "~/.local/state/hcom-regime/shell_env.json",
+    ],
+    ("linux", "~/.local/state/hcom"): [],
+    ("linux", "~/.local/state/omp-seats"): [],
+}
+
+
+def deny_write_for(os_name: str, roots: list[str]) -> list[str]:
+    """The sorted denyWrite list for the granted `roots` on `os_name`, from the literal table above."""
+    return sorted(entry for root in roots for entry in HCOM_DENY_WRITE.get((os_name, root), []))
+
+
 class ValidateAgentAssetsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.module = load_validator()
@@ -1228,6 +1273,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "filesystem": {
                 "allowWrite": list(self.codex_writable_roots),
                 "denyRead": ["~/**/.env", "~/**/.env.*"],
+                "denyWrite": deny_write_for(os_name, self.codex_writable_roots),
             },
             "credentials": {
                 "files": [{"path": path, "mode": "deny"} for path in self.module.SANDBOX_CREDENTIAL_DENIES],
@@ -1238,6 +1284,185 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def test_claude_sandbox_accepts_manifest_symmetric_settings(self) -> None:
         self.module.validate_claude_sandbox(self.valid_claude_sandbox(), self.codex_writable_roots, "sandbox")
+
+    def test_claude_sandbox_deny_write_must_be_exactly_the_hcom_launch_inputs(self) -> None:
+        roots = ["~/.local/state/hcom-regime", "~/.local/state/hcom", "~/.local/state/omp-seats"]
+
+        def granted(os_name: str = "darwin") -> dict:
+            sandbox = self.valid_claude_sandbox(os_name)
+            sandbox["filesystem"].update(allowWrite=list(roots), denyWrite=deny_write_for(os_name, roots))
+            return sandbox
+
+        self.module.validate_claude_sandbox(granted(), [], "sandbox")
+        self.module.validate_claude_sandbox(granted("linux"), [], "sandbox", "linux")
+
+        def drop(sandbox: dict, entry: str) -> None:
+            sandbox["filesystem"]["denyWrite"].remove(entry)
+
+        def misspell(sandbox: dict) -> None:
+            drop(sandbox, "~/.local/state/hcom-regime/shell_env.json")
+            sandbox["filesystem"]["denyWrite"].append("~/.local/state/hcom-regime/shell-env.json")
+
+        cases = {
+            "a missing name": (
+                lambda sandbox: drop(sandbox, "~/.local/state/hcom/*/env"),
+                "missing={'~/.local/state/hcom': ['~/.local/state/hcom/*/env']} extra=[]",
+            ),
+            "an extra name": (
+                lambda sandbox: sandbox["filesystem"]["denyWrite"].append("~/.local/state/hcom/*/config.yaml"),
+                "missing={} extra=['~/.local/state/hcom/*/config.yaml']",
+            ),
+            "a name under one root but not the other": (
+                lambda sandbox: drop(sandbox, "~/.local/state/hcom-regime/scripts"),
+                "missing={'~/.local/state/hcom-regime': ['~/.local/state/hcom-regime/scripts']} extra=[]",
+            ),
+            "the seats-root deny absent": (
+                lambda sandbox: drop(sandbox, "~/.local/state/omp-seats/*/.sandbox"),
+                "missing={'~/.local/state/omp-seats': ['~/.local/state/omp-seats/*/.sandbox']} extra=[]",
+            ),
+            "a misspelled name": (
+                misspell,
+                (
+                    "missing={'~/.local/state/hcom-regime': ['~/.local/state/hcom-regime/shell_env.json']} "
+                    "extra=['~/.local/state/hcom-regime/shell-env.json']"
+                ),
+            ),
+            "no denyWrite at all": (
+                lambda sandbox: sandbox["filesystem"].pop("denyWrite"),
+                "'~/.local/state/omp-seats': ['~/.local/state/omp-seats/*/.sandbox']} extra=[]",
+            ),
+            "out of order": (lambda sandbox: sandbox["filesystem"]["denyWrite"].reverse(), "out of order or repeated"),
+            "repeated": (
+                lambda sandbox: sandbox["filesystem"]["denyWrite"].insert(0, "~/.local/state/hcom-regime/.tmp/launch"),
+                "out of order or repeated",
+            ),
+            "not a list": (
+                lambda sandbox: sandbox["filesystem"].update(denyWrite="~/.local/state/hcom/*/env"),
+                "denyWrite must be a list of paths",
+            ),
+        }
+        for name, breaks, message in ((name, *case) for name, case in cases.items()):
+            with self.subTest(form=name):
+                sandbox = granted()
+                breaks(sandbox)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, [], "sandbox")
+                self.assertIn(message, stderr.getvalue())
+                if name != "not a list":
+                    self.assertIn("the list hcom-seat denies its seats", stderr.getvalue())
+        # The validator's expected set is the table above for every root on every OS, empty sets included.
+        for os_name in ("darwin", "linux"):
+            self.assertEqual(
+                {root: set(HCOM_DENY_WRITE[(os_name, root)]) for root in roots},
+                self.module.expected_deny_write(roots, os_name),
+            )
+        # Linux: an entry the Linux sandbox would not honour as written is refused by its form, before the set is
+        # compared: an interior glob (the round-1 per-slug and seat forms) and a trailing /** on a file.
+        for entry in (
+            "~/.local/state/hcom/*/env",
+            "~/.local/state/hcom/*/scripts/**",
+            "~/.local/state/omp-seats/*/.sandbox/**",
+            "~/.local/state/hcom/*",
+        ):
+            with self.subTest(linux_entry=entry):
+                linux = granted("linux")
+                linux["filesystem"]["denyWrite"].append(entry)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(linux, [], "sandbox", "linux")
+                self.assertIn(
+                    f"linux entry {entry!r} holds an interior glob, which the Linux sandbox discards whole",
+                    stderr.getvalue(),
+                )
+        linux = granted("linux")
+        linux["filesystem"]["denyWrite"].append("~/.local/state/hcom-regime/config.toml/**")
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_claude_sandbox(linux, [], "sandbox", "linux")
+        self.assertIn(
+            "linux entry '~/.local/state/hcom-regime/config.toml/**' puts a trailing /** on a file; the Linux sandbox "
+            "accepts a literal file deny, so render '~/.local/state/hcom-regime/config.toml'",
+            stderr.getvalue(),
+        )
+        # Linux: a directory without its /** is a misspelling, and the `.tmp/**` pin is named when it is missing.
+        linux = granted("linux")
+        drop(linux, "~/.local/state/hcom-regime/scripts/**")
+        linux["filesystem"]["denyWrite"].append("~/.local/state/hcom-regime/scripts")
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_claude_sandbox(linux, [], "sandbox", "linux")
+        self.assertIn(
+            "missing={'~/.local/state/hcom-regime': ['~/.local/state/hcom-regime/scripts/**']} "
+            "extra=['~/.local/state/hcom-regime/scripts']",
+            stderr.getvalue(),
+        )
+        linux = granted("linux")
+        drop(linux, "~/.local/state/hcom-regime/.tmp/**")
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_claude_sandbox(linux, [], "sandbox", "linux")
+        self.assertIn(
+            "missing={'~/.local/state/hcom-regime': ['~/.local/state/hcom-regime/.tmp/**']} extra=[]", stderr.getvalue()
+        )
+        # A sandbox that grants no hcom root and no seats root carries no denyWrite, and any entry there is extra.
+        sandbox = self.valid_claude_sandbox()
+        sandbox["filesystem"].update(allowWrite=["~/.cache/uv"], denyWrite=[])
+        self.module.validate_claude_sandbox(sandbox, [], "sandbox")
+        sandbox["filesystem"].pop("denyWrite")
+        self.module.validate_claude_sandbox(sandbox, [], "sandbox")
+        sandbox["filesystem"]["denyWrite"] = ["~/.cache/uv/probe"]
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_claude_sandbox(sandbox, [], "sandbox")
+        self.assertIn("missing={} extra=['~/.cache/uv/probe']", stderr.getvalue())
+
+    def test_hcom_seat_store_deny_loop_must_equal_the_validator_list(self) -> None:
+        source = (self.old_root / "scripts/orchestrator/hcom-seat").read_text()
+        target = self.temp_dir / "scripts/orchestrator/hcom-seat"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(source)
+        self.module.validate_hcom_seat_store_denies()
+        self.assertEqual(
+            ("config.toml", "env", "config.env", ".tmp/launch", "scripts", "integrations", "shell_env.json"),
+            self.module.HCOM_STORE_CONTROL_NAMES,
+        )
+        loop = "for path in config.toml env config.env .tmp/launch scripts integrations shell_env.json; do"
+        sandbox_deny = 'deny_write=("${seats_real}/.sandbox")'
+        self.assertEqual(1, source.count(loop))
+        self.assertEqual(1, source.count(sandbox_deny))
+        cases = {
+            "the line reordered": (
+                source.replace(loop, loop.replace("config.toml env ", "env config.toml ")),
+                (
+                    "store deny loop lists ['env', 'config.toml', 'config.env', '.tmp/launch', 'scripts', "
+                    "'integrations', 'shell_env.json'] but validate-agent-assets.py HCOM_STORE_CONTROL_NAMES is "
+                    "['config.toml', 'env', 'config.env', '.tmp/launch', 'scripts', 'integrations', "
+                    "'shell_env.json']: the two lists must stay equal in order"
+                ),
+            ),
+            "a name dropped": (
+                source.replace(loop, loop.replace(" shell_env.json", "")),
+                "the two lists must stay equal in order",
+            ),
+            "a name added": (
+                source.replace(loop, loop.replace(" shell_env.json", " shell_env.json hooks")),
+                "the two lists must stay equal in order",
+            ),
+            "the .sandbox deny gone": (
+                source.replace(sandbox_deny, "deny_write=()"),
+                "must deny every seat's sandbox directory with " + sandbox_deny,
+            ),
+            "the store loop gone": (
+                source.replace('deny_write+=("${hcom_real}/${path}")', ":"),
+                "must hold exactly one store deny loop",
+            ),
+        }
+        for name, (text, message) in cases.items():
+            with self.subTest(form=name):
+                self.assertNotEqual(source, text)
+                target.write_text(text)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_hcom_seat_store_denies()
+                self.assertIn(message, stderr.getvalue())
+        target.unlink()
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_hcom_seat_store_denies()
+        self.assertIn("could not be read", stderr.getvalue())
 
     def test_claude_sandbox_validator_refuses_each_forbidden_form(self) -> None:
         spec = importlib.util.spec_from_file_location(
@@ -1979,7 +2204,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     permitted += self.module.DARWIN_SANDBOX_WRITE_ROOTS
                 self.module.validate_write_roots(permitted, "roots", os_name)
                 sandbox = self.valid_claude_sandbox(os_name)
-                sandbox["filesystem"]["allowWrite"] = permitted
+                sandbox["filesystem"].update(allowWrite=permitted, denyWrite=deny_write_for(os_name, permitted))
                 self.module.validate_claude_sandbox(sandbox, [], "sandbox", os_name)
         with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
             self.module.validate_write_roots(["~/Library/Caches/mise"], "roots", "linux")

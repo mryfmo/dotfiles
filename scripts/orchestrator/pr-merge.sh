@@ -23,7 +23,8 @@
 #   `incorrect` or `blocked` row for the same head voids an earlier `correct`, or with the word `carried` (regime-cutover
 #   U122, standing order 38): then its evidence must hold `carried <earlier head> <this head> <sha256>`, the line
 #   `scripts/orchestrator/audit-carry.py` printed when this head's diff against its merge base equalled the earlier
-#   head's, the earlier head is another sha than this one, and the newest row (by ts) for the earlier head must itself
+#   head's (U180: a note may follow the digest after a space, `;`, `,`, `.` or `)`, and after nothing else), the
+#   earlier head is another sha than this one, and the newest row (by ts) for the earlier head must itself
 #   be `correct` (the digest lever carries the earlier head's verdict whatever it says, round 5, so a carry from an
 #   `incorrect` head is a row this gate refuses naming that head); the verdict file and the dispositions the gate then
 #   reads are the earlier head's, since its findings
@@ -50,7 +51,12 @@
 #   row; every P2 or P3 line at or above it needs a row of the store's `dispositions.tsv` (header `ts unit head_sha
 #   priority path line disposition reference`) with the same unit, full head sha, priority, path and line (the
 #   finding's whole identity, the key `audit-carry.py` joins by as well; U122 round 3) whose `disposition` is
-#   `residual` and whose reference `unit=U<n> gate=<clause>` names a `units.tsv` row; a `fixed` row names the later
+#   `residual` and whose reference `unit=U<n> gate=<clause>` names a `units.tsv` row, or whose `disposition` is
+#   `fixed` and whose reference starts with the 40-hex sha of the head being merged while that head is carried (U180:
+#   a `fixed` row holds for the head it judges only when the head being merged is the fixing head under a `carried`
+#   row, which can only be a body fix, since a code change would have changed the digest; the sha is the reference's
+#   first token, read as 40 hex followed by the end or a character outside hex, and compared whole). A `fixed` row
+#   naming any other head, or any `fixed` row when the head being merged is the audited head itself, names the later
 #   head that fixed the finding and never satisfies the gate for the head it judges. The first finding without such a
 #   row is named in the refusal. A P0 or P1 line at or above the threshold under a `correct` row, a `## Findings`
 #   line of another shape or without its scores, a score outside 1 to 10, a line whose path
@@ -385,9 +391,11 @@ residual_re='^unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
 correct_re='^correct($|[[:space:](;,])'
 # A verdict column that starts with the word `carried` (U122), and the evidence such a row must hold: the line
 # audit-carry.py prints, `carried <earlier head> <this head> <sha256 of the diff>`, as a whole word sequence anywhere
-# in the column (the coordinator may write a note after it).
+# in the column. The coordinator may write a note after it: the digest ends at the end of the column, whitespace or
+# one of `;`, `,`, `.` and `)` (U180: the README's receipt form `carried <a> <b> <digest>; verdicts/...` was refused
+# and a row rewritten), and a 65th hex-like character is no digest.
 carried_re='^carried($|[[:space:](;,])'
-carried_evidence_re='(^|[[:space:]])carried ([0-9a-f]{40}) ([0-9a-f]{40}) ([0-9a-f]{64})($|[[:space:]])'
+carried_evidence_re='(^|[[:space:]])carried ([0-9a-f]{40}) ([0-9a-f]{40}) ([0-9a-f]{64})($|[[:space:];,.)])'
 
 # @description Print the refusal on stderr and exit 2; nothing was merged.
 # @arg $@ string The reason.
@@ -558,12 +566,17 @@ pending_fields() {
 #   longer means "no finding". Every read is checked; a failed read exits 1 (standing order 21). Every name the gate
 #   reads is a local assigned here before its first read, the `units.tsv` cache of unit_row_exists included, so a
 #   caller's environment holds nothing the gate takes for its own data (U119 round 6).
-# @arg $1 string The 40-hex head the ledger row named.
+# @arg $1 string The 40-hex head the ledger row named (the audited head).
 # @arg $2 string The unit of that ledger row, which names the verdict file and the disposition rows (round 2).
+# @arg $3 string The 40-hex head being merged: $1 itself under a `correct` row, the carried head under a `carried` row
+#   (U180: a `fixed` row whose reference starts with this sha holds when it differs from $1).
 require_dispositions() {
-    local head=$1 row_unit=$2 verdicts_dir verdict_file dispositions text line section=0 seen=0 last='' n=1 satisfied status
+    local head=$1 row_unit=$2 merge_head=$3 verdicts_dir verdict_file dispositions text line section=0 seen=0 last='' n=1 satisfied status
     local findings=() pending=() rows=() cols=() entry priority frequency severity weight path lineno why residual_unit none_seen='' listed=''
     local units_rows='' units_read=''
+    # The reference of a `fixed` row as the coordinator writes it: a 40-hex sha first, then prose (U180). The sha is the
+    # whole first token (the end or a character outside hex after it), so a 41-hex prefix of another sha never matches.
+    local fixed_reference_re='^([0-9a-f]{40})($|[^0-9a-f])'
     verdicts_dir=${store}/verdicts
     [[ ! -L ${verdicts_dir} && -d ${verdicts_dir} && -O ${verdicts_dir} ]] ||
         refuse "${verdicts_dir} is not a directory of this user (a symlink or missing); the verdict file is read from the checkout's own store"
@@ -650,6 +663,14 @@ require_dispositions() {
             [[ ${cols[1]} == "${row_unit}" && ${cols[2]} == "${head}" && ${cols[3]} == "${priority}" && ${cols[4]} == "${path}" && ${cols[5]} == "${lineno}" ]] || # lint-comparisons: allow the path column is matched as the text the reader wrote, never resolved
                 continue
             if [[ ${cols[6]} == fixed ]]; then
+                # U180: under a carried row the head being merged differs from the audited head, and a fix at a
+                # carried head can only be a body fix (a code change would have changed the digest), so a `fixed`
+                # row whose reference names the head being merged holds for the audited head it judges.
+                if [[ ${head} != "${merge_head}" && ${cols[7]} =~ ${fixed_reference_re} ]] &&
+                    [[ ${BASH_REMATCH[1]} == "${merge_head}" ]]; then
+                    satisfied=1
+                    break
+                fi
                 why="the row at ${cols[0]} says fixed in ${cols[7]}, which is not this head; merge the head that fixed it"
                 continue
             fi
@@ -879,7 +900,7 @@ IFS=$'\t' read -r state base head draft <<< "${view}"
 resolve_store
 
 require_verdict_row "${head}"
-require_dispositions "${audited_head}" "${audited_unit}"
+require_dispositions "${audited_head}" "${audited_unit}" "${head}"
 require_sweep_row
 
 status=0

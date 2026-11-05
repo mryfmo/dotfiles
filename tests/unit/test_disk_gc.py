@@ -4,8 +4,10 @@ Each test builds a bare `origin` and a checkout under a temporary directory, poi
 and runs the lever with a PATH that holds a `git` wrapper (it records every argv and execs the real git) and symlinks
 to the tools the lever needs, and nothing else: no `docker`, `uv` or `npm`, so the docker and package-cache steps skip
 and the host's daemon and caches are never touched. HOME and XDG_DATA_HOME are under the scratch root. The wrapper can
-also fail a named call, swap the tree for a symlink or a plain directory while `worktree remove` fails, and add records
-to the `-z` listing. The tests assert what is on disk after a run and the lever's log lines. The lever needs GNU find's
+also fail a named call, swap the tree for a symlink or a plain directory while `worktree remove` fails, drop a lock file
+once the listing that says `locked` is written, and add records to the `-z` listing. The tests assert what is on disk
+after a run and the lever's log lines; each guard of the root proof and each read has a test that fails without it,
+run on a scratch copy of the lever with that block cut. The lever needs GNU find's
 `-files0-from` and `date -d`; setUpModule probes both and skips the module with the reason when either is missing.
 """
 
@@ -65,6 +67,12 @@ if os.environ.get("FAKE_GIT_SWAP_DIR") and "worktree remove" in joined:
     with open(os.path.join(path, "marker.txt"), "w", encoding="utf-8") as marker:
         marker.write("precious\\n")
     sys.exit("fake-git: remove failed after the swap")
+if os.environ.get("FAKE_GIT_UNLOCK") and "worktree list" in joined:
+    # The lock file goes between the listing, which still says `locked`, and the lever's read of the admin directory.
+    listing = subprocess.run([os.environ["REAL_GIT"], *argv], stdout=subprocess.PIPE, check=False)
+    os.unlink(os.environ["FAKE_GIT_UNLOCK"])
+    sys.stdout.buffer.write(listing.stdout)
+    sys.exit(listing.returncode)
 extra = [key for key in ("FAKE_GIT_LIST_FIRST", "FAKE_GIT_LIST_LAST") if os.environ.get(key)]
 if extra and "-z" in argv and "worktree list" in joined:
     # Records git never wrote, around its own listing: a duplicate of the main worktree first, a subdirectory last.
@@ -233,13 +241,26 @@ class DiskGcTest(unittest.TestCase):
         sub.mkdir()
         return sub
 
-    def lever_without(self, reason):
-        """A scratch copy of the lever under the test root with the worktree_root `if` block that sets REASON cut out.
+    def linked_by_a_symlink(self):
+        """`<ws>/linked`, still listed, now a symlink to `<ws>/linked.moved`: the idle worktree itself, moved aside, with
+        an untracked marker. Through the link every other check of the root proof passes, so `-L` alone keeps it."""
+        tree = self.add_tree(self.workspace / "linked")
+        moved = self.workspace / "linked.moved"
+        tree.rename(moved)
+        tree.symlink_to(moved)
+        marker = moved / "marker.txt"
+        marker.write_text("precious\n")
+        self.age(moved)
+        self.assertIn(f"worktree {tree}", self.git("worktree", "list", "--porcelain"), "still listed")
+        return tree, marker
+
+    def lever_without(self, text):
+        """A scratch copy of the lever under the test root with the `if` block whose keep line or reason holds TEXT cut.
 
         The tree's own file is never edited; the copy proves that the guard is what keeps its fixture.
         """
         lines = GC.read_text().splitlines(keepends=True)
-        at = next(i for i, line in enumerate(lines) if f'reason="{reason}' in line)
+        at = next(i for i, line in enumerate(lines) if text in line)
         self.assertTrue(lines[at - 1].lstrip().startswith("if "), lines[at - 1])
         self.assertEqual(lines[at + 2].strip(), "fi", lines[at + 2])
         copy = self.root / "disk-gc-without-guard"
@@ -400,7 +421,7 @@ class DiskGcTest(unittest.TestCase):
 
     def test_without_the_main_worktree_guard_the_main_checkout_is_handed_to_worktree_remove(self):
         self.age(self.checkout)
-        lever = self.lever_without("the main worktree")
+        lever = self.lever_without('reason="the main worktree"')
         result = self.run_gc("--apply", script=lever, FAKE_GIT_LIST_FIRST=str(self.checkout))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("disk-gc: remove repo: merged into origin/main", result.stdout)
@@ -412,7 +433,7 @@ class DiskGcTest(unittest.TestCase):
 
     def test_without_the_toplevel_guard_a_subdirectory_is_handed_to_worktree_remove(self):
         sub = self.subdirectory_listed()
-        lever = self.lever_without("inside the tree")
+        lever = self.lever_without('reason="inside the tree')
         result = self.run_gc("--apply", script=lever, FAKE_GIT_LIST_LAST=str(sub))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("disk-gc: remove sub: merged into origin/main", result.stdout)
@@ -425,7 +446,7 @@ class DiskGcTest(unittest.TestCase):
     def test_without_the_common_dir_guard_a_clone_of_another_repository_is_handed_to_worktree_remove(self):
         tree = self.add_tree(self.workspace / "foreign")
         self.foreign_clone(tree)
-        lever = self.lever_without("of another repo")
+        lever = self.lever_without('reason="of another repo')
         result = self.run_gc("--apply", script=lever)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("disk-gc: remove foreign: merged into origin/main", result.stdout)
@@ -434,6 +455,147 @@ class DiskGcTest(unittest.TestCase):
             "disk-gc: keep foreign: git worktree remove failed", result.stdout, "git itself refuses the clone"
         )
         self.assertTrue((tree / "README").is_file())
+
+    def test_a_symlink_at_the_listed_path_is_kept(self):
+        tree, marker = self.linked_by_a_symlink()
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"disk-gc: keep linked: not a worktree root of {self.checkout} (a symlink)", result.stdout)
+        self.assertEqual(marker.read_text(), "precious\n", f"the tree behind the link was emptied: {result.stdout}")
+        self.assertTrue(tree.is_symlink(), "the link stays")
+        self.assertEqual(self.removals(), [])
+        self.assertNotIn(str(tree), [arg for argv in self.calls() for arg in argv], "no git call names the link")
+
+    def test_without_the_symlink_guard_a_symlink_at_the_listed_path_is_handed_to_worktree_remove(self):
+        """git 2.56 follows the link, empties the tree behind it and fails on the link itself; what git does behind the
+        link is git's and is not asserted, the hand-off the lever makes is."""
+        tree, _ = self.linked_by_a_symlink()
+        lever = self.lever_without('reason="a symlink"')
+        result = self.run_gc("--apply", script=lever)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("disk-gc: remove linked: merged into origin/main", result.stdout)
+        self.assertEqual([argv[-1] for argv in self.removals()], [str(tree)])
+        self.assertIn("disk-gc: keep linked: git worktree remove failed", result.stdout, "git fails on the link")
+        self.assertTrue(tree.is_symlink(), "the link stays")
+
+    def test_a_foreign_repository_whose_git_directory_ends_in_a_newline_is_kept(self):
+        """A bare repository at `<checkout>/.git<newline>`, made with Python, with a linked worktree at the listed path:
+        `--git-common-dir` prints that name, which a `$(...)` strips to the checkout's own `.git`."""
+        tree = self.add_tree(self.workspace / "foreign")
+        bare = self.checkout / ".git\n"
+        try:
+            bare.mkdir()
+        except OSError as error:
+            self.skipTest(f"the filesystem refuses a newline in a name: {error}")
+        bare.rmdir()
+        shutil.copytree(self.root / "origin.git", bare)
+        shutil.rmtree(tree)
+        self.git("worktree", "add", "-q", "--detach", str(tree), "main", cwd=bare)
+        self.age(tree)
+        self.assertIn(f"worktree {tree}", self.git("worktree", "list", "--porcelain"), "still listed")
+        printed = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            cwd=tree,
+            env=self.env,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+        self.assertEqual(printed, f"{bare}\n", "git prints the name with its newline, then its own terminator")
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue((tree / "README").is_file(), f"the foreign worktree was removed: {result.stdout}")
+        self.assertIn(
+            f"disk-gc: keep foreign: not a worktree root of {self.checkout} (a git directory name git had to quote)",
+            result.stdout,
+        )
+        self.assertEqual(self.removals(), [])
+
+    def test_a_failed_mktemp_skips_the_repository_and_removes_nothing(self):
+        tree = self.add_tree(self.workspace / "merged")
+        stub = self.root / "stub"
+        stub.mkdir()
+        (stub / "mktemp").write_text("#!/bin/sh\nexit 1\n")
+        (stub / "mktemp").chmod(0o755)
+        result = self.run_gc("--apply", PATH=f"{stub}:{self.env['PATH']}")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"disk-gc: cannot list the worktrees of {self.checkout}; skipping its worktrees", result.stdout)
+        self.assertTrue((tree / "README").is_file(), result.stdout)
+        self.assertEqual(self.removals(), [])
+        self.assertFalse(any("list" in argv for argv in self.calls()), "the listing is never asked for")
+        self.assertIn("disk-gc: after used=", result.stdout, "the run goes on")
+
+    def test_a_failed_common_dir_read_of_the_repository_skips_it_and_removes_nothing(self):
+        tree = self.add_tree(self.workspace / "merged")
+        failing = f"-C {self.checkout} rev-parse --path-format=absolute --git-common-dir"
+        result = self.run_gc("--apply", FAKE_GIT_FAIL=failing)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"disk-gc: cannot read the git dir of {self.checkout}; skipping its worktrees", result.stdout)
+        self.assertTrue((tree / "README").is_file(), result.stdout)
+        self.assertEqual(self.removals(), [])
+        self.assertNotIn("keep merged", result.stdout, "no tree of the repository is read")
+
+    def test_a_tree_whose_prefix_cannot_be_read_is_kept(self):
+        tree = self.add_tree(self.workspace / "merged")
+        result = self.run_gc("--apply", FAKE_GIT_FAIL="rev-parse --show-prefix")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"disk-gc: keep merged: not a worktree root of {self.checkout} (no toplevel)", result.stdout)
+        self.assertTrue((tree / "README").is_file(), result.stdout)
+        self.assertEqual(self.removals(), [])
+
+    def test_a_tree_whose_common_dir_cannot_be_read_is_kept(self):
+        tree = self.add_tree(self.workspace / "merged")
+        failing = f"-C {tree} rev-parse --path-format=absolute --git-common-dir"
+        result = self.run_gc("--apply", FAKE_GIT_FAIL=failing)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            f"disk-gc: keep merged: not a worktree root of {self.checkout} (no common git dir)", result.stdout
+        )
+        self.assertTrue((tree / "README").is_file(), result.stdout)
+        self.assertEqual(self.removals(), [])
+
+    def test_a_tree_whose_head_cannot_be_read_is_kept(self):
+        tree = self.add_tree(self.workspace / "merged")
+        result = self.run_gc("--apply", FAKE_GIT_FAIL="rev-parse HEAD")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("disk-gc: keep merged: cannot read HEAD", result.stdout)
+        self.assertTrue((tree / "README").is_file(), result.stdout)
+        self.assertEqual(self.removals(), [])
+
+    def test_a_tree_whose_admin_directory_cannot_be_read_is_kept(self):
+        tree = self.add_tree(self.workspace / "merged")
+        result = self.run_gc("--apply", FAKE_GIT_FAIL="rev-parse --path-format=absolute --git-dir")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("disk-gc: keep merged: cannot read its admin directory", result.stdout)
+        self.assertTrue((tree / "README").is_file(), result.stdout)
+        self.assertEqual(self.removals(), [])
+
+    def locked_without_a_lock_file(self):
+        """`<ws>/stale`, an idle worktree locked by git, whose lock file the wrapper drops once the listing is written:
+        the record says `locked`, the admin directory holds no lock."""
+        tree = self.add_tree(self.workspace / "stale")
+        self.git("worktree", "lock", "--reason", "stale", str(tree))
+        admin = Path(self.git("rev-parse", "--path-format=absolute", "--git-dir", cwd=tree))
+        self.assertTrue((admin / "locked").is_file())
+        return tree, admin
+
+    def test_a_tree_listed_as_locked_without_a_lock_file_is_kept(self):
+        tree, admin = self.locked_without_a_lock_file()
+        result = self.run_gc("--apply", FAKE_GIT_UNLOCK=str(admin / "locked"))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse((admin / "locked").exists(), "the wrapper dropped the lock file after the listing")
+        self.assertIn(f"disk-gc: keep stale: listed as locked, no lock file in {admin}", result.stdout)
+        self.assertTrue((tree / "README").is_file(), result.stdout)
+        self.assertEqual(self.removals(), [])
+
+    def test_without_the_lock_file_guard_a_tree_listed_as_locked_is_removed(self):
+        tree, admin = self.locked_without_a_lock_file()
+        lever = self.lever_without("listed as locked, no lock file")
+        result = self.run_gc("--apply", script=lever, FAKE_GIT_UNLOCK=str(admin / "locked"))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("disk-gc: remove stale: merged into origin/main", result.stdout)
+        self.assertEqual([argv[-1] for argv in self.removals()], [str(tree)])
+        self.assertFalse(tree.exists(), f"the tree listed as locked was kept: {result.stdout}")
 
 
 if __name__ == "__main__":

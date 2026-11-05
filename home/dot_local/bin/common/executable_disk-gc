@@ -194,6 +194,9 @@ function read_worktrees() {
 #   directory that is not a symlink, is not the main worktree, is its own toplevel (`rev-parse --show-prefix` prints
 #   nothing there), and whose `--git-common-dir` is the repo's. Paths are compared by identity (`-ef`: same device
 #   and inode), never as text, so nothing is resolved or stripped and a name ending in a newline is compared whole.
+#   The common directory git prints is read behind a sentinel, so a name whose last character is a newline (one git
+#   would quote in a listing) is seen as such and refused before the comparison: stripped, it would name its
+#   neighbour, and a foreign repository at `<repo>/.git<newline>` would pass as the repo's own.
 #   Every read's status is checked and a failed read fails the proof, so a directory that replaced a worktree, a
 #   subdirectory of one, or a tree of another repo is kept.
 # @arg $1 path The worktree path as listed.
@@ -220,10 +223,18 @@ function worktree_root() {
         reason="inside the tree at ${prefix}"
         return 1
     fi
-    if ! common=$(git -C "${wt}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null); then
+    if ! common=$(git -C "${wt}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null && printf x); then
         reason="no common git dir"
         return 1
     fi
+    common=${common%x}
+    common=${common%$'\n'}
+    case ${common} in
+    *$'\n')
+        reason="a git directory name git had to quote"
+        return 1
+        ;;
+    esac
     if ! [ "${common}" -ef "${gitdir}" ]; then
         reason="of another repo, ${common}"
         return 1

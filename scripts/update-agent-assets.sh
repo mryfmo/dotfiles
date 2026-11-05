@@ -1881,20 +1881,25 @@ function update_security_audit_skill() (
 # @description
 #   The opt-in is DSH_HOME exported and naming an existing directory: chezmoi deploys the rendered thak profile to
 #   ~/.dsh/profiles/thak on every host, so a directory alone cannot be the opt-in, and a DSH_HOME other than ~/.dsh
-#   is skipped with a WARN because the profile and the install would live apart. GitHub's tag archive (never a branch
-#   head) is downloaded into a mktemp directory and verified against its reviewed sha256 before anything is unpacked;
-#   the archive's own package.json version must equal the pin; the build runs inside a staging tree under
-#   $DSH_HOME/dsh, so a failed build leaves a previous install untouched, and the finished tree replaces
-#   $DSH_HOME/dsh/<tag> with one rename. A download that fails degrades like update_security_audit_skill: one WARN
-#   line, nothing installed, nothing recorded, and make update goes on. A digest, version, build or rename failure
-#   is a hard failure of the step.
-# @exitcode 0 Installed, already installed, no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh (a WARN), or the
-#   download failed (a WARN; nothing installed or recorded).
-# @exitcode 1 The digest check, the unpack, the archive version, the build, the rename or the profile install failed;
-#   the existing install is unchanged.
+#   is skipped with a WARN because the profile and the install would live apart. The install is one transaction whose
+#   state is read from one place, the target of $DSH_HOME/dsh/current: GitHub's tag archive (never a branch head) is
+#   downloaded into a mktemp directory and verified against its reviewed sha256 before anything is unpacked; the
+#   archive's own package.json version must equal the pin; the tree is unpacked and built whole in its final place
+#   under a name of its own ($DSH_HOME/dsh/<tag>.XXXXXX) and the profile's plugins are installed, all before anything
+#   the host runs changes; then the wrapper is replaced by one rename, current is pointed at the new tree by one link
+#   call, the step is recorded, and only then are the older trees under $DSH_HOME/dsh pruned. No tree is ever moved.
+#   A failure before the link leaves current, the wrapper and every older tree as they were; a failed record puts
+#   current back on its prior target and removes the new tree. Every producer the step reads (pwd -P, the receipt, jq,
+#   shasum, readlink, mktemp) refuses the step on a failed answer. A download that fails degrades like
+#   update_security_audit_skill: one WARN line, nothing installed, nothing recorded, and make update goes on.
+# @exitcode 0 Installed, already installed, repaired (the wrapper rewritten for the tree current names, no download),
+#   no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh (a WARN), or the download failed (a WARN; nothing
+#   installed or recorded).
+# @exitcode 1 A producer read, the digest check, the unpack, the archive version, the build, the profile install, the
+#   wrapper, the current link or the record failed; current and the older trees are as they were.
 #
 function update_deepseek_harness() (
-    local recorded download_dir="" tarball actual staging="" version install_dir previous="" physical expected installed repair="" late_step="" prior_target="" quote="'" quoted_home
+    local recorded download_dir="" tarball actual tree="" version physical expected target="" installed repair="" prior_target="" wrapper_tmp="" wrapper_step="" older quote="'" quoted_home
     section "DeepSeek harness"
     if [ -z "${DSH_HOME:-}" ] || [ ! -d "${DSH_HOME}" ]; then
         printf 'Skipping DeepSeek harness: DSH_HOME is unset or names no directory (export it and create it to opt in).\n'
@@ -1909,22 +1914,38 @@ function update_deepseek_harness() (
         return 0
         ;;
     esac
-    physical="$(cd "${DSH_HOME}" && pwd -P)" || return 1
-    expected="$(cd "${HOME}/.dsh" 2> /dev/null && pwd -P)" || expected=""
+    physical="$(cd "${DSH_HOME}" && pwd -P)" || {
+        printf 'update_deepseek_harness: the physical path of DSH_HOME %s could not be read; step refused.\n' "${DSH_HOME}" >&2
+        return 1
+    }
+    # The reference path is a producer of its own: absent, the kit has not rendered the profile here (a WARN, as for
+    # any other DSH_HOME); present and unreadable, the step refuses instead of warning over a read it never made.
+    if [ ! -e "${HOME}/.dsh" ]; then
+        printf 'WARN: update_deepseek_harness: DSH_HOME is %s, not %s, where the kit renders the thak profile; nothing installed.\n' "${DSH_HOME}" "${HOME}/.dsh" >&2
+        return 0
+    fi
+    expected="$(cd "${HOME}/.dsh" && pwd -P)" || {
+        printf 'update_deepseek_harness: the reference path %s could not be read; step refused.\n' "${HOME}/.dsh" >&2
+        return 1
+    }
     if [ "${physical}" != "${expected}" ]; then # lint-comparisons: allow both sides are pwd -P physical paths
         printf 'WARN: update_deepseek_harness: DSH_HOME is %s, not %s, where the kit renders the thak profile; nothing installed.\n' "${DSH_HOME}" "${HOME}/.dsh" >&2
         return 0
     fi
-    install_dir="${DSH_HOME}/dsh/${DSH_PIN_TAG}"
     # ln -sfn onto a real directory at current makes a link inside it and succeeds, so a current that is neither a
-    # symlink nor absent is refused before anything is downloaded, moved or linked.
+    # symlink nor absent is refused before anything is downloaded or linked.
     if [ -e "${DSH_HOME}/dsh/current" ] && [ ! -L "${DSH_HOME}/dsh/current" ]; then
         printf 'update_deepseek_harness: %s is not a symlink; the step refuses to replace it (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/dsh/current" >&2
         return 1
     fi
-    # A receipt file jq cannot read is a failed read, not an empty receipt: installing over a record the step could
-    # not consult would hide the corruption. A missing file is the fresh host and installs.
+    # A receipt file that is not a JSON object is a failed read, not an empty receipt: jq answers a zero-byte file
+    # with exit 0 and no output, so the shape is checked before the step's row is read, and installing over a record
+    # the step could not consult would hide the corruption. A missing file is the fresh host and installs.
     if [ -f "${HOME}/.agents/.installed-manifest.json" ]; then
+        jq -e 'type == "object"' "${HOME}/.agents/.installed-manifest.json" > /dev/null 2>&1 || {
+            printf 'update_deepseek_harness: the installed-manifest receipt could not be read as a JSON object; step refused.\n' >&2
+            return 1
+        }
         recorded="$(jq -r '.steps["update_deepseek_harness"].source_version // empty' "${HOME}/.agents/.installed-manifest.json" 2> /dev/null)" || {
             printf 'update_deepseek_harness: the installed-manifest receipt could not be read; step refused.\n' >&2
             return 1
@@ -1932,122 +1953,157 @@ function update_deepseek_harness() (
     else
         recorded=""
     fi
-    # Installed means converged: the receipt at the pin, the pin's tree carrying the pin's version, current linked to
-    # it and an executable wrapper. The doctor's repair runs this step when the wrapper alone is gone, so a tree at
-    # the pin gets its link and wrapper back without a download; any other state installs.
-    if [ "${recorded}" = "${DSH_PIN_TAG}" ] && [ -f "${install_dir}/package.json" ]; then
-        installed="$(jq -r '.version // empty' "${install_dir}/package.json")" || {
-            printf 'update_deepseek_harness: the version of the installed tree %s could not be read; step refused.\n' "${install_dir}" >&2
+    # The installed state is read from current alone, never from a fixed tree path: installed means the receipt at
+    # the pin, the tree current names carrying the pin's version and its entrypoint, and an executable wrapper. The
+    # doctor's repair runs this step when the wrapper alone is gone, so the tree gets its wrapper back without a
+    # download; any other state installs.
+    if [ -L "${DSH_HOME}/dsh/current" ]; then
+        target="$(readlink "${DSH_HOME}/dsh/current")" || {
+            printf 'update_deepseek_harness: the target of %s could not be read; step refused.\n' "${DSH_HOME}/dsh/current" >&2
             return 1
         }
-        if [ "${installed}" = "${DSH_PIN_TAG#dsh-v}" ]; then
-            if [ -L "${DSH_HOME}/dsh/current" ] && [ "${DSH_HOME}/dsh/current" -ef "${install_dir}" ] && [ -f "${DSH_HOME}/bin/dsh" ] && [ -x "${DSH_HOME}/bin/dsh" ]; then
+        # A relative target (a hand-made link) is read from the link's own directory, as the link reads it.
+        case ${target} in # lint-comparisons: allow the case reads the spelling (absolute or not) to anchor a relative link target
+        /*) ;;
+        *) target="${DSH_HOME}/dsh/${target}" ;;
+        esac
+    fi
+    if [ "${recorded}" = "${DSH_PIN_TAG}" ] && [ -n "${target}" ] && [ -d "${target}" ] && [ -f "${target}/package.json" ]; then
+        installed="$(jq -r '.version // empty' "${target}/package.json")" || {
+            printf 'update_deepseek_harness: the version of the installed tree %s could not be read; step refused.\n' "${target}" >&2
+            return 1
+        }
+        if [ "${installed}" = "${DSH_PIN_TAG#dsh-v}" ] && [ -f "${target}/apps/cli/lib/bin.js" ]; then
+            if [ -f "${DSH_HOME}/bin/dsh" ] && [ -x "${DSH_HOME}/bin/dsh" ]; then
                 printf 'DeepSeek harness %s is already installed.\n' "${DSH_PIN_TAG}"
                 return 0
             fi
-            mkdir -p "${DSH_HOME}/bin" || return 1
             repair=1
         fi
     fi
     if [ -z "${repair}" ]; then
-        download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
+        download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || {
+            printf 'update_deepseek_harness: the download directory could not be made; step refused.\n' >&2
+            return 1
+        }
         # ${download_dir:-}: on macOS bash the subshell's locals are unwound before the EXIT trap runs after a failed
         # return, so a bare name is unbound under set -u and the trap dies before its rm.
-        trap 'rm -rf "${download_dir:-}" ${staging:+"${staging}"}' EXIT
+        trap 'rm -rf "${download_dir:-}" ${tree:+"${tree}"} ${wrapper_tmp:+"${wrapper_tmp}"}' EXIT
         tarball="${download_dir}/deepseek-harness-${DSH_PIN_TAG}.tar.gz"
         curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${DSH_ARCHIVE_URL}" -o "${tarball}" || {
             printf 'WARN: update_deepseek_harness: the DeepSeek harness archive could not be downloaded (%s); nothing installed, nothing recorded; the existing install is unchanged and the next make update retries.\n' "${DSH_ARCHIVE_URL}" >&2
             return 0
         }
-        actual="$(shasum -a 256 "${tarball}")" || return 1
+        actual="$(shasum -a 256 "${tarball}")" || {
+            printf 'update_deepseek_harness: the digest of the downloaded archive could not be read; install refused.\n' >&2
+            return 1
+        }
         if [ "${actual%% *}" != "${DSH_ARCHIVE_SHA256}" ]; then
             printf 'DeepSeek harness checksum mismatch: expected %s, got %s.\n' "${DSH_ARCHIVE_SHA256}" "${actual%% *}" >&2
             return 1
         fi
-        # Staged beside the target so the final rename stays on one filesystem; the one leading component
-        # (<repository>-<tag>) is stripped so the package tree lands at the install path itself.
-        mkdir -p "${DSH_HOME}/dsh" "${DSH_HOME}/bin" && staging="$(mktemp -d "${DSH_HOME}/dsh/.staging.XXXXXX")" || return
-        tar xzf "${tarball}" -C "${staging}" --strip-components=1 || return
-        version="$(jq -r '.version // empty' "${staging}/package.json")" || return 1
+        # The tree is unpacked and built whole in its final place under a name of its own, so publication is one link
+        # call and no tree is moved; the one leading component (<repository>-<tag>) is stripped so the package lands
+        # at the tree itself.
+        mkdir -p "${DSH_HOME}/dsh" "${DSH_HOME}/bin" || return 1
+        tree="$(mktemp -d "${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX")" || {
+            printf 'update_deepseek_harness: the install tree under %s could not be made; install refused.\n' "${DSH_HOME}/dsh" >&2
+            return 1
+        }
+        tar xzf "${tarball}" -C "${tree}" --strip-components=1 || return 1
+        version="$(jq -r '.version // empty' "${tree}/package.json")" || {
+            printf 'update_deepseek_harness: the version of the archive could not be read; install refused.\n' >&2
+            return 1
+        }
         if [ "${version}" != "${DSH_PIN_TAG#dsh-v}" ]; then
             printf 'DeepSeek harness archive version %s is not the pin %s; install refused.\n' "${version}" "${DSH_PIN_TAG#dsh-v}" >&2
             return 1
         fi
-        (cd "${staging}" && mise exec -- pnpm install --frozen-lockfile && mise exec -- pnpm run build) || return 1
-        # What current pointed at before the swap, whatever its version, so a late failure can put the link back on it.
+        (cd "${tree}" && mise exec -- pnpm install --frozen-lockfile && mise exec -- pnpm run build) || return 1
+        # The profile's plugins go in before anything the host runs changes: a failure here needs no undo, since
+        # current, the wrapper and every older tree are still as they were and the trap removes the new tree.
+        (cd "${DSH_HOME}/profiles/thak" && mise exec -- pnpm install) || {
+            printf 'update_deepseek_harness: the profile install failed; nothing recorded; current, the wrapper and the older trees are untouched.\n' >&2
+            return 1
+        }
+    else
+        trap 'rm -rf ${wrapper_tmp:+"${wrapper_tmp}"}' EXIT
+    fi
+    # The wrapper is written beside its path and moved over it by one rename, so a failure before the rename leaves
+    # the live launcher byte-identical. It carries the home expanded at write time as a single-quoted literal (every '
+    # in it as '\''), so a $(...) or a " in the path is text when the wrapper runs, and bash -n refuses a wrapper that
+    # still does not parse: the harness runs under mise's node, nothing of it on PATH.
+    quoted_home="${quote}${DSH_HOME//${quote}/${quote}\\${quote}${quote}}${quote}"
+    wrapper_tmp="$(mktemp "${DSH_HOME}/bin/.dsh.XXXXXX")" || {
+        printf 'update_deepseek_harness: a wrapper file under %s could not be made; nothing recorded; the live wrapper, current and the older trees are untouched.\n' "${DSH_HOME}/bin" >&2
+        return 1
+    }
+    if ! printf '#!/bin/bash\nexec mise exec -- node %s/dsh/current/apps/cli/lib/bin.js "$@"\n' "${quoted_home}" > "${wrapper_tmp}"; then
+        wrapper_step="the wrapper write"
+    elif ! bash -n "${wrapper_tmp}"; then
+        wrapper_step="the wrapper parse"
+    elif ! chmod 755 "${wrapper_tmp}"; then
+        wrapper_step="the wrapper mode"
+    elif ! mv -f "${wrapper_tmp}" "${DSH_HOME}/bin/dsh"; then
+        wrapper_step="the wrapper rename"
+    fi
+    if [ -n "${wrapper_step}" ]; then
+        printf 'update_deepseek_harness: %s failed; nothing recorded; the live wrapper at %s, current and the older trees are untouched.\n' "${wrapper_step}" "${DSH_HOME}/bin/dsh" >&2
+        return 1
+    fi
+    wrapper_tmp=""
+    if [ -z "${repair}" ]; then
+        # What current pointed at before, whatever its version, so a failed record can put the link back on it.
         if [ -L "${DSH_HOME}/dsh/current" ]; then
             prior_target="$(readlink "${DSH_HOME}/dsh/current")" || {
                 printf 'update_deepseek_harness: the target of %s could not be read; install refused.\n' "${DSH_HOME}/dsh/current" >&2
                 return 1
             }
         fi
-        previous="${install_dir}.previous"
-        rm -rf "${previous}"
-        if [ -e "${install_dir}" ]; then
-            mv "${install_dir}" "${previous}" || return
-        fi
-        mv "${staging}" "${install_dir}" || {
-            [ ! -e "${previous}" ] || mv "${previous}" "${install_dir}"
+        ln -sfn "${tree}" "${DSH_HOME}/dsh/current" || {
+            printf 'update_deepseek_harness: the current link could not be written; nothing recorded; the older trees are untouched.\n' >&2
             return 1
         }
-        staging=""
-    fi
-    # The previous tree stays on disk until the record is written: when the link, the wrapper or the profile install
-    # fails, it goes back under its name and current returns to its prior target, so a failed step leaves the
-    # previous install as it was. The wrapper carries the home expanded at write time as a single-quoted literal
-    # (every ' in it as '\''), so a $(...) or a " in the path is text when the wrapper runs, and bash -n refuses a
-    # wrapper that still does not parse: the harness runs under mise's node, nothing of it on PATH.
-    quoted_home="${quote}${DSH_HOME//${quote}/${quote}\\${quote}${quote}}${quote}"
-    if ! ln -sfn "${install_dir}" "${DSH_HOME}/dsh/current"; then
-        late_step="the current link"
-    elif ! printf '#!/bin/bash\nexec mise exec -- node %s/dsh/current/apps/cli/lib/bin.js "$@"\n' "${quoted_home}" > "${DSH_HOME}/bin/dsh"; then
-        late_step="the wrapper write"
-    elif ! bash -n "${DSH_HOME}/bin/dsh"; then
-        late_step="the wrapper parse"
-    elif ! chmod +x "${DSH_HOME}/bin/dsh"; then
-        late_step="the wrapper mode"
-    elif [ -z "${repair}" ] && ! (cd "${DSH_HOME}/profiles/thak" && mise exec -- pnpm install); then
-        late_step="the profile install"
-    fi
-    if [ -n "${late_step}" ]; then
-        if [ -n "${repair}" ]; then
-            printf 'update_deepseek_harness: %s failed; nothing recorded; the next make update retries.\n' "${late_step}" >&2
-            return 1
-        fi
-        # The new tree goes, a displaced same-path tree comes back, and current returns to its prior target when that
-        # is on disk; with no prior target to return to, the dangling link goes with the tree.
-        mv "${install_dir}" "${install_dir}.failed" || {
-            printf 'update_deepseek_harness: %s failed after the rename and the new tree at %s could not be moved aside; nothing recorded.\n' "${late_step}" "${install_dir}" >&2
-            return 1
-        }
-        rm -rf "${install_dir}.failed"
-        if [ -n "${previous}" ] && [ -e "${previous}" ] && ! mv "${previous}" "${install_dir}"; then
-            printf 'update_deepseek_harness: %s failed after the rename and the previous install could not be put back from %s; nothing recorded.\n' "${late_step}" "${previous}" >&2
-            return 1
-        fi
-        # A relative prior target (a hand-made link) is read from the link's own directory, as the link reads it.
-        if [ -z "${prior_target}" ]; then
-            rm -f "${DSH_HOME}/dsh/current"
-            printf 'update_deepseek_harness: %s failed after the rename; the new tree and the current link are removed; nothing recorded; the next make update retries.\n' "${late_step}" >&2
-        elif ! (cd "${DSH_HOME}/dsh" && [ -e "${prior_target}" ]); then
-            rm -f "${DSH_HOME}/dsh/current"
-            printf 'update_deepseek_harness: %s failed after the rename; the new tree is removed, and the prior target %s of the current link is not on disk, so the dangling link is removed too; nothing recorded.\n' "${late_step}" "${prior_target}" >&2
-        elif ln -sfn "${prior_target}" "${DSH_HOME}/dsh/current"; then
-            printf 'update_deepseek_harness: %s failed after the rename; the previous install is back at %s and on the current link; nothing recorded.\n' "${late_step}" "${prior_target}" >&2
-        else
-            printf 'update_deepseek_harness: %s failed after the rename and the current link could not be put back on %s; nothing recorded.\n' "${late_step}" "${prior_target}" >&2
-        fi
-        return 1
-    fi
-    if [ -n "${repair}" ]; then
-        printf 'DeepSeek harness %s is at %s; its current link and wrapper are rewritten.\n' "${DSH_PIN_TAG}" "${install_dir}"
+        printf 'DeepSeek harness %s installed into %s.\n' "${DSH_PIN_TAG}" "${tree}"
     else
-        printf 'DeepSeek harness %s installed into %s.\n' "${DSH_PIN_TAG}" "${install_dir}"
+        printf 'DeepSeek harness %s is at %s; its wrapper is rewritten.\n' "${DSH_PIN_TAG}" "${target}"
     fi
     # The download directory goes before the record, so the EXIT trap has nothing left to do on the happy path.
     [ -z "${download_dir}" ] || rm -rf "${download_dir}"
-    manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/${DSH_PIN_TAG}" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "tar xzf <archive> -C <staging> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "mv <staging> ${DSH_HOME}/dsh/${DSH_PIN_TAG}" "pnpm install in ${DSH_HOME}/profiles/thak"
-    [ -z "${previous}" ] || rm -rf "${previous}"
+    if ! manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh" "ln -sfn <tree> ${DSH_HOME}/dsh/current"; then
+        if [ -n "${repair}" ]; then
+            printf 'update_deepseek_harness: the record failed; nothing recorded; the next make update retries.\n' >&2
+            return 1
+        fi
+        # current returns to its prior target when that is a directory (a relative target is read from the link's own
+        # directory, as the link reads it); with none to return to, the link goes with the new tree, which the trap
+        # removes. The older trees are not touched, so a second failing run finds the same older tree.
+        if [ -n "${prior_target}" ] && (cd "${DSH_HOME}/dsh" && [ -d "${prior_target}" ]); then
+            if ln -sfn "${prior_target}" "${DSH_HOME}/dsh/current"; then
+                printf 'update_deepseek_harness: the record failed; current is back on %s and the new tree is removed; nothing recorded; the older trees are untouched.\n' "${prior_target}" >&2
+            else
+                printf 'update_deepseek_harness: the record failed and current could not be put back on %s; the new tree is removed; nothing recorded.\n' "${prior_target}" >&2
+            fi
+        else
+            rm -f "${DSH_HOME}/dsh/current"
+            printf 'update_deepseek_harness: the record failed; the new tree and the current link are removed; nothing recorded; the next make update retries.\n' >&2
+        fi
+        return 1
+    fi
+    tree=""
+    # Only now, with the record written, do the older trees go: every directory under dsh/ that is not the tree
+    # current names, whatever its layout (<tag>, <tag>.previous, <tag>.failed and .staging.* of the earlier layout,
+    # <tag>.XXXXXX of this one). A removal that fails is a WARN, and the next run prunes again.
+    for older in "${DSH_HOME}/dsh"/*/ "${DSH_HOME}/dsh"/.*/; do
+        older="${older%/}"
+        case ${older##*/} in
+        . | ..) continue ;;
+        esac
+        if [ ! -d "${older}" ] || [ -L "${older}" ] || [ "${older}" -ef "${DSH_HOME}/dsh/current" ]; then
+            continue
+        fi
+        rm -rf "${older}" || printf 'WARN: update_deepseek_harness: the older tree %s could not be removed; the next make update prunes again.\n' "${older}" >&2
+    done
 )
 
 #

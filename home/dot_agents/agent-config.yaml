@@ -961,6 +961,35 @@ claude:
         - ~/.local/state/omp-seats
       darwin_extra_allow_write:
         - ~/Library/Caches/mise
+      # Rendered as sandbox.filesystem.denyWrite, taking back from the hcom roots
+      # above the inputs an hcom store holds that the next seat launch runs
+      # outside any sandbox (regime-cutover U195). `hcom_store_roots` names which
+      # allowWrite root is a store itself (`store`: <root>/<name>) and which
+      # holds one store per slug (`parent`: <root>/*/<name>). Linux `denyWrite`
+      # accepts only a trailing `/**`, so there only the `dir` names render, as
+      # `<dir>/**`; a `file` name is denied on macOS alone (README "Claude Code
+      # sandbox", known limit).
+      hcom_store_roots:
+        ~/.local/state/hcom-regime: store
+        ~/.local/state/hcom: parent
+      # Twin of the store deny loop in scripts/orchestrator/hcom-seat
+      # (`for path in ...; do` over ${hcom_real}), the list hcom-seat denies its
+      # seats, in its order: validate-agent-assets.py HCOM_STORE_CONTROL_NAMES
+      # holds this list and that line equal, so neither moves alone (U195).
+      deny_write_under_hcom_stores:
+        config.toml: file
+        env: file
+        config.env: file
+        .tmp/launch: dir
+        scripts: dir
+        integrations: dir
+        shell_env.json: file
+      # Twin of hcom-seat's `deny_write=("${seats_real}/.sandbox")`: every
+      # program's seat srt settings and shims under the seats root, which the
+      # launch reads outside any sandbox (U195).
+      seats_root: ~/.local/state/omp-seats
+      deny_write_seat_sandboxes:
+        - "*/.sandbox"
       # Rendered as sandbox.filesystem.denyRead on every OS: the sandbox's
       # default read policy "still allows reading credential files" and the
       # Linux sandbox drops the glob Read rules above, while `denyRead` globs

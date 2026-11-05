@@ -586,6 +586,23 @@
       "/tmp/**/.env.*",
       "/private/tmp/**/.env",
       "/private/tmp/**/.env.*"
+    ],
+    "denyWrite": [
+      "~/.local/state/hcom-regime/.tmp/launch",
+      "~/.local/state/hcom-regime/config.env",
+      "~/.local/state/hcom-regime/config.toml",
+      "~/.local/state/hcom-regime/env",
+      "~/.local/state/hcom-regime/integrations",
+      "~/.local/state/hcom-regime/scripts",
+      "~/.local/state/hcom-regime/shell_env.json",
+      "~/.local/state/hcom/*/.tmp/launch",
+      "~/.local/state/hcom/*/config.env",
+      "~/.local/state/hcom/*/config.toml",
+      "~/.local/state/hcom/*/env",
+      "~/.local/state/hcom/*/integrations",
+      "~/.local/state/hcom/*/scripts",
+      "~/.local/state/hcom/*/shell_env.json",
+      "~/.local/state/omp-seats/*/.sandbox"
     ]
   },
   "credentials": {
@@ -668,6 +685,15 @@
       "~/**/.env.*",
       "/tmp/**/.env",
       "/tmp/**/.env.*"
+    ],
+    "denyWrite": [
+      "~/.local/state/hcom-regime/.tmp/launch/**",
+      "~/.local/state/hcom-regime/integrations/**",
+      "~/.local/state/hcom-regime/scripts/**",
+      "~/.local/state/hcom/*/.tmp/launch/**",
+      "~/.local/state/hcom/*/integrations/**",
+      "~/.local/state/hcom/*/scripts/**",
+      "~/.local/state/omp-seats/*/.sandbox/**"
     ]
   },
   "credentials": {

@@ -765,6 +765,66 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest["claude"]["sandbox"]["filesystem"] = {"extra_allow_write": ["~/.cache/uv"]}
         extended = self.module.render_claude_sandbox(manifest)
         self.assertEqual(["/root-a", "~/.cache/uv"], extended["filesystem"]["allowWrite"])
+        self.assertNotIn("denyWrite", extended["filesystem"], "no hcom root granted, so no denyWrite key")
+
+    def test_claude_sandbox_deny_write_renders_the_hcom_launch_inputs_per_os(self) -> None:
+        filesystem = {
+            "extra_allow_write": ["~/.local/state/hcom-regime", "~/.local/state/hcom", "~/.local/state/omp-seats"],
+            "hcom_store_roots": {"~/.local/state/hcom-regime": "store", "~/.local/state/hcom": "parent"},
+            "deny_write_under_hcom_stores": {"env": "file", "scripts": "dir", ".tmp/launch": "dir"},
+            "seats_root": "~/.local/state/omp-seats",
+            "deny_write_seat_sandboxes": ["*/.sandbox"],
+        }
+        manifest = {
+            "claude": {
+                "sandbox": {
+                    "enabled": True,
+                    "failIfUnavailable": True,
+                    "autoAllowBashIfSandboxed": True,
+                    "allowUnsandboxedCommands": False,
+                    "excludedCommands": [],
+                    "filesystem": filesystem,
+                    "network": {"allowedDomains": ["github.com"]},
+                }
+            },
+            "codex": {"sandbox_workspace_write": {"writable_roots": ["/root-a"]}},
+        }
+        # macOS: every name under the store, under each slug of the parent, and every seat sandbox; sorted and unique.
+        self.assertEqual(
+            [
+                "~/.local/state/hcom-regime/.tmp/launch",
+                "~/.local/state/hcom-regime/env",
+                "~/.local/state/hcom-regime/scripts",
+                "~/.local/state/hcom/*/.tmp/launch",
+                "~/.local/state/hcom/*/env",
+                "~/.local/state/hcom/*/scripts",
+                "~/.local/state/omp-seats/*/.sandbox",
+            ],
+            self.module.render_claude_sandbox(manifest)["filesystem"]["denyWrite"],
+        )
+        # Linux: the directories alone, each as <dir>/**; the file names stay behind the darwin branch (known limit).
+        self.assertEqual(
+            [
+                "~/.local/state/hcom-regime/.tmp/launch/**",
+                "~/.local/state/hcom-regime/scripts/**",
+                "~/.local/state/hcom/*/.tmp/launch/**",
+                "~/.local/state/hcom/*/scripts/**",
+                "~/.local/state/omp-seats/*/.sandbox/**",
+            ],
+            self.module.render_claude_sandbox(manifest, "linux")["filesystem"]["denyWrite"],
+        )
+        # A root allowWrite does not grant gets no deny, and with no hcom root the key is absent.
+        filesystem["extra_allow_write"] = ["~/.local/state/hcom"]
+        self.assertEqual(
+            ["~/.local/state/hcom/*/.tmp/launch", "~/.local/state/hcom/*/env", "~/.local/state/hcom/*/scripts"],
+            self.module.render_claude_sandbox(manifest)["filesystem"]["denyWrite"],
+        )
+        filesystem["extra_allow_write"] = []
+        self.assertNotIn("denyWrite", self.module.render_claude_sandbox(manifest)["filesystem"])
+        filesystem["deny_write_under_hcom_stores"] = {"env": "link"}
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.render_claude_sandbox(manifest)
+        self.assertIn("deny_write_under_hcom_stores values dir or file", stderr.getvalue())
 
     def test_claude_sandbox_renders_per_os_from_the_manifest(self) -> None:
         manifest = load_manifest_fixture(self.temp_dir)
@@ -860,6 +920,44 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 tmp = ["/tmp/**/.env", "/tmp/**/.env.*"]
                 darwin_tmp = ["/private/tmp/**/.env", "/private/tmp/**/.env.*"] if os_name == "darwin" else []
                 self.assertEqual(["~/**/.env", "~/**/.env.*", *tmp, *darwin_tmp], sandbox["filesystem"]["denyRead"])
+                # U195: the inputs the next seat launch runs unsandboxed, taken back from each hcom root, and every
+                # seat sandbox; the list hcom-seat denies its seats. Linux holds the directories alone, as <dir>/**.
+                names = ("config.toml", "env", "config.env", ".tmp/launch", "scripts", "integrations", "shell_env.json")
+                self.assertEqual(
+                    [
+                        "~/.local/state/hcom-regime/.tmp/launch",
+                        "~/.local/state/hcom-regime/config.env",
+                        "~/.local/state/hcom-regime/config.toml",
+                        "~/.local/state/hcom-regime/env",
+                        "~/.local/state/hcom-regime/integrations",
+                        "~/.local/state/hcom-regime/scripts",
+                        "~/.local/state/hcom-regime/shell_env.json",
+                        "~/.local/state/hcom/*/.tmp/launch",
+                        "~/.local/state/hcom/*/config.env",
+                        "~/.local/state/hcom/*/config.toml",
+                        "~/.local/state/hcom/*/env",
+                        "~/.local/state/hcom/*/integrations",
+                        "~/.local/state/hcom/*/scripts",
+                        "~/.local/state/hcom/*/shell_env.json",
+                        "~/.local/state/omp-seats/*/.sandbox",
+                    ]
+                    if os_name == "darwin"
+                    else [
+                        "~/.local/state/hcom-regime/.tmp/launch/**",
+                        "~/.local/state/hcom-regime/integrations/**",
+                        "~/.local/state/hcom-regime/scripts/**",
+                        "~/.local/state/hcom/*/.tmp/launch/**",
+                        "~/.local/state/hcom/*/integrations/**",
+                        "~/.local/state/hcom/*/scripts/**",
+                        "~/.local/state/omp-seats/*/.sandbox/**",
+                    ],
+                    sandbox["filesystem"]["denyWrite"],
+                )
+                # The manifest keeps hcom-seat's seven names in hcom-seat's order (chezmoi's fromYaml sorts keys, so
+                # the order is read from the YAML text).
+                manifest_text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+                block = manifest_text.split("deny_write_under_hcom_stores:\n", 1)[1].splitlines()[:7]
+                self.assertEqual(list(names), [line.strip().split(":")[0] for line in block])
                 deny = settings["permissions"]["deny"]
                 self.assertIn("Read(.env)", deny)
                 self.assertIn("Read(~/.ssh/**)", deny)

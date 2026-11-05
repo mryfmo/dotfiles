@@ -658,6 +658,98 @@ SANDBOX_WRITE_ROOTS = (
 )
 # mise's macOS cache directory; Linux keeps mise's cache under ~/.cache/mise, which is not listed.
 DARWIN_SANDBOX_WRITE_ROOTS = ("~/Library/Caches/mise",)
+# The inputs an hcom store holds that the next seat launch runs outside any sandbox (U195), in the order of the store
+# deny loop of scripts/orchestrator/hcom-seat (`for path in ...; do` over ${hcom_real}), which
+# validate_hcom_seat_store_denies holds equal to this tuple. The Claude Code sandbox takes them back from its hcom
+# write roots through `filesystem.denyWrite`: on macOS every name, on Linux only the directories as `<dir>/**`, since
+# Linux `denyWrite` accepts a trailing `/**` alone (README "Claude Code sandbox", known limit).
+HCOM_STORE_CONTROL_NAMES = (
+    "config.toml",
+    "env",
+    "config.env",
+    ".tmp/launch",
+    "scripts",
+    "integrations",
+    "shell_env.json",
+)
+HCOM_STORE_CONTROL_DIRECTORIES = (".tmp/launch", "scripts", "integrations")
+# Which allowlisted root is an hcom store (`<root>/<name>`) and which holds one store per slug (`<root>/*/<name>`).
+HCOM_STORE_ROOTS = {"~/.local/state/hcom-regime": "store", "~/.local/state/hcom": "parent"}
+# The seats root, whose `<program>/.sandbox` holds each seat's srt settings and shim, denied like hcom-seat's
+# `deny_write=("${seats_real}/.sandbox")`.
+SEATS_ROOT = "~/.local/state/omp-seats"
+SEAT_SANDBOX_DENY = "*/.sandbox"
+HCOM_SEAT_PATH = "scripts/orchestrator/hcom-seat"
+HCOM_SEAT_STORE_DENY_LOOP = re.compile(
+    r'^[ \t]*for path in (?P<names>[^;\n]*); do\n[ \t]*deny_write\+=\("\$\{hcom_real\}/\$\{path\}"\)', re.MULTILINE
+)
+HCOM_SEAT_SANDBOX_DENY = 'deny_write=("${seats_real}/.sandbox")'
+
+
+def expected_deny_write(allow_write: list[str], os_name: str) -> dict[str, set[str]]:
+    """The `denyWrite` entries each granted hcom root and the seats root must carry on `os_name`, keyed by root."""
+    expected: dict[str, set[str]] = {}
+    for root in allow_write:
+        kind = HCOM_STORE_ROOTS.get(root) if isinstance(root, str) else None
+        if kind is not None:
+            prefix = root if kind == "store" else f"{root}/*"
+            if os_name == "darwin":
+                expected[root] = {f"{prefix}/{name}" for name in HCOM_STORE_CONTROL_NAMES}
+            else:
+                expected[root] = {f"{prefix}/{name}/**" for name in HCOM_STORE_CONTROL_DIRECTORIES}
+        elif root == SEATS_ROOT:  # lint-comparisons: allow exact text of an allowlisted root
+            expected[root] = {f"{root}/{SEAT_SANDBOX_DENY}" + ("" if os_name == "darwin" else "/**")}
+    return expected
+
+
+def validate_claude_sandbox_deny_write(sandbox: dict[str, Any], label: str, os_name: str) -> None:
+    """Require `filesystem.denyWrite` to be exactly, sorted and unique, the deny set of every granted hcom root and of
+    the seats root for `os_name` (U195): each missing entry is named under its root, each extra entry is named."""
+    filesystem = sandbox.get("filesystem", {})
+    deny_write = filesystem.get("denyWrite", [])
+    if not isinstance(deny_write, list) or not all(isinstance(entry, str) for entry in deny_write):
+        fail(f"{label}.filesystem.denyWrite must be a list of paths: {deny_write!r}")
+    expected = expected_deny_write(filesystem.get("allowWrite", []), os_name)
+    wanted = sorted(set().union(*expected.values())) if expected else []
+    if deny_write == wanted:
+        return
+    actual = set(deny_write)
+    missing = {root: sorted(entries - actual) for root, entries in expected.items() if entries - actual}
+    extra = sorted(actual - set(wanted))
+    fail(
+        f"{label}.filesystem.denyWrite must hold exactly, sorted and once, the {os_name} deny set of each hcom root in "
+        f"allowWrite ({list(HCOM_STORE_CONTROL_NAMES)}, the list hcom-seat denies its seats; on linux the directories "
+        f"as <dir>/**) and {SEATS_ROOT}/{SEAT_SANDBOX_DENY}: missing={missing} extra={extra}"
+        + ("" if missing or extra else f" (out of order or repeated: {deny_write})")
+    )
+
+
+def validate_hcom_seat_store_denies() -> None:
+    """Require the store deny loop of hcom-seat to list exactly HCOM_STORE_CONTROL_NAMES in order and its `.sandbox`
+    deny to be present, so the Claude Code sandbox's `denyWrite` and the seats' deny list cannot drift (U195). A read
+    failure refuses: an unreadable lever is not an empty list."""
+    path = ROOT / HCOM_SEAT_PATH
+    try:
+        text = path.read_text()
+    except OSError as error:
+        fail(
+            f"{path} could not be read, so its store deny loop cannot be held equal to HCOM_STORE_CONTROL_NAMES: {error}"
+        )
+    loops = HCOM_SEAT_STORE_DENY_LOOP.findall(text)
+    if len(loops) != 1:
+        fail(
+            f"{path} must hold exactly one store deny loop (`for path in ...; do` over ${{hcom_real}}/${{path}}), "
+            f"found {len(loops)}"
+        )
+    names = tuple(loops[0].split())
+    if names != HCOM_STORE_CONTROL_NAMES:
+        fail(
+            f"{path} store deny loop lists {list(names)} but validate-agent-assets.py HCOM_STORE_CONTROL_NAMES is "
+            f"{list(HCOM_STORE_CONTROL_NAMES)}: the two lists must stay equal in order, since the Claude Code sandbox "
+            "denyWrite renders from the same names (regime-cutover U195)"
+        )
+    if HCOM_SEAT_SANDBOX_DENY not in text:
+        fail(f"{path} must deny every seat's sandbox directory with {HCOM_SEAT_SANDBOX_DENY}")
 
 
 def validate_write_roots(roots: Any, label: str, os_name: str = "linux") -> None:
@@ -754,6 +846,7 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     if missing:
         fail(f"{label}.filesystem.allowWrite must include every Codex writable root: missing={sorted(missing)}")
     validate_write_roots(allow_write, f"{label}.filesystem.allowWrite", os_name)
+    validate_claude_sandbox_deny_write(sandbox, label, os_name)
     deny_read = sandbox.get("filesystem", {}).get("denyRead")
     entries = deny_read if isinstance(deny_read, list) else []
     rooted = [entry for entry in entries if isinstance(entry, str) and entry.startswith(("/", "~/"))]
@@ -2587,6 +2680,7 @@ def main() -> None:
     validate_skill_audience(manifest)
     validate_manifest_home_paths()
     validate_claude_settings(manifest)
+    validate_hcom_seat_store_denies()
     validate_omp_policies(manifest)
     validate_repo_claude_settings_portable()
     validate_compactiondb_project_copy()

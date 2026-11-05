@@ -597,7 +597,17 @@ Bash calls may write only the working directory, the session `$TMPDIR`, and
 followed by `claude.sandbox.filesystem.extra_allow_write`: the uv cache
 (`~/.cache/uv`, so `uv run` targets such as `make unit-test` work from
 sandboxed Bash), the hcom stores and the omp seat worktrees, plus mise's cache
-on macOS. Every write root (Claude `allowWrite`, the Codex `writable_roots` it
+on macOS. Beside `allowWrite`, `sandbox.filesystem.denyWrite` takes back from
+those roots the inputs the next seat launch runs outside any sandbox: under
+`~/.local/state/hcom-regime` and under every `~/.local/state/hcom/<slug>` the
+names `config.toml`, `env`, `config.env`, `.tmp/launch`, `scripts`,
+`integrations` and `shell_env.json`, and every seat sandbox directory
+`~/.local/state/omp-seats/*/.sandbox`. The source list is
+`claude.sandbox.filesystem.deny_write_under_hcom_stores`, the twin of the list
+`hcom-seat` denies its seats; `validate-agent-assets.py` holds the rendered
+`denyWrite` equal to that set for each granted root and holds `hcom-seat`'s
+loop equal to the same names in the same order, so neither list moves alone
+(regime-cutover U195). Every write root (Claude `allowWrite`, the Codex `writable_roots` it
 shares, Claude `additionalDirectories`) must be byte-identical to an entry of
 the exact allowlist `SANDBOX_WRITE_ROOTS` in `validate-agent-assets.py`
 (`~/.cache/uv`, `~/.local/state/hcom-regime`, `~/.local/state/hcom`,
@@ -715,7 +725,13 @@ Linux": the Linux sandbox drops those globs when it builds its own lists
 ("Those wildcards don't work for sandboxed commands"), while the Read and Edit
 tools keep applying them. `denyRead` covers sandboxed reads there; a sandboxed
 write to a `.env*` file inside the working directory is not blocked on Linux,
-because Linux `denyWrite` accepts only a trailing `/**` (known limit).
+because Linux `denyWrite` accepts only a trailing `/**` (known limit). For
+the same reason the Linux `denyWrite` list holds only the directories of the
+hcom store set (`.tmp/launch`, `scripts`, `integrations`, each as `<dir>/**`)
+and `~/.local/state/omp-seats/*/.sandbox/**`; the file names (`config.toml`,
+`env`, `config.env`, `shell_env.json`) are denied on macOS alone, and the
+Linux forms are rendered from the documented rule, not measured on a Linux
+host (U195).
 `validate-agent-assets.py` refuses any other Read/Edit rule that ends in a
 glob, and CI's ubuntu-24.04 leg runs `claude doctor` on the rendered settings
 to hold that list.

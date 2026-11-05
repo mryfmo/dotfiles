@@ -674,7 +674,12 @@ class DeepseekHarnessTest(unittest.TestCase):
     is one transaction. The tree is built whole under dsh/<tag>.<suffix>, the profile install runs before anything the
     host runs changes, the wrapper is replaced by a rename, current is pointed at the new tree by one link call, the
     record is written and only then are the older trees pruned; every producer (two pwd -P, the receipt as a JSON
-    object and its row, three jq, shasum, two readlink, three mktemp) has an injection that refuses the step."""
+    object and its row, three jq, shasum, two readlink, three mktemp) has an injection that refuses the step. Round 2
+    (U178b): current is linked before the wrapper is renamed, a failed link or rename after it puts current back on
+    its prior target, a failed restore keeps the tree current names, the download directory goes before the profile
+    install, bin/dsh must be a regular file and the receipt exactly one object, bin/ is made in repair mode too, and
+    the prune (dsh_prune_older) removes only the step's own name shapes, never the tree current resolves to or a
+    directory above it, on the already-installed path as well."""
 
     # The rendered pin; a tree without the constant (the red proof against origin/main) gets a placeholder so the
     # module still imports and the tests themselves fail on the absent step.
@@ -1133,8 +1138,9 @@ class DeepseekHarnessTest(unittest.TestCase):
             payload, digest = self.archive(home)
             self.assertEqual(0, self.run_step(home, payload, digest, dsh_home=dsh_home).returncode)
             install = self.installed_tree(dsh_home)
-            # The receipt says the pin, but current points at a directory whose package.json says 0.0.0.
-            stale = dsh_home / "dsh/stale"
+            # The receipt says the pin, but current points at a directory whose package.json says 0.0.0. The directory
+            # carries an older tag's name, one of the shapes the prune removes.
+            stale = dsh_home / "dsh/dsh-v0.0.0"
             install.rename(stale)
             (stale / "package.json").write_text(json.dumps({"name": "deepseek-harness", "version": "0.0.0"}) + "\n")
             os.unlink(dsh_home / "dsh/current")
@@ -1417,14 +1423,21 @@ class DeepseekHarnessTest(unittest.TestCase):
             self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is removed")
 
     def test_a_current_link_that_cannot_be_written_removes_the_new_tree_and_records_nothing(self):
+        # U178b: the rename over bin/dsh follows the link, so a failed link leaves the live wrapper byte-identical and
+        # the trap removes the wrapper temporary with the new tree.
         with tempfile.TemporaryDirectory() as directory:
             home, dsh_home = self.opted_in_home(directory)
             payload, digest = self.archive(home)
+            wrapper, text = self.own_wrapper(dsh_home)
             result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude="ln() { return 1; }")
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn(
-                "the current link could not be written; nothing recorded; the older trees are untouched", result.stderr
+                "the current link could not be written; nothing recorded; the live wrapper and the older trees are"
+                " untouched",
+                result.stderr,
             )
+            self.assertEqual(text, wrapper.read_text(), "the live wrapper is byte-identical")
+            self.assertEqual(["dsh"], [path.name for path in (dsh_home / "bin").iterdir()], "no .dsh.* left")
             self.assertEqual([], list((dsh_home / "dsh").iterdir()), "the new tree is removed, no current link")
             self.assertFalse((home / ".agents").exists(), "nothing recorded")
             self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is removed")
@@ -1481,6 +1494,355 @@ class DeepseekHarnessTest(unittest.TestCase):
             self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is removed")
             self.assertEqual([], list((dsh_home / "dsh").iterdir()), "no tree, no current link")
             self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+
+    def test_a_wrapper_rename_that_fails_after_the_link_puts_current_back_and_keeps_the_live_wrapper(self):
+        # Round-1 finding f3 s4 (Codex thread 4475961648): the wrapper was renamed over bin/dsh before current was
+        # linked, so a failure between the two left the live launcher changed. The rename now follows the link and its
+        # failure is undone like a failed record. mv fails on the wrapper rename alone (its last argument is bin/dsh).
+        prelude = 'mv() { case "${@: -1}" in */bin/dsh) return 1 ;; esac; command mv "$@"; }'
+        for case in ("over a prior install", "fresh"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                payload, digest = self.archive(home)
+                wrapper, text = self.own_wrapper(dsh_home)
+                if case == "over a prior install":
+                    install, previous = self.previous_install(dsh_home)
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                if case == "over a prior install":
+                    self.assertIn(
+                        f"the wrapper rename failed after the link; current is back on {install} and the new tree is"
+                        " removed; the live wrapper is unchanged; nothing recorded",
+                        result.stderr,
+                    )
+                    self.assert_previous_install_untouched(dsh_home, install, previous)
+                else:
+                    self.assertIn(
+                        "the wrapper rename failed after the link; the new tree and the current link are removed; the"
+                        " live wrapper is unchanged; nothing recorded",
+                        result.stderr,
+                    )
+                    self.assertEqual([], list((dsh_home / "dsh").iterdir()), "no tree, no current link")
+                self.assertEqual(text, wrapper.read_text(), "the live wrapper is byte-identical")
+                self.assertEqual(["dsh"], [path.name for path in (dsh_home / "bin").iterdir()], "no .dsh.* left")
+                self.assertFalse((home / ".agents").exists(), "nothing recorded")
+                self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is removed")
+
+    def test_a_current_link_that_unlinks_current_and_fails_puts_it_back_on_the_prior_tree_or_names_the_absence(self):
+        # Round-1 finding f2 s5: ln -sfn unlinks current before it links, so a failure could leave no current and the
+        # step returned without a restore. The stub removes its last argument (the link) and fails; in the first case
+        # its second call, the restore, behaves, in the second it fails the same way.
+        unlink_and_fail = 'command rm -f "${@: -1}"; return 1'
+        for case in ("the restore succeeds", "the restore fails too"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                payload, digest = self.archive(home)
+                install, previous = self.previous_install(dsh_home)
+                wrapper, text = self.own_wrapper(dsh_home)
+                if case == "the restore succeeds":
+                    prelude = self.failing_call("ln", 1, unlink_and_fail)
+                else:
+                    prelude = f"ln() {{ {unlink_and_fail}; }}"
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                if case == "the restore succeeds":
+                    self.assertIn(
+                        f"the current link could not be written; current is back on {install} and the new tree is"
+                        " removed; nothing recorded",
+                        result.stderr,
+                    )
+                    self.assertEqual("2", (home / "ln-calls").read_text().strip(), "the restore is one ln call")
+                    self.assert_previous_install_untouched(dsh_home, install, previous)
+                else:
+                    self.assertIn(
+                        f"the current link could not be written; current is absent; the prior tree {install} is on"
+                        " disk under dsh/ and the next make update reinstalls",
+                        result.stderr,
+                    )
+                    self.assertFalse((dsh_home / "dsh/current").is_symlink(), "current is absent")
+                    self.assertFalse((dsh_home / "dsh/current").exists())
+                    self.assertEqual(previous, (install / "package.json").read_text(), "the prior tree is on disk")
+                    self.assertEqual([self.TAG], [path.name for path in (dsh_home / "dsh").iterdir()])
+                self.assertEqual(text, wrapper.read_text(), "the live wrapper is byte-identical")
+                self.assertEqual(["dsh"], [path.name for path in (dsh_home / "bin").iterdir()], "no .dsh.* left")
+                self.assertFalse((home / ".agents").exists(), "nothing recorded")
+                self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is removed")
+
+    def test_a_failed_record_whose_restore_fails_keeps_the_new_tree_current_names(self):
+        # Round-1 finding f2 s5: when the restore after a failed record failed, the EXIT trap still removed the tree
+        # current names, leaving the host a dangling launcher. The second ln call is the restore.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            install, previous = self.previous_install(dsh_home)
+            prelude = self.failing_call("ln", 2, "return 1")
+            result = self.run_step(
+                home, payload, digest, dsh_home=dsh_home, manifest_record="return 1", prelude=prelude
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            tree = self.installed_tree(dsh_home)
+            self.assertIn(
+                f"the record failed and current could not be put back on {install}; current still names the new tree"
+                f" {tree}, which is kept; nothing recorded; the next make update reinstalls",
+                result.stderr,
+            )
+            self.assertTrue((tree / "apps/cli/lib/bin.js").is_file(), "the new tree is whole")
+            self.assertEqual(previous, (install / "package.json").read_text(), "the prior tree is as it was")
+            self.assertEqual(
+                sorted(["current", self.TAG, tree.name]), sorted(path.name for path in (dsh_home / "dsh").iterdir())
+            )
+            self.assertFalse((home / ".agents").exists(), "nothing recorded")
+            self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is removed")
+
+    def test_a_download_directory_that_cannot_be_removed_is_a_warn_and_the_step_still_publishes_and_records(self):
+        # Round-1 finding f2 s5: the download directory went after publication and its rm's status ended the subshell
+        # under set -e (exit 77, no record, no rollback). It now goes right after the build, before the profile
+        # install, and its removal never changes the step's flow.
+        with self.subTest(case="rm fails on the download directory"), tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            prelude = 'rm() { case "${@: -1}" in "$TMPDIR"/update-agent-assets.*) return 77 ;; esac; command rm "$@"; }'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            warnings = [line for line in result.stderr.splitlines() if line.startswith("WARN")]
+            self.assertEqual(1, len(warnings), result.stderr)
+            self.assertIn(
+                "the download directory " + str(home / "tmp/update-agent-assets."),
+                warnings[0],
+            )
+            self.assertIn(
+                "could not be removed; it holds only the verified archive and the next make update makes a new one",
+                warnings[0],
+            )
+            tree = self.installed_tree(dsh_home)
+            self.assertIn(f"DeepSeek harness {self.TAG} installed into {tree}.", result.stdout)
+            self.assertTrue(os.access(dsh_home / "bin/dsh", os.X_OK), "the wrapper is live")
+            self.assertEqual(self.BUILD_CALLS, [call for call in self.calls(home) if call.startswith("mise ")])
+            manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+            self.assertEqual(self.TAG, manifest["steps"]["update_deepseek_harness"]["source_version"])
+            self.assertEqual(1, len(list((home / "tmp").iterdir())), "the directory the WARN names is left")
+        with (
+            self.subTest(case="the directory is gone before the profile install"),
+            tempfile.TemporaryDirectory() as directory,
+        ):
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            # The mise stub lists the temporary directory at the profile install, the first call after the build.
+            listing = 'case "$*" in "exec -- pnpm install") ls -A "$TMPDIR" > "$HOME/listing-at-profile-install" ;; esac; return 0'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, mise=listing)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual("", (home / "listing-at-profile-install").read_text(), "no download directory by then")
+            self.assertEqual([], [line for line in result.stderr.splitlines() if line.startswith("WARN")])
+            self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is removed")
+            manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+            self.assertEqual(self.TAG, manifest["steps"]["update_deepseek_harness"]["source_version"])
+
+    def test_a_bin_dsh_that_is_not_a_regular_file_is_refused_before_any_download(self):
+        # Round-1 finding f2 s5: mv -f onto a directory at bin/dsh put the wrapper inside it and the step recorded an
+        # install without a launcher; a symlink there would be replaced by the rename. Both shapes are refused as a
+        # current that is a real directory is.
+        for case in ("a directory", "a symlink to a file"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                payload, digest = self.archive(home)
+                launcher = dsh_home / "bin/dsh"
+                launcher.parent.mkdir()
+                if case == "a directory":
+                    launcher.mkdir()
+                    (launcher / "keep").write_text("the operator's directory\n")
+                else:
+                    elsewhere = home / "own-launcher"
+                    elsewhere.write_text("#!/bin/bash\necho the operator launcher\n")
+                    elsewhere.chmod(0o755)
+                    os.symlink(elsewhere, launcher)
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(
+                    f"update_deepseek_harness: {launcher} is not a regular file; the step refuses to replace it (move"
+                    " it aside and rerun make update); nothing installed, nothing recorded",
+                    result.stderr,
+                )
+                self.assertEqual([], self.calls(home), "no download, no mise call")
+                self.assertFalse((dsh_home / "dsh").exists(), "nothing unpacked, no current link")
+                self.assertFalse((home / ".agents").exists(), "nothing recorded")
+                self.assertEqual(["dsh"], [path.name for path in launcher.parent.iterdir()], "no .dsh.* left")
+                if case == "a directory":
+                    self.assertTrue(launcher.is_dir() and not launcher.is_symlink(), "bin/dsh is still that directory")
+                    self.assertEqual("the operator's directory\n", (launcher / "keep").read_text())
+                else:
+                    self.assertTrue(launcher.is_symlink(), "bin/dsh is still the symlink")
+                    self.assertEqual(str(elsewhere), os.readlink(launcher))
+                    self.assertEqual("#!/bin/bash\necho the operator launcher\n", elsewhere.read_text())
+
+    def test_a_valid_install_whose_bin_directory_is_gone_gets_its_wrapper_back_without_a_download(self):
+        # Round-1 finding f2 s4: the repair branch made no bin/ before the wrapper mktemp, so a valid install whose
+        # bin/ was removed could never get its wrapper back.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            self.assertEqual(0, self.run_step(home, payload, digest, dsh_home=dsh_home).returncode)
+            install = self.installed_tree(dsh_home)
+            wrapper = dsh_home / "bin/dsh"
+            expected = wrapper.read_text()
+            calls = self.calls(home)
+            wrapper.unlink()
+            wrapper.parent.rmdir()
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"DeepSeek harness {self.TAG} is at {install}; its wrapper is rewritten", result.stdout)
+            self.assertTrue(os.access(wrapper, os.X_OK), "the wrapper is back")
+            self.assertEqual(expected, wrapper.read_text())
+            self.assertEqual(["dsh"], [path.name for path in (dsh_home / "bin").iterdir()], "no wrapper temporary")
+            self.assertEqual(calls, self.calls(home), "no curl call, no mise call")
+            self.assertEqual(install, self.installed_tree(dsh_home), "current still names the same tree")
+            manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+            self.assertEqual(self.TAG, manifest["steps"]["update_deepseek_harness"]["source_version"])
+
+    def test_a_receipt_of_two_objects_refuses_the_step_before_any_download_and_leaves_the_file_as_it_is(self):
+        # Round-1 finding f2 s4: jq -e judged each document of the file on its own, so two objects passed as one and
+        # the step installed over a receipt no JSON reader accepts.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            receipt = home / ".agents/.installed-manifest.json"
+            receipt.parent.mkdir(parents=True)
+            receipt.write_text("{}\n{}\n")
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                "update_deepseek_harness: the installed-manifest receipt could not be read as a JSON object; step refused",
+                result.stderr,
+            )
+            self.assertEqual([], self.calls(home), "no download, no mise call")
+            self.assertFalse((dsh_home / "dsh").exists(), "nothing unpacked")
+            self.assert_nothing_installed_or_recorded(home, dsh_home, "{}\n{}\n")
+
+    def nested_install(self, home: Path, dsh_home: Path, container: str) -> tuple[Path, str]:
+        """A hand-made layout: a good tree at dsh/<container>/tree, current a relative link to it, the receipt at the
+        pin; the text of the tree's package.json is returned so a test can tell it was not touched."""
+        tree = dsh_home / "dsh" / container / "tree"
+        (tree / "apps/cli/lib").mkdir(parents=True)
+        text = json.dumps({"name": "deepseek-harness", "version": self.TAG.removeprefix("dsh-v")}) + "\n"
+        (tree / "package.json").write_text(text)
+        (tree / "apps/cli/lib/bin.js").write_text("// hand-placed cli\n")
+        os.symlink(f"{container}/tree", dsh_home / "dsh/current")
+        self.receipt(home, self.TAG)
+        return tree, text
+
+    def test_a_hand_made_current_below_another_directory_keeps_that_directory_whatever_its_name(self):
+        # Round-1 finding f2 s6: the prune protected only the inode current names, so a current -> dsh/nested/tree
+        # lost nested and the active tree. The prune now reads the resolved target and the step's own name shapes:
+        # neither a name of its own nor a tag-shaped directory above the active tree goes, on the already-installed
+        # path (the wrapper present) and after the repair's record (the wrapper absent).
+        for container, wrapper_present in (("nested", True), ("nested", False), (None, True), (None, False)):
+            container = container or self.TAG
+            with (
+                self.subTest(container=container, wrapper_present=wrapper_present),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                home, dsh_home = self.opted_in_home(directory)
+                payload, digest = self.archive(home)
+                tree, text = self.nested_install(home, dsh_home, container)
+                if wrapper_present:
+                    self.own_wrapper(dsh_home)
+                else:
+                    # bin/ stays so the repair's one host change is the wrapper, not the directory.
+                    (dsh_home / "bin").mkdir()
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                if wrapper_present:
+                    self.assertIn(f"DeepSeek harness {self.TAG} is already installed", result.stdout)
+                else:
+                    self.assertIn(f"DeepSeek harness {self.TAG} is at {tree}; its wrapper is rewritten", result.stdout)
+                self.assertEqual([], self.calls(home), "no download, no mise call")
+                self.assertEqual([], [line for line in result.stderr.splitlines() if line.startswith("WARN")])
+                self.assertEqual(f"{container}/tree", os.readlink(dsh_home / "dsh/current"), "current as it was")
+                self.assertTrue((tree / "package.json").is_file(), "the active tree is still on disk")
+                self.assertEqual(text, (tree / "package.json").read_text(), "the active tree is as it was")
+                self.assertTrue((tree / "apps/cli/lib/bin.js").is_file())
+                self.assertEqual(["current", container], sorted(path.name for path in (dsh_home / "dsh").iterdir()))
+                self.assertTrue(os.access(dsh_home / "bin/dsh", os.X_OK), "the wrapper is live")
+                manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+                self.assertEqual(self.TAG, manifest["steps"]["update_deepseek_harness"]["source_version"])
+
+    def test_the_prune_after_the_record_removes_only_the_names_the_step_makes(self):
+        # Round-1 finding f2 s6: every directory under dsh/ but the one current named went. Only the two shapes the
+        # step or its earlier layout made go now; any other name is the operator's and stays.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            for name in ("dsh-v0.1.0", ".staging.abc123", "keep-me"):
+                (dsh_home / "dsh" / name).mkdir(parents=True)
+                (dsh_home / "dsh" / name / "notes").write_text(f"{name}\n")
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            tree = self.installed_tree(dsh_home)
+            self.assertEqual(
+                sorted(["current", "keep-me", tree.name]), sorted(path.name for path in (dsh_home / "dsh").iterdir())
+            )
+            self.assertEqual("keep-me\n", (dsh_home / "dsh/keep-me/notes").read_text(), "keep-me is as it was")
+            self.assertEqual([], [line for line in result.stderr.splitlines() if line.startswith("WARN")])
+            manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+            self.assertEqual(self.TAG, manifest["steps"]["update_deepseek_harness"]["source_version"])
+
+    def test_a_prune_that_fails_once_warns_and_the_next_already_installed_run_prunes(self):
+        # Round-1 finding f2 s2: after a prune failure the next run returned through the already-installed path
+        # before any prune, so the WARN's promised retry never came. rm fails on the prior tree alone.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            install, previous = self.previous_install(dsh_home)
+            prelude = f'rm() {{ case "${{@: -1}}" in */dsh/{self.TAG}) return 1 ;; esac; command rm "$@"; }}'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            tree = self.installed_tree(dsh_home)
+            warnings = [line for line in result.stderr.splitlines() if line.startswith("WARN")]
+            retry = f"the older tree {install} could not be removed; the next make update prunes again."
+            self.assertEqual([f"WARN: update_deepseek_harness: {retry}"], warnings)
+            self.assertEqual(
+                sorted(["current", self.TAG, tree.name]), sorted(path.name for path in (dsh_home / "dsh").iterdir())
+            )
+            self.assertEqual(previous, (install / "package.json").read_text(), "the prior tree is as it was")
+            manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+            self.assertEqual(self.TAG, manifest["steps"]["update_deepseek_harness"]["source_version"])
+            calls = self.calls(home)
+            again = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, again.returncode, again.stdout + again.stderr)
+            self.assertIn(f"DeepSeek harness {self.TAG} is already installed", again.stdout)
+            self.assertEqual([], [line for line in again.stderr.splitlines() if line.startswith("WARN")])
+            self.assertEqual(calls, self.calls(home), "no download, no mise call")
+            self.assertEqual(["current", tree.name], sorted(path.name for path in (dsh_home / "dsh").iterdir()))
+            self.assertEqual(tree, self.installed_tree(dsh_home), "current still names the same tree")
+
+    def test_a_valid_u172_layout_at_the_pin_is_already_installed_and_untouched(self):
+        # What U172 left on an opted-in host: the receipt at the pin, the tree at dsh/<tag> itself with the pin's
+        # version and its entrypoint, current on it, an executable wrapper. The already-installed path leaves every
+        # path as it is; the layout changes only at a reinstall or an upgrade.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            install = dsh_home / "dsh" / self.TAG
+            (install / "apps/cli/lib").mkdir(parents=True)
+            package = json.dumps({"name": "deepseek-harness", "version": self.TAG.removeprefix("dsh-v")}) + "\n"
+            (install / "package.json").write_text(package)
+            (install / "apps/cli/lib/bin.js").write_text("// the U172 cli\n")
+            os.symlink(install, dsh_home / "dsh/current")
+            wrapper, text = self.own_wrapper(dsh_home)
+            _, receipt = self.receipt(home, self.TAG)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"DeepSeek harness {self.TAG} is already installed", result.stdout)
+            self.assertEqual([], [line for line in result.stderr.splitlines() if line.startswith("WARN")])
+            self.assertEqual([], self.calls(home), "no curl call, no mise call")
+            self.assertEqual(str(install), os.readlink(dsh_home / "dsh/current"), "current as it was")
+            self.assertEqual(package, (install / "package.json").read_text(), "the tree as it was")
+            self.assertEqual("// the U172 cli\n", (install / "apps/cli/lib/bin.js").read_text())
+            self.assertEqual(["current", self.TAG], sorted(path.name for path in (dsh_home / "dsh").iterdir()))
+            self.assertEqual(text, wrapper.read_text(), "the wrapper as it was")
+            self.assertTrue(os.access(wrapper, os.X_OK))
+            self.assertEqual(["dsh"], [path.name for path in (dsh_home / "bin").iterdir()])
+            self.assertEqual(receipt, (home / ".agents/.installed-manifest.json").read_text(), "the receipt as it was")
+            self.assertEqual([], list((home / "tmp").iterdir()), "no download directory")
 
 
 class ProducerFailureTest(unittest.TestCase):

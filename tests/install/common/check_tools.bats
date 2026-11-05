@@ -159,7 +159,7 @@ function seat_login_home() {
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins; echo \"failures=\${required_failures} warnings=\${optional_warnings}\""
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"found:   seat login audit openai-siwc: registered (host urn:uuid:11111111-1111-4111-8111-111111111111, client oaiapp_fake), agent.db mtime 20"* ]]
-    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: login present (credentials file 600, mtime 20"* ]]
+    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: host login only (credentials file 600, mtime 20"* ]]
     [[ "${output}" == *"failures=0 warnings=0"* ]]
 }
 

@@ -2394,6 +2394,11 @@ class DispositionDriftTest(unittest.TestCase):
 
 GIT_WRAPPER = """#!/usr/bin/env python3
 import os, subprocess, sys
+# FAKE_GIT_LOG=<path>: every argv appended, one line each, so a test can assert which git commands ran (U192: no stash).
+argv_log = os.environ.get("FAKE_GIT_LOG")
+if argv_log:
+    with open(argv_log, "a") as handle:
+        handle.write(" ".join(sys.argv[1:]) + "\\n")
 if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in sys.argv[1:]:
     print("fake-git: failing as asked", file=sys.stderr)
     sys.exit(int(os.environ.get("FAKE_GIT_FAIL_STATUS", "1")))  # 1 is also `git config`'s status for an unset key
@@ -2436,33 +2441,39 @@ sys.exit(run.returncode)
 """
 
 
+def records_fixture(test):
+    """A scratch origin, a checkout with a store and main's validator, and a `git` wrapper mapping the https URL onto
+    the bare origin: the fixture of RecordsSyncTest, shared with RecordsFfTest (U192)."""
+    wrapper = test.root / "bin/git"
+    wrapper.write_text(GIT_WRAPPER)
+    wrapper.chmod(0o755)
+    test.env["REAL_GIT"] = shutil.which("git", path=os.environ["PATH"])
+    test.origin = test.root / "origin.git"
+    git_init(test.origin, "--bare", env=test.env)
+    (test.repo / "scripts").mkdir()
+    shutil.copy2(ROOT / "scripts/validate-agent-assets.py", test.repo / "scripts/validate-agent-assets.py")
+    test.records = test.repo / ".orchestration/orchestrate/prog"
+    test.records.mkdir(parents=True)
+    (test.records / "units.tsv").write_text("id\ttrack\nU1\tseats\n")
+    (test.records / "decisions.tsv").write_text("ts\tphase\n")
+    (test.repo / "README").write_text("scratch\n")
+    test.git("add", "-A")
+    test.git("commit", "-q", "-m", "base")
+    # The lever removes every inherited GIT_* variable, so the user config it reads is HOME's own .gitconfig.
+    user_config = test.root / "home/.gitconfig"
+    shutil.copy2(test.env["GIT_CONFIG_GLOBAL"], user_config)
+    test.env["GIT_CONFIG_GLOBAL"] = str(user_config)
+    test.url = "https://github.com/acme/widgets.git"
+    test.env["FAKE_GIT_HTTPS_ORIGIN"] = f"{test.url}={test.origin}"
+    test.git("remote", "add", "origin", test.url)
+    test.git("push", "-q", "origin", "main")
+    test.git("fetch", "-q", "origin")
+
+
 class RecordsSyncTest(PrLeverTestCase):
     def setUp(self):
         super().setUp()
-        wrapper = self.root / "bin/git"
-        wrapper.write_text(GIT_WRAPPER)
-        wrapper.chmod(0o755)
-        self.env["REAL_GIT"] = shutil.which("git", path=os.environ["PATH"])
-        self.origin = self.root / "origin.git"
-        git_init(self.origin, "--bare", env=self.env)
-        (self.repo / "scripts").mkdir()
-        shutil.copy2(ROOT / "scripts/validate-agent-assets.py", self.repo / "scripts/validate-agent-assets.py")
-        self.records = self.repo / ".orchestration/orchestrate/prog"
-        self.records.mkdir(parents=True)
-        (self.records / "units.tsv").write_text("id\ttrack\nU1\tseats\n")
-        (self.records / "decisions.tsv").write_text("ts\tphase\n")
-        (self.repo / "README").write_text("scratch\n")
-        self.git("add", "-A")
-        self.git("commit", "-q", "-m", "base")
-        # The lever removes every inherited GIT_* variable, so the user config it reads is HOME's own .gitconfig.
-        user_config = self.root / "home/.gitconfig"
-        shutil.copy2(self.env["GIT_CONFIG_GLOBAL"], user_config)
-        self.env["GIT_CONFIG_GLOBAL"] = str(user_config)
-        self.url = "https://github.com/acme/widgets.git"
-        self.env["FAKE_GIT_HTTPS_ORIGIN"] = f"{self.url}={self.origin}"
-        self.git("remote", "add", "origin", self.url)
-        self.git("push", "-q", "origin", "main")
-        self.git("fetch", "-q", "origin")
+        records_fixture(self)
 
     def github(self):
         self.answer(
@@ -3287,6 +3298,244 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assert_refused(run, "holds a control character")
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])
+
+
+LEDGER_HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
+DECISIONS_HEADER = "ts\tphase\tdecision\twhy\tevidence\tresult\n"
+UNITS_HEADER = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote\n"
+PLANTED = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+STORE = ".orchestration/orchestrate/prog"
+
+
+def ledger_row(n, evidence="note"):
+    return f"2026-11-01T00:0{n}:00Z\tU1\t-\t-\tmeasured\tworker\t{evidence} {n}\n"
+
+
+def units_row(note):
+    return f"U1\tlevers\tdone\t\t\t\tbriefs/U1-x.md\t{note}\n"
+
+
+class RecordsFfTest(PrLeverTestCase):
+    """U192: `records-sync.sh --ff` fast-forwards the main checkout past a merged sync with no stash. The store is
+    committed and pushed; a sync commit on origin masks the token of the ledger's fourth row and of the brief, edits
+    the units note, appends a decisions row and adds a verdict file; the checkout meanwhile appended two ledger rows,
+    edited the units note, wrote the token into the brief and holds the verdict file untracked and identical."""
+
+    def setUp(self):
+        super().setUp()
+        records_fixture(self)
+        self.env["FAKE_GIT_LOG"] = str(self.root / "git-argv.log")
+        tools = self.repo / "scripts/orchestrator"
+        tools.mkdir()
+        for name in ("ledger.py", "rounds-check.py"):
+            shutil.copy2(ROOT / "scripts/orchestrator" / name, tools / name)
+        self.ledger = self.records / "ledger.tsv"
+        self.units = self.records / "units.tsv"
+        self.decisions = self.records / "decisions.tsv"
+        self.brief = self.records / "briefs/U1-x.md"
+        self.verdict = self.records / "verdicts/U1-aaaa.md"
+        self.brief.parent.mkdir()
+        self.ledger.write_text(
+            LEDGER_HEADER + "".join(ledger_row(n) for n in (1, 2, 3)) + ledger_row(4, f'token = "{PLANTED}"')
+        )
+        self.decisions.write_text(DECISIONS_HEADER + "2026-11-01T00:00:00Z\tframe\tstart\twhy\t-\t-\n")
+        self.units.write_text(UNITS_HEADER + units_row("first"))
+        self.brief.write_text("# U1\n")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "store")
+        self.git("push", "-q", "origin", "main")
+        self.base = self.git("rev-parse", "HEAD")
+        self.before = {}
+
+    def masked(self, text):
+        """TEXT after main's masker: the bytes a records sync publishes for it."""
+        path = self.root / "mask-input"
+        path.write_text(text)
+        subprocess.run(
+            ["uv", "run", "--no-project", "python", "-I", str(self.repo / "scripts/validate-agent-assets.py")]
+            + ["--mask-secrets", str(path)],
+            check=True,
+            capture_output=True,
+            timeout=120,
+        )
+        return path.read_text()
+
+    def sync_on_origin(self, readme=False, masked_verdict=False, new_unit=False):
+        """The merged sync on origin's main; returns its sha."""
+        other = self.root / "other"
+        git_clone(self.origin, other, env=self.env)
+        store = other / STORE
+        (store / "ledger.tsv").write_text(self.masked(self.ledger.read_text()))
+        (store / "units.tsv").write_text(
+            UNITS_HEADER + units_row("first (synced)") + ("U2\tlevers\tplanned\t\t\t\t\t\n" if new_unit else "")
+        )
+        with (store / "decisions.tsv").open("a") as decisions:
+            decisions.write("2026-11-01T00:01:00Z\trecords\tsync 7\twhy\t-\t-\n")
+        (store / "briefs/U1-x.md").write_text(self.masked(f'# U1\ntoken = "{PLANTED}"\n'))
+        (store / "verdicts").mkdir()
+        (store / "verdicts/U1-aaaa.md").write_text("Verdict: correct\n")
+        if masked_verdict:
+            (store / "verdicts/U1-bbbb.md").write_text(self.masked(f'token = "{PLANTED}"\n'))
+        if readme:
+            (other / "README").write_text("scratch\nsynced\n")
+        self.git("add", "-A", cwd=other)
+        self.git("commit", "-q", "-m", "chore(records): prog sync 7", cwd=other)
+        self.git("push", "-q", "origin", "main", cwd=other)
+        return self.git("rev-parse", "HEAD", cwd=other)
+
+    def local_edits(self):
+        """The checkout after the sync: two ledger rows appended, the units note edited, the brief holding the token
+        the sync masked, and the sync's verdict file untracked and byte-identical."""
+        with self.ledger.open("a") as ledger:
+            ledger.write(ledger_row(5) + ledger_row(6))
+        self.units.write_text(UNITS_HEADER + units_row("edited"))
+        self.brief.write_text(f'# U1\ntoken = "{PLANTED}"\n')
+        self.verdict.parent.mkdir()
+        self.verdict.write_text("Verdict: correct\n")
+        self.remember()
+
+    def remember(self):
+        self.before = {
+            path: path.read_bytes() for path in (self.ledger, self.units, self.decisions, self.brief, self.verdict)
+        }
+
+    def assert_unchanged(self):
+        for path, content in self.before.items():
+            self.assertEqual(path.read_bytes(), content, str(path))
+
+    def ff(self, *args):
+        return self.run_lever("records-sync.sh", "--ff", *args)
+
+    def main_text(self, name):
+        return self.git("show", f"main:{STORE}/{name}", cwd=self.origin)
+
+    def scratch_dirs(self):
+        return sorted(self.tmp.glob("records-sync.*"))
+
+    def test_the_checkout_fast_forwards_past_the_sync_without_a_stash(self):
+        synced = self.sync_on_origin()
+        self.local_edits()
+        run = self.ff()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            run.stdout, f"fast-forwarded from={self.base} to={synced} removed=1 appended=1 adopted=1 kept=1\n"
+        )
+        self.assertEqual(self.git("rev-parse", "HEAD"), synced)
+        self.assertEqual(self.ledger.read_text(), self.main_text("ledger.tsv") + "\n" + ledger_row(5) + ledger_row(6))
+        self.assertNotIn(PLANTED, self.ledger.read_text(), "main's masked row stands, the local tail is unmasked")
+        self.assertEqual(self.units.read_text(), UNITS_HEADER + units_row("edited"))
+        self.assertEqual(self.brief.read_text().rstrip("\n"), self.main_text("briefs/U1-x.md"))
+        self.assertNotIn(PLANTED, self.brief.read_text())
+        self.assertEqual(self.decisions.read_text().rstrip("\n"), self.main_text("decisions.tsv"))
+        self.assertEqual(self.verdict.read_text(), "Verdict: correct\n")
+        self.git("ls-files", "--error-unmatch", str(self.verdict))
+        self.assertEqual(
+            sorted(line.strip() for line in self.git("status", "--porcelain", "--", ".orchestration").splitlines()),
+            [f"M {STORE}/ledger.tsv", f"M {STORE}/units.tsv"],
+        )
+        self.assertNotIn("stash", (self.root / "git-argv.log").read_text())
+        self.assertEqual(self.git("stash", "list"), "")
+        self.assertEqual(self.scratch_dirs(), [], "the scratch directory is removed on exit 0")
+
+    def test_a_table_line_before_the_tail_that_differs_refuses_and_writes_nothing(self):
+        self.sync_on_origin()
+        self.local_edits()
+        lines = self.ledger.read_text().splitlines(keepends=True)
+        lines[4] = ledger_row(4, "edited")
+        self.ledger.write_text("".join(lines))
+        self.remember()
+        self.assert_refused(self.ff(), f"{STORE}/ledger.tsv: table-append: line 5 differs from main's")
+        self.assertEqual(self.git("rev-parse", "HEAD"), self.base)
+        self.assert_unchanged()
+        self.assertEqual(self.scratch_dirs(), [])
+
+    def test_a_units_row_of_main_with_no_local_row_refuses(self):
+        self.sync_on_origin(new_unit=True)
+        self.local_edits()
+        self.assert_refused(self.ff(), f"{STORE}/units.tsv: units-local: the id U2 of main's line 3 has no local row")
+        self.assertEqual(self.git("rev-parse", "HEAD"), self.base)
+        self.assert_unchanged()
+
+    def test_a_dirty_path_outside_the_store_that_main_changes_refuses(self):
+        self.sync_on_origin(readme=True)
+        self.local_edits()
+        (self.repo / "README").write_text("scratch\nlocal\n")
+        self.assert_refused(self.ff(), "README is not clean in the working tree or the index")
+        self.assertEqual(self.git("rev-parse", "HEAD"), self.base)
+        self.assert_unchanged()
+        self.assertEqual((self.repo / "README").read_text(), "scratch\nlocal\n")
+
+    def test_a_failed_merge_restores_the_backup_and_keeps_the_scratch_directory(self):
+        self.sync_on_origin()
+        self.local_edits()
+        self.env["FAKE_GIT_FAIL"] = "--ff-only"
+        run = self.ff()
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("git merge --ff-only failed", run.stderr)
+        self.assertEqual(self.git("rev-parse", "HEAD"), self.base)
+        self.assert_unchanged()
+        kept = self.scratch_dirs()
+        self.assertEqual(len(kept), 1, kept)
+        self.assertIn(f"scratch kept at {kept[0]}", run.stderr)
+        self.assertEqual((kept[0] / "backup" / STORE / "ledger.tsv").read_bytes(), self.before[self.ledger])
+
+    def test_a_resolved_ledger_the_reader_refuses_is_restored_after_the_merge(self):
+        synced = self.sync_on_origin()
+        self.local_edits()
+        with self.ledger.open("a") as ledger:
+            ledger.write("2026-11-01T00:07:00Z\tU1\t-\t-\tmeasured\tworker\n")  # six columns: malformed to ledger.py
+        self.remember()
+        run = self.ff()
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("verification failed: ledger.py exited 2", run.stderr)
+        self.assertEqual(self.git("rev-parse", "HEAD"), synced, "HEAD stays moved")
+        for path in (self.ledger, self.units, self.brief):
+            self.assertEqual(path.read_bytes(), self.before[path], f"{path} is the pre-merge file again")
+        kept = self.scratch_dirs()
+        self.assertEqual(len(kept), 1, kept)
+        self.assertIn(f"scratch kept at {kept[0]}", run.stderr)
+
+    def test_up_to_date(self):
+        run = self.ff()
+        self.assertEqual((run.returncode, run.stdout), (0, f"up to date head={self.base}\n"), run.stderr)
+        self.assertEqual(self.scratch_dirs(), [])
+
+    def test_a_local_commit_on_main_refuses(self):
+        self.sync_on_origin()
+        (self.repo / "README").write_text("local commit\n")
+        self.git("commit", "-q", "-am", "local")
+        local = self.git("rev-parse", "HEAD")
+        self.assert_refused(self.ff(), f"HEAD {local} is not an ancestor of origin's main")
+        self.assertEqual(self.git("rev-parse", "HEAD"), local)
+
+    def test_a_masked_equal_untracked_file_and_a_once_adopted_file_are_both_handled(self):
+        synced = self.sync_on_origin(masked_verdict=True)
+        self.local_edits()
+        other = self.records / "verdicts/U1-bbbb.md"
+        other.write_text(f'token = "{PLANTED}"\n')
+        run = self.ff()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            run.stdout, f"fast-forwarded from={self.base} to={synced} removed=2 appended=1 adopted=1 kept=1\n"
+        )
+        self.assertEqual(other.read_text().rstrip("\n"), self.main_text("verdicts/U1-bbbb.md"))
+        self.assertEqual(self.brief.read_text().rstrip("\n"), self.main_text("briefs/U1-x.md"))
+        self.assertNotIn(PLANTED, other.read_text() + self.brief.read_text())
+        self.git("ls-files", "--error-unmatch", str(other), str(self.brief))
+
+    def test_ff_with_unit_or_base_is_a_usage_refusal(self):
+        self.sync_on_origin()
+        self.local_edits()
+        for args in (("--unit", "U1"), ("--base", "origin/main")):
+            with self.subTest(args=args):
+                self.assert_refused(self.ff(*args), "usage:")
+        self.assertEqual(self.git("rev-parse", "HEAD"), self.base)
+        self.assert_unchanged()
+
+    def test_the_lever_never_names_a_stash(self):
+        text = (LEVERS / "records-sync.sh").read_text()
+        self.assertNotIn("git stash", text)
+        self.assertNotIn("git_isolated stash", text)
 
 
 if __name__ == "__main__":

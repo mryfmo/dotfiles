@@ -51,17 +51,41 @@
 #   before anything else runs, by a loop over `compgen -e` with no here-string, and a second pass refuses if any is
 #   left. No branch, worktree or file of the checkout is created; the scratch directory is removed on every exit.
 #   Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds.
+#   `--ff` (regime-cutover U192) is the other direction, the step after a sync merged: the coordinator's checkout
+#   fast-forwards `main` while its live store holds rows appended since the sync and files that differ from main
+#   only by the sync's masking. It shares the self-check, the scrub, the main-checkout refusal, the program, the
+#   scratch directory and the fetch of origin's main, then refuses (exit 2, nothing written) unless the branch is
+#   `main`, no merge, rebase or cherry-pick is in progress, `HEAD` is an ancestor of the fetched main, and every path
+#   the fast-forward touches outside the store is clean in the work tree and the index. Each touched store path is
+#   classified by one table (classify): `untracked-equal` (untracked, its bytes or its masked bytes equal main's
+#   blob: removed before the merge, which checks it out again), `clean` (tracked and unmodified, or absent locally:
+#   nothing), `table-append` (`ledger.tsv`, `decisions.tsv` or `dispositions.tsv`, modified, main's N lines equal
+#   to the first N masked local lines: main's N lines then the local tail), `units-local` (`units.tsv`, modified,
+#   the header equal and every id of main's rows a local id: the local file), `once-adopt` (any other modified
+#   file whose masked bytes equal main's blob: main's blob), and every other state refuses naming the path, the
+#   class attempted and the first differing line. Only after every path is classified, a backup of every file to be
+#   removed or replaced is made under the scratch directory, the `untracked-equal` files are removed, `checkout --`
+#   discards the modified store files, `merge --ff-only` moves `HEAD` (a failure restores the backup, exit 1), the
+#   resolved files are written, and the store is verified with the checkout's `ledger.py` (exit 0 or 1, never 2),
+#   `rounds-check.py --all` (exit 0) and `diff --name-only HEAD` over the store listing exactly the `table-append`
+#   and `units-local` paths; a failed verification restores the backup over the replaced files and exits 1 naming
+#   the check (`HEAD` stays moved). The scratch directory is kept on exit 1 and named; nothing is stashed.
 # @option --base <ref> The start point; only `origin/main` (the default) is accepted.
 # @option --program <name> The program directory under `.orchestration/orchestrate/`; default: the only one.
 # @option --unit <U<n>> The unit the body's `Program-Unit:` line names; default: U20, the records unit.
+# @option --ff Fast-forward the main checkout past a merged sync (U192); with `--base` or `--unit` a usage refusal.
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
-# @stdout One receipt line: `synced branch=records/sync-<n> files=<n> pr=<url>`.
-# @exitcode 0 The pull request was opened.
-# @exitcode 1 A `git` or `gh` step, or the masking, failed; nothing was pushed unless the receipt says so.
+# @stdout One receipt line: `synced branch=records/sync-<n> files=<n> pr=<url>`; with `--ff`, `fast-forwarded
+#   from=<old head> to=<new head> removed=<n> appended=<n> adopted=<n> kept=<n>`, or `up to date head=<sha>`.
+# @exitcode 0 The pull request was opened; with `--ff`, `HEAD` moved and the store verified, or nothing to do.
+# @exitcode 1 A `git` or `gh` step, or the masking, failed; nothing was pushed unless the receipt says so. With
+#   `--ff`: the checkout, the merge or a verification failed; the backup was restored and the scratch directory kept.
 # @exitcode 2 Refused: usage, a linked worktree, the program, the copy set, the identifier scan, the identity, a
-#   push URL that is not https, or nothing to sync.
+#   push URL that is not https, or nothing to sync; with `--ff`, the branch, a merge in progress, a local commit,
+#   a dirty path outside the store, or a store path outside the table. Nothing was written.
 # @example
 #   ~/.local/bin/common/records-sync.sh --program regime-cutover --unit U20
+#   ~/.local/bin/common/records-sync.sh --ff --program regime-cutover
 set -euo pipefail
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
@@ -140,7 +164,8 @@ git_env_scrub
 . "${LEVER_DIR}/read-lib.sh"
 
 lever='records-sync.sh'
-usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n> (default U20)]'
+usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n> (default U20)] | records-sync.sh --ff [--program <name>]'
+keep_scratch=0
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
 footer='Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>'
 pr_footer='🤖 Generated with [Claude Code](https://claude.com/claude-code)'
@@ -165,9 +190,11 @@ gh_bounded() {
     perl -e 'alarm shift; exec @ARGV or die "exec gh: $!\n"' "${gh_timeout}" gh "$@"
 }
 
-# @description Remove this run's scratch directory, with the repository the sync was built in.
+# @description Remove this run's scratch directory, with the repository the sync was built in. A `--ff` run that
+#   exits 1 keeps it (keep_scratch): the backup it holds is what the coordinator reads next.
 cleanup() {
     if [[ -n ${scratch:-} && -d ${scratch} ]]; then
+        ((keep_scratch)) && return 0
         rm -r "${scratch}" 2> /dev/null || echo "${lever}: could not remove ${scratch}" >&2
     fi
 }
@@ -229,23 +256,297 @@ check_path() {
     fi
 }
 
+# @description Extract main's validator into a tools tree under the scratch directory: the masker and the scanner
+#   are main's `scripts/validate-agent-assets.py`, alone in a tree whose `home/` holds main's top-level entry names
+#   (empty), so its home-path pattern skips the repository's own `home/<entry>` paths as in a checkout; a main
+#   without `home/` gives an empty one. Shared by the sync and `--ff`.
+# @set tools The tools tree.
+make_tools() {
+    local entry
+    tools=${scratch}/tools
+    mkdir -p "${tools}/scripts" "${tools}/home" || fail 'cannot make the tools tree'
+    git_scratch cat-file blob "${main}:scripts/validate-agent-assets.py" > "${tools}/scripts/validate-agent-assets.py" ||
+        fail "cannot read scripts/validate-agent-assets.py of ${base}"
+    git_scratch ls-tree -z --name-only "${main}" -- home/ > "${scratch}/home-entries" || fail "cannot list home/ of ${base}"
+    while IFS= read -r -d '' entry; do
+        entry=${entry#home/}
+        [[ -n ${entry} && ${entry} != *[/[:cntrl:]]* && ${entry} != . && ${entry} != .. ]] || # lint-comparisons: allow a tree entry name as git prints it
+            fail "home/ of ${base} holds an unusable entry name"
+        mkdir "${tools}/home/${entry}" || fail 'cannot make the tools tree'
+    done < "${scratch}/home-entries"
+}
+
+# @description Print the number of the first line at which two differing files differ: cmp's `line <n>`, or, when
+#   one file is a prefix of the other, one past the shorter file's last line.
+# @arg $1 path One file.
+# @arg $2 path The other.
+differing_line() {
+    local out line a_size b_size short status=0
+    out=$(cmp "$1" "$2" 2>&1) || status=$?
+    ((status == 1)) || fail "cmp failed comparing $1 with $2 (exit ${status})"
+    line=$(printf '%s\n' "${out}" | sed -n -E '1s/.*line ([0-9]+).*/\1/p') || fail 'cannot read the cmp output'
+    if [[ -z ${line} ]]; then
+        a_size=$(wc -c < "$1") || fail "cannot measure $1"
+        b_size=$(wc -c < "$2") || fail "cannot measure $2"
+        short=$1
+        ((a_size <= b_size)) || short=$2
+        line=$(wc -l < "${short}") || fail "cannot count the lines of ${short}"
+        line=$((line + 1))
+    fi
+    printf '%s\n' "${line}"
+}
+
+# @description Classify one store path the fast-forward touches (U192) and print its class word: `untracked-equal`,
+#   `clean`, `table-append`, `units-local` or `once-adopt`; every other state is a refusal naming the path, the class
+#   attempted and the first differing line (exit 2, nothing written). Main's blob is `${scratch}/main/<path>`, the
+#   masked local copy `${scratch}/masked/<path>` (both made by ff_run before the first call); a `table-append` or
+#   `units-local` path leaves its resolved file at `${scratch}/resolved/<path>`.
+# @arg $1 string The repository-relative store path.
+# @arg $2 string Its diff-tree status against main (A, M or D).
+classify() {
+    local path=$1 status=$2 blob masked resolved n m line last ids lineno id tracked=0 index_status=0 tree_status=0
+    blob=${scratch}/main/${path}
+    masked=${scratch}/masked/${path}
+    resolved=${scratch}/resolved/${path}
+    [[ ! -L ${path} ]] || refuse "${path}: a symlink stands at a store path the fast-forward touches"
+    [[ ! -d ${path} ]] || refuse "${path}: a directory stands at a store path the fast-forward touches"
+    [[ ! -e ${path} || -f ${path} ]] || refuse "${path}: not a regular file"
+    git_isolated ls-files --error-unmatch -- "${path}" > /dev/null 2>&1 && tracked=1
+    if ((tracked == 0)); then
+        if [[ ! -e ${path} ]]; then
+            echo clean
+            return
+        fi
+        [[ -f ${blob} ]] || refuse "${path}: untracked-equal: main deletes the path and the checkout holds an untracked file at it"
+        if cmp -s "${path}" "${blob}" || cmp -s "${masked}" "${blob}"; then
+            echo untracked-equal
+            return
+        fi
+        line=$(differing_line "${masked}" "${blob}") || exit $?
+        refuse "${path}: untracked-equal: the untracked file differs from main's at line ${line} (after masking too); nothing was written"
+    fi
+    git_isolated diff --quiet --cached HEAD -- "${path}" || index_status=$?
+    ((index_status <= 1)) || fail "git diff --cached ${path} failed"
+    ((index_status == 0)) || refuse "${path}: clean: the index holds a staged change (no row of the table admits one); nothing was written"
+    git_isolated diff --quiet HEAD -- "${path}" || tree_status=$?
+    ((tree_status <= 1)) || fail "git diff ${path} failed"
+    if ((tree_status == 0)); then
+        echo clean
+        return
+    fi
+    [[ -f ${path} ]] || refuse "${path}: clean: the tracked file is missing from the working tree; nothing was written"
+    [[ ${status} != D ]] || refuse "${path}: once-adopt: main deletes a path the checkout modified (line 1); nothing was written"
+    [[ -f ${blob} ]] || fail "no blob of ${path} was read from main"
+    case ${path##*/} in # lint-comparisons: allow the store file's name selects its row of the table
+    ledger.tsv | decisions.tsv | dispositions.tsv)
+        [[ -s ${blob} ]] || refuse "${path}: table-append: main's file is empty (line 1); nothing was written"
+        last=$(tail -c 1 "${blob}") || fail "cannot read ${path} of main"
+        [[ -z ${last} ]] || refuse "${path}: table-append: main's last line has no newline end; nothing was written"
+        n=$(wc -l < "${blob}") || fail "cannot count the lines of main's ${path}"
+        m=$(wc -l < "${path}") || fail "cannot count the lines of ${path}"
+        n=$((n)) m=$((m))
+        ((m >= n)) || refuse "${path}: table-append: the local file has ${m} lines, main's ${n} (line $((m + 1))); nothing was written"
+        head -n "${n}" "${masked}" > "${scratch}/prefix" || fail "cannot read the first ${n} lines of ${path}"
+        if ! cmp -s "${scratch}/prefix" "${blob}"; then
+            line=$(differing_line "${scratch}/prefix" "${blob}") || exit $?
+            refuse "${path}: table-append: line ${line} differs from main's (the first ${n} lines must equal main's after masking); nothing was written"
+        fi
+        mkdir -p "${resolved%/*}" || fail "cannot make the resolved directory of ${path}"
+        { cat "${blob}" && tail -n +"$((n + 1))" "${path}"; } > "${resolved}" || fail "cannot write the resolved ${path}"
+        echo table-append
+        ;;
+    units.tsv)
+        head -n 1 "${blob}" > "${scratch}/header.main" || fail "cannot read the header of main's ${path}"
+        head -n 1 "${path}" > "${scratch}/header.local" || fail "cannot read the header of ${path}"
+        cmp -s "${scratch}/header.main" "${scratch}/header.local" ||
+            refuse "${path}: units-local: line 1 (the header) differs from main's; nothing was written"
+        ids=$'\n'$(cut -f1 "${path}")$'\n' || fail "cannot read the ids of ${path}"
+        awk -F '\t' 'NR > 1 { print NR "\t" $1 }' "${blob}" > "${scratch}/ids.main" || fail "cannot read the ids of main's ${path}"
+        while IFS=$'\t' read -r lineno id; do
+            [[ ${ids} == *$'\n'"${id}"$'\n'* ]] ||
+                refuse "${path}: units-local: the id ${id} of main's line ${lineno} has no local row; nothing was written"
+        done < "${scratch}/ids.main"
+        mkdir -p "${resolved%/*}" || fail "cannot make the resolved directory of ${path}"
+        cp -p "${path}" "${resolved}" || fail "cannot copy ${path}"
+        echo units-local
+        ;;
+    *)
+        if cmp -s "${masked}" "${blob}"; then
+            echo once-adopt
+            return
+        fi
+        line=$(differing_line "${masked}" "${blob}") || exit $?
+        refuse "${path}: once-adopt: the local file differs from main's beyond masking at line ${line}; nothing was written"
+        ;;
+    esac
+}
+
+# @description Copy each named backed-up file of the fast-forward back over its path, byte for byte.
+# @arg $@ string The repository-relative paths.
+ff_restore() {
+    local path
+    for path in "$@"; do
+        mkdir -p "${path%/*}" && cp -p "${backup}/${path}" "${path}" ||
+            echo "${lever}: could not restore ${path} from ${backup}" >&2
+    done
+}
+
+# @description The write phase failed at a step before or at the merge: restore every backed-up file, keep the
+#   scratch directory and exit 1 naming the step.
+# @arg $1 string The step.
+ff_step_failed() {
+    keep_scratch=1
+    ff_restore ${backed_up[@]+"${backed_up[@]}"}
+    fail "$1 failed; the backup under ${backup} was restored over every file it holds; scratch kept at ${scratch}"
+}
+
+# @description A verification failed after the merge: restore the backup over every replaced store file (HEAD stays
+#   moved), keep the scratch directory and exit 1 naming the check.
+# @arg $1 string The check.
+ff_verify_failed() {
+    keep_scratch=1
+    ff_restore ${replaced[@]+"${replaced[@]}"}
+    fail "verification failed: $1; HEAD is ${new_head}, the backup under ${backup} was restored over the replaced store files; scratch kept at ${scratch}"
+}
+
+# @description The `--ff` mode (U192), entered after the shared setup fetched origin's main into the scratch
+#   repository: the state refusals, the touched set, the classification of every touched store path, then the write
+#   phase and the verification. Exits.
+ff_run() {
+    local branch head new_head python touched path status word line sorted
+    local store_paths=() statuses=() removed=() replaced=() appended=() unit_rows=() adopted=() backed_up=()
+    local kept=0 backup
+    branch=$(git_isolated symbolic-ref --quiet --short HEAD 2> /dev/null) || refuse 'the checkout is not on a branch; --ff runs on main'
+    [[ ${branch} == main ]] || refuse "the checkout is on ${branch}, not main; nothing was written"
+    for path in MERGE_HEAD rebase-merge rebase-apply CHERRY_PICK_HEAD; do
+        [[ ! -e ${git_dir}/${path} ]] || refuse "a merge, rebase or cherry-pick is in progress (${git_dir}/${path}); nothing was written"
+    done
+    head=$(git_isolated rev-parse --verify 'HEAD^{commit}') || refuse 'cannot read HEAD'
+    if [[ ${head} == "${main}" ]]; then
+        echo "up to date head=${head}"
+        exit 0
+    fi
+    python=$(command -v python3) || refuse 'no python3 found (it runs the verification, scripts/orchestrator/ledger.py and rounds-check.py)'
+    # The fetched main reaches the checkout from the scratch repository (a local transport the lever opens for this
+    # one command), never from the network again, so the ancestry test and the merge see the same commit.
+    git_scratch update-ref refs/heads/main "${main}" || fail 'cannot name the fetched main in the scratch repository'
+    git_isolated -c protocol.file.allow=always fetch --quiet --no-tags "${repo}" refs/heads/main ||
+        fail 'cannot bring the fetched main into the checkout'
+    git_isolated merge-base --is-ancestor "${head}" "${main}" ||
+        refuse "HEAD ${head} is not an ancestor of origin's main ${main} (a local commit on main, or main behind); nothing was written"
+    for path in scripts/orchestrator/ledger.py scripts/orchestrator/rounds-check.py; do
+        git_scratch cat-file -e "${main}:${path}" 2> /dev/null || refuse "main holds no ${path}; the store cannot be verified after the merge, nothing was written"
+    done
+    touched=${scratch}/touched
+    git_isolated diff-tree -r -z --no-renames --name-status "${head}" "${main}" > "${touched}" || fail 'git diff-tree failed'
+    status='' path=''
+    while IFS= read -r -d '' status; do
+        IFS= read -r -d '' path || refuse 'the touched set ends mid-entry; nothing was written'
+        if [[ ${path} == "${records}"/* ]]; then # lint-comparisons: allow a repository-relative path as git prints it, under the store or not
+            check_name "${path}"
+            store_paths+=("${path}")
+            statuses+=("${status}")
+            continue
+        fi
+        line=$(git_isolated status --porcelain -z -- "${path}") || fail "git status ${path} failed"
+        [[ -z ${line} ]] || refuse "${path} is not clean in the working tree or the index and the fast-forward changes it; resolve it by hand, nothing was written"
+    done < "${touched}"
+    [[ -z ${status} ]] || refuse 'the touched set ends mid-entry; nothing was written'
+    make_tools
+    mkdir -p "${scratch}/main" "${scratch}/masked" "${scratch}/resolved" || fail 'cannot make the scratch directories'
+    local mask_copies=() i
+    for ((i = 0; i < ${#store_paths[@]}; i++)); do
+        path=${store_paths[i]}
+        if [[ ${statuses[i]} != D ]]; then
+            mkdir -p "${scratch}/main/${path%/*}" || fail "cannot make the scratch directory of ${path}"
+            git_scratch cat-file blob "${main}:${path}" > "${scratch}/main/${path}" || fail "cannot read ${path} of main"
+        fi
+        if [[ -f ${path} && ! -L ${path} ]]; then
+            mkdir -p "${scratch}/masked/${path%/*}" || fail "cannot make the scratch directory of ${path}"
+            cp -p "${path}" "${scratch}/masked/${path}" || fail "cp ${path} failed"
+            mask_copies+=("${scratch}/masked/${path}")
+        fi
+    done
+    if ((${#mask_copies[@]})); then
+        status=0
+        uv run --no-project python -I "${tools}/scripts/validate-agent-assets.py" --mask-secrets "${mask_copies[@]}" \
+            > "${scratch}/mask.log" 2>&1 || status=$?
+        ((status == 0)) || fail "masking the local copies failed (exit ${status}); its output is withheld, nothing was written"
+    fi
+    for ((i = 0; i < ${#store_paths[@]}; i++)); do
+        path=${store_paths[i]}
+        word=$(classify "${path}" "${statuses[i]}") || exit $?
+        case ${word} in
+        untracked-equal) removed+=("${path}") ;;
+        clean) kept=$((kept + 1)) ;;
+        table-append) appended+=("${path}") replaced+=("${path}") ;;
+        units-local) unit_rows+=("${path}") replaced+=("${path}") ;;
+        once-adopt) adopted+=("${path}") replaced+=("${path}") ;;
+        *) fail "classify printed no class word for ${path}" ;;
+        esac
+    done
+    # The write phase: nothing above wrote into the checkout. Every file about to go is copied first.
+    backup=${scratch}/backup
+    for path in ${removed[@]+"${removed[@]}"} ${replaced[@]+"${replaced[@]}"}; do
+        mkdir -p "${backup}/${path%/*}" || fail "cannot back up ${path}; nothing was written"
+        cp -p "${path}" "${backup}/${path}" || fail "cannot back up ${path}; nothing was written"
+        backed_up+=("${path}")
+    done
+    for path in ${removed[@]+"${removed[@]}"}; do
+        rm "${path}" || ff_step_failed "removing ${path}"
+    done
+    if ((${#replaced[@]})); then
+        git_isolated checkout -- "${replaced[@]}" || ff_step_failed 'git checkout --'
+    fi
+    git_isolated merge --quiet --ff-only "${main}" > "${scratch}/merge.log" 2>&1 || ff_step_failed 'git merge --ff-only'
+    new_head=$(git_isolated rev-parse --verify 'HEAD^{commit}') || ff_step_failed 'reading HEAD after the merge'
+    for path in ${appended[@]+"${appended[@]}"} ${unit_rows[@]+"${unit_rows[@]}"}; do
+        cat "${scratch}/resolved/${path}" > "${path}" || ff_verify_failed "writing the resolved ${path}"
+    done
+    status=0
+    "${python}" -I -S -B scripts/orchestrator/ledger.py "${records}" verdict 1 "${main//?/0}" > "${scratch}/ledger.log" 2>&1 || status=$?
+    ((status == 0 || status == 1)) || ff_verify_failed "ledger.py exited ${status} (its output is in ${scratch}/ledger.log)"
+    status=0
+    "${python}" -I -S -B scripts/orchestrator/rounds-check.py --all "${records}" > "${scratch}/rounds.log" 2>&1 || status=$?
+    ((status == 0)) || ff_verify_failed "rounds-check.py --all exited ${status} (its output is in ${scratch}/rounds.log)"
+    git_isolated diff --name-only -z HEAD -- "${records}/" > "${scratch}/changed" || ff_verify_failed 'git diff --name-only'
+    : > "${scratch}/expected" || ff_verify_failed 'writing the expected change set'
+    for path in ${appended[@]+"${appended[@]}"} ${unit_rows[@]+"${unit_rows[@]}"}; do
+        printf '%s\0' "${path}" >> "${scratch}/expected" || ff_verify_failed 'writing the expected change set'
+    done
+    for sorted in changed expected; do
+        LC_ALL=C sort -z "${scratch}/${sorted}" > "${scratch}/${sorted}.sorted" || ff_verify_failed "sorting the ${sorted} set"
+    done
+    cmp -s "${scratch}/changed.sorted" "${scratch}/expected.sorted" ||
+        ff_verify_failed 'the store differs from HEAD at other paths than the table-append and units-local ones'
+    echo "fast-forwarded from=${head} to=${new_head} removed=${#removed[@]} appended=${#appended[@]} adopted=${#adopted[@]} kept=${kept}"
+    exit 0
+}
+
 base=origin/main
 program=''
 unit=U20
+ff=0
+sync_only=''
 while (($#)); do
     case $1 in
+    --ff)
+        ff=1
+        shift
+        ;;
     --base | --program | --unit)
         (($# >= 2)) || refuse "${usage}"
         case $1 in
-        --base) base=$2 ;;
+        --base) base=$2 sync_only=$1 ;;
         --program) program=$2 ;;
-        --unit) unit=$2 ;;
+        --unit) unit=$2 sync_only=$1 ;;
         esac
         shift 2
         ;;
     *) refuse "${usage}" ;;
     esac
 done
+[[ ${ff} == 0 || -z ${sync_only} ]] || refuse "${usage}"
 [[ ${base} == origin/main ]] || refuse "--base accepts only origin/main: ${base}" # lint-comparisons: allow a git ref name, not a path
 [[ ${unit} =~ ^U[0-9]+$ ]] || refuse "--unit is not a plain unit id U<n>: ${unit}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
@@ -330,6 +631,9 @@ git_scratch -c credential.helper= -c 'credential.helper=!gh auth git-credential'
     fetch --quiet --no-tags "${push_url}" refs/heads/main || fail 'git fetch main from origin failed'
 main=$(git_scratch rev-parse --verify 'FETCH_HEAD^{commit}') || fail 'cannot read the fetched main'
 main_tree=$(git_scratch rev-parse --verify "${main}^{tree}") || fail 'cannot read the tree of main'
+if ((ff)); then
+    ff_run
+fi
 # U101: the copy set is the store's files on disk (tracked or not, not ignored), compared with origin/main by
 # content; the checkout's HEAD, however stale, is never the base. Each listing goes to a file and is read
 # NUL-delimited: a git failure, even after output, and a listing whose last entry has no NUL end (cut short) refuse
@@ -391,20 +695,7 @@ done < "${listing}"
 [[ -z ${entry} ]] || refuse "the listing of ${base}:${records}/ ends mid-entry; nothing was created"
 ((${#files[@]} + ${#gone[@]} > 0)) || refuse "nothing to sync under ${records}/"
 
-# The masker and the scanner are main's validator, alone in a tools tree whose `home/` holds main's top-level entry
-# names (empty), so its home-path pattern skips the repository's own `home/<entry>` paths as in a checkout; a main
-# without `home/` gives an empty one.
-tools=${scratch}/tools
-mkdir -p "${tools}/scripts" "${tools}/home" || fail 'cannot make the tools tree'
-git_scratch cat-file blob "${main}:scripts/validate-agent-assets.py" > "${tools}/scripts/validate-agent-assets.py" ||
-    fail "cannot read scripts/validate-agent-assets.py of ${base}"
-git_scratch ls-tree -z --name-only "${main}" -- home/ > "${scratch}/home-entries" || fail "cannot list home/ of ${base}"
-while IFS= read -r -d '' entry; do
-    entry=${entry#home/}
-    [[ -n ${entry} && ${entry} != *[/[:cntrl:]]* && ${entry} != . && ${entry} != .. ]] || # lint-comparisons: allow a tree entry name as git prints it
-        fail "home/ of ${base} holds an unusable entry name"
-    mkdir "${tools}/home/${entry}" || fail 'cannot make the tools tree'
-done < "${scratch}/home-entries"
+make_tools
 # U101: the copies are masked and scanned in the scratch directory, and these same files are what hash-object
 # writes, so the committed bytes are the scanned bytes.
 copies=${scratch}/copies

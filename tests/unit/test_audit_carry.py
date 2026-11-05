@@ -9,7 +9,6 @@ both forms (U126)."""
 import hashlib
 import importlib.util
 import os
-import re
 import shutil
 import shlex
 import subprocess
@@ -54,63 +53,6 @@ def finding(priority, path, line, rationale, confidence="high", f=5, s=5):
     return f"- {priority} ({confidence}) [f{f} s{s}] {path}:{line}: {rationale}"
 
 
-# U180: a 50-line file `main` gains, and the pull request's change of its lines 40 to 42.
-LONG = [f"line {n}\n" for n in range(1, 51)]
-CHANGED = LONG[:39] + ["LINE 40\n", "LINE 41\n", "LINE 42\n"] + LONG[42:]
-PATCH_FLAGS = (
-    "-p",
-    "--unified=3",
-    "--no-renames",
-    "--no-color",
-    "--full-index",
-    "--no-ext-diff",
-    "--no-textconv",
-    "--ignore-submodules=none",
-)
-HUNK_HEADER = re.compile(rb"^@@ -([0-9]+)(?:,([0-9]+))? \+([0-9]+)(?:,([0-9]+))? @@(.*)$")
-# U180 round 2: the auditor's first fixture, one block in two functions; and three identical seven-line windows.
-BLOCK = "    flag = False\n    return flag\n"
-EDITED_BLOCK = BLOCK.replace("False", "True")
-WINDOW = ["a\n", "b\n", "c\n", "x\n", "c\n", "b\n", "a\n"]
-
-
-def two_functions(first_block=BLOCK, second_block=BLOCK):
-    return f"def first():\n{first_block}\n\ndef second():\n{second_block}"
-
-
-def occurrences_before(lines, window, start):
-    """How often `window` occurs as consecutive lines of `lines` starting before line `start` (1-based)."""
-    if lines is None or not window:
-        return 0
-    return sum(1 for at in range(start - 1) if lines[at : at + len(window)] == window)
-
-
-def hashed_text(patch, base_lines):
-    """The bytes the lever hashes for one path's `--unified=3` patch since U180 round 2, restated by prefix: every
-    `index ` line dropped, every `@@` header kept with its number pairs blanked and followed by `@@occurrence <n>`,
-    `n` the occurrences of the hunk's old-side window (its context and `-` lines) in `base_lines` before the hunk's
-    old start (a hunk without old lines is anchored one line after git's number); every other line as git wrote it."""
-    kept, hunks, in_hunk = [], [], False
-    for line in patch.split(b"\n"):
-        if line.startswith(b"index "):
-            continue
-        header = HUNK_HEADER.match(line)
-        if header:
-            start, old_count = int(header.group(1)), int(header.group(2) or 1)
-            kept.append(b"@@  @@" + header.group(5))
-            hunks.append((len(kept), start + 1 if old_count == 0 else start, []))
-            in_hunk = True
-            continue
-        if in_hunk and line.startswith((b" ", b"-")):
-            hunks[-1][2].append(line[1:])
-        elif in_hunk and not line.startswith((b"+", b"\\")):
-            in_hunk = False
-        kept.append(line)
-    for at, start, window in reversed(hunks):
-        kept.insert(at, b"@@occurrence %d" % occurrences_before(base_lines, window, start))
-    return b"\n".join(kept)
-
-
 class AuditCarryTest(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
@@ -141,9 +83,6 @@ class AuditCarryTest(unittest.TestCase):
         return subprocess.run(
             ["git", *args], cwd=self.repo, env=env or GIT_ENV, check=True, capture_output=True, text=True
         ).stdout.strip()
-
-    def git_bytes(self, *args):
-        return subprocess.run(["git", *args], cwd=self.repo, env=GIT_ENV, check=True, capture_output=True).stdout
 
     def commit(self, files, message):
         """One commit of `files` dated one second after the fixture's last, author and committer alike, so no
@@ -186,94 +125,31 @@ class AuditCarryTest(unittest.TestCase):
             cwd=cwd,
         )
 
-    def path_patch(self, base, head, path):
-        """The `--unified=3` patch of one path between `base` and `head`, and the merge-base file's lines the lever
-        counts occurrences over (None for a new file or a gitlink), from raw git in the fixture checkout."""
-        patch = self.git_bytes("diff-tree", *PATCH_FLAGS, base, head, "--", b":(literal)" + path)
-        raw = self.git_bytes(
-            "diff-tree", "-r", "-z", "--raw", "--no-renames", "--no-abbrev", base, head, "--", b":(literal)" + path
-        )
-        old_mode, _new_mode, old_blob, _new_blob, status = raw.split(b"\0")[0][1:].split(b" ")
-        if status == b"A" or old_mode == b"160000":
-            return patch, None
-        return patch, self.git_bytes("cat-file", "blob", old_blob.decode()).split(b"\n")
-
-    def hashed(self, head, path):
-        """The bytes the lever hashes for `path` at `head` against its merge base (see `hashed_text`)."""
-        base = self.git("merge-base", "refs/remotes/origin/main", head)
-        return hashed_text(*self.path_patch(base, head, path.encode()))
-
     def digest(self, head):
-        """The digest as the lever defines it since U180 round 2, from raw git in the fixture checkout: per path of the
-        sorted raw records of `diff-tree -r -z --raw --no-renames` between the merge base and `head`, the path, the
-        record's status and two modes, then the path's own `--unified=3` patch as `hashed_text` restates it (the `@@`
-        positions blanked, an `@@occurrence <n>` line per hunk, no `index` line) with `binary <old blob> <new blob>`
-        appended when the patch says `Binary files`, each NUL-terminated, under sha256."""
+        """The digest as the lever defines it, from raw git in the fixture checkout: the sha256 over the sorted raw
+        records of `diff-tree -r -z --raw --no-renames` between the merge base and `head` (round 4)."""
         base = self.git("merge-base", "refs/remotes/origin/main", head)
-        raw = self.git_bytes(
-            "diff-tree", "-r", "-z", "--raw", "--no-renames", "--no-abbrev", "--ignore-submodules=none", base, head
-        )
-        fields = raw.split(b"\0")[:-1]
-        entries = []
-        for path, record in sorted(zip(fields[1::2], fields[0::2])):
-            old_mode, new_mode, old_blob, new_blob, status = record[1:].split(b" ")
-            hashed = hashed_text(*self.path_patch(base, head, path))
-            if any(line.startswith((b"Binary files ", b"GIT binary patch")) for line in hashed.split(b"\n")):
-                hashed += b"binary " + old_blob + b" " + new_blob + b"\n"
-            entries.append(b"\0".join((path, status, old_mode, new_mode, hashed)) + b"\0")
-        return hashlib.sha256(b"".join(entries)).hexdigest()
-
-    def record_digest(self, head):
-        """The digest before U180, the sha256 over the sorted raw records alone (old mode, new mode, old blob, new
-        blob, status, path): the fixtures below show it unequal for one change under a merge of `main`."""
-        base = self.git("merge-base", "refs/remotes/origin/main", head)
-        raw = self.git_bytes(
-            "diff-tree", "-r", "-z", "--raw", "--no-renames", "--no-abbrev", "--ignore-submodules=none", base, head
-        )
+        raw = subprocess.run(
+            [
+                "git",
+                "diff-tree",
+                "-r",
+                "-z",
+                "--raw",
+                "--no-renames",
+                "--no-abbrev",
+                "--ignore-submodules=none",
+                base,
+                head,
+            ],
+            cwd=self.repo,
+            env=GIT_ENV,
+            check=True,
+            capture_output=True,
+        ).stdout
         fields = raw.split(b"\0")[:-1]
         records = sorted(zip(fields[1::2], fields[0::2]))
         return hashlib.sha256(b"".join(record + b"\0" + path + b"\0" for path, record in records)).hexdigest()
-
-    def pull_request_over_a_long_file(self, content=None, path="long.txt", main_content=None):
-        """U180: `main` gains `path` holding `main_content` (LONG by default; the new base) and a pull request head on
-        branch `pr` changes it to `content` (CHANGED by default); the ledger names that head as the audited one.
-        Returns it, with `main` checked out."""
-        content = "".join(CHANGED) if content is None else content
-        self.commit({path: "".join(LONG) if main_content is None else main_content}, "a long file on main")
-        self.git("update-ref", "refs/remotes/origin/main", "main")
-        self.git("switch", "-q", "-c", "pr")
-        first = self.commit({path: content}, "the pull request's change")
-        self.git("switch", "-q", "main")
-        self.ledger(ledger("2026-10-30T01:00:00Z", first))
-        self.verdict(first)
-        return first
-
-    def merge_of_main(self, main_content, resolved=None):
-        """`main` moves on to `main_content` of long.txt and branch `pr` merges it, `resolved` the file's text after a
-        conflict; returns the merge head, with `main` checked out."""
-        self.commit({"long.txt": main_content}, "main moves on")
-        self.git("update-ref", "refs/remotes/origin/main", "main")
-        self.git("switch", "-q", "pr")
-        merge = subprocess.run(
-            ["git", "merge", "-q", "--no-edit", "main"], cwd=self.repo, env=GIT_ENV, check=False, capture_output=True
-        )
-        if resolved is None:
-            self.assertEqual(merge.returncode, 0, merge.stderr)
-        else:
-            self.assertNotEqual(merge.returncode, 0, "the fixture's merge conflicts on the pull request's lines")
-            (self.repo / "long.txt").write_text(resolved)
-            self.git("add", "-A")
-            self.git("commit", "-q", "--no-edit")
-        head = self.git("rev-parse", "HEAD")
-        self.git("switch", "-q", "main")
-        return head
-
-    def sibling_head(self, files, message="another head"):
-        """A head on a branch of its own from `main` (the base) holding `files`, with `main` checked out after."""
-        self.git("switch", "-q", "-c", message.replace(" ", "-"), "main")
-        head = self.commit(files, message)
-        self.git("switch", "-q", "main")
-        return head
 
     def diff_text_digest(self, head):
         """The digest the rounds before 4 took, the sha256 of the porcelain `git diff <merge-base>..<head>` text under
@@ -321,262 +197,6 @@ class AuditCarryTest(unittest.TestCase):
         run = self.carry(head)
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
         self.assertTrue(run.stdout.endswith("'s at a.txt\n"), run.stdout)
-
-    def test_a_merge_of_main_that_moves_the_pull_request_s_lines_is_carried(self):
-        """U180 (a): the digest read the raw records, so a merge of `main` that inserted ten lines above the pull
-        request's change gave the file new blob ids and a new digest, and U150 paid three audit rounds for heads whose
-        own hunks were byte-identical. The digest is each path's own hunk lines without the `@@` positions or the
-        `index` blob ids, so the merge head's digest is the audited head's and the lever prints the carried line."""
-        first = self.pull_request_over_a_long_file()
-        merged = self.merge_of_main("".join([f"top {n}\n" for n in range(10)] + LONG))
-        self.assertNotEqual(self.record_digest(merged), self.record_digest(first), "the blobs differ")
-        self.assertEqual(self.digest(merged), self.digest(first), "the pull request's own hunks are the same")
-        run = self.carry(merged)
-        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertEqual(run.stdout, f"carried {first} {merged} {self.digest(merged)}\n")
-
-    def test_a_merge_of_main_that_changes_one_of_the_pull_request_s_lines_is_not_carried(self):
-        """U180 (b): the same merge, but `main`'s commit also changed line 41, one of the three lines the pull request
-        removes, so the merge head's `-` line differs from the audited head's by its text alone: another digest, and
-        the lever names the path."""
-        first = self.pull_request_over_a_long_file()
-        top = [f"top {n}\n" for n in range(10)]
-        moved = LONG[:40] + ["line 41 changed\n"] + LONG[41:]
-        merged = self.merge_of_main("".join(top + moved), resolved="".join(top + CHANGED))
-        self.assertNotEqual(self.digest(merged), self.digest(first))
-        run = self.carry(merged)
-        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertEqual(
-            run.stdout,
-            f"audit-carry: not carried: the diff of {merged[:8]} against its merge base differs from "
-            f"{first[:8]}'s at long.txt\n",
-        )
-
-    def test_one_space_inside_a_changed_line_is_another_digest(self):
-        """U180 (c): the `+` and `-` lines are hashed byte-exact, so a second head equal to the first but for one space
-        added inside one `+` line is not carried."""
-        first = self.pull_request_over_a_long_file()
-        spaced = CHANGED[:40] + ["LINE  41\n"] + CHANGED[41:]
-        second = self.sibling_head({"long.txt": "".join(spaced)}, "one space more")
-        self.assertNotEqual(self.digest(second), self.digest(first))
-        run = self.carry(second)
-        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertTrue(run.stdout.endswith("'s at long.txt\n"), run.stdout)
-
-    def test_a_trailing_newline_change_is_another_digest(self):
-        """U180 (d): the `\\ No newline at end of file` line is hashed with the hunk, so a second head whose `+` lines
-        are the first's and whose only difference is the file's trailing newline is not carried."""
-        first = self.pull_request_over_a_long_file(content="".join(LONG[:49] + ["LINE 50\n"]))
-        second = self.sibling_head({"long.txt": "".join(LONG[:49] + ["LINE 50"])}, "no trailing newline")
-        patch = self.git_bytes("diff-tree", *PATCH_FLAGS, "refs/remotes/origin/main", second)
-        self.assertIn(b"\n\\ No newline at end of file\n", patch)
-        self.assertEqual(
-            [line for line in patch.split(b"\n") if line.startswith((b"+", b"-"))],
-            [
-                line
-                for line in self.git_bytes("diff-tree", *PATCH_FLAGS, "refs/remotes/origin/main", first).split(b"\n")
-                if line.startswith((b"+", b"-"))
-            ],
-            "the two heads' `+` and `-` lines are the same; the newline mark alone differs",
-        )
-        self.assertNotEqual(self.digest(second), self.digest(first))
-        run = self.carry(second)
-        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertTrue(run.stdout.endswith("'s at long.txt\n"), run.stdout)
-
-    def test_a_binary_file_changed_to_different_content_is_another_digest(self):
-        """U180 (e): git prints `Binary files ... differ` and no hunk for a file holding a NUL byte, so the two blob
-        ids stand in for the patch: two heads that change it to different bytes have different digests and the
-        lever names the path, and two that change it to the same bytes are carried."""
-        (self.repo / "bin.dat").write_bytes(b"\x00abc")
-        self.commit({}, "a binary file on main")
-        self.git("update-ref", "refs/remotes/origin/main", "main")
-        heads = []
-        for name, content in (("first", b"\x00xyz"), ("second", b"\x00pqr"), ("third", b"\x00xyz")):
-            self.git("switch", "-q", "-c", name, "main")
-            (self.repo / "bin.dat").write_bytes(content)
-            heads.append(self.commit({}, f"{name} binary change"))
-            self.git("switch", "-q", "main")
-        first, second, third = heads
-        patch = self.git_bytes("diff-tree", *PATCH_FLAGS, "refs/remotes/origin/main", first)
-        self.assertIn(b"\nBinary files a/bin.dat and b/bin.dat differ\n", patch)
-        self.ledger(ledger("2026-10-30T01:00:00Z", first))
-        self.verdict(first)
-        self.assertNotEqual(self.digest(second), self.digest(first))
-        run = self.carry(second)
-        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertTrue(run.stdout.endswith("'s at bin.dat\n"), run.stdout)
-        run = self.carry(third)
-        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertEqual(run.stdout, f"carried {first} {third} {self.digest(first)}\n")
-
-    def test_a_path_that_reads_as_pathspec_magic_is_diffed_as_itself(self):
-        """U180: the per-path patch is read by pathspec, and git reads a leading `:` as magic (`:x.txt` names `x.txt`)
-        and `*`, `?` and `[` as globs, so a bare path could name another file's hunks or none. The pathspec is
-        `:(literal)<path>`: two heads that change `:x.txt` differently are not carried, and the path is named."""
-        first = self.pull_request_over_a_long_file(path=":x.txt")
-        second = self.sibling_head({":x.txt": "".join(LONG[:39] + ["other\n"] + LONG[42:])}, "another change")
-        self.assertNotEqual(self.digest(second), self.digest(first))
-        run = self.carry(second)
-        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertTrue(run.stdout.endswith("'s at :x.txt\n"), run.stdout)
-
-    def test_a_git_that_cannot_read_a_path_s_patch_is_exit_2_naming_the_path_never_equal(self):
-        """U180 (standing order 21): the per-path patch is one more producer; a git that fails on it is a refusal
-        naming the path and the command, never an empty patch hashed as an equal change."""
-        fakes = self.root / "fakes"
-        fakes.mkdir()
-        real = shutil.which("git", path=GIT_ENV["PATH"])
-        (fakes / "git").write_text(
-            '#!/bin/sh\nfor arg in "$@"; do\n  [ "$arg" = -p ] && { echo \'git: injected patch failure\' >&2; exit 1; }\n'
-            f'done\nexec {shlex.quote(real)} "$@"\n'
-        )
-        (fakes / "git").chmod(0o755)
-        run = self.carry(self.same, env=GIT_ENV | {"PATH": f"{fakes}:{GIT_ENV['PATH']}"})
-        self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
-        self.assertIn("audit-carry: the patch of a.txt between ", run.stderr)
-        self.assertIn(": git diff-tree -p --unified=3 ", run.stderr)
-        self.assertIn(" -- :(literal)a.txt exited 1: git: injected patch failure\n", run.stderr)
-
-    def changed_lines(self, head, path="long.txt"):
-        """The `-` and `+` lines of `head`'s patch of `path` against its merge base, the whole of what round 1 hashed."""
-        base = self.git("merge-base", "refs/remotes/origin/main", head)
-        patch, _lines = self.path_patch(base, head, path.encode())
-        return [line for line in patch.split(b"\n") if line.startswith((b"-", b"+"))]
-
-    def test_the_identical_edit_moved_to_the_second_function_is_not_carried(self):
-        """U180 round 2 (P1, the auditor's first fixture and Codex thread 4476082645): with `--unified=0` and the `@@`
-        lines dropped a hunk was its `-` and `+` lines alone, so a head that reverted the edit in the first function
-        and made the identical edit in the second hashed equal and was carried with the audit of the first. The three
-        lines of context around the hunk are hashed, so the two places differ: the sibling head and the direct
-        descendant are both not carried, naming the path."""
-        first = self.pull_request_over_a_long_file(
-            content=two_functions(EDITED_BLOCK, BLOCK), path="two.py", main_content=two_functions()
-        )
-        sibling = self.sibling_head({"two.py": two_functions(BLOCK, EDITED_BLOCK)}, "the edit in the second function")
-        self.git("switch", "-q", "pr")
-        descendant = self.commit({"two.py": two_functions(BLOCK, EDITED_BLOCK)}, "reverted in first, made in second")
-        self.git("switch", "-q", "main")
-        for head in (sibling, descendant):
-            with self.subTest(head="sibling" if head == sibling else "descendant"):
-                self.assertEqual(self.changed_lines(head, "two.py"), self.changed_lines(first, "two.py"))
-                self.assertNotEqual(self.digest(head), self.digest(first))
-                run = self.carry(head)
-                self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
-                self.assertEqual(
-                    run.stdout,
-                    f"audit-carry: not carried: the diff of {head[:8]} against its merge base differs from "
-                    f"{first[:8]}'s at two.py\n",
-                )
-
-    def test_a_merge_of_main_that_changes_a_line_beside_the_pull_request_s_hunk_is_not_carried(self):
-        """U180 round 2: the merge of `main` changes line 38, within the three lines above the pull request's hunk,
-        and none of the pull request's own lines; the hunk's context differs, so the head is audited again, naming
-        the path (the merge that inserts ten lines above stays carried, the test before the round-1 one)."""
-        first = self.pull_request_over_a_long_file()
-        beside = LONG[:37] + ["line 38 changed\n"] + LONG[38:]
-        merged = self.merge_of_main("".join(beside))
-        self.assertEqual(self.changed_lines(merged), self.changed_lines(first), "the pull request's own lines")
-        self.assertNotEqual(self.digest(merged), self.digest(first))
-        run = self.carry(merged)
-        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertEqual(
-            run.stdout,
-            f"audit-carry: not carried: the diff of {merged[:8]} against its merge base differs from "
-            f"{first[:8]}'s at long.txt\n",
-        )
-
-    def test_a_symlink_replaced_by_a_binary_file_is_carried_only_with_the_same_bytes(self):
-        """U180 round 2 (P1, the auditor's second fixture): a symlink replaced by a binary file is one `T` record
-        whose patch holds the link's `-` line and a `Binary files` line, so the hunkless fallback never engaged and
-        two heads writing different bytes hashed equal. A path whose patch says `Binary files` hashes both blob ids
-        whatever else it holds: different bytes are not carried, naming the path; the same bytes are."""
-        os.symlink("target", self.repo / "link")
-        self.commit({}, "a symlink on main")
-        self.git("update-ref", "refs/remotes/origin/main", "main")
-        heads = []
-        for name, content in (("first", b"\x00abc"), ("second", b"\x00xyz"), ("third", b"\x00abc")):
-            self.git("switch", "-q", "-c", name, "main")
-            (self.repo / "link").unlink()
-            (self.repo / "link").write_bytes(content)
-            heads.append(self.commit({}, f"{name}: the link becomes a binary file"))
-            self.git("switch", "-q", "main")
-        first, second, third = heads
-        raw = self.git_bytes("diff-tree", "-r", "-z", "--raw", "--no-renames", "refs/remotes/origin/main", first)
-        self.assertTrue(raw.startswith(b":120000 100644 ") and raw.endswith(b" T\0link\0"), raw)
-        patch, _lines = self.path_patch(self.git("rev-parse", "refs/remotes/origin/main"), first, b"link")
-        self.assertIn(b"\n-target\n", patch)
-        self.assertIn(b"\nBinary files /dev/null and b/link differ\n", patch)
-        self.ledger(ledger("2026-10-30T01:00:00Z", first))
-        self.verdict(first)
-        self.assertEqual(self.changed_lines(second, "link"), self.changed_lines(first, "link"))
-        self.assertNotEqual(self.digest(second), self.digest(first))
-        run = self.carry(second)
-        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertTrue(run.stdout.endswith("'s at link\n"), run.stdout)
-        run = self.carry(third)
-        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertEqual(run.stdout, f"carried {first} {third} {self.digest(first)}\n")
-
-    def test_the_edit_at_the_third_of_three_identical_windows_is_another_digest_than_at_the_second(self):
-        """U180 round 2: three identical seven-line windows, so the hunk's context and `-` lines are the same bytes at
-        the second and at the third; the `@@occurrence <n>` line counts the window's occurrences before the hunk in
-        the merge-base file (1 at the second, 2 at the third) and the two digests differ, naming the path."""
-        repeated = WINDOW * 3
-        at_third = repeated[:17] + ["y\n"] + repeated[18:]
-        at_second = repeated[:10] + ["y\n"] + repeated[11:]
-        first = self.pull_request_over_a_long_file(
-            content="".join(at_third), path="rep.txt", main_content="".join(repeated)
-        )
-        second = self.sibling_head({"rep.txt": "".join(at_second)}, "the edit at the second window")
-        self.assertIn(b"\n@@occurrence 2\n", self.hashed(first, "rep.txt"))
-        self.assertIn(b"\n@@occurrence 1\n", self.hashed(second, "rep.txt"))
-
-        def without_index(text):
-            return [line for line in text.split(b"\n") if not line.startswith(b"@@occurrence ")]
-
-        self.assertEqual(
-            without_index(self.hashed(second, "rep.txt")),
-            without_index(self.hashed(first, "rep.txt")),
-            "the two hunks are the same bytes but for the index",
-        )
-        self.assertNotEqual(self.digest(second), self.digest(first))
-        run = self.carry(second)
-        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertTrue(run.stdout.endswith("'s at rep.txt\n"), run.stdout)
-
-    def test_a_hunk_header_of_another_shape_is_exit_2_naming_the_path(self):
-        """U180 round 2: a `@@` line is read by its shape, two number pairs between the markers, and one of another
-        shape is a refusal naming the path, never a line dropped from the hashed text."""
-        fakes = self.root / "fakes"
-        fakes.mkdir()
-        real = shutil.which("git", path=GIT_ENV["PATH"])
-        (fakes / "git").write_text(
-            "#!/bin/sh\nfor arg in \"$@\"; do\n  [ \"$arg\" = -p ] && { printf '%s\\n' 'diff --git a/a.txt b/a.txt' "
-            "'--- a/a.txt' '+++ b/a.txt' '@@ garbage @@' '-one' '+ONE' ' two'; exit 0; }\n"
-            f'done\nexec {shlex.quote(real)} "$@"\n'
-        )
-        (fakes / "git").chmod(0o755)
-        run = self.carry(self.same, env=GIT_ENV | {"PATH": f"{fakes}:{GIT_ENV['PATH']}"})
-        self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
-        self.assertIn("audit-carry: the patch of a.txt between ", run.stderr)
-        self.assertTrue(run.stderr.endswith(": a hunk header of another shape: b'@@ garbage @@'\n"), run.stderr)
-
-    def test_a_new_file_s_digest_is_stable_and_differs_with_its_content(self):
-        """U180 round 2: a new file (status `A`) has no merge-base blob, so its one hunk's index is 0; two heads
-        adding the same bytes are carried and one adding other bytes is not, naming the path."""
-        first = self.sibling_head({"new.txt": "fresh\nfile\n"}, "a new file")
-        self.ledger(ledger("2026-10-30T01:00:00Z", first))
-        self.verdict(first)
-        same = self.sibling_head({"new.txt": "fresh\nfile\n"}, "the same new file")
-        other = self.sibling_head({"new.txt": "fresh\nFILE\n"}, "another new file")
-        self.assertIn(b"\n@@occurrence 0\n", self.hashed(first, "new.txt"))
-        run = self.carry(same)
-        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertEqual(run.stdout, f"carried {first} {same} {self.digest(first)}\n")
-        run = self.carry(other)
-        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertTrue(run.stdout.endswith("'s at new.txt\n"), run.stdout)
 
     def test_a_head_the_ledger_already_judged_is_never_carried(self):
         """Round 5 (P1): the head's own rows were skipped while the ledger was searched for an earlier `correct` head,

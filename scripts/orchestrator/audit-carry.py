@@ -11,10 +11,9 @@ root whose name ends in a newline is kept whole; round 6 P3) and, for the carry 
 makes a scratch repository of its own for the run (`git init --bare --template=` under the run's
 TMPDIR, removed on exit), fetches the base, the earlier audited head and this head from the checkout by sha
 (`git fetch <root> <sha>:refs/audit-carry/<sha>`, one command per sha, each status read; a sha the checkout does not
-hold is exit 2) and runs every later git command there: the merge bases, the raw records and per-path patches the
-digest is taken over and the patches the changed lines are read from. A fresh repository has no local config, no
-`info/grafts` and no replace ref, so nothing the checkout's own repository holds can shape what the lever reads (round
-4 P1: a repository-local
+hold is exit 2) and runs every later git command there: the merge bases, the raw records the digest is taken over and
+the patches the changed lines are read from. A fresh repository has no local config, no `info/grafts` and no replace
+ref, so nothing the checkout's own repository holds can shape what the lever reads (round 4 P1: a repository-local
 `diff.*.textconv` or `diff.ignoreSubmodules` emptied the digest of unequal trees, and `info/grafts` put both heads
 under the base while `--no-replace-objects` leaves grafts alone).
 
@@ -91,25 +90,12 @@ form against the run's own repository and refuses the audit on exit 2. The rende
 `--base` is not read.
 
 `audit-carry.py <store> U<n> <pr> <head> [--repo <path>] [--base <ref>]` decides whether the head is carried. The
-digest of a head is the sha256 over the change itself, not the blobs (U180): for every path of the sorted raw records
-of `git diff-tree -r -z --raw --no-renames --ignore-submodules=none <merge-base> <sha>`, the path, the record's status
-and its two modes, then the path's own `--unified=3` patch (`path_patch`: `git diff-tree -p ... <merge-base> <sha> --
-:(literal)<path>` with every `@@ ` line kept but its two number pairs blanked, an `@@occurrence <n>` line after each,
-every `index ` line dropped and every other line byte-exact, the three context lines around each hunk included),
-each NUL-terminated, read in the scratch repository, the merge base with `--base` (default `refs/remotes/origin/main`,
-resolved to a sha in the checkout and fetched) computed there too. The hunk positions and the blob ids are left out
-because a merge of `main` that inserts lines above a pull request's change rewrites both while the change itself is
-the same (U150 rounds 7 to 9 re-audited three such heads); the context, `-` and `+` lines are hashed as they are, so
-one byte or one space inside a changed line, a trailing newline or a changed line among the three around the hunk is
-another digest (U180 round 2: with no context and no position a hunk was its `-` and `+` lines alone, and the same
-edit moved to another place in the file hashed equal). `<n>` is the occurrence index of the hunk's old-side window
-(its context and `-` lines) among the merge-base file's lines before the hunk's own start, so the identical edit at
-an identical window elsewhere in the file differs by its index; a path whose patch says `Binary files` (a file git
-prints no hunk for, or a symlink replaced by one) hashes `binary <old blob> <new blob>` after its text, so a binary
-change is another digest too. The patch is read with
-`--no-textconv --no-ext-diff --ignore-submodules=none` in a repository without the checkout's config, so a textconv
-driver plays no part in it (round 4). It is computed for the earlier audited head and for this head, each against its
-own merge base. A head the ledger already judged is never carried: when a
+digest of a head is the sha256 over the sorted raw records of `git diff-tree -r -z --raw --no-renames
+--ignore-submodules=none <merge-base> <sha>` (old mode, new mode, old blob, new blob, status and path of every changed
+path), read in the scratch repository, the merge base with `--base` (default `refs/remotes/origin/main`, resolved to
+a sha in the checkout and fetched) computed there too; a record names objects, so a textconv driver, git's binary
+detection and the text of a patch header play no part in it (round 4). It is computed for the earlier audited head
+and for this head, each against its own merge base. A head the ledger already judged is never carried: when a
 `correct` or `incorrect` row names this head (the body's unit or a fix unit of it), it prints `not carried: head <sha>
 already audited` and exits 1 before any digest is read (round 5 P1: the head's own rows were skipped and a `correct`
 row searched for, so an older `correct` head was carried over this head's own newer `incorrect` row). Otherwise, when
@@ -118,7 +104,7 @@ newest verdict says: that verdict is the one carried, the coordinator writes the
 `ledger.tsv` row whose verdict is `carried`, and `pr-merge.sh` accepts that row in place of `correct` only while the
 earlier head's newest row by ts is `correct` and its verdict file stands, with CI green on the new head, so a carry
 from an `incorrect` head is a row the gate refuses naming that head. Otherwise it prints why on stdout (no earlier
-audited head, a head already audited, or the first path whose change differs between the two diffs) and exits 1, and
+audited head, a head already audited, or the first path whose record differs between the two diffs) and exits 1, and
 a head that is audited afresh. A git failure (a fetch included) or a store that cannot be read as data is exit 2 on
 stderr, never "equal".
 """
@@ -199,8 +185,6 @@ SCORE = re.compile(r"^(10|[1-9])$")
 SCORE_NAMES = {"f": "frequency", "s": "severity"}
 PATH = re.compile(r"^[^\s:]+$")
 HUNK = re.compile(rb"^@@ -[0-9]+(?:,[0-9]+)? \+([0-9]+)(?:,([0-9]+))? @@")
-# The whole hunk header the digest blanks (U180 round 2): both number pairs and the text after the second `@@`.
-HUNK_HEADER = re.compile(rb"^@@ -([0-9]+)(?:,([0-9]+))? \+([0-9]+)(?:,([0-9]+))? @@(.*)$")
 # One record of `diff-tree -r -z --raw --no-renames`: old mode, new mode, old blob, new blob and a status letter
 # without a score (no rename or copy is detected, so no second path); the path is the NUL-terminated field after it.
 RAW_RECORD = re.compile(rb"^:([0-7]{6}) ([0-7]{6}) ([0-9a-f]{40,64}) ([0-9a-f]{40,64}) ([ADMT])$")
@@ -664,136 +648,16 @@ def changed_ranges(scratch, previous, head):
     return tuple(ranges)
 
 
-def occurrence_index(lines, window, start):
-    """How many times `window` (a sequence of lines, bytes) occurs as consecutive lines of `lines` starting before
-    line `start` (1-based), compared byte-exact, overlaps counted; the window at `start` itself is not. An empty
-    window occurs nowhere: the hunk that has one (an empty old side without context) is anchored by nothing."""
-    if not window:
-        return 0
-    width = len(window)
-    return sum(
-        1 for position in range(min(start - 1, len(lines) - width + 1)) if lines[position : position + width] == window
-    )
-
-
-def path_patch(scratch, old, new, path, base_lines):
-    """The `--unified=3` patch of one changed path between `old` and `new` as the digest reads it (U180): every hunk
-    header `@@ -a,b +c,d @@<rest>` is kept with its two number pairs blanked (`@@  @@<rest>`: the numbers are what a
-    merge of `main` above the change moves) and followed by one line of this lever's own, `@@occurrence <n>`, the
-    occurrence index of the hunk's old-side window (its context and `-` lines, in order) among `base_lines`, the
-    merge-base file's lines, before the hunk's own old start (round 2: with no context and no position a hunk was its
-    `-` and `+` lines alone, so the identical edit at another occurrence of the same text hashed equal; now the three
-    context lines on each side and the index tell the places apart, and `base_lines` None, a new file or a gitlink,
-    makes every index 0). Every line that starts with `index ` (the two blob ids, which such a merge rewrites too) is
-    left out, and every other line is kept byte-exact, the `diff --git`, `---`, `+++`, context, `-`, `+`,
-    `\\ No newline at end of file` and `Binary files` lines included, so one byte or one space inside a changed line is
-    another digest. The lines are split on `\\n` alone, as git writes them, so a `\\r` inside a changed line starts no
-    line of its own. A hunk header of another shape, or a hunk body that does not run to its two counts, is Malformed
-    naming the path, never dropped. The pathspec is `:(literal)<path>`, so a path holding `*`, `?`, `[` or a leading
-    `:` names itself alone and never another path's hunks. A git that cannot answer is Malformed naming the path
-    (exit 2), never an empty patch read as an equal change (standing order 21)."""
-    name = path.decode("utf-8", errors="surrogateescape")
-    where = f"the patch of {quote_c_style(name)} between {old[:8]} and {new[:8]}"
-    try:
-        patch = git(
-            scratch,
-            "diff-tree",
-            "-p",
-            "--unified=3",
-            "--no-renames",
-            "--no-color",
-            "--full-index",
-            "--no-ext-diff",
-            "--no-textconv",
-            "--ignore-submodules=none",
-            old,
-            new,
-            "--",
-            f":(literal){name}",
-        )
-    except Malformed as error:
-        raise Malformed(f"{where}: {error}") from None
-    lines = patch.split(b"\n")
-    kept = []
-    position = 0
-    while position < len(lines):
-        line = lines[position]
-        position += 1
-        if line.startswith(b"index "):
-            continue
-        if not line.startswith(b"@@ "):
-            kept.append(line)
-            continue
-        header = HUNK_HEADER.match(line)
-        if header is None:
-            raise Malformed(f"{where}: a hunk header of another shape: {line[:80]!r}")
-        hunk_text = f"{where} hunk {line.decode(errors='replace')}"
-        start = number(hunk_text, header.group(1).decode(), "hunk start")
-        old_left = 1 if header.group(2) is None else number(hunk_text, header.group(2).decode(), "old count")
-        new_left = 1 if header.group(4) is None else number(hunk_text, header.group(4).decode(), "new count")
-        # git anchors a hunk without old lines at the line before it; its context then starts one line later
-        if old_left == 0:
-            start += 1
-        kept.append(b"@@  @@" + header.group(5))
-        occurrence_at = len(kept)
-        window = []
-        while old_left > 0 or new_left > 0:
-            if position == len(lines):
-                raise Malformed(f"{hunk_text}: the hunk ends before its counts")
-            body = lines[position]
-            position += 1
-            if body.startswith(b" "):
-                old_left -= 1
-                new_left -= 1
-                window.append(body[1:])
-            elif body.startswith(b"-"):
-                old_left -= 1
-                window.append(body[1:])
-            elif body.startswith(b"+"):
-                new_left -= 1
-            elif not body.startswith(b"\\"):
-                raise Malformed(f"{hunk_text}: a hunk line of another shape: {body[:80]!r}")
-            if old_left < 0 or new_left < 0:
-                raise Malformed(f"{hunk_text}: the hunk runs past its counts")
-            kept.append(body)
-        index = 0 if base_lines is None else occurrence_index(base_lines, window, start)
-        kept.insert(occurrence_at, b"@@occurrence %d" % index)
-    return b"\n".join(kept)
-
-
 def diff_digest(scratch, base, sha):
-    """The sha256 of the change of `sha` against its merge base with `base`, both read in the scratch repository, as
-    a function of each changed path's own hunks, their three lines of context and their place among the merge-base
-    file's occurrences of the same text, and of nothing that a merge of `main` around them rewrites (U180: the
-    records' blob ids made every such merge a new digest, U150 rounds 7 to 9). Per path in byte order the hash takes
-    `path NUL status NUL old mode NUL new mode NUL patch NUL`, the status and the modes the raw record's and the patch
-    `path_patch`'s: the hunk lines byte-exact with the `@@` positions blanked, an `@@occurrence <n>` line per hunk and
-    no `index` blob ids. The merge-base file the index counts over is the record's old blob (`git cat-file blob`; a
-    new file has none and a gitlink's old side is a commit the scratch repository does not hold, so both count 0; a
-    blob git cannot read is Malformed naming the path, exit 2). A path whose patch says `Binary files` or `GIT binary
-    patch` (git prints no hunk for a binary file, and a symlink replaced by one shows the link's `-` lines beside the
-    `Binary files` line; round 2) takes `binary <old blob> <new blob>` as one more line after its text, so a binary
-    change is another digest whatever else the patch holds. Returns the digest and the (path, entry) pairs it hashed,
-    so the caller can name the first path whose entry differs."""
+    """The sha256 over the sorted raw records of `sha` against its merge base with `base`, both read in the scratch
+    repository, and those records: each record then its path, each NUL-terminated, sorted by path bytes, so the
+    digest is a function of the two trees alone (round 4)."""
     merge_base = git(scratch, "merge-base", base, sha).decode(errors="replace").strip()
     if not OBJECT_ID.match(merge_base):
         raise Malformed(f"git merge-base {base} {sha} named no object: {merge_base!r}")
-    entries = []
-    for path, record in sorted(raw_records(scratch, merge_base, sha)):
-        old_mode, new_mode, old_blob, new_blob, status = RAW_RECORD.match(record).groups()
-        base_lines = None
-        if status != b"A" and old_mode != b"160000":
-            try:
-                base_lines = git(scratch, "cat-file", "blob", old_blob.decode()).split(b"\n")
-            except Malformed as error:
-                name = quote_c_style(path.decode("utf-8", errors="surrogateescape"))
-                raise Malformed(f"the merge-base blob of {name} at {merge_base[:8]}: {error}") from None
-        patch = path_patch(scratch, merge_base, sha, path, base_lines)
-        if any(line.startswith((b"Binary files ", b"GIT binary patch")) for line in patch.split(b"\n")):
-            patch += b"binary " + old_blob + b" " + new_blob + b"\n"
-        entries.append((path, b"\0".join((path, status, old_mode, new_mode, patch)) + b"\0"))
-    digest = hashlib.sha256(b"".join(entry for _path, entry in entries)).hexdigest()
-    return digest, entries
+    records = sorted(raw_records(scratch, merge_base, sha))
+    digest = hashlib.sha256(b"".join(record + b"\0" + path + b"\0" for path, record in records)).hexdigest()
+    return digest, records
 
 
 def first_difference(head_records, previous_records):

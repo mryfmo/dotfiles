@@ -9,7 +9,8 @@
 #   then removes linked git worktrees of each repo in DISK_GC_REPOS (default: every repo under
 #   DISK_GC_WORKSPACE that has one) that are merged into the default branch (origin/HEAD, origin/main,
 #   origin/master, main or master, the first that exists), carry no tracked edits, were not touched within
-#   DISK_GC_WORKTREE_DAYS, and are not locked by a live process. Untracked files of
+#   DISK_GC_WORKTREE_DAYS, and are not locked by a live process. A worktree is removed only through
+#   `git worktree remove`; one git refuses is logged and kept for the operator. Untracked files of
 #   a removed worktree are archived under ~/.local/share/disk-gc/scratch first, and
 #   archives older than DISK_GC_ARCHIVE_DAYS are purged. Without --apply it reports.
 # @example
@@ -190,55 +191,51 @@ function read_worktrees() {
 }
 
 # @description Prove that a listed path is the root of a linked worktree of the repo before anything removes it: a
-#   directory that is not a symlink, whose physical path is not the main worktree's, is its own
-#   `rev-parse --show-toplevel`, and whose `--git-common-dir` is the repo's. Every read's status is checked and a
-#   failed read fails the proof, so a directory that replaced a worktree, or one the listing never named, is kept.
+#   directory that is not a symlink, is not the main worktree, is its own toplevel (`rev-parse --show-prefix` prints
+#   nothing there), and whose `--git-common-dir` is the repo's. Paths are compared by identity (`-ef`: same device
+#   and inode), never as text, so nothing is resolved or stripped and a name ending in a newline is compared whole.
+#   Every read's status is checked and a failed read fails the proof, so a directory that replaced a worktree, a
+#   subdirectory of one, or a tree of another repo is kept.
 # @arg $1 path The worktree path as listed.
-# @arg $2 path The physical path of the main worktree.
-# @arg $3 path The physical path of the repo's common git directory.
-# @set wt_real path The physical path of $1, once it could be entered.
+# @arg $2 path The main worktree's path, the listing's first record.
+# @arg $3 path The repo's common git directory.
 # @set reason string The check that failed, for the log line.
 # @exitcode 1 The path is not such a root.
 function worktree_root() {
-    local wt="$1" main_real="$2" common_real="$3" top common
-    wt_real='' reason=''
+    local wt="$1" main_wt="$2" gitdir="$3" prefix common
+    reason=''
     if [ -L "${wt}" ]; then
         reason="a symlink"
         return 1
     fi
-    if ! wt_real=$(cd "${wt}" && pwd -P); then
-        reason="cannot enter it"
-        return 1
-    fi
-    if [ "${wt_real}" = "${main_real}" ]; then
+    if [ "${wt}" -ef "${main_wt}" ]; then
         reason="the main worktree"
         return 1
     fi
-    if ! top=$(git -C "${wt}" rev-parse --show-toplevel 2> /dev/null) || ! top=$(cd "${top}" && pwd -P); then
+    if ! prefix=$(git -C "${wt}" rev-parse --show-prefix 2> /dev/null); then
         reason="no toplevel"
         return 1
     fi
-    if [ "${top}" != "${wt_real}" ]; then
-        reason="inside the tree at ${top}"
+    if [ -n "${prefix}" ]; then
+        reason="inside the tree at ${prefix}"
         return 1
     fi
-    if ! common=$(git -C "${wt}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) ||
-        ! common=$(cd "${common}" && pwd -P); then
+    if ! common=$(git -C "${wt}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null); then
         reason="no common git dir"
         return 1
     fi
-    if [ "${common}" != "${common_real}" ]; then
+    if ! [ "${common}" -ef "${gitdir}" ]; then
         reason="of another repo, ${common}"
         return 1
     fi
 }
 
 # @description Remove the merged, idle, unlocked linked worktrees of one repo. The listing comes from read_worktrees
-#   (every path whole), each lock from the tree's own admin directory, and `git worktree remove` and the `rm -rf`
-#   behind it run only on a path worktree_root proved; a failed read keeps the tree, a failed listing keeps the repo.
+#   (every path whole), each lock from the tree's own admin directory, and `git worktree remove` runs only on a path
+#   worktree_root proved; the lever runs no `rm -rf` on a worktree path, so a removal git refuses is logged and the
+#   tree kept for the operator; a failed read keeps the tree, a failed listing keeps the repo.
 function worktree_gc() {
-    local repo="$1" base gitdir main_real i wt locked name admin head porcelain edits recent untracked size archive
-    local still wt_real reason
+    local repo="$1" base gitdir i wt locked name admin head porcelain edits recent untracked size archive reason
     local -a wt_paths=() wt_locked=()
     if ! git -C "${repo}" rev-parse --git-dir > /dev/null 2>&1; then
         log "not a git repo: ${repo}; skipping"
@@ -251,8 +248,7 @@ function worktree_gc() {
     }
     log "repo ${repo}: base ${base}"
     run git -C "${repo}" worktree prune --expire "${worktree_days}.days.ago"
-    if ! gitdir=$(git -C "${repo}" rev-parse --path-format=absolute --git-common-dir) ||
-        ! gitdir=$(cd "${gitdir}" && pwd -P); then
+    if ! gitdir=$(git -C "${repo}" rev-parse --path-format=absolute --git-common-dir); then
         log "cannot read the git dir of ${repo}; skipping its worktrees"
         return 0
     fi
@@ -260,7 +256,7 @@ function worktree_gc() {
         log "cannot list the worktrees of ${repo}; skipping its worktrees"
         return 0
     fi
-    if [ "${#wt_paths[@]}" -eq 0 ] || ! main_real=$(cd "${wt_paths[0]}" && pwd -P); then
+    if [ "${#wt_paths[@]}" -eq 0 ] || [ ! -d "${wt_paths[0]}" ]; then
         log "cannot read the main worktree of ${repo}; skipping its worktrees"
         return 0
     fi
@@ -269,7 +265,7 @@ function worktree_gc() {
         wt=${wt_paths[i]} locked=${wt_locked[i]}
         [ -d "${wt}" ] || continue
         name=$(basename "${wt}")
-        if ! worktree_root "${wt}" "${main_real}" "${gitdir}"; then
+        if ! worktree_root "${wt}" "${wt_paths[0]}" "${gitdir}"; then
             log "keep ${name}: not a worktree root of ${repo} (${reason})"
             continue
         fi
@@ -322,15 +318,10 @@ function worktree_gc() {
         fi
         size=$(du -sh "${wt}" 2> /dev/null | awk '{ print $1 }')
         log "remove ${name}: merged into ${base}, ${size}, ${untracked} scratch files"
-        run git -C "${repo}" worktree remove --force --force "${wt}" || log "worktree remove failed for ${name}"
-        if [ "${apply}" -eq 1 ] && [ -d "${wt}" ]; then
-            # The directory git left behind is removed only while it is still the one proved above.
-            if [ -L "${wt}" ] || ! still=$(cd "${wt}" && pwd -P) || [ "${still}" != "${wt_real}" ]; then
-                log "keep ${name}: no longer the directory checked before removal"
-                continue
-            fi
-            rm -rf "${wt}"
-        fi
+        run git -C "${repo}" worktree remove --force --force "${wt}" || {
+            log "keep ${name}: git worktree remove failed; the tree is left for the operator"
+            continue
+        }
     done
     run git -C "${repo}" worktree prune --expire "${worktree_days}.days.ago" || log "worktree prune failed for ${repo}"
 }

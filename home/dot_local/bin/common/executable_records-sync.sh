@@ -194,7 +194,7 @@ gh_bounded() {
 #   exits 1 keeps it (keep_scratch): the backup it holds is what the coordinator reads next.
 cleanup() {
     if [[ -n ${scratch:-} && -d ${scratch} ]]; then
-        ((keep_scratch)) && return 0
+        [[ ${keep_scratch} == 0 ]] || return 0
         rm -r "${scratch}" 2> /dev/null || echo "${lever}: could not remove ${scratch}" >&2
     fi
 }
@@ -276,24 +276,21 @@ make_tools() {
     done < "${scratch}/home-entries"
 }
 
-# @description Print the number of the first line at which two differing files differ: cmp's `line <n>`, or, when
-#   one file is a prefix of the other, one past the shorter file's last line.
+# @description Print the number of the first line at which two differing files differ: the first line whose text
+#   differs, one past the shorter file's last line when it is a prefix of the other, or the last line when the two
+#   differ in their final newline alone. awk counts: the levers' lint admits no arithmetic over a name in bash
+#   itself (scripts/ci/producer-status-check.sh, ACCEPTED_ARITHMETIC).
 # @arg $1 path One file.
 # @arg $2 path The other.
 differing_line() {
-    local out line a_size b_size short status=0
-    out=$(cmp "$1" "$2" 2>&1) || status=$?
-    ((status == 1)) || fail "cmp failed comparing $1 with $2 (exit ${status})"
-    line=$(printf '%s\n' "${out}" | sed -n -E '1s/.*line ([0-9]+).*/\1/p') || fail 'cannot read the cmp output'
-    if [[ -z ${line} ]]; then
-        a_size=$(wc -c < "$1") || fail "cannot measure $1"
-        b_size=$(wc -c < "$2") || fail "cannot measure $2"
-        short=$1
-        ((a_size <= b_size)) || short=$2
-        line=$(wc -l < "${short}") || fail "cannot count the lines of ${short}"
-        line=$((line + 1))
+    if [[ ! -s $1 || ! -s $2 ]]; then
+        echo 1
+        return
     fi
-    printf '%s\n' "${line}"
+    awk 'NR == FNR { a[NR] = $0; na = NR; next }
+        { nb = FNR }
+        FNR > na || a[FNR] != $0 { print FNR; done = 1; exit }
+        END { if (!done) print (nb < na ? nb + 1 : nb) }' "$1" "$2"
 }
 
 # @description Classify one store path the fast-forward touches (U192) and print its class word: `untracked-equal`,
@@ -304,36 +301,48 @@ differing_line() {
 # @arg $1 string The repository-relative store path.
 # @arg $2 string Its diff-tree status against main (A, M or D).
 classify() {
-    local path=$1 status=$2 blob masked resolved n m line last ids lineno id tracked=0 index_status=0 tree_status=0
+    local path=$1 status=$2 blob masked_copy resolved n start line last missing tracked=0 listed=0 index_status=0 tree_status=0
     blob=${scratch}/main/${path}
-    masked=${scratch}/masked/${path}
+    masked_copy=${scratch}/masked/${path}
     resolved=${scratch}/resolved/${path}
     [[ ! -L ${path} ]] || refuse "${path}: a symlink stands at a store path the fast-forward touches"
     [[ ! -d ${path} ]] || refuse "${path}: a directory stands at a store path the fast-forward touches"
     [[ ! -e ${path} || -f ${path} ]] || refuse "${path}: not a regular file"
-    git_isolated ls-files --error-unmatch -- "${path}" > /dev/null 2>&1 && tracked=1
-    if ((tracked == 0)); then
+    # Tracked has three outcomes (standing order 21): the path listed, an empty listing, a listing that failed.
+    read_listing "${scratch}/tracked" "${scratch}/tracked.err" git_isolated ls-files -z --cached -- "${path}" || listed=$?
+    case ${listed} in
+    0) tracked=1 ;;
+    1) tracked=0 ;;
+    *) fail "git ls-files ${path} failed" ;;
+    esac
+    if [[ ${tracked} == 0 ]]; then
         if [[ ! -e ${path} ]]; then
             echo clean
             return
         fi
         [[ -f ${blob} ]] || refuse "${path}: untracked-equal: main deletes the path and the checkout holds an untracked file at it"
-        if cmp -s "${path}" "${blob}" || cmp -s "${masked}" "${blob}"; then
+        if cmp -s "${path}" "${blob}" || cmp -s "${masked_copy}" "${blob}"; then
             echo untracked-equal
             return
         fi
-        line=$(differing_line "${masked}" "${blob}") || exit $?
+        line=$(differing_line "${masked_copy}" "${blob}") || fail "cannot compare ${path} with main's"
         refuse "${path}: untracked-equal: the untracked file differs from main's at line ${line} (after masking too); nothing was written"
     fi
     git_isolated diff --quiet --cached HEAD -- "${path}" || index_status=$?
-    ((index_status <= 1)) || fail "git diff --cached ${path} failed"
-    ((index_status == 0)) || refuse "${path}: clean: the index holds a staged change (no row of the table admits one); nothing was written"
+    case ${index_status} in
+    0) ;;
+    1) refuse "${path}: clean: the index holds a staged change (no row of the table admits one); nothing was written" ;;
+    *) fail "git diff --cached ${path} failed" ;;
+    esac
     git_isolated diff --quiet HEAD -- "${path}" || tree_status=$?
-    ((tree_status <= 1)) || fail "git diff ${path} failed"
-    if ((tree_status == 0)); then
+    case ${tree_status} in
+    0)
         echo clean
         return
-    fi
+        ;;
+    1) ;;
+    *) fail "git diff ${path} failed" ;;
+    esac
     [[ -f ${path} ]] || refuse "${path}: clean: the tracked file is missing from the working tree; nothing was written"
     [[ ${status} != D ]] || refuse "${path}: once-adopt: main deletes a path the checkout modified (line 1); nothing was written"
     [[ -f ${blob} ]] || fail "no blob of ${path} was read from main"
@@ -342,40 +351,41 @@ classify() {
         [[ -s ${blob} ]] || refuse "${path}: table-append: main's file is empty (line 1); nothing was written"
         last=$(tail -c 1 "${blob}") || fail "cannot read ${path} of main"
         [[ -z ${last} ]] || refuse "${path}: table-append: main's last line has no newline end; nothing was written"
-        n=$(wc -l < "${blob}") || fail "cannot count the lines of main's ${path}"
-        m=$(wc -l < "${path}") || fail "cannot count the lines of ${path}"
-        n=$((n)) m=$((m))
-        ((m >= n)) || refuse "${path}: table-append: the local file has ${m} lines, main's ${n} (line $((m + 1))); nothing was written"
-        head -n "${n}" "${masked}" > "${scratch}/prefix" || fail "cannot read the first ${n} lines of ${path}"
+        # N and N+1 come from awk (no arithmetic over a name in bash, ACCEPTED_ARITHMETIC); a local file of fewer
+        # than N lines differs from main's within the first N and is refused by the comparison below.
+        n=$(awk 'END { print NR }' "${blob}") || fail "cannot count the lines of main's ${path}"
+        start=$(awk 'END { print NR + 1 }' "${blob}") || fail "cannot count the lines of main's ${path}"
+        head -n "${n}" "${masked_copy}" > "${scratch}/prefix" || fail "cannot read the first ${n} lines of ${path}"
         if ! cmp -s "${scratch}/prefix" "${blob}"; then
-            line=$(differing_line "${scratch}/prefix" "${blob}") || exit $?
+            line=$(differing_line "${scratch}/prefix" "${blob}") || fail "cannot compare ${path} with main's"
             refuse "${path}: table-append: line ${line} differs from main's (the first ${n} lines must equal main's after masking); nothing was written"
         fi
         mkdir -p "${resolved%/*}" || fail "cannot make the resolved directory of ${path}"
-        { cat "${blob}" && tail -n +"$((n + 1))" "${path}"; } > "${resolved}" || fail "cannot write the resolved ${path}"
+        { cat "${blob}" && tail -n +"${start}" "${path}"; } > "${resolved}" || fail "cannot write the resolved ${path}"
         echo table-append
         ;;
     units.tsv)
+        [[ -s ${path} ]] || refuse "${path}: units-local: the local file is empty (line 1); nothing was written"
         head -n 1 "${blob}" > "${scratch}/header.main" || fail "cannot read the header of main's ${path}"
         head -n 1 "${path}" > "${scratch}/header.local" || fail "cannot read the header of ${path}"
         cmp -s "${scratch}/header.main" "${scratch}/header.local" ||
             refuse "${path}: units-local: line 1 (the header) differs from main's; nothing was written"
-        ids=$'\n'$(cut -f1 "${path}")$'\n' || fail "cannot read the ids of ${path}"
-        awk -F '\t' 'NR > 1 { print NR "\t" $1 }' "${blob}" > "${scratch}/ids.main" || fail "cannot read the ids of main's ${path}"
-        while IFS=$'\t' read -r lineno id; do
-            [[ ${ids} == *$'\n'"${id}"$'\n'* ]] ||
-                refuse "${path}: units-local: the id ${id} of main's line ${lineno} has no local row; nothing was written"
-        done < "${scratch}/ids.main"
+        # One awk pass over the two files: the first row of main whose id no local row carries, as `<line>TAB<id>`,
+        # empty when every id is covered.
+        missing=$(awk -F '\t' 'NR == FNR { if (FNR > 1) ids[$1] = 1; next } FNR > 1 && !($1 in ids) { print FNR "\t" $1; exit }' "${path}" "${blob}") ||
+            fail "cannot read the ids of ${path}"
+        [[ -z ${missing} ]] ||
+            refuse "${path}: units-local: the id ${missing#*$'\t'} of main's line ${missing%%$'\t'*} has no local row; nothing was written"
         mkdir -p "${resolved%/*}" || fail "cannot make the resolved directory of ${path}"
         cp -p "${path}" "${resolved}" || fail "cannot copy ${path}"
         echo units-local
         ;;
     *)
-        if cmp -s "${masked}" "${blob}"; then
+        if cmp -s "${masked_copy}" "${blob}"; then
             echo once-adopt
             return
         fi
-        line=$(differing_line "${masked}" "${blob}") || exit $?
+        line=$(differing_line "${masked_copy}" "${blob}") || fail "cannot compare ${path} with main's"
         refuse "${path}: once-adopt: the local file differs from main's beyond masking at line ${line}; nothing was written"
         ;;
     esac
@@ -413,9 +423,8 @@ ff_verify_failed() {
 #   repository: the state refusals, the touched set, the classification of every touched store path, then the write
 #   phase and the verification. Exits.
 ff_run() {
-    local branch head new_head python touched path status word line sorted
-    local store_paths=() statuses=() removed=() replaced=() appended=() unit_rows=() adopted=() backed_up=()
-    local kept=0 backup
+    local branch head new_head python touched entry want status path word sorted dirty backup
+    local entries=() masked=() removed=() replaced=() appended=() unit_rows=() adopted=() kept=() backed_up=()
     branch=$(git_isolated symbolic-ref --quiet --short HEAD 2> /dev/null) || refuse 'the checkout is not on a branch; --ff runs on main'
     [[ ${branch} == main ]] || refuse "the checkout is on ${branch}, not main; nothing was written"
     for path in MERGE_HEAD rebase-merge rebase-apply CHERRY_PICK_HEAD; do
@@ -439,46 +448,54 @@ ff_run() {
     done
     touched=${scratch}/touched
     git_isolated diff-tree -r -z --no-renames --name-status "${head}" "${main}" > "${touched}" || fail 'git diff-tree failed'
-    status='' path=''
-    while IFS= read -r -d '' status; do
-        IFS= read -r -d '' path || refuse 'the touched set ends mid-entry; nothing was written'
-        if [[ ${path} == "${records}"/* ]]; then # lint-comparisons: allow a repository-relative path as git prints it, under the store or not
-            check_name "${path}"
-            store_paths+=("${path}")
-            statuses+=("${status}")
+    # The listing alternates a status letter and a path, each NUL-ended; the one `read` of the levers' accepted form
+    # (ACCEPTED_WRITES of the lint names the `IFS= read` lines by text) takes them in turn. A store entry is kept as
+    # `<letter>/<path>` (a letter holds no slash), so no array is indexed by a counter.
+    want=status status='' entry=''
+    while IFS= read -r -d '' entry; do
+        if [[ ${want} == status ]]; then
+            status=${entry}
+            want=path
             continue
         fi
-        line=$(git_isolated status --porcelain -z -- "${path}") || fail "git status ${path} failed"
-        [[ -z ${line} ]] || refuse "${path} is not clean in the working tree or the index and the fast-forward changes it; resolve it by hand, nothing was written"
+        want=status
+        path=${entry}
+        if [[ ${path} == "${records}"/* ]]; then # lint-comparisons: allow a repository-relative path as git prints it, under the store or not
+            check_name "${path}"
+            entries+=("${status}/${path}")
+            continue
+        fi
+        dirty=$(git_isolated status --porcelain -- "${path}") || fail "git status ${path} failed"
+        [[ -z ${dirty} ]] || refuse "${path} is not clean in the working tree or the index and the fast-forward changes it; resolve it by hand, nothing was written"
     done < "${touched}"
-    [[ -z ${status} ]] || refuse 'the touched set ends mid-entry; nothing was written'
+    [[ -z ${entry} && ${want} == status ]] || refuse 'the touched set ends mid-entry; nothing was written'
     make_tools
     mkdir -p "${scratch}/main" "${scratch}/masked" "${scratch}/resolved" || fail 'cannot make the scratch directories'
-    local mask_copies=() i
-    for ((i = 0; i < ${#store_paths[@]}; i++)); do
-        path=${store_paths[i]}
-        if [[ ${statuses[i]} != D ]]; then
+    for entry in ${entries[@]+"${entries[@]}"}; do
+        status=${entry%%/*}
+        path=${entry#*/}
+        if [[ ${status} != D ]]; then
             mkdir -p "${scratch}/main/${path%/*}" || fail "cannot make the scratch directory of ${path}"
             git_scratch cat-file blob "${main}:${path}" > "${scratch}/main/${path}" || fail "cannot read ${path} of main"
         fi
         if [[ -f ${path} && ! -L ${path} ]]; then
             mkdir -p "${scratch}/masked/${path%/*}" || fail "cannot make the scratch directory of ${path}"
             cp -p "${path}" "${scratch}/masked/${path}" || fail "cp ${path} failed"
-            mask_copies+=("${scratch}/masked/${path}")
+            masked+=("${scratch}/masked/${path}")
         fi
     done
-    if ((${#mask_copies[@]})); then
+    if [[ -n ${masked[*]:-} ]]; then
         status=0
-        uv run --no-project python -I "${tools}/scripts/validate-agent-assets.py" --mask-secrets "${mask_copies[@]}" \
+        uv run --no-project python -I "${tools}/scripts/validate-agent-assets.py" --mask-secrets "${masked[@]}" \
             > "${scratch}/mask.log" 2>&1 || status=$?
         ((status == 0)) || fail "masking the local copies failed (exit ${status}); its output is withheld, nothing was written"
     fi
-    for ((i = 0; i < ${#store_paths[@]}; i++)); do
-        path=${store_paths[i]}
-        word=$(classify "${path}" "${statuses[i]}") || exit $?
+    for entry in ${entries[@]+"${entries[@]}"}; do
+        path=${entry#*/}
+        word=$(classify "${path}" "${entry%%/*}") || exit $?
         case ${word} in
         untracked-equal) removed+=("${path}") ;;
-        clean) kept=$((kept + 1)) ;;
+        clean) kept+=("${path}") ;;
         table-append) appended+=("${path}") replaced+=("${path}") ;;
         units-local) unit_rows+=("${path}") replaced+=("${path}") ;;
         once-adopt) adopted+=("${path}") replaced+=("${path}") ;;
@@ -495,17 +512,23 @@ ff_run() {
     for path in ${removed[@]+"${removed[@]}"}; do
         rm "${path}" || ff_step_failed "removing ${path}"
     done
-    if ((${#replaced[@]})); then
+    if [[ -n ${replaced[*]:-} ]]; then
         git_isolated checkout -- "${replaced[@]}" || ff_step_failed 'git checkout --'
     fi
     git_isolated merge --quiet --ff-only "${main}" > "${scratch}/merge.log" 2>&1 || ff_step_failed 'git merge --ff-only'
-    new_head=$(git_isolated rev-parse --verify 'HEAD^{commit}') || ff_step_failed 'reading HEAD after the merge'
+    # A fast-forward-only merge of one commit leaves HEAD at that commit or fails, so the new head is the fetched
+    # main; git is asked once more rather than trusted.
+    new_head=${main}
+    git_isolated merge-base --is-ancestor "${main}" HEAD || ff_step_failed 'the fast-forward (HEAD is not at the fetched main)'
     for path in ${appended[@]+"${appended[@]}"} ${unit_rows[@]+"${unit_rows[@]}"}; do
         cat "${scratch}/resolved/${path}" > "${path}" || ff_verify_failed "writing the resolved ${path}"
     done
     status=0
     "${python}" -I -S -B scripts/orchestrator/ledger.py "${records}" verdict 1 "${main//?/0}" > "${scratch}/ledger.log" 2>&1 || status=$?
-    ((status == 0 || status == 1)) || ff_verify_failed "ledger.py exited ${status} (its output is in ${scratch}/ledger.log)"
+    case ${status} in
+    0 | 1) ;;
+    *) ff_verify_failed "ledger.py exited ${status} (its output is in ${scratch}/ledger.log)" ;;
+    esac
     status=0
     "${python}" -I -S -B scripts/orchestrator/rounds-check.py --all "${records}" > "${scratch}/rounds.log" 2>&1 || status=$?
     ((status == 0)) || ff_verify_failed "rounds-check.py --all exited ${status} (its output is in ${scratch}/rounds.log)"
@@ -519,7 +542,7 @@ ff_run() {
     done
     cmp -s "${scratch}/changed.sorted" "${scratch}/expected.sorted" ||
         ff_verify_failed 'the store differs from HEAD at other paths than the table-append and units-local ones'
-    echo "fast-forwarded from=${head} to=${new_head} removed=${#removed[@]} appended=${#appended[@]} adopted=${#adopted[@]} kept=${kept}"
+    echo "fast-forwarded from=${head} to=${new_head} removed=${#removed[@]} appended=${#appended[@]} adopted=${#adopted[@]} kept=${#kept[@]}"
     exit 0
 }
 
@@ -631,7 +654,7 @@ git_scratch -c credential.helper= -c 'credential.helper=!gh auth git-credential'
     fetch --quiet --no-tags "${push_url}" refs/heads/main || fail 'git fetch main from origin failed'
 main=$(git_scratch rev-parse --verify 'FETCH_HEAD^{commit}') || fail 'cannot read the fetched main'
 main_tree=$(git_scratch rev-parse --verify "${main}^{tree}") || fail 'cannot read the tree of main'
-if ((ff)); then
+if [[ ${ff} == 1 ]]; then
     ff_run
 fi
 # U101: the copy set is the store's files on disk (tracked or not, not ignored), compared with origin/main by

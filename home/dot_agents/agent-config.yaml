@@ -887,7 +887,7 @@ claude:
       pr-close.sh: 113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a
       pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
       pr-threads-check.sh: 984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c
-      records-sync.sh: 02dace24b09439b1bdb5a791a5860d1c827bca9d653128bde4f433bc1dc8f8ba
+      records-sync.sh: bc18cddf92b3a5a3ed66ee12e2e7c64606aef164475720fe2ae1ff001acd3b11
       pr-merge.sh: 3f9eade3d16534fa1f646641aa56decdcda6f3072cc60d103980867d0b6d2a12
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: 07788a4ec344341dc1e00518cfed9d6fea924e883624197821adadc3468e40e3

@@ -3307,7 +3307,7 @@ PLANTED = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
 STORE = ".orchestration/orchestrate/prog"
 
 
-def ledger_row(n, evidence="note"):
+def ff_ledger_row(n, evidence="note"):
     return f"2026-11-01T00:0{n}:00Z\tU1\t-\t-\tmeasured\tworker\t{evidence} {n}\n"
 
 
@@ -3344,7 +3344,7 @@ class RecordsFfTest(PrLeverTestCase):
         self.brief.parent.mkdir()
         self.guide.parent.mkdir()
         self.ledger.write_text(
-            LEDGER_HEADER + "".join(ledger_row(n) for n in (1, 2, 3)) + ledger_row(4, f'token = "{PLANTED}"')
+            LEDGER_HEADER + "".join(ff_ledger_row(n) for n in (1, 2, 3)) + ff_ledger_row(4, f'token = "{PLANTED}"')
         )
         self.decisions.write_text(DECISIONS_HEADER + "2026-11-01T00:00:00Z\tframe\tstart\twhy\t-\t-\n")
         self.units.write_text(UNITS_HEADER + units_row("first"))
@@ -3401,7 +3401,7 @@ class RecordsFfTest(PrLeverTestCase):
         """The checkout after the sync: two ledger rows appended, the units note edited, the brief holding the token
         the sync masked, and the sync's verdict file untracked and byte-identical."""
         with self.ledger.open("a") as ledger:
-            ledger.write(ledger_row(5) + ledger_row(6))
+            ledger.write(ff_ledger_row(5) + ff_ledger_row(6))
         self.units.write_text(UNITS_HEADER + units_row("edited"))
         self.brief.write_text(f'# U1\ntoken = "{PLANTED}"\n')
         self.verdict.parent.mkdir()

@@ -527,16 +527,19 @@ class AuditCarryTest(unittest.TestCase):
                 f"{verdict_file}:3: not a Findings line",
             ),
             (
-                "a path with a colon",
-                lambda: self.verdict(self.earlier, finding("P2", "file:1: real.sh", 9, "boom")),
+                "a first token followed by whitespace",
+                lambda: self.verdict(self.earlier, finding("P2", "a b.txt", 1, "x")),
                 f"{verdict_file}:3: not a Findings line",
             ),
             (
                 "a line without the scores (the unscored reader's form)",
                 lambda: self.verdict(self.earlier, "- P2 (high) a.txt:1: shouts"),
-                f"{verdict_file}:3: not a Findings line; the leading '## Findings' section is one '- none' line, or one "
-                "or more lines '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' with scores 1 to 10 and a "
-                "path free of colons and whitespace: - P2 (high) a.txt:1: shouts",
+                (
+                    f"{verdict_file}:3: not a Findings line; the leading '## Findings' section is one '- none' line, or "
+                    "one or more lines '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' with scores 1 to "
+                    "10 and a path free of colons and whitespace; the path is the first such token; the rationale after "
+                    "the line's ': ' is free text: - P2 (high) a.txt:1: shouts"
+                ),
             ),
             (
                 "a frequency of 0",

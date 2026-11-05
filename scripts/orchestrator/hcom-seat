@@ -1645,11 +1645,12 @@ esac
 #   session leases, the Claude Code state the bridge child writes, a per-seat cache root; the same for both roles, so
 #   no seat writes the seats root or reaches the herdr socket, and none can start a seat), what it may not change
 #   inside those roots (git config and hooks, the hcom store's launch scripts and configuration, agent configuration
-#   that runs outside the seat), what it may not read (SSH, GPG, cloud and codex credentials, the chezmoi sources,
-#   `~/Workspace` but its own repository, other omp profiles, other hcom stores, every seat's sandbox directory, and
-#   for a worker the other seats) and the hosts it may reach. The shim runs a canary under those settings first, a
-#   write into the sandbox directory and reads of the settings file and `~/.ssh`, and refuses (exit 2) unless all
-#   three fail inside; only then does it run omp under srt, both by the physical argv `pin_exec` checked.
+#   that runs outside the seat and the package the checkout's Claude Code hooks import), what it may not read (SSH,
+#   GPG, cloud and codex credentials, the chezmoi sources, `~/Workspace` but its own repository, other omp profiles,
+#   other hcom stores, every seat's sandbox directory, and for a worker the other seats) and the hosts it may reach.
+#   The shim runs a canary under those settings first, a write into the sandbox directory and reads of the settings
+#   file and `~/.ssh`, and refuses (exit 2) unless all three fail inside; only then does it run omp under srt, both by
+#   the physical argv `pin_exec` checked.
 # @noargs
 seat_sandbox_write() {
     local h claude dir_real common_real hcom_real seats_real sandbox_real
@@ -1679,9 +1680,10 @@ seat_sandbox_write() {
     # Exactly the list the protected set was built from (seat_write_roots), so the check and the sandbox cannot drift.
     write=("${seat_write[@]}")
     deny_write=("${seats_real}/.sandbox")
+    # The hook shims under .claude/hooks import their code from .claude/contextdb, run by sessions outside the seat.
     for base in "${dir_real}" "${checkout}"; do
         deny_write+=("${base}/.claude/settings.json" "${base}/.claude/settings.local.json" "${base}/.claude/hooks"
-            "${base}/.omp" "${base}/.codex" "${base}/.envrc" "${base}/.mcp.json")
+            "${base}/.claude/contextdb" "${base}/.omp" "${base}/.codex" "${base}/.envrc" "${base}/.mcp.json")
     done
     # The git state host git reads for any worktree of this repository (regime-cutover U85): a seat that could write
     # it could make a later host git command run a program of its choosing (`core.fsmonitor`, `core.hooksPath`,

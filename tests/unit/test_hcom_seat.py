@@ -585,6 +585,9 @@ class HcomSeatTest(unittest.TestCase):
         self.assertIn(self.seats, deny_read, "a worker reads no other seat")
         self.assertIn(str(shim.parent.parent.parent), worker["filesystem"]["denyWrite"], "every seat's sandbox")
         self.assertIn(str((self.repo / ".git/config").resolve()), worker["filesystem"]["denyWrite"])
+        # U189: the package the checkout's Claude Code hooks import, beside the hooks, for the clone and the checkout.
+        self.assertIn(str(Path(self.seats, "worker") / ".claude/contextdb"), worker["filesystem"]["denyWrite"])
+        self.assertIn(str((self.repo / ".claude/contextdb").resolve()), worker["filesystem"]["denyWrite"])
         self.assertEqual(worker["network"]["allowUnixSockets"], [])
         self.assertNotIn("example.com", worker["network"]["allowedDomains"])
         # srt 0.0.81 grants local binding on every interface, so no seat gets it (U85 round 3).
@@ -600,6 +603,7 @@ class HcomSeatTest(unittest.TestCase):
         self.assertIn(str(self.repo.resolve()), orchestrator["filesystem"]["allowWrite"])
         self.assertIn(str(Path(self.seats, ".sandbox")), orchestrator["filesystem"]["denyWrite"])
         self.assertIn(str(Path(self.seats, ".sandbox")), orchestrator["filesystem"]["denyRead"])
+        self.assertIn(str((self.repo / ".claude/contextdb").resolve()), orchestrator["filesystem"]["denyWrite"])
 
     def test_the_canary_runs_under_a_posix_shell(self):
         """U85 round 2: under dash (Ubuntu's /bin/sh) the canary's denied write must not end the shell."""

@@ -435,7 +435,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "8d50e89d7f3e43e99473fe607701f171a8b0c8b1db20e74f87bac01c6a8fe234"
+      "sha256": "5df349b625c06a987c69580187b8ad967eea7cb73f40d33ba2e8b96ce53cd970"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",

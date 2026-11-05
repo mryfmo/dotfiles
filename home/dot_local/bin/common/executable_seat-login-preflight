@@ -18,14 +18,17 @@
 #   `security`) that fails, are reported as unreadable, never as absent, and make the exit status 1.
 #
 #   `<profile>` (a seat profile of the manifest's `omp.roles`: orchestrator, worker or audit; `hcom-seat`
-#   calls it with the seat's role before it creates or starts anything) does nothing
-#   on a local host. On a remote host (`SSH_CONNECTION` set, or a Linux host without a display, which a
-#   herdr pane on the seat host can be even when its server did not inherit `SSH_CONNECTION`) it checks
-#   that a seat can use the login, which is more than `--check` shows. SIWC needs an active `openai-siwc`
-#   login in `agent.db`, counted by the extension's `src/credentials.ts` without reading a token: the
-#   issued client is saved before the token exchange, so a record proves only that a sign-in began.
-#   Claude needs the variable in this environment or a non-empty token file, which the seat shim exports into
-#   the seat; a credentials file or Keychain item alone is refused as a host login the seat's child never sees,
+#   calls it with the seat's role before it creates or starts anything) checks that a seat can use the login,
+#   which is more than `--check` shows. For the openai-siwc route a local host keeps its own browser and login,
+#   so nothing happens there; on a remote host (`SSH_CONNECTION` set, or a Linux host without a display, which a
+#   herdr pane on the seat host can be even when its server did not inherit `SSH_CONNECTION`) SIWC needs an
+#   active `openai-siwc` login in `agent.db`, counted by the extension's `src/credentials.ts` without reading a
+#   token: the issued client is saved before the token exchange, so a record proves only that a sign-in began.
+#   The Claude route is checked on every host (regime-cutover U190b), local included, since the seat's child logs
+#   in by the token alone wherever it runs: it needs the variable in this environment or a usable token file (a
+#   regular file whose first line, read as the seat shim reads it, is non-empty), which the shim exports into
+#   the seat; a directory, an empty file or an empty first line is `token file unusable` and counts as absent;
+#   a credentials file or Keychain item alone is refused as a host login the seat's child never sees,
 #   with the instruction to run `claude setup-token` and store the token in the file (0600). An absent
 #   login is logged in here only in the operator's own terminal (stdin and stdout a TTY, not inside a seat):
 #   SIWC through `omp --profile <profile> login openai-siwc` with `OPENAI_SIWC_CALLBACK_PORT=1455`, which
@@ -42,10 +45,11 @@
 # @env CLAUDE_CODE_OAUTH_TOKEN Claude Code's token; only its presence is tested.
 # @stdout With `--check`: one line per profile.
 # @stderr The profile mode's report and refusals.
-# @exitcode 0 Checked, or the profile's route is usable (or the host is local).
+# @exitcode 0 Checked, or the profile's route is usable (or the host is local and the route is openai-siwc).
 # @exitcode 1 A record or producer is unreadable, or a login ran and the route is still not usable.
-# @exitcode 2 A usage error, a remote seat without a login outside the operator's terminal, or a Claude seat whose
-#   only login is a host login (the token file is the operator's step).
+# @exitcode 2 A usage error, a seat without a login outside the operator's terminal (a remote host, or any host on the
+#   claude-bridge route), or a seat on the claude-bridge route whose only login is a host login (the token file is the
+#   operator's step).
 # @example
 #   seat-login-preflight --check
 #   seat-login-preflight audit
@@ -227,24 +231,46 @@ siwc_state() {
 
 # @description Print the Claude Code login line of this host. The seat's bridge child runs under its own
 #   `CLAUDE_CONFIG_DIR` (hcom-seat's shim, regime-cutover U190), so it reads neither the operator's credentials file
-#   nor the Keychain item: the variable or the token file (the shim exports it) is a login, the two host stores are
-#   `host login only`, in readiness mode with the token-file instruction. The stores are tried in that order and the
-#   first one found is reported, so `--check` names the store a seat would use.
+#   nor the Keychain item: the variable or a usable token file (the shim exports it) is a login, the two host stores are
+#   `host login only`, in readiness mode with the token-file instruction. The token file counts as the shim reads it
+#   (regime-cutover U190b): a regular file whose first line, read by `/usr/bin/head -n 1`, is non-empty; the line goes
+#   into a variable to be tested for emptiness and nowhere else. A directory (or a link to one), an empty file or an
+#   empty first line is reported as `token file unusable (<reason>)` beside the host stores and counts as absent. The
+#   stores are tried in that order and the first one found is reported, so `--check` names the store a seat would use.
 # @arg $1 int 1 to require a login the seat's bridge child can use (launch readiness).
 # @exitcode 0 Present. 1 Absent, or a host login only. 2 Unreadable.
 claude_state() {
     local ready=${1:-0} credentials=${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/.credentials.json mode mtime status=0 store=''
+    local first reason note=''
     if [[ -n ${CLAUDE_CODE_OAUTH_TOKEN:-} ]]; then
         printf 'login present (env token)\n'
         return 0
     fi
-    if [[ -s ${token_file} ]]; then
-        if ! mode=$(mode_of "${token_file}") || ! mtime=$(stamp "${token_file}"); then
-            printf 'unreadable (cannot read the mode or mtime of %s)\n' "${token_file}"
-            return 2
+    if [[ -e ${token_file} || -L ${token_file} ]]; then
+        if [[ -d ${token_file} ]]; then
+            reason='a directory'
+        elif [[ ! -f ${token_file} ]]; then
+            reason='not a regular file'
+        elif [[ ! -s ${token_file} ]]; then
+            reason='empty'
+        else
+            if ! first=$(/usr/bin/head -n 1 -- "${token_file}"); then
+                printf 'unreadable (cannot read the first line of %s)\n' "${token_file}"
+                return 2
+            fi
+            if [[ -n ${first} ]]; then
+                unset first
+                if ! mode=$(mode_of "${token_file}") || ! mtime=$(stamp "${token_file}"); then
+                    printf 'unreadable (cannot read the mode or mtime of %s)\n' "${token_file}"
+                    return 2
+                fi
+                printf 'login present (token file %s, mtime %s; the seat shim exports it)\n' "${mode}" "${mtime}"
+                return 0
+            fi
+            unset first
+            reason='empty first line'
         fi
-        printf 'login present (token file %s, mtime %s; the seat shim exports it)\n' "${mode}" "${mtime}"
-        return 0
+        note="; token file unusable (${reason})"
     fi
     if [[ -f ${credentials} ]]; then
         if ! mode=$(mode_of "${credentials}") || ! mtime=$(stamp "${credentials}"); then
@@ -265,13 +291,13 @@ claude_state() {
         esac
     fi
     if [[ -z ${store} ]]; then
-        printf 'absent\n'
+        printf 'absent%s\n' "${note}"
         return 1
     fi
     if ((ready)); then
-        printf "host login only (%s): not visible to the seat's bridge child under its own CLAUDE_CONFIG_DIR; run claude setup-token and store it in ~/.config/claude-code/oauth-token (0600)\\n" "${store}"
+        printf "host login only (%s%s): not visible to the seat's bridge child under its own CLAUDE_CONFIG_DIR; run claude setup-token and store it in ~/.config/claude-code/oauth-token (0600)\\n" "${store}" "${note}"
     else
-        printf 'host login only (%s)\n' "${store}"
+        printf 'host login only (%s%s)\n' "${store}" "${note}"
     fi
     return 1
 }
@@ -376,8 +402,13 @@ for profile in "${seat_profiles[@]}"; do
     if [[ ${role} == "${profile}" ]]; then known=1; fi
 done
 ((known)) || die "unknown seat profile '${role}'; expected one of: ${seat_profiles[*]}"
-# A local host keeps its own browser and login; nothing new happens there.
-if [[ -z ${SSH_CONNECTION:-} ]] && ! [[ ${os} == Linux && -z ${DISPLAY:-} && -z ${WAYLAND_DISPLAY:-} ]]; then
+# A local host keeps its own browser and SIWC login, so nothing new happens there for that route. The Claude route's
+# rule holds on every host (regime-cutover U190b): the seat's bridge child logs in by the token alone wherever it runs,
+# so a local host with a host login only would start a seat whose first bridge turn ends `Not logged in`.
+route_status=0
+route=$(route_of "${role}") || route_status=$?
+if ((route_status == 0)) && [[ ${route} == openai-siwc && -z ${SSH_CONNECTION:-} ]] &&
+    ! [[ ${os} == Linux && -z ${DISPLAY:-} && -z ${WAYLAND_DISPLAY:-} ]]; then
     exit 0
 fi
 

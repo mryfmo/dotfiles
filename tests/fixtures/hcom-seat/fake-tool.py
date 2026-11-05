@@ -12,8 +12,8 @@ and HCOM_TAG set, the `--` itself dropped as hcom's `extract_launch_flags` drops
 at v0.7.30), HCOM_DIR inherited and HCOM_TEAM dropped, as the real hcom drops it (the U33 pilot's pane showed
 HCOM_TEAM unset after hcom-seat exported it). `herdr pane run` executes the command it is given. `omp` records and
 exits 0. `srt --settings <file> -- <command...>` (regime-cutover U85) plays the sandbox without one. The seat
-shim's canary (`/bin/sh -c <script> canary <write> <read> <ssh>`) runs its script for real, under `$FAKE_SRT_SH`
-when set (`dash` in the POSIX-shell test) and with the three paths swapped for ones under a directory that does not
+shim's canary (`/bin/sh -c <script> canary <write> <read> <ssh> <debug>`) runs its script for real, under `$FAKE_SRT_SH`
+when set (`dash` in the POSIX-shell test) and with the four paths swapped for ones under a directory that does not
 exist, so the probes fail as the sandbox makes them fail; `$FAKE_SRT_CANARY`, when set, is printed instead. Any other
 command is executed. `srt --version` (regime-cutover U141) prints `$FAKE_SRT_VERSION`, `0.0.81` when unset, and exits
 1 printing nothing when it is `fail`. `bwrap`, `socat` and `rg` only exist on PATH for the Linux prerequisite check.
@@ -75,7 +75,12 @@ elif tool == "srt":
         if "FAKE_SRT_CANARY" in os.environ:
             print(os.environ["FAKE_SRT_CANARY"])
             sys.exit(0)
-        denied = ["/nonexistent-u85/canary", "/nonexistent-u85/settings", "/nonexistent-u85/.ssh"]
+        denied = [
+            "/nonexistent-u85/canary",
+            "/nonexistent-u85/settings",
+            "/nonexistent-u85/.ssh",
+            "/nonexistent-u85/.claude/debug/canary",
+        ]
         shell = os.environ.get("FAKE_SRT_SH", "/bin/sh")
         sys.exit(subprocess.run([shell, "-c", command[2], command[3], *denied], check=False).returncode)
     os.execvp(command[0], command)

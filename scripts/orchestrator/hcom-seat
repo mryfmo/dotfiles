@@ -1359,7 +1359,9 @@ refuse_inside_a_seat "${seats_root%/}/.sandbox"
 #   writable without a listing (`srt_tmp_roots`: `/tmp/claude`, and `/private/tmp/claude` on macOS; `~/.npm/_logs`).
 #   The operator's Claude Code state (`CLAUDE_CONFIG_DIR`, `~/.claude`, `~/.claude.json`) is no root of any seat
 #   (regime-cutover U190): the bridge child keeps its own under `<seats-root>/.state/<name>/claude`, inside the state
-#   slot listed here, which the shim exports as the seat's `CLAUDE_CONFIG_DIR`.
+#   slot listed here, which the shim exports as the seat's `CLAUDE_CONFIG_DIR`. Being no root is not enough: srt
+#   0.0.81 grants `~/.claude/debug` of the real HOME on its own, so seat_sandbox_write denies that state explicitly
+#   (operator_claude_paths, regime-cutover U190b).
 # @arg $1 string The role.
 # @arg $2 string The seat name.
 # @arg $3 string The seat directory (the worktree, or the checkout for the orchestrator).
@@ -1470,11 +1472,33 @@ admin_dirs_match() {
 }
 if ((${#worktree_paths[@]} > 1 || ${#admin_dirs[@]} > 0)); then admin_dirs_match "${early_common}"; fi
 
+# @description Set `operator_claude` to the operator's Claude Code state in physical form, and `operator_claude_labels`
+#   to one label per entry (regime-cutover U190b): `<HOME>/.claude`, `<HOME>/.claude.json` and, when the caller set it
+#   and it is another directory, the physical `CLAUDE_CONFIG_DIR`. The overlap check protects these paths (no root may
+#   be, contain or lie under one) and seat_sandbox_write denies them for write and for read, from this one list.
+# @set operator_claude The paths.
+# @set operator_claude_labels Their labels.
+operator_claude_paths() {
+    local h config
+    h=$(physical_path "${HOME}") || refuse "cannot resolve HOME ${HOME}"
+    operator_claude=("${h}/.claude" "${h}/.claude.json")
+    operator_claude_labels=("the operator's Claude Code directory" "the operator's Claude Code settings file")
+    if [[ -n ${CLAUDE_CONFIG_DIR:-} ]]; then
+        config=$(physical_path "${CLAUDE_CONFIG_DIR}") || refuse "cannot resolve CLAUDE_CONFIG_DIR ${CLAUDE_CONFIG_DIR}"
+        if [[ ${config} != "${h}/.claude" ]]; then # lint-comparisons: allow both operands are physical (physical_path), one spelling per path
+            operator_claude+=("${config}")
+            operator_claude_labels+=("the caller's CLAUDE_CONFIG_DIR")
+        fi
+    fi
+}
+
 # @description Refuse (exit 2) unless the final `allowWrite` list of one seat keeps clear of every protected path
 #   (regime-cutover U85), one invariant instead of a list of cases: for every granted root R and every protected
 #   path P, R must not be or contain P, and R must not lie inside P. The protected paths are defined once: the main
-#   checkout, the seats root, its `.sandbox`, every other seat directory under the seats root and every other
-#   worktree of this repository; the seat's own directory (same identity) is not protected for it. Exempt by
+#   checkout, the seats root, its `.sandbox`, every other seat directory under the seats root, every other
+#   worktree of this repository and the operator's Claude Code state (operator_claude_paths, regime-cutover U190b: a
+#   `HCOM_DIR=~/.claude` or `--seats-root ~/.claude/seats` would grant that state whole); the seat's own directory
+#   (same identity) is not protected for it. Exempt by
 #   construction, not by comparing text: the seat's own slots under the seats root (the first two roots: a worker's
 #   `<seats-root>/<name>`, and `<seats-root>/.state/<name>`) against the seats root and its `.sandbox`, and the git
 #   common directory named `.git` whose parent is the main checkout (identity). A linked worktree inside R (Claude
@@ -1517,6 +1541,11 @@ seat_overlap_check() {
     for p in ${worktree_phys[@]+"${worktree_phys[@]}"}; do
         labels+=("the worktree")
         protected+=("${p}")
+    done
+    operator_claude_paths
+    for ((i = 0; i < ${#operator_claude[@]}; i++)); do
+        labels+=("${operator_claude_labels[i]}")
+        protected+=("${operator_claude[i]}")
     done
     for p in "${protected[@]}"; do
         require_clean_path 'a protected seat path' "${p}"
@@ -1646,15 +1675,18 @@ esac
 #   directory, the repository's git common directory, the program's hcom store, its own omp profile and the omp
 #   session leases, and its own state slot, which holds the bridge child's Claude Code state (the `CLAUDE_CONFIG_DIR`
 #   the shim exports, regime-cutover U190) and a per-seat cache root; the same for both roles, so no seat writes the
-#   seats root or reaches the herdr socket, and none can start a seat; the operator's `~/.claude` and `~/.claude.json`
-#   are no root, so nothing under them needs a deny), what it may not change
+#   seats root or reaches the herdr socket, and none can start a seat), what it may not change
 #   inside those roots (git config and hooks, the hcom store's launch scripts and configuration, agent configuration
-#   that runs outside the seat and the package the checkout's Claude Code hooks import), what it may not read (SSH,
+#   that runs outside the seat and the package the checkout's Claude Code hooks import), what it may not write or
+#   read of the operator's Claude Code state (`~/.claude`, `~/.claude.json`, a caller's `CLAUDE_CONFIG_DIR`;
+#   regime-cutover U190b: srt 0.0.81 grants `~/.claude/debug` of the real HOME on its own, whatever
+#   `CLAUDE_CONFIG_DIR` says, so leaving that state out of the roots denies nothing, and the deny is explicit; srt keeps
+#   a deeper deny under an allow, measured at U85), what else it may not read (SSH,
 #   GPG, cloud and codex credentials, the chezmoi sources, `~/Workspace` but its own repository, other omp profiles,
 #   other hcom stores, every seat's sandbox directory, and for a worker the other seats) and the hosts it may reach.
-#   The shim runs a canary under those settings first, a write into the sandbox directory and reads of the settings
-#   file and `~/.ssh`, and refuses (exit 2) unless all three fail inside; only then does it run omp under srt, both by
-#   the physical argv `pin_exec` checked.
+#   The shim runs a canary under those settings first, a write into the sandbox directory, reads of the settings
+#   file and `~/.ssh`, and a write under the operator's `~/.claude/debug`, and refuses (exit 2) unless all four fail
+#   inside; only then does it run omp under srt, both by the physical argv `pin_exec` checked.
 # @noargs
 seat_sandbox_write() {
     local h dir_real common_real hcom_real seats_real sandbox_real
@@ -1720,6 +1752,9 @@ seat_sandbox_write() {
         root=$(physical_path "${REGIME_SEATS_ROOT}") || refuse "cannot resolve the seats root ${REGIME_SEATS_ROOT}"
         deny_read+=("${root}")
     fi
+    operator_claude_paths
+    deny_write+=("${operator_claude[@]}")
+    deny_read+=("${operator_claude[@]}")
     allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}")
     # The main checkout is unreadable to a worker wherever it lives, but for its git directory (the worktree's objects
     # and refs) and the coordinator's records (briefs, verdict files), read by absolute path.
@@ -1772,6 +1807,7 @@ seat_sandbox_write() {
         echo "srt_cmd=(${srt_q}) omp_cmd=(${omp_q})"
         printf 'settings=%q canary=%q state=%q push_url=%q sandbox=%q\n' "${settings}" "${sandbox_real}/canary" \
             "${sandbox_state}" "${push_url}" "${sandbox_real}"
+        printf 'debug_canary=%q\n' "${h}/.claude/debug/hcom-seat-canary"
         # Outside the sandbox the shim and srt look up only in the private tool directory and the system directories;
         # inside it omp gets the seat's working PATH, applied by /usr/bin/env under srt.
         printf 'outer_path=%q seat_path=%q\n' "${sandbox_real}/bin:${PATH}" "${seat_path}"
@@ -1779,14 +1815,23 @@ seat_sandbox_write() {
 export PATH=${outer_path}
 /bin/rm -f "${canary}" || { echo "hcom-seat shim: cannot clear ${canary}" >&2; exit 2; }
 # `true`, not `:`: a failed redirection on a special builtin ends a POSIX shell (dash, Ubuntu's /bin/sh).
+# The fourth probe (regime-cutover U190b) opens a file under the operator's ~/.claude/debug, which srt 0.0.81 grants on
+# its own unless the settings deny it; a file it could open is removed here, outside the sandbox.
+debug_canary=${debug_canary}-$$
 probe=$("${srt_cmd[@]}" --settings "${settings}" -- /bin/sh -c 'if true 2> /dev/null > "$1"; then w=write-open; else w=write-denied; fi
 if cat "$2" > /dev/null 2>&1; then r=read-open; else r=read-denied; fi
 if ls "$3" > /dev/null 2>&1; then s=ssh-open; else s=ssh-denied; fi
-echo "$w $r $s"' canary "${canary}" "${settings}" "${HOME}/.ssh") || {
+if true 2> /dev/null > "$4"; then d=debug-open; else d=debug-denied; fi
+echo "$w $r $s $d"' canary "${canary}" "${settings}" "${HOME}/.ssh" "${debug_canary}") || {
     echo "hcom-seat shim: the sandbox canary did not run under ${srt_cmd[*]}; omp not started" >&2
     exit 2
 }
-if [[ ${probe} != 'write-denied read-denied ssh-denied' || -e ${canary} ]]; then
+if [[ ${probe} == 'write-denied read-denied ssh-denied debug-open' || -e ${debug_canary} ]]; then
+    /bin/rm -f "${debug_canary}"
+    echo "hcom-seat shim: the sandbox does not hold (operator Claude debug writable); omp not started" >&2
+    exit 2
+fi
+if [[ ${probe} != 'write-denied read-denied ssh-denied debug-denied' || -e ${canary} ]]; then
     echo "hcom-seat shim: the sandbox does not hold (canary: ${probe}); omp not started" >&2
     exit 2
 fi

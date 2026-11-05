@@ -682,7 +682,11 @@ class DeepseekHarnessTest(unittest.TestCase):
     (U178c): the step accepts exactly one layout and refuses every other before any download (current absent or a
     symlink to a non-symlink directory directly under dsh/), so the prune resolves no path; the already-installed exit
     rewrites a receipt whose paths are not this layout's two before it prunes; no cleanup changes the exit status; a
-    restore that left current absent says so."""
+    restore that left current absent says so. Round 4 (U178d): every input the step reads is a row of one table,
+    checked by type and by identity (-ef, a jq array comparison) before any download; a bin/ or dsh/ that is a symlink,
+    a profile that is not the rendered directory, a current whose target name ends in a newline or is not dsh-v*, a
+    directory, a FIFO or a symlink at the receipt path, and a paths array that equals the two only as joined text each
+    have a refusal or rewrite test here."""
 
     # The rendered pin; a tree without the constant (the red proof against origin/main) gets a placeholder so the
     # module still imports and the tests themselves fail on the absent step.
@@ -1780,8 +1784,9 @@ class DeepseekHarnessTest(unittest.TestCase):
                     self.assertEqual(1, result.returncode, result.stdout + result.stderr)
                     self.assertIn(
                         f"update_deepseek_harness: {dsh_home}/dsh/current points at {target}, which is not a directory"
-                        f" directly under {dsh_home}/dsh; the step repairs only the layout it makes (move the link aside"
-                        " and rerun make update); nothing installed, nothing recorded.",
+                        f" directly under {dsh_home}/dsh named dsh-v* that the link itself reaches; the step repairs only"
+                        " the layout it makes (move the link aside and rerun make update); nothing installed, nothing"
+                        " recorded.",
                         result.stderr,
                     )
                     self.assertEqual([], self.calls(home), "no curl call, no mise call")
@@ -2046,6 +2051,324 @@ class DeepseekHarnessTest(unittest.TestCase):
                 self.assertEqual(["dsh"], [path.name for path in (dsh_home / "bin").iterdir()], "no .dsh.* left")
                 self.assertFalse((home / ".agents").exists(), "nothing recorded")
                 self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is removed")
+
+    def test_a_bin_that_is_a_symlink_into_an_older_tree_is_refused_before_any_download(self):
+        # Round-3 verdict f2 s6 (the auditor's fixture): bin/ a symlink into an older tree passed every check, the
+        # already-installed exit pruned that tree, and the launcher went with it. bin/ is a row of the input table now,
+        # absent or a directory that is not a symlink, read by type before anything else.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            tree, text = self.canonical_install(dsh_home)
+            older = dsh_home / "dsh/dsh-v0.1.0"
+            (older / "bin").mkdir(parents=True)
+            launcher_text = "#!/bin/bash\necho 'the launcher inside the older tree'\n"
+            (older / "bin/dsh").write_text(launcher_text)
+            (older / "bin/dsh").chmod(0o755)
+            os.symlink(older / "bin", dsh_home / "bin")
+            _, receipt = self.receipt(home, self.TAG)
+            before = sorted(os.listdir(dsh_home / "dsh"))
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"update_deepseek_harness: {dsh_home}/bin is a symlink or not a directory; the step uses only a directory"
+                " of its own there (move it aside and rerun make update); nothing installed, nothing recorded.",
+                result.stderr,
+            )
+            self.assertEqual([], self.calls(home), "no curl call, no mise call")
+            self.assertTrue((dsh_home / "bin").is_symlink(), "bin/ is still the symlink")
+            self.assertEqual(str(older / "bin"), os.readlink(dsh_home / "bin"))
+            self.assertEqual(launcher_text, (older / "bin/dsh").read_text(), "the launcher as it was")
+            self.assertEqual(before, sorted(os.listdir(dsh_home / "dsh")), "every tree as it was")
+            self.assertEqual(text, (tree / "package.json").read_text(), "the tree as it was")
+            self.assertEqual(str(tree), os.readlink(dsh_home / "dsh/current"), "current as it was")
+            self.assertEqual(receipt, (home / ".agents/.installed-manifest.json").read_text(), "the receipt as it was")
+            self.assertEqual([], list((home / "tmp").iterdir()), "no download directory")
+
+    def test_a_dsh_or_bin_that_is_a_regular_file_is_refused_before_any_download(self):
+        # The other refused state of the dsh/ and bin/ rows: a file there is no place for mkdir -p to make the tree or
+        # the wrapper directory, and the step says so instead of failing inside the install.
+        for row in ("dsh", "bin"):
+            with self.subTest(row=row), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                payload, digest = self.archive(home)
+                (dsh_home / row).write_text("the operator's file\n")
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(
+                    f"update_deepseek_harness: {dsh_home}/{row} is a symlink or not a directory; the step uses only a"
+                    " directory of its own there (move it aside and rerun make update); nothing installed, nothing"
+                    " recorded.",
+                    result.stderr,
+                )
+                self.assertEqual([], self.calls(home), "no curl call, no mise call")
+                self.assertEqual("the operator's file\n", (dsh_home / row).read_text(), "the file as it was")
+                self.assertEqual(sorted(["profiles", row]), sorted(path.name for path in dsh_home.iterdir()))
+                self.assertFalse((home / ".agents").exists(), "nothing recorded")
+                self.assertEqual([], list((home / "tmp").iterdir()), "no download directory")
+
+    def test_a_dsh_directory_that_is_a_symlink_is_refused_before_any_download(self):
+        # The dsh/ row: a symlink there would have the tree made and the prune run behind a path the operator linked.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            elsewhere = home / "elsewhere"
+            elsewhere.mkdir()
+            (elsewhere / "keep").write_text("the operator's file\n")
+            os.symlink(elsewhere, dsh_home / "dsh")
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"update_deepseek_harness: {dsh_home}/dsh is a symlink or not a directory; the step uses only a directory"
+                " of its own there (move it aside and rerun make update); nothing installed, nothing recorded.",
+                result.stderr,
+            )
+            self.assertEqual([], self.calls(home), "no curl call, no mise call")
+            self.assertTrue((dsh_home / "dsh").is_symlink(), "dsh/ is still the symlink")
+            self.assertEqual(["keep"], [path.name for path in elsewhere.iterdir()], "nothing made behind the link")
+            self.assertFalse((dsh_home / "bin").exists(), "no wrapper")
+            self.assertFalse((home / ".agents").exists(), "nothing recorded")
+            self.assertEqual([], list((home / "tmp").iterdir()), "no download directory")
+
+    def test_a_profile_directory_that_is_a_symlink_or_a_file_is_refused_and_an_absent_one_warns(self):
+        # The profiles/thak row: the kit renders that directory, so a symlink or a file there is not the kit's and is
+        # refused; an absent one is the host the kit has not rendered on, the WARN with exit 0 of the elsewhere case.
+        for case in ("a symlink", "a file", "absent"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                payload, digest = self.archive(home)
+                profile = dsh_home / "profiles/thak"
+                shutil.rmtree(profile)
+                if case == "a symlink":
+                    elsewhere = home / "own-profile"
+                    elsewhere.mkdir()
+                    (elsewhere / "package.json").write_text('{"name": "own"}\n')
+                    os.symlink(elsewhere, profile)
+                elif case == "a file":
+                    profile.write_text("not a directory\n")
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+                if case == "absent":
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    warnings = [line for line in result.stderr.splitlines() if line.startswith("WARN")]
+                    self.assertEqual(1, len(warnings), result.stderr)
+                    self.assertIn(
+                        f"{profile} is absent, so the kit has not rendered the thak profile here; nothing installed",
+                        warnings[0],
+                    )
+                else:
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(
+                        f"update_deepseek_harness: {profile} is a symlink or not a directory; the step installs the"
+                        " profile plugins only into the directory the kit renders (move it aside and rerun make update);"
+                        " nothing installed, nothing recorded.",
+                        result.stderr,
+                    )
+                self.assertEqual([], self.calls(home), "no curl call, no mise call")
+                self.assertFalse((dsh_home / "dsh").exists(), "nothing unpacked, no current link")
+                self.assertFalse((dsh_home / "bin").exists(), "no wrapper")
+                self.assertFalse((home / ".agents").exists(), "nothing recorded")
+                if case == "a symlink":
+                    self.assertTrue(profile.is_symlink(), "the profile path is still the symlink")
+                    self.assertEqual(["package.json"], [path.name for path in elsewhere.iterdir()])
+                elif case == "a file":
+                    self.assertEqual("not a directory\n", profile.read_text(), "the file as it was")
+                else:
+                    self.assertFalse(profile.exists())
+
+    def test_a_current_whose_target_name_ends_in_a_newline_is_refused_before_any_download(self):
+        # Round-3 verdict f2 s5 (the auditor's fixture): $(readlink) strips a trailing newline, so a current on the
+        # directory `dsh-v0.1.0` plus a newline was checked as the good dsh-v0.1.0 beside it and reported already
+        # installed while current ran the other tree. The link and the leaf the text read names are now compared by
+        # inode (-ef), which no text read can mangle.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            good = dsh_home / "dsh/dsh-v0.1.0"
+            good_text = self.good_tree(good)
+            other = dsh_home / "dsh" / "dsh-v0.1.0\n"
+            (other / "apps/cli/lib").mkdir(parents=True)
+            other_text = json.dumps({"name": "deepseek-harness", "version": "other"}) + "\n"
+            (other / "package.json").write_text(other_text)
+            (other / "apps/cli/lib/bin.js").write_text("// the other cli\n")
+            os.symlink("dsh-v0.1.0\n", dsh_home / "dsh/current")
+            wrapper, wrapper_text = self.own_wrapper(dsh_home)
+            _, receipt = self.receipt(home, self.TAG)
+            before = sorted(os.listdir(dsh_home / "dsh"))
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertNotIn("is already installed", result.stdout)
+            self.assertIn(
+                f"update_deepseek_harness: {dsh_home}/dsh/current points at {good}, which is not a directory directly"
+                f" under {dsh_home}/dsh named dsh-v* that the link itself reaches; the step repairs only the layout it"
+                " makes (move the link aside and rerun make update); nothing installed, nothing recorded.",
+                result.stderr,
+            )
+            self.assertEqual([], self.calls(home), "no curl call, no mise call")
+            self.assertEqual("dsh-v0.1.0\n", os.readlink(dsh_home / "dsh/current"), "current as it was")
+            self.assertEqual(before, sorted(os.listdir(dsh_home / "dsh")), "both trees as they were")
+            self.assertEqual(good_text, (good / "package.json").read_text())
+            self.assertEqual(other_text, (other / "package.json").read_text())
+            self.assertEqual(wrapper_text, wrapper.read_text(), "the wrapper as it was")
+            self.assertEqual(receipt, (home / ".agents/.installed-manifest.json").read_text(), "the receipt as it was")
+            self.assertEqual([], list((home / "tmp").iterdir()), "no download directory")
+
+    def test_a_current_on_a_directory_of_another_name_under_dsh_is_refused_before_any_download(self):
+        # The current row names dsh-v* as the one accepted leaf: a real directory of another name under dsh/ (the
+        # operator's keep-me, which the prune leaves) is not the step's tree even when it carries the pin's files.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            keep = dsh_home / "dsh/keep-me"
+            text = self.good_tree(keep)
+            os.symlink(keep, dsh_home / "dsh/current")
+            wrapper, wrapper_text = self.own_wrapper(dsh_home)
+            _, receipt = self.receipt(home, self.TAG)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"update_deepseek_harness: {dsh_home}/dsh/current points at {keep}, which is not a directory directly"
+                f" under {dsh_home}/dsh named dsh-v* that the link itself reaches; the step repairs only the layout it"
+                " makes (move the link aside and rerun make update); nothing installed, nothing recorded.",
+                result.stderr,
+            )
+            self.assertEqual([], self.calls(home), "no curl call, no mise call")
+            self.assertEqual(str(keep), os.readlink(dsh_home / "dsh/current"), "current as it was")
+            self.assertEqual(["current", "keep-me"], sorted(path.name for path in (dsh_home / "dsh").iterdir()))
+            self.assertEqual(text, (keep / "package.json").read_text(), "keep-me as it was")
+            self.assertEqual(wrapper_text, wrapper.read_text(), "the wrapper as it was")
+            self.assertEqual(receipt, (home / ".agents/.installed-manifest.json").read_text(), "the receipt as it was")
+
+    def test_a_receipt_that_is_a_directory_a_fifo_or_a_dangling_symlink_is_refused_before_any_download(self):
+        # Round-3 verdict f2 s5: `-f` alone let a directory, a FIFO or a dangling symlink at the receipt path pass as
+        # the fresh host, and the install reached manifest_record over it. The row is read by type first, and the
+        # step never opens the path, so the FIFO never blocks it.
+        for case in ("a directory", "a FIFO", "a dangling symlink"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                payload, digest = self.archive(home)
+                receipt = home / ".agents/.installed-manifest.json"
+                receipt.parent.mkdir(parents=True)
+                if case == "a directory":
+                    receipt.mkdir()
+                    (receipt / "keep").write_text("the operator's file\n")
+                    shape = "is not a regular file"
+                elif case == "a FIFO":
+                    os.mkfifo(receipt)
+                    shape = "is not a regular file"
+                else:
+                    os.symlink(home / "gone", receipt)
+                    shape = "is a symlink"
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(
+                    f"update_deepseek_harness: the installed-manifest receipt {receipt} {shape}; the step reads and"
+                    " writes only a regular file there (move it aside and rerun make update); nothing installed, nothing"
+                    " recorded.",
+                    result.stderr,
+                )
+                self.assertEqual([], self.calls(home), "no curl call, no mise call")
+                self.assertFalse((dsh_home / "dsh").exists(), "nothing unpacked, no current link")
+                self.assertFalse((dsh_home / "bin").exists(), "no wrapper")
+                self.assertEqual(
+                    [".installed-manifest.json"], [path.name for path in receipt.parent.iterdir()], "no temporary"
+                )
+                if case == "a directory":
+                    self.assertTrue(receipt.is_dir() and not receipt.is_symlink(), "the receipt path is that directory")
+                    self.assertEqual("the operator's file\n", (receipt / "keep").read_text())
+                elif case == "a FIFO":
+                    self.assertTrue(receipt.is_fifo(), "the receipt path is still the FIFO")
+                else:
+                    self.assertTrue(receipt.is_symlink() and not receipt.exists(), "the receipt path is still dangling")
+                    self.assertEqual(str(home / "gone"), os.readlink(receipt))
+                self.assertEqual([], list((home / "tmp").iterdir()), "no download directory")
+
+    def test_a_receipt_symlinked_into_an_older_tree_is_refused_before_any_download(self):
+        # Round-3 verdict f2 s6: a receipt that was a symlink into an older tree dangled once the already-installed exit
+        # pruned that tree. A symlink at the receipt path is refused as such, so nothing is pruned and the link stays.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            tree, text = self.canonical_install(dsh_home)
+            older = dsh_home / "dsh/dsh-v0.1.0"
+            older.mkdir()
+            _, receipt_text = self.receipt(home, self.TAG)
+            receipt = home / ".agents/.installed-manifest.json"
+            receipt.rename(older / "receipt.json")
+            os.symlink(older / "receipt.json", receipt)
+            wrapper, wrapper_text = self.own_wrapper(dsh_home)
+            before = sorted(os.listdir(dsh_home / "dsh"))
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"update_deepseek_harness: the installed-manifest receipt {receipt} is a symlink; the step reads and"
+                " writes only a regular file there (move it aside and rerun make update); nothing installed, nothing"
+                " recorded.",
+                result.stderr,
+            )
+            self.assertEqual([], self.calls(home), "no curl call, no mise call")
+            self.assertEqual(before, sorted(os.listdir(dsh_home / "dsh")), "the older tree is not pruned")
+            self.assertTrue(receipt.is_symlink() and receipt.exists(), "the receipt link is as it was")
+            self.assertEqual(str(older / "receipt.json"), os.readlink(receipt))
+            self.assertEqual(receipt_text, (older / "receipt.json").read_text(), "the file behind it as it was")
+            self.assertEqual(str(tree), os.readlink(dsh_home / "dsh/current"), "current as it was")
+            self.assertEqual(text, (tree / "package.json").read_text(), "the tree as it was")
+            self.assertEqual(wrapper_text, wrapper.read_text(), "the wrapper as it was")
+
+    def test_a_receipt_whose_paths_equal_the_two_only_as_joined_text_is_rewritten_on_the_already_installed_exit(self):
+        # Round-3 verdict f2 s4: the recorded paths were compared as a newline-joined string, so a third empty entry or
+        # the two paths inside one entry read as equal and the promised rewrite was skipped. jq compares the array.
+        for case in ("an extra empty entry", "the two joined by a newline"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                payload, digest = self.archive(home)
+                tree, text = self.canonical_install(dsh_home)
+                self.own_wrapper(dsh_home)
+                current, launcher = f"{dsh_home}/dsh/current", f"{dsh_home}/bin/dsh"
+                paths = [current, launcher, ""] if case == "an extra empty entry" else [f"{current}\n{launcher}"]
+                self.receipt(home, self.TAG, paths=paths)
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"DeepSeek harness {self.TAG} is already installed", result.stdout)
+                self.assertEqual([], self.calls(home), "no curl call, no mise call")
+                step = json.loads((home / ".agents/.installed-manifest.json").read_text())["steps"][
+                    "update_deepseek_harness"
+                ]
+                self.assertEqual([current, launcher], step["paths"], "the paths are rewritten to this layout's two")
+                self.assertEqual(self.TAG, step["source_version"])
+                self.assertEqual(str(tree), os.readlink(dsh_home / "dsh/current"), "current as it was")
+                self.assertEqual(text, (tree / "package.json").read_text(), "the tree as it was")
+
+    def test_a_jq_that_fails_on_the_paths_comparison_refuses_the_step_and_prunes_nothing(self):
+        # The comparison's status is read three ways: 0 equal, 1 not equal (the rewrite), any other a failed read. A jq
+        # that exits 5 on that read alone (the receipt's shape, its row and the tree's version answer as jq does)
+        # refuses the step before the prune, so the older tree and the receipt stay as they were.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            tree, text = self.canonical_install(dsh_home)
+            older = dsh_home / "dsh" / self.TAG
+            older.mkdir()
+            previous = json.dumps({"name": "deepseek-harness", "version": "previous"}) + "\n"
+            (older / "package.json").write_text(previous)
+            self.own_wrapper(dsh_home)
+            _, receipt = self.receipt(home, self.TAG)
+            # The function runs in the step's own subshell, not a command substitution, so it returns rather than exits.
+            injected = 'case "$*" in *\'.paths == [$c, $w]\'*) return 5 ;; esac; command jq "$@"'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, jq=injected)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                "update_deepseek_harness: the recorded paths could not be read from the installed-manifest receipt;"
+                " step refused",
+                result.stderr,
+            )
+            self.assertEqual([], self.calls(home), "no curl call, no mise call")
+            self.assertEqual(
+                sorted(["current", self.TAG, tree.name]), sorted(path.name for path in (dsh_home / "dsh").iterdir())
+            )
+            self.assertEqual(previous, (older / "package.json").read_text(), "the older tree is as it was")
+            self.assertEqual(str(tree), os.readlink(dsh_home / "dsh/current"), "current as it was")
+            self.assertEqual(text, (tree / "package.json").read_text(), "the tree as it was")
+            self.assertEqual(receipt, (home / ".agents/.installed-manifest.json").read_text(), "the receipt as it was")
 
 
 class ProducerFailureTest(unittest.TestCase):

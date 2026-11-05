@@ -1886,6 +1886,8 @@ function update_security_audit_skill() (
 #   the link traverses exists to protect; the one inode comparison tells it from every candidate. Any other name
 #   under dsh/ is not the step's and stays. The prune runs after a successful record and on the already-installed
 #   path, so a removal that failed once is retried by the next make update.
+#   This helper owns one row of update_deepseek_harness's input table, the entries under dsh/: it compares identity
+#   by inode, never by text, and repairs nothing.
 # @arg $1 string DSH_HOME.
 # @stderr One WARN line when a removal fails (the next make update prunes again).
 # @exitcode 0 Always; the prune never fails the step whose install is already recorded.
@@ -1919,16 +1921,27 @@ function dsh_prune_older() {
 #   installed and the wrapper is written and parsed beside its path, all before anything the host runs changes; then
 #   current is pointed at the new tree by one link call, the wrapper is replaced by one rename, the step is recorded,
 #   and only then are the older trees under $DSH_HOME/dsh pruned (dsh_prune_older: the step's own name shapes, never
-#   the inode current names). No tree is ever moved. The step accepts exactly one layout and refuses every other
-#   before any download, repairing nothing it did not make: current absent or a symlink to a non-symlink directory
-#   directly under dsh/, bin/dsh absent or a regular file, the receipt absent or exactly one JSON object. On the
-#   already-installed exit a receipt whose recorded paths are not this layout's two (dsh/current, bin/dsh) is
-#   rewritten before the prune, so no recorded path is ever pruned. A failure before the link leaves current, the
-#   wrapper and every older tree as they were; a failure after the link (the rename, the record) puts current back on
-#   its prior target when it can and says what it left otherwise; no cleanup changes the step's exit status. Every
-#   producer the step reads (pwd -P, the receipt as exactly one object, jq, shasum, readlink, mktemp) refuses the
-#   step on a failed answer. A download that fails degrades like update_security_audit_skill: one WARN line, nothing
-#   installed, nothing recorded, and make update goes on.
+#   the inode current names). No tree is ever moved. Every input the step reads is one row of a table, checked by
+#   type and by identity before any download; a state outside the table is refused, never repaired, and identities
+#   are compared by inode (-ef) or by jq, never as text. The table, one line per row with its accepted states:
+#   DSH_HOME: exported, absolute, a directory whose physical path (pwd -P) equals ~/.dsh's.
+#   DSH_HOME/dsh and DSH_HOME/bin: absent, or a directory that is not a symlink.
+#   DSH_HOME/profiles/thak: a directory that is not a symlink (the rendered profile); absent is a WARN with exit 0.
+#   DSH_HOME/dsh/current: absent, or a symlink whose target is a non-symlink directory directly under dsh/ named
+#   dsh-v* and whose inode is that directory's (-ef the leaf readlink named; the text read cannot mangle an inode).
+#   The entries under DSH_HOME/dsh: the prune removes only a non-symlink directory named dsh-v* or .staging.* that
+#   is not -ef current's target; every other entry stays.
+#   DSH_HOME/bin/dsh: absent, or a regular file that is not a symlink.
+#   ~/.agents/.installed-manifest.json: absent, or a regular file that is not a symlink holding exactly one JSON
+#   object; a symlink, a directory or a FIFO is refused before the path is opened.
+#   The receipt's recorded paths for the step: exactly the array [DSH_HOME/dsh/current, DSH_HOME/bin/dsh], read by
+#   one jq array comparison whose status is 0 equal, 1 not equal (the rewrite on the already-installed exit, before
+#   the prune, so no recorded path is ever pruned), any other a refusal.
+#   A failure before the link leaves current, the wrapper and every older tree as they were; a failure after the link
+#   (the rename, the record) puts current back on its prior target when it can and says what it left otherwise; no
+#   cleanup changes the step's exit status. Every producer the step reads (pwd -P, the receipt as exactly one object,
+#   jq, shasum, readlink, mktemp) refuses the step on a failed answer. A download that fails degrades like
+#   update_security_audit_skill: one WARN line, nothing installed, nothing recorded, and make update goes on.
 # @exitcode 0 Installed, already installed, repaired (the wrapper rewritten for the tree current names, no download),
 #   no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh (a WARN), or the download failed (a WARN; nothing
 #   installed or recorded).
@@ -1936,8 +1949,9 @@ function dsh_prune_older() {
 #   the profile install, the wrapper, the current link or the record failed; the line printed names the state left.
 #
 function update_deepseek_harness() (
-    local recorded recorded_paths download_dir="" tarball actual tree="" version physical expected target="" leaf="" installed repair="" prior_target="" wrapper_tmp="" wrapper_step="" quote="'" quoted_home
-    # One record line for the install and for the rewrite on the already-installed exit, so the two cannot drift.
+    local recorded download_dir="" tarball actual tree="" version physical expected target="" leaf="" installed repair="" prior_target="" wrapper_tmp="" wrapper_step="" quote="'" quoted_home row record_status=0
+    # One record line for the install and for the rewrite on the already-installed exit, so the two cannot drift; it
+    # writes the two paths the table's last row names (dsh/current, bin/dsh).
     dsh_record() {
         manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"
     }
@@ -1973,6 +1987,24 @@ function update_deepseek_harness() (
         printf 'WARN: update_deepseek_harness: DSH_HOME is %s, not %s, where the kit renders the thak profile; nothing installed.\n' "${DSH_HOME}" "${HOME}/.dsh" >&2
         return 0
     fi
+    # The three directories the step writes into are read by type before anything else: a dsh/ or bin/ that is a
+    # symlink (into an older tree, say) would have the prune or the rename reach a path the operator linked, and a
+    # file there is no place to make the tree or the wrapper; the profile directory is the kit's own rendering, so a
+    # symlink or a file there is refused and an absent one is the host the kit has not rendered on.
+    for row in dsh bin; do
+        if [ -L "${DSH_HOME}/${row}" ] || { [ -e "${DSH_HOME}/${row}" ] && [ ! -d "${DSH_HOME}/${row}" ]; }; then
+            printf 'update_deepseek_harness: %s is a symlink or not a directory; the step uses only a directory of its own there (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/${row}" >&2
+            return 1
+        fi
+    done
+    if [ -L "${DSH_HOME}/profiles/thak" ] || { [ -e "${DSH_HOME}/profiles/thak" ] && [ ! -d "${DSH_HOME}/profiles/thak" ]; }; then
+        printf 'update_deepseek_harness: %s is a symlink or not a directory; the step installs the profile plugins only into the directory the kit renders (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/profiles/thak" >&2
+        return 1
+    fi
+    if [ ! -d "${DSH_HOME}/profiles/thak" ]; then
+        printf 'WARN: update_deepseek_harness: %s is absent, so the kit has not rendered the thak profile here; nothing installed.\n' "${DSH_HOME}/profiles/thak" >&2
+        return 0
+    fi
     # ln -sfn onto a real directory at current makes a link inside it and succeeds, so a current that is neither a
     # symlink nor absent is refused before anything is downloaded or linked.
     if [ -e "${DSH_HOME}/dsh/current" ] && [ ! -L "${DSH_HOME}/dsh/current" ]; then
@@ -1982,7 +2014,10 @@ function update_deepseek_harness() (
     # The step accepts one layout, the one it makes, and repairs no other: a current that reaches its tree indirectly
     # (dsh/<older>/relay, dsh/<older>/../<tree>, a symlink at dsh/<name>) passes every shape check, and the prune,
     # which removes by name under dsh/, then takes the directory the link traverses and leaves current dangling with
-    # exit 0. So the target must be a non-symlink directory directly under dsh/; the installed state is read from it.
+    # exit 0. So the target must be a non-symlink directory directly under dsh/ named dsh-v*, and the link itself
+    # must reach that very directory (-ef): $(readlink) strips a trailing newline, so a target whose name ends in one
+    # reads as another directory's name, and only the inode comparison tells the two apart. The installed state is
+    # read from the target.
     if [ -L "${DSH_HOME}/dsh/current" ]; then
         target="$(readlink "${DSH_HOME}/dsh/current")" || {
             printf 'update_deepseek_harness: the target of %s could not be read; step refused.\n' "${DSH_HOME}/dsh/current" >&2
@@ -1997,10 +2032,12 @@ function update_deepseek_harness() (
         "${DSH_HOME}/dsh/"*) leaf="${target#"${DSH_HOME}/dsh/"}" ;;
         esac
         case ${leaf} in
-        "" | . | .. | */*) leaf="" ;;
+        */*) leaf="" ;;
+        dsh-v*) ;;
+        *) leaf="" ;;
         esac
-        if [ -z "${leaf}" ] || [ ! -d "${target}" ] || [ -L "${target}" ]; then
-            printf 'update_deepseek_harness: %s points at %s, which is not a directory directly under %s/dsh; the step repairs only the layout it makes (move the link aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/dsh/current" "${target}" "${DSH_HOME}" >&2
+        if [ -z "${leaf}" ] || [ ! -d "${target}" ] || [ -L "${target}" ] || [ ! "${DSH_HOME}/dsh/current" -ef "${DSH_HOME}/dsh/${leaf}" ]; then
+            printf 'update_deepseek_harness: %s points at %s, which is not a directory directly under %s/dsh named dsh-v* that the link itself reaches; the step repairs only the layout it makes (move the link aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/dsh/current" "${target}" "${DSH_HOME}" >&2
             return 1
         fi
     fi
@@ -2010,10 +2047,21 @@ function update_deepseek_harness() (
         printf 'update_deepseek_harness: %s is not a regular file; the step refuses to replace it (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/bin/dsh" >&2
         return 1
     fi
-    # A receipt file that is not exactly one JSON object is a failed read, not an empty receipt: jq answers a
-    # zero-byte file with exit 0 and no output, and jq -e without -s judges each document of a file on its own, so
-    # the file is slurped and its shape checked before the step's row is read; installing over a record the step
-    # could not consult would hide the corruption. A missing file is the fresh host and installs.
+    # The receipt is read by type before it is opened: a symlink (dangling, or into an older tree the prune removes)
+    # and a directory or a FIFO are no receipt the step can read or manifest_record write, and -f alone would let a
+    # directory, a FIFO or a dangling link pass as the fresh host; a FIFO is never opened. Then a receipt file that
+    # is not exactly one JSON object is a failed read, not an empty receipt: jq answers a zero-byte file with exit 0
+    # and no output, and jq -e without -s judges each document of a file on its own, so the file is slurped and its
+    # shape checked before the step's row is read; installing over a record the step could not consult would hide
+    # the corruption. A missing file is the fresh host and installs.
+    if [ -L "${HOME}/.agents/.installed-manifest.json" ]; then
+        printf 'update_deepseek_harness: the installed-manifest receipt %s is a symlink; the step reads and writes only a regular file there (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${HOME}/.agents/.installed-manifest.json" >&2
+        return 1
+    fi
+    if [ -e "${HOME}/.agents/.installed-manifest.json" ] && [ ! -f "${HOME}/.agents/.installed-manifest.json" ]; then
+        printf 'update_deepseek_harness: the installed-manifest receipt %s is not a regular file; the step reads and writes only a regular file there (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${HOME}/.agents/.installed-manifest.json" >&2
+        return 1
+    fi
     if [ -f "${HOME}/.agents/.installed-manifest.json" ]; then
         jq -es 'length == 1 and (.[0] | type) == "object"' "${HOME}/.agents/.installed-manifest.json" > /dev/null 2>&1 || {
             printf 'update_deepseek_harness: the installed-manifest receipt could not be read as a JSON object; step refused.\n' >&2
@@ -2040,18 +2088,25 @@ function update_deepseek_harness() (
                 printf 'DeepSeek harness %s is already installed.\n' "${DSH_PIN_TAG}"
                 # The receipt's paths are what the doctor checks for existence. A receipt from the earlier layout
                 # names dsh/<tag>, an older tree the prune below removes, and so does one a failed record left behind
-                # a kept new tree; a receipt whose paths are not this layout's two is rewritten first, and nothing is
-                # pruned when that write fails.
-                recorded_paths="$(jq -r '.steps["update_deepseek_harness"].paths // [] | join("\n")' "${HOME}/.agents/.installed-manifest.json" 2> /dev/null)" || {
-                    printf 'update_deepseek_harness: the recorded paths could not be read from the installed-manifest receipt; step refused.\n' >&2
-                    return 1
-                }
-                if [ "${recorded_paths}" != "${DSH_HOME}/dsh/current"$'\n'"${DSH_HOME}/bin/dsh" ]; then # lint-comparisons: allow the recorded paths are the text the step itself wrote, compared as that text
+                # a kept new tree; a receipt whose paths are not exactly this layout's two is rewritten first, and
+                # nothing is pruned when that write fails. jq compares the recorded array with the two paths as an
+                # array (a joined text would read an extra empty entry or a newline inside an entry as equal); its
+                # status is read three ways: equal, not equal (the rewrite), and a read that failed (the refusal).
+                record_status=0
+                jq -e --arg c "${DSH_HOME}/dsh/current" --arg w "${DSH_HOME}/bin/dsh" '.steps["update_deepseek_harness"].paths == [$c, $w]' "${HOME}/.agents/.installed-manifest.json" > /dev/null 2>&1 || record_status=$?
+                case ${record_status} in
+                0) ;;
+                1)
                     dsh_record || {
                         printf 'update_deepseek_harness: the record could not be rewritten; the older trees are kept.\n' >&2
                         return 1
                     }
-                fi
+                    ;;
+                *)
+                    printf 'update_deepseek_harness: the recorded paths could not be read from the installed-manifest receipt; step refused.\n' >&2
+                    return 1
+                    ;;
+                esac
                 # An older tree whose removal failed after the record is retried here, since every later run of a
                 # recorded install ends on this path.
                 dsh_prune_older "${DSH_HOME}"

@@ -661,8 +661,10 @@ DARWIN_SANDBOX_WRITE_ROOTS = ("~/Library/Caches/mise",)
 # The inputs an hcom store holds that the next seat launch runs outside any sandbox (U195), in the order of the store
 # deny loop of scripts/orchestrator/hcom-seat (`for path in ...; do` over ${hcom_real}), which
 # validate_hcom_seat_store_denies holds equal to this tuple. The Claude Code sandbox takes them back from its hcom
-# write roots through `filesystem.denyWrite`: on macOS every name, on Linux only the directories as `<dir>/**`, since
-# Linux `denyWrite` accepts a trailing `/**` alone (README "Claude Code sandbox", known limit).
+# write roots through `filesystem.denyWrite`, rendered per OS by the generator's one derivation
+# (render_claude_deny_write) over these constants: every name under each root on macOS; on Linux the static store's
+# names alone, a file literal, a directory as `<dir>/**` with `.tmp/**` pinned, and nothing with an interior glob,
+# which the Linux sandbox discards (README "Claude Code sandbox").
 HCOM_STORE_CONTROL_NAMES = (
     "config.toml",
     "env",
@@ -687,19 +689,43 @@ HCOM_SEAT_SANDBOX_DENY = 'deny_write=("${seats_real}/.sandbox")'
 
 
 def expected_deny_write(allow_write: list[str], os_name: str) -> dict[str, set[str]]:
-    """The `denyWrite` entries each granted hcom root and the seats root must carry on `os_name`, keyed by root."""
+    """The `denyWrite` entries each granted hcom root and the seats root must carry on `os_name`, keyed by root: the
+    generator's derivation run over this script's own constants, so a renamed name, root or shape on either side
+    fails here (a root with no entry on `os_name` maps to an empty set)."""
+    filesystem = {
+        "hcom_store_roots": HCOM_STORE_ROOTS,
+        "deny_write_under_hcom_stores": {
+            name: "dir" if name in HCOM_STORE_CONTROL_DIRECTORIES else "file" for name in HCOM_STORE_CONTROL_NAMES
+        },
+        "seats_root": SEATS_ROOT,
+        "deny_write_seat_sandboxes": [SEAT_SANDBOX_DENY],
+    }
     expected: dict[str, set[str]] = {}
+    denied_roots = (*HCOM_STORE_ROOTS, SEATS_ROOT)
     for root in allow_write:
-        kind = HCOM_STORE_ROOTS.get(root) if isinstance(root, str) else None
-        if kind is not None:
-            prefix = root if kind == "store" else f"{root}/*"
-            if os_name == "darwin":
-                expected[root] = {f"{prefix}/{name}" for name in HCOM_STORE_CONTROL_NAMES}
-            else:
-                expected[root] = {f"{prefix}/{name}/**" for name in HCOM_STORE_CONTROL_DIRECTORIES}
-        elif root == SEATS_ROOT:  # lint-comparisons: allow exact text of an allowlisted root
-            expected[root] = {f"{root}/{SEAT_SANDBOX_DENY}" + ("" if os_name == "darwin" else "/**")}
+        if isinstance(root, str) and root in denied_roots:  # lint-comparisons: allow an allowlisted root's exact text
+            expected[root] = set(generator().render_claude_deny_write(filesystem, [root], os_name))
     return expected
+
+
+def validate_linux_deny_write_forms(deny_write: list[str], wanted: list[str], label: str) -> None:
+    """Refuse a Linux `denyWrite` entry the Linux sandbox would not honour as written (U195b): one holding a `*`
+    before its end, which the sandbox discards whole, and a trailing `/**` on a file, which the sandbox strips to a
+    path that denies the file only by its literal name."""
+    files = {entry for entry in wanted if not entry.endswith("/**")}  # lint-comparisons: allow a suffix test
+    for entry in deny_write:
+        if "*" in entry.removesuffix("/**"):
+            fail(
+                f"{label}.filesystem.denyWrite linux entry {entry!r} holds an interior glob, which the Linux sandbox "
+                "discards whole (its denyWrite honours a trailing /** alone), so it would deny nothing: render no "
+                "such entry on linux"
+            )
+        literal_file = entry.removesuffix("/**")
+        if entry.endswith("/**") and literal_file in files:  # lint-comparisons: allow a member test of the expected set
+            fail(
+                f"{label}.filesystem.denyWrite linux entry {entry!r} puts a trailing /** on a file; the Linux sandbox "
+                f"accepts a literal file deny, so render {literal_file!r}"
+            )
 
 
 def validate_claude_sandbox_deny_write(sandbox: dict[str, Any], label: str, os_name: str) -> None:
@@ -711,6 +737,8 @@ def validate_claude_sandbox_deny_write(sandbox: dict[str, Any], label: str, os_n
         fail(f"{label}.filesystem.denyWrite must be a list of paths: {deny_write!r}")
     expected = expected_deny_write(filesystem.get("allowWrite", []), os_name)
     wanted = sorted(set().union(*expected.values())) if expected else []
+    if os_name == "linux":
+        validate_linux_deny_write_forms(deny_write, wanted, label)
     if deny_write == wanted:
         return
     actual = set(deny_write)
@@ -718,8 +746,9 @@ def validate_claude_sandbox_deny_write(sandbox: dict[str, Any], label: str, os_n
     extra = sorted(actual - set(wanted))
     fail(
         f"{label}.filesystem.denyWrite must hold exactly, sorted and once, the {os_name} deny set of each hcom root in "
-        f"allowWrite ({list(HCOM_STORE_CONTROL_NAMES)}, the list hcom-seat denies its seats; on linux the directories "
-        f"as <dir>/**) and {SEATS_ROOT}/{SEAT_SANDBOX_DENY}: missing={missing} extra={extra}"
+        f"allowWrite ({list(HCOM_STORE_CONTROL_NAMES)}, the list hcom-seat denies its seats; on linux the static "
+        f"store's names alone, a directory as <dir>/** with .tmp/** pinned, nothing with an interior glob) and "
+        f"{SEATS_ROOT}/{SEAT_SANDBOX_DENY}: missing={missing} extra={extra}"
         + ("" if missing or extra else f" (out of order or repeated: {deny_write})")
     )
 

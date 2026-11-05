@@ -789,7 +789,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             },
             "codex": {"sandbox_workspace_write": {"writable_roots": ["/root-a"]}},
         }
-        # macOS: every name under the store, under each slug of the parent, and every seat sandbox; sorted and unique.
+        # macOS: every denied path as written under the store, under each slug of the parent, and every seat sandbox,
+        # sorted and unique, and no pin of the directories between a root and a denied path (`~/.local/state/hcom/*`,
+        # `~/.local/state/hcom-regime/.tmp`, `~/.local/state/omp-seats/*`): measured, such an entry denies the
+        # directory's contents, so a pin would deny every seat worktree write (U195b).
         self.assertEqual(
             [
                 "~/.local/state/hcom-regime/.tmp/launch",
@@ -802,23 +805,46 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             ],
             self.module.render_claude_sandbox(manifest)["filesystem"]["denyWrite"],
         )
-        # Linux: the directories alone, each as <dir>/**; the file names stay behind the darwin branch (known limit).
+        # Linux: the static store alone, a file literal, a directory as <dir>/**, the directory between the root and
+        # `.tmp/launch` pinned whole; nothing holding an interior `*` (the per-slug stores, the seat sandboxes), which
+        # the Linux sandbox discards.
         self.assertEqual(
             [
+                "~/.local/state/hcom-regime/.tmp/**",
                 "~/.local/state/hcom-regime/.tmp/launch/**",
+                "~/.local/state/hcom-regime/env",
                 "~/.local/state/hcom-regime/scripts/**",
-                "~/.local/state/hcom/*/.tmp/launch/**",
-                "~/.local/state/hcom/*/scripts/**",
-                "~/.local/state/omp-seats/*/.sandbox/**",
             ],
             self.module.render_claude_sandbox(manifest, "linux")["filesystem"]["denyWrite"],
         )
-        # A root allowWrite does not grant gets no deny, and with no hcom root the key is absent.
+        # The derivation, not a list: a deeper name yields every directory strictly between the root and the name as a
+        # pin on Linux and the name alone on macOS (the seat sandbox stays, from its own list).
+        filesystem["deny_write_under_hcom_stores"] = {"hooks/pre/run.sh": "file"}
+        self.assertEqual(
+            [
+                "~/.local/state/hcom-regime/hooks/pre/run.sh",
+                "~/.local/state/hcom/*/hooks/pre/run.sh",
+                "~/.local/state/omp-seats/*/.sandbox",
+            ],
+            self.module.render_claude_sandbox(manifest)["filesystem"]["denyWrite"],
+        )
+        self.assertEqual(
+            [
+                "~/.local/state/hcom-regime/hooks/**",
+                "~/.local/state/hcom-regime/hooks/pre/**",
+                "~/.local/state/hcom-regime/hooks/pre/run.sh",
+            ],
+            self.module.render_claude_sandbox(manifest, "linux")["filesystem"]["denyWrite"],
+        )
+        filesystem["deny_write_under_hcom_stores"] = {"env": "file", "scripts": "dir", ".tmp/launch": "dir"}
+        # A root allowWrite does not grant gets no deny; with no hcom root, or on Linux with only globbed roots, the
+        # key is absent.
         filesystem["extra_allow_write"] = ["~/.local/state/hcom"]
         self.assertEqual(
             ["~/.local/state/hcom/*/.tmp/launch", "~/.local/state/hcom/*/env", "~/.local/state/hcom/*/scripts"],
             self.module.render_claude_sandbox(manifest)["filesystem"]["denyWrite"],
         )
+        self.assertNotIn("denyWrite", self.module.render_claude_sandbox(manifest, "linux")["filesystem"])
         filesystem["extra_allow_write"] = []
         self.assertNotIn("denyWrite", self.module.render_claude_sandbox(manifest)["filesystem"])
         filesystem["deny_write_under_hcom_stores"] = {"env": "link"}
@@ -921,7 +947,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 darwin_tmp = ["/private/tmp/**/.env", "/private/tmp/**/.env.*"] if os_name == "darwin" else []
                 self.assertEqual(["~/**/.env", "~/**/.env.*", *tmp, *darwin_tmp], sandbox["filesystem"]["denyRead"])
                 # U195: the inputs the next seat launch runs unsandboxed, taken back from each hcom root, and every
-                # seat sandbox; the list hcom-seat denies its seats. Linux holds the directories alone, as <dir>/**.
+                # seat sandbox; the list hcom-seat denies its seats. macOS holds every path as written and no pin;
+                # Linux holds the static store alone (file literal, <dir>/**, `.tmp/**` pinned) and no interior glob.
                 names = ("config.toml", "env", "config.env", ".tmp/launch", "scripts", "integrations", "shell_env.json")
                 self.assertEqual(
                     [
@@ -943,13 +970,14 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     ]
                     if os_name == "darwin"
                     else [
+                        "~/.local/state/hcom-regime/.tmp/**",
                         "~/.local/state/hcom-regime/.tmp/launch/**",
+                        "~/.local/state/hcom-regime/config.env",
+                        "~/.local/state/hcom-regime/config.toml",
+                        "~/.local/state/hcom-regime/env",
                         "~/.local/state/hcom-regime/integrations/**",
                         "~/.local/state/hcom-regime/scripts/**",
-                        "~/.local/state/hcom/*/.tmp/launch/**",
-                        "~/.local/state/hcom/*/integrations/**",
-                        "~/.local/state/hcom/*/scripts/**",
-                        "~/.local/state/omp-seats/*/.sandbox/**",
+                        "~/.local/state/hcom-regime/shell_env.json",
                     ],
                     sandbox["filesystem"]["denyWrite"],
                 )

@@ -598,16 +598,36 @@ followed by `claude.sandbox.filesystem.extra_allow_write`: the uv cache
 (`~/.cache/uv`, so `uv run` targets such as `make unit-test` work from
 sandboxed Bash), the hcom stores and the omp seat worktrees, plus mise's cache
 on macOS. Beside `allowWrite`, `sandbox.filesystem.denyWrite` takes back from
-those roots the inputs the next seat launch runs outside any sandbox: under
-`~/.local/state/hcom-regime` and under every `~/.local/state/hcom/<slug>` the
+those roots the inputs the next seat launch runs outside any sandbox, rendered
+per OS as that OS honours. On macOS it denies, under
+`~/.local/state/hcom-regime` and under every `~/.local/state/hcom/<slug>`, the
 names `config.toml`, `env`, `config.env`, `.tmp/launch`, `scripts`,
 `integrations` and `shell_env.json`, and every seat sandbox directory
-`~/.local/state/omp-seats/*/.sandbox`. The source list is
+`~/.local/state/omp-seats/*/.sandbox`, each as written; the directories between
+a root and a denied path (a slug directory, a program directory, a store's
+`.tmp`) are not pinned there, because an exact `denyWrite` entry holding an
+interior glob denies the directory's contents and not the directory alone
+(measured with `claude -p --settings`: `~/.local/state/omp-seats/*` refused a
+write to `<program>/probe`, which every seat worktree write needs), so a
+sandboxed command can rename such a directory within its root, write its
+control files unmatched and move it back; that rename route is the same-user
+residual gate G17 owns. On Linux it denies the static store
+`~/.local/state/hcom-regime` alone: each file by its literal path, each
+directory as `<dir>/**`, and `~/.local/state/hcom-regime/.tmp/**` whole, the
+pin of the directory above `.tmp/launch`; the per-slug stores under
+`~/.local/state/hcom` and the seat sandboxes stay writable to a sandboxed
+command there, because the Linux sandbox discards every `denyWrite` entry
+holding an interior `*` (the interior-glob limit), the same same-user residual
+gate G17 owns. The source list is
 `claude.sandbox.filesystem.deny_write_under_hcom_stores`, the twin of the list
-`hcom-seat` denies its seats; `validate-agent-assets.py` holds the rendered
-`denyWrite` equal to that set for each granted root and holds `hcom-seat`'s
-loop equal to the same names in the same order, so neither list moves alone
-(regime-cutover U195). Every write root (Claude `allowWrite`, the Codex `writable_roots` it
+`hcom-seat` denies its seats, and the per-OS set is one derivation in the
+generator (`render_claude_deny_write`: the denied path, and every directory
+strictly between the root and it as a pin where the OS honours one);
+`validate-agent-assets.py` holds the rendered `denyWrite` equal to that
+derivation for each granted root, refuses a Linux entry with an interior glob
+or a trailing `/**` on a file, and holds `hcom-seat`'s loop equal to the same
+names in the same order, so neither list moves alone (regime-cutover U195,
+U195b). Every write root (Claude `allowWrite`, the Codex `writable_roots` it
 shares, Claude `additionalDirectories`) must be byte-identical to an entry of
 the exact allowlist `SANDBOX_WRITE_ROOTS` in `validate-agent-assets.py`
 (`~/.cache/uv`, `~/.local/state/hcom-regime`, `~/.local/state/hcom`,
@@ -726,12 +746,13 @@ Linux": the Linux sandbox drops those globs when it builds its own lists
 tools keep applying them. `denyRead` covers sandboxed reads there; a sandboxed
 write to a `.env*` file inside the working directory is not blocked on Linux,
 because Linux `denyWrite` accepts only a trailing `/**` (known limit). For
-the same reason the Linux `denyWrite` list holds only the directories of the
-hcom store set (`.tmp/launch`, `scripts`, `integrations`, each as `<dir>/**`)
-and `~/.local/state/omp-seats/*/.sandbox/**`; the file names (`config.toml`,
-`env`, `config.env`, `shell_env.json`) are denied on macOS alone, and the
-Linux forms are rendered from the documented rule, not measured on a Linux
-host (U195).
+the same reason the Linux `denyWrite` list holds the static store's names
+alone ("Claude Code sandbox" above): the per-slug store and seat-sandbox
+forms would carry an interior `*`, which the Linux sandbox discards whole, so
+the generator renders none and `validate-agent-assets.py` refuses one; the
+Linux forms follow the settings reference (Linux and WSL2 support a trailing
+`/**` alone; other wildcards are read literally) and the sandbox-runtime
+configuration probes of the U195 audit, not a Linux host (U195, U195b).
 `validate-agent-assets.py` refuses any other Read/Edit rule that ends in a
 glob, and CI's ubuntu-24.04 leg runs `claude doctor` on the rendered settings
 to hold that list.

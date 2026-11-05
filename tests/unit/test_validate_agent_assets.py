@@ -98,9 +98,11 @@ statusMessage = "Closing session"
 """
 
 
-# The exact `denyWrite` entries the validator holds each granted root to, per OS (regime-cutover U195): the seven
-# inputs hcom-seat denies its seats under the store and under each slug of the parent, and every seat sandbox; on
-# Linux the directories alone, as <dir>/**.
+# The exact `denyWrite` entries the validator holds each granted root to, per OS (regime-cutover U195, U195b): on
+# macOS the seven inputs hcom-seat denies its seats under the store and under each slug of the parent, and every seat
+# sandbox, as written and with no pin of the directories between (an exact entry with an interior glob denies the
+# directory's contents, measured); on Linux the static store alone, a file literal, a directory as <dir>/**, `.tmp/**`
+# pinned, and nothing with an interior glob, so the parent and the seats root carry no entry there.
 HCOM_DENY_WRITE = {
     ("darwin", "~/.local/state/hcom-regime"): [
         "~/.local/state/hcom-regime/.tmp/launch",
@@ -122,16 +124,17 @@ HCOM_DENY_WRITE = {
     ],
     ("darwin", "~/.local/state/omp-seats"): ["~/.local/state/omp-seats/*/.sandbox"],
     ("linux", "~/.local/state/hcom-regime"): [
+        "~/.local/state/hcom-regime/.tmp/**",
         "~/.local/state/hcom-regime/.tmp/launch/**",
+        "~/.local/state/hcom-regime/config.env",
+        "~/.local/state/hcom-regime/config.toml",
+        "~/.local/state/hcom-regime/env",
         "~/.local/state/hcom-regime/integrations/**",
         "~/.local/state/hcom-regime/scripts/**",
+        "~/.local/state/hcom-regime/shell_env.json",
     ],
-    ("linux", "~/.local/state/hcom"): [
-        "~/.local/state/hcom/*/.tmp/launch/**",
-        "~/.local/state/hcom/*/integrations/**",
-        "~/.local/state/hcom/*/scripts/**",
-    ],
-    ("linux", "~/.local/state/omp-seats"): ["~/.local/state/omp-seats/*/.sandbox/**"],
+    ("linux", "~/.local/state/hcom"): [],
+    ("linux", "~/.local/state/omp-seats"): [],
 }
 
 
@@ -1347,20 +1350,55 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertIn(message, stderr.getvalue())
                 if name != "not a list":
                     self.assertIn("the list hcom-seat denies its seats", stderr.getvalue())
-        # The Linux set holds the directories alone: a file name there is an extra entry, a missing /** a misspelling.
+        # The validator's expected set is the table above for every root on every OS, empty sets included.
+        for os_name in ("darwin", "linux"):
+            self.assertEqual(
+                {root: set(HCOM_DENY_WRITE[(os_name, root)]) for root in roots},
+                self.module.expected_deny_write(roots, os_name),
+            )
+        # Linux: an entry the Linux sandbox would not honour as written is refused by its form, before the set is
+        # compared: an interior glob (the round-1 per-slug and seat forms) and a trailing /** on a file.
+        for entry in (
+            "~/.local/state/hcom/*/env",
+            "~/.local/state/hcom/*/scripts/**",
+            "~/.local/state/omp-seats/*/.sandbox/**",
+            "~/.local/state/hcom/*",
+        ):
+            with self.subTest(linux_entry=entry):
+                linux = granted("linux")
+                linux["filesystem"]["denyWrite"].append(entry)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(linux, [], "sandbox", "linux")
+                self.assertIn(
+                    f"linux entry {entry!r} holds an interior glob, which the Linux sandbox discards whole",
+                    stderr.getvalue(),
+                )
         linux = granted("linux")
-        linux["filesystem"]["denyWrite"].append("~/.local/state/hcom/*/env")
-        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-            self.module.validate_claude_sandbox(linux, [], "sandbox", "linux")
-        self.assertIn("missing={} extra=['~/.local/state/hcom/*/env']", stderr.getvalue())
-        linux = granted("linux")
-        drop(linux, "~/.local/state/hcom/*/scripts/**")
-        linux["filesystem"]["denyWrite"].append("~/.local/state/hcom/*/scripts")
+        linux["filesystem"]["denyWrite"].append("~/.local/state/hcom-regime/config.toml/**")
         with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
             self.module.validate_claude_sandbox(linux, [], "sandbox", "linux")
         self.assertIn(
-            "missing={'~/.local/state/hcom': ['~/.local/state/hcom/*/scripts/**']} extra=['~/.local/state/hcom/*/scripts']",
+            "linux entry '~/.local/state/hcom-regime/config.toml/**' puts a trailing /** on a file; the Linux sandbox "
+            "accepts a literal file deny, so render '~/.local/state/hcom-regime/config.toml'",
             stderr.getvalue(),
+        )
+        # Linux: a directory without its /** is a misspelling, and the `.tmp/**` pin is named when it is missing.
+        linux = granted("linux")
+        drop(linux, "~/.local/state/hcom-regime/scripts/**")
+        linux["filesystem"]["denyWrite"].append("~/.local/state/hcom-regime/scripts")
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_claude_sandbox(linux, [], "sandbox", "linux")
+        self.assertIn(
+            "missing={'~/.local/state/hcom-regime': ['~/.local/state/hcom-regime/scripts/**']} "
+            "extra=['~/.local/state/hcom-regime/scripts']",
+            stderr.getvalue(),
+        )
+        linux = granted("linux")
+        drop(linux, "~/.local/state/hcom-regime/.tmp/**")
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_claude_sandbox(linux, [], "sandbox", "linux")
+        self.assertIn(
+            "missing={'~/.local/state/hcom-regime': ['~/.local/state/hcom-regime/.tmp/**']} extra=[]", stderr.getvalue()
         )
         # A sandbox that grants no hcom root and no seats root carries no denyWrite, and any entry there is extra.
         sandbox = self.valid_claude_sandbox()

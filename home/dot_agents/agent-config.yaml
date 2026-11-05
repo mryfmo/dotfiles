@@ -965,10 +965,13 @@ claude:
       # above the inputs an hcom store holds that the next seat launch runs
       # outside any sandbox (regime-cutover U195). `hcom_store_roots` names which
       # allowWrite root is a store itself (`store`: <root>/<name>) and which
-      # holds one store per slug (`parent`: <root>/*/<name>). Linux `denyWrite`
-      # accepts only a trailing `/**`, so there only the `dir` names render, as
-      # `<dir>/**`; a `file` name is denied on macOS alone (README "Claude Code
-      # sandbox", known limit).
+      # holds one store per slug (`parent`: <root>/*/<name>). The generator
+      # renders per OS what that OS honours (render_claude_deny_write): on macOS
+      # every name as written; on Linux only the static store's names, a file as
+      # its literal path, a directory as `<dir>/**` with `.tmp/**` pinned, and
+      # nothing with an interior `*`, which the Linux sandbox discards, so the
+      # per-slug stores and the seat sandboxes stay writable there (README
+      # "Claude Code sandbox", the same-user residual gate G17 owns).
       hcom_store_roots:
         ~/.local/state/hcom-regime: store
         ~/.local/state/hcom: parent

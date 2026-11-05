@@ -687,13 +687,14 @@
       "/tmp/**/.env.*"
     ],
     "denyWrite": [
+      "~/.local/state/hcom-regime/.tmp/**",
       "~/.local/state/hcom-regime/.tmp/launch/**",
+      "~/.local/state/hcom-regime/config.env",
+      "~/.local/state/hcom-regime/config.toml",
+      "~/.local/state/hcom-regime/env",
       "~/.local/state/hcom-regime/integrations/**",
       "~/.local/state/hcom-regime/scripts/**",
-      "~/.local/state/hcom/*/.tmp/launch/**",
-      "~/.local/state/hcom/*/integrations/**",
-      "~/.local/state/hcom/*/scripts/**",
-      "~/.local/state/omp-seats/*/.sandbox/**"
+      "~/.local/state/hcom-regime/shell_env.json"
     ]
   },
   "credentials": {

@@ -13,7 +13,8 @@ Code only produces the model turns.
 omp -e ~/.local/lib/omp-extensions/pi-claude-bridge --model claude-bridge/claude-haiku-4-5
   -> src/index.ts registers provider claude-bridge (omp rewrites @earendil-works/* imports to its legacy pi shims)
   -> @anthropic-ai/claude-agent-sdk query() spawns node_modules/@anthropic-ai/claude-agent-sdk-<platform>/cli
-  -> the child authenticates with the host's claude.ai login (Keychain), tools: [] and bypassPermissions
+  -> the child authenticates by CLAUDE_CODE_OAUTH_TOKEN when set (a seat's shim exports it, under a per-seat
+     CLAUDE_CONFIG_DIR, U190), else with the host's claude.ai login (Keychain); tools: [] and bypassPermissions
 ```
 
 The model id after `claude-bridge/` is the Anthropic catalog id. The seat

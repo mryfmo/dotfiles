@@ -5455,6 +5455,18 @@
 <span class="s2">one line `SCOPE names &lt;n&gt; levers (&lt;names&gt;); split into sequenced units of at most two levers each (plan P-41: ...)`;</span>
 <span class="s2">the count and the threshold are the whole rule.</span>
 
+<span class="s2">A brief whose SCOPE names a repository path and whose ACCEPTANCE names no CI gate is refused too (regime-cutover U249,</span>
+<span class="s2">standing order 44: the heads of U244 and U240 passed every ACCEPTANCE line their briefs named and failed CI minutes</span>
+<span class="s2">later, at the prettier check and at the shebang table of `scripts/ci/run-on-lint-files.sh`, because the briefs named</span>
+<span class="s2">their own lines and not the gates CI runs). The gates are one table of (class, name, term) rows, `GATES`: the `lint`</span>
+<span class="s2">class is the Makefile's `format` target, the three `scripts/ci/run-on-lint-files.sh` checks CI's test job runs before</span>
+<span class="s2">the unit tests; the `test` class is `python -m unittest`, `make unit-test` or `node --test`. When SCOPE names at least</span>
+<span class="s2">one repository path (a relative backticked span of two or more names, or one name with an extension; `~/...` or a path under the system temporary directory</span>
+<span class="s2">and `../...` are outside the repository and a bare word names no file), the ACCEPTANCE section must exist and match one</span>
+<span class="s2">term of each class: `no ACCEPTANCE section`, `ACCEPTANCE names no lint gate (...)` and `ACCEPTANCE names no test gate</span>
+<span class="s2">(...)` are the exit-1 lines. A sweep brief, whose SCOPE writes under `~/.local/state/` alone, is exempt by that shape,</span>
+<span class="s2">not by a name list. Whether a gate was run is the body's pasted lines, read by the coordinator, never by this check.</span>
+
 <span class="s2">The script is a pinned lever (regime-cutover U31, round 3 of U104): `scripts/generate-agent-configs.py` writes the</span>
 <span class="s2">same bytes to `home/dot_local/bin/common/executable_brief-check.py`, which chezmoi installs as</span>
 <span class="s2">`~/.local/bin/common/brief-check.py`, and pins their sha256 under `claude.levers.sha256`; the orchestrator seat's</span>
@@ -5659,6 +5671,30 @@ def<span class="w"> </span>manifest_levers<span class="o">(</span>lines,<span cl
 <span class="w">    </span><span class="s2">"SCOPE names {count} levers ({names}); split into sequenced units of at most two levers each "</span>
 <span class="w">    </span><span class="s2">"(plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)"</span>
 <span class="o">)</span>
+<span class="c1"># The CI gates a brief's ACCEPTANCE may paste, (class, name, term) rows; a term is matched as a trigger term is (a whole</span>
+<span class="c1"># word, any case, a space also a hyphen) and the name is what the reason line prints. The `lint` class is the</span>
+<span class="c1"># Makefile's `format` target: the three `scripts/ci/run-on-lint-files.sh` checks (shfmt, ruff format, prettier) that</span>
+<span class="c1"># CI's test job runs before the unit tests. The `test` class is the unit tests or a `node --test` run. The ACCEPTANCE</span>
+<span class="c1"># of a brief whose SCOPE names a repository path must match one term of each class in GATE_CLASSES (standing order 44,</span>
+<span class="c1"># U249); the `check` rows are gate forms a brief may paste that no class requires. `bats` is no gate: AGENTS.md Test</span>
+<span class="c1"># Policy forbids a local run.</span>
+<span class="nv">GATES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
+<span class="w">    </span><span class="o">(</span><span class="s2">"lint"</span>,<span class="w"> </span><span class="s2">"run-on-lint-files.sh"</span>,<span class="w"> </span><span class="s2">"run-on-lint-files.sh"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"lint"</span>,<span class="w"> </span><span class="s2">"make format"</span>,<span class="w"> </span><span class="s2">"make format"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"test"</span>,<span class="w"> </span><span class="s2">"python -m unittest"</span>,<span class="w"> </span><span class="s2">"unittest"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"test"</span>,<span class="w"> </span><span class="s2">"make unit-test"</span>,<span class="w"> </span><span class="s2">"make unit-test"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"test"</span>,<span class="w"> </span><span class="s2">"node --test"</span>,<span class="w"> </span><span class="s2">"node --test"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"check"</span>,<span class="w"> </span><span class="s2">"make shellcheck"</span>,<span class="w"> </span><span class="s2">"make shellcheck"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"check"</span>,<span class="w"> </span><span class="s2">"make render-check"</span>,<span class="w"> </span><span class="s2">"make render-check"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"check"</span>,<span class="w"> </span><span class="s2">"make validate-agent-assets"</span>,<span class="w"> </span><span class="s2">"make validate-agent-assets"</span><span class="o">)</span>,
+<span class="o">)</span>
+<span class="nv">GATE_CLASSES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"lint"</span>,<span class="w"> </span><span class="s2">"test"</span><span class="o">)</span>
+<span class="c1"># A SCOPE span (no whitespace, a `./` prefix dropped) is a repository path when it is relative, its first name not</span>
+<span class="c1"># empty (`/tmp/...`), `~` or `..`, nor a `$VAR`, and it names more than a bare word: two or more names joined by `/`,</span>
+<span class="c1"># or one name with an extension (`AGENTS.md`). `scratch/` and `Makefile` are bare words; a branch ref (`origin/main`)</span>
+<span class="c1"># reads as a path, which holds every brief that names a branch to the gate rule, and a sweep brief names no branch.</span>
+<span class="nv">OUTSIDE_FIRST_NAMES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">""</span>,<span class="w"> </span><span class="s2">"~"</span>,<span class="w"> </span><span class="s2">".."</span><span class="o">)</span>
+<span class="nv">VARIABLE_PREFIX</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span>$<span class="s2">"</span>
 
 
 def<span class="w"> </span>word_pattern<span class="o">(</span>terms<span class="o">)</span>:
@@ -5680,6 +5716,8 @@ def<span class="w"> </span>word_pattern<span class="o">(</span>terms<span class=
 <span class="nv">REASONS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>term.rstrip<span class="o">(</span><span class="s2">"*"</span><span class="o">)</span>:<span class="w"> </span>reason<span class="w"> </span><span class="k">for</span><span class="w"> </span>term,<span class="w"> </span>reason<span class="w"> </span><span class="k">in</span><span class="w"> </span>TRIGGERS<span class="o">}</span>
 <span class="nv">DRESSED_WORD</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>word_pattern<span class="o">(</span>DRESSED_PHRASES<span class="o">)</span>
 <span class="nv">TRUST_WORD</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>word_pattern<span class="o">(</span>TRUST_WORDS<span class="o">)</span>
+<span class="c1"># One pattern per gate class over its rows' terms; a class whose pattern finds nothing in ACCEPTANCE is one reason.</span>
+<span class="nv">GATE_WORDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>cls:<span class="w"> </span>word_pattern<span class="o">([</span>term<span class="w"> </span><span class="k">for</span><span class="w"> </span>row,<span class="w"> </span>_,<span class="w"> </span>term<span class="w"> </span><span class="k">in</span><span class="w"> </span>GATES<span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">row</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>cls<span class="o">])</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>cls<span class="w"> </span><span class="k">in</span><span class="w"> </span>GATE_CLASSES<span class="o">}</span>
 
 
 def<span class="w"> </span>matched_term<span class="o">(</span>pattern,<span class="w"> </span>terms,<span class="w"> </span>text<span class="o">)</span>:
@@ -5770,14 +5808,22 @@ def<span class="w"> </span>trust<span class="o">(</span>body<span class="o">)</s
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>faults
 
 
-def<span class="w"> </span>scope_levers<span class="o">(</span>body,<span class="w"> </span>levers<span class="o">)</span>:
-<span class="w">    </span><span class="s2">"""The distinct pinned lever names the SCOPE body names in backticked paths, sorted."""</span>
-<span class="w">    </span><span class="nv">named</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>set<span class="o">()</span>
+def<span class="w"> </span>scope_paths<span class="o">(</span>body<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""Each backticked span of the SCOPE body that names one path, split at `/`, a `./` prefix dropped.</span>
+
+<span class="s2">    A span holding whitespace is a command or a phrase, not a path, and names nothing.</span>
+<span class="s2">    """</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>span<span class="w"> </span><span class="k">in</span><span class="w"> </span>BACKTICKED.findall<span class="o">(</span>body<span class="o">)</span>:
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>any<span class="o">(</span>character.isspace<span class="o">()</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>character<span class="w"> </span><span class="k">in</span><span class="w"> </span>span<span class="o">)</span>:
 <span class="w">            </span><span class="k">continue</span>
 <span class="w">        </span><span class="nv">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>span<span class="o">[</span><span class="m">2</span>:<span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>span.startswith<span class="o">(</span><span class="s2">"./"</span><span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>span<span class="w">  </span><span class="c1"># lint-comparisons: allow the brief's spelled text</span>
-<span class="w">        </span><span class="nv">parts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>path.split<span class="o">(</span><span class="s2">"/"</span><span class="o">)</span>
+<span class="w">        </span>yield<span class="w"> </span>path.split<span class="o">(</span><span class="s2">"/"</span><span class="o">)</span>
+
+
+def<span class="w"> </span>scope_levers<span class="o">(</span>body,<span class="w"> </span>levers<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The distinct pinned lever names the SCOPE body names in backticked paths, sorted."""</span>
+<span class="w">    </span><span class="nv">named</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>set<span class="o">()</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>parts<span class="w"> </span><span class="k">in</span><span class="w"> </span>scope_paths<span class="o">(</span>body<span class="o">)</span>:
 <span class="w">        </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>parts<span class="o">[</span>-1<span class="o">]</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>TESTS_DIR<span class="w"> </span><span class="k">in</span><span class="w"> </span>parts<span class="o">[</span>:-1<span class="o">]</span><span class="w"> </span>or<span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>NEVER_LEVERS:<span class="w">  </span><span class="c1"># lint-comparisons: allow spelled names</span>
 <span class="w">            </span><span class="k">continue</span>
@@ -5787,6 +5833,27 @@ def<span class="w"> </span>scope_levers<span class="o">(</span>body,<span class=
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>levers:
 <span class="w">            </span>named.add<span class="o">(</span>name<span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>sorted<span class="o">(</span>named<span class="o">)</span>
+
+
+def<span class="w"> </span>in_repository<span class="o">(</span>parts<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""Whether a split SCOPE span is a repository path: relative, and more than a bare word (see OUTSIDE_FIRST_NAMES)."""</span>
+<span class="w">    </span><span class="nv">first</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>parts<span class="o">[</span><span class="m">0</span><span class="o">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>first<span class="w"> </span><span class="k">in</span><span class="w"> </span>OUTSIDE_FIRST_NAMES<span class="w"> </span>or<span class="w"> </span>first.startswith<span class="o">(</span>VARIABLE_PREFIX<span class="o">)</span>:<span class="w">  </span><span class="c1"># lint-comparisons: allow spelled prefixes</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>False
+<span class="w">    </span><span class="nv">names</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>name<span class="w"> </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>parts<span class="w"> </span><span class="k">if</span><span class="w"> </span>name<span class="o">]</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>len<span class="o">(</span>names<span class="o">)</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">1</span><span class="w"> </span>or<span class="w"> </span><span class="s2">"."</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>names<span class="o">[</span><span class="m">0</span><span class="o">][</span><span class="m">1</span>:<span class="o">]</span>
+
+
+def<span class="w"> </span>gates<span class="o">(</span>body<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""One reason per gate class the ACCEPTANCE body names no gate of; `no ACCEPTANCE section` when there is none."""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>body<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">[</span><span class="s2">"no ACCEPTANCE section"</span><span class="o">]</span>
+<span class="w">    </span><span class="nv">faults</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>cls<span class="w"> </span><span class="k">in</span><span class="w"> </span>GATE_CLASSES:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>GATE_WORDS<span class="o">[</span>cls<span class="o">]</span>.search<span class="o">(</span>body<span class="o">)</span><span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">            </span><span class="nv">names</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">", "</span>.join<span class="o">(</span>name<span class="w"> </span><span class="k">for</span><span class="w"> </span>row,<span class="w"> </span>name,<span class="w"> </span>_<span class="w"> </span><span class="k">in</span><span class="w"> </span>GATES<span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">row</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>cls<span class="o">)</span>
+<span class="w">            </span>faults.append<span class="o">(</span>f<span class="s2">"ACCEPTANCE names no {cls} gate ({names})"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>faults
 
 
 def<span class="w"> </span>judge<span class="o">(</span>found<span class="o">)</span>:
@@ -5815,6 +5882,8 @@ def<span class="w"> </span>judge<span class="o">(</span>found<span class="o">)</
 <span class="w">    </span><span class="nv">levers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>scope_levers<span class="o">(</span>found.get<span class="o">(</span><span class="s2">"SCOPE"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">)</span>,<span class="w"> </span>LEVERS<span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>levers<span class="o">)</span><span class="w"> </span>&gt;<span class="w"> </span>LEVER_LIMIT:
 <span class="w">        </span>reasons.append<span class="o">(</span>LEVER_REASON.format<span class="o">(</span><span class="nv">count</span><span class="o">=</span>len<span class="o">(</span>levers<span class="o">)</span>,<span class="w"> </span><span class="nv">names</span><span class="o">=</span><span class="s2">", "</span>.join<span class="o">(</span>levers<span class="o">)))</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>any<span class="o">(</span>in_repository<span class="o">(</span>parts<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>parts<span class="w"> </span><span class="k">in</span><span class="w"> </span>scope_paths<span class="o">(</span>found.get<span class="o">(</span><span class="s2">"SCOPE"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">)))</span>:
+<span class="w">        </span>reasons.extend<span class="o">(</span>gates<span class="o">(</span>found.get<span class="o">(</span><span class="s2">"ACCEPTANCE"</span><span class="o">)))</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>reasons
 
 

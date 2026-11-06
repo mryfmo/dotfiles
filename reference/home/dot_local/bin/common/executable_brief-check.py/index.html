@@ -5488,7 +5488,9 @@
 <span class="s2">later, at the prettier check and at the shebang table of `scripts/ci/run-on-lint-files.sh`, because the briefs named</span>
 <span class="s2">their own lines and not the gates CI runs). The gates are one table of (class, name, term) rows, `GATES`: the `lint`</span>
 <span class="s2">class is the Makefile's `format` target, the three `scripts/ci/run-on-lint-files.sh` checks CI's test job runs before</span>
-<span class="s2">the unit tests; the `test` class is `python -m unittest`, `make unit-test` or `node --test`. When SCOPE names at least</span>
+<span class="s2">the unit tests; the `test` class is `python -m unittest`, `make unit-test`, `node --test`, or a records brief's own</span>
+<span class="s2">check, `python3 -I &lt;path&gt;/check-&lt;name&gt;.py` (U280: a brief that changes no repository file proves itself by its check</span>
+<span class="s2">script, and the unit-test line U274 had to add proved nothing of its work). When SCOPE names at least</span>
 <span class="s2">one repository path (a relative backticked span of two or more names, or one name with an extension; `~/...` or a path under the system temporary directory</span>
 <span class="s2">and `../...` are outside the repository and a bare word names no file), the ACCEPTANCE section must exist and match one</span>
 <span class="s2">term of each class: `no ACCEPTANCE section`, `ACCEPTANCE names no lint gate (...)` and `ACCEPTANCE names no test gate</span>
@@ -5700,18 +5702,24 @@ def<span class="w"> </span>manifest_levers<span class="o">(</span>lines,<span cl
 <span class="w">    </span><span class="s2">"(plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)"</span>
 <span class="o">)</span>
 <span class="c1"># The CI gates a brief's ACCEPTANCE may paste, (class, name, term) rows; a term is matched as a trigger term is (a whole</span>
-<span class="c1"># word, any case, a space also a hyphen) and the name is what the reason line prints. The `lint` class is the</span>
-<span class="c1"># Makefile's `format` target: the three `scripts/ci/run-on-lint-files.sh` checks (shfmt, ruff format, prettier) that</span>
-<span class="c1"># CI's test job runs before the unit tests. The `test` class is the unit tests or a `node --test` run. The ACCEPTANCE</span>
-<span class="c1"># of a brief whose SCOPE names a repository path must match one term of each class in GATE_CLASSES (standing order 44,</span>
-<span class="c1"># U249); the `check` rows are gate forms a brief may paste that no class requires. `bats` is no gate: AGENTS.md Test</span>
-<span class="c1"># Policy forbids a local run.</span>
+<span class="c1"># word, any case, a space also a hyphen), or as written when it is a compiled pattern, and the name is what the reason</span>
+<span class="c1"># line prints. The `lint` class is the Makefile's `format` target: the three `scripts/ci/run-on-lint-files.sh` checks</span>
+<span class="c1"># (shfmt, ruff format, prettier) that CI's test job runs before the unit tests. The `test` class is the unit tests, a</span>
+<span class="c1"># `node --test` run, or a records brief's own check script run under `python3 -I` (U280: U274 wrote tables under the</span>
+<span class="c1"># store's `tests/` and changed no repository file, and the gate that proves such a unit is its `check-*.py`; the flag</span>
+<span class="c1"># is matched case-sensitively since `-i` is the interactive interpreter; after `.py` the text ends or a whitespace or</span>
+<span class="c1"># closing backtick follows, never another path character, so `check-tables.py.bak` and `check-tables.py/run.py` are</span>
+<span class="c1"># no gate, U280b). The ACCEPTANCE of a brief whose SCOPE names a repository path must match one term of each class in</span>
+<span class="c1"># GATE_CLASSES (standing order 44, U249); the `check` rows are gate forms a brief may paste that no class requires.</span>
+<span class="c1"># `bats` is no gate: AGENTS.md Test Policy forbids a local run.</span>
+<span class="nv">RECORDS_CHECK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"(?-i:\bpython3 -I (?:\S*/)?check-[^\s/]*\.py(?:</span>$<span class="s2">|\s|`))"</span><span class="o">)</span>
 <span class="nv">GATES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
 <span class="w">    </span><span class="o">(</span><span class="s2">"lint"</span>,<span class="w"> </span><span class="s2">"run-on-lint-files.sh"</span>,<span class="w"> </span><span class="s2">"run-on-lint-files.sh"</span><span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"lint"</span>,<span class="w"> </span><span class="s2">"make format"</span>,<span class="w"> </span><span class="s2">"make format"</span><span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"test"</span>,<span class="w"> </span><span class="s2">"python -m unittest"</span>,<span class="w"> </span><span class="s2">"unittest"</span><span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"test"</span>,<span class="w"> </span><span class="s2">"make unit-test"</span>,<span class="w"> </span><span class="s2">"make unit-test"</span><span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"test"</span>,<span class="w"> </span><span class="s2">"node --test"</span>,<span class="w"> </span><span class="s2">"node --test"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"test"</span>,<span class="w"> </span><span class="s2">"records-check"</span>,<span class="w"> </span>RECORDS_CHECK<span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"check"</span>,<span class="w"> </span><span class="s2">"make shellcheck"</span>,<span class="w"> </span><span class="s2">"make shellcheck"</span><span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"check"</span>,<span class="w"> </span><span class="s2">"make render-check"</span>,<span class="w"> </span><span class="s2">"make render-check"</span><span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"check"</span>,<span class="w"> </span><span class="s2">"make validate-agent-assets"</span>,<span class="w"> </span><span class="s2">"make validate-agent-assets"</span><span class="o">)</span>,
@@ -5730,12 +5738,17 @@ def<span class="w"> </span>word_pattern<span class="o">(</span>terms<span class=
 
 <span class="s2">    One group per row, so the row whose reason is printed is the row the regex matched: `re.IGNORECASE` folds</span>
 <span class="s2">    `ſhell` and a Kelvin-sign `hooK` onto their terms, and neither spelling has a `.lower()` form the table holds.</span>
+<span class="s2">    A term that is a compiled pattern is taken as written, its own bounds and case inside it (U280).</span>
 <span class="s2">    """</span>
 <span class="w">    </span><span class="nv">alternatives</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>index,<span class="w"> </span>term<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>terms<span class="o">)</span>:
-<span class="w">        </span><span class="nv">stem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>term.endswith<span class="o">(</span><span class="s2">"*"</span><span class="o">)</span>
-<span class="w">        </span><span class="nv">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"[ -]"</span>.join<span class="o">(</span>re.escape<span class="o">(</span>part<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>term.rstrip<span class="o">(</span><span class="s2">"*"</span><span class="o">)</span>.split<span class="o">(</span><span class="s2">" "</span><span class="o">))</span>
-<span class="w">        </span>alternatives.append<span class="o">(</span>rf<span class="s2">"(?P&lt;t{index}&gt;\b{body}"</span><span class="w"> </span>+<span class="w"> </span><span class="o">(</span><span class="s2">""</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>stem<span class="w"> </span><span class="k">else</span><span class="w"> </span>r<span class="s2">"\b"</span><span class="o">)</span><span class="w"> </span>+<span class="w"> </span><span class="s2">")"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>term,<span class="w"> </span>re.Pattern<span class="o">)</span>:
+<span class="w">            </span><span class="nv">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>term.pattern
+<span class="w">        </span><span class="k">else</span>:
+<span class="w">            </span><span class="nv">stem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>term.endswith<span class="o">(</span><span class="s2">"*"</span><span class="o">)</span>
+<span class="w">            </span><span class="nv">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"[ -]"</span>.join<span class="o">(</span>re.escape<span class="o">(</span>part<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>term.rstrip<span class="o">(</span><span class="s2">"*"</span><span class="o">)</span>.split<span class="o">(</span><span class="s2">" "</span><span class="o">))</span>
+<span class="w">            </span><span class="nv">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>rf<span class="s2">"\b{body}"</span><span class="w"> </span>+<span class="w"> </span><span class="o">(</span><span class="s2">""</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>stem<span class="w"> </span><span class="k">else</span><span class="w"> </span>r<span class="s2">"\b"</span><span class="o">)</span>
+<span class="w">        </span>alternatives.append<span class="o">(</span>rf<span class="s2">"(?P&lt;t{index}&gt;{body})"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>re.compile<span class="o">(</span><span class="s2">"|"</span>.join<span class="o">(</span>alternatives<span class="o">)</span>,<span class="w"> </span>re.IGNORECASE<span class="o">)</span>
 
 

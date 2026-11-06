@@ -2843,7 +2843,7 @@ claude() {
     # Round 27: the run fails only when unreviewed code could be active or the active state cannot be verified.
     ALL_CLAUDE_STEPS = (
         "ensure_crit_cli() { :; }; update_claude_superpowers; update_claude_crit; update_claude_ponytail; "
-        'update_claude_understand_anything; converge_claude_plugins; printf "failures=%s\\n" "${PIN_FAILURES}"; '
+        'converge_claude_plugins; printf "failures=%s\\n" "${PIN_FAILURES}"; '
         "fail_on_pin_failures"
     )
 
@@ -3810,7 +3810,6 @@ claude() {
             ("update_claude_superpowers", "superpowers@claude-plugins-official"),
             ("update_claude_crit", "crit@crit"),
             ("update_claude_ponytail", "ponytail@ponytail"),
-            ("update_claude_understand_anything", "understand-anything@understand-anything"),
         ):
             with self.subTest(step=step):
                 installs = {plugin_id: [{"scope": "user", "version": "999.0.0"}]}
@@ -3835,7 +3834,6 @@ claude() {
             ("update_claude_superpowers", "superpowers@claude-plugins-official"),
             ("update_claude_crit", "crit@crit"),
             ("update_claude_ponytail", "ponytail@ponytail"),
-            ("update_claude_understand_anything", "understand-anything@understand-anything"),
         ):
             with self.subTest(step=step):
                 installs = {plugin_id: [{"scope": "user", "version": pins[plugin_id]["pin"]}]}

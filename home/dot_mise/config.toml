@@ -37,8 +37,7 @@ yazi = "latest"
 "npm:fast-cli" = "latest"
 # Held: a lint gate; make format and CI's formatting check run exactly this prettier (U97).
 "npm:prettier" = "3.9.10"
-# Builds the Understand-Anything plugin core (update-agent-assets.sh). Held: the
-# plugin lockfile is lockfileVersion 9.0 and declares no packageManager.
+# Held: the plugin lockfile is lockfileVersion 9.0 and declares no packageManager.
 "npm:pnpm" = "12.8.1"
 
 "github:x-motemen/ghq" = "latest"

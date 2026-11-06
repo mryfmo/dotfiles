@@ -35,7 +35,6 @@ standing_rules:
     model-selection: [claude, codex, omp-orchestrator, omp-worker]
     compactiondb: [claude, codex, omp-orchestrator, omp-worker]
     ponytail: [claude, codex]
-    understand-anything: [claude, codex]
     ask-user-question: [claude]
     project-map: [claude]
     python: [claude]
@@ -71,7 +70,7 @@ standing_rules:
 # omp-<role> (each omp.roles seat); an unknown name, an empty list or a repeat is refused, and a seat role
 # no skill names (the audit) gets `skills.enabled: false`, no skill at all. Every directory under
 # home/dot_agents/skills is declared here; the other names are the installer-owned skills under
-# ~/.agents/skills (crit, understand-*, terminal-browser). The generator renders, from this one map:
+# ~/.agents/skills (crit, terminal-browser). The generator renders, from this one map:
 # - claude: a ~/.claude/skills link only for a home/dot_agents/skills skill that names claude; a link a skill
 #   no longer gets is retired through .chezmoiremove. Claude Code reads no other root of ours.
 # - codex: a `[[skills.config]]` entry with `enabled = false` for each ~/.agents/skills skill that does not
@@ -100,16 +99,6 @@ skills:
     crit: [omp, omp-orchestrator, omp-worker]
     crit-cli: [omp, omp-orchestrator, omp-worker]
     crit-story: [omp, omp-orchestrator, omp-worker]
-    # The Understand-Anything installer links these for Codex; Claude Code has its own plugin.
-    understand: [codex, omp, omp-orchestrator, omp-worker]
-    understand-chat: [codex, omp, omp-orchestrator, omp-worker]
-    understand-dashboard: [codex, omp, omp-orchestrator, omp-worker]
-    understand-diff: [codex, omp, omp-orchestrator, omp-worker]
-    understand-domain: [codex, omp, omp-orchestrator, omp-worker]
-    understand-explain: [codex, omp, omp-orchestrator, omp-worker]
-    understand-figma: [codex, omp, omp-orchestrator, omp-worker]
-    understand-knowledge: [codex, omp, omp-orchestrator, omp-worker]
-    understand-onboard: [codex, omp, omp-orchestrator, omp-worker]
     terminal-browser: [claude, codex, omp, omp-orchestrator, omp-worker]
     # The knowledge-work subset of the skill provenance decision of 2026-11-02: nine anthropics/knowledge-work-plugins skills copied at commit 2574e29377c7173d0cecffef29a6ecbd7f8ccb5d; tests/unit/test_kwp_skills_drift.py diffs each copy against its fixture, so a change to one is reviewed there, never silent.
     kwp-architecture: [claude, codex, omp, omp-orchestrator, omp-worker]
@@ -1450,20 +1439,6 @@ assets:
     verify: github-release-attestation
     install_path: ~/.local/bin/zed
     installer: install/ubuntu/client/zed.sh
-  understand-anything-installer:
-    source: git-commit
-    upstream: Egonex-AI/Understand-Anything
-    pin: 6df3065f1d8ddc2ce3615314d1d493f36d6b1c80
-    verify: sha256
-    sha256: cb84ca53ced03f41662c5c86edf11fa598a0403c347f1e815f987ccaae5bc464
-    reason: Understand-Anything serves its install script only as a raw repository file, with no signature or checksum (its releases ship a viewer bundle, not the script); the commit and script hash are the only check.
-    install_path: ~/.understand-anything/repo
-    installer: scripts/update-agent-assets.sh#update_codex_understand_anything
-    render:
-      file: scripts/update-agent-assets.sh
-      constants:
-        CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT: pin
-        CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256: sha256
   compactiondb:
     source: vendored
     upstream: this repository (vendor/compactiondb)
@@ -1522,7 +1497,6 @@ assets:
       frontend-design@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 'sha256:a0625c75cf136cb5008e19640134229e6a35daf1c907eadce3271ca0ff4401c0'}
       crit@crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.14}
       ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.3}
-      understand-anything@understand-anything: {marketplace: Egonex-AI/Understand-Anything, pin: 2.9.7}
       pstack@cursor-plugins: {marketplace: cursor/plugins, pin: 0.15.30}
   codex-plugins:
     source: codex-plugin

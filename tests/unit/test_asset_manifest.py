@@ -262,11 +262,9 @@ class AssetManifestTest(unittest.TestCase):
             "update_claude_superpowers",
             "update_claude_crit",
             "update_claude_ponytail",
-            "update_claude_understand_anything",
             "update_codex_superpowers",
             "update_codex_crit",
             "update_codex_ponytail",
-            "update_codex_understand_anything",
             "update_terminal_code",
             "update_terminal_browser",
             "update_omp",
@@ -277,9 +275,9 @@ class AssetManifestTest(unittest.TestCase):
             "update_compactiondb",
         )
 
-        # The four Claude plugin steps record through record_claude_plugin_step (one manifest_record "${step}").
+        # The three Claude plugin steps record through record_claude_plugin_step (one manifest_record "${step}").
         claude = {step for step in steps if step.startswith("update_claude_")}
-        self.assertEqual(16, updater.count('manifest_record "'))
+        self.assertEqual(15, updater.count('manifest_record "'))
         self.assertEqual(1, updater.count('manifest_record "${step}" plugin "${plugin_version}"'))
         self.assertEqual(
             1,

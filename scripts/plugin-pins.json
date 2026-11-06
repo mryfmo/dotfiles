@@ -23,10 +23,6 @@
     "superpowers@claude-plugins-official": {
       "marketplace": "anthropics/claude-plugins-official",
       "pin": "7.0.0"
-    },
-    "understand-anything@understand-anything": {
-      "marketplace": "Egonex-AI/Understand-Anything",
-      "pin": "2.9.7"
     }
   },
   "codex": {

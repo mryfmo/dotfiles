@@ -30,17 +30,6 @@ HOME = Path.home()
 CHEZMOI_SOURCE_PREFIXES = ("executable_", "private_")
 # backups/ holds the pre-install state copies that earlier `make update` runs made.
 AGENT_ROOT_ALLOWLIST = {"backups", "compactiondb", "worklog"}
-UNDERSTAND_SKILL_ALLOWLIST = {
-    "understand",
-    "understand-chat",
-    "understand-dashboard",
-    "understand-diff",
-    "understand-domain",
-    "understand-explain",
-    "understand-figma",
-    "understand-knowledge",
-    "understand-onboard",
-}
 # Codex-side Crit skills are installed by update-agent-assets.sh's
 # update_codex_crit, not rendered from the chezmoi source tree.
 CRIT_PLUGIN_SKILLS = {"crit", "crit-cli", "crit-story"}
@@ -54,11 +43,9 @@ ASSET_STEP_FUNCTIONS = {
     "update_claude_crit",
     "update_claude_ponytail",
     "update_claude_superpowers",
-    "update_claude_understand_anything",
     "update_codex_crit",
     "update_codex_ponytail",
     "update_codex_superpowers",
-    "update_codex_understand_anything",
     "update_compactiondb",
     "update_deepseek_harness",
     "update_pi_claude_bridge",
@@ -545,8 +532,7 @@ def installer_owned_skill_names(home: Path | None = None) -> set[str]:
         path.name for path in terminal_browser_receipt_paths(home) if path.parent == normalized_path(skills_root)
     }
     return (
-        UNDERSTAND_SKILL_ALLOWLIST
-        | CRIT_PLUGIN_SKILLS
+        CRIT_PLUGIN_SKILLS
         | SECURITY_AUDIT_SKILLS
         | receipt_skill_names
         # chezmoi externals (the pstack skills) have no copy under home/ but are chezmoi's.
@@ -822,34 +808,6 @@ def orphaned_asset_warnings(home: Path | None = None, source_root: Path | None =
         else:
             warnings.append(f"WARN: orphaned agent asset: {path}; manual review required")
     return warnings
-
-
-def understand_anything_core_warnings(home: Path | None = None) -> list[str]:
-    """Warn when the Codex-side Understand-Anything core build is missing or stale.
-
-    `prepare-incremental.mjs` imports packages/core/dist/index.js, so `.ua/`
-    incremental updates fail until `make update` builds it. Stale uses the same
-    rule as the update-agent-assets.sh build guard: dist/index.js is older than
-    any file under packages/core/src or the root pnpm-lock.yaml.
-    """
-    home = home or HOME
-    core = home / ".understand-anything/repo/understand-anything-plugin/packages/core"
-    if not core.is_dir():
-        return []
-    dist = core / "dist/index.js"
-    if not dist.is_file():
-        return [f"WARN: Understand-Anything core not built: {dist} is missing; run make update"]
-    src = core / "src"
-    lockfile = core.parents[1] / "pnpm-lock.yaml"
-    inputs = [path for path in src.rglob("*") if path.is_file()]
-    if lockfile.is_file():
-        inputs.append(lockfile)
-    newest_input = max((path.stat().st_mtime for path in inputs), default=0.0)
-    if newest_input > dist.stat().st_mtime:
-        return [
-            f"WARN: Understand-Anything core build is stale: {dist} is older than {src} or {lockfile}; run make update"
-        ]
-    return []
 
 
 def codex_hook_trust_warnings(home: Path | None = None, script: Path | None = None) -> list[str]:
@@ -1395,7 +1353,6 @@ def check() -> list[str]:
             )
         failures.extend(asset_failure_message(finding) for finding in manifest_asset_findings())
         failures.extend(orphaned_asset_warnings())
-    failures.extend(understand_anything_core_warnings())
     failures.extend(codex_hook_trust_warnings())
     failures.extend(plugin_pin_findings())
     failures.extend(gh_login_findings())

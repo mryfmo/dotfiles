@@ -339,10 +339,6 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
     ),
     (
         "scripts/update-agent-assets.sh",
-        'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" \\',
-    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
-    (
-        "scripts/update-agent-assets.sh",
         'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${PI_CLAUDE_BRIDGE_TARBALL_URL}" \\',
     ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
     (
@@ -364,12 +360,6 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
     (
         "scripts/update-agent-assets.sh",
         'manifest_record "ensure_crit_cli" installer "${tag}" "${target}" -- "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/${artifact}" "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/checksums.txt" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}" ||',
-    ): Exempt(
-        "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
-    ),
-    (
-        "scripts/update-agent-assets.sh",
-        'manifest_record "update_codex_understand_anything" installer "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}" "${HOME}/.understand-anything/repo" "${HOME}/.agents/skills/understand" "${HOME}/.agents/skills/understand-chat" "${HOME}/.agents/skills/understand-dashboard" "${HOME}/.agents/skills/understand-diff" "${HOME}/.agents/skills/understand-domain" "${HOME}/.agents/skills/understand-explain" "${HOME}/.agents/skills/understand-figma" "${HOME}/.agents/skills/understand-knowledge" "${HOME}/.agents/skills/understand-onboard" -- "curl -fsSL ${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer> codex" ||',
     ): Exempt(
         "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
     ),

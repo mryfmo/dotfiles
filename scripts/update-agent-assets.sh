@@ -71,15 +71,6 @@ readonly CODEX_SUPERPOWERS_PLUGIN="superpowers@openai-curated"
 readonly CODEX_PONYTAIL_PLUGIN="ponytail@ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE_NAME="ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE_SOURCE="https://github.com/DietrichGebert/ponytail.git"
-readonly CLAUDE_UNDERSTAND_ANYTHING_PLUGIN="understand-anything@understand-anything"
-readonly CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE="Egonex-AI/Understand-Anything"
-readonly CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME="understand-anything"
-# Rendered from assets.understand-anything-installer in
-# home/dot_agents/agent-config.yaml; change the commit and sha256 there together
-# after reviewing the upstream installer diff.
-readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT="6df3065f1d8ddc2ce3615314d1d493f36d6b1c80"
-readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256="cb84ca53ced03f41662c5c86edf11fa598a0403c347f1e815f987ccaae5bc464"
-readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"
 # Versions and installer checksums for both URLs are pinned in
 # scripts/lib/installer-pins.sh, rendered from assets: in agent-config.yaml.
 # Rendered from assets.pi-claude-bridge in home/dot_agents/agent-config.yaml; change the version and sha256 there
@@ -333,8 +324,6 @@ function ensure_crit_cli() {
 # @description Ensure the Crit Claude Code plugin marketplace is configured.
 #
 # @description Ensure the Ponytail Claude Code plugin marketplace is configured.
-#
-# @description Ensure the Understand-Anything Claude Code plugin marketplace is configured.
 #
 # @description Run scripts/pin_records.py, the one strict reader of every record the pin checks use: it prints
 #   the parsed value, or exits 2 with `ERROR: <record>: <field>: <why>` for a record it cannot read, one of an
@@ -997,25 +986,6 @@ function update_claude_ponytail() {
 }
 
 #
-# @description Keep the Claude Code Understand-Anything plugin at its recorded pin.
-#
-function update_claude_understand_anything() {
-    if ! has_command claude; then
-        printf 'Skipping Claude Code Understand-Anything plugin: claude command not found.\n'
-        return 0
-    fi
-
-    section "Claude Code Understand-Anything plugin"
-    # Refreshed only once its identity is verified; converge_claude_step verifies again and reports and judges
-    # any failure, so this call\'s own messages are not repeated.
-    if ensure_claude_plugin_marketplace "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" 2> /dev/null; then
-        claude_outside_projects plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
-    fi
-    converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || return 0
-    record_claude_plugin_step "update_claude_understand_anything" "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "${AGENT_CLAUDE_DIR}/plugins/cache/understand-anything/understand-anything" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
-}
-
-#
 # @description The one parser of the Codex plugin copy Codex loads (pin_records.py codex-copy: Codex's own
 #   choice among the cached versions, its plugin.json read strictly). It maps the reader's reply to exactly
 #   `absent` or `copy <version>` with a version that is one strict component ([A-Za-z0-9][A-Za-z0-9._+-]*).
@@ -1322,151 +1292,6 @@ function update_codex_crit() {
     plugin_version="$(awk 'NR == 1 { print $2 }' <<< "${crit_output}")" || return 1
     manifest_record "update_codex_crit" plugin "${plugin_version}" "${AGENT_CODEX_DIR}/plugins/crit" "${AGENT_CODEX_DIR}/config.toml" "${HOME}/.agents/skills/crit" "${HOME}/.agents/skills/crit-cli" "${HOME}/.agents/skills/crit-story" -- "ensure_crit_cli" "crit install codex-plugin --force" ||
         record_claude_failure "recording update_codex_crit in the installed asset manifest"
-}
-
-#
-# @description Build Understand-Anything packages/core in a plugin tree when its dist is missing or stale.
-# @description
-#   Mirrors upstream skills/understand/SKILL.md, which builds in place wherever
-#   the plugin root resolves. It rebuilds when dist/index.js is missing or older
-#   than any file under packages/core/src or the root pnpm-lock.yaml, the same
-#   freshness rule `make doctor` reports, and otherwise skips (idempotent). With
-#   mise, pnpm always runs as `mise exec npm:pnpm`, which installs the pinned
-#   version on demand: a mise shim can exist before that version is installed
-#   ("No version is set for shim"). A bare pnpm from PATH is used only without
-#   mise.
-#   A missing pnpm or a failed build only warns, so make update never fails
-#   for it.
-# @arg $1 path Plugin tree that contains packages/core.
-# @stderr One WARN line naming the manual command when the build cannot run or fails.
-#
-function build_understand_anything_core() {
-    local root="$1"
-    local -a pnpm_cmd
-
-    [ -d "${root}/packages/core" ] || return 0
-    if [ -f "${root}/packages/core/dist/index.js" ] &&
-        [ -z "$(find "${root}/packages/core/src" "${root}/pnpm-lock.yaml" -type f -newer "${root}/packages/core/dist/index.js" -print -quit 2> /dev/null || true)" ]; then
-        return 0
-    fi
-    if has_command mise; then
-        pnpm_cmd=(mise exec npm:pnpm -- pnpm)
-    elif has_command pnpm; then
-        pnpm_cmd=(pnpm)
-    else
-        printf 'WARN: Understand-Anything core not built: pnpm not found; run: cd %q && pnpm install --frozen-lockfile && pnpm --filter @understand-anything/core build\n' "${root}" >&2
-        return 0
-    fi
-    if ! (
-        cd "${root}" &&
-            { "${pnpm_cmd[@]}" install --frozen-lockfile 2> /dev/null || "${pnpm_cmd[@]}" install; } &&
-            "${pnpm_cmd[@]}" --filter @understand-anything/core build
-    ); then
-        printf 'WARN: Understand-Anything core build failed in %s; run: cd %q && %s install --frozen-lockfile && %s --filter @understand-anything/core build\n' \
-            "${root}" "${root}" "${pnpm_cmd[*]}" "${pnpm_cmd[*]}" >&2
-    fi
-    return 0
-}
-
-#
-# @description Provision Codex Understand-Anything runtime files from the matching Claude release artifact.
-# @description
-#   Builds packages/core in the release artifact first (upstream builds there
-#   in Claude sessions) and copies dist/node_modules into the Codex clone.
-#   Without a matching release artifact it builds directly in the clone.
-# @stdout Prints a skip message when no matching Claude release artifact is available.
-#
-function provision_codex_understand_anything_runtime() {
-    local plugin_root claude_cache release_root source destination
-
-    plugin_root="${HOME}/.understand-anything/repo/understand-anything-plugin"
-    claude_cache="${AGENT_CLAUDE_DIR}/plugins/cache/understand-anything/understand-anything"
-    if ! has_command python3; then
-        printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
-        build_understand_anything_core "${plugin_root}"
-        return 0
-    fi
-    release_root="$(
-        python3 - "${plugin_root}/.claude-plugin/plugin.json" "${claude_cache}" << 'PY'
-import json
-import sys
-from pathlib import Path
-
-plugin_manifest = Path(sys.argv[1])
-cache_root = Path(sys.argv[2])
-try:
-    version = json.loads(plugin_manifest.read_text())["version"]
-except (OSError, json.JSONDecodeError, KeyError):
-    sys.exit(0)
-
-matches = []
-for candidate in cache_root.iterdir() if cache_root.is_dir() else ():
-    try:
-        if json.loads((candidate / ".claude-plugin/plugin.json").read_text())["version"] == version:
-            matches.append(candidate)
-    except (OSError, json.JSONDecodeError, KeyError):
-        pass
-try:
-    release_root = max(matches, key=lambda path: tuple(int(part) for part in path.name.split(".")))
-except ValueError:
-    release_root = max(matches, key=lambda path: path.name, default=None)
-print(release_root or "")
-PY
-    )"
-    if [ -z "${release_root}" ]; then
-        printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
-        build_understand_anything_core "${plugin_root}"
-        return 0
-    fi
-
-    build_understand_anything_core "${release_root}"
-    for source in "packages/core/dist" "packages/core/node_modules" "node_modules"; do
-        destination="${plugin_root}/${source}"
-        [ -d "${release_root}/${source}" ] || continue
-        rm -rf "${destination}"
-        mkdir -p "$(dirname "${destination}")"
-        cp -R "${release_root}/${source}" "${destination}"
-    done
-}
-
-#
-# @description Install or update the Codex Understand-Anything skills via the vendor installer.
-# @description
-#   The installer clones the upstream repo into ~/.understand-anything/repo and
-#   symlinks its skills into ~/.agents/skills; check-agent-runtime.py reports
-#   those symlinks as an expected unmanaged-skill WARN.
-#
-function update_codex_understand_anything() {
-    if ! has_command codex; then
-        printf 'Skipping Codex Understand-Anything skills: codex command not found.\n'
-        return 0
-    fi
-
-    section "Codex Understand-Anything skills"
-    (
-        local actual installer
-        installer="$(mktemp)"
-        trap 'rm -f "${installer}"' EXIT
-        curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" \
-            -o "${installer}" || {
-            printf 'Skipping Codex Understand-Anything skills: installer download failed.\n'
-            return 0
-        }
-        actual="$(shasum -a 256 "${installer}" | awk '{ print $1 }')"
-        [ "${actual}" = "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256}" ] || {
-            printf 'Understand-Anything installer checksum mismatch\n' >&2
-            return 1
-        }
-        bash "${installer}" codex < /dev/null || {
-            printf 'Understand-Anything installer failed; Codex skills unchanged.\n' >&2
-            return 1
-        }
-        provision_codex_understand_anything_runtime
-        # shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.
-        printf 'Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n'
-    ) || true
-    manifest_record "update_codex_understand_anything" installer "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}" "${HOME}/.understand-anything/repo" "${HOME}/.agents/skills/understand" "${HOME}/.agents/skills/understand-chat" "${HOME}/.agents/skills/understand-dashboard" "${HOME}/.agents/skills/understand-diff" "${HOME}/.agents/skills/understand-domain" "${HOME}/.agents/skills/understand-explain" "${HOME}/.agents/skills/understand-figma" "${HOME}/.agents/skills/understand-knowledge" "${HOME}/.agents/skills/understand-onboard" -- "curl -fsSL ${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer> codex" ||
-        record_claude_failure "recording update_codex_understand_anything in the installed asset manifest"
 }
 
 #
@@ -2727,14 +2552,12 @@ function main() {
     update_claude_superpowers
     update_claude_crit
     update_claude_ponytail
-    update_claude_understand_anything
     converge_claude_plugins
     ensure_mise_npm_agent_cli codex "npm:@openai/codex"
     ensure_gh_extensions
     update_codex_superpowers
     update_codex_crit
     update_codex_ponytail
-    update_codex_understand_anything
     update_terminal_code
     update_terminal_browser
     update_omp

@@ -182,6 +182,73 @@ class AssetManifestTest(unittest.TestCase):
                     self.assertEqual(self.home / "absent", Path(os.readlink(manifest_path)))
                 self.assertEqual([".installed-manifest.json"], [path.name for path in manifest_path.parent.iterdir()])
 
+    def retired_manifest(self) -> Path:
+        """A manifest holding one record of a step no shell defines, the record pruning would drop."""
+        manifest_path = self.home / ".agents/.installed-manifest.json"
+        manifest_path.parent.mkdir()
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "steps": {
+                        "update_retired_step": {
+                            "installed_at": "2026-01-01T00:00:00Z",
+                            "kind": "rsync",
+                            "paths": [],
+                            "commands": [],
+                            "source_version": "1",
+                        }
+                    },
+                }
+            )
+        )
+        return manifest_path
+
+    def test_prune_fails_and_keeps_the_manifest_when_the_function_list_cannot_be_read(self) -> None:
+        # regime-cutover U283b: the shell's function table is the producer whose output decides what is retired; a
+        # `compgen` that cannot run (the builtin disabled, as a sandbox or a broken shell leaves it) is a failed read,
+        # not an empty table, so pruning returns 1 and the manifest is left as it was (standing order 21).
+        manifest_path = self.retired_manifest()
+        before = manifest_path.read_text()
+
+        result = self.run_bash(f"source {LIBRARY}; enable -n compgen; _manifest_prune_retired")
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertEqual(before, manifest_path.read_text())
+        wrapped = self.run_bash(f"source {LIBRARY}; enable -n compgen; manifest_prune_retired")
+        self.assertEqual(0, wrapped.returncode)
+        self.assertEqual(["warning: failed to prune retired asset manifest steps"], wrapped.stderr.splitlines())
+        self.assertEqual(before, manifest_path.read_text())
+
+    @unittest.skipIf(os.geteuid() == 0, "root searches a mode 000 directory")
+    def test_prune_refuses_an_unsearchable_agents_directory_naming_it(self) -> None:
+        # regime-cutover U283b: with ~/.agents mode 000, `-e` on the manifest path is false for want of permission,
+        # and pruning returned 0 as if no manifest existed while a retired record stayed. The directory that cannot
+        # be searched is refused by name; only a directory that is not there is the absent manifest's return 0.
+        manifest_path = self.retired_manifest()
+        before = manifest_path.read_text()
+        manifest_path.parent.chmod(0o000)
+        try:
+            result = self.run_bash(f"source {LIBRARY}; _manifest_prune_retired")
+            wrapped = self.run_bash(f"source {LIBRARY}; manifest_prune_retired")
+        finally:
+            manifest_path.parent.chmod(0o700)
+
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertEqual("", result.stdout)
+        self.assertEqual(
+            [f"ERROR: {self.home}/.agents cannot be searched; refusing to prune the installed asset manifest."],
+            result.stderr.splitlines(),
+        )
+        self.assertEqual(0, wrapped.returncode)
+        self.assertEqual(["warning: failed to prune retired asset manifest steps"], wrapped.stderr.splitlines())
+        self.assertEqual(before, manifest_path.read_text())
+        shutil.rmtree(manifest_path.parent)
+        absent = self.run_bash(f"source {LIBRARY}; _manifest_prune_retired")
+        self.assertEqual(0, absent.returncode, absent.stderr)
+        self.assertEqual("", absent.stdout + absent.stderr)
+
     def test_two_real_install_steps_record_under_fake_home(self) -> None:
         bin_dir = self.temp_dir / "bin"
         bin_dir.mkdir()

@@ -22,6 +22,18 @@ generated copy counts once with its source); a path under a `tests` directory or
 one line `SCOPE names <n> levers (<names>); split into sequenced units of at most two levers each (plan P-41: ...)`;
 the count and the threshold are the whole rule.
 
+A brief whose SCOPE names a repository path and whose ACCEPTANCE names no CI gate is refused too (regime-cutover U249,
+standing order 44: the heads of U244 and U240 passed every ACCEPTANCE line their briefs named and failed CI minutes
+later, at the prettier check and at the shebang table of `scripts/ci/run-on-lint-files.sh`, because the briefs named
+their own lines and not the gates CI runs). The gates are one table of (class, name, term) rows, `GATES`: the `lint`
+class is the Makefile's `format` target, the three `scripts/ci/run-on-lint-files.sh` checks CI's test job runs before
+the unit tests; the `test` class is `python -m unittest`, `make unit-test` or `node --test`. When SCOPE names at least
+one repository path (a relative backticked span of two or more names, or one name with an extension; `~/...`, `/tmp/...`
+and `../...` are outside the repository and a bare word names no file), the ACCEPTANCE section must exist and match one
+term of each class: `no ACCEPTANCE section`, `ACCEPTANCE names no lint gate (...)` and `ACCEPTANCE names no test gate
+(...)` are the exit-1 lines. A sweep brief, whose SCOPE writes under `~/.local/state/` alone, is exempt by that shape,
+not by a name list. Whether a gate was run is the body's pasted lines, read by the coordinator, never by this check.
+
 The script is a pinned lever (regime-cutover U31, round 3 of U104): `scripts/generate-agent-configs.py` writes the
 same bytes to `home/dot_local/bin/common/executable_brief-check.py`, which chezmoi installs as
 `~/.local/bin/common/brief-check.py`, and pins their sha256 under `claude.levers.sha256`; the orchestrator seat's
@@ -226,6 +238,30 @@ LEVER_REASON = (
     "SCOPE names {count} levers ({names}); split into sequenced units of at most two levers each "
     "(plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)"
 )
+# The CI gates a brief's ACCEPTANCE may paste, (class, name, term) rows; a term is matched as a trigger term is (a whole
+# word, any case, a space also a hyphen) and the name is what the reason line prints. The `lint` class is the
+# Makefile's `format` target: the three `scripts/ci/run-on-lint-files.sh` checks (shfmt, ruff format, prettier) that
+# CI's test job runs before the unit tests. The `test` class is the unit tests or a `node --test` run. The ACCEPTANCE
+# of a brief whose SCOPE names a repository path must match one term of each class in GATE_CLASSES (standing order 44,
+# U249); the `check` rows are gate forms a brief may paste that no class requires. `bats` is no gate: AGENTS.md Test
+# Policy forbids a local run.
+GATES = (
+    ("lint", "run-on-lint-files.sh", "run-on-lint-files.sh"),
+    ("lint", "make format", "make format"),
+    ("test", "python -m unittest", "unittest"),
+    ("test", "make unit-test", "make unit-test"),
+    ("test", "node --test", "node --test"),
+    ("check", "make shellcheck", "make shellcheck"),
+    ("check", "make render-check", "make render-check"),
+    ("check", "make validate-agent-assets", "make validate-agent-assets"),
+)
+GATE_CLASSES = ("lint", "test")
+# A SCOPE span (no whitespace, a `./` prefix dropped) is a repository path when it is relative, its first name not
+# empty (`/tmp/...`), `~` or `..`, nor a `$VAR`, and it names more than a bare word: two or more names joined by `/`,
+# or one name with an extension (`AGENTS.md`). `scratch/` and `Makefile` are bare words; a branch ref (`origin/main`)
+# reads as a path, which holds every brief that names a branch to the gate rule, and a sweep brief names no branch.
+OUTSIDE_FIRST_NAMES = ("", "~", "..")
+VARIABLE_PREFIX = "$"
 
 
 def word_pattern(terms):
@@ -247,6 +283,8 @@ TRIGGER_WORD = word_pattern([term for term, _ in TRIGGERS])
 REASONS = {term.rstrip("*"): reason for term, reason in TRIGGERS}
 DRESSED_WORD = word_pattern(DRESSED_PHRASES)
 TRUST_WORD = word_pattern(TRUST_WORDS)
+# One pattern per gate class over its rows' terms; a class whose pattern finds nothing in ACCEPTANCE is one reason.
+GATE_WORDS = {cls: word_pattern([term for row, _, term in GATES if row == cls]) for cls in GATE_CLASSES}
 
 
 def matched_term(pattern, terms, text):
@@ -337,14 +375,22 @@ def trust(body):
     return faults
 
 
-def scope_levers(body, levers):
-    """The distinct pinned lever names the SCOPE body names in backticked paths, sorted."""
-    named = set()
+def scope_paths(body):
+    """Each backticked span of the SCOPE body that names one path, split at `/`, a `./` prefix dropped.
+
+    A span holding whitespace is a command or a phrase, not a path, and names nothing.
+    """
     for span in BACKTICKED.findall(body):
         if any(character.isspace() for character in span):
             continue
         path = span[2:] if span.startswith("./") else span  # lint-comparisons: allow the brief's spelled text
-        parts = path.split("/")
+        yield path.split("/")
+
+
+def scope_levers(body, levers):
+    """The distinct pinned lever names the SCOPE body names in backticked paths, sorted."""
+    named = set()
+    for parts in scope_paths(body):
         name = parts[-1]
         if TESTS_DIR in parts[:-1] or name in NEVER_LEVERS:  # lint-comparisons: allow spelled names
             continue
@@ -354,6 +400,27 @@ def scope_levers(body, levers):
         if name in levers:
             named.add(name)
     return sorted(named)
+
+
+def in_repository(parts):
+    """Whether a split SCOPE span is a repository path: relative, and more than a bare word (see OUTSIDE_FIRST_NAMES)."""
+    first = parts[0]
+    if first in OUTSIDE_FIRST_NAMES or first.startswith(VARIABLE_PREFIX):  # lint-comparisons: allow spelled prefixes
+        return False
+    names = [name for name in parts if name]
+    return len(names) > 1 or "." in names[0][1:]
+
+
+def gates(body):
+    """One reason per gate class the ACCEPTANCE body names no gate of; `no ACCEPTANCE section` when there is none."""
+    if body is None:
+        return ["no ACCEPTANCE section"]
+    faults = []
+    for cls in GATE_CLASSES:
+        if GATE_WORDS[cls].search(body) is None:
+            names = ", ".join(name for row, name, _ in GATES if row == cls)
+            faults.append(f"ACCEPTANCE names no {cls} gate ({names})")
+    return faults
 
 
 def judge(found):
@@ -382,6 +449,8 @@ def judge(found):
     levers = scope_levers(found.get("SCOPE", ""), LEVERS)
     if len(levers) > LEVER_LIMIT:
         reasons.append(LEVER_REASON.format(count=len(levers), names=", ".join(levers)))
+    if any(in_repository(parts) for parts in scope_paths(found.get("SCOPE", ""))):
+        reasons.extend(gates(found.get("ACCEPTANCE")))
     return reasons
 
 

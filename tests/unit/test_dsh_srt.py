@@ -1,21 +1,25 @@
-"""Exercise scripts/orchestrator/dsh-srt against a fake srt and a fake dsh (regime-cutover U251, rounds 2 and 3: U251b,
-U251c).
+"""Exercise scripts/orchestrator/dsh-srt against a fake srt and a fake dsh (regime-cutover U251, rounds 2 to 4: U251b,
+U251c, U251d).
 
 HOME is a scratch directory holding `.dsh/bin/dsh`, a shell script that records its argv, cwd, whole environment and
-the `node` its PATH finds to a file (the launcher starts it under `env -i`, so nothing is read from the environment,
-and the record path is baked into each fake). The fake `srt` is first on PATH: it records every argv with the argv
-its interpreter was started with (`sys.orig_argv`, which tells an explicit `<interpreter> <srt>` start from the
-kernel's `#!` lookup), answers `--version` from a control file the test writes (`0.0.81` by default), plays the canary
-(the probe script runs for real with paths under a directory that does not exist, so the three probes fail as the
-sandbox makes them fail; the control file's `canary` is printed instead when set, `canary_exit` ends the canary with
-that status, `leave_canary` writes the canary file behind it), and execs the command it is given. Its `#!` line is
-the test interpreter's absolute path by default; `use_env_node_srt` rewrites it as `/usr/bin/env node`, the real
-srt's line, with a `node` link to the interpreter in its own directory on the caller's PATH. The lists the rendered
-settings must carry are read from hcom-seat's source text, so a drift between the two files fails here.
+the `node` its PATH finds to a file (the launcher drops the caller's environment before its first command, so nothing
+is read from the environment, and the record path is baked into each fake). The fake `srt` is first on PATH: it
+records every argv with the argv its interpreter was started with (`sys.orig_argv`, which tells an explicit
+`<interpreter> <srt>` start from the kernel's `#!` lookup), answers `--version` from a control file the test writes
+(`0.0.81` by default), plays the canary (the probe script runs for real with paths under a directory that does not
+exist, so the three probes fail as the sandbox makes them fail; the control file's `canary` is printed instead when
+set, `canary_exit` ends the canary with that status, `leave_canary` writes the canary file behind it), and execs the
+command it is given. Its `#!` line is the test interpreter's absolute path by default; `use_env_node_srt` rewrites it
+as `/usr/bin/env node`, the real srt's line, with a `node` link to the interpreter in its own directory on the
+caller's PATH. The fake tool directory also holds `bwrap`, `socat` and `rg` as copies of the system `true` binary, so
+the Linux branch of the launcher (which pins them for srt) reaches the canary. The lists the rendered settings must
+carry are read from hcom-seat's source text, so a drift between the two files fails here.
 
 `DSH_SRT_UNDER_TEST` names another launcher file to run (a scratch copy with a guard removed, for the mutation run
 of U251b); the default is the checkout's. `launcher_with` writes such a copy itself, pinned by a manifest beside it,
-to inject failures into the system producers the launcher names by absolute path (`stat`, `readlink`, `head`).
+to inject failures into the system producers the launcher names by absolute path (`stat`, `readlink`); `lying_stat`
+is a `stat` that passes every call through to the real one and rewrites chosen lines, so a producer can answer
+garbage for one path while the launcher's bootstrap check of its own tools still passes.
 """
 
 import hashlib
@@ -23,6 +27,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
@@ -36,6 +41,7 @@ SEAT = ROOT / "scripts/orchestrator/hcom-seat"
 SYSTEM_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
 PYTHON = str(Path(sys.executable).resolve())
 PYTHON_DIR = str(Path(PYTHON).parent)
+TRUE = next(path for path in ("/usr/bin/true", "/bin/true") if Path(path).exists())
 # The names the launcher passes to srt, and nothing else (dsh-srt ENV_NAMES).
 ENV_NAMES = {
     "HOME",
@@ -83,6 +89,29 @@ SRT_ADDED_ENV_NAMES = {
     "JAVA_TOOL_OPTIONS",
 }
 THREE_WORDS = "write-denied read-denied ssh-denied"
+# The programs the launcher may run before containment besides the pinned node and srt pair: its own table, and the
+# three paths it names without running them there (`/bin/sh` and `/usr/bin/env` run inside the sandbox, under srt;
+# `/usr/bin/sandbox-exec` is only existence-checked).
+INSIDE_OR_CHECKED_ONLY = {"/bin/sh", "/usr/bin/env", "/usr/bin/sandbox-exec"}
+# Helpers earlier rounds ran before containment, or the auditors planted: none may be looked up now. `sed`, `shasum`
+# and `sha256sum` are left out, since `lever_self_check` (the shared U31 form, out of this unit's scope) looks them up.
+PLANTABLE = (
+    "python3",
+    "env",
+    "head",
+    "uname",
+    "stat",
+    "readlink",
+    "mkdir",
+    "rm",
+    "mktemp",
+    "mv",
+    "cut",
+    "awk",
+    "ls",
+    "id",
+    "cat",
+)
 
 FAKE_SRT = r"""#!{shebang}
 import json, os, subprocess, sys
@@ -114,6 +143,30 @@ if command[:2] == ["/bin/sh", "-c"]:
 os.execvp(command[0], command)
 """
 
+# A `stat` that runs the real one and rewrites its answer: every path under the fakes directory reads as root's 0755
+# (so the launcher's bootstrap accepts the fakes as system tools), and one chosen path reads as GARBLE (a line, or
+# no line at all when GARBLE is None).
+LYING_STAT = """#!@PYTHON@
+import subprocess, sys
+args = sys.argv[1:]
+GARBLE_PATH = @GARBLE_PATH@
+GARBLE = @GARBLE@
+paths = args[args.index("--") + 1 :]
+run = subprocess.run(["/usr/bin/stat", *args], capture_output=True, text=True, check=False)
+out = []
+for path, line in zip(paths, run.stdout.splitlines()):
+    if path.startswith(@FAKES@):
+        line = "0 755"
+    elif path == GARBLE_PATH:
+        if GARBLE is None:
+            continue
+        line = GARBLE
+    out.append(line + "\\n")
+sys.stdout.write("".join(out))
+sys.stderr.write(run.stderr)
+sys.exit(run.returncode)
+"""
+
 
 def seat_source_lists():
     """The worker seat's lists as hcom-seat's source spells them: the HOME-relative read denies (every `${h}/...`
@@ -133,6 +186,19 @@ def seat_source_lists():
     return under_home, operator, project_files, domains
 
 
+def launcher_system_tools():
+    """The launcher's SYSTEM_TOOLS table, and every `/usr/bin/<name>` or `/bin/<name>` token of its code lines (the
+    comment lines left out), so the test can hold the two to each other."""
+    text = LAUNCHER.read_text()
+    table = re.search(r"^SYSTEM_TOOLS=\((.*?)\)$", text, re.MULTILINE)
+    tools = table[1].split()
+    code = [line for line in text.splitlines() if not line.lstrip().startswith("#")]
+    named = set()
+    for line in code:
+        named.update(re.findall(r"(?<![\w/.}-])(/usr/bin/[a-z0-9_-]+|/bin/[a-z0-9_-]+)", line))
+    return tools, named, code
+
+
 def srt_added_write_paths(home):
     """The paths srt 0.0.81 makes writable without a listing, which the launcher denies (dsh-srt table, from
     sandbox-utils.js:499-517): `/tmp/claude`, `/private/tmp/claude` (on macOS, or where it exists) and
@@ -148,6 +214,7 @@ class DshSrtTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name).resolve()
+        self.root = root
         self.home = root / "home"
         self.dsh_home = self.home / ".dsh"
         (self.dsh_home / "bin").mkdir(parents=True)
@@ -161,6 +228,10 @@ class DshSrtTest(unittest.TestCase):
         # Explicit: the launcher trusts a tool directory only with no group or other write, whatever the umask.
         self.bindir.chmod(0o755)
         self.write_fake_srt(PYTHON)
+        # The Linux branch pins srt's own tools for the settings; binaries, since the launcher refuses a script there.
+        for tool in ("bwrap", "socat", "rg"):
+            shutil.copy(TRUE, self.bindir / tool)
+            (self.bindir / tool).chmod(0o755)
         self.write_fake_dsh(self.dsh_home)
         self.tmpdir = root / "tmp"
         self.tmpdir.mkdir()
@@ -175,35 +246,43 @@ class DshSrtTest(unittest.TestCase):
             "SECRET_OF_THE_CALLER": "never-passed",
         }
         # What the launcher builds from the fake srt's directory, its interpreter's directory and the system
-        # directories (dsh-srt RUN_PATH), and what dsh gets inside: RUN_PATH, then the caller's entries.
+        # directories (dsh-srt RUN_PATH).
         self.run_path = f"{self.bindir}:{PYTHON_DIR}:{SYSTEM_PATH}"
-        self.inner_path = f"{self.run_path}:{self.env['PATH']}"
 
-    def write_fake_srt(self, shebang):
-        (self.bindir / "srt").write_text(
-            FAKE_SRT.format(shebang=shebang, calls=str(self.srt_calls), control=str(self.control))
-        )
-        (self.bindir / "srt").chmod(0o755)
+    def inner_path_for(self, path):
+        """What dsh gets inside for a caller PATH: RUN_PATH, then the caller's absolute entries that exist, each in
+        physical form (`/bin` is `/usr/bin` on a merged-usr Linux)."""
+        entries = [os.path.realpath(d) for d in path.split(":") if d.startswith("/") and os.path.isdir(d)]
+        return ":".join([self.run_path, *entries])
+
+    @property
+    def inner_path(self):
+        return self.inner_path_for(self.env["PATH"])
+
+    def write_fake_srt(self, shebang, bindir=None):
+        srt = (bindir or self.bindir) / "srt"
+        srt.write_text(FAKE_SRT.format(shebang=shebang, calls=str(self.srt_calls), control=str(self.control)))
+        srt.chmod(0o755)
+        return srt
 
     def use_env_node_srt(self):
         """The real srt's form: `#!/usr/bin/env node`, with `node` a link to the test interpreter in its own 0755
         directory first on the caller's PATH, so the launcher must look the interpreter up once, pin it and start srt
         as `<interpreter> <srt>`. Returns the directory."""
         self.write_fake_srt("/usr/bin/env node")
-        interp = Path(self.temp.name).resolve() / "interp"
+        interp = self.root / "interp"
         interp.mkdir()
         interp.chmod(0o755)
         (interp / "node").symlink_to(PYTHON)
         self.env["PATH"] = f"{interp}:{self.env['PATH']}"
         self.run_path = f"{self.bindir}:{interp}:{SYSTEM_PATH}"
-        self.inner_path = f"{self.run_path}:{self.env['PATH']}"
         return interp
 
     def launcher_with(self, replacements):
         """A scratch copy of the launcher with each literal replaced, pinned by a manifest beside it so
         `lever_self_check` accepts the copy (the form of U251b's mutation run, Verification 5), for injecting a
         failure into a producer the launcher names by its absolute path."""
-        root = Path(self.temp.name).resolve() / "copy"
+        root = self.root / "copy"
         copy = root / "scripts/orchestrator/dsh-srt"
         copy.parent.mkdir(parents=True, exist_ok=True)
         text = LAUNCHER.read_text()
@@ -216,6 +295,29 @@ class DshSrtTest(unittest.TestCase):
         manifest.parent.mkdir(parents=True, exist_ok=True)
         manifest.write_text(f"      dsh-srt: {hashlib.sha256(copy.read_bytes()).hexdigest()}\n")
         return copy
+
+    @property
+    def fakes(self):
+        fakes = self.root / "fakes"
+        fakes.mkdir(exist_ok=True)
+        return fakes
+
+    def fake_tool(self, name, script):
+        path = self.fakes / name
+        path.write_text(script)
+        path.chmod(0o755)
+        return path
+
+    def lying_stat(self, garble_path=None, garble=None):
+        """A `stat` that passes through to the real one, reads the fakes directory as root's 0755 and answers
+        `garble` (a line, or none) for `garble_path`."""
+        text = (
+            LYING_STAT.replace("@PYTHON@", PYTHON)
+            .replace("@FAKES@", repr(str(self.fakes) + "/"))
+            .replace("@GARBLE_PATH@", repr(garble_path and str(garble_path)))
+            .replace("@GARBLE@", repr(garble))
+        )
+        return self.fake_tool("stat", text)
 
     def write_fake_dsh(self, dsh_home):
         dsh = dsh_home / "bin/dsh"
@@ -232,7 +334,8 @@ class DshSrtTest(unittest.TestCase):
         return dsh
 
     def write_marker_script(self, path, marker):
-        """A script that proves it ran by creating `marker`; planted where only a contained dsh could write."""
+        """A script that proves it ran by creating `marker`; planted where only a contained dsh could write, or on
+        the caller's PATH under a helper's name."""
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"#!/bin/sh\n: > {shlex.quote(str(marker))}\necho 0.0.81\n")
         path.chmod(0o755)
@@ -298,6 +401,13 @@ class DshSrtTest(unittest.TestCase):
         self.assertEqual([], [call["argv"] for call in self.srt_calls_made() if call["argv"] != ["--version"]])
         self.assertIsNone(self.dsh_run())
 
+    def assert_nothing_started(self):
+        """srt never ran at all, and no directory of the launcher's exists."""
+        self.assertEqual([], self.srt_calls_made(), "srt never started")
+        self.assertIsNone(self.dsh_run())
+        self.assertFalse((self.dsh_home / ".sandbox").exists(), "nothing created")
+        self.assertFalse(self.scratch.exists())
+
     def test_the_rendered_settings_carry_the_worker_seats_lists_read_from_hcom_seat(self):
         run = self.launch("--profile", "thak", "--", "--dump-config")
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -333,6 +443,13 @@ class DshSrtTest(unittest.TestCase):
         self.assertIs(False, settings["network"]["allowLocalBinding"])
         self.assertIs(True, settings["allowPty"])
         self.assertNotIn("allowNestedUserNamespaces", json.dumps(settings))
+        if sys.platform.startswith("linux"):
+            # hcom-seat:1654-1669: srt's own tools, pinned to the fixture's binaries and named for srt to run by path.
+            self.assertEqual(str(self.bindir / "bwrap"), settings["bwrapPath"])
+            self.assertEqual(str(self.bindir / "socat"), settings["socatPath"])
+            self.assertEqual({"command": str(self.bindir / "rg")}, settings["ripgrep"])
+        else:
+            self.assertNotIn("bwrapPath", settings)
         for directory in (
             self.dsh_home / ".sandbox",
             self.dsh_home / ".state",
@@ -341,7 +458,7 @@ class DshSrtTest(unittest.TestCase):
         ):
             self.assertTrue(directory.is_dir() and not directory.is_symlink(), directory)
             self.assertEqual(0o700, self.mode(directory), directory)
-        self.assertEqual(0o600, self.mode(self.settings_path()), "mktemp's file, renamed whole")
+        self.assertEqual(0o600, self.mode(self.settings_path()), "created O_EXCL under umask 077")
         self.assertEqual([self.settings_path().name], os.listdir(self.dsh_home / ".sandbox"), "no temporary left")
 
     def test_srt_receives_the_version_read_the_canary_and_the_launch(self):
@@ -417,6 +534,13 @@ class DshSrtTest(unittest.TestCase):
         launch = self.srt_calls_made()[2]["env"]
         self.assertEqual(ENV_NAMES - {"LANG"}, self.passed_names(launch) - {"LC_CTYPE"})
         self.assertEqual("dumb", launch["TERM"])
+        # The environment is reduced by the shell itself, with no `env -i`: an exported name bash cannot drop
+        # (SHELLOPTS, which bash imports readonly) is a refusal before anything runs, not a leak.
+        self.dsh_record.unlink()
+        self.srt_calls.unlink()
+        run = self.launch("--", "--version", SHELLOPTS="braceexpand")
+        self.assert_refused(run, "cannot drop SHELLOPTS from the environment")
+        self.assertEqual([], self.srt_calls_made(), "srt never started")
 
     def test_a_callers_claude_config_dir_is_denied_like_the_operators_state(self):
         caller = self.home / "claude-config"
@@ -441,7 +565,6 @@ class DshSrtTest(unittest.TestCase):
         run = self.launch("--", "--version")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(first, self.settings_path().read_bytes())
-        self.assertFalse(self.settings_path().with_suffix(".json.tmp").exists())
         self.assertEqual([self.settings_path().name], os.listdir(self.dsh_home / ".sandbox"))
 
     def test_home_comes_from_the_option_the_environment_or_the_default(self):
@@ -513,7 +636,8 @@ class DshSrtTest(unittest.TestCase):
                 self.assert_refused(run, f"the sandbox does not hold (canary: {answer}); dsh not started")
         self.control.write_text(json.dumps({"canary": THREE_WORDS}))
         (self.dsh_home / ".sandbox/canary").write_text("")
-        # The launcher clears the file before the probe, so a planted one is no failure; a probe that leaves one is.
+        # The settings directory is made fresh before the probe, so a planted canary file is no failure; a probe
+        # that leaves one is.
         self.assertEqual(0, self.launch("--", "--version").returncode)
         self.control.unlink()
         self.dsh_record.unlink()
@@ -524,19 +648,6 @@ class DshSrtTest(unittest.TestCase):
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertTrue(run.stderr.startswith("dsh-srt: refused: "), run.stderr)
         self.assertIsNone(self.dsh_run())
-
-    def test_a_json_reader_that_fails_refuses_before_the_canary(self):
-        """Standing order 21: the settings check reads python3's status, and a reader that fails is a refusal, not a
-        pass; nothing contained runs."""
-        reader = self.bindir / "python3"
-        reader.write_text("#!/bin/sh\nexit 3\n")
-        reader.chmod(0o755)
-        run = self.launch("--", "--version")
-        self.assert_refused(run, "do not parse as JSON")
-        self.assert_nothing_contained_ran()
-        self.assertTrue(self.settings_path().exists(), "the file was rendered; its check failed")
-        reader.unlink()
-        self.assertEqual(0, self.launch("--", "--version").returncode, "the real reader passes the same file")
 
     def test_a_canary_process_that_fails_or_says_more_refuses(self):
         # The canary process exits non-zero, with the three words printed.
@@ -590,26 +701,150 @@ class DshSrtTest(unittest.TestCase):
                 self.assertFalse(marker.exists(), "the planted srt never ran")
                 self.assertEqual([], self.srt_calls_made(), "the real fake srt was not reached either")
                 planted.unlink()
-        # The same for the JSON reader: a python3 planted under DSH_HOME is refused unexecuted.
+
+    def test_no_program_found_on_path_runs_before_containment(self):
+        """The round-3 P1s (f1 s10, f2 s10): the JSON reader `python3` and the other helpers were looked up on the
+        caller's PATH and ran before containment, a 0775 one among them. Now nothing is looked up but srt and its
+        interpreter: a directory first on PATH planting every helper name, `stat` as a 0775 copy, is never run, and
+        the launcher's own table names absolute system binaries only."""
+        planted = self.root / "planted"
+        planted.mkdir()
+        planted.chmod(0o755)
+        markers = {}
+        for name in PLANTABLE:
+            markers[name] = self.calls / f"planted-{name}-ran"
+            self.write_marker_script(planted / name, markers[name])
+        (planted / "stat").chmod(0o775)
+        run = self.launch("--", "--version", PATH=f"{planted}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual({}, {name: marker for name, marker in markers.items() if marker.exists()}, "none ran")
+        for call in self.srt_calls_made():
+            self.assertEqual([PYTHON, str(self.bindir / "srt")], call["orig_argv"][:2])
+            # The fake srt's interpreter is the test's python, so the name is judged by basename, not substring.
+            self.assertEqual([], [arg for arg in call["argv"] + call["orig_argv"] if Path(arg).name == "python3"])
+            self.assertEqual([], [arg for arg in call["orig_argv"] if arg.startswith(str(planted))])
+            self.assertEqual(self.run_path, call["env"]["PATH"])
+        self.assertEqual(["--version"], self.dsh_run()["argv"])
+        # The same with a `python3` planted under DSH_HOME first on PATH, the round-3 reproduction's place: it is
+        # neither run nor refused, since nothing looks it up, and its directory never reaches dsh.
+        self.dsh_record.unlink()
         marker = self.calls / "planted-python-ran"
-        planted = self.dsh_home / "bin/python3"
-        self.write_marker_script(planted, marker)
-        run = self.launch("--", "--version", PATH=f"{self.bindir}:{planted.parent}:{SYSTEM_PATH}")
-        self.assert_refused(run, f"python3 at {planted} lies under a write root of dsh")
+        self.write_marker_script(self.dsh_home / "bin/python3", marker)
+        run = self.launch("--", "--version", PATH=f"{self.dsh_home}/bin:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 0, run.stderr)
         self.assertFalse(marker.exists())
-        self.assert_nothing_contained_ran()
-        planted.unlink()
-        # A symbolic link on PATH whose target lies under a write root is refused by the target.
-        link = self.bindir / "python3"
-        link.symlink_to(self.dsh_home / "bin/dsh")
-        run = self.launch("--", "--version")
-        self.assert_refused(run, f"python3 at {link} lies under a write root of dsh")
-        link.unlink()
-        self.assertEqual(0, self.launch("--", "--version").returncode, run.stderr)
+        self.assertEqual(self.inner_path, self.dsh_run()["env"]["PATH"], "the write-root entry is dropped")
+        # The launcher's table: absolute system binaries, root's, none a script; every system path its code names
+        # is in the table or runs inside the sandbox only (`/bin/sh`, `/usr/bin/env` under srt) or is only
+        # existence-checked (`/usr/bin/sandbox-exec`); and no helper of the earlier rounds is named in code.
+        tools, named, code = launcher_system_tools()
+        self.assertEqual({"/usr/bin/stat", "/usr/bin/readlink", "/bin/mkdir", "/bin/rm"}, set(tools))
+        for tool in tools:
+            with self.subTest(tool=tool):
+                self.assertTrue(tool.startswith(("/usr/bin/", "/bin/")))
+                self.assertEqual(0, os.stat(tool).st_uid, "root's")
+                self.assertEqual(0, stat.S_IMODE(os.stat(tool).st_mode) & 0o022, "closed to group and other")
+                self.assertNotEqual(b"#!", Path(tool).read_bytes()[:2], "a binary, not a script")
+        self.assertEqual(set(), named - set(tools) - INSIDE_OR_CHECKED_ONLY, "no other system path is run")
+        for helper in ("python3", "uname", "/usr/bin/head", "env -i", "mktemp", "/bin/mv"):
+            self.assertEqual([], [line for line in code if helper in line], helper)
+
+    def test_a_caller_path_entry_is_resolved_physically_and_judged_before_it_reaches_dsh(self):
+        """The round-3 P2 (f1 s3): a symbolic link outside DSH_HOME pointing into `DSH_HOME/bin` survived the
+        write-root check and entered the inner PATH. Now each entry is resolved physically first, the write-root
+        rule judges the physical path, and dsh gets the physical form; an entry failing the trust rule is dropped and
+        named in one stderr line, since it runs inside containment only."""
+        alias = self.root / "alias"
+        alias.symlink_to(self.dsh_home / "bin")
+        via_link = self.root / "via-link"
+        via_link.symlink_to(self.bindir)
+        run = self.launch("--", "--version", PATH=f"{alias}:{via_link}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual("", run.stderr, "a write-root entry is dropped silently, by design")
+        path = self.dsh_run()["env"]["PATH"]
+        self.assertNotIn(str(alias), path.split(":"))
+        self.assertNotIn(f"{self.dsh_home}/bin", path.split(":"), "the alias into DSH_HOME/bin is gone")
+        self.assertNotIn(str(via_link), path.split(":"), "the other link is handed to dsh in physical form")
+        self.assertEqual(
+            f"{self.run_path}:{self.bindir}:{self.inner_path_for(self.env['PATH'])[len(self.run_path) + 1 :]}", path
+        )
+        # A 0775 directory on the caller's PATH, and one under a 0777 ancestor: dropped, named, dsh still starts.
+        self.dsh_record.unlink()
+        loose = self.root / "loose"
+        loose.mkdir()
+        loose.chmod(0o775)
+        open_parent = self.root / "open"
+        (open_parent / "bin").mkdir(parents=True)
+        open_parent.chmod(0o777)
+        run = self.launch("--", "--version", PATH=f"{loose}:{open_parent}/bin:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 0, run.stdout)
+        self.assertEqual(
+            "dsh-srt: dropped from dsh's PATH (writable by group or other, or not root's or this user's): "
+            f"{loose} (mode 775), {open_parent}/bin (under {open_parent}, mode 777)\n",
+            run.stderr,
+        )
+        self.assertEqual(self.inner_path, self.dsh_run()["env"]["PATH"])
+        # Relative and empty entries (the cwd) are never searched for srt and never handed to dsh.
+        self.dsh_record.unlink()
+        (self.home / "bin").mkdir()
+        self.write_marker_script(self.home / "bin/srt", self.calls / "relative-srt-ran")
+        run = self.launch("--", "--version", PATH=f":bin:.:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertFalse((self.calls / "relative-srt-ran").exists())
+        self.assertEqual(self.inner_path, self.dsh_run()["env"]["PATH"])
+
+    def test_a_writable_ancestor_of_a_trusted_path_is_refused_naming_it(self):
+        """The round-3 P2 (f1 s10): the trust rule covered the tool file and its directory only, so beneath a
+        publicly writable, non-sticky ancestor another user could rename the trusted subtree. Now the rule walks
+        every component up to `/` for srt, its interpreter, DSH_HOME and TMPDIR; a sticky directory of root's
+        (`/tmp`) is the one exception, and a sticky directory of this user's is not."""
+        open_parent = self.root / "open"
+        open_parent.mkdir()
+        open_parent.chmod(0o777)
+        # srt's directory under the open ancestor.
+        (open_parent / "bin").mkdir()
+        self.write_fake_srt(PYTHON, open_parent / "bin")
+        run = self.launch("--", "--version", PATH=f"{open_parent}/bin:{PYTHON_DIR}:{SYSTEM_PATH}")
+        self.assert_refused(
+            run,
+            f"the directory of srt {open_parent}/bin lies under {open_parent}: mode 777, writable by group or other"
+            " and not a sticky directory of root's",
+        )
+        self.assert_nothing_started()
+        # DSH_HOME under it.
+        other = open_parent / "dsh"
+        self.write_fake_dsh(other)
+        run = self.launch("--home", str(other), "--", "--version")
+        self.assert_refused(run, f"DSH_HOME {other} lies under {open_parent}: mode 777")
+        self.assertFalse((other / ".sandbox").exists())
+        self.assert_nothing_started()
+        # TMPDIR under it.
+        (open_parent / "tmp").mkdir()
+        run = self.launch("--", "--version", TMPDIR=f"{open_parent}/tmp")
+        self.assert_refused(run, f"TMPDIR {open_parent}/tmp lies under {open_parent}: mode 777")
+        self.assert_nothing_started()
+        # A sticky bit does not excuse a directory of this user's.
+        open_parent.chmod(0o1777)
+        run = self.launch("--", "--version", TMPDIR=f"{open_parent}/tmp")
+        self.assert_refused(run, f"TMPDIR {open_parent}/tmp lies under {open_parent}: mode 1777")
+        # Another owner is refused by name too: the fixture cannot change owners, so a lying `stat` says so.
+        copy = self.launcher_with({"/usr/bin/stat": str(self.lying_stat(self.dsh_home, f"{os.getuid() + 1} 755"))})
+        run = self.launch("--", "--version", launcher=copy)
+        self.assert_refused(
+            run, f"DSH_HOME {self.dsh_home}: owned by uid {os.getuid() + 1}, neither root nor this user"
+        )
+        self.assert_nothing_started()
+        # The exception: `/tmp` is a sticky directory of root's on macOS (`/private/tmp`) and Linux, so a DSH_HOME
+        # there launches although `/tmp` is world-writable.
+        with tempfile.TemporaryDirectory(dir="/tmp") as under_tmp:
+            home = Path(under_tmp).resolve() / "dsh"
+            self.write_fake_dsh(home)
+            run = self.launch("--home", str(home), "--", "--version")
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(str(home), self.dsh_run()["env"]["DSH_HOME"])
 
     def test_directories_with_group_or_other_bits_are_refused_and_left_as_they_are(self):
         for directory in (
-            self.dsh_home / ".sandbox",
             self.dsh_home / ".state",
             self.dsh_home / ".state/claude",
             self.scratch,
@@ -628,6 +863,12 @@ class DshSrtTest(unittest.TestCase):
                         self.srt_calls.unlink()
             directory.chmod(0o700)
         self.assertEqual(0, self.launch("--", "--version").returncode, "0700 everywhere launches")
+        # The settings directory is the exception: it is this launch's own, replaced whole, so a 0777 one of this
+        # user's is not refused but gone, a fresh 0700 one in its place.
+        self.dsh_record.unlink()
+        (self.dsh_home / ".sandbox").chmod(0o777)
+        self.assertEqual(0, self.launch("--", "--version").returncode)
+        self.assertEqual(0o700, self.mode(self.dsh_home / ".sandbox"))
         # A directory that is a symbolic link, and one of another identity (a file), are refused too.
         self.dsh_record.unlink()
         (self.scratch).rmdir()
@@ -638,41 +879,55 @@ class DshSrtTest(unittest.TestCase):
         self.assert_refused(run, f"{self.scratch} is not a real directory of this user")
         self.scratch.unlink()
 
-    def test_a_planted_settings_link_never_changes_anything_outside_the_sandbox(self):
+    def test_the_settings_directory_is_made_fresh_and_a_planted_link_is_never_followed(self):
         """The round-1 P1 reproduction: a link at a predictable name inside `.sandbox` pointed outside every write
-        root, and the redirection followed it. Now the file is written through mktemp's name and renamed onto the
-        final name, which is refused when it is a link."""
+        root, and the redirection followed it. Now the directory is removed and created anew by `mkdir -m 0700` on
+        every launch and the file is created O_EXCL under noclobber, so whatever was planted is gone before the
+        first open: the sentinels stay as they are and the launch goes through."""
         sandbox = self.dsh_home / ".sandbox"
-        sandbox.mkdir(mode=0o700)
-        sentinel_tmp = self.home / "sentinel-tmp"
-        sentinel_final = self.home / "sentinel-final"
-        sentinel_tmp.write_text("untouched\n")
-        sentinel_final.write_text("untouched\n")
-        (sandbox / "srt-settings.json.tmp").symlink_to(sentinel_tmp)
-        (sandbox / "srt-settings.json").symlink_to(sentinel_final)
-        run = self.launch("--", "--version")
-        self.assert_refused(run, f"the settings file {sandbox}/srt-settings.json is not a regular file of this user")
-        self.assertEqual("untouched\n", sentinel_final.read_text())
-        self.assertEqual("untouched\n", sentinel_tmp.read_text())
-        self.assert_nothing_contained_ran()
-        self.assertEqual(
-            {"srt-settings.json.tmp", "srt-settings.json"}, set(os.listdir(sandbox)), "no temporary file left"
-        )
-        # With the final name free, the planted `.tmp` link is never opened: the sentinel stays, and the settings
-        # are a regular 0600 file of this user.
-        (sandbox / "srt-settings.json").unlink()
+        sandbox.mkdir()
+        sandbox.chmod(0o777)
+        sentinel_a = self.home / "sentinel-a"
+        sentinel_b = self.home / "sentinel-b"
+        sentinel_a.write_text("untouched\n")
+        sentinel_b.write_text("untouched\n")
+        (sandbox / "srt-settings.json").symlink_to(sentinel_a)
+        (sandbox / ".srt-settings.planted").symlink_to(sentinel_b)
+        (sandbox / "canary").write_text("")
         run = self.launch("--", "--version")
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual("untouched\n", sentinel_tmp.read_text())
+        self.assertEqual(("untouched\n", "untouched\n"), (sentinel_a.read_text(), sentinel_b.read_text()))
+        self.assertTrue(sandbox.is_dir() and not sandbox.is_symlink())
+        self.assertEqual(0o700, self.mode(sandbox))
+        self.assertEqual(["srt-settings.json"], os.listdir(sandbox), "the planted names are gone, no temporary left")
         settings = sandbox / "srt-settings.json"
         self.assertTrue(settings.is_file() and not settings.is_symlink())
         self.assertEqual(0o600, self.mode(settings))
-        self.assertEqual({"srt-settings.json.tmp", "srt-settings.json"}, set(os.listdir(sandbox)))
-        # A final name that is a regular file of this user but open to its group is refused as well.
+        # A `.sandbox` that is itself a link to a directory elsewhere, or a regular file, is refused and left alone:
+        # the launcher removes only a real directory of this user.
+        self.dsh_record.unlink()
+        self.srt_calls.unlink()
+        shutil.rmtree(sandbox)
+        elsewhere = self.home / "elsewhere"
+        elsewhere.mkdir(mode=0o700)
+        (elsewhere / "keep").write_text("kept\n")
+        sandbox.symlink_to(elsewhere)
+        run = self.launch("--", "--version")
+        self.assert_refused(run, f"{sandbox} is not a real directory of this user")
+        self.assertEqual("kept\n", (elsewhere / "keep").read_text())
+        self.assert_nothing_contained_ran()
+        sandbox.unlink()
+        sandbox.write_text("not a directory\n")
+        run = self.launch("--", "--version")
+        self.assert_refused(run, f"{sandbox} is not a real directory of this user")
+        self.assertEqual("not a directory\n", sandbox.read_text())
+        sandbox.unlink()
+        # A settings file opened to its group by an earlier launch is replaced with the directory.
+        self.assertEqual(0, self.launch("--", "--version").returncode)
         settings.chmod(0o664)
         self.dsh_record.unlink()
-        run = self.launch("--", "--version")
-        self.assert_refused(run, f"the settings file {settings} has mode 664")
+        self.assertEqual(0, self.launch("--", "--version").returncode)
+        self.assertEqual(0o600, self.mode(settings))
 
     def test_a_canary_that_runs_for_real_fails_each_probe_the_way_the_sandbox_does(self):
         """The fake srt runs the probe script with three paths under a directory that does not exist, so the launch
@@ -752,16 +1007,16 @@ class DshSrtTest(unittest.TestCase):
                 planted.unlink()
         # A node in a directory open to its group, or a node file open to its group, outside every write root: refused
         # by the trust rule, the marker absent.
-        loose_dir = Path(self.temp.name).resolve() / "loose"
+        loose_dir = self.root / "loose"
         marker = self.calls / "loose-node-ran"
         self.write_marker_script(loose_dir / "node", marker)
         loose_dir.chmod(0o775)
         run = self.launch("--", "--version", PATH=f"{loose_dir}:{self.env['PATH']}")
-        self.assert_refused(run, f"the directory of node {loose_dir} has mode 775")
+        self.assert_refused(run, f"the directory of node {loose_dir}: mode 775, writable by group or other")
         loose_dir.chmod(0o755)
         (loose_dir / "node").chmod(0o775)
         run = self.launch("--", "--version", PATH=f"{loose_dir}:{self.env['PATH']}")
-        self.assert_refused(run, f"node {loose_dir}/node has mode 775")
+        self.assert_refused(run, f"node {loose_dir}/node: mode 775, writable by group or other")
         self.assertFalse(marker.exists())
         self.assertEqual([], self.srt_calls_made())
         # A node planted later on the caller's PATH than the pinned one never runs outside srt: the probe, the canary
@@ -788,37 +1043,75 @@ class DshSrtTest(unittest.TestCase):
         self.assert_refused(run, f"the interpreter {interp}/node of srt is itself a script")
         self.assertFalse(marker.exists())
 
-    def test_a_stat_readlink_or_head_that_fails_or_prints_nothing_refuses_before_anything_runs(self):
-        """Standing order 21: the mode and owner reads (`stat`), the physical resolution (`readlink -f`) and the
-        interpreter-line reads (`head`) are producers whose status and output the launcher checks; a copy of the
-        launcher naming a fake in place of each refuses with exit 2 before srt, dsh or any directory exists."""
-        fakes = Path(self.temp.name).resolve() / "fakes"
-        fakes.mkdir()
-        failing = fakes / "failing"
-        failing.write_text("#!/bin/sh\nexit 1\n")
-        failing.chmod(0o755)
-        silent = fakes / "silent"
-        silent.write_text("#!/bin/sh\nexit 0\n")
-        silent.chmod(0o755)
-        cases = (
-            ("/usr/bin/stat", failing, f"cannot read the mode of the dsh runtime {self.dsh_home}/bin/dsh"),
-            ("/usr/bin/stat", silent, f"cannot read the mode of the dsh runtime {self.dsh_home}/bin/dsh"),
-            ("/usr/bin/readlink", failing, f"cannot resolve srt at {self.bindir}/srt (readlink -f failed)"),
-            ("/usr/bin/readlink", silent, f"cannot resolve srt at {self.bindir}/srt (readlink -f named no file: '')"),
-            ("/usr/bin/head", failing, f"cannot read srt at {self.bindir}/srt"),
-        )
-        for producer, fake, message in cases:
-            with self.subTest(producer=producer, fake=fake.name):
-                copy = self.launcher_with({producer: str(fake)})
+    def test_a_stat_that_fails_or_prints_nothing_refuses_at_the_bootstrap_before_anything_runs(self):
+        """Standing order 21: `stat` is the one bootstrap trust, read first over the launcher's own system tools. A
+        copy of the launcher naming a failing or a silent fake in its place refuses there, with exit 2, before srt,
+        dsh or any directory exists; a user-owned fake that answers truthfully is refused as not root's."""
+        failing = self.fake_tool("failing", "#!/bin/sh\nexit 1\n")
+        silent = self.fake_tool("silent", "#!/bin/sh\nexit 0\n")
+        for fake in (failing, silent):
+            with self.subTest(fake=fake.name):
+                copy = self.launcher_with({"/usr/bin/stat": str(fake)})
                 run = self.launch("--", "--version", launcher=copy)
-                self.assert_refused(run, message)
-                self.assertEqual([], self.srt_calls_made(), "srt never started")
-                self.assertFalse((self.dsh_home / ".sandbox").exists(), "nothing created")
-                self.assertFalse(self.scratch.exists())
+                self.assert_refused(run, "cannot read the owner and mode of the system tools (")
+                self.assert_nothing_started()
+        truthful = self.fake_tool("truthful", '#!/bin/sh\nexec /usr/bin/stat "$@"\n')
+        copy = self.launcher_with({"/usr/bin/stat": str(truthful)})
+        run = self.launch("--", "--version", launcher=copy)
+        self.assert_refused(run, f"system tool {truthful} is owned by uid {os.getuid()}, not root")
+        self.assert_nothing_started()
         # The unchanged copy, pinned the same way, launches: the harness itself is not what refuses.
         copy = self.launcher_with({})
         run = self.launch("--", "--version", launcher=copy)
         self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_an_owner_or_mode_read_that_answers_garbage_refuses_before_anything_runs(self):
+        """The round-3 P2 (f10 s4): the owner reads had no failure injection, so a mutant taking a failed owner
+        read for root passed. Every owner and mode read is one `stat` answer per path, `<uid> <mode>`; a lying
+        `stat` that answers garbage, another owner, an open mode or one line too few for a chosen path refuses the
+        launch naming the path, srt never started."""
+        dsh = self.dsh_home / "bin/dsh"
+        cases = (
+            (dsh, "x 755", f"cannot read the mode of the dsh runtime {dsh}"),
+            (dsh, "0 7x5", f"cannot read the mode of the dsh runtime {dsh}"),
+            (dsh, "", f"cannot read the mode of the dsh runtime {dsh}"),
+            (self.dsh_home, None, f"cannot read the owner and mode of DSH_HOME {self.dsh_home} with"),
+            (self.dsh_home, f"{os.getuid()} 775", f"DSH_HOME {self.dsh_home}: mode 775, writable by group or other"),
+            (self.bindir, "0 777", f"the directory of srt {self.bindir}: mode 777, writable by group or other"),
+            (
+                self.bindir,
+                "502 755",
+                f"the directory of srt {self.bindir}: owned by uid 502, neither root nor this user",
+            ),
+            (self.bindir / "srt", "0 1775", f"srt {self.bindir}/srt: mode 1775, writable by group or other"),
+        )
+        for garble_path, garble, message in cases:
+            with self.subTest(path=str(garble_path), garble=garble):
+                copy = self.launcher_with({"/usr/bin/stat": str(self.lying_stat(garble_path, garble))})
+                run = self.launch("--", "--version", launcher=copy)
+                self.assert_refused(run, message)
+                self.assert_nothing_started()
+        # The lie about the fakes directory alone changes nothing else: the copy launches.
+        copy = self.launcher_with({"/usr/bin/stat": str(self.lying_stat())})
+        run = self.launch("--", "--version", launcher=copy)
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_a_readlink_that_fails_or_prints_nothing_refuses_before_anything_runs(self):
+        """Standing order 21: the physical resolution of srt (`readlink -f`) is a producer whose status and output
+        the launcher checks; a copy naming a failing or a silent fake refuses before srt, dsh or any directory
+        exists. The lying `stat` lets the fake pass the bootstrap as a system tool."""
+        failing = self.fake_tool("failing", "#!/bin/sh\nexit 1\n")
+        silent = self.fake_tool("silent", "#!/bin/sh\nexit 0\n")
+        cases = (
+            (failing, f"cannot resolve srt at {self.bindir}/srt (readlink -f failed)"),
+            (silent, f"cannot resolve srt at {self.bindir}/srt (readlink -f named no file: '')"),
+        )
+        for fake, message in cases:
+            with self.subTest(fake=fake.name):
+                copy = self.launcher_with({"/usr/bin/stat": str(self.lying_stat()), "/usr/bin/readlink": str(fake)})
+                run = self.launch("--", "--version", launcher=copy)
+                self.assert_refused(run, message)
+                self.assert_nothing_started()
 
 
 if __name__ == "__main__":

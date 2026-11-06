@@ -2,56 +2,71 @@
 # @file dsh-srt
 # @brief Start the DeepSeek harness (`dsh`) under Anthropic's sandbox-runtime with the worker seat's containment, behind a canary.
 # @description
-#   Regime-cutover U251 (round 2: U251b; round 3: U251c). The omp seats run under `srt` through hcom-seat (U85); this
-#   launcher gives the DSH control host the same boundary: it renders `<DSH_HOME>/.sandbox/srt-settings.json` from the
-#   table of lists below, each row a copy of the worker seat's list in scripts/orchestrator/hcom-seat with the line it
-#   is copied from or the srt 0.0.81 source line it answers, runs the seat shim's canary under those settings, and only
-#   then execs `srt --settings <file> -- /usr/bin/env PATH=<inner> <DSH_HOME>/bin/dsh [--profile <name>] <args>` with
-#   the working directory a scratch root under TMPDIR and the environment reduced to the names ENV_NAMES lists. The
-#   contract: a `dsh` this launcher started runs under srt with the worker seat's read denies (credentials, the
-#   operator's Claude Code state, the chezmoi sources, `~/Workspace`, the omp and hcom state) and its domain list,
-#   writes only under `DSH_HOME`, the scratch root and the bridge child's Claude state directory
-#   `<DSH_HOME>/.state/claude` (its `CLAUDE_CONFIG_DIR`, the U190 rule), with the paths srt 0.0.81 would make writable
-#   on its own (`/tmp/claude`, `/private/tmp/claude`, `~/.npm/_logs`) denied and its inner TMPDIR the scratch root;
-#   cannot read or write its own settings file; and never starts when the canary answers anything but `write-denied
-#   read-denied ssh-denied`. What differs from a seat is only what a seat has and DSH does not: no worktree, git
-#   state, hcom store or seats root (M-21 rows of 2026-11-06T03:50:31Z: a cwd inside a read-denied checkout dies on
-#   `uv_cwd EPERM`, so the cwd is the scratch root; `DSH_HOME` is the write root; the settings file itself is
-#   read-denied; `~/.agents/skills` stays readable), and the seat accepts srt's own write paths as roots
-#   (hcom-seat:746-757, :1373-1374) where DSH denies them (the table).
-#   Nothing under `DSH_HOME` or the scratch root is executed before containment, and nothing a contained dsh could
-#   have written runs outside srt: one environment, built once before the first command this launcher runs under it,
-#   is what the srt version probe, the canary and the exec all get, `env -i` with the ENV_NAMES values and
-#   `PATH=<RUN_PATH>`, where RUN_PATH is the physical directory of the pinned `srt`, that of the interpreter its `#!`
-#   line names (`/usr/bin/env node` looked up once on the caller's PATH here and run explicitly as `<node> <srt>`, so
-#   no lookup is left to the kernel) and the system directories, and nothing of the caller's PATH. Each of those
-#   files and directories is refused when it lies under `DSH_HOME` or the scratch root or is not root's or this
-#   user's without group or other write (hcom-seat pin_exec, :639-688, the precedent); python3 and the Linux tools
-#   are pinned the same way under the write-root and owner rules (the mode rule would refuse the operator's 0775
-#   mise-built python; a residual the PR body names).
-#   Inside the sandbox dsh gets RUN_PATH followed by the caller's absolute PATH entries outside the write roots,
-#   applied by `/usr/bin/env` under srt (hcom-seat:912-918, :1868): every process there is contained. The dsh runtime
-#   is only stat-checked here (a regular file of this user, no group or other write) and runs under srt alone, and
-#   every directory the launcher relies on is created 0700 and refused when it exists with another owner or with
-#   group or other bits. The settings file is written through a name `mktemp` chooses inside that 0700 directory and
-#   renamed onto the final name, which is refused when it exists as anything but a regular file of this user, so a
-#   planted link is never followed.
-#   Refusals (exit 2), each before anything starts: a usage error, srt not on PATH or not of the SRT_LINE line, srt
-#   or its interpreter under a write root or in an untrusted path, a `stat`, `readlink` or `head` read that fails or
-#   prints nothing, no executable `<DSH_HOME>/bin/dsh` or one that is a link or writable by group or other,
-#   `DSH_HOME` or the scratch root inside a read-denied path or inside a path srt would make writable (by identity,
-#   walking up), a directory with the wrong owner or mode, a rendered settings file python3 cannot parse as JSON, a
-#   canary that does not answer the three words or a canary file that exists afterwards. The lists are copied, not
-#   shared: a later unit may move them into one file.
+#   Regime-cutover U251 (round 2: U251b; round 3: U251c; round 4: U251d). The omp seats run under `srt` through
+#   hcom-seat (U85); this launcher gives the DSH control host the same boundary: it renders
+#   `<DSH_HOME>/.sandbox/srt-settings.json` from the table of lists below, each row a copy of the worker seat's list
+#   in scripts/orchestrator/hcom-seat with the line it is copied from or the srt 0.0.81 source line it answers, runs
+#   the seat shim's canary under those settings, and only then execs `<node> <srt> --settings <file> --
+#   /usr/bin/env PATH=<inner> <DSH_HOME>/bin/dsh [--profile <name>] <args>` with the working directory a scratch
+#   root under TMPDIR and the environment reduced to the names ENV_NAMES lists. The contract: a `dsh` this launcher
+#   started runs under srt with the worker seat's read denies (credentials, the operator's Claude Code state, the
+#   chezmoi sources, `~/Workspace`, the omp and hcom state) and its domain list, writes only under `DSH_HOME`, the
+#   scratch root and the bridge child's Claude state directory `<DSH_HOME>/.state/claude` (its `CLAUDE_CONFIG_DIR`,
+#   the U190 rule), with the paths srt 0.0.81 would make writable on its own (`/tmp/claude`, `/private/tmp/claude`,
+#   `~/.npm/_logs`) denied and its inner TMPDIR the scratch root; cannot read or write its own settings file; and
+#   never starts when the canary answers anything but `write-denied read-denied ssh-denied`. What differs from a
+#   seat is only what a seat has and DSH does not: no worktree, git state, hcom store or seats root (M-21 rows of
+#   2026-11-06T03:50:31Z: a cwd inside a read-denied checkout dies on `uv_cwd EPERM`, so the cwd is the scratch
+#   root; `DSH_HOME` is the write root; the settings file itself is read-denied; `~/.agents/skills` stays readable),
+#   and the seat accepts srt's own write paths as roots (hcom-seat:746-757, :1373-1374) where DSH denies them (the
+#   table).
+#   Before containment this launcher runs exactly two kinds of program (round 4, the mechanism-change row of
+#   2026-11-06T09:55:14Z: every helper is removed from the pre-containment path). One: the system binaries of
+#   SYSTEM_TOOLS, each by its absolute path, each present, root-owned and closed to group and other, read with
+#   `/usr/bin/stat` itself as the first command and the only bootstrap trust. Two: the pinned `node` and `srt` pair,
+#   found once on the caller's PATH and run by their physical argv `<node> <srt>` as hcom-seat runs them (pin_exec,
+#   hcom-seat:639-681; srt at :1628-1640), so no lookup is left to the kernel. Nothing else: no JSON reader (the
+#   settings are bash string building from the table's constants, and a malformed file is srt's to refuse: srt
+#   0.0.81 exits 1 on one, `Refusing to run with the built-in defaults`, and the canary's status read refuses the
+#   launch), no env (the shell drops the caller's environment itself before the first command), no head (the `#!`
+#   line is read by `read`), no uname (`$OSTYPE`), no program found on PATH. Every pathname this launcher trusts
+#   (srt, node, their directories, `DSH_HOME`, `TMPDIR`, each caller PATH entry handed to the inner dsh) is resolved
+#   physically (`cd && pwd -P`, `/usr/bin/readlink -f`) and held to one trust rule over every component up to `/`:
+#   owned by root or this user, and no group or other write bit unless the component is a sticky directory of
+#   root's (`/tmp`, `/private/tmp`), else a refusal naming the component. A caller PATH entry failing the rule is
+#   dropped from dsh's inner PATH and named on stderr instead, since it runs inside containment only
+#   (`/opt/homebrew/bin` is 0775 on the operator's host). Every `stat` and `readlink` read fails closed: a non-zero
+#   status, an empty or unparsable answer is a refusal (exit 2) with nothing started.
+#   The settings directory `<DSH_HOME>/.sandbox` is made fresh on every launch: the old one, a real directory of this
+#   user, is removed, `mkdir -m 0700` creates the new one (refused when it exists), and the file is written with
+#   `set -o noclobber` (an O_EXCL create) onto its final name, so nothing pre-planted is ever opened or followed.
+#   One environment, built once before the first command this launcher runs, is what the srt version probe, the
+#   canary and the exec all get: the names of ENV_NAMES as this launcher exports them, `PATH=<RUN_PATH>`, where
+#   RUN_PATH is the physical directory of the pinned `srt`, that of the interpreter its `#!` line names
+#   (`/usr/bin/env node` looked up once on the caller's PATH here) and the system directories, and nothing of the
+#   caller's PATH. Inside the sandbox dsh gets RUN_PATH followed by the caller's PATH entries in physical form,
+#   outside the write roots and passing the trust rule, applied by `/usr/bin/env` under srt (hcom-seat:912-918,
+#   :1868): every process there is contained. The dsh runtime is only stat-checked here (a regular file of this
+#   user, no group or other write) and runs under srt alone, and every other directory the launcher relies on is
+#   created 0700 and refused when it exists with another owner or with group or other bits.
+#   Refusals (exit 2), each before anything starts: a usage error, an environment entry bash cannot drop, a system
+#   tool absent or not root's, srt not on PATH or not of the SRT_LINE line, srt or its interpreter under a write
+#   root or in an untrusted path, a `stat` or `readlink` read that fails or prints nothing, no executable
+#   `<DSH_HOME>/bin/dsh` or one that is a link or writable by group or other, `DSH_HOME` or the scratch root inside a
+#   read-denied path or inside a path srt would make writable (by identity, walking up), a directory with the wrong
+#   owner or mode, a canary that does not answer the three words or a canary file that exists afterwards. The lists
+#   are copied, not shared: a later unit may move them into one file.
 # @option --profile <name> The DSH profile, passed as `--profile <name>` (`[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`).
 # @option --home <dir> `DSH_HOME` (default: the environment's DSH_HOME, else ~/.dsh); must be an existing directory.
 # @arg -- Everything after it is passed to `dsh` verbatim.
 # @env DSH_HOME The default DSH home.
-# @env PATH Read once, to find srt, its interpreter, python3 and the Linux tools; no command this launcher runs gets
-#   it (they get RUN_PATH), and dsh inside gets RUN_PATH followed by its absolute entries outside the write roots.
+# @env PATH Read once, to find srt, its interpreter and the Linux tools; no command this launcher runs gets it (they
+#   get RUN_PATH), and dsh inside gets RUN_PATH followed by its absolute entries in physical form, outside the write
+#   roots and passing the trust rule.
 # @env TMPDIR The parent of the scratch working directory `dsh-srt-<uid>` (default /tmp).
 # @env CLAUDE_CONFIG_DIR When set, denied for read and write like `~/.claude` (hcom-seat operator_claude_paths).
 # @stdout dsh's own output.
+# @stderr Refusals, and one line naming the caller PATH entries the trust rule dropped from dsh's inner PATH.
 # @exitcode 2 A refusal, before anything is started.
 # @exitcode * dsh's own status under srt otherwise.
 # @example
@@ -113,20 +128,54 @@ lever_self_check() {
 }
 lever_self_check
 
+# hcom-seat:102. The system directories, the tail of RUN_PATH; the head is the pinned directories of srt and its
+# interpreter, and nothing of the caller's PATH is in it.
+readonly SYSTEM_PATH=/usr/bin:/bin:/usr/sbin:/sbin
+# The caller's environment ends here, before the first command this launcher runs (hcom-seat:98-103 reduces PATH
+# the same way; this launcher reduces everything, by the shell alone). What it needs of it is read into shell
+# variables: PATH for the one lookup of srt, its interpreter and the Linux tools and for dsh's inner PATH; TMPDIR,
+# DSH_HOME and CLAUDE_CONFIG_DIR for the paths; HOME, USER, LANG and TERM to pass on when set. Then every exported
+# name and every function the caller exported is dropped, and a name bash cannot drop (one that is not an
+# identifier, which bash 3.2 would pass to children unchanged, or a readonly one) is a refusal, so what reaches srt
+# and dsh is the names of ENV_NAMES as this launcher exports them and nothing else.
+caller_path=${PATH:-} caller_tmpdir=${TMPDIR:-/tmp} caller_dsh_home=${DSH_HOME:-} caller_config=${CLAUDE_CONFIG_DIR:-}
+caller_env=()
+for name in HOME USER LANG TERM; do
+    if [[ -n ${!name+x} ]]; then caller_env+=("${name}=${!name}"); fi
+done
+for name in $(compgen -e); do
+    unset "${name}" 2> /dev/null || {
+        echo "dsh-srt: refused: cannot drop ${name} from the environment" >&2
+        exit 2
+    }
+done
+for name in $(compgen -A function); do unset -f "${name}"; done
+export ${caller_env[@]+"${caller_env[@]}"} "PATH=${SYSTEM_PATH}"
+
 refuse() {
     echo "dsh-srt: refused: $*" >&2
     exit 2
 }
 
+case ${OSTYPE} in
+darwin*) os=Darwin ;;
+linux*) os=Linux ;;
+*) refuse "no sandbox for ${OSTYPE}; srt supports macOS and Linux" ;;
+esac
+
 # The table of lists. Every row names the hcom-seat line it copies (origin/main b49be338) or the srt 0.0.81 source
 # line it answers (dist/sandbox/sandbox-utils.js of the installed package), so a reviewer diffs the two by eye until
 # a later unit shares the code. HOME-relative names are joined to the physical HOME at render.
 
+# The system binaries this launcher runs before containment, each by this absolute path and never by a lookup:
+# `stat` for every owner and mode read, `readlink -f` for the physical file of srt and its interpreter, `mkdir -m
+# 0700` for the directories, `rm -r` for the old settings directory. The first command of a launch is `/usr/bin/stat`
+# over this list, itself included: each must be present, root's and closed to group and other. Everything else is
+# bash: the `#!` line by `read`, the OS by `$OSTYPE`, the environment by `unset` and `export`, the settings file by
+# string building and a noclobber redirection.
+SYSTEM_TOOLS=(/usr/bin/stat /usr/bin/readlink /bin/mkdir /bin/rm)
 # hcom-seat:223. The srt release line whose behaviours the seat boundary rests on; another major.minor is refused.
 readonly SRT_LINE=0.0
-# hcom-seat:102. The system directories, the tail of RUN_PATH; the head is the pinned directories of srt and its
-# interpreter, and nothing of the caller's PATH is in it.
-readonly SYSTEM_PATH=/usr/bin:/bin:/usr/sbin:/sbin
 # hcom-seat:1743-1746 and :1750. The worker seat's HOME-relative read denies, verbatim and in its order: credentials,
 # the codex and omp state, the hcom stores, the chezmoi sources, ~/Workspace, every program's seats root.
 DENY_READ_UNDER_HOME=(.ssh .gnupg .aws .netrc .docker .kube .config/gcloud .codex .omp/agent .omp/profiles .hcom
@@ -176,12 +225,14 @@ NETWORK_TAIL=',"deniedDomains":[],"allowUnixSockets":[],"allowMachLookup":["com.
 # generateProxyEnvVars, :667-840): SANDBOX_RUNTIME, TMPDIR (the CLAUDE_CODE_TMPDIR value), the proxy variables
 # (HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, GRPC_PROXY, FTP_PROXY, RSYNC_PROXY, DOCKER_HTTP_PROXY, DOCKER_HTTPS_PROXY,
 # NO_PROXY and their lower-case forms, CLOUDSDK_PROXY_*), GIT_CONFIG_PARAMETERS, GIT_SSH_COMMAND, SRT_SSH_PROXY_COMMAND
-# and JAVA_TOOL_OPTIONS; this launcher neither sets nor strips them, and the PR body's Contract names them.
+# and JAVA_TOOL_OPTIONS; this launcher neither sets nor strips them, and the PR body's Contract names them. The list
+# is enforced, not only documented: after the exports below, an exported name outside it is a refusal.
 ENV_NAMES=(HOME PATH USER DSH_HOME TMPDIR CLAUDE_CODE_TMPDIR LANG TERM CLAUDE_CONFIG_DIR AWS_SHARED_CREDENTIALS_FILE
     AWS_CONFIG_FILE)
 
 usage='usage: dsh-srt [--profile <name>] [--home <DSH_HOME>] [-- <dsh args>]'
-profile='' dsh_home=${DSH_HOME:-${HOME}/.dsh}
+[[ -n ${HOME:-} ]] || refuse 'HOME is not set'
+profile='' dsh_home=${caller_dsh_home:-${HOME}/.dsh}
 while (($#)); do
     case $1 in
     --)
@@ -236,19 +287,98 @@ json_paths() {
     printf '[%s]' "${out}"
 }
 
-# @description Print the permission bits of `$1` in octal (seat-login-preflight mode_of: `stat -f %Lp` on macOS,
-#   `stat -c %a` on Linux), status first.
-# @arg $1 string The path.
-# @exitcode 2 `stat` failed or printed no mode.
-mode_of() {
-    local value
+# @description Read the owner uid and the permission bits of every path `$@` in one `/usr/bin/stat` call (`-f '%u
+#   %Mp%Lp'` on macOS, `-c '%u %a'` on Linux; a final link is not followed, and the paths given are physical) into
+#   `stat_uids` and `stat_modes`, status first: a failed call, a line that is not `<uid> <octal mode>`, or another
+#   number of lines than paths is a failure, never a pass (standing order 21).
+# @arg $@ string The paths.
+# @set stat_uids The owner uids, one per path.
+# @set stat_modes The permission bits as integers (setuid, setgid and sticky included), one per path.
+# @exitcode 1 The read failed.
+stat_read() {
+    local out uid mode
+    stat_uids=() stat_modes=()
     if [[ ${os} == Darwin ]]; then
-        value=$(/usr/bin/stat -f %Lp "$1") || return 2
+        out=$(/usr/bin/stat -f '%u %Mp%Lp' -- "$@") || return 1
     else
-        value=$(/usr/bin/stat -c %a "$1") || return 2
+        out=$(/usr/bin/stat -c '%u %a' -- "$@") || return 1
     fi
-    [[ ${value} =~ ^[0-7]{3,4}$ ]] || return 2
-    printf '%s\n' "${value}"
+    while IFS=' ' read -r uid mode; do
+        [[ ${uid} =~ ^[0-9]+$ && ${mode} =~ ^[0-7]{3,4}$ ]] || return 1
+        stat_uids+=("${uid}")
+        stat_modes+=("$((8#${mode}))")
+    done <<< "${out}"
+    ((${#stat_uids[@]} == $#))
+}
+
+# @description Judge the physical paths after `$1` by the trust rule over every component from the path up to `/`:
+#   owned by root or this user, and no group or other write bit unless the component is a sticky directory of
+#   root's (`/tmp`, `/private/tmp`, where nothing can be renamed by another user). One `stat` call covers every
+#   component of every path. `trust_fail` gets one entry per path: empty when it passes, else the refusal text
+#   naming the path as `$1` and the component that fails; `trust_tag` the same in short, for a list.
+# @arg $1 string What the paths are.
+# @arg $@ string The physical paths after it.
+# @set trust_fail The refusal texts, one per path (empty when the path passes).
+# @set trust_tag The short forms, `<path> (<reason>)`, one per path (empty when the path passes).
+# @exitcode 1 The stat read failed; nothing is judged.
+trust_check() {
+    local what=$1 paths comps=() lens=() p n i j=0 uid mode oct fail tag sticky_root
+    shift
+    paths=("$@")
+    trust_fail=() trust_tag=()
+    for p in "${paths[@]}"; do
+        n=0
+        while :; do
+            comps+=("${p}")
+            n=$((n + 1))
+            [[ ${p} != / ]] || break # lint-comparisons: allow the root itself ends the walk, no path compare
+            p=${p%/*}
+            [[ -n ${p} ]] || p=/
+        done
+        lens+=("${n}")
+    done
+    stat_read "${comps[@]}" || return 1
+    for ((i = 0; i < ${#paths[@]}; i++)); do
+        fail='' tag=''
+        for ((n = 0; n < lens[i]; n++, j++)); do
+            [[ -z ${fail} ]] || continue
+            uid=${stat_uids[j]} mode=${stat_modes[j]} p=${comps[j]} sticky_root=0
+            # The exception is a directory's: a sticky bit on a file protects nothing.
+            if ((uid == 0 && mode & 8#1000)) && [[ -d ${p} ]]; then sticky_root=1; fi
+            if ((uid != 0 && uid != EUID)); then
+                tag="owner uid ${uid}"
+                fail="owned by uid ${uid}, neither root nor this user"
+            elif ((mode & 8#22 && sticky_root == 0)); then
+                printf -v oct '%o' "${mode}"
+                tag="mode ${oct}"
+                fail="mode ${oct}, writable by group or other and not a sticky directory of root's"
+            else
+                continue
+            fi
+            if ((n == 0)); then
+                fail="${what} ${p}: ${fail}"
+                tag="${p} (${tag})"
+            else
+                fail="${what} ${paths[i]} lies under ${p}: ${fail}"
+                tag="${paths[i]} (under ${p}, ${tag})"
+            fi
+        done
+        trust_fail+=("${fail}")
+        trust_tag+=("${tag}")
+    done
+}
+
+# @description Refuse unless every physical path after `$1` passes the trust rule (trust_check), naming the path as
+#   `$1` and the component that fails; a failed stat read is a refusal too.
+# @arg $1 string What the paths are.
+# @arg $@ string The physical paths after it.
+require_trusted() {
+    local what=$1 fail
+    shift
+    trust_check "${what}" "$@" || refuse "cannot read the owner and mode of ${what} $* with /usr/bin/stat"
+    for fail in "${trust_fail[@]}"; do
+        [[ -z ${fail} ]] || refuse "${fail}; a path another user could change holds nothing this launcher trusts"
+    done
 }
 
 # @description Make `$1` a real 0700 directory when it is absent, and refuse unless it is one of this user's with no
@@ -256,14 +386,16 @@ mode_of() {
 #   another process planted or opened is never written into.
 # @arg $1 string The directory.
 ensure_own_dir() {
-    local mode
+    local oct
     if [[ ! -e $1 && ! -L $1 ]]; then
         (umask 077 && /bin/mkdir -m 0700 "$1") || refuse "cannot create $1"
     fi
     [[ -d $1 && ! -L $1 && -O $1 ]] || refuse "$1 is not a real directory of this user"
-    mode=$(mode_of "$1") || refuse "cannot read the mode of $1"
-    [[ ${mode} =~ ^[0-7]?[0-7]00$ ]] ||
-        refuse "$1 has mode ${mode}; a directory dsh-srt relies on must have no group or other bits (chmod 700)"
+    stat_read "$1" || refuse "cannot read the mode of $1"
+    (((stat_modes[0] & 8#77) == 0)) || {
+        printf -v oct '%o' "${stat_modes[0]}"
+        refuse "$1 has mode ${oct}; a directory dsh-srt relies on must have no group or other bits (chmod 700)"
+    }
 }
 
 # @description Refuse unless `$2`, named as `$1`, is a regular file of this user (no symbolic link) whose mode has no
@@ -272,11 +404,13 @@ ensure_own_dir() {
 # @arg $1 string What the file is.
 # @arg $2 string The path.
 require_own_file() {
-    local mode
+    local oct
     [[ -f $2 && ! -L $2 && -O $2 ]] || refuse "$1 $2 is not a regular file of this user"
-    mode=$(mode_of "$2") || refuse "cannot read the mode of $1 $2"
-    [[ ${mode} =~ ^[0-7]?[0-7][0145][0145]$ ]] ||
-        refuse "$1 $2 has mode ${mode}; a file writable by group or other is refused"
+    stat_read "$2" || refuse "cannot read the mode of $1 $2"
+    (((stat_modes[0] & 8#22) == 0)) || {
+        printf -v oct '%o' "${stat_modes[0]}"
+        refuse "$1 $2 has mode ${oct}; a file writable by group or other is refused"
+    }
 }
 
 # @description Succeed when the physical path `$1` is, or lies under, an existing entry of the paths after it, by
@@ -296,55 +430,37 @@ inside_any() {
     done
 }
 
-# @description Print the numeric uid of the owner of `$1` (`stat -f %u` on macOS, `stat -c %u` on Linux), status
-#   first.
-# @arg $1 string The path.
-# @exitcode 2 `stat` failed or printed no uid.
-owner_of() {
-    local value
-    if [[ ${os} == Darwin ]]; then
-        value=$(/usr/bin/stat -f %u "$1") || return 2
-    else
-        value=$(/usr/bin/stat -c %u "$1") || return 2
-    fi
-    [[ ${value} =~ ^[0-9]+$ ]] || return 2
-    printf '%s\n' "${value}"
+# @description Print the first `<dir>/$1` of the caller's PATH that is an executable regular file (hcom-seat
+#   find_on_path, :551). Only absolute entries free of control characters are searched: a relative or empty entry
+#   (the cwd) never names code this launcher runs.
+# @arg $1 string The command name.
+# @stdout The path.
+# @exitcode 1 Not found.
+find_on_path() {
+    local dir dirs=()
+    IFS=: read -r -a dirs <<< "${caller_path}"
+    for dir in ${dirs[@]+"${dirs[@]}"}; do
+        [[ ${dir} == /* && ${dir} != *[[:cntrl:]]* ]] || continue # lint-comparisons: allow an absolute-path and content test, no path compare
+        [[ -f ${dir}/$1 && -x ${dir}/$1 ]] || continue
+        printf '%s\n' "${dir}/$1"
+        return 0
+    done
+    return 1
 }
 
-# @description Refuse unless the physical path `$2`, named as `$1`, lies under no write root of dsh (`write`, by
-#   identity walking up) and is root's or this user's; under the `strict` rule also unless its mode has no group or
-#   other write bit. A file or directory another local user or a contained dsh could edit never holds code that
-#   runs before containment. The `owner` rule is for python3 and the Linux tools: the operator's mise-built python
-#   (`python3.15`, a python-build artifact) is 0775 on this host, so the mode rule would refuse every launch there;
-#   that gap is a named residual of the PR body, not a silent pass.
-# @arg $1 string What the path is.
-# @arg $2 string The physical path.
-# @arg $3 string `strict` or `owner`.
-require_trusted() {
-    local owner mode
-    if inside_any "$2" "${write[@]}"; then
-        refuse "$1 $2 lies under a write root of dsh (${home_real} or ${scratch}); nothing a contained dsh could have written runs outside srt"
-    fi
-    owner=$(owner_of "$2") || refuse "cannot read the owner of $1 $2"
-    [[ ${owner} == 0 || -O $2 ]] || refuse "$1 $2 is owned by uid ${owner}, neither root nor this user"
-    [[ $3 == strict ]] || return 0
-    mode=$(mode_of "$2") || refuse "cannot read the mode of $1 $2"
-    [[ ${mode} =~ ^[0-7]?[0-7][0145][0145]$ ]] ||
-        refuse "$1 $2 has mode ${mode}; a path writable by group or other holds no code that runs before containment"
-}
-
-# @description Pin the executable `$2`, named as `$1` (hcom-seat pin_exec, :639-688): set `pinned_real` to its
-#   physical file (every link followed by `readlink -f`, the directory by `pwd -P`) and `pinned_dir` to the physical
-#   directory of `$2` as given, the one a PATH lookup found. Refused: a non-file, a path or a target under a write
-#   root, a file or directory that fails the trust rule `$3` (require_trusted). Each read's status is checked, and a
-#   `readlink` that names no file is a refusal, not a pass (standing order 21).
+# @description Pin the executable `$2`, named as `$1` (hcom-seat pin_exec, :639-681): set `pinned_real` to its
+#   physical file (every link followed by `readlink -f`, the directory by `pwd -P`), `pinned_dir` to the physical
+#   directory of `$2` as given, the one a PATH lookup found, and `pinned_magic` to its first two characters (`#!`
+#   for a script), read by `read`. Refused: a non-file, a path or a target under a write root, a path holding a
+#   control character or `:`, a file or directory that fails the trust rule over its ancestors (require_trusted).
+#   Each read's status is checked, and a `readlink` that names no file is a refusal, not a pass (standing order 21).
 # @arg $1 string What the executable is.
 # @arg $2 string Its path, absolute.
-# @arg $3 string The trust rule, `strict` (default) or `owner`.
 # @set pinned_real The physical file.
 # @set pinned_dir The physical directory of `$2`.
+# @set pinned_magic The first two characters of the file.
 pin_file() {
-    local what=$1 found=$2 rule=${3:-strict} real real_dir
+    local what=$1 found=$2 real real_dir
     [[ ${found} == /* && -f ${found} && -x ${found} ]] || refuse "${what} at '${found}' is not an absolute executable file" # lint-comparisons: allow an absolute-path test, no path compare
     pinned_dir=$(cd "${found%/*}" && pwd -P) || refuse "cannot resolve the directory of ${what} at ${found}"
     real=$(/usr/bin/readlink -f "${found}") || refuse "cannot resolve ${what} at ${found} (readlink -f failed)"
@@ -352,39 +468,54 @@ pin_file() {
     real_dir=${real%/*}
     real_dir=$(cd "${real_dir:-/}" && pwd -P) || refuse "cannot resolve the directory of ${what} at ${real}"
     pinned_real=${real_dir%/}/${real##*/}
+    [[ ${pinned_dir} != *[[:cntrl:]]* && ${pinned_real} != *[[:cntrl:]]* ]] || refuse "${what} at ${found} resolves to a path holding a control character" # lint-comparisons: allow a content test, no path compare
     if inside_any "${found}" "${write[@]}" || inside_any "${pinned_real}" "${write[@]}"; then
         refuse "${what} at ${found} lies under a write root of dsh (${home_real} or ${scratch}); nothing a contained dsh could have written runs outside srt"
     fi
     [[ ${pinned_dir} != *:* && ${real_dir} != *:* ]] || refuse "${what} at ${found} lives in a directory holding ':' (${pinned_dir}, ${real_dir}), which PATH cannot carry" # lint-comparisons: allow a ':' content test, no path compare
-    require_trusted "the directory of ${what}" "${pinned_dir}" "${rule}"
-    require_trusted "the directory of ${what}" "${real_dir}" "${rule}"
-    require_trusted "${what}" "${pinned_real}" "${rule}"
+    require_trusted "the directory of ${what}" "${pinned_dir}" "${real_dir}"
+    require_trusted "${what}" "${pinned_real}"
+    pinned_magic=''
+    LC_ALL=C IFS= read -r -n 2 pinned_magic < "${pinned_real}" || refuse "cannot read ${what} at ${pinned_real}"
 }
 
 # @description Pin the command `$1` found on the caller's PATH (pin_file), the one lookup this launcher makes for it.
 # @arg $1 string The command name.
-# @arg $2 string The trust rule, `strict` (default) or `owner`.
 # @exitcode 1 Not on PATH.
 pin_tool() {
     local found
-    found=$(type -P "$1") || return 1
-    pin_file "$1" "${found}" "${2:-strict}"
+    found=$(find_on_path "$1") || return 1
+    pin_file "$1" "${found}"
 }
 
+# The bootstrap: /usr/bin/stat reads the owner and mode of the system tools, itself included, before any other
+# command runs; each must be present, root's and closed to group and other.
+for tool in "${SYSTEM_TOOLS[@]}"; do
+    [[ -f ${tool} && -x ${tool} ]] || refuse "system tool ${tool} is absent or not executable"
+done
+stat_read "${SYSTEM_TOOLS[@]}" || refuse "cannot read the owner and mode of the system tools (${SYSTEM_TOOLS[*]}) with /usr/bin/stat"
+for ((i = 0; i < ${#SYSTEM_TOOLS[@]}; i++)); do
+    ((stat_uids[i] == 0)) || refuse "system tool ${SYSTEM_TOOLS[i]} is owned by uid ${stat_uids[i]}, not root"
+    (((stat_modes[i] & 8#22) == 0)) || refuse "system tool ${SYSTEM_TOOLS[i]} is writable by group or other"
+done
+
 # The paths, each in physical form and clean before it reaches the settings; decided before any command is looked up,
-# so the write roots are known when PATH is read.
+# so the write roots are known when PATH is read. DSH_HOME and TMPDIR are held to the trust rule over their ancestors:
+# a directory another user could rename holds no root this launcher relies on.
 require_clean_path HOME "${HOME}"
 h=$(cd "${HOME}" && pwd -P) || refuse "cannot resolve HOME ${HOME}"
 [[ -d ${dsh_home} ]] || refuse "DSH_HOME ${dsh_home} is not a directory"
 home_real=$(cd "${dsh_home}" && pwd -P) || refuse "cannot enter DSH_HOME ${dsh_home}"
 require_clean_path DSH_HOME "${home_real}"
+require_trusted DSH_HOME "${home_real}"
 dsh=${home_real}/bin/dsh
 [[ -f ${dsh} && -x ${dsh} ]] || refuse "no executable dsh under DSH_HOME: ${dsh}"
-tmp_parent=${TMPDIR:-/tmp}
-tmp_parent=${tmp_parent%/}
+tmp_parent=${caller_tmpdir%/}
 [[ -n ${tmp_parent} ]] || tmp_parent=/
 [[ -d ${tmp_parent} ]] || refuse "TMPDIR ${tmp_parent} is not a directory"
 tmp_real=$(cd "${tmp_parent}" && pwd -P) || refuse "cannot enter TMPDIR ${tmp_parent}"
+require_clean_path TMPDIR "${tmp_real}"
+require_trusted TMPDIR "${tmp_real}"
 scratch=${tmp_real%/}/dsh-srt-${UID}
 sandbox=${home_real}/.sandbox
 claude_state=${home_real}/.state/claude
@@ -392,12 +523,11 @@ settings=${sandbox}/srt-settings.json
 canary=${sandbox}/canary
 write=("${home_real}" "${scratch}" "${claude_state}")
 
-os=$(/usr/bin/uname -s) || refuse 'cannot read the operating system name (/usr/bin/uname -s)'
 # The dsh runtime is never executed here: it runs under srt alone, and its version is not read. Here it is only
 # stat-checked, so a runtime a contained dsh replaced with a link or opened to its group is refused before anything.
 require_own_file 'the dsh runtime' "${dsh}"
 
-# srt, pinned (hcom-seat:1628-1640 and pin_exec, :639-688): the file PATH finds, resolved physically and held to the
+# srt, pinned (hcom-seat:1628-1640 and pin_exec, :639-681): the file PATH finds, resolved physically and held to the
 # trust rule, then the interpreter its `#!` line names, `/usr/bin/env <name>` looked up once on the caller's PATH here
 # and held to the same rule, so `srt_cmd` runs with no lookup left to the kernel. With the kernel's own lookup under
 # the caller's PATH a planted `node` under DSH_HOME ran outside containment (the round-2 P1).
@@ -405,9 +535,9 @@ pin_tool srt || refuse 'srt (@anthropic-ai/sandbox-runtime) not found on PATH'
 srt_real=${pinned_real}
 srt_cmd=("${srt_real}")
 run_dirs=("${pinned_dir}")
-magic=$(/usr/bin/head -c 2 -- "${srt_real}") || refuse "cannot read srt at ${srt_real}"
-if [[ ${magic} == '#!' ]]; then
-    first=$(/usr/bin/head -n 1 -- "${srt_real}") || refuse "cannot read the interpreter line of srt at ${srt_real}"
+if [[ ${pinned_magic} == '#!' ]]; then
+    first=''
+    IFS= read -r first < "${srt_real}" || [[ -n ${first} ]] || refuse "cannot read the interpreter line of srt at ${srt_real}"
     interp='' interp_name='' interp_extra=''
     read -r interp interp_name interp_extra <<< "${first#??}"
     if [[ ${interp} == /usr/bin/env ]]; then # lint-comparisons: allow the literal interpreter line, no path compare
@@ -418,43 +548,55 @@ if [[ ${magic} == '#!' ]]; then
         [[ -z ${interp_name} && ${interp} == /* ]] || refuse "unsupported interpreter line '${first}' in srt at ${srt_real}" # lint-comparisons: allow an absolute-path test, no path compare
         pin_file 'the interpreter of srt' "${interp}"
     fi
-    magic=$(/usr/bin/head -c 2 -- "${pinned_real}") || refuse "cannot read the interpreter of srt at ${pinned_real}"
-    [[ ${magic} != '#!' ]] || refuse "the interpreter ${pinned_real} of srt is itself a script"
+    [[ ${pinned_magic} != '#!' ]] || refuse "the interpreter ${pinned_real} of srt is itself a script"
     srt_cmd=("${pinned_real}" "${srt_real}")
     run_dirs+=("${pinned_dir}")
 fi
 
-# One environment, built once and used for everything this launcher runs from here on: `env -i` with the ENV_NAMES
-# values and PATH=RUN_PATH, the pinned directories then the system directories, nothing of the caller's PATH
-# (hcom-seat:98-103).
+# RUN_PATH: the pinned directories then the system directories, nothing of the caller's PATH (hcom-seat:98-103).
 run_path=''
 for dir in "${run_dirs[@]}"; do run_path+=${dir}:; done
 run_path+=${SYSTEM_PATH}
-env_args=()
-for name in "${ENV_NAMES[@]}"; do
-    case ${name} in
-    PATH) env_args+=("PATH=${run_path}") ;;
-    DSH_HOME) env_args+=("DSH_HOME=${home_real}") ;;
-    TMPDIR | CLAUDE_CODE_TMPDIR) env_args+=("${name}=${scratch}") ;;
-    CLAUDE_CONFIG_DIR) env_args+=("CLAUDE_CONFIG_DIR=${claude_state}") ;;
-    AWS_SHARED_CREDENTIALS_FILE | AWS_CONFIG_FILE) env_args+=("${name}=/dev/null") ;;
-    *) if [[ -n ${!name+x} ]]; then env_args+=("${name}=${!name}"); fi ;;
-    esac
-done
-# Inside the sandbox dsh works with the caller's tools (mise, uv, git) from the caller's absolute PATH entries after
-# RUN_PATH, every entry under a write root dropped; every process there is contained (hcom-seat:912-918), and nothing
-# outside the sandbox runs from that list.
+# Inside the sandbox dsh works with the caller's tools (mise, uv, git) from the caller's PATH entries after RUN_PATH,
+# each in physical form, every entry under a write root dropped, every entry failing the trust rule dropped and
+# named in one stderr line (it runs inside containment only; `/opt/homebrew/bin` is 0775 on the operator's host);
+# every process there is contained (hcom-seat:912-918), and nothing outside the sandbox runs from that list.
 inner_path=${run_path}
-IFS=: read -r -a caller_dirs <<< "${PATH:-}"
+IFS=: read -r -a caller_dirs <<< "${caller_path}"
+candidates=()
 for dir in ${caller_dirs[@]+"${caller_dirs[@]}"}; do
     [[ ${dir} == /* && ${dir} != *[[:cntrl:]]* && -d ${dir} ]] || continue # lint-comparisons: allow an absolute-path and content test, no path compare
-    if inside_any "${dir}" "${write[@]}"; then continue; fi
-    inner_path+=:${dir}
+    real=$(cd "${dir}" && pwd -P) || continue
+    [[ ${real} != *[[:cntrl:]]* && ${real} != *:* ]] || continue # lint-comparisons: allow a content test, no path compare
+    if inside_any "${real}" "${write[@]}"; then continue; fi
+    candidates+=("${real}")
+done
+if ((${#candidates[@]})); then
+    trust_check "the caller's PATH entry" "${candidates[@]}" ||
+        refuse "cannot read the owner and mode of the caller's PATH entries with /usr/bin/stat"
+    dropped=''
+    for ((i = 0; i < ${#candidates[@]}; i++)); do
+        if [[ -n ${trust_tag[i]} ]]; then
+            dropped+=", ${trust_tag[i]}"
+            continue
+        fi
+        inner_path+=:${candidates[i]}
+    done
+    [[ -z ${dropped} ]] || echo "dsh-srt: dropped from dsh's PATH (writable by group or other, or not root's or this user's): ${dropped#, }" >&2
+fi
+
+# The one environment: the names of ENV_NAMES, exported here with the values this launcher decided (HOME, USER, LANG
+# and TERM are the caller's, exported at the drop above when set), and checked to be the whole of it before the first
+# command runs under it.
+export "PATH=${run_path}" "DSH_HOME=${home_real}" "TMPDIR=${scratch}" "CLAUDE_CODE_TMPDIR=${scratch}"
+export "CLAUDE_CONFIG_DIR=${claude_state}" AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null
+for name in $(compgen -e); do
+    [[ " ${ENV_NAMES[*]} " == *" ${name} "* ]] || refuse "the environment holds ${name}, which ENV_NAMES does not list"
 done
 
 # The srt line (hcom-seat:1628-1640), read by the pinned argv under the one environment, the first command this
 # launcher runs under it: status first, so a failed or empty read is a refusal.
-srt_version=$(/usr/bin/env -i "${env_args[@]}" "${srt_cmd[@]}" --version 2> /dev/null) ||
+srt_version=$("${srt_cmd[@]}" --version 2> /dev/null) ||
     refuse "cannot read the srt version (${srt_cmd[*]} --version failed); dsh-srt encodes the srt ${SRT_LINE} line"
 srt_version=${srt_version%%$'\n'*}
 srt_version=${srt_version%% *}
@@ -467,19 +609,21 @@ case ${os} in
 Darwin) [[ -x /usr/bin/sandbox-exec ]] || refuse 'sandbox-exec absent: /usr/bin/sandbox-exec' ;;
 Linux)
     # hcom-seat:1654-1669: srt looks bwrap, socat and rg up on PATH unless its settings name them; they name the
-    # pinned physical files.
-    pin_tool bwrap owner || refuse 'bwrap not found on PATH'
-    bwrap_real=${pinned_real}
-    pin_tool socat owner || refuse 'socat not found on PATH'
-    socat_real=${pinned_real}
-    pin_tool rg owner || refuse 'rg not found on PATH'
-    rg_real=${pinned_real}
-    require_clean_path bwrap "${bwrap_real}"
-    require_clean_path socat "${socat_real}"
-    require_clean_path rg "${rg_real}"
+    # pinned physical files, held to the same trust rule as srt, and srt runs them by path, so a script among them
+    # (whose interpreter the kernel would look up) is refused. The launcher itself never runs them.
+    bwrap_real='' socat_real='' rg_real=''
+    for tool in bwrap socat rg; do
+        pin_tool "${tool}" || refuse "${tool} not found on PATH"
+        [[ ${pinned_magic} != '#!' ]] || refuse "${tool} ${pinned_real} is a script; srt runs it by path, so it must be a binary"
+        require_clean_path "${tool}" "${pinned_real}"
+        case ${tool} in
+        bwrap) bwrap_real=${pinned_real} ;;
+        socat) socat_real=${pinned_real} ;;
+        rg) rg_real=${pinned_real} ;;
+        esac
+    done
     linux_tools=",\"bwrapPath\":\"${bwrap_real}\",\"socatPath\":\"${socat_real}\",\"ripgrep\":{\"command\":\"${rg_real}\"}"
     ;;
-*) refuse "no sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
 
 # The lists, from the table.
@@ -488,11 +632,11 @@ for name in "${DENY_READ_UNDER_HOME[@]}"; do deny_read+=("${h}/${name}"); done
 deny_read+=("${sandbox}")
 operator_claude=()
 for name in "${OPERATOR_CLAUDE_UNDER_HOME[@]}"; do operator_claude+=("${h}/${name}"); done
-if [[ -n ${CLAUDE_CONFIG_DIR:-} ]]; then
-    require_clean_path CLAUDE_CONFIG_DIR "${CLAUDE_CONFIG_DIR}"
-    config=${CLAUDE_CONFIG_DIR}
+if [[ -n ${caller_config} ]]; then
+    require_clean_path CLAUDE_CONFIG_DIR "${caller_config}"
+    config=${caller_config}
     if [[ -d ${config} ]]; then
-        config=$(cd "${config}" && pwd -P) || refuse "cannot resolve CLAUDE_CONFIG_DIR ${CLAUDE_CONFIG_DIR}"
+        config=$(cd "${config}" && pwd -P) || refuse "cannot resolve CLAUDE_CONFIG_DIR ${caller_config}"
     fi
     if [[ ! -e ${h}/.claude || ! ${config} -ef ${h}/.claude ]]; then operator_claude+=("${config}"); fi
 fi
@@ -518,37 +662,36 @@ if inside_any "${home_real}" "${srt_added[@]}"; then refuse "DSH_HOME ${home_rea
 if inside_any "${tmp_real}" "${srt_added[@]}"; then refuse "the scratch cwd ${scratch} would lie inside a path srt makes writable on its own, which dsh-srt denies (TMPDIR ${tmp_real})"; fi
 
 ensure_own_dir "${scratch}"
-ensure_own_dir "${sandbox}"
 ensure_own_dir "${home_real}/.state"
 ensure_own_dir "${claude_state}"
-# hcom-seat:1766-1786: the settings, written by the shell from clean paths only, replaced whole.
+# The settings directory is made fresh: whatever stood at its name (a real directory of this user, else a refusal) is
+# removed, `mkdir -m 0700` creates it and is refused when the name exists, so nothing planted inside before this
+# launch is ever opened or followed; a settings file or a canary file from an earlier launch never survives into
+# this one.
+if [[ -e ${sandbox} || -L ${sandbox} ]]; then
+    [[ -d ${sandbox} && ! -L ${sandbox} && -O ${sandbox} ]] || refuse "${sandbox} is not a real directory of this user"
+    /bin/rm -r -f -- "${sandbox}" || refuse "cannot remove the old ${sandbox}"
+fi
+(umask 077 && /bin/mkdir -m 0700 "${sandbox}") || refuse "cannot create ${sandbox}; it must not exist"
+# hcom-seat:1766-1786: the settings, written by the shell from clean paths only. Its JSON shape is srt's to judge: a
+# malformed file is refused by srt itself (exit 1, `Refusing to run with the built-in defaults`), which the canary's
+# status read turns into a refusal here.
 write_json=$(json_paths 'a write root' "${write[@]}") || exit 2
 deny_write_json=$(json_paths 'a write deny' "${deny_write[@]}") || exit 2
 deny_read_json=$(json_paths 'a read deny' "${deny_read[@]}") || exit 2
 json="{\"network\":{\"allowedDomains\":[${DOMAINS}]${NETWORK_TAIL}}"
 json+=",\"filesystem\":{\"denyRead\":${deny_read_json},\"allowRead\":[]"
 json+=",\"allowWrite\":${write_json},\"denyWrite\":${deny_write_json}},\"allowPty\":true${linux_tools}}"
-# Written into the 0700 sandbox directory through a name mktemp chooses (O_EXCL), then renamed onto the final name,
-# which is refused when it exists as anything but a regular file of this user: no predictable name is ever opened for
-# writing, so a planted link is never followed.
-if [[ -e ${settings} || -L ${settings} ]]; then require_own_file 'the settings file' "${settings}"; fi
-settings_tmp=$(/usr/bin/mktemp "${sandbox}/.srt-settings.XXXXXXXX") || refuse "cannot create a temporary file in ${sandbox}"
-if ! printf '%s\n' "${json}" > "${settings_tmp}" || ! /bin/mv -f "${settings_tmp}" "${settings}"; then
-    /bin/rm -f "${settings_tmp}"
-    refuse "cannot write ${settings}"
-fi
-pin_tool python3 owner || refuse 'python3 not found on PATH (it checks the rendered settings parse as JSON)'
-/usr/bin/env -i "${env_args[@]}" "${pinned_real}" -I -c 'import json, sys
-with open(sys.argv[1], encoding="utf-8") as settings:
-    json.load(settings)' "${settings}" || refuse "the rendered settings ${settings} do not parse as JSON"
+# A noclobber redirection creates the file O_EXCL (bash opens an absent name with O_EXCL under noclobber) with mode
+# 0600 inside the directory this launch made: no existing name is opened, so no planted link is followed.
+(umask 077 && set -o noclobber && printf '%s\n' "${json}" > "${settings}") || refuse "cannot write ${settings}"
 
 # hcom-seat:1816-1837: the canary runs under the settings and the same environment, before dsh. A write into the
 # sandbox directory, a read of the settings and a listing of ~/.ssh must all fail inside; a canary file that exists
 # afterwards is a failure too. There is no uncontained fallback.
-/bin/rm -f "${canary}" || refuse "cannot clear ${canary}"
 cd "${scratch}" || refuse "cannot enter the scratch cwd ${scratch}"
 # shellcheck disable=SC2016 # the probe script is /bin/sh's inside the sandbox; its $1..$3 are the paths passed after it
-probe=$(/usr/bin/env -i "${env_args[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /bin/sh -c 'if true 2> /dev/null > "$1"; then w=write-open; else w=write-denied; fi
+probe=$("${srt_cmd[@]}" --settings "${settings}" -- /bin/sh -c 'if true 2> /dev/null > "$1"; then w=write-open; else w=write-denied; fi
 if cat "$2" > /dev/null 2>&1; then r=read-open; else r=read-denied; fi
 if ls "$3" > /dev/null 2>&1; then s=ssh-open; else s=ssh-denied; fi
 echo "$w $r $s"' canary "${canary}" "${settings}" "${h}/.ssh") ||
@@ -558,4 +701,4 @@ echo "$w $r $s"' canary "${canary}" "${settings}" "${h}/.ssh") ||
 
 dsh_cmd=("${dsh}")
 if [[ -n ${profile} ]]; then dsh_cmd+=(--profile "${profile}"); fi
-exec /usr/bin/env -i "${env_args[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env "PATH=${inner_path}" "${dsh_cmd[@]}" ${dsh_args[@]+"${dsh_args[@]}"}
+exec "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env "PATH=${inner_path}" "${dsh_cmd[@]}" ${dsh_args[@]+"${dsh_args[@]}"}

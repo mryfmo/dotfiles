@@ -651,10 +651,21 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         listing of the empty tree, signal `inside`, and hand that listing back only once `placed` is set, which the
         holder thread does right after its rename. The first pass therefore ends on an empty tree with the holder in
         place, and the rescan names pid 4242, on any scheduler; a scan that stops rescanning fails. Only the rename
-        happens inside the settle window, so the holder's build time cannot eat HOLDER_WAIT_S either."""
+        happens inside the settle window, so the holder's build time cannot eat HOLDER_WAIT_S either.
+
+        U241c: the round-1 audit delayed that rename by 300 ms and healthy code failed three times out of three,
+        because the hook waits for `placed` inside the scan's first pass while the settle clock is running (`settle =
+        time.monotonic() + HOLDER_WAIT_S` is taken before the first pass, trusted_exec_contract.py:279 at 8f31cf5c),
+        and an empty pass that ends after `settle` returns without rescanning: the handshake had the production 200 ms
+        to complete, a scheduler premise wider than the 50 ms timer but a premise still. The first probe therefore
+        runs with its own HOLDER_WAIT_S of 30 s, the bound of the handshake's own waits, so however long the holder
+        thread takes to wake and rename, the first pass ends before `settle` and the rescan at POLL_S names pid 4242;
+        a scan that stops rescanning still returns the no-holder record at once. The second probe keeps the
+        production HOLDER_WAIT_S and alone measures its length."""
         import threading
 
         probe = self.worker_root_probe()
+        probe.HOLDER_WAIT_S = 30.0  # the hook below waits inside the first pass; the settle must stay out of its reach
         proc = probe.base / "proc"
         proc.mkdir()
         probe.PROC_ROOT = str(proc)

@@ -83,9 +83,16 @@ TEST_GATES = (
     "`uv run python -m unittest tests.unit.test_x` OK (paste the count).",
     "`make unit-test` OK.",
     "`node --test home/dot_dsh/plugins/omp-gateway/` exit 0.",
+    "`python3 -I U0-tables/check-tables.py U0-tables/*.tsv` exit 0 and its row counts pasted.",
 )
 NO_LINT_GATE = "ACCEPTANCE names no lint gate (run-on-lint-files.sh, make format)"
-NO_TEST_GATE = "ACCEPTANCE names no test gate (python -m unittest, make unit-test, node --test)"
+NO_TEST_GATE = "ACCEPTANCE names no test gate (python -m unittest, make unit-test, node --test, records-check)"
+# U280: a records-only brief (U274's shape: tables under the store's `tests/`, no repository file, SCOPE naming its
+# branch) names its own check script as the test gate, under `python3 -I` alone.
+RECORDS_SCOPE = (
+    "A scratch tree `/tmp/dotfiles-wt/U0` (a worktree of `origin/main`). You write under `/tmp/dotfiles-wt/U0-tables/`."
+)
+RECORDS_LINT = "`scripts/ci/run-on-lint-files.sh markdown prettier --check` exit 0."
 # U130: three lever sources as a SCOPE names them, the reason line that refuses them (names sorted), and the SKILL
 # sentence that says a brief naming more than two is split before it is sent.
 THREE_LEVERS = (
@@ -508,6 +515,36 @@ class BriefCheckTest(unittest.TestCase):
             NO_LINT_GATE,
             NO_TEST_GATE,
         )
+
+    def test_a_records_brief_naming_its_own_check_under_python3_isolated_passes_as_the_test_gate(self):
+        # U280: `python3 -I <path>/check-<name>.py` is the test gate of a brief that changes no repository file; the
+        # lint gate stays required (the store's markdown is synced into the repository, where prettier runs).
+        for check in (
+            "`python3 -I tests/check-tables.py` exit 0.",
+            "`python3 -I U0-tables/check-tables.py U0-tables/*.tsv` exit 0 and its row counts per table pasted.",
+            "`python3 -I /tmp/dotfiles-wt/U0-tables/check-rows.py` exit 0.",
+            "`python3 -I check-x.py` exit 0.",
+        ):
+            with self.subTest(check=check):
+                text = brief(GOAL=CLEAN_GOAL, SCOPE=RECORDS_SCOPE, ACCEPTANCE=f"1. {check}\n2. {RECORDS_LINT}")
+                self.assert_passes(self.check_text(text))
+        text = brief(GOAL=CLEAN_GOAL, SCOPE=RECORDS_SCOPE, ACCEPTANCE="1. `python3 -I tests/check-tables.py` exit 0.")
+        self.assert_refused_exactly(self.check_text(text), NO_LINT_GATE)
+
+    def test_a_check_script_run_without_the_isolated_flag_or_not_named_check_is_no_test_gate(self):
+        # The same brief with `python3 tests/check-tables.py` (no `-I`) is refused with the test-gate line; so is a
+        # lower-case `-i` (the interactive interpreter), a script not named `check-*.py`, and a `check-` directory.
+        for check in (
+            "`python3 tests/check-tables.py` exit 0.",
+            "`python3 -i tests/check-tables.py` exit 0.",
+            "`python3 -I tests/tables.py` exit 0.",
+            "`python3 -I tests/check-tables.sh` exit 0.",
+            "`python3 -I check-tables/run.py` exit 0.",
+            "`python -I tests/check-tables.py` exit 0.",
+        ):
+            with self.subTest(check=check):
+                text = brief(GOAL=CLEAN_GOAL, SCOPE=RECORDS_SCOPE, ACCEPTANCE=f"1. {check}\n2. {RECORDS_LINT}")
+                self.assert_refused_exactly(self.check_text(text), NO_TEST_GATE)
 
     def test_a_sweep_shaped_scope_with_no_repository_path_needs_no_gate(self):
         # The U248 sweep shape, writing under ~/.local/state alone, and every other span that is no repository path:

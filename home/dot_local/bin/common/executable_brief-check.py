@@ -27,7 +27,9 @@ standing order 44: the heads of U244 and U240 passed every ACCEPTANCE line their
 later, at the prettier check and at the shebang table of `scripts/ci/run-on-lint-files.sh`, because the briefs named
 their own lines and not the gates CI runs). The gates are one table of (class, name, term) rows, `GATES`: the `lint`
 class is the Makefile's `format` target, the three `scripts/ci/run-on-lint-files.sh` checks CI's test job runs before
-the unit tests; the `test` class is `python -m unittest`, `make unit-test` or `node --test`. When SCOPE names at least
+the unit tests; the `test` class is `python -m unittest`, `make unit-test`, `node --test`, or a records brief's own
+check, `python3 -I <path>/check-<name>.py` (U280: a brief that changes no repository file proves itself by its check
+script, and the unit-test line U274 had to add proved nothing of its work). When SCOPE names at least
 one repository path (a relative backticked span of two or more names, or one name with an extension; `~/...` or a path under the system temporary directory
 and `../...` are outside the repository and a bare word names no file), the ACCEPTANCE section must exist and match one
 term of each class: `no ACCEPTANCE section`, `ACCEPTANCE names no lint gate (...)` and `ACCEPTANCE names no test gate
@@ -239,18 +241,22 @@ LEVER_REASON = (
     "(plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)"
 )
 # The CI gates a brief's ACCEPTANCE may paste, (class, name, term) rows; a term is matched as a trigger term is (a whole
-# word, any case, a space also a hyphen) and the name is what the reason line prints. The `lint` class is the
-# Makefile's `format` target: the three `scripts/ci/run-on-lint-files.sh` checks (shfmt, ruff format, prettier) that
-# CI's test job runs before the unit tests. The `test` class is the unit tests or a `node --test` run. The ACCEPTANCE
-# of a brief whose SCOPE names a repository path must match one term of each class in GATE_CLASSES (standing order 44,
-# U249); the `check` rows are gate forms a brief may paste that no class requires. `bats` is no gate: AGENTS.md Test
-# Policy forbids a local run.
+# word, any case, a space also a hyphen), or as written when it is a compiled pattern, and the name is what the reason
+# line prints. The `lint` class is the Makefile's `format` target: the three `scripts/ci/run-on-lint-files.sh` checks
+# (shfmt, ruff format, prettier) that CI's test job runs before the unit tests. The `test` class is the unit tests, a
+# `node --test` run, or a records brief's own check script run under `python3 -I` (U280: U274 wrote tables under the
+# store's `tests/` and changed no repository file, and the gate that proves such a unit is its `check-*.py`; the flag
+# is matched case-sensitively since `-i` is the interactive interpreter). The ACCEPTANCE of a brief whose SCOPE names
+# a repository path must match one term of each class in GATE_CLASSES (standing order 44, U249); the `check` rows are
+# gate forms a brief may paste that no class requires. `bats` is no gate: AGENTS.md Test Policy forbids a local run.
+RECORDS_CHECK = re.compile(r"(?-i:\bpython3 -I (?:\S*/)?check-[^\s/]*\.py\b)")
 GATES = (
     ("lint", "run-on-lint-files.sh", "run-on-lint-files.sh"),
     ("lint", "make format", "make format"),
     ("test", "python -m unittest", "unittest"),
     ("test", "make unit-test", "make unit-test"),
     ("test", "node --test", "node --test"),
+    ("test", "records-check", RECORDS_CHECK),
     ("check", "make shellcheck", "make shellcheck"),
     ("check", "make render-check", "make render-check"),
     ("check", "make validate-agent-assets", "make validate-agent-assets"),
@@ -269,12 +275,17 @@ def word_pattern(terms):
 
     One group per row, so the row whose reason is printed is the row the regex matched: `re.IGNORECASE` folds
     `ſhell` and a Kelvin-sign `hooK` onto their terms, and neither spelling has a `.lower()` form the table holds.
+    A term that is a compiled pattern is taken as written, its own bounds and case inside it (U280).
     """
     alternatives = []
     for index, term in enumerate(terms):
-        stem = term.endswith("*")
-        body = "[ -]".join(re.escape(part) for part in term.rstrip("*").split(" "))
-        alternatives.append(rf"(?P<t{index}>\b{body}" + ("" if stem else r"\b") + ")")
+        if isinstance(term, re.Pattern):
+            body = term.pattern
+        else:
+            stem = term.endswith("*")
+            body = "[ -]".join(re.escape(part) for part in term.rstrip("*").split(" "))
+            body = rf"\b{body}" + ("" if stem else r"\b")
+        alternatives.append(rf"(?P<t{index}>{body})")
     return re.compile("|".join(alternatives), re.IGNORECASE)
 
 

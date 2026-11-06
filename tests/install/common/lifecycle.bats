@@ -375,32 +375,6 @@ cache-check chezmoi" ]
     grep -q 'ponytail@ponytail' home/dot_config/claude/rules/ponytail.md
 }
 
-@test "[common] agent asset lifecycle installs Understand-Anything integrations for Claude Code and Codex" {
-    grep -q 'CLAUDE_UNDERSTAND_ANYTHING_PLUGIN="understand-anything@understand-anything"' scripts/update-agent-assets.sh
-    grep -q 'CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE="Egonex-AI/Understand-Anything"' scripts/update-agent-assets.sh
-    grep -q 'CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME="understand-anything"' scripts/update-agent-assets.sh
-    grep -q 'CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT=' scripts/update-agent-assets.sh
-    grep -q 'CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256=' scripts/update-agent-assets.sh
-    grep -q 'CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"' scripts/update-agent-assets.sh
-    grep -q '\[ "${actual}" = "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256}" \]' scripts/update-agent-assets.sh
-    grep -q 'converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"' scripts/update-agent-assets.sh
-    grep -q 'bash "${installer}" codex < /dev/null' scripts/update-agent-assets.sh
-    grep -q 'function provision_codex_understand_anything_runtime()' scripts/update-agent-assets.sh
-    grep -q 'packages/core/dist' scripts/update-agent-assets.sh
-    grep -q 'packages/core/node_modules' scripts/update-agent-assets.sh
-    grep -q 'except ValueError:' scripts/update-agent-assets.sh
-    grep -q '\[ -d "${release_root}/${source}" \] || continue' scripts/update-agent-assets.sh
-    grep -q 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact' scripts/update-agent-assets.sh
-    grep -q 'update_claude_understand_anything' scripts/update-agent-assets.sh
-    grep -q 'update_codex_understand_anything' scripts/update-agent-assets.sh
-    grep -q 'dot_config/claude/rules/understand-anything.md' home/dot_codex/AGENTS.md.tmpl
-    grep -q '\$understand' home/dot_config/claude/rules/understand-anything.md
-    grep -q 'understand-anything@understand-anything' home/dot_config/claude/rules/understand-anything.md
-    grep -q 'dot_config/claude/rules/understand-anything.md' home/dot_claude/rules/understand-anything.md.tmpl
-    grep -q 'understand-anything@understand-anything' README.md
-    grep -q 'validate_understand_anything_assets' scripts/validate-agent-assets.py
-}
-
 @test "[common] agent asset lifecycle installs pinned zenbu-labs terminal tools" {
     grep -q 'TERMINAL_CODE_PIN_VERSION=' scripts/lib/installer-pins.sh
     grep -q 'TERMINAL_CODE_INSTALLER_SHA256=' scripts/lib/installer-pins.sh

@@ -71,15 +71,6 @@ readonly CODEX_SUPERPOWERS_PLUGIN="superpowers@openai-curated"
 readonly CODEX_PONYTAIL_PLUGIN="ponytail@ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE_NAME="ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE_SOURCE="https://github.com/DietrichGebert/ponytail.git"
-readonly CLAUDE_UNDERSTAND_ANYTHING_PLUGIN="understand-anything@understand-anything"
-readonly CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE="Egonex-AI/Understand-Anything"
-readonly CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME="understand-anything"
-# Rendered from assets.understand-anything-installer in
-# home/dot_agents/agent-config.yaml; change the commit and sha256 there together
-# after reviewing the upstream installer diff.
-readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT="6df3065f1d8ddc2ce3615314d1d493f36d6b1c80"
-readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256="cb84ca53ced03f41662c5c86edf11fa598a0403c347f1e815f987ccaae5bc464"
-readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"
 # Versions and installer checksums for both URLs are pinned in
 # scripts/lib/installer-pins.sh, rendered from assets: in agent-config.yaml.
 # Rendered from assets.pi-claude-bridge in home/dot_agents/agent-config.yaml; change the version and sha256 there
@@ -333,8 +324,6 @@ function ensure_crit_cli() {
 # @description Ensure the Crit Claude Code plugin marketplace is configured.
 #
 # @description Ensure the Ponytail Claude Code plugin marketplace is configured.
-#
-# @description Ensure the Understand-Anything Claude Code plugin marketplace is configured.
 #
 # @description Run scripts/pin_records.py, the one strict reader of every record the pin checks use: it prints
 #   the parsed value, or exits 2 with `ERROR: <record>: <field>: <why>` for a record it cannot read, one of an
@@ -997,25 +986,6 @@ function update_claude_ponytail() {
 }
 
 #
-# @description Keep the Claude Code Understand-Anything plugin at its recorded pin.
-#
-function update_claude_understand_anything() {
-    if ! has_command claude; then
-        printf 'Skipping Claude Code Understand-Anything plugin: claude command not found.\n'
-        return 0
-    fi
-
-    section "Claude Code Understand-Anything plugin"
-    # Refreshed only once its identity is verified; converge_claude_step verifies again and reports and judges
-    # any failure, so this call\'s own messages are not repeated.
-    if ensure_claude_plugin_marketplace "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" 2> /dev/null; then
-        claude_outside_projects plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
-    fi
-    converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || return 0
-    record_claude_plugin_step "update_claude_understand_anything" "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "${AGENT_CLAUDE_DIR}/plugins/cache/understand-anything/understand-anything" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
-}
-
-#
 # @description The one parser of the Codex plugin copy Codex loads (pin_records.py codex-copy: Codex's own
 #   choice among the cached versions, its plugin.json read strictly). It maps the reader's reply to exactly
 #   `absent` or `copy <version>` with a version that is one strict component ([A-Za-z0-9][A-Za-z0-9._+-]*).
@@ -1322,151 +1292,6 @@ function update_codex_crit() {
     plugin_version="$(awk 'NR == 1 { print $2 }' <<< "${crit_output}")" || return 1
     manifest_record "update_codex_crit" plugin "${plugin_version}" "${AGENT_CODEX_DIR}/plugins/crit" "${AGENT_CODEX_DIR}/config.toml" "${HOME}/.agents/skills/crit" "${HOME}/.agents/skills/crit-cli" "${HOME}/.agents/skills/crit-story" -- "ensure_crit_cli" "crit install codex-plugin --force" ||
         record_claude_failure "recording update_codex_crit in the installed asset manifest"
-}
-
-#
-# @description Build Understand-Anything packages/core in a plugin tree when its dist is missing or stale.
-# @description
-#   Mirrors upstream skills/understand/SKILL.md, which builds in place wherever
-#   the plugin root resolves. It rebuilds when dist/index.js is missing or older
-#   than any file under packages/core/src or the root pnpm-lock.yaml, the same
-#   freshness rule `make doctor` reports, and otherwise skips (idempotent). With
-#   mise, pnpm always runs as `mise exec npm:pnpm`, which installs the pinned
-#   version on demand: a mise shim can exist before that version is installed
-#   ("No version is set for shim"). A bare pnpm from PATH is used only without
-#   mise.
-#   A missing pnpm or a failed build only warns, so make update never fails
-#   for it.
-# @arg $1 path Plugin tree that contains packages/core.
-# @stderr One WARN line naming the manual command when the build cannot run or fails.
-#
-function build_understand_anything_core() {
-    local root="$1"
-    local -a pnpm_cmd
-
-    [ -d "${root}/packages/core" ] || return 0
-    if [ -f "${root}/packages/core/dist/index.js" ] &&
-        [ -z "$(find "${root}/packages/core/src" "${root}/pnpm-lock.yaml" -type f -newer "${root}/packages/core/dist/index.js" -print -quit 2> /dev/null || true)" ]; then
-        return 0
-    fi
-    if has_command mise; then
-        pnpm_cmd=(mise exec npm:pnpm -- pnpm)
-    elif has_command pnpm; then
-        pnpm_cmd=(pnpm)
-    else
-        printf 'WARN: Understand-Anything core not built: pnpm not found; run: cd %q && pnpm install --frozen-lockfile && pnpm --filter @understand-anything/core build\n' "${root}" >&2
-        return 0
-    fi
-    if ! (
-        cd "${root}" &&
-            { "${pnpm_cmd[@]}" install --frozen-lockfile 2> /dev/null || "${pnpm_cmd[@]}" install; } &&
-            "${pnpm_cmd[@]}" --filter @understand-anything/core build
-    ); then
-        printf 'WARN: Understand-Anything core build failed in %s; run: cd %q && %s install --frozen-lockfile && %s --filter @understand-anything/core build\n' \
-            "${root}" "${root}" "${pnpm_cmd[*]}" "${pnpm_cmd[*]}" >&2
-    fi
-    return 0
-}
-
-#
-# @description Provision Codex Understand-Anything runtime files from the matching Claude release artifact.
-# @description
-#   Builds packages/core in the release artifact first (upstream builds there
-#   in Claude sessions) and copies dist/node_modules into the Codex clone.
-#   Without a matching release artifact it builds directly in the clone.
-# @stdout Prints a skip message when no matching Claude release artifact is available.
-#
-function provision_codex_understand_anything_runtime() {
-    local plugin_root claude_cache release_root source destination
-
-    plugin_root="${HOME}/.understand-anything/repo/understand-anything-plugin"
-    claude_cache="${AGENT_CLAUDE_DIR}/plugins/cache/understand-anything/understand-anything"
-    if ! has_command python3; then
-        printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
-        build_understand_anything_core "${plugin_root}"
-        return 0
-    fi
-    release_root="$(
-        python3 - "${plugin_root}/.claude-plugin/plugin.json" "${claude_cache}" << 'PY'
-import json
-import sys
-from pathlib import Path
-
-plugin_manifest = Path(sys.argv[1])
-cache_root = Path(sys.argv[2])
-try:
-    version = json.loads(plugin_manifest.read_text())["version"]
-except (OSError, json.JSONDecodeError, KeyError):
-    sys.exit(0)
-
-matches = []
-for candidate in cache_root.iterdir() if cache_root.is_dir() else ():
-    try:
-        if json.loads((candidate / ".claude-plugin/plugin.json").read_text())["version"] == version:
-            matches.append(candidate)
-    except (OSError, json.JSONDecodeError, KeyError):
-        pass
-try:
-    release_root = max(matches, key=lambda path: tuple(int(part) for part in path.name.split(".")))
-except ValueError:
-    release_root = max(matches, key=lambda path: path.name, default=None)
-print(release_root or "")
-PY
-    )"
-    if [ -z "${release_root}" ]; then
-        printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
-        build_understand_anything_core "${plugin_root}"
-        return 0
-    fi
-
-    build_understand_anything_core "${release_root}"
-    for source in "packages/core/dist" "packages/core/node_modules" "node_modules"; do
-        destination="${plugin_root}/${source}"
-        [ -d "${release_root}/${source}" ] || continue
-        rm -rf "${destination}"
-        mkdir -p "$(dirname "${destination}")"
-        cp -R "${release_root}/${source}" "${destination}"
-    done
-}
-
-#
-# @description Install or update the Codex Understand-Anything skills via the vendor installer.
-# @description
-#   The installer clones the upstream repo into ~/.understand-anything/repo and
-#   symlinks its skills into ~/.agents/skills; check-agent-runtime.py reports
-#   those symlinks as an expected unmanaged-skill WARN.
-#
-function update_codex_understand_anything() {
-    if ! has_command codex; then
-        printf 'Skipping Codex Understand-Anything skills: codex command not found.\n'
-        return 0
-    fi
-
-    section "Codex Understand-Anything skills"
-    (
-        local actual installer
-        installer="$(mktemp)"
-        trap 'rm -f "${installer}"' EXIT
-        curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" \
-            -o "${installer}" || {
-            printf 'Skipping Codex Understand-Anything skills: installer download failed.\n'
-            return 0
-        }
-        actual="$(shasum -a 256 "${installer}" | awk '{ print $1 }')"
-        [ "${actual}" = "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256}" ] || {
-            printf 'Understand-Anything installer checksum mismatch\n' >&2
-            return 1
-        }
-        bash "${installer}" codex < /dev/null || {
-            printf 'Understand-Anything installer failed; Codex skills unchanged.\n' >&2
-            return 1
-        }
-        provision_codex_understand_anything_runtime
-        # shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.
-        printf 'Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n'
-    ) || true
-    manifest_record "update_codex_understand_anything" installer "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}" "${HOME}/.understand-anything/repo" "${HOME}/.agents/skills/understand" "${HOME}/.agents/skills/understand-chat" "${HOME}/.agents/skills/understand-dashboard" "${HOME}/.agents/skills/understand-diff" "${HOME}/.agents/skills/understand-domain" "${HOME}/.agents/skills/understand-explain" "${HOME}/.agents/skills/understand-figma" "${HOME}/.agents/skills/understand-knowledge" "${HOME}/.agents/skills/understand-onboard" -- "curl -fsSL ${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer> codex" ||
-        record_claude_failure "recording update_codex_understand_anything in the installed asset manifest"
 }
 
 #
@@ -1931,6 +1756,7 @@ function dsh_prune_older() {
 #   type and by identity before any download; a state outside the table is refused, never repaired, and identities
 #   are compared by inode (-ef) or by jq, never as text. The table, one line per row with its accepted states:
 #   DSH_HOME: exported, absolute, a directory whose physical path (pwd -P) equals ~/.dsh's.
+#   DSH_COMMIT: 40 lowercase hex (assets.deepseek-harness ref_commit), the build's DSH_CLIENT_COMMIT_HASH.
 #   DSH_HOME/dsh and DSH_HOME/bin: absent, or a directory that is not a symlink.
 #   DSH_HOME/profiles/thak: a directory that is not a symlink (the rendered profile); absent is a WARN with exit 0.
 #   DSH_HOME/plugins/omp-gateway: a directory whose physical path (pwd -P) is under DSH_HOME's (the plugin chezmoi
@@ -1959,16 +1785,16 @@ function dsh_prune_older() {
 # @exitcode 0 Installed, already installed, repaired (the wrapper rewritten for the tree current names, no download),
 #   no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh (a WARN), or the download failed (a WARN; nothing
 #   installed or recorded).
-# @exitcode 1 A producer read, a shape or layout check, the digest check, the unpack, the archive version, the build,
-#   the profile install, the plugin link, the wrapper, the current link or the record failed; the line printed names
-#   the state left.
+# @exitcode 1 DSH_COMMIT unset or malformed, a producer read, a shape or layout check, the digest check, the unpack,
+#   the archive version, the build, the profile install, the plugin link, the wrapper, the current link or the record
+#   failed; the line printed names the state left.
 #
 function update_deepseek_harness() (
     local recorded download_dir="" tarball actual tree="" version physical expected target="" leaf="" installed repair="" prior_target="" wrapper_tmp="" wrapper_step="" quote="'" quoted_home row record_status=0 plugin_real="" profile_real="" profile_modules_real="" plugin_target="" link_tmp=""
     # One record line for the install and for the rewrite on the already-installed exit, so the two cannot drift; it
     # writes the two paths the table's last row names (dsh/current, bin/dsh).
     dsh_record() {
-        manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "ln -s ${plugin_target} <link tmp>" "os.replace <link tmp> ${profile_modules_real}/dsh-omp-gateway (resolves to ${plugin_real})" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"
+        manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "DSH_CLIENT_COMMIT_HASH=${DSH_COMMIT} pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "ln -s ${plugin_target} <link tmp>" "os.replace <link tmp> ${profile_modules_real}/dsh-omp-gateway (resolves to ${plugin_real})" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"
     }
     # The link joins two physical paths (pwd -P), so a profiles/ parent that is a symlink elsewhere under DSH_HOME gets
     # a relative target that resolves, and the receipt records what was written. The previous link is replaced by one
@@ -2017,6 +1843,12 @@ function update_deepseek_harness() (
     if [ -z "${DSH_HOME:-}" ] || [ ! -d "${DSH_HOME}" ]; then
         printf 'Skipping DeepSeek harness: DSH_HOME is unset or names no directory (export it and create it to opt in).\n'
         return 0
+    fi
+    # The tag archive carries no .git, and the upstream build runs `git rev-parse HEAD` unless DSH_CLIENT_COMMIT_HASH
+    # names the commit, so the build fails without the pinned one; it is checked here, before any read or download.
+    if [[ ! ${DSH_COMMIT:-} =~ ^[0-9a-f]{40}$ ]]; then
+        printf 'update_deepseek_harness: DSH_COMMIT (assets.deepseek-harness ref_commit, rendered into scripts/lib/installer-pins.sh) is unset or not 40 lowercase hex (%s given), so the build has no DSH_CLIENT_COMMIT_HASH; nothing installed, nothing recorded.\n' "${DSH_COMMIT:-}" >&2
+        return 1
     fi
     # A relative DSH_HOME would pass the pwd -P comparison below and stay relative in the link target, the wrapper
     # and the receipt, so the spelling is checked before the identity.
@@ -2258,7 +2090,7 @@ function update_deepseek_harness() (
             printf 'DeepSeek harness archive version %s is not the pin %s; install refused.\n' "${version}" "${DSH_PIN_TAG#dsh-v}" >&2
             return 1
         fi
-        (cd "${tree}" && mise exec -- pnpm install --frozen-lockfile && mise exec -- pnpm run build) || return 1
+        (cd "${tree}" && mise exec -- pnpm install --frozen-lockfile && DSH_CLIENT_COMMIT_HASH="${DSH_COMMIT}" mise exec -- pnpm run build) || return 1
         # The download directory holds only the verified archive, whose tree is now built, so its removal is no read
         # the step decides on: it goes here, before anything the host runs changes, and a removal that fails is a WARN
         # that never changes the step's flow (under set -e a bare failing rm would end the subshell, and a retry of it
@@ -2641,6 +2473,135 @@ PY
 }
 
 #
+# @description Uninstall the retired Understand-Anything Claude Code plugin and remove its marketplace.
+# @description
+#   .chezmoiremove deletes the plugin's cache and marketplace clone, but installed_plugins.json and the
+#   enabledPlugins entry still name it, and manifest_prune_retired drops the record remove-agent-asset would use,
+#   so make doctor would report a plugin with no files on every run. Claude Code owns both files, so only its own
+#   commands change them, each run outside any project and naming `--scope user`, the kit's boundary: without it
+#   `marketplace remove` drops the declaration from every scope and with it the project and local installation
+#   records (Claude Code 2.1.316). The marketplace list carries no scope, so the removal runs with `--json`, and
+#   its `not_configured` refusal (no user-scope declaration) is a WARN, not a failure. Every read comes
+#   before the first change: the marketplace list (a host where it does not work yet gets the plugin steps' WARN
+#   and no change), then the installation records. A user-scope installation is uninstalled only when the
+#   understand-anything marketplace is registered from the kit's source; a project or local one is the project's
+#   and is only reported. With nothing installed and no marketplace, a stale user enabledPlugins entry is disabled:
+#   `claude plugin list` omits a plugin that is not installed and `claude plugin uninstall` refuses one (Claude
+#   Code 2.1.316), so `disable --scope user` is the command that clears it. main runs it after the Claude plugin
+#   convergence: the claude CLI is repaired by then, and a failure here (set -e) skips no pin check.
+# @stdout One line per command run.
+# @stderr A WARN per record left in place, `already retired` when nothing was present, or the skip line.
+# @exitcode 0 When retired or already retired, and when the marketplace list cannot be read (a WARN).
+# @exitcode 1 When installed_plugins.json or settings.json cannot be read, or a claude command fails; no later
+#   command runs.
+#
+function retire_understand_anything() {
+    local plugin_id="understand-anything@understand-anything" marketplace="understand-anything"
+    local source="Egonex-AI/Understand-Anything" listing state reason installs count index scope project enabled
+    local removal failure status=0 users=0 found=0
+
+    if ! has_command claude; then
+        printf 'Skipping the Understand-Anything retirement: claude command not found.\n' >&2
+        return 0
+    fi
+    listing="$(claude_outside_projects plugin marketplace list --json)" || status=$?
+    reason="exit ${status}"
+    if [ "${status}" -eq 0 ]; then
+        # The parser's error goes into the WARN, so a host without a working claude logs no ERROR line.
+        state="$(pin_record claude-marketplace "${marketplace}" "${source}" <<< "${listing}" 2>&1)" || status=$?
+        [ "${status}" -eq 0 ] || reason="${state#ERROR: }"
+    fi
+    if [ "${status}" -ne 0 ]; then
+        printf 'WARN: claude plugin %s was not retired: "claude plugin marketplace list --json" gave no marketplace list (%s), so its marketplace cannot be verified on this host, and nothing was uninstalled, removed or disabled. Run make update once "claude plugin marketplace list" works.\n' "${plugin_id}" "${reason}" >&2
+        return 0
+    fi
+    case "${state}" in
+    registered | foreign | absent) ;;
+    *)
+        printf 'ERROR: unexpected marketplace state %q for %s.\n' "${state}" "${marketplace}" >&2
+        return 1
+        ;;
+    esac
+    if ! installs="$(claude_plugin_installs "${plugin_id}")"; then
+        printf 'ERROR: cannot read %s; %s is not retired.\n' "${AGENT_CLAUDE_DIR}/plugins/installed_plugins.json" "${plugin_id}" >&2
+        return 1
+    fi
+    count="$(jq -er 'length' <<< "${installs}")" || return 1
+    for ((index = 0; index < count; index++)); do
+        scope="$(jq -er ".[${index}].scope" <<< "${installs}")" || return 1
+        found=1
+        case "${scope}" in
+        user)
+            users=1
+            case "${state}" in
+            registered)
+                if ! claude_outside_projects plugin uninstall "${plugin_id}" --scope user; then
+                    printf 'ERROR: claude plugin uninstall %s --scope user failed.\n' "${plugin_id}" >&2
+                    return 1
+                fi
+                printf 'Ran: claude plugin uninstall %s --scope user\n' "${plugin_id}"
+                ;;
+            foreign)
+                printf 'WARN: the user-scope %s comes from the marketplace %s registered from another source than %s; left in place.\n' "${plugin_id}" "${marketplace}" "${source}" >&2
+                ;;
+            absent)
+                printf 'WARN: the user-scope %s names the marketplace %s, which is not registered, so its source cannot be verified; left in place.\n' "${plugin_id}" "${marketplace}" >&2
+                ;;
+            esac
+            ;;
+        project | local)
+            project="$(jq -er ".[${index}].projectPath // \"(no project path)\"" <<< "${installs}")" || return 1
+            printf 'WARN: %s has a %s-scope installation in %s, outside the user scope the kit manages; this step does not uninstall it (in that project: claude plugin uninstall %s --scope %s).\n' "${plugin_id}" "${scope}" "${project}" "${plugin_id}" "${scope}" >&2
+            ;;
+        *)
+            printf 'ERROR: unexpected installation scope %q for %s.\n' "${scope}" "${plugin_id}" >&2
+            return 1
+            ;;
+        esac
+    done
+    case "${state}" in
+    registered)
+        removal="$(claude_outside_projects plugin marketplace remove "${marketplace}" --scope user --json)" || status=$?
+        if [ "${status}" -eq 0 ]; then
+            printf 'Ran: claude plugin marketplace remove %s --scope user\n' "${marketplace}"
+        elif failure="$(jq -er '.failureCode' <<< "${removal##*$'\n'}" 2> /dev/null)" && [ "${failure}" = not_configured ]; then
+            printf 'WARN: the Claude Code marketplace %s is not declared in the user settings (a project or local declaration); left in place.\n' "${marketplace}" >&2
+        else
+            printf 'ERROR: claude plugin marketplace remove %s --scope user failed (exit %s).\n' "${marketplace}" "${status}" >&2
+            return 1
+        fi
+        found=1
+        ;;
+    foreign)
+        printf 'WARN: the Claude Code marketplace %s is registered from another source than %s; left in place.\n' "${marketplace}" "${source}" >&2
+        found=1
+        ;;
+    esac
+    if [ "${users}" -eq 0 ] && [ "${state}" = absent ]; then
+        if ! enabled="$(claude_user_enabled "${plugin_id}")"; then
+            printf 'ERROR: cannot read %s; %s is not retired.\n' "${AGENT_CLAUDE_DIR}/settings.json" "${plugin_id}" >&2
+            return 1
+        fi
+        case "${enabled}" in
+        enabled)
+            if ! claude_outside_projects plugin disable "${plugin_id}" --scope user; then
+                printf 'ERROR: claude plugin disable %s --scope user failed.\n' "${plugin_id}" >&2
+                return 1
+            fi
+            printf 'Ran: claude plugin disable %s --scope user\n' "${plugin_id}"
+            found=1
+            ;;
+        disabled | unset) ;;
+        *)
+            printf 'WARN: the user settings hold %s for %s, which disable cannot clear; left in place.\n' "${enabled}" "${plugin_id}" >&2
+            found=1
+            ;;
+        esac
+    fi
+    [ "${found}" -eq 1 ] || printf 'Understand-Anything: already retired.\n' >&2
+}
+
+#
 # @description Remove the launcher shim the retired agmsg skill wrote to ~/.agents/bin/agy-tui.
 # @description
 #   agmsg wrote ~/.agents/bin/agy-tui outside its skill tree, so .chezmoiremove (which deletes ~/.agents/skills/agmsg)
@@ -2829,14 +2790,13 @@ function main() {
     update_claude_superpowers
     update_claude_crit
     update_claude_ponytail
-    update_claude_understand_anything
     converge_claude_plugins
+    retire_understand_anything
     ensure_mise_npm_agent_cli codex "npm:@openai/codex"
     ensure_gh_extensions
     update_codex_superpowers
     update_codex_crit
     update_codex_ponytail
-    update_codex_understand_anything
     update_terminal_code
     update_terminal_browser
     update_omp

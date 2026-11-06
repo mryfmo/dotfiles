@@ -1823,66 +1823,6 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
             fail(f"README.md must document Ponytail lifecycle token {token!r}")
 
 
-def validate_understand_anything_assets(manifest: dict[str, Any]) -> None:
-    updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
-    for token in (
-        "Egonex-AI/Understand-Anything",
-        "understand-anything@understand-anything",
-        "CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL",
-        "CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256",
-        'converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"',
-        "update_claude_understand_anything",
-        "update_codex_understand_anything",
-        "provision_codex_understand_anything_runtime",
-        "packages/core/dist",
-        "packages/core/node_modules",
-        "except ValueError:",
-        '[ -d "${release_root}/${source}" ] || continue',
-        "Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact",
-    ):
-        if token not in updater:
-            fail(f"scripts/update-agent-assets.sh must manage Understand-Anything asset token {token!r}")
-
-    codex_agents = standing_rule_text(manifest, "codex")
-    for token in (
-        "Understand-Anything",
-        "$understand",
-        "knowledge-graph.json",
-        ".ua/intermediate/",
-        ".ua/diff-overlay.json",
-    ):
-        if token not in codex_agents:
-            fail(f"the Codex standing rules (~/.codex/AGENTS.md) must document Understand-Anything token {token!r}")
-
-    claude_rule = ROOT / "home/dot_config/claude/rules/understand-anything.md"
-    if not claude_rule.exists():
-        fail("Claude Code Understand-Anything rule is missing")
-    claude_rule_text = claude_rule.read_text()
-    for token in (
-        "Understand-Anything",
-        "understand-anything@understand-anything",
-        "knowledge-graph.json",
-        "/understand",
-        ".ua/intermediate/",
-        ".ua/diff-overlay.json",
-    ):
-        if token not in claude_rule_text:
-            fail(f"{claude_rule} must document Understand-Anything token {token!r}")
-
-    if "claude" not in manifest.get("standing_rules", {}).get("rules", {}).get("understand-anything", []):
-        fail("standing_rules.rules.understand-anything must reach claude")
-
-    readme = (ROOT / "README.md").read_text()
-    for token in (
-        "Understand-Anything",
-        "Egonex-AI/Understand-Anything",
-        "understand-anything@understand-anything",
-        "version-matched Claude release artifact",
-    ):
-        if token not in readme:
-            fail(f"README.md must document Understand-Anything lifecycle token {token!r}")
-
-
 def validate_permgate_policy(policy_path: Path) -> None:
     policy = json.loads(policy_path.read_text())
     if not isinstance(policy, dict):
@@ -2719,7 +2659,6 @@ def main() -> None:
     validate_mcp_parity(codex, manifest)
     validate_crit_install_assets(manifest)
     validate_ponytail_assets(manifest, codex)
-    validate_understand_anything_assets(manifest)
     validate_model_profile_assets(manifest)
     validate_git_config()
     validate_no_removed_claude_skill()

@@ -299,13 +299,19 @@ def asset_field(asset: dict[str, Any], path: str) -> str:
 
 
 PLAIN_PIN_VALUE = re.compile(r"[A-Za-z0-9._+-]+")
-SETTABLE_ASSET_FIELD = re.compile(r"(?:fallback\.)?(?:pin|sha256|sha256\.[A-Za-z0-9_-]+)")
+SETTABLE_ASSET_FIELD = re.compile(r"ref_commit|(?:fallback\.)?(?:pin|sha256|sha256\.[A-Za-z0-9_-]+)")
+COMMIT_VALUE = re.compile(r"[0-9a-f]{40}")
 
 
 def set_asset_field(text: str, name: str, path: str, value: str) -> str:
     """Rewrite one scalar under assets.<name> in the manifest text, keeping comments."""
     if not SETTABLE_ASSET_FIELD.fullmatch(path):
-        fail(f"--set-asset may change only pin, sha256, or sha256.<arch>, optionally under fallback.: {name}.{path}")
+        fail(
+            "--set-asset may change only pin, sha256, sha256.<arch> (optionally under fallback.) or ref_commit: "
+            f"{name}.{path}"
+        )
+    if path == "ref_commit" and not COMMIT_VALUE.fullmatch(value):  # lint-comparisons: allow path names a field
+        fail(f"assets.{name}.ref_commit must be a commit of 40 lowercase hex characters: {value!r}")
     if not PLAIN_PIN_VALUE.fullmatch(value):
         fail(f"assets.{name}.{path} is not a plain pin value: {value!r}")
     lines = text.splitlines(keepends=True)

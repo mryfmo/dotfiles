@@ -148,12 +148,10 @@ class RuntimeHealthTest(unittest.TestCase):
                     update_claude_superpowers() { :; }
                     update_claude_crit() { :; }
                     update_claude_ponytail() { :; }
-                    update_claude_understand_anything() { :; }
                     converge_claude_plugins() { :; }
                     update_codex_superpowers() { :; }
                     update_codex_crit() { :; }
                     update_codex_ponytail() { :; }
-                    update_codex_understand_anything() { :; }
                     update_terminal_code() { :; }
                     update_terminal_browser() { :; }
                     update_omp() { :; }

@@ -104,14 +104,10 @@ function path_is_in_safe_root() {
         fi
     done
 
-    for root in \
-        "${CODEX_ASSET_ROOT}/plugins/crit" \
-        "${HOME}/.understand-anything/repo"; do
-        root="$(normalize_root_path "${root}")" || return 1
-        if path_has_prefix "${candidate}" "${root}"; then
-            return 0
-        fi
-    done
+    root="$(normalize_root_path "${CODEX_ASSET_ROOT}/plugins/crit")" || return 1
+    if path_has_prefix "${candidate}" "${root}"; then
+        return 0
+    fi
 
     for root in \
         "${HOME}/.claude/hooks/herdr-agent-state.sh" \

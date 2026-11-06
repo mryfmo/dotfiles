@@ -477,7 +477,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         "      file: scripts/lib/installer-pins.sh\n"
         "  zed:\n"
         "    pin: v0.0.2\n"
+        "  deepseek-harness:\n"
+        "    pin: dsh-v0.0.1\n"
+        f"    ref_commit: {'ab' * 20}\n"
     )
+    COMMIT = "b830ec950faba0a46dda564be3e2d854afed94f1"
 
     def test_set_asset_field_rewrites_only_the_named_scalar(self) -> None:
         text = self.module.set_asset_field(self.MANIFEST_TEXT, "crit", "pin", "v0.20.3")
@@ -489,6 +493,30 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
         self.assertIn("  # Pins live here.\n", text)
         self.assertIn("    pin: v0.0.2\n", text)
+
+    def test_set_asset_field_rewrites_the_ref_commit_alone(self) -> None:
+        text = self.module.set_asset_field(self.MANIFEST_TEXT, "deepseek-harness", "ref_commit", self.COMMIT)
+
+        self.assertEqual(text, self.MANIFEST_TEXT.replace(f"ref_commit: {'ab' * 20}", f"ref_commit: {self.COMMIT}"))
+
+    def test_set_asset_field_refuses_a_ref_commit_that_is_not_40_lowercase_hex(self) -> None:
+        for value in (self.COMMIT[:-1], self.COMMIT.upper(), "dsh-v0.2.1-rc.5", f"{self.COMMIT}0", "g" * 40):
+            with self.subTest(value=value):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.set_asset_field(self.MANIFEST_TEXT, "deepseek-harness", "ref_commit", value)
+                self.assertIn(
+                    f"assets.deepseek-harness.ref_commit must be a commit of 40 lowercase hex characters: {value!r}",
+                    stderr.getvalue(),
+                )
+
+    def test_set_asset_field_refuses_a_ref_commit_under_fallback(self) -> None:
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.set_asset_field(self.MANIFEST_TEXT, "deepseek-harness", "fallback.ref_commit", self.COMMIT)
+        self.assertIn(
+            "may change only pin, sha256, sha256.<arch> (optionally under fallback.) or ref_commit", stderr.getvalue()
+        )
 
     def test_set_asset_field_reaches_the_fallback_pin_and_its_checksums(self) -> None:
         manifest = self.MANIFEST_TEXT + (
@@ -568,6 +596,40 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn("    pin: v0.20.3\n", manifest_path.read_text())
         self.assertEqual(pins.read_text(), 'CRIT_PIN_VERSION="v0.20.3"\nCRIT_LINUX_AMD64_SHA256="d3a3"\n')
 
+    def test_set_asset_moves_the_ref_commit_and_renders_dsh_commit(self) -> None:
+        manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        manifest_path.parent.mkdir(parents=True)
+        manifest_path.write_text(self.MANIFEST_TEXT)
+        pins = self.temp_dir / "scripts/lib/installer-pins.sh"
+        pins.parent.mkdir(parents=True)
+        pins.write_text(f'DSH_PIN_TAG="dsh-v0.0.1"\nDSH_COMMIT="{"ab" * 20}"\n')
+        self.module.parse_manifest = self.parse_indented_mapping
+        real_render = self.module.render_asset_constants
+
+        def render(manifest: dict) -> dict:
+            # The fixture parser reads no flow mapping, so the render entries are set here.
+            manifest["assets"]["crit"].pop("render")
+            manifest["assets"]["deepseek-harness"]["render"] = {
+                "file": "scripts/lib/installer-pins.sh",
+                "constants": {"DSH_PIN_TAG": "pin", "DSH_COMMIT": "ref_commit"},
+            }
+            return real_render(manifest)
+
+        self.module.render_asset_constants = render
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+        sys.argv = ["generate-agent-configs.py", "--set-asset", f"deepseek-harness.ref_commit={self.COMMIT}"]
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.module.main()
+
+        self.assertIn("asset pins updated: deepseek-harness.ref_commit", stdout.getvalue())
+        self.assertEqual(
+            manifest_path.read_text(),
+            self.MANIFEST_TEXT.replace(f"ref_commit: {'ab' * 20}", f"ref_commit: {self.COMMIT}"),
+        )
+        self.assertEqual(pins.read_text(), f'DSH_PIN_TAG="dsh-v0.0.1"\nDSH_COMMIT="{self.COMMIT}"\n')
+
     def test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid(self) -> None:
         manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
         manifest_path.parent.mkdir(parents=True)
@@ -591,7 +653,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 stderr = io.StringIO()
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.set_asset_field(self.MANIFEST_TEXT, "crit", path, "v1")
-                self.assertIn("may change only pin, sha256, or sha256.<arch>", stderr.getvalue())
+                self.assertIn(
+                    "may change only pin, sha256, sha256.<arch> (optionally under fallback.) or ref_commit",
+                    stderr.getvalue(),
+                )
 
     def run_set_asset_with_parser(self, parser) -> str:
         manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"

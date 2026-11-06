@@ -252,15 +252,6 @@ class GraphifyAssetTest(unittest.TestCase):
         self.entry()
         self.assertEqual({}, self.manifest["mcp_servers"])
 
-    def test_understand_anything_stays_pinned_beside_the_trial_candidate(self) -> None:
-        self.entry()
-        plugins = self.manifest["assets"]["claude-plugins"]["plugins"]
-        self.assertIn("understand-anything@understand-anything", plugins)
-        self.assertTrue(
-            re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", plugins["understand-anything@understand-anything"]["pin"])
-        )
-        self.assertIn("understand-anything-installer", self.manifest["assets"])
-
 
 if __name__ == "__main__":
     unittest.main()

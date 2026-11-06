@@ -108,7 +108,7 @@ removed	.local/bin/common/hcom-reply	deployed copy of a retired source
 removed	.agents/omp/profiles/review.yml	the omp review role, which no launcher started (U72)
 removed	.agents/omp/profiles/security.yml	the omp security role, which no launcher started (U72)
 skip	.orchestration/	the program records: history written by the coordinator, read as data, never as current rules
-skip	.ua/	the Understand-Anything graph snapshot: generated, refreshed only by a full rebuild on operator request; agents read it only when .ua/meta.json matches HEAD
+skip	.ua/	the committed knowledge-graph snapshot: generated, refreshed only by a full rebuild on operator request; agents read it only when .ua/meta.json matches HEAD
 allow	.claude/contextdb/contextdb/normalize.py	MultiEdit	CompactionDB reads past transcripts, which name the legacy tool
 allow	AGENTS.md	gh pr merge	the lever's command text: what pr-merge.sh runs after its own checks
 allow	AGENTS.md	omp-run.sh --role audit	history: the Audit intro names the route pr-audit.sh replaced in U119 round 3

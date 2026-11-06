@@ -396,42 +396,7 @@ Any model-profile decision still requires manual quality review and a PR.
 extensions, and the vendored CompactionDB tree after `chezmoi apply`.
 The generated `create_marketplace.json` seeds `~/.agents/plugins/marketplace.json`
 only when it is missing; plugin runtimes own later content and mode changes.
-This includes the Crit integrations, the Ponytail (`ponytail@ponytail`) plugin,
-and the Understand-Anything (`understand-anything@understand-anything`)
-knowledge-graph plugin for Codex and Claude Code. Understand-Anything installs
-from the `Egonex-AI/Understand-Anything` marketplace for Claude Code and via
-the upstream installer for Codex, pinned to a reviewed commit and verified by
-sha256 before execution (bump both constants together in
-`scripts/update-agent-assets.sh` to take upstream installer updates). The
-installer clones `~/.understand-anything/repo` and symlinks its skills into
-`~/.agents/skills` (`make doctor` knows them as installer-owned and reports
-neither an unmanaged skill nor an orphan); Codex runtime files are provisioned from the version-matched Claude release artifact when available.
-`make update` also builds the plugin's `packages/core` with the mise-pinned
-`npm:pnpm` (run through `mise exec`, which installs the pin on demand) when
-its `dist/index.js` is missing or older than any file under
-`packages/core/src` or the root `pnpm-lock.yaml` (in the release artifact, or
-in the Codex clone without one), so the plugin's graph helpers run, and
-`make doctor` warns under the same rule, so `make update` repairs what it reports.
-This repository refreshes `.ua/` only by a full rebuild (`/understand --full`),
-run by a worker task when the operator asks for it at a regime boundary.
-Incremental updates cannot publish here: plugin 2.9.7's symbol gate
-(`validate-incremental-symbols.mjs`) marks every unowned function `unknown` in
-files without a deterministic parser, namely the extension-less shell script
-`executable_hcom-dispatch` and the Python chezmoi script
-`modify_private_settings.json`. The plugin has no per-path language override.
-`.ua/config.json` therefore sets `autoUpdate: false`, which stops the plugin's
-SessionStart and PostToolUse update prompts. Between rebuilds the graph is
-stale by design, and agents fall back to grep under the freshness check.
-A `.ua/` refresh is accepted only when `ua-symbol-coverage` (installed on PATH
-from `home/dot_local/bin/common/executable_ua-symbol-coverage`), run with
-`--repo-ref` and `--old-ref` set to the revisions the new and previous graphs
-were built from (so renames are told apart from deletions), shows no
-unexplained per-file function/class regressions against the previous graph
-(`home/dot_config/claude/rules/understand-anything.md`).
-Plugin 2.9.7 has two known coverage gaps: `merge-batch-graphs.py` drops
-`tested_by` edges from `.bats` tests and from non-`file:` production nodes, and
-`extract-structure.mjs` misses shell functions with a subshell body. A full
-rebuild therefore under-reports test coverage until upstream fixes land.
+This includes the Crit integrations and the Ponytail (`ponytail@ponytail`) plugin.
 
 Crit itself is installed on both Linux and macOS from the pinned amd64/arm64
 GitHub release binary for the matching OS, after SHA-256 verification against
@@ -1214,8 +1179,7 @@ the npm backend before refreshing plugins.
 
 **Asset manifest.** Every third-party component the lifecycle installs outside
 mise — the mise binary itself, sheldon, starship, the AWS CLI, the Homebrew
-installer, Crit, Zed, tode, terminal-browser, the Understand-Anything
-installer, the vendored CompactionDB tree, and the
+installer, Crit, Zed, tode, terminal-browser, the vendored CompactionDB tree, and the
 Claude/Codex plugins and GitHub CLI extensions — has one declaration under
 `assets:` in `home/dot_agents/agent-config.yaml`, with its upstream, release or
 pin, verification method, install path, and installer step. mise tools are not
@@ -1261,8 +1225,7 @@ with one warning; a failed checksum, signature or attestation always fails and
 installs nothing.
 
 Any other component keeps a reviewed `pin` with its checksum and says why in
-`reason`: the Homebrew installer and the Understand-Anything installer
-(unsigned scripts at a reviewed commit), tode and terminal-browser (unsigned
+`reason`: the Homebrew installer (an unsigned script at a reviewed commit), tode and terminal-browser (unsigned
 `curl | bash` scripts; zenbu-labs publishes no checksum or attestation), and
 Crit and starship (mutable releases with only a checksum file from the same release,
 no signature or attestation; the checksum file stays as a second check, and

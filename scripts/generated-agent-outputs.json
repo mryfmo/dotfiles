@@ -150,12 +150,6 @@
       "executable": false
     },
     {
-      "source": "home/dot_claude/rules/understand-anything.md.tmpl",
-      "target": ".claude/rules/understand-anything.md",
-      "kind": "template",
-      "executable": false
-    },
-    {
       "source": "home/dot_claude/skills/convert-to-transformers/references/symlink_common-pitfalls.md.tmpl",
       "target": ".claude/skills/convert-to-transformers/references/common-pitfalls.md",
       "kind": "symlink",
@@ -935,60 +929,6 @@
       ],
       "terminal-browser": [
         "claude",
-        "codex",
-        "omp",
-        "omp-orchestrator",
-        "omp-worker"
-      ],
-      "understand": [
-        "codex",
-        "omp",
-        "omp-orchestrator",
-        "omp-worker"
-      ],
-      "understand-chat": [
-        "codex",
-        "omp",
-        "omp-orchestrator",
-        "omp-worker"
-      ],
-      "understand-dashboard": [
-        "codex",
-        "omp",
-        "omp-orchestrator",
-        "omp-worker"
-      ],
-      "understand-diff": [
-        "codex",
-        "omp",
-        "omp-orchestrator",
-        "omp-worker"
-      ],
-      "understand-domain": [
-        "codex",
-        "omp",
-        "omp-orchestrator",
-        "omp-worker"
-      ],
-      "understand-explain": [
-        "codex",
-        "omp",
-        "omp-orchestrator",
-        "omp-worker"
-      ],
-      "understand-figma": [
-        "codex",
-        "omp",
-        "omp-orchestrator",
-        "omp-worker"
-      ],
-      "understand-knowledge": [
-        "codex",
-        "omp",
-        "omp-orchestrator",
-        "omp-worker"
-      ],
-      "understand-onboard": [
         "codex",
         "omp",
         "omp-orchestrator",

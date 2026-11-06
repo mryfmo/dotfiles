@@ -5468,7 +5468,7 @@
 
 
 <h1 id="scriptsdeploy-kitsh">scripts/deploy-kit.sh<a class="headerlink" href="#scriptsdeploy-kitsh" title="Permanent link">&para;</a></h1>
-<p>The coordinator's deploy of a merged unit (regime-cutover U276; round 2 U276b, round 3 U276c). <code>make update</code> is the operator's whole-home step: <code>chezmoi apply</code> over every managed target, the tool upgrades, the asset updater and the herdr reload. This script is the chezmoi apply of the managed targets under the kit's own roots and nothing more; the table below is the boundary, and everything else, the pinned asset refreshes included, is left to <code>make update</code> and the asset updater under their own contracts:</p>
+<p>The coordinator's deploy of a merged unit (regime-cutover U276; round 2 U276b, round 3 U276c, round 4 U276d). <code>make update</code> is the operator's whole-home step: <code>chezmoi apply</code> over every managed target, the tool upgrades, the asset updater and the herdr reload. This script is the chezmoi apply of the managed targets under the kit's own roots and nothing more; the table below is the boundary, and everything else, the pinned asset refreshes included, is left to <code>make update</code> and the asset updater under their own contracts:</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/deploy-kit.sh</code></li>
@@ -5478,6 +5478,9 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>in_kit_set</code></li>
+<li><code>is_kit_root</code></li>
+<li><code>read_kit_set</code></li>
+<li><code>root_physical_path</code></li>
 <li><code>split_lines</code></li>
 <li><code>under_kit_root</code></li>
 </ul>
@@ -5487,11 +5490,11 @@
 <span class="c1"># @file scripts/deploy-kit.sh</span>
 <span class="c1"># @brief Apply the kit's own chezmoi targets by name, refuse a locally edited one, and do nothing else.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   The coordinator's deploy of a merged unit (regime-cutover U276; round 2 U276b, round 3 U276c). `make update`</span>
-<span class="c1">#   is the operator's whole-home step: `chezmoi apply` over every managed target, the tool upgrades, the asset</span>
-<span class="c1">#   updater and the herdr reload. This script is the chezmoi apply of the managed targets under the kit's own roots</span>
-<span class="c1">#   and nothing more; the table below is the boundary, and everything else, the pinned asset refreshes included, is</span>
-<span class="c1">#   left to `make update` and the asset updater under their own contracts:</span>
+<span class="c1">#   The coordinator's deploy of a merged unit (regime-cutover U276; round 2 U276b, round 3 U276c, round 4 U276d).</span>
+<span class="c1">#   `make update` is the operator's whole-home step: `chezmoi apply` over every managed target, the tool upgrades,</span>
+<span class="c1">#   the asset updater and the herdr reload. This script is the chezmoi apply of the managed targets under the kit's</span>
+<span class="c1">#   own roots and nothing more; the table below is the boundary, and everything else, the pinned asset refreshes</span>
+<span class="c1">#   included, is left to `make update` and the asset updater under their own contracts:</span>
 <span class="c1">#</span>
 <span class="c1">#     root            | reason   | source</span>
 <span class="c1">#     ~/.local/bin    | levers   | home/dot_local/bin (the orchestrator levers, the seat launcher)</span>
@@ -5500,7 +5503,9 @@
 <span class="c1">#</span>
 <span class="c1">#   Each root is read physically before anything else (`cd -P`, `pwd -P`): a root that is missing, is a symbolic</span>
 <span class="c1">#   link, or whose physical path is not the physical HOME joined with its name (a link on its path) refuses the run</span>
-<span class="c1">#   with the path, since an apply through a link writes outside the boundary.</span>
+<span class="c1">#   with the path, since an apply through a link writes outside the boundary. The roots are read again after the</span>
+<span class="c1">#   status read, and a root whose physical path changed between the two reads refuses: a root replaced during the</span>
+<span class="c1">#   run would otherwise be applied through.</span>
 <span class="c1">#</span>
 <span class="c1">#   The operator's targets, never touched here: `~/.codex`, `~/.claude`, the shell rc files, `~/.config`,</span>
 <span class="c1">#   `~/.omp/agent`, `~/Library/LaunchAgents`, `~/.local/share`, `~/.ssh`, `~/.gnupg`, and the run_ scripts of the</span>
@@ -5509,22 +5514,33 @@
 <span class="c1">#   Steps, every producer status-checked so a failed read refuses before anything is applied (a failed read is</span>
 <span class="c1">#   never an empty read; the message names the producer):</span>
 <span class="c1">#   1. The physical root check above.</span>
-<span class="c1">#   2. `chezmoi managed --path-style absolute --refresh-externals=never -- &lt;roots&gt;`, filtered to the roots by the</span>
-<span class="c1">#      table: the managed kit set. None found is a refusal.</span>
-<span class="c1">#   3. `chezmoi status --path-style absolute --refresh-externals=never -- &lt;roots&gt;`, filtered the same way. A row whose</span>
-<span class="c1">#      second column is not blank is pending: `chezmoi apply` would change that target. (One status read is the</span>
-<span class="c1">#      per-target oracle: it compares every target against the source as `chezmoi verify` does, and a verify call</span>
-<span class="c1">#      per target is one chezmoi start each; verify runs once below, over the applied names.) The listings are</span>
-<span class="c1">#      split in the shell, not through a here-string: bash backs a here-string with a temporary file, and a</span>
-<span class="c1">#      redirection that fails there reads as an empty listing.</span>
-<span class="c1">#   4. Every pending name must be a member of the managed kit set of step 2; one that is not (a target that</span>
+<span class="c1">#   2. `chezmoi managed --path-style absolute --refresh-externals=never -- &lt;roots&gt;`, filtered to the roots and the</span>
+<span class="c1">#      roots themselves by the table: the managed kit set. None found is a refusal.</span>
+<span class="c1">#   3. `chezmoi status --path-style absolute --refresh-externals=never -- &lt;roots&gt;`, filtered the same way, then the</span>
+<span class="c1">#      root re-read of step 1. A row whose second column is not blank is pending: `chezmoi apply` would change that</span>
+<span class="c1">#      target. (One status read is the per-target oracle: it compares every target against the source as `chezmoi</span>
+<span class="c1">#      verify` does, and a verify call per target is one chezmoi start each; verify runs once below, over the</span>
+<span class="c1">#      applied names.) The listings are split in the shell, not through a here-string: bash backs a here-string with</span>
+<span class="c1">#      a temporary file, and a redirection that fails there reads as an empty listing.</span>
+<span class="c1">#   4. A row on a root itself is refused unless it is a plain pending change to the directory entry (first column</span>
+<span class="c1">#      blank, second not `D`): `MM` on a root is the signature of a root replaced between the reads (chezmoi sees a</span>
+<span class="c1">#      link where it wrote a directory), and a source that removes a root makes the table stale.</span>
+<span class="c1">#   5. Every pending name must be a member of the managed kit set of step 2; one that is not (a target that</span>
 <span class="c1">#      appeared between the two reads, or a row the status read spelled otherwise) is refused by name, since the</span>
 <span class="c1">#      apply would then act on a name the managed listing never vouched for.</span>
-<span class="c1">#   5. A pending row whose first column is not blank is refused: the target's content is not what chezmoi last</span>
+<span class="c1">#   6. A pending row whose first column is not blank is refused: the target's content is not what chezmoi last</span>
 <span class="c1">#      wrote, so an apply would drop an edit the source does not have (`MM` in `chezmoi status`, two-sided drift).</span>
 <span class="c1">#      The refused rows are printed and nothing is applied.</span>
-<span class="c1">#   6. `chezmoi apply --verbose` of the pending targets by name, then `chezmoi verify` of the same names.</span>
-<span class="c1">#   7. The applied list. A second run finds nothing pending and exits 0.</span>
+<span class="c1">#   7. `chezmoi apply --verbose --recursive=false` of the pending targets by name. Without `--recursive=false` a</span>
+<span class="c1">#      pending directory is applied with everything under it, a child added after the status read included, and</span>
+<span class="c1">#      that child was never in the managed listing; with it, the directory entry alone is applied, and every pending</span>
+<span class="c1">#      child is in the set as its own row.</span>
+<span class="c1">#   8. The applied set verified by row kind. A `D` row (the source retired the target) is verified by its absence:</span>
+<span class="c1">#      `chezmoi verify` on a name the source no longer manages answers `not managed`, which is the retirement</span>
+<span class="c1">#      succeeding, not a failure. Every other row is verified by one `chezmoi verify --recursive=false` over the</span>
+<span class="c1">#      names that `chezmoi managed`, read once more after the apply, still lists; a non-`D` name it no longer lists</span>
+<span class="c1">#      is refused, since its verified state is unknown.</span>
+<span class="c1">#   9. The applied list. A second run finds nothing pending and exits 0.</span>
 <span class="c1">#   `--refresh-externals=never`: chezmoi reads its whole source state, every external included, on each of these</span>
 <span class="c1">#   commands, whatever targets are named; `never` serves a cached external whatever its age (the archives are</span>
 <span class="c1">#   checksum-pinned, so age changes nothing), and only an external with no cache entry at all is fetched, by</span>
@@ -5532,8 +5548,9 @@
 <span class="c1"># @option --dry-run Print the pending rows and the refusals; apply nothing. A refusal still exits 1, so a dry run</span>
 <span class="c1">#   gives the verdict the real run would.</span>
 <span class="c1"># @exitcode 0 The pending targets were applied and verified (or none was pending).</span>
-<span class="c1"># @exitcode 1 A root is missing or a link, a producer failed, no kit target is managed, a pending name is not in the</span>
-<span class="c1">#   managed kit set, a pending target is not what chezmoi last wrote, the apply or the verify failed.</span>
+<span class="c1"># @exitcode 1 A root is missing or a link, a root changed between the reads, a producer failed, no kit target is</span>
+<span class="c1">#   managed, a row on a root is not a plain pending change, a pending name is not in the managed kit set, a pending</span>
+<span class="c1">#   target is not what chezmoi last wrote, the apply or the verify failed, a retired target is still present.</span>
 <span class="c1"># @exitcode 2 Usage.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   ./scripts/deploy-kit.sh --dry-run</span>
@@ -5554,16 +5571,30 @@
 <span class="k">done</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Whether a chezmoi target lies under one of the kit roots.</span>
+<span class="c1"># @description Whether a chezmoi target is one of the kit roots itself.</span>
+<span class="c1"># @arg $1 path The target, as `chezmoi status --path-style absolute` prints it.</span>
+<span class="c1"># @exitcode 0 A root of the table.</span>
+<span class="c1"># @exitcode 1 Not a root.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>is_kit_root<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">target</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span>root
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>root<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">KIT_ROOTS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are chezmoi's absolute target spellings (its destination directory joined with the managed path), the boundary table, not filesystem identities; the roots were read physically above</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Whether a chezmoi target is one of the kit roots or lies under one.</span>
 <span class="c1"># @arg $1 path The target, as `chezmoi managed --path-style absolute` prints it.</span>
-<span class="c1"># @exitcode 0 Under a kit root.</span>
+<span class="c1"># @exitcode 0 A root or under one.</span>
 <span class="c1"># @exitcode 1 Not under one: the operator's.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>under_kit_root<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">target</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span>root
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>root<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">KIT_ROOTS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are chezmoi's absolute target spellings (its destination directory joined with the managed path), the boundary table, not filesystem identities; the roots were read physically above</span>
-<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span>/*<span class="o">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span>/*<span class="o">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">        </span><span class="k">esac</span>
 <span class="w">    </span><span class="k">done</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
@@ -5600,41 +5631,69 @@
 <span class="w">    </span><span class="k">done</span>
 <span class="o">}</span>
 
+<span class="c1">#</span>
+<span class="c1"># @description Read the managed kit set: `chezmoi managed` over the roots, filtered to the roots by the table.</span>
+<span class="c1"># @set kit_targets array The managed targets that are a kit root or lie under one.</span>
+<span class="c1"># @exitcode 0 Read.</span>
+<span class="c1"># @exitcode 1 `chezmoi managed` failed; kit_targets is unchanged and the caller names the consequence.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>read_kit_set<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>listing<span class="w"> </span>target
+<span class="w">    </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>chezmoi<span class="w"> </span>managed<span class="w"> </span>--path-style<span class="w"> </span>absolute<span class="w"> </span>--refresh-externals<span class="o">=</span>never<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">KIT_ROOTS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>split_lines<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">kit_targets</span><span class="o">=()</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>target<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">ROWS</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">ROWS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>under_kit_root<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">kit_targets</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print a kit root's physical path, or refuse: a root that is missing, is a symbolic link, cannot be</span>
+<span class="c1">#   read physically, or whose physical path is not the physical HOME joined with its name (a link on its path) lets</span>
+<span class="c1">#   an apply write outside the boundary.</span>
+<span class="c1"># @arg $1 path The root, as the table spells it.</span>
+<span class="c1"># @stdout The physical path (`cd -P`, `pwd -P`).</span>
+<span class="c1"># @exitcode 0 A real directory at its own physical place.</span>
+<span class="c1"># @exitcode 1 Refused; the message names the root and ends with `nothing applied`.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>root_physical_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">root</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span>physical
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: the kit root %s is a symbolic link; an apply through it would write outside the kit roots, nothing applied.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: the kit root %s is missing; the kit has not been bootstrapped here (make update creates it), nothing applied.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">physical</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>-P<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: the physical path of the kit root %s could not be read (pwd -P), nothing applied.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">physical</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home_physical</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">root</span><span class="p">#</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/"</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P physical paths</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: the kit root %s resolves to %s, not %s; a link on its path would let an apply write outside the kit roots, nothing applied.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">physical</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home_physical</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">root</span><span class="p">#</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/"</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">physical</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
 <span class="nv">home_physical</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>-P<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: the physical path of HOME %s could not be read (pwd -P); the kit roots are unknown, nothing applied.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
+<span class="nv">root_physicals</span><span class="o">=()</span>
 <span class="k">for</span><span class="w"> </span>root<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">KIT_ROOTS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: the kit root %s is a symbolic link; an apply through it would write outside the kit roots, nothing applied.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: the kit root %s is missing; the kit has not been bootstrapped here (make update creates it), nothing applied.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nv">root_physical</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>-P<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: the physical path of the kit root %s could not be read (pwd -P), nothing applied.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="o">}</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">root_physical</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home_physical</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">root</span><span class="p">#</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/"</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P physical paths</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: the kit root %s resolves to %s, not %s; a link on its path would let an apply write outside the kit roots, nothing applied.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root_physical</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home_physical</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">root</span><span class="p">#</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/"</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">root_physical</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>root_physical_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">root_physicals</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">root_physical</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="k">done</span>
 
-<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">managed_listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>chezmoi<span class="w"> </span>managed<span class="w"> </span>--path-style<span class="w"> </span>absolute<span class="w"> </span>--refresh-externals<span class="o">=</span>never<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">KIT_ROOTS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+read_kit_set<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: chezmoi managed failed; the kit targets are unknown, nothing applied.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-<span class="k">fi</span>
-split_lines<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">managed_listing</span><span class="si">}</span><span class="s2">"</span>
-<span class="nv">kit_targets</span><span class="o">=()</span>
-<span class="k">for</span><span class="w"> </span>target<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">ROWS</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">ROWS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>under_kit_root<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">kit_targets</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="k">done</span>
+<span class="o">}</span>
 <span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: kit roots: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">KIT_ROOTS</span><span class="p">[*]</span><span class="si">}</span><span class="s2">"</span>
 <span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: managed kit targets: %d\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">kit_targets</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="si">${#</span><span class="nv">kit_targets</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -5646,9 +5705,23 @@ split_lines<span class="w"> </span><span class="s2">"</span><span class="si">${<
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: chezmoi status failed; the drift of the kit targets is unknown, nothing applied.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="k">fi</span>
+<span class="k">for</span><span class="w"> </span>index<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!KIT_ROOTS[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="nv">root_physical</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>root_physical_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">KIT_ROOTS</span><span class="p">[index]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: the kit root %s changed between the managed read and the status read, nothing applied.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">KIT_ROOTS</span><span class="p">[index]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">root_physical</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root_physicals</span><span class="p">[index]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P physical paths of the same root, read before and after the status read</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: the kit root %s resolved to %s before the managed read and to %s after the status read; the roots changed during the run, nothing applied.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">KIT_ROOTS</span><span class="p">[index]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root_physicals</span><span class="p">[index]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root_physical</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="k">done</span>
+
 split_lines<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status_listing</span><span class="si">}</span><span class="s2">"</span>
 <span class="nv">pending</span><span class="o">=()</span>
 <span class="nv">pending_rows</span><span class="o">=()</span>
+<span class="nv">retired</span><span class="o">=()</span>
+<span class="nv">to_verify</span><span class="o">=()</span>
+<span class="nv">root_rows</span><span class="o">=()</span>
 <span class="nv">unmanaged_rows</span><span class="o">=()</span>
 <span class="nv">refused_rows</span><span class="o">=()</span>
 <span class="c1"># Each row is `XY &lt;target&gt;`: X the change since chezmoi last wrote the target, Y the change an apply would make.</span>
@@ -5657,13 +5730,20 @@ split_lines<span class="w"> </span><span class="s2">"</span><span class="si">${<
 <span class="w">    </span><span class="nv">target</span><span class="o">=</span><span class="si">${</span><span class="nv">row</span><span class="p">:</span><span class="nv">3</span><span class="si">}</span>
 <span class="w">    </span>under_kit_root<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">row</span><span class="p">:</span><span class="nv">1</span><span class="p">:</span><span class="nv">1</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s1">' '</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>in_kit_set<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>is_kit_root<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">row</span><span class="p">:</span><span class="nv">0</span><span class="p">:</span><span class="nv">1</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s1">' '</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="si">${</span><span class="nv">row</span><span class="p">:</span><span class="nv">1</span><span class="p">:</span><span class="nv">1</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s1">'D'</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">root_rows</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span>!<span class="w"> </span>in_kit_set<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">unmanaged_rows</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">row</span><span class="p">:</span><span class="nv">0</span><span class="p">:</span><span class="nv">1</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s1">' '</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">refused_rows</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span><span class="nv">pending</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">        </span><span class="nv">pending_rows</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">row</span><span class="p">:</span><span class="nv">1</span><span class="p">:</span><span class="nv">1</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s1">'D'</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">retired</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nv">to_verify</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="k">done</span>
 
@@ -5671,6 +5751,13 @@ split_lines<span class="w"> </span><span class="s2">"</span><span class="si">${<
 <span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">pending_rows</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">pending_rows</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span>
 <span class="k">done</span>
+<span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="si">${#</span><span class="nv">root_rows</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: refused: %d kit roots are not what chezmoi last wrote or are removed by the source (status row on the root itself); the root was replaced between the reads or the root table is stale, nothing applied:\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">root_rows</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root_rows</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="k">fi</span>
 <span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="si">${#</span><span class="nv">unmanaged_rows</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: refused: %d pending names are not in the managed kit set (chezmoi managed did not list them under the kit roots); the source changed between the two reads or the listings disagree, nothing applied:\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">unmanaged_rows</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">unmanaged_rows</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
@@ -5692,11 +5779,42 @@ split_lines<span class="w"> </span><span class="s2">"</span><span class="si">${<
 
 <span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="si">${#</span><span class="nv">pending</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="c1"># stdin closed: a target changed between the status read and here would make chezmoi prompt; it fails instead.</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>chezmoi<span class="w"> </span>apply<span class="w"> </span>--verbose<span class="w"> </span>--refresh-externals<span class="o">=</span>never<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pending</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>chezmoi<span class="w"> </span>apply<span class="w"> </span>--verbose<span class="w"> </span>--recursive<span class="o">=</span><span class="nb">false</span><span class="w"> </span>--refresh-externals<span class="o">=</span>never<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pending</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: chezmoi apply failed; the applied set is unknown, run chezmoi status over the kit roots.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>chezmoi<span class="w"> </span>verify<span class="w"> </span>--refresh-externals<span class="o">=</span>never<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pending</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">present</span><span class="o">=()</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>target<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">retired</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">retired</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="c1"># -e follows a link, so a dangling link is present only to -L.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">present</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="si">${#</span><span class="nv">present</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: %d retired targets are still present after the apply (status D rows); the retirement did not take, run chezmoi status over the kit roots:\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">present</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>target<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">present</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">done</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="k">fi</span>
+<span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="si">${#</span><span class="nv">to_verify</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>read_kit_set<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: chezmoi managed failed after the apply; the applied targets are unverified, run chezmoi status over the kit roots.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">unlisted</span><span class="o">=()</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>target<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">to_verify</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span>in_kit_set<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">unlisted</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="si">${#</span><span class="nv">unlisted</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: %d applied targets are no longer in the managed kit set; the source changed during the run and their verified state is unknown, run chezmoi status over the kit roots:\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">unlisted</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>target<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">unlisted</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">done</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>chezmoi<span class="w"> </span>verify<span class="w"> </span>--recursive<span class="o">=</span><span class="nb">false</span><span class="w"> </span>--refresh-externals<span class="o">=</span>never<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">to_verify</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'deploy-kit: chezmoi verify finds an applied target still differing from the source.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>

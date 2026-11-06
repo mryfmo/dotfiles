@@ -114,6 +114,49 @@ function has_command() {
 }
 
 #
+# @description Prove that a destination the updater deletes or syncs into lies in the asset tree it manages,
+#   before anything is removed through it: a path under ~/.agents or ~/.local whose parent is a directory whose
+#   physical path (pwd -P) is its spelling under the physical HOME, so no component between the asset root and
+#   the destination is a link, and whose own entry, when present, is no link either. A link at any of those places
+#   is refused naming the path, so an rsync --delete or an rm -rf never reaches through it (verdicts/U276b: a
+#   ~/.agents/compactiondb linked outside ~/.agents lost a file there).
+# @arg $1 path The destination, without a trailing slash.
+# @exitcode 0 The destination's parent is a real directory under the asset root and the destination is no link.
+# @exitcode 1 Otherwise, or when a physical path cannot be read; nothing is written.
+#
+function assert_asset_destination() {
+    local destination="$1" parent physical physical_home
+    case ${destination} in
+    "${HOME}/.agents/"?* | "${HOME}/.local/"?*) ;;
+    *)
+        printf 'ERROR: %s is not under %s/.agents or %s/.local; the updater writes only there.\n' "${destination}" "${HOME}" "${HOME}" >&2
+        return 1
+        ;;
+    esac
+    parent="${destination%/*}"
+    if [ -L "${parent}" ] || [ ! -d "${parent}" ]; then
+        printf 'ERROR: %s is a link or no directory; refusing to write %s through it.\n' "${parent}" "${destination}" >&2
+        return 1
+    fi
+    physical_home="$(cd -P -- "${HOME}" && pwd -P)" || {
+        printf 'ERROR: the physical path of %s could not be read; refusing to write %s.\n' "${HOME}" "${destination}" >&2
+        return 1
+    }
+    physical="$(cd -P -- "${parent}" && pwd -P)" || {
+        printf 'ERROR: the physical path of %s could not be read; refusing to write %s.\n' "${parent}" "${destination}" >&2
+        return 1
+    }
+    if [ "${physical}" != "${physical_home}${parent#"${HOME}"}" ]; then # lint-comparisons: allow both sides are pwd -P physical paths
+        printf 'ERROR: %s resolves to %s, outside the asset root; refusing to write %s through a link.\n' "${parent}" "${physical}" "${destination}" >&2
+        return 1
+    fi
+    if [ -L "${destination}" ]; then
+        printf 'ERROR: %s is a symbolic link; the updater writes only into a real directory; refusing.\n' "${destination}" >&2
+        return 1
+    fi
+}
+
+#
 # @description Remove node-global agent CLIs that shadow their dedicated mise tools.
 #
 function remove_node_global_agent_cli_shadows() {
@@ -1465,7 +1508,7 @@ function update_omp() (
         [[ "${resolved}" != "${package_dir}/"* ]]; then # lint-comparisons: allow both sides are normalize_node_path forms
         aside="${HOME}/.local/share/agent-assets/omp/omp.previous"
         printf 'Moving %s to %s: npm does not own it%s.\n' "${entry}" "${aside}" "${link:+ (it points to ${link} and resolves to ${resolved})}"
-        mkdir -p "${aside%/*}" && rm -rf "${aside}" && mv "${entry}" "${aside}" || return
+        mkdir -p "${aside%/*}" && assert_asset_destination "${aside}" && rm -rf "${aside}" && mv "${entry}" "${aside}" || return
     fi
     # The verified local tarball has no registry release date, so npm's min-release-age (~/.npmrc, three days)
     # applies only to the dependencies it resolves: none newer than the cooldown, as for every other install.
@@ -1601,7 +1644,9 @@ function update_pi_claude_bridge() (
             return 1
         fi
         # Staged beside the target so the final rename stays on one filesystem.
-        mkdir -p "${install_dir%/*}" && staging="$(mktemp -d "${install_dir}.staging.XXXXXX")" || return
+        mkdir -p "${install_dir%/*}" || return
+        assert_asset_destination "${install_dir}" || return 1
+        staging="$(mktemp -d "${install_dir}.staging.XXXXXX")" || return
         tar xzf "${tarball}" -C "${staging}" --strip-components=1 || return
         for patch_file in "${PI_CLAUDE_BRIDGE_ASSET_DIR}"/patches/*.patch; do
             # -F0: GNU patch would apply a patch whose context drifted with fuzz and exit 0; Apple patch refuses either way.
@@ -1679,7 +1724,9 @@ function update_security_audit_skill() (
     fi
     # Staged beside the target so the final rename stays on one filesystem; the three leading components
     # (<repository>-<commit>/skills/security-audit) are stripped so the skill tree lands at the install path itself.
-    mkdir -p "${install_dir%/*}" && staging="$(mktemp -d "${install_dir}.staging.XXXXXX")" || return
+    mkdir -p "${install_dir%/*}" || return
+    assert_asset_destination "${install_dir}" || return 1
+    staging="$(mktemp -d "${install_dir}.staging.XXXXXX")" || return
     tar xzf "${tarball}" -C "${staging}" --strip-components=3 "security-audit-skill-${SECURITY_AUDIT_SKILL_COMMIT}/skills/security-audit" || return
     [ -f "${staging}/SKILL.md" ] || {
         printf 'security-audit skill archive holds no skills/security-audit/SKILL.md; install refused.\n' >&2
@@ -2090,7 +2137,9 @@ function update_deepseek_harness() (
             printf 'DeepSeek harness archive version %s is not the pin %s; install refused.\n' "${version}" "${DSH_PIN_TAG#dsh-v}" >&2
             return 1
         fi
-        (cd "${tree}" && mise exec -- pnpm install --frozen-lockfile && DSH_CLIENT_COMMIT_HASH="${DSH_COMMIT}" mise exec -- pnpm run build) || return 1
+        # MISE_EXEC_AUTO_INSTALL=false (mise's exec_auto_install setting): a Node or pnpm mise has not installed
+        # refuses the build instead of landing in mise's tool trees, which this step never changes (verdicts/U276b).
+        (cd "${tree}" && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm install --frozen-lockfile && DSH_CLIENT_COMMIT_HASH="${DSH_COMMIT}" MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm run build) || return 1
         # The download directory holds only the verified archive, whose tree is now built, so its removal is no read
         # the step decides on: it goes here, before anything the host runs changes, and a removal that fails is a WARN
         # that never changes the step's flow (under set -e a bare failing rm would end the subshell, and a retry of it
@@ -2099,7 +2148,7 @@ function update_deepseek_harness() (
         download_dir=""
         # The profile's plugins go in before anything the host runs changes: a failure here needs no undo, since
         # current, the wrapper and every older tree are still as they were and the trap removes the new tree.
-        (cd "${DSH_HOME}/profiles/thak" && mise exec -- pnpm install) || {
+        (cd "${DSH_HOME}/profiles/thak" && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm install) || {
             printf 'update_deepseek_harness: the profile install failed; nothing recorded; current, the wrapper and the older trees are untouched.\n' >&2
             return 1
         }
@@ -2749,33 +2798,60 @@ PY
 
 #
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
+# @description
+#   The version is read first, then the asset root is made and the destination proven (assert_asset_destination),
+#   then rsync runs, and the record is written only for a sync that completed: a failed rsync or record is counted,
+#   so the run, full or single-step, fails at fail_on_pin_failures and make doctor reports the step until a run syncs
+#   the tree (verdicts/U276b: an exit 0 after rsync 77 recorded an installation whose payload was absent).
+# @exitcode 0 Synced and recorded, or a failure counted for the run's end.
+# @exitcode 1 The version could not be read or the destination was refused; nothing synced, nothing recorded.
 #
 function update_compactiondb() {
-    local source_root version
+    local source_root version destination="${HOME}/.agents/compactiondb"
     source_root="${DOTFILES_REPO_SOURCE_DIR}/vendor/compactiondb/"
-    rsync -a --delete --exclude '.claude/contextdb/state/' --exclude '.claude/contextdb/spool/' --exclude '.claude/contextdb/health/' --exclude '.claude/contextdb/contextdb.sqlite3*' "${source_root}" "${HOME}/.agents/compactiondb/" || true
     version="$(awk '/^## / { print $2; exit }' "${source_root}CHANGELOG.md")" || {
         printf 'Cannot read the CompactionDB version from %sCHANGELOG.md.\n' "${source_root}" >&2
         return 1
     }
-    manifest_record "update_compactiondb" rsync "${version}" "${HOME}/.agents/compactiondb" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${HOME}/.agents/compactiondb/" ||
+    mkdir -p "${destination%/*}" || return 1
+    assert_asset_destination "${destination}" || return 1
+    rsync -a --delete --exclude '.claude/contextdb/state/' --exclude '.claude/contextdb/spool/' --exclude '.claude/contextdb/health/' --exclude '.claude/contextdb/contextdb.sqlite3*' "${source_root}" "${destination}/" || {
+        record_claude_failure "syncing the CompactionDB tree to ${destination} (rsync exit $?)"
+        return 0
+    }
+    manifest_record "update_compactiondb" rsync "${version}" "${destination}" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${destination}/" ||
         record_claude_failure "recording update_compactiondb in the installed asset manifest"
 }
 
 #
-# @description Install and refresh managed agent plugin assets.
-# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, update_security_audit_skill, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies, retire_marketplace_dev_workflows or retire_agmsg_shim.
+# @description Drop the manifest records of steps this updater no longer defines, counting a failed prune like every
+#   other failure the run records. The library's manifest_prune_retired swallows the failure (a warning, exit 0) for
+#   callers that prune as housekeeping; here an exit 0 must mean the manifest holds no retired record, so the pruner
+#   itself is called and a corrupt manifest or a failed rewrite fails the run at fail_on_pin_failures (verdicts/U276b).
+# @stdout One line per pruned step.
+#
+function prune_retired_manifest_steps() {
+    _manifest_prune_retired || record_claude_failure "pruning the retired steps from the installed asset manifest"
+}
+
+#
+# @description Install and refresh managed agent plugin assets, or run one step alone when its name is the only
+#   argument (make doctor's checks, the coordinator's deploy of one pin). The single-step run ends with the full
+#   run's exit rule, fail_on_pin_failures, so its exit 0 means the step did what it says.
+# @arg $1 string Optional single step: update_omp, update_hcom, update_pi_claude_bridge, update_security_audit_skill, update_deepseek_harness, update_compactiondb, prune_retired_manifest_steps, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies, retire_marketplace_dev_workflows or retire_agmsg_shim.
+# @exitcode 2 The arguments name no single step; nothing ran.
 #
 function main() {
     if [ "$#" -gt 0 ]; then
         case "$#:$1" in
-        1:update_pi_claude_bridge | 1:update_security_audit_skill | 1:update_deepseek_harness | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_agmsg_shim)
+        1:update_omp | 1:update_hcom | 1:update_pi_claude_bridge | 1:update_security_audit_skill | 1:update_deepseek_harness | 1:update_compactiondb | 1:prune_retired_manifest_steps | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_agmsg_shim)
             export PATH="${HOME}/.local/share/mise/shims:${PATH}"
             "$1"
+            fail_on_pin_failures
             return
             ;;
         esac
-        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | update_security_audit_skill | update_deepseek_harness | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_agmsg_shim]\n' >&2
+        printf 'Usage: scripts/update-agent-assets.sh [update_omp | update_hcom | update_pi_claude_bridge | update_security_audit_skill | update_deepseek_harness | update_compactiondb | prune_retired_manifest_steps | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_agmsg_shim]\n' >&2
         exit 2
     fi
 
@@ -2806,7 +2882,7 @@ function main() {
     update_hcom
     update_compactiondb
     ensure_herdr_integrations
-    manifest_prune_retired
+    prune_retired_manifest_steps
     # After every plugin update above, so the trust hashes follow the plugin content of this run.
     refresh_codex_hook_trust
     # Last, so every other step still ran: a plugin that may stay enabled off its pin fails the whole run.

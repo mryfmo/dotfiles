@@ -553,6 +553,25 @@ class SecurityAuditSkillTest(unittest.TestCase):
                     self.assertEqual(["SKILL.md"], [path.name for path in install.iterdir()])
                     self.assertEqual(["security-audit"], [path.name for path in install.parent.iterdir()])
 
+    def test_a_skills_directory_that_is_a_link_is_refused_before_anything_is_written_beside_it(self):
+        # U283: the destination's parent must be a real directory under ~/.agents (assert_asset_destination), so a
+        # staging tree, a .previous rename or an rm -rf never lands where a link points.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            payload, digest = self.archive(home)
+            outside = home / "outside"
+            outside.mkdir()
+            (outside / "sentinel").write_text("kept\n")
+            (home / ".agents").mkdir()
+            (home / ".agents/skills").symlink_to(outside)
+            result = self.run_step(home, payload, digest)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"{home}/.agents/skills is a link or no directory", result.stderr)
+            self.assertIn(f"refusing to write {home}/.agents/skills/security-audit", result.stderr)
+            self.assertEqual(["sentinel"], [path.name for path in outside.iterdir()], "nothing beside the sentinel")
+            self.assertEqual("kept\n", (outside / "sentinel").read_text())
+            self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+
     def test_a_security_audit_tree_recorded_at_the_pin_is_skipped_and_any_other_state_is_reinstalled(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
@@ -910,6 +929,19 @@ class DeepseekHarnessTest(unittest.TestCase):
             self.assertEqual(1, len(self.calls(home)), "one download, no mise call")
             self.assertEqual([], list((dsh_home / "dsh").iterdir()), "the new tree is removed")
             self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+
+    def test_every_mise_exec_runs_with_automatic_tool_installation_off(self):
+        # U283 (verdicts/U276b): a Node or pnpm mise has not installed must refuse the build, not land in mise's tool
+        # trees; mise 2026.10.25's `mise exec --help` names exec_auto_install as the setting, MISE_EXEC_AUTO_INSTALL
+        # its variable. The stub records the value each call sees.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            mise = 'printf "%s\\n" "${MISE_EXEC_AUTO_INSTALL-<unset>}" >> "$HOME/auto-install"; return 0'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, mise=mise)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(self.BUILD_CALLS, [call for call in self.calls(home) if call.startswith("mise ")])
+            self.assertEqual(["false"] * len(self.BUILD_CALLS), (home / "auto-install").read_text().splitlines())
 
     def test_a_failed_build_leaves_no_install_no_wrapper_and_no_record(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -4738,3 +4770,236 @@ class MaskedStatusTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stderr)
         self.assertFalse([call for call in calls if call.startswith("plugin marketplace add")], calls)
         self.assertIn("codex plugin marketplace list failed", result.stderr)
+
+
+class SingleStepModeTest(unittest.TestCase):
+    """The updater run with one step's name (make doctor's checks, the coordinator's deploy of one pin) carries the
+    full run's contract (U283, from verdicts/U276b): the run ends with fail_on_pin_failures, so a step whose rsync or
+    manifest record failed exits non-zero instead of reporting success; a destination that is a link, or whose parent
+    resolves outside the asset root, is refused before rsync runs; a misuse prints the usage naming every step and runs
+    nothing. The updater runs as a program here, the way make doctor and the coordinator call it."""
+
+    STEPS = (
+        "update_omp",
+        "update_hcom",
+        "update_pi_claude_bridge",
+        "update_security_audit_skill",
+        "update_deepseek_harness",
+        "update_compactiondb",
+        "prune_retired_manifest_steps",
+        "check_pi_claude_bridge",
+        "check_pstack",
+        "retire_shared_pstack_copies",
+        "retire_marketplace_dev_workflows",
+        "retire_agmsg_shim",
+    )
+    # The real rsync by its absolute path: main prepends the mise shims to PATH, so a stub that strips one PATH entry
+    # would call itself again.
+    REAL_RSYNC = f'exec "{shutil.which("rsync")}" "$@"'
+
+    def fixture(self, directory: str, rsync: str = "exit 0") -> tuple[Path, Path, Path]:
+        """A scratch HOME with ~/.agents, a source root whose vendored CompactionDB holds one CHANGELOG entry and one
+        file and whose scripts/ is the repository's, and a bin/ whose rsync logs its arguments and runs RSYNC's body
+        (REAL_RSYNC hands the call to the real one)."""
+        root = Path(directory)
+        home, source, bin_dir = root / "home", root / "source", root / "bin"
+        (home / ".agents").mkdir(parents=True)
+        (source / "vendor/compactiondb").mkdir(parents=True)
+        (source / "vendor/compactiondb/CHANGELOG.md").write_text("## 1.2.3\n\n- fixture entry\n")
+        (source / "vendor/compactiondb/README.md").write_text("fixture payload\n")
+        (source / "scripts").symlink_to(ROOT / "scripts")
+        bin_dir.mkdir()
+        (bin_dir / "rsync").write_text(f'#!/bin/bash\nprintf "rsync %s\\n" "$*" >> "$CALLS"\n{rsync}\n')
+        (bin_dir / "rsync").chmod(0o755)
+        return home, source, bin_dir
+
+    def run_updater(self, args: list[str], home: Path, source: Path, bin_dir: Path):
+        env = os.environ | scratch_env(home)
+        env |= {
+            "CALLS": str(home / "calls"),
+            "DOTFILES_SOURCE_DIR": str(source),
+            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+        }
+        return subprocess.run(
+            ["bash", str(UPDATER), *args],
+            env=env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+
+    def calls(self, home: Path) -> list[str]:
+        log = home / "calls"
+        return log.read_text().splitlines() if log.exists() else []
+
+    def manifest(self, home: Path) -> dict:
+        return json.loads((home / ".agents/.installed-manifest.json").read_text())
+
+    def test_update_compactiondb_alone_syncs_records_and_exits_zero(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, source, bin_dir = self.fixture(directory, rsync=self.REAL_RSYNC)
+            result = self.run_updater(["update_compactiondb"], home, source, bin_dir)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual("", result.stderr)
+            self.assertEqual("fixture payload\n", (home / ".agents/compactiondb/README.md").read_text())
+            step = self.manifest(home)["steps"]["update_compactiondb"]
+            self.assertEqual("rsync", step["kind"])
+            self.assertEqual("1.2.3", step["source_version"])
+            self.assertEqual([str(home / ".agents/compactiondb")], step["paths"])
+            # A local rsync forks its receiving side as `rsync --server ...` through PATH, so that call is its own.
+            self.assertEqual(1, len([call for call in self.calls(home) if not call.startswith("rsync --server")]))
+
+    def test_update_compactiondb_alone_fails_when_rsync_fails_and_records_nothing(self):
+        # verdicts/U276b: the real updater exited 0 after rsync exited 77 and recorded an installation whose payload
+        # was absent. The failure is counted and the single-step run ends with fail_on_pin_failures.
+        with tempfile.TemporaryDirectory() as directory:
+            home, source, bin_dir = self.fixture(directory, rsync="exit 77")
+            result = self.run_updater(["update_compactiondb"], home, source, bin_dir)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"syncing the CompactionDB tree to {home}/.agents/compactiondb (rsync exit 77) failed", result.stderr
+            )
+            self.assertIn("1 plugin(s) (Claude Code or Codex) could not be checked or kept at their pin", result.stderr)
+            self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+            self.assertEqual(1, len(self.calls(home)), "one rsync call")
+
+    def test_update_compactiondb_alone_fails_when_the_manifest_record_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, source, bin_dir = self.fixture(directory)
+            manifest_path = home / ".agents/.installed-manifest.json"
+            manifest_path.write_text("not json\n")
+            result = self.run_updater(["update_compactiondb"], home, source, bin_dir)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("ERROR: failed to record asset manifest step update_compactiondb", result.stderr)
+            self.assertIn("1 plugin(s) (Claude Code or Codex) could not be checked or kept at their pin", result.stderr)
+            self.assertEqual("not json\n", manifest_path.read_text(), "the manifest as it was")
+
+    def test_prune_retired_manifest_steps_alone_fails_on_a_corrupt_manifest_and_prunes_a_retired_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, source, bin_dir = self.fixture(directory)
+            manifest_path = home / ".agents/.installed-manifest.json"
+            manifest_path.write_text("not json\n")
+            result = self.run_updater(["prune_retired_manifest_steps"], home, source, bin_dir)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("pruning the retired steps from the installed asset manifest failed", result.stderr)
+            self.assertIn("1 plugin(s) (Claude Code or Codex) could not be checked or kept at their pin", result.stderr)
+            self.assertEqual("not json\n", manifest_path.read_text(), "the manifest as it was")
+
+            record = {
+                "installed_at": "2026-01-01T00:00:00Z",
+                "kind": "rsync",
+                "paths": [],
+                "commands": [],
+                "source_version": "1",
+            }
+            manifest_path.write_text(json.dumps({"version": 1, "steps": {"update_agmsg": record}}))
+            result = self.run_updater(["prune_retired_manifest_steps"], home, source, bin_dir)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual("Pruned retired asset manifest step update_agmsg.\n", result.stdout)
+            self.assertEqual({}, self.manifest(home)["steps"])
+            self.assertEqual([], self.calls(home), "no rsync")
+
+    def test_a_linked_compactiondb_destination_is_refused_before_rsync_runs(self):
+        # verdicts/U276b: with ~/.agents/compactiondb linked outside ~/.agents, rsync --delete ran through the link
+        # and removed a file there. The destination itself, and every directory between it and the asset root,
+        # must be real (assert_asset_destination).
+        for case in ("the destination is a link", "the asset root is a link"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                home, source, bin_dir = self.fixture(directory, rsync=self.REAL_RSYNC)
+                outside = Path(directory) / "outside"
+                outside.mkdir()
+                (outside / "sentinel").write_text("kept\n")
+                if case == "the destination is a link":
+                    (home / ".agents/compactiondb").symlink_to(outside)
+                    refused = f"{home}/.agents/compactiondb is a symbolic link"
+                else:
+                    (home / ".agents").rmdir()
+                    (home / ".agents").symlink_to(outside)
+                    refused = f"{home}/.agents is a link or no directory; refusing to write {home}/.agents/compactiondb"
+                result = self.run_updater(["update_compactiondb"], home, source, bin_dir)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(refused, result.stderr)
+                self.assertEqual([], self.calls(home), "rsync never ran")
+                self.assertEqual(["sentinel"], [path.name for path in outside.iterdir()], "nothing written outside")
+                self.assertEqual("kept\n", (outside / "sentinel").read_text())
+
+    def test_assert_asset_destination_accepts_real_directories_under_the_roots_and_refuses_every_link(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            home, outside = root / "home", root / "outside"
+            (home / ".agents/skills/security-audit").mkdir(parents=True)
+            (home / ".local/share").mkdir(parents=True)
+            outside.mkdir()
+            (outside / "skills").mkdir()
+            home_link = root / "home-link"
+            home_link.symlink_to(home)
+            (home / ".agents/linked-root").symlink_to(outside)
+            (home / ".agents/skills/linked").symlink_to(outside)
+            cases = (
+                ("a new entry under ~/.agents", home, home / ".agents/compactiondb", 0, ""),
+                ("an entry that is a directory", home, home / ".agents/skills/security-audit", 0, ""),
+                ("a new entry under ~/.local", home, home / ".local/share/agent-assets", 0, ""),
+                ("HOME spelled through a link", home_link, home_link / ".agents/compactiondb", 0, ""),
+                ("outside the roots", home, home / ".config/x", 1, "is not under"),
+                ("an absent parent", home, home / ".local/lib/omp-extensions/x", 1, "is a link or no directory"),
+                ("a parent that is a link", home, home / ".agents/linked-root/x", 1, "is a link or no directory"),
+                ("a link above the parent", home, home / ".agents/linked-root/skills/x", 1, "outside the asset root"),
+                ("the entry is a link", home, home / ".agents/skills/linked", 1, "is a symbolic link"),
+            )
+            for case, fixture_home, destination, status, message in cases:
+                with self.subTest(case=case):
+                    result = subprocess.run(
+                        [
+                            "bash",
+                            "-c",
+                            'source "$1"; assert_asset_destination "$2"',
+                            "bash",
+                            str(UPDATER),
+                            str(destination),
+                        ],
+                        env=os.environ | scratch_env(fixture_home),
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        check=False,
+                    )
+                    self.assertEqual(status, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual("", result.stdout)
+                    if status == 0:
+                        self.assertEqual("", result.stderr)
+                    else:
+                        self.assertIn(message, result.stderr)
+                        self.assertIn(str(destination), result.stderr)
+            self.assertEqual(["skills"], [path.name for path in outside.iterdir()], "nothing written outside")
+
+    def test_a_misuse_prints_the_usage_naming_every_step_and_runs_nothing(self):
+        for args in (["nope"], ["update_compactiondb", "check_pstack"], [""]):
+            with self.subTest(args=args), tempfile.TemporaryDirectory() as directory:
+                home, source, bin_dir = self.fixture(directory, rsync=self.REAL_RSYNC)
+                result = self.run_updater(args, home, source, bin_dir)
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertEqual("", result.stdout)
+                self.assertRegex(result.stderr, r"^Usage: scripts/update-agent-assets\.sh \[.*\]\n$")
+                listed = result.stderr.strip().removeprefix("Usage: scripts/update-agent-assets.sh [").removesuffix("]")
+                self.assertEqual(list(self.STEPS), listed.split(" | "))
+                self.assertEqual([], self.calls(home), "no function ran")
+                self.assertEqual([], list((home / ".agents").iterdir()), "nothing written")
+
+    def test_the_dispatch_names_the_same_steps_as_the_usage_and_each_is_a_function(self):
+        lines = UPDATER.read_text().splitlines()
+        dispatch = [index for index, line in enumerate(lines) if line.strip() == 'case "$#:$1" in']
+        self.assertEqual(1, len(dispatch), "one single-step dispatch in main")
+        self.assertEqual(list(self.STEPS), re.findall(r"1:([a-z_]+)", lines[dispatch[0] + 1]))
+        with tempfile.TemporaryDirectory() as directory:
+            result = subprocess.run(
+                ["bash", "-c", 'source "$1"; shift; declare -F "$@"', "bash", str(UPDATER), *self.STEPS],
+                env=os.environ | scratch_env(Path(directory)),
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(list(self.STEPS), result.stdout.split())

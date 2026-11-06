@@ -18,8 +18,10 @@ function setup() {
     PATH="${BATS_TEST_TMPDIR}/bin:${PATH}"
 }
 
-# Only a case that installed for real removes what it installed (U41): before, every case ran
-# the installer's uninstall function (removed in U46), and the array cases' teardown removed the runner image's own packages.
+# @description Only a case that installed for real removes what it installed (U41): before, every case ran the
+#   installer's uninstall function (removed in U46), and the array cases' teardown removed the runner image's own
+#   packages.
+# @noargs
 function teardown() {
     remove_real_packages
 }
@@ -141,7 +143,11 @@ function path_keeping_sudo() {
     [ "$(grep -c '^snap install chromium$' "${BATS_TEST_TMPDIR}/snap_calls")" -eq 3 ]
 }
 
-# Run install_chromium with sudo as a pass-through and the given environment; the fixture's fake snap is first on PATH.
+# @description Run install_chromium through `run` with sudo as a shell function that runs its argument as the test
+#   user: `sudo timeout ... snap` then resolves snap through the test's PATH, where the fixture's fake is first, and
+#   needs no root, so the case reads the function's own status and the fake's log, never the host's snap.
+# @arg $@ string Environment assignments (`NAME=value`) handed to `env` in front of the bash that sources the script,
+#   so a case sets SNAP_RETRY_DELAY or SNAP_INSTALL_TIMEOUT for the function alone without exporting them into the test.
 function run_install_chromium() {
     run env "$@" /bin/bash -c '
         source "$1"

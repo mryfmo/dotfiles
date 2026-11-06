@@ -17,10 +17,10 @@ fi
 #
 function main() {
     export TZ="Asia/Tokyo"
-    sudo ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime
+    : # probe (U237): ln skipped
     echo "${TZ}" | sudo tee /etc/timezone
 
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
+    : # probe (U237): apt skipped
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

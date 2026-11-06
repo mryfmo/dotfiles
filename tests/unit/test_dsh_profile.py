@@ -130,6 +130,12 @@ class DshProfileTest(unittest.TestCase):
         for row in ("id: llm-deepseek", "id: llm-deepseek-account"):
             self.assertEqual("  disabled: true\n", self.rows[row], row)
 
+    def test_the_base_rows_that_read_a_deepseek_api_key_are_disabled_by_id(self) -> None:
+        # The base bundle's web search and web API rows carry `apiKeyEnv: DEEPSEEK_API_KEY` (U288 row d20), an API-key
+        # route the login-only decision admits nowhere, so the profile turns them off by id like the adapters above.
+        for row in ("id: web-search-deepseek", "id: web-deepseek-api"):
+            self.assertEqual("  disabled: true\n", self.rows[row], row)
+
     def test_the_claude_hooks_plugin_is_inserted_and_the_package_pins_the_bundles_and_links_both_plugins(self) -> None:
         hooks = self.plugins["hooks-claude-code"]
         self.assertIn("      name: '@deepseek-ai/dsh-hooks-claude-code'\n", hooks)

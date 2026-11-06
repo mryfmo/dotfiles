@@ -93,12 +93,17 @@
 #   that slot, the role's own omp profile `~/.omp/profiles/dsh` (the login child `omp auth-gateway stdio` lives there,
 #   selected by OMP_PROFILE, and writes its agent.db at start) and `~/.omp/run`, with no git common directory and no
 #   hcom store; the read grants the cwd, that slot, DSH_HOME, that profile, `~/.agents/skills` and the pinned tool
-#   directory, with no git common directory, no hcom store and no record of the main checkout (U272c); DSH_HOME in
-#   the protected set before any tool is resolved; the command `<DSH_HOME>/bin/dsh`, a physical executable file that
-#   runs inside srt only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME,
-#   OMP_PROFILE and a caller's CLAUDE_CODE_OAUTH_TOKEN before the shim adds its own exports. No omp overlay, rules
-#   file, extension or login preflight is read for it. The per-launch sandbox and state slot are removed when dsh
-#   exits.
+#   directory, with no git common directory, no hcom store and no record of the main checkout (U272c); a deny row
+#   (U272d: srt reads everything an explicit deny does not name, so a grant the role lacks denies nothing) naming the
+#   physical paths of the checkout's git directory and common directory, the `.git` entry of every linked worktree
+#   git lists, the hcom store and every existing `~/.local/state/hcom-*` sibling, the records
+#   `<checkout>/.orchestration` and every other seat's directory, denied for read and for write, with a DSH_HOME
+#   that is, contains or lies inside one of them refused before anything is made; DSH_HOME in the protected set
+#   before any tool is resolved; the command `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt
+#   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME, OMP_PROFILE
+#   and a caller's CLAUDE_CODE_OAUTH_TOKEN before the shim adds its own exports. No omp overlay, rules file,
+#   extension or login preflight is read for it. The per-launch sandbox and state slot are removed when dsh exits,
+#   and by the trap a hangup, interrupt or termination runs before this process ends by that signal.
 # @arg $1 string Role: orchestrator, worker or dsh.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
@@ -200,6 +205,16 @@ refuse() {
     exit 2
 }
 
+# @description Print the UTC stamp `YYYYMMDD-HHMMSS` of a dsh launch's seat name, from `/bin/date` read status first
+#   (standing order 21): a failed read, an empty one or one outside the shape refuses (exit 2) and names no slot.
+# @stdout The stamp.
+utc_stamp() {
+    local stamp
+    stamp=$(/bin/date -u +%Y%m%d-%H%M%S) || refuse 'cannot read the time (/bin/date failed)'
+    [[ ${stamp} =~ ^[0-9]{8}-[0-9]{6}$ ]] || refuse "cannot read the time ('${stamp}')"
+    printf '%s\n' "${stamp}"
+}
+
 (($# >= 1)) || refuse "${usage}"
 role=$1
 shift
@@ -233,10 +248,10 @@ done
 bridge=${HOME}/.local/lib/omp-extensions/pi-claude-bridge
 siwc=${HOME}/.agents/omp/extensions/openai-siwc
 gate=${HOME}/.agents/omp/hooks
-# The role table (regime-cutover U272): every difference between the roles is a row read here or in the four places
-# keyed on the role below (seat_write_roots, the read grants in seat_sandbox_write, the command the shim execs, the
-# launch), never a branch elsewhere. The omp roles launch through hcom into a herdr pane; the dsh role runs its shim in
-# the foreground.
+# The role table (regime-cutover U272): every difference between the roles is a row read here or in the places keyed
+# on the role below (seat_write_roots, the deny row and the DSH_HOME refusal before the overlap check, the read grants
+# in seat_sandbox_write, the command the shim execs, the launch and its trap), never a branch elsewhere. The omp roles
+# launch through hcom into a herdr pane; the dsh role runs its shim in the foreground.
 case ${role} in
 orchestrator | worker)
     # The extension the role's model route needs first, the optional one second.
@@ -252,9 +267,8 @@ dsh)
     [[ -z ${profile_name} || ${profile_name} =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ ]] ||
         refuse "profile '${profile_name}' is outside ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\$"
     # A per-launch seat name: the sandbox, its settings file and the state slot are per name, so two launches at
-    # once share no file (the U251d finding). The stamp comes from a checked producer and is held to its shape.
-    stamp=$(/bin/date -u +%Y%m%d-%H%M%S) || refuse 'cannot read the time (/bin/date failed)'
-    [[ ${stamp} =~ ^[0-9]{8}-[0-9]{6}$ ]] || refuse "cannot read the time ('${stamp}')"
+    # once share no file (the U251d finding). The stamp comes from a checked producer held to its shape (utc_stamp).
+    stamp=$(utc_stamp) || exit 2
     name=${name}-${stamp}-$$
     ;;
 *) refuse "unknown role '${role}'; expected orchestrator, worker or dsh" ;;
@@ -1575,6 +1589,82 @@ operator_claude_paths() {
     fi
 }
 
+# @description Set `dsh_deny` and `dsh_deny_labels` to the paths the dsh role denies for read and for write, physical,
+#   with one label each (regime-cutover U272d, the role table's deny row). srt's read policy is deny-then-allow over
+#   an explicit list, and everything the list does not name is readable, so a grant the role does not carry denies
+#   nothing: each path is named. The list is what this lever already computes for the omp roles' grants: the
+#   checkout's git directory and the git common directory, the `.git` entry of every linked worktree git lists, the
+#   hcom store `HCOM_DIR` and every existing `~/.local/state/hcom-*` sibling store (regime-env's convention; the
+#   lever's own `~/.local/state/hcom-seat` excepted, by identity), the orchestration records
+#   `<checkout>/.orchestration` and every other seat's directory under the seats root (their state slots are under
+#   the seats-root deny, which only the own slot re-opens; `.state` is not listed because a concurrent dsh launch
+#   makes its slot there while this one lists). Git directories elsewhere on the host are not known here and stay a
+#   named residual of the PR body. Every path must be clean (it reaches the settings and the identity table).
+# @set dsh_deny The paths.
+# @set dsh_deny_labels Their labels.
+dsh_deny_paths() {
+    local h p i stores=() seats_phys seat_dirs=()
+    dsh_deny=() dsh_deny_labels=()
+    p=$(physical_path "${launch_gitdir}") || refuse "cannot resolve the git directory ${launch_gitdir}"
+    if [[ ! ${p} -ef ${common} ]]; then
+        dsh_deny+=("${p}") dsh_deny_labels+=("the checkout's git directory")
+    fi
+    p=$(physical_path "${common}") || refuse "cannot resolve the git common directory ${common}"
+    dsh_deny+=("${p}") dsh_deny_labels+=("the git common directory")
+    for p in ${worktree_phys[@]+"${worktree_phys[@]}"}; do
+        dsh_deny+=("${p}/.git") dsh_deny_labels+=("the linked worktree's git entry")
+    done
+    p=$(physical_path "${HCOM_DIR}") || refuse "cannot resolve the hcom store ${HCOM_DIR}"
+    dsh_deny+=("${p}") dsh_deny_labels+=("the hcom store")
+    h=$(physical_path "${HOME}") || refuse "cannot resolve HOME ${HOME}"
+    dir_entries "${h}/.local/state"
+    for p in ${dir_list[@]+"${dir_list[@]}"}; do
+        case ${p##*/} in # lint-comparisons: allow a basename shape (regime-env's store convention), no path compare
+        hcom-*) ;;
+        *) continue ;;
+        esac
+        [[ -d ${p} ]] || continue
+        # The lever's own state directory is no store; the store HCOM_DIR names is listed once, above.
+        if [[ ${p} -ef ${tools_dir%/*} || ${p} -ef ${HCOM_DIR} ]]; then continue; fi
+        stores+=("${p}")
+    done
+    physical_paths ${stores[@]+"${stores[@]}"}
+    for p in ${phys_list[@]+"${phys_list[@]}"}; do
+        dsh_deny+=("${p}") dsh_deny_labels+=("an hcom store")
+    done
+    dsh_deny+=("${checkout}/.orchestration") dsh_deny_labels+=("the orchestration records")
+    seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
+    dir_entries "${seats_phys}"
+    for p in ${dir_list[@]+"${dir_list[@]}"}; do
+        case ${p##*/} in .state | .sandbox) continue ;; esac
+        [[ -d ${p} ]] || continue
+        seat_dirs+=("${p}")
+    done
+    physical_paths ${seat_dirs[@]+"${seat_dirs[@]}"}
+    for p in ${phys_list[@]+"${phys_list[@]}"}; do
+        dsh_deny+=("${p}") dsh_deny_labels+=("another seat's directory")
+    done
+    for ((i = 0; i < ${#dsh_deny[@]}; i++)); do
+        require_clean_path "a path the dsh role denies (${dsh_deny_labels[i]})" "${dsh_deny[i]}"
+    done
+}
+
+# @description Refuse (exit 2) when the dsh role's DSH_HOME `$1` (physical) is, contains or lies inside a path the
+#   role denies (dsh_deny_paths), decided by identity (identity_table, within_ix) before any directory is made
+#   (regime-cutover U272d): `DSH_HOME=<checkout>/.git` is the common directory the overlap check exempts as the omp
+#   roles' own write root, and a write grant there would let dsh alter objects and refs.
+# @arg $1 string DSH_HOME, physical.
+dsh_home_check() {
+    local i n=${#dsh_deny[@]}
+    ((n)) || return 0
+    identity_table "$1" "${dsh_deny[@]}"
+    for ((i = 0; i < n; i++)); do
+        if within_ix 0 $((i + 1)) || within_ix $((i + 1)) 0; then
+            refuse "DSH_HOME $1 is, contains or lies inside ${dsh_deny_labels[i]} ${dsh_deny[i]}, which the dsh role denies; choose another DSH_HOME"
+        fi
+    done
+}
+
 # @description Refuse (exit 2) unless the final `allowWrite` list of one seat keeps clear of every protected path
 #   (regime-cutover U85), one invariant instead of a list of cases: for every granted root R and every protected
 #   path P, R must not be or contain P, and R must not lie inside P. The protected paths are defined once: the main
@@ -1666,6 +1756,15 @@ seat_overlap_check() {
 }
 
 dir_phys=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"
+# The role table's deny row and the DSH_HOME refusal (U272d), before the overlap check: in a dry run too, and before
+# anything is made.
+dsh_deny=() dsh_deny_labels=()
+if [[ ${role_launch} == foreground ]]; then
+    dsh_home=$(physical_path "${dsh_home}") || refuse "cannot resolve DSH_HOME ${dsh_home}"
+    require_clean_path DSH_HOME "${dsh_home}"
+    dsh_deny_paths
+    dsh_home_check "${dsh_home}"
+fi
 seat_overlap_check "${role}" "${dir_phys}" "${seat_write[@]}"
 orchestrator_write=()
 while IFS= read -r root; do orchestrator_write+=("${root}"); done <<< "${other_roots}"
@@ -1714,8 +1813,6 @@ omp_cmd=("${pinned[@]}")
 case ${role_launch} in
 hcom) seat_cmd=("${omp_cmd[@]}" --no-extensions) shim_tool=omp ;;
 foreground)
-    dsh_home=$(physical_path "${dsh_home}") || refuse "cannot resolve DSH_HOME ${dsh_home}"
-    require_clean_path DSH_HOME "${dsh_home}"
     dsh_exec=$(physical_file "${dsh_home}/bin/dsh") ||
         refuse "cannot resolve the dsh command to a physical executable file: ${dsh_home}/bin/dsh"
     seat_cmd=("${dsh_exec}") shim_tool=dsh
@@ -1873,7 +1970,9 @@ seat_sandbox_write() {
             "${checkout}/.orchestration/orchestrate")
         ;;
     dsh)
-        deny_read+=("${checkout}")
+        # The deny row (U272d): the role's own denies for read and for write, after the worker's.
+        deny_read+=("${checkout}" ${dsh_deny[@]+"${dsh_deny[@]}"})
+        deny_write+=(${dsh_deny[@]+"${dsh_deny[@]}"})
         allow_read=("${dir_real}" "${sandbox_state}" "${dsh_home}" "${h}/.omp/profiles/${role}" "${h}/.agents/skills"
             "${tools_dir}")
         ;;
@@ -2109,6 +2208,31 @@ fi
 # cwd's .omp tools, MCP servers, rules and skills out of the running seat (measured the same way).
 [[ ! -e ${dir}/.omp && ! -L ${dir}/.omp ]] ||
     refuse "seat directory holds .omp, whose project settings omp would apply to the seat: ${dir}/.omp"
+# @description Remove the dsh role's per-launch slots, the sandbox and the state slot (regime-cutover U272): both were
+#   absent before this launch and made by it (seat_sandbox_write), and rm follows no link inside them. The normal
+#   exit and the signal trap run this one function.
+slots_remove() {
+    /bin/rm -rf -- "${sandbox}" "${seats_root%/}/.state/${name}" ||
+        echo "hcom-seat: cannot remove the per-launch slots ${sandbox} and ${seats_root%/}/.state/${name}" >&2
+}
+# @description The dsh role's signal trap (regime-cutover U272d): a hangup, interrupt or termination removes the slots
+#   and then ends this process by the same signal, its disposition restored, so the caller's status names the
+#   signal. bash runs the trap once the foreground child (the shim, srt, dsh) has ended; a signal to the process
+#   group, a terminal hangup included, ends the child first. The subshell the child runs in resets the trapped
+#   signals to their defaults, so dsh keeps its own disposition.
+# @arg $1 string The signal name.
+foreground_signal() {
+    trap - HUP INT TERM
+    slots_remove
+    kill -s "$1" $$
+    exit 2
+}
+if [[ ${role_launch} == foreground ]]; then
+    # Installed before the slots are made, so a signal during seat_sandbox_write removes what it made. Expanded now
+    # on purpose: the handler needs the signal's name.
+    # shellcheck disable=SC2064
+    for sig in HUP INT TERM; do trap "foreground_signal ${sig}" "${sig}"; done
+fi
 seat_sandbox_write
 case ${role_launch} in
 hcom)
@@ -2118,19 +2242,15 @@ hcom)
     exec "${hcom_cmd[@]}" "${argv[@]:1}"
     ;;
 foreground)
-    # The shim runs as a child so the per-launch slots can go when dsh exits. A SIGINT or SIGTERM at the terminal
-    # reaches dsh (a handler, not SIG_IGN, so the child keeps the default disposition) while this shell waits for it.
-    trap ':' INT TERM
+    # The shim runs as a child so the per-launch slots can go when dsh exits (slots_remove, the trap's cleanup too).
     status=0
     # dsh runs in the scratch cwd (M-21: a cwd inside a read-denied path dies on `uv_cwd EPERM`); the subshell is
     # replaced by the shim, so nothing waits twice.
     (cd "${dir}" && exec /usr/bin/env -i "${seat_env[@]}" \
         ${CLAUDE_CODE_OAUTH_TOKEN:+"CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}"} \
         "${sandbox}/bin/${shim_tool}" ${dsh_args[@]+"${dsh_args[@]}"}) || status=$?
-    trap - INT TERM
-    # Both slots were absent before this launch and made by it (seat_sandbox_write); rm follows no link inside them.
-    /bin/rm -rf -- "${sandbox}" "${seats_root%/}/.state/${name}" ||
-        echo "hcom-seat: cannot remove the per-launch slots ${sandbox} and ${seats_root%/}/.state/${name}" >&2
+    trap - HUP INT TERM
+    slots_remove
     exit "${status}"
     ;;
 esac

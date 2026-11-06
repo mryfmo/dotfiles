@@ -12,6 +12,7 @@ import json
 import os
 import re
 import shlex
+import signal
 import stat
 import subprocess
 import sys
@@ -30,8 +31,11 @@ FAKE_OAUTH_VALUE = test_hcom_seat.FAKE_OAUTH_VALUE
 CALLER_OAUTH_VALUE = "caller-" + "value-u272"
 # bash itself exports these into every child; the role's list is everything else.
 BASH_OWN_NAMES = {"PWD", "SHLVL", "OLDPWD", "_"}
-# The head before the read grants became a role row (U272c); the omp roles' settings are held to its rendering.
-ROUND_ONE_HEAD = "52873a37745d8141eada2139ea2fa76e2773a60d"
+# The heads before each round's row: the omp roles' settings are held byte-identical to every one of them.
+EARLIER_HEADS = (
+    "52873a37745d8141eada2139ea2fa76e2773a60d",  # round one, before the read grants became a role row (U272c)
+    "976fd6cdb249c76ac397ede1bbfccd931ad824c1",  # round two, before the deny row and the DSH_HOME refusal (U272d)
+)
 
 
 def interpreter_own_names():
@@ -105,18 +109,28 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def launch(self, *args, **overrides):
         return self.seat("dsh", "--seats-root", self.seats, "--home", str(self.dsh_home), *args, **overrides)
 
-    def held_launch(self, *args, count=1, **overrides):
+    def held_launch(self, *args, count=1, new_session=False, **overrides):
         """Start `count` launches whose dsh waits for `release`, and return them once every dsh has recorded itself,
-        so the per-launch slots can be read while they exist."""
+        so the per-launch slots can be read while they exist; `new_session` makes each launcher its own process
+        group, the target of a signal to the group."""
         (self.calls / "hold").touch()
         env = {**self.env, **overrides}
         argv = [str(test_hcom_seat.SEAT), "dsh", "--seats-root", self.seats, "--home", str(self.dsh_home), *args]
+        before = len(self.dsh_calls())
         procs = [
-            subprocess.Popen(argv, cwd=self.repo, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            subprocess.Popen(
+                argv,
+                cwd=self.repo,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                start_new_session=new_session,
+            )  # fmt: skip
             for _ in range(count)
         ]
         deadline = time.monotonic() + 60
-        while len(self.dsh_calls()) < count:
+        while len(self.dsh_calls()) < before + count:
             if time.monotonic() > deadline or any(proc.poll() is not None for proc in procs):
                 outputs = [proc.communicate() for proc in procs]
                 self.fail(f"a launch ended before its dsh recorded itself: {outputs}")
@@ -177,15 +191,19 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
              str(self.tools)],
         )  # fmt: skip
         # denyWrite: the project files under the seat directory move with it; the worker's `.git` file has no dsh
-        # counterpart (no worktree); every other deny is the same.
+        # counterpart (no worktree); the deny row (U272d: the git common directory, the worker clone's `.git` entry,
+        # it being a linked worktree, the hcom store, the records and the other seat's directory) follows the
+        # worker's denies; the macOS worktree patterns and every other deny are the same.
+        row = [common, clone + "/.git", store, str(self.repo.resolve() / ".orchestration"), clone]
         deny_w = [entry for entry in worker["filesystem"]["denyWrite"] if not entry.startswith(clone + "/")]
         deny_d = [entry for entry in dsh["filesystem"]["denyWrite"] if not entry.startswith(cwd + "/")]
-        self.assertEqual(deny_d, deny_w)
+        self.assertEqual([e for e in deny_d if "*" not in e], [e for e in deny_w if "*" not in e] + row)
+        self.assertEqual([e for e in deny_d if "*" in e], [e for e in deny_w if "*" in e])
         self.assertEqual(
             [entry[len(cwd) :] for entry in dsh["filesystem"]["denyWrite"] if entry.startswith(cwd + "/")],
             [entry[len(clone) :] for entry in worker["filesystem"]["denyWrite"] if entry.startswith(clone + "/") and entry != clone + "/.git"],
         )  # fmt: skip
-        self.assertEqual(dsh["filesystem"]["denyRead"], worker["filesystem"]["denyRead"])
+        self.assertEqual(dsh["filesystem"]["denyRead"], worker["filesystem"]["denyRead"] + row)
         self.assertEqual(dsh["network"], worker["network"])
         self.assertEqual({k: v for k, v in dsh.items() if k not in ("filesystem", "network")},
                          {k: v for k, v in worker.items() if k not in ("filesystem", "network")})  # fmt: skip
@@ -220,41 +238,42 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             self.assertNotIn(str(checkout), (entry, *(str(p) for p in Path(entry).parents)), entry)
         self.assertEqual(self.slots(), (["worker"], ["worker"]))
 
-    def test_the_omp_roles_settings_are_byte_identical_to_the_round_one_head(self):
-        """The read-grant row changes no omp role's settings: the worker's and the orchestrator's `srt-settings.json`
-        rendered by this head equal, byte for byte, the ones the round-one head renders on the same scratch host.
-        The round-one lever runs from its own tree (git archive of its `scripts/orchestrator` and manifest, so its
-        self-check reads its own pin); a checkout without that commit skips."""
-        probe = subprocess.run(
-            ["git", "-C", str(test_hcom_seat.ROOT), "cat-file", "-e", f"{ROUND_ONE_HEAD}^{{commit}}"],
-            env=self.env, capture_output=True, text=True, check=False,
-        )  # fmt: skip
-        if probe.returncode != 0:
-            self.skipTest(f"the round-one head {ROUND_ONE_HEAD} is not in this checkout (a shallow or squashed clone)")
-        old_root = Path(self.temp.name).resolve() / "round-one"
-        old_root.mkdir()
-        archive = old_root / "tree.tar"
-        subprocess.run(
-            ["git", "-C", str(test_hcom_seat.ROOT), "archive", "--format=tar", "-o", str(archive), ROUND_ONE_HEAD,
-             "scripts/orchestrator", "home/dot_agents/agent-config.yaml"],
-            env=self.env, capture_output=True, text=True, check=True,
-        )  # fmt: skip
-        with tarfile.open(archive) as tar:
-            tar.extractall(old_root, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
-        old_seat = old_root / "scripts/orchestrator/hcom-seat"
-        self.assertTrue(os.access(old_seat, os.X_OK), old_seat)
-        for role in ("worker", "orchestrator"):
-            rendered = {}
-            for label, seat in (("round one", old_seat), ("this head", test_hcom_seat.SEAT)):
-                run = subprocess.run(
-                    [str(seat), role, "--seats-root", self.seats], cwd=self.repo, env=self.env,
-                    capture_output=True, text=True, check=False,
-                )  # fmt: skip
-                self.assertEqual(run.returncode, 0, f"{label} {role}: {run.stderr}")
-                rendered[label] = Path(self.seats, ".sandbox", role, "srt-settings.json").read_bytes()
-            with self.subTest(role=role):
-                self.assertEqual(rendered["round one"], rendered["this head"])
-                self.assertIn(b'"allowRead":[', rendered["this head"])
+    def test_the_omp_roles_settings_are_byte_identical_to_the_earlier_heads(self):
+        """No round's row changes an omp role's settings: the worker's and the orchestrator's `srt-settings.json`
+        rendered by this head equal, byte for byte, the ones each earlier head (EARLIER_HEADS) renders on the same
+        scratch host. An earlier lever runs from its own tree (git archive of its `scripts/orchestrator` and manifest,
+        so its self-check reads its own pin); a checkout without that commit skips it."""
+        for head in EARLIER_HEADS:
+            probe = subprocess.run(
+                ["git", "-C", str(test_hcom_seat.ROOT), "cat-file", "-e", f"{head}^{{commit}}"],
+                env=self.env, capture_output=True, text=True, check=False,
+            )  # fmt: skip
+            if probe.returncode != 0:
+                self.skipTest(f"the earlier head {head} is not in this checkout (a shallow or squashed clone)")
+            old_root = Path(self.temp.name).resolve() / f"head-{head[:8]}"
+            old_root.mkdir()
+            archive = old_root / "tree.tar"
+            subprocess.run(
+                ["git", "-C", str(test_hcom_seat.ROOT), "archive", "--format=tar", "-o", str(archive), head,
+                 "scripts/orchestrator", "home/dot_agents/agent-config.yaml"],
+                env=self.env, capture_output=True, text=True, check=True,
+            )  # fmt: skip
+            with tarfile.open(archive) as tar:
+                tar.extractall(old_root, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
+            old_seat = old_root / "scripts/orchestrator/hcom-seat"
+            self.assertTrue(os.access(old_seat, os.X_OK), old_seat)
+            for role in ("worker", "orchestrator"):
+                rendered = {}
+                for label, seat in (("earlier head", old_seat), ("this head", test_hcom_seat.SEAT)):
+                    run = subprocess.run(
+                        [str(seat), role, "--seats-root", self.seats], cwd=self.repo, env=self.env,
+                        capture_output=True, text=True, check=False,
+                    )  # fmt: skip
+                    self.assertEqual(run.returncode, 0, f"{label} {head[:8]} {role}: {run.stderr}")
+                    rendered[label] = Path(self.seats, ".sandbox", role, "srt-settings.json").read_bytes()
+                with self.subTest(head=head[:8], role=role):
+                    self.assertEqual(rendered["earlier head"], rendered["this head"])
+                    self.assertIn(b'"allowRead":[', rendered["this head"])
 
     def test_two_launches_at_once_share_no_settings_file_and_each_slot_goes_with_its_dsh(self):
         """U251d P1 `:704`: every launch has its own sandbox, settings file, state slot and CLAUDE_CONFIG_DIR."""
@@ -435,6 +454,141 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual(len(self.calls_of("srt")), before + 1, "the dry run reads the srt version and starts nothing")
         self.assertEqual(len(self.dsh_calls()), 1)
         self.assertEqual(self.slots(), ([], []), "the dry run makes no per-launch slot")
+
+    def test_the_dsh_settings_deny_every_git_hcom_and_record_path_for_read_and_write(self):
+        """U272c P1 `hcom-seat:1876`: srt reads everything an explicit deny does not name, so removing a grant denied
+        nothing. The dsh settings carry a denyRead and a denyWrite row for each path of the role's deny row, by its
+        physical path: the checkout's git common directory, the `.git` entry of a linked worktree, the hcom store
+        (here outside `~/.local/state/hcom`, as the program's `hcom-regime` is), every `~/.local/state/hcom-*`
+        sibling store but the lever's own `hcom-seat` (a file of the name shape is skipped), the records directory and
+        another seat's directory. The worker's settings deny none of them: its grants re-open the store and the
+        common directory."""
+        linked = Path(self.temp.name).resolve() / "linked"
+        self.git("worktree", "add", "-q", "--detach", str(linked), "HEAD")
+        state = self.home / ".local/state"
+        sibling = state / "hcom-regime"
+        sibling.mkdir(parents=True)
+        (state / "hcom-note").write_text("")
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        worker = self.settings_of("worker")["filesystem"]
+        procs = self.held_launch("--", "--version")
+        (name,) = [entry for entry in self.slots()[0] if entry != "worker"]
+        dsh = self.settings_of(name)["filesystem"]
+        ((status, out, err),) = self.release(procs)
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        checkout = self.repo.resolve()
+        row = [str(checkout / ".git"), str(linked / ".git"), str(Path(self.seats, "worker/.git")), str(self.store.resolve()),
+               str(sibling.resolve()), str(checkout / ".orchestration"), str(Path(self.seats, "worker"))]  # fmt: skip
+        for path in row:
+            with self.subTest(path=path):
+                self.assertIn(path, dsh["denyRead"])
+                self.assertIn(path, dsh["denyWrite"])
+        self.assertEqual(dsh["denyRead"][-len(row) :], row, "the row in the lever's order, after the worker's denies")
+        for path in (str(self.tools.parent), str(state / "hcom-note")):
+            self.assertNotIn(path, dsh["denyRead"], path)
+        self.assertIn(str(self.tools), dsh["allowRead"], "the lever's own state directory is no store")
+        for path in (str(checkout / ".git"), str(self.store.resolve())):
+            self.assertNotIn(path, worker["denyRead"], "the worker's grants stay")
+            self.assertIn(path, worker["allowRead"])
+        self.assertEqual(self.slots(), (["worker"], ["worker"]))
+        # The program's own spelling, `HCOM_DIR=~/.local/state/hcom-regime` (the verdict's case): the store is denied
+        # once, as the store, not again as a sibling.
+        procs = self.held_launch("--", "--version", HCOM_DIR=str(sibling))
+        (name,) = [entry for entry in self.slots()[0] if entry != "worker"]
+        dsh = self.settings_of(name)["filesystem"]
+        ((status, out, err),) = self.release(procs)
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        self.assertEqual(dsh["denyRead"].count(str(sibling.resolve())), 1, dsh["denyRead"])
+        self.assertEqual(dsh["denyWrite"].count(str(sibling.resolve())), 1, dsh["denyWrite"])
+        self.assertNotIn(str(sibling.resolve()), dsh["allowRead"])
+
+    def test_a_dsh_home_that_is_or_holds_a_denied_path_refuses_before_any_mkdir(self):
+        """U272c P1 `hcom-seat:1453`: a DSH_HOME whose physical path is, lies inside or contains a path of the deny row
+        refuses by name, in a dry run too, before any directory is made: the checkout's `.git` (the overlap check's
+        own-`.git` exemption admitted it as a write root, so dsh could alter objects and refs), a directory inside
+        it, and a directory holding the hcom store. bash's DEBUG trap records every command the launch ran; the only
+        mkdir is the private tool directory's."""
+        common = (self.repo / ".git").resolve()
+        holder = self.store.parent.resolve()
+        hook = Path(self.temp.name) / "trace-hook.bash"
+        hook.write_text('set -T\ntrap \'builtin printf "%s\\0" "$BASH_COMMAND" >> "$U272_TRACE"\' DEBUG\n')
+        trace = Path(self.temp.name) / "trace"
+        cases = (
+            ("the checkout's .git", common, [],
+             f"DSH_HOME {common} is, contains or lies inside the git common directory {common}"),
+            ("inside the checkout's .git", common / "objects", [],
+             f"DSH_HOME {common / 'objects'} is, contains or lies inside the git common directory {common}"),
+            ("a directory holding the hcom store", holder, [],
+             f"DSH_HOME {holder} is, contains or lies inside the hcom store {self.store.resolve()}"),
+            ("the checkout's .git, dry run", common, ["--dry-run"], f"the git common directory {common}"),
+        )  # fmt: skip
+        for label, home, args, message in cases:
+            with self.subTest(case=label):
+                trace.write_text("")
+                run = self.seat("dsh", "--seats-root", self.seats, "--home", str(home), *args, "--", "--version",
+                                BASH_ENV=str(hook), U272_TRACE=str(trace))  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertIn("which the dsh role denies", run.stderr)
+                commands = trace.read_text().split("\0")[:-1]
+                self.assertIn("dsh_home_check", " ".join(commands), "the refusal is the check's, recorded")
+                mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
+                self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
+        self.assertFalse(Path(self.seats).exists())
+        self.assertFalse((self.home / ".omp").exists())
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_a_hangup_to_a_held_launch_removes_both_slots(self):
+        """U272c P2 `hcom-seat:2123`: a SIGHUP (a terminal hangup) or a SIGTERM to the launch's process group ends dsh,
+        the shim and the launcher, whose trap removes both per-launch slots and then ends by the same signal, so the
+        exit status names it."""
+        for sig in (signal.SIGHUP, signal.SIGTERM):
+            with self.subTest(signal=sig.name):
+                (proc,) = self.held_launch("--", "--version", new_session=True)
+                (name,) = self.slots()[0]
+                self.assertEqual(self.slots(), ([name], [name]))
+                os.killpg(proc.pid, sig)
+                out, err = proc.communicate(timeout=60)
+                (self.calls / "hold").unlink()
+                self.assertEqual((proc.returncode, out), (-sig, ""), err)
+                self.assertEqual(self.slots(), ([], []), err)
+
+    def test_a_failing_or_malformed_date_refuses_the_launch_name(self):
+        """U272c P2 `hcom-seat:256`: the clock producer that names the per-launch slot fails closed. A `/bin/date` that
+        fails after plausible output, prints nothing, prints another shape, a stamp and more, or a stamp with a
+        suffix refuses (exit 2) and names no stamp; the real clock prints the shape. The producer runs from the
+        lever's own text with the clock's path replaced, as the identity check's stat is."""
+        text = test_hcom_seat.SEAT.read_text()
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("refuse", "utc_stamp")
+        )
+        self.assertIn("/bin/date", functions)
+        clocks = Path(self.temp.name) / "clocks"
+        clocks.mkdir()
+        cases = {
+            "fails after plausible output": "echo 20261106-120000\nexit 1",
+            "prints nothing": "exit 0",
+            "another shape": "echo 2026-11-06T12:00:00Z",
+            "a stamp and more": "echo 20261106-120000\necho 20261106-120001",
+            "a stamp with a suffix": "echo 20261106-120000x",
+        }
+        for n, (label, body) in enumerate(cases.items()):
+            with self.subTest(clock=label):
+                clock = clocks / f"date-{n}"
+                clock.write_text(f"#!/bin/sh\n{body}\n")
+                clock.chmod(0o755)
+                script = f"set -euo pipefail\n{functions.replace('/bin/date', str(clock))}\n"
+                script += 'stamp=$(utc_stamp) || exit 2\necho "named=${stamp}"\n'
+                run = subprocess.run(["/bin/bash", "-c", script], capture_output=True, text=True, check=False)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stdout + run.stderr)
+                self.assertIn("cannot read the time", run.stderr)
+        real = subprocess.run(
+            ["/bin/bash", "-c", f"set -euo pipefail\n{functions}\nutc_stamp\n"], capture_output=True, text=True, check=False
+        )  # fmt: skip
+        self.assertEqual(real.returncode, 0, real.stderr)
+        self.assertRegex(real.stdout, r"^\d{8}-\d{6}\n$")
 
 
 if __name__ == "__main__":

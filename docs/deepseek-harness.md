@@ -13,12 +13,22 @@ bridge child's `CLAUDE_CONFIG_DIR`, the role's own omp profile
 `~/.omp/profiles/dsh` (where the login child `omp auth-gateway stdio` lives,
 selected by `OMP_PROFILE`) and `~/.omp/run`; the read grants are the role's own
 as well (the scratch cwd and its state slot, `DSH_HOME`, `~/.omp/profiles/dsh`,
-`~/.agents/skills` and the lever's pinned tool directory), so the checkout's
-git directory, the hcom store and the coordinator's records under the
-checkout, which a worker re-opens, stay unreadable to dsh (U272c); the read
-denies (credentials, the operator's Claude Code state, `~/.omp/agent`, the
-chezmoi sources, `~/Workspace`, the hcom stores, every seats root), the domain
-list, no unix socket and no local binding are the worker's. The lever's
+`~/.agents/skills` and the lever's pinned tool directory; U272c). srt reads
+everything an explicit deny does not name, so a grant the role lacks denies
+nothing: the role's containment is a deny list it owns (U272d). After the
+worker's read denies (credentials, the operator's Claude Code state,
+`~/.omp/agent`, the chezmoi sources, `~/Workspace`, `~/.local/state/hcom`,
+every seats root, the main checkout), the dsh settings deny for read and for
+write the physical paths of the checkout's git directory and git common
+directory, the `.git` entry of every linked worktree git lists, the hcom store
+`HCOM_DIR` and every existing `~/.local/state/hcom-*` sibling store (the
+lever's own `hcom-seat` directory excepted), the records directory
+`<checkout>/.orchestration` and every other seat's directory under the seats
+root. A `DSH_HOME` that is, contains or lies inside one of those paths, the
+checkout's `.git` included, is refused by name before any directory is made.
+Git directories elsewhere on the host are not computed by the lever and are
+not denied. The domain list, no unix socket and no local binding are the
+worker's. The lever's
 existing containment does the rest: every tool it runs outside the sandbox
 is pinned by its physical argv and refused when it, or a directory above it,
 has the identity of any seat write root, `DSH_HOME` included from the first
@@ -31,7 +41,9 @@ inside) and only then execs `srt --settings <file> -- /usr/bin/env PATH=<seat
 path> <DSH_HOME>/bin/dsh [--profile <name>] <args>`; the lever runs that shim
 in the foreground under `/usr/bin/env -i` with `HOME`, `USER`, `LANG`, `TERM`,
 `PATH`, `DSH_HOME`, `OMP_PROFILE` and a caller's `CLAUDE_CODE_OAUTH_TOKEN`
-alone, waits, removes the per-launch slots and returns dsh's status. The dsh
+alone, waits, removes the per-launch slots and returns dsh's status; a hangup,
+interrupt or termination runs the same removal before the lever ends by that
+signal, so the caller's status names it. The dsh
 runtime is never executed outside srt. Two launches at once share no settings
 file. The role's rows and the hazard-by-hazard account of the four verdicts
 are in `scripts/orchestrator/README.md` ("The dsh role") and the tests in

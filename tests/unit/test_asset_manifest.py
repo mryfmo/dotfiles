@@ -150,6 +150,38 @@ class AssetManifestTest(unittest.TestCase):
         self.assertEqual(["warning: failed to prune retired asset manifest steps"], result.stderr.splitlines())
         self.assertEqual("{truncated", manifest_path.read_text())
 
+    def test_prune_refuses_a_directory_or_a_dangling_link_at_the_manifest_path(self) -> None:
+        # regime-cutover U283: a directory or a dangling link there is not a manifest, so the pruner names the path
+        # and returns 1 (the updater's prune step counts it); the housekeeping wrapper keeps its warn-and-0 contract.
+        for case in ("a directory", "a dangling link"):
+            with self.subTest(case=case):
+                shutil.rmtree(self.home / ".agents", ignore_errors=True)
+                manifest_path = self.home / ".agents/.installed-manifest.json"
+                manifest_path.parent.mkdir()
+                if case == "a directory":
+                    manifest_path.mkdir()
+                    (manifest_path / "kept").write_text("kept\n")
+                else:
+                    manifest_path.symlink_to(self.home / "absent")
+
+                result = self.run_bash(f"source {LIBRARY}; _manifest_prune_retired")
+                self.assertEqual(1, result.returncode)
+                self.assertEqual("", result.stdout)
+                self.assertEqual(
+                    [
+                        f"ERROR: {manifest_path} is a link or no regular file; refusing to prune the installed asset manifest."
+                    ],
+                    result.stderr.splitlines(),
+                )
+                wrapped = self.run_bash(f"source {LIBRARY}; manifest_prune_retired")
+                self.assertEqual(0, wrapped.returncode)
+                self.assertEqual(["warning: failed to prune retired asset manifest steps"], wrapped.stderr.splitlines())
+                if case == "a directory":
+                    self.assertEqual(["kept"], [path.name for path in manifest_path.iterdir()])
+                else:
+                    self.assertEqual(self.home / "absent", Path(os.readlink(manifest_path)))
+                self.assertEqual([".installed-manifest.json"], [path.name for path in manifest_path.parent.iterdir()])
+
     def test_two_real_install_steps_record_under_fake_home(self) -> None:
         bin_dir = self.temp_dir / "bin"
         bin_dir.mkdir()
@@ -275,9 +307,11 @@ class AssetManifestTest(unittest.TestCase):
             "update_compactiondb",
         )
 
-        # The three Claude plugin steps record through record_claude_plugin_step (one manifest_record "${step}").
+        # The three Claude plugin steps record through record_claude_plugin_step (one manifest_record "${step}"), and
+        # the sixteenth call is mark_sync_failed's failure mark (regime-cutover U283), a record of no install.
         claude = {step for step in steps if step.startswith("update_claude_")}
-        self.assertEqual(15, updater.count('manifest_record "'))
+        self.assertEqual(16, updater.count('manifest_record "'))
+        self.assertEqual(1, updater.count('manifest_record "$1" rsync "$2" "$3/.sync-incomplete"'))
         self.assertEqual(1, updater.count('manifest_record "${step}" plugin "${plugin_version}"'))
         self.assertEqual(
             1,

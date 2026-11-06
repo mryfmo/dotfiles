@@ -12,7 +12,7 @@ CHANGE
    ```sh
    scratch="$TMPDIR/U116-home"
    mkdir -p "$scratch/.config/mise" "$scratch/.local/share" "$scratch/.cache" "$scratch/.local/state"
-   cp /tmp/dotfiles-wt/U116/home/dot_mise/config.toml "$scratch/.config/mise/config.toml"
+   cp /tmp/dotfiles-wt/U116~/config.toml "$scratch/.config/mise/config.toml"
    ls -la ~/.config/mise   # before: paste; expected config.toml only, no mise.lock
    ```
 

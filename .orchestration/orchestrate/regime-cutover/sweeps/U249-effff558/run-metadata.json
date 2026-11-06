@@ -1,0 +1,83 @@
+{
+  "run_id": "dotfiles-run-4",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "effff558445ded75c7d7dd6855086b4490d21133",
+    "branch": "feat/brief-check-ci-gates",
+    "parent": "b49be338",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U249 change b49be338..effff558445ded75c7d7dd6855086b4490d21133 (one commit; 6 files: scripts/orchestrator/brief-check.py, its deployed copy home/dot_local/bin/common/executable_brief-check.py, the manifest pin, scripts/generated-agent-outputs.json, scripts/orchestrator/README.md, tests/unit/test_brief_check.py); every other top-level directory and the root files are carried out_of_scope",
+  "scope_note": "The brief says the branch is from origin/main d1ecd495 and names `git diff --name-only c4195463 HEAD` (29 paths) as the change; the head's parent is b49be338 (main after U241, #678), so d1ecd495..HEAD also holds U241's merged change. The U249 commit alone was hunted, matching the GOAL's 6 files, 274 insertions, 29 deletions.",
+  "scope_paths": [
+    "scripts/orchestrator/brief-check.py",
+    "home/dot_local/bin/common/executable_brief-check.py",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_brief_check.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the copy and pin were compared with git cat-file, cmp and shasum over the committed blobs, which runs no target code.",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-3",
+      "source_ref": "6531a212d627314f8aa843e4d9f18cf63c76da35",
+      "findings": 0,
+      "ledger_units": 28,
+      "use": "Carried. run-3 swept U240, not U249 as the brief's CONTEXT says; this head descends from main without U240, so run-3's 9 covered omp-gateway units carry as prior_covered_changed_source (source absent) and stay out of scope, and its 19 out_of_scope units carry as prior_out_of_scope. No finding of any verdict to carry."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T07:26:41Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the platform's delegation tool (Task) and eval kernel are denied by policy on this seat, so reconnaissance, the hunter wave and both coverage-critic passes ran in the parent; no fresh independent critic ran. No candidate survived the hunt, so no Phase 3 or Phase 5 verifier was needed and findings.json holds no record",
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 verifier per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter for the ledger checks)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; the levers that call brief-check (the hcom-orchestration SKILL step) are unchanged and outside the change"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 0,
+  "findings_count": 0,
+  "finished_at": "2026-11-06T07:29:16Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

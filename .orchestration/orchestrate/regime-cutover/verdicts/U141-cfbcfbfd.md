@@ -60,7 +60,7 @@ Real srt on this host: `srt --version` prints exactly `0.0.81` + newline (od-ver
   produce the optional warning the brief prescribes for an absent srt. Acceptable; not a producer decision that could read as a pass.
 - Pin reader: `pin="$(awk -F'"' '/^"npm:@anthropic-ai\/sandbox-runtime" = "/ { print $4; exit }' "$config")"` with
   `or pin=''`: status checked; result must match `^[0-9]+(\.[0-9]+)+$` or the next config is tried; applied
-  `~/.config/mise/config.toml` first, then `${BASH_SOURCE[0]%/*}/../home/dot_mise/config.toml` (same idiom as check_hcom).
+  `~/.config/mise/config.toml` first, then `${BASH_SOURCE[0]%/*}/..~/config.toml` (same idiom as check_hcom).
   `latest`, an inline-table form, a missing line, or an unreadable file all fall through; no pin anywhere is a required failure (fails closed).
 - Version: `output="$("$target" --version 2>/dev/null)"` failing or empty is a required failure; first line, first token,
   exact string compare with the pin; difference is a required failure naming both.

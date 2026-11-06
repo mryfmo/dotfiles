@@ -1,0 +1,6 @@
+security-audit sweep 1d23154b71932e74902cf9ac95b2eeaf7b055215: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+run_status: incomplete (independent_agents_unavailable: the delegation tool is denied by policy on this seat, so recon, the hunter wave and both critics ran in the parent; no candidate needed a verifier)
+scope: the U227b change b49be338..1d23154b71932e74902cf9ac95b2eeaf7b055215 (DSH profile gateway rows, withdrawn key routes, the updater's plugin link step; 9 files), profile standard, source-only; run-6 carried (0 findings); ledger 43 units: 6 covered, 37 out_of_scope; 2 hardening notes in REPORT.md incl. the U240 merge-ordering note
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (parent ledger builder: agents/parent-hunter/scratch/build-ledger.cjs)
+wall time: 211s (2026-11-06T08:32:13Z to 2026-11-06T08:35:44Z)

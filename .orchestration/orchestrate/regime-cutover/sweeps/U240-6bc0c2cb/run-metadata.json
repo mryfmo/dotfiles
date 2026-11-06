@@ -1,0 +1,88 @@
+{
+  "run_id": "dotfiles-sweep-3-run-1",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "6bc0c2cbd44a76901c33acc36458518a300cb2ab",
+    "branch": "feat/dsh-omp-gateway-adapter",
+    "base": "d1ecd495",
+    "previous_u240_sweep_head": "2256b56c83975cef17d8058ede5660c25f6cf35f",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U240 change d1ecd495..6bc0c2cbd44a76901c33acc36458518a300cb2ab (16 files under home/dot_dsh/plugins/omp-gateway/); since the U240-2256b56c sweep, commits 5f159044 (U250: test/use-cases.test.mjs, 47 automated items) and 6bc0c2cb (proof/run-proof.mjs: --case selector, CASES with expected-output predicates, a second provider route, per-case model patch); every other top-level directory and the root files are carried out_of_scope",
+  "scope_note": "The brief's CONTEXT names `git diff --name-only c4195463 HEAD` (one file) as the change; at this head it lists 17 files (the 16 plugin files and tests/unit/test_validate_agent_assets.py, which d1ecd495..HEAD does not touch). The GOAL's description (the U240 change against d1ecd495) was followed.",
+  "scope_paths": [
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code runs: the task forbids building, testing or executing the target. Every check is a source check.",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md",
+    "AI-AND-LLM.md",
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "PROTOCOLS-RPC-AND-MESSAGING.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/sweeps/U240-2256b56c",
+      "source_ref": "2256b56c83975cef17d8058ede5660c25f6cf35f",
+      "run_id": "dotfiles-run-5",
+      "findings": 0,
+      "ledger_units": 33,
+      "use": "Carried from the store (no earlier run of this seat exists). Its 9 covered U240 units are re-checked at this head: 7 whose source is byte-identical since 2256b56c as prior_covered_same_source, the proof-runner and stub/fixtures/tests units as prior_covered_changed_source. Its 24 out_of_scope units carry as prior_out_of_scope. No finding of any verdict to carry."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T08:29:12Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the platform's delegation tool (Task) and eval kernel are denied by policy on this seat (the Phase 1 reconnaissance launch was refused), so reconnaissance, the hunter wave and both coverage-critic passes ran in the parent; no fresh independent critic ran. No candidate survived the hunt, so no Phase 3 or Phase 5 verifier was needed and findings.json holds no record",
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 verifier per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter for the ledger checks; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; the two round-4 surfaces (the U250 test's dsh-llm resolution, the proof's --case selector and provider routes) got their own units before the wave, and the U250 items and proof rewrite are covered by the stub/fixtures/tests and proof-runner units"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 0,
+  "findings_count": 0,
+  "ledger_units": 35,
+  "ledger_counts": {
+    "covered": 11,
+    "out_of_scope": 24
+  },
+  "finished_at": "2026-11-06T08:36:26Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "run_id": "dotfiles-run-1",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "0b475694e95f2061dffa73563c7036260dfa11d6",
+    "branch": "fix/dsh-build-commit-input",
+    "base": "c41954630b9701da70840171804aef919fafb20b",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the diff c41954630b9701da70840171804aef919fafb20b..0b475694e95f2061dffa73563c7036260dfa11d6 (unit U226); every other top-level directory and root file is seeded out_of_scope",
+  "scope_paths": [
+    "home/dot_agents/agent-config.yaml",
+    "scripts/lib/installer-pins.sh",
+    "scripts/update-agent-assets.sh",
+    "scripts/generate-agent-configs.py",
+    "tests/unit/test_generate_agent_configs.py",
+    "tests/unit/test_network_bounds.py",
+    "tests/unit/test_update_agent_assets.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code runs in this run: the seat's containment gives no external network and scratch-only writes, but it does not provide an empty allowlisted environment or explicit CPU, memory, process, file-size, disk and wall-clock limits, and the task forbids building, testing or executing the target. Every check is a source check; a decisive runtime fact becomes needs_validation.",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [],
+  "prior_run_note": "No earlier run exists under this seat's state root; the sweep seat's records are not readable from this seat's containment, so no compatible prior ledger was available.",
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T04:21:41Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the platform's delegation tool (Task) and eval kernel are denied by policy on this seat, so reconnaissance, the hunter wave and both coverage-critic passes ran in the parent; no fresh independent critic ran. No candidate survived the hunt, so no Phase 3 or Phase 5 verifier was needed and findings.json holds no record",
+  "agents": {
+    "planned": "4 reconnaissance research agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 verifier per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter for the ledger checks)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 1,
+      "reassign_ids": 0,
+      "result": "one gap outside the scoped diff (the build's inherited environment, pre-existing) recorded out_of_scope; no in-scope unit reopened"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 0,
+  "findings_count": 0,
+  "finished_at": "2026-11-06T04:28:40Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

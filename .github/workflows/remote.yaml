@@ -176,27 +176,26 @@ jobs:
           # the tee pipe open); the second probe's dump used sudo and never ended either, so setup.sh writes to a file
           # under the bound, the dump reads /proc without sudo, and every sudo in the dump is bounded by 20 s, with one
           # `sudo -n true` that tells whether sudo itself is what hangs.
-          status=0
           printf 'ci@example.invalid\n%s\n' "${SYSTEM}" | \
             DOTFILES_REPO_URL="${GITHUB_WORKSPACE}" BRANCH_NAME=bootstrap-under-test \
-            timeout --kill-after=20 12m bash "${GITHUB_WORKSPACE}/setup.sh" > "${RUNNER_TEMP}/setup.log" 2>&1 || status=$?
-          if [ "${status}" -ne 0 ]; then
-            echo "::group::probe: setup.sh exited ${status} (124 is the 12-minute bound)"
+            bash "${GITHUB_WORKSPACE}/setup.sh" > "${RUNNER_TEMP}/setup.log" 2>&1 &
+          setup_pid=$!
+          for _ in $(seq 1 72); do kill -0 "${setup_pid}" 2>/dev/null || break; sleep 10; done
+          if kill -0 "${setup_pid}" 2>/dev/null; then
+            echo "::group::probe: setup.sh still running after 12 minutes (round 4: no sudo, no wait)"
             date -u +%FT%TZ; cat /proc/loadavg
             echo "setup.log bytes: $(wc -c < "${RUNNER_TEMP}/setup.log")"
-            echo "--- last 80 lines of setup.log"; tail -n 80 "${RUNNER_TEMP}/setup.log" || true
-            echo "--- processes (no sudo)"; ps -eo pid,ppid,user,stat,etime,wchan:32,cmd --forest || true
-            for pid in $(pgrep -f 'apt-get|dpkg|needrestart|whiptail|debconf|unattended|chezmoi|setup_timezone|misc.sh|starship|sudo' || true); do
-              echo "--- pid ${pid}: $(tr '\0' ' ' < "/proc/${pid}/cmdline" 2>/dev/null | cut -c 1-200)"
-              echo "  stat: $(cut -d' ' -f3 "/proc/${pid}/stat" 2>/dev/null) wchan: $(cat "/proc/${pid}/wchan" 2>/dev/null)"
+            echo "--- last 60 lines of setup.log"; tail -n 60 "${RUNNER_TEMP}/setup.log" || true
+            echo "--- processes"; ps -eo pid,ppid,user,stat,etime,wchan:32,cmd --forest || true
+            for pid in $(pgrep -f 'apt-get|dpkg|tzdata|tee|ln |needrestart|debconf|unattended|chezmoi|setup_timezone|misc.sh|sudo|systemd-tty|timedate|snap' || true); do
+              echo "--- pid ${pid} stat=$(cut -d' ' -f3 "/proc/${pid}/stat" 2>/dev/null) wchan=$(cat "/proc/${pid}/wchan" 2>/dev/null) cmd=$(tr '\0' ' ' < "/proc/${pid}/cmdline" 2>/dev/null | cut -c 1-160)"
             done
-            echo "--- does sudo itself answer within 20 s"; timeout 20 sudo -n true; echo "sudo probe exit=$?"
-            echo "--- lock holders (bounded sudo)"; timeout 20 sudo -n fuser -v /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock 2>&1 || true
-            echo "--- journal tail (bounded sudo)"; timeout 20 sudo -n journalctl --no-pager -n 40 2>/dev/null || true
+            echo "--- /etc/localtime and /etc/timezone"; ls -l /etc/localtime; cat /etc/timezone 2>/dev/null; echo
+            echo "--- dmesg tail (unprivileged)"; dmesg 2>/dev/null | tail -n 20 || true
             echo "::endgroup::"
-            timeout 20 sudo -n pkill -9 -f 'apt-get|dpkg|needrestart|chezmoi' || true
-            exit "${status}"
+            exit 1
           fi
+          wait "${setup_pid}" || { status=$?; echo "probe: setup.sh exited ${status}"; tail -n 60 "${RUNNER_TEMP}/setup.log"; exit "${status}"; }
           cat "${RUNNER_TEMP}/setup.log"
           grep -F 'chezmoi externals: chezmoi read the externals from its cache' "${RUNNER_TEMP}/setup.log"
 

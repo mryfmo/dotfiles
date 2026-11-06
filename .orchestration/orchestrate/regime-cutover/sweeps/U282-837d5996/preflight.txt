@@ -1,0 +1,4 @@
+head: 837d599641eed7066a0eea3d46d994830a463311
+status --porcelain: '' (empty = clean)
+output directory: run-10 (the brief's run-9 already holds the U278 sweep of 49108595 and is left untouched)
+note: the head 837d5996 is U276b (fix(deploy-kit): ...), round 2 of U276, not the U251 dsh-srt change the brief's GOAL describes

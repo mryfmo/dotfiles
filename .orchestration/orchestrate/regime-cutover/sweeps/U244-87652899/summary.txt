@@ -1,0 +1,6 @@
+security-audit sweep 87652899ec44388fae2c59b7c368e51c173cd7ee: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+run_status: incomplete (independent_agents_unavailable: the delegation tool is denied by policy on this seat, so recon, the hunter wave and both critics ran in the parent; no candidate needed a verifier)
+scope: the U244 change cf68daf67..87652899ec44388fae2c59b7c368e51c173cd7ee (the merge lever's every-unit sweep gate with the brief reading removed, deployed copy and pin, the rule's text and tests; 11 files), profile standard, source-only; run-9 carried (0 findings); ledger 49 units: 5 covered, 44 out_of_scope; 1 hardening note in REPORT.md (the gate does not read a sweep's findings)
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (parent ledger builder: agents/parent-hunter/scratch/build-ledger.cjs)
+wall time: 212s (2026-11-06T10:22:06Z to 2026-11-06T10:25:38Z)

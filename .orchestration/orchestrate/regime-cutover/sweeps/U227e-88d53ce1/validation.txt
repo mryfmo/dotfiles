@@ -1,0 +1,10 @@
+U268 acceptance, run in the seat 2026-11-06T10:15:08Z (output directory run-9; see summary.txt)
+1. ls run-9: FINDINGS-DETAIL.md NEEDS-VALIDATION.md REPORT.md agents architecture.md coverage-ledger.json findings.json preflight.txt run-metadata.json summary.txt validation.txt 
+2. validate-findings: PASS: 0 findings valid
+   exit=0
+3. validate-coverage-ledger: PASS: 44 coverage units valid
+   exit=0
+4. grep -c head run-metadata.json: 2
+5. git status --porcelain (target): []
+   target HEAD: 88d53ce1e8bbda5cae2186803e3ddba4556ad465
+   run-8 untouched: security-audit sweep 1a4d712f040bd811af284f1cd99a269945d7c14a: 0 findings, advisory

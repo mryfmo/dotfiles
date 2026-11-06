@@ -1,0 +1,70 @@
+{
+  "run_id": "dotfiles-run-9",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "88d53ce1e8bbda5cae2186803e3ddba4556ad465",
+    "branch": "feat/dsh-profile-login-route",
+    "merged_main": "d2389a05ef32fa827ccbd71619e2eff2d6b8c075",
+    "round_3_head": "1d23154b71932e74902cf9ac95b2eeaf7b055215",
+    "worktree_dirty": false
+  },
+  "output_directory_note": "The brief names run-8 as the output directory; run-8 already held the U264 sweep of 1a4d712f040bd811af284f1cd99a269945d7c14a, so this run writes to run-9, the next unused directory, and leaves run-8 untouched. The RESULT line names run-9.",
+  "profile": "standard",
+  "scope": "scoped run: the U227b change against the merged main, d2389a05..88d53ce1e8bbda5cae2186803e3ddba4556ad465 (9 files: the manifest's dsh rows, the rendered thak profile's cordis.patch.yml and package.json, scripts/generate-agent-configs.py, scripts/update-agent-assets.sh and four test modules); round 4 (U227e) merges main with U226 (#674) and U224 (#673), so the resolution of update_deepseek_harness is hunted as its own unit; every other top-level directory and the root files are carried out_of_scope",
+  "scope_note": "The brief names d1ecd495 as the base and `git diff --name-only c4195463 HEAD` (29 paths) as the change, and calls run-6 the U227b head; run-6 swept U254 and run-7 swept U227b's round-3 head. The diff against the merged main is the GOAL's 9 files.",
+  "scope_paths": [
+    "home/dot_agents/agent-config.yaml",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/profiles/thak/package.json",
+    "scripts/generate-agent-configs.py",
+    "scripts/update-agent-assets.sh",
+    "tests/unit/test_dsh_profile.py",
+    "tests/unit/test_network_bounds.py",
+    "tests/unit/test_update_agent_assets.py",
+    "tests/unit/test_validate_agent_assets.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the dsh_record line was compared with its exemption over the committed blobs by a parent-side text comparison, which runs no target code.",
+  "selected_companions": ["SUPPLY-CHAIN-AND-RELEASE.md", "DESKTOP-MOBILE-AND-LOCAL-IPC.md"],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-7",
+      "source_ref": "1d23154b71932e74902cf9ac95b2eeaf7b055215",
+      "findings": 0,
+      "use": "The U227b round-3 sweep: its 6 covered units are re-checked at this head with the same canonical identities and their lines re-mapped (U224's removal shifts the updater; prior_covered_changed_source)."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-8",
+      "source_ref": "1a4d712f040bd811af284f1cd99a269945d7c14a",
+      "findings": 0,
+      "ledger_units": 43,
+      "use": "The newest ledger, carrying every unit of run-1 to run-7: its 5 covered U249 units carry as prior_covered_changed_source (U249 is absent at this head) and its 32 other units as prior_out_of_scope. No finding of any verdict to carry."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T10:12:05Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the platform's delegation tool (Task) and eval kernel are denied by policy on this seat, so reconnaissance, the hunter wave and both coverage-critic passes ran in the parent; no fresh independent critic ran. No candidate survived the hunt, so no Phase 3 or Phase 5 verifier was needed and findings.json holds no record",
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 verifier per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter for the ledger checks)"
+  },
+  "critic_passes": [
+    {"pass": "post-wave", "wave": 1, "independent": false, "missing_units": 1, "reassign_ids": 0, "result": "one accepted unit: the U226 x U227b merge resolution in update_deepseek_harness (round 4), added and covered in wave 1"},
+    {"pass": "final-clean", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; no planned unit remains"}
+  ],
+  "candidate_count": 0,
+  "findings_count": 0,
+  "finished_at": "2026-11-06T10:15:08Z",
+  "shared_files_written": ["run-metadata.json", "architecture.md", "coverage-ledger.json", "findings.json", "REPORT.md", "FINDINGS-DETAIL.md", "NEEDS-VALIDATION.md"]
+}

@@ -1,0 +1,96 @@
+{
+  "run_id": "dotfiles-sweep-3-run-4",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "2f1f2c6772ec56fb7eb7a1574411cb0d166d6e48",
+    "branch": "records/sync-45",
+    "base": "d2389a05ef32fa827ccbd71619e2eff2d6b8c075",
+    "previous_u20_sweep_head": "a479a47e9fe86bd6c45a16d66def1e821d74b842",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U20 change, records sync 45 (2f1f2c67^..2f1f2c67): 250 masked copies of the program store, every path under .orchestration/orchestrate/regime-cutover/ (243 added, 7 modified, all 100644 text), on origin/main d2389a05 (U224 and U226 merged since cf68daf6, each with its own store sweep); every other path is carried out_of_scope",
+  "scope_note": "The brief repeats U263's template: base d1ecd495 (it is d2389a05), the c4195463 one-file diff, U240 hunt questions with no surface at this head, and a carry set sweeps/U20-2256b56c that does not exist. This seat's run-3 (records sync 44) is the prior run and is carried.",
+  "scope_paths": [
+    ".orchestration/orchestrate/regime-cutover"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule). Checks are source reads plus the parent scan agents/parent-hunter/scratch/scan-sync.cjs over git blobs (counts and locations only).",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md",
+    "AI-AND-LLM.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-3",
+      "source_ref": "a479a47e9fe86bd6c45a16d66def1e821d74b842",
+      "findings": 0,
+      "unvalidated_candidates": 1,
+      "ledger_units": 40,
+      "use": "Carried. Its five store units are re-checked at this head as prior_covered_changed_source; its unvalidated candidate keeps its fingerprint on unchanged source (decisions.tsv:509); its 35 out_of_scope units carry as prior_out_of_scope, those touched by the new base noting U224 and U226."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T10:00:58Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (Task) and eval kernel are denied by policy on this seat, so reconnaissance, the hunter wave and both critics ran in the parent, and the carried candidate (records-sync/redaction/account-identity-residue-in-published-row) still could not get its Phase 3 and Phase 5 independent verifiers; it stays an unvalidated candidate in the ledger and is not in findings.json",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "coverage_unit_surface": ".orchestration/orchestrate/regime-cutover#records-sync-43-copies",
+      "coverage_unit_boundary": ".orchestration/orchestrate/regime-cutover/redact-words.txt#redact-word-and-identity-scan",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work: the records new or changed since sync 44 (published sweeps and verdicts, rows, the path-corruption repair, the credential handout's read step) fall under the existing five store units; the new base changes no control of the publish boundary"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 1,
+  "findings_count": 0,
+  "ledger_units": 40,
+  "ledger_counts": {
+    "covered": 4,
+    "candidate": 1,
+    "out_of_scope": 35
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-06T10:03:57Z"
+}

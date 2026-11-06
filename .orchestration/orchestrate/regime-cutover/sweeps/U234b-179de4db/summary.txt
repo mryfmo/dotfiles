@@ -1,0 +1,6 @@
+security-audit sweep 179de4dbf984617d48e823ca2123de59dea6d9d3: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+run_status: incomplete (independent_agents_unavailable: delegation tool and eval kernel denied by policy; recon, hunt and both critics ran in the parent; no candidate needed a verifier)
+scope: the U234b change d2389a05..179de4dbf984617d48e823ca2123de59dea6d9d3 (tests/unit/test_validate_agent_assets.py only; the scanner is unchanged), profile standard, source-only; carried this seat's run-4 (records sync 45; its candidate is not on this branch); ledger 42 units: 2 covered, 40 out_of_scope; 3 hardening notes
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (parent ledger builder: agents/parent-hunter/scratch/build-ledger.cjs)
+wall time: 184s (2026-11-06T10:18:56Z to 2026-11-06T10:22:00Z)

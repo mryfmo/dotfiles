@@ -1,0 +1,7 @@
+security-audit sweep 88d53ce1e8bbda5cae2186803e3ddba4556ad465: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+run_status: incomplete (independent_agents_unavailable: the delegation tool is denied by policy on this seat, so recon, the hunter wave and both critics ran in the parent; no candidate needed a verifier)
+scope: the U227b change at its round-4 merge head, d2389a05..88d53ce1e8bbda5cae2186803e3ddba4556ad465 (DSH profile gateway rows, withdrawn key routes, plugin link step, and the merge with U226's build-commit input; 9 files), profile standard, source-only; run-7 units re-checked and run-8 carried (0 findings); ledger 44 units: 7 covered, 37 out_of_scope; 2 hardening notes in REPORT.md incl. the U240 merge-ordering note
+output directory: run-9, because the brief's run-8 holds the U264 sweep of 1a4d712f (left untouched)
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (parent ledger builder: agents/parent-hunter/scratch/build-ledger.cjs)
+wall time: 183s (2026-11-06T10:12:05Z to 2026-11-06T10:15:08Z)

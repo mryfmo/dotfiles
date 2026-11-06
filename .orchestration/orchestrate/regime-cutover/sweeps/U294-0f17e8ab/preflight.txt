@@ -1,0 +1,6 @@
+head: 0f17e8ab86b3336d558940f09522194eff3cec08
+status --porcelain: '' (empty = clean)
+output directory: run-13 (the brief's run-12 already holds this seat's U289 sweep of a8fb9fb0 and is left untouched)
+note: the brief's prior "run-10 (the U283c head)" is not this seat's: this seat's run-10 is the U282 deploy-kit sweep of 837d5996; the U283 sweeps were made on another seat, whose state root this seat cannot read (Operation not permitted), so no U283 record is carried and the unit is hunted fresh
+note: the branch's base is a23e4541 (git merge-base HEAD origin/main), not 8f31cf5c; the unit is a23e4541..0f17e8ab, the U283, U283b and U283c commits: 4 paths (scripts/update-agent-assets.sh, scripts/lib/asset-manifest.sh, tests/unit/test_update_agent_assets.py, tests/unit/test_asset_manifest.py), +749 -28
+output directory created 2026-11-06T14:28:05Z

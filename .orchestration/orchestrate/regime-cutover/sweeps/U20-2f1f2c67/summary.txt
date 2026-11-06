@@ -1,0 +1,7 @@
+security-audit sweep 2f1f2c6772ec56fb7eb7a1574411cb0d166d6e48: 0 findings, advisory
+unvalidated candidate (carried since run-2; not a finding; no independent verifier on this seat): low (proposed)	records-sync/redaction/account-identity-residue-in-published-row	.orchestration/orchestrate/regime-cutover/decisions.tsv:509	The unchanged decisions row still publishes the logged-in account's email residue, organisation UUID and organisation name past the literal redact-word scan
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0; unvalidated candidates 1
+run_status: incomplete (independent_agents_unavailable: delegation tool and eval kernel denied by policy; recon, hunt and both critics ran in the parent; the candidate's Phase 3/5 verifiers could not run)
+scope: the U20 change, records sync 45 (2f1f2c67^..2f1f2c6772ec56fb7eb7a1574411cb0d166d6e48, 250 store copies) on origin/main d2389a05 (U224, U226 merged; no publish-boundary control changed), profile standard, source-only; brief template mismatches as in run-2 (REPORT.md section 1); carried this seat's run-3; ledger 40 units: 4 covered, 1 candidate, 35 out_of_scope; path corruption repaired; 4 hardening/integrity notes
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (parent scripts: agents/parent-hunter/scratch/scan-sync.cjs, build-ledger.cjs)
+wall time: 179s (2026-11-06T10:00:58Z to 2026-11-06T10:03:57Z)

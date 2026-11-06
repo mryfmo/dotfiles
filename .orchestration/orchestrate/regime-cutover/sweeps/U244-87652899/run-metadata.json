@@ -1,0 +1,64 @@
+{
+  "run_id": "dotfiles-run-10",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "87652899ec44388fae2c59b7c368e51c173cd7ee",
+    "branch": "feat/pr-merge-sweep-every-unit",
+    "merged_main": "cf68daf67dd1d8806a68ee08a746887e05951e29",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U244 change against the merged main, cf68daf67..87652899ec44388fae2c59b7c368e51c173cd7ee (11 files: scripts/orchestrator/pr-merge.sh and its deployed copy, the manifest pin, scripts/generated-agent-outputs.json, scripts/orchestrator/README.md, AGENTS.md, home/dot_agents/regime/AGENTS-audit-section.md, the hcom-orchestration SKILL.md and three test modules); every other top-level directory and the root files are carried out_of_scope",
+  "scope_note": "The brief names d1ecd495 as the base and `git diff --name-only c4195463 HEAD` (29 paths) as the change, and calls run-9 the U244 head; run-9 swept U227e (88d53ce1), and no earlier run of this seat swept U244. The diff against the merged main is the GOAL's 9 files plus the README reflow and the skill sentence with its pinned test (11).",
+  "scope_paths": [
+    "scripts/orchestrator/pr-merge.sh",
+    "home/dot_local/bin/common/executable_pr-merge.sh",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "AGENTS.md",
+    "home/dot_agents/regime/AGENTS-audit-section.md",
+    "home/dot_agents/skills/hcom-orchestration/SKILL.md",
+    "tests/unit/test_pr_merge.py",
+    "tests/unit/test_pr_levers.py",
+    "tests/unit/test_hcom_seat_skills.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the lever blob was hashed with git cat-file and shasum by its object id.",
+  "selected_companions": ["SUPPLY-CHAIN-AND-RELEASE.md"],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-9",
+      "source_ref": "88d53ce1e8bbda5cae2186803e3ddba4556ad465",
+      "findings": 0,
+      "ledger_units": 44,
+      "use": "The newest ledger, carrying every unit of run-1 to run-8: its 7 covered U227b units carry as prior_covered_changed_source (U227b is absent at this head) and its 37 other units as prior_out_of_scope. No finding of any verdict to carry; no prior run swept U244."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T10:22:06Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the platform's delegation tool (Task) and eval kernel are denied by policy on this seat, so reconnaissance, the hunter wave and both coverage-critic passes ran in the parent; no fresh independent critic ran. No candidate survived the hunt, so no Phase 3 or Phase 5 verifier was needed and findings.json holds no record",
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 verifier per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter for the ledger checks)"
+  },
+  "critic_passes": [
+    {"pass": "post-wave", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; scripts/orchestrator/ledger.py's sweep reader is unchanged by U244 (not in the diff) and is read only as the producer the gate calls"},
+    {"pass": "final-clean", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; no planned unit remains"}
+  ],
+  "candidate_count": 0,
+  "findings_count": 0,
+  "finished_at": "2026-11-06T10:25:38Z",
+  "shared_files_written": ["run-metadata.json", "architecture.md", "coverage-ledger.json", "findings.json", "REPORT.md", "FINDINGS-DETAIL.md", "NEEDS-VALIDATION.md"]
+}

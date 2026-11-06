@@ -82,19 +82,38 @@
 #   sandbox on stderr, and creates and starts nothing but the private tool links. Otherwise hcom's own
 #   exit status is returned (`hcom omp --help`:
 #   0 ready, 1 launch failed, 2 still launching or blocked on user attention).
-# @arg $1 string Role: orchestrator or worker.
-# @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role).
+#   The dsh role (regime-cutover U272, after the four audits of the standalone launcher of PR 687): the DeepSeek
+#   harness control host is contained the same way, by this lever, as a role whose differences from the worker are
+#   rows of the role table (the `case ${role}` after the options, seat_write_roots, the command the shim execs, the
+#   launch at the end) and nothing else. Its rows: no pane and no hcom bus (the launch runs the shim
+#   `<sandbox>/bin/dsh` in the foreground, waits and returns dsh's status); a per-launch seat name
+#   `<name>-<utc stamp>-<pid>`, so the sandbox, its settings file, the state slot and the bridge child's
+#   CLAUDE_CONFIG_DIR are per launch and two launches at once share no file; the cwd `<seats-root>/.state/<name>/cwd`,
+#   a scratch directory this lever makes (no worktree); the write roots DSH_HOME, that slot, the role's own omp profile
+#   `~/.omp/profiles/dsh` (the login child `omp auth-gateway stdio` lives there, selected by OMP_PROFILE, and writes
+#   its agent.db at start) and `~/.omp/run`, with no git common directory and no hcom store; DSH_HOME in the protected
+#   set before any tool is resolved; the command `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt
+#   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME, OMP_PROFILE and a
+#   caller's CLAUDE_CODE_OAUTH_TOKEN before the shim adds its own exports. No omp overlay, rules file, extension or
+#   login preflight is read for it. The per-launch sandbox and state slot are removed when dsh exits.
+# @arg $1 string Role: orchestrator, worker or dsh.
+# @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
-# @option --ext <dir> Extension directory in claude.levers.extensions, repeatable; replaces the role's default list.
-# @option --dry-run Print the launch line and exit 0 without creating a worktree or starting hcom.
+# @option --ext <dir> Extension directory in claude.levers.extensions, repeatable; replaces the role's default list (omp roles only).
+# @option --profile <name> dsh role only: the DSH profile, passed to dsh as `--profile <name>` (`[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`).
+# @option --home <dir> dsh role only: DSH_HOME (default: the environment's DSH_HOME, else ~/.dsh); an existing directory.
+# @option --dry-run Print the launch line and exit 0 without creating a worktree or a slot or starting hcom or dsh.
+# @arg -- dsh role only: everything after it is passed to dsh verbatim.
 # @env HCOM_DIR The program's private hcom store (default: ~/.local/state/hcom/<slug>, regime-env).
 # @env HCOM_TEAM The team thread (default: the repository slug, regime-env); passed to the seat as --hcom-team.
-# @stdout The launch line with --dry-run, else hcom's output.
-# @exitcode 0 Dry run printed, or hcom reports the seat ready.
+# @env DSH_HOME The dsh role's default home, the opt-in of scripts/update-agent-assets.sh#update_deepseek_harness.
+# @stdout The launch line with --dry-run, else hcom's output, or dsh's for the dsh role.
+# @exitcode 0 Dry run printed, hcom reports the seat ready, or dsh exited 0.
 # @exitcode 2 A refusal, before anything is created or started.
-# @exitcode * hcom's own status otherwise.
+# @exitcode * hcom's own status otherwise; dsh's own status for the dsh role.
 # @example
 #   HCOM_DIR=/path/to/.hcom scripts/orchestrator/hcom-seat worker --name worker-2 --dry-run
+#   scripts/orchestrator/hcom-seat dsh --profile thak -- --version
 set -euo pipefail
 # No caller PATH entry runs anything (regime-cutover U85): before the first external command PATH holds the fixed
 # system directories only, and the tools hcom-seat needs beyond them are resolved below into a private directory.
@@ -172,7 +191,7 @@ lever_self_check() {
 }
 lever_self_check
 
-usage='usage: hcom-seat <orchestrator|worker> [--name <name>] [--seats-root <dir>] [--ext <dir>]... [--dry-run]'
+usage='usage: hcom-seat <orchestrator|worker> [--name <name>] [--seats-root <dir>] [--ext <dir>]... [--dry-run] | hcom-seat dsh [--name <name>] [--seats-root <dir>] [--profile <name>] [--home <DSH_HOME>] [--dry-run] [-- <dsh args>]'
 refuse() {
     echo "hcom-seat: $*" >&2
     exit 2
@@ -181,16 +200,25 @@ refuse() {
 (($# >= 1)) || refuse "${usage}"
 role=$1
 shift
-name=${role} seats_root='' dry_run=0 user_exts=()
+name=${role} seats_root='' dry_run=0 user_exts=() profile_name='' dsh_home='' dsh_args=() dsh_options=0 scratch_dir=''
 while (($#)); do
     case $1 in
     --dry-run) dry_run=1 ;;
-    --name | --seats-root | --ext)
+    --)
+        shift
+        dsh_args=("$@")
+        dsh_options=1
+        set --
+        continue
+        ;;
+    --name | --seats-root | --ext | --profile | --home)
         (($# >= 2)) || refuse "${usage}"
         case $1 in
         --name) name=$2 ;;
         --seats-root) seats_root=$2 ;;
         --ext) user_exts+=("$2") ;;
+        --profile) profile_name=$2 dsh_options=1 ;;
+        --home) dsh_home=$2 dsh_options=1 ;;
         esac
         shift
         ;;
@@ -202,10 +230,30 @@ done
 bridge=${HOME}/.local/lib/omp-extensions/pi-claude-bridge
 siwc=${HOME}/.agents/omp/extensions/openai-siwc
 gate=${HOME}/.agents/omp/hooks
-# The extension the role's model route needs first, the optional one second.
+# The role table (regime-cutover U272): every difference between the roles is a row read here or in the three places
+# keyed on the role below (seat_write_roots, the command the shim execs, the launch), never a branch elsewhere. The
+# omp roles launch through hcom into a herdr pane; the dsh role runs its shim in the foreground.
 case ${role} in
-orchestrator | worker) exts=("${bridge}" "${siwc}") ;;
-*) refuse "unknown role '${role}'; expected orchestrator or worker" ;;
+orchestrator | worker)
+    # The extension the role's model route needs first, the optional one second.
+    exts=("${bridge}" "${siwc}")
+    role_launch=hcom
+    ((! dsh_options)) || refuse '--profile, --home and -- are options of the dsh role'
+    ;;
+dsh)
+    exts=()
+    role_launch=foreground
+    ((${#user_exts[@]} == 0)) || refuse '--ext is an option of the omp roles'
+    dsh_home=${dsh_home:-${DSH_HOME:-${HOME}/.dsh}}
+    [[ -z ${profile_name} || ${profile_name} =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ ]] ||
+        refuse "profile '${profile_name}' is outside ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\$"
+    # A per-launch seat name: the sandbox, its settings file and the state slot are per name, so two launches at
+    # once share no file (the U251d finding). The stamp comes from a checked producer and is held to its shape.
+    stamp=$(/bin/date -u +%Y%m%d-%H%M%S) || refuse 'cannot read the time (/bin/date failed)'
+    [[ ${stamp} =~ ^[0-9]{8}-[0-9]{6}$ ]] || refuse "cannot read the time ('${stamp}')"
+    name=${name}-${stamp}-$$
+    ;;
+*) refuse "unknown role '${role}'; expected orchestrator, worker or dsh" ;;
 esac
 [[ ${name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "name '${name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
 # A seat never launches a seat (regime-cutover U85): a launch is the operator's or the coordinator's step from a
@@ -247,6 +295,10 @@ if [[ -n ${seats_root} ]]; then require_clean_path --seats-root "${seats_root}";
 for var in HCOM_DIR REGIME_SEATS_ROOT CLAUDE_CONFIG_DIR; do
     if [[ -n ${!var:-} ]]; then require_clean_path "${var}" "${!var}"; fi
 done
+if [[ -n ${dsh_home} ]]; then
+    require_clean_path DSH_HOME "${dsh_home}"
+    [[ -d ${dsh_home} ]] || refuse "DSH_HOME is not a directory: ${dsh_home}"
+fi
 
 # @description Print a JSON array of the arguments, each a clean path (clean_path), so no JSON escaping is needed and
 #   no settings tool runs. An argument that is not clean is a refusal.
@@ -759,7 +811,9 @@ root_ids=$'\n' root_id_list=() root_path_list=()
 roots=("${HOME}/.local/state/omp-seats" "${HOME}/.local/state/hcom" "${HOME}/Workspace" "${HOME}/.omp/profiles"
     "${HOME}/.omp/run" "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}" "${HOME}/.claude" "${HOME}/.claude.json"
     "${HOME}/.npm/_logs" "${srt_tmp_roots[@]}")
-for root in ${HCOM_DIR:+"${HCOM_DIR}"} ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"} ${seats_root:+"${seats_root}"}; do
+# The dsh role's DSH_HOME is protected from here on (U272): a tool `mise which` or the caller's PATH answers under it
+# is refused before anything runs it, as a tool under a seats root is.
+for root in ${HCOM_DIR:+"${HCOM_DIR}"} ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"} ${seats_root:+"${seats_root}"} ${dsh_home:+"${dsh_home}"}; do
     roots+=("${root}")
 done
 # The checkout this runs in, found with builtins: the nearest ancestor with a `.git`, and for a worktree the git
@@ -1095,47 +1149,58 @@ for var in HCOM_DIR REGIME_SEATS_ROOT; do
 done
 command -v hcom > /dev/null || refuse 'hcom not found on PATH'
 [[ ${HCOM_TEAM:-} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "team '${HCOM_TEAM:-}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
-policy=${HOME}/.agents/omp/policies/${role}.yml
-profile=${HOME}/.agents/omp/profiles/${role}.yml
-[[ -f ${policy} ]] || refuse "policy overlay absent: ${policy}"
-[[ -f ${profile} ]] || refuse "profile overlay absent: ${profile}"
-rules=${HOME}/.agents/omp/rules/${role}.md
-[[ -f ${rules} && -s ${rules} ]] || refuse "standing rules absent or empty: ${rules}"
-if ((${#user_exts[@]})); then
-    exts=("${user_exts[@]}")
-elif [[ ! -d ${exts[1]} ]]; then
-    exts=("${exts[0]}")
-fi
-# The stop gate rides every launch, after the route's extensions; --ext never drops it (U33c).
-exts+=("${gate}")
-# The extension allow-list (regime-cutover U31): claude.levers.extensions in the manifest the self-check read, so the
-# installed copy reads it from ~/.agents, outside every sandbox write root. A read failure is a refusal, not an empty list.
-allowed=$(awk '
+# @description Check the omp roles' inputs and set `exts` to the canonical extension directories: the policy and
+#   profile overlays and the standing rules must exist, and every extension directory, a default, `--ext` or the stop
+#   gate's, must resolve to an entry of `claude.levers.extensions`. The dsh role runs no omp and reads none of these.
+# @set policy The policy overlay.
+# @set profile The profile overlay.
+# @set rules The standing rules file.
+# @set exts The canonical extension directories.
+omp_inputs_check() {
+    policy=${HOME}/.agents/omp/policies/${role}.yml
+    profile=${HOME}/.agents/omp/profiles/${role}.yml
+    [[ -f ${policy} ]] || refuse "policy overlay absent: ${policy}"
+    [[ -f ${profile} ]] || refuse "profile overlay absent: ${profile}"
+    rules=${HOME}/.agents/omp/rules/${role}.md
+    [[ -f ${rules} && -s ${rules} ]] || refuse "standing rules absent or empty: ${rules}"
+    if ((${#user_exts[@]})); then
+        exts=("${user_exts[@]}")
+    elif [[ ! -d ${exts[1]} ]]; then
+        exts=("${exts[0]}")
+    fi
+    # The stop gate rides every launch, after the route's extensions; --ext never drops it (U33c).
+    exts+=("${gate}")
+    # The extension allow-list (regime-cutover U31): claude.levers.extensions in the manifest the self-check read, so
+    # the installed copy reads it from ~/.agents, outside every sandbox write root. A read failure is a refusal, not an
+    # empty list.
+    allowed=$(awk '
     /^  levers:$/ { levers = 1; next }
     levers && /^  [^ ]/ { levers = 0 }
     levers && /^    extensions:$/ { list = 1; next }
     list && /^      - / { sub(/^      - /, ""); print; next }
     list { list = 0 }
 ' "${LEVER_MANIFEST}") || refuse "cannot read the extension allow-list in ${LEVER_MANIFEST}"
-[[ -n ${allowed} ]] || refuse "no extension allow-list (claude.levers.extensions) in ${LEVER_MANIFEST}"
-# The launch passes the canonical allow-list entry (`pwd -P` of the listed path), never the caller's spelling: a
-# symlink the caller controls could be swapped between this check and omp resolving `-e`.
-checked=()
-for ext in "${exts[@]}"; do
-    [[ -d ${ext} ]] || refuse "extension directory absent: ${ext}"
-    real=$(cd "${ext}" && pwd -P) || refuse "cannot resolve extension directory: ${ext}"
-    listed=''
-    while IFS= read -r entry; do
-        entry=${entry/#\~/${HOME}}
-        # An entry that is absent or cannot be resolved lists nothing, so the extension stays refused.
-        [[ -d ${entry} ]] || continue
-        entry_real=$(cd "${entry}" && pwd -P) || continue
-        if [[ ${entry_real} -ef ${real} ]]; then listed=${entry_real}; fi
-    done <<< "${allowed}"
-    [[ -n ${listed} ]] || refuse "extension directory is not in the allow-list (claude.levers.extensions): ${ext}"
-    checked+=("${listed}")
-done
-exts=("${checked[@]}")
+    [[ -n ${allowed} ]] || refuse "no extension allow-list (claude.levers.extensions) in ${LEVER_MANIFEST}"
+    # The launch passes the canonical allow-list entry (`pwd -P` of the listed path), never the caller's spelling: a
+    # symlink the caller controls could be swapped between this check and omp resolving `-e`.
+    checked=()
+    for ext in "${exts[@]}"; do
+        [[ -d ${ext} ]] || refuse "extension directory absent: ${ext}"
+        real=$(cd "${ext}" && pwd -P) || refuse "cannot resolve extension directory: ${ext}"
+        listed=''
+        while IFS= read -r entry; do
+            entry=${entry/#\~/${HOME}}
+            # An entry that is absent or cannot be resolved lists nothing, so the extension stays refused.
+            [[ -d ${entry} ]] || continue
+            entry_real=$(cd "${entry}" && pwd -P) || continue
+            if [[ ${entry_real} -ef ${real} ]]; then listed=${entry_real}; fi
+        done <<< "${allowed}"
+        [[ -n ${listed} ]] || refuse "extension directory is not in the allow-list (claude.levers.extensions): ${ext}"
+        checked+=("${listed}")
+    done
+    exts=("${checked[@]}")
+}
+if [[ ${role_launch} == hcom ]]; then omp_inputs_check; fi
 # git names the checkout and its git directories; they must be the ones found (and checked) before git ran, by
 # identity, or git reads state the check never saw (GIT_DIR, core.worktree, a pointer git reads differently).
 [[ -n ${top} ]] || refuse 'run hcom-seat inside the repository checkout'
@@ -1147,8 +1212,11 @@ common=${git_paths[2]}
     refuse "git resolves the checkout ${repo}, git directory ${git_paths[1]} and common directory ${common}, not ${top}, ${gitdir} and ${early_common} found before it ran"
 seats_root=${seats_root:-${REGIME_SEATS_ROOT:-}}
 [[ -n ${seats_root} ]] || refuse 'no seats root: pass --seats-root or run inside a checkout'
+# The role table's directory row: the orchestrator sits in the launch checkout, a worker in its worktree, the dsh role
+# in a scratch directory inside its per-launch state slot, which seat_sandbox_write makes.
 case ${role} in
 orchestrator) dir=${repo} ;;
+dsh) dir=${seats_root}/.state/${name}/cwd scratch_dir=${seats_root}/.state/${name}/cwd ;;
 *) dir=${seats_root}/${name} ;;
 esac
 
@@ -1353,25 +1421,36 @@ fi
 sandbox=${seats_root%/}/.sandbox/${name}
 # Every seat's sandbox denies reads of <seats-root>/.sandbox (refuse_inside_a_seat).
 refuse_inside_a_seat "${seats_root%/}/.sandbox"
+# The dsh role's slots are per launch and never reused (U272): a sandbox or state slot of this name is a refusal.
+if [[ ${role_launch} == foreground ]]; then
+    for path in "${sandbox}" "${seats_root%/}/.state/${name}"; do
+        [[ ! -e ${path} && ! -L ${path} ]] || refuse "the per-launch slot ${path} exists; a dsh launch never reuses one"
+    done
+fi
 
 # @description Print the srt write roots of one seat, one per line in physical form: the list the seat's settings
 #   carry as `allowWrite` (seat_sandbox_write writes exactly this list), followed by the paths srt 0.0.81 makes
 #   writable without a listing (`srt_tmp_roots`: `/tmp/claude`, and `/private/tmp/claude` on macOS; `~/.npm/_logs`).
-#   The operator's Claude Code state (`CLAUDE_CONFIG_DIR`, `~/.claude`, `~/.claude.json`) is no root of any seat
-#   (regime-cutover U190): the bridge child keeps its own under `<seats-root>/.state/<name>/claude`, inside the state
-#   slot listed here, which the shim exports as the seat's `CLAUDE_CONFIG_DIR`. Being no root is not enough: srt
-#   0.0.81 grants `~/.claude/debug` of the real HOME on its own, so seat_sandbox_write denies that state explicitly
-#   (operator_claude_paths, regime-cutover U190b).
+#   The role table's write-root row (U272): the omp roles write the repository's git common directory, the program's
+#   hcom store and their own omp profile; the dsh role writes DSH_HOME and its own omp profile, where its login child
+#   lives, and no git or hcom path. The operator's Claude Code state (`CLAUDE_CONFIG_DIR`, `~/.claude`,
+#   `~/.claude.json`) is no root of any seat (regime-cutover U190): the bridge child keeps its own under
+#   `<seats-root>/.state/<name>/claude`, inside the state slot listed here, which the shim exports as the seat's
+#   `CLAUDE_CONFIG_DIR`. Being no root is not enough: srt 0.0.81 grants `~/.claude/debug` of the real HOME on its
+#   own, so seat_sandbox_write denies that state explicitly (operator_claude_paths, regime-cutover U190b).
 # @arg $1 string The role.
 # @arg $2 string The seat name.
-# @arg $3 string The seat directory (the worktree, or the checkout for the orchestrator).
+# @arg $3 string The seat directory (the worktree, the checkout for the orchestrator, the scratch cwd for dsh).
 # @stdout The roots.
 # @exitcode 1 A path could not be resolved.
 seat_write_roots() {
-    local path
+    local path extra=()
+    case $1 in
+    dsh) extra=("${dsh_home}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;
+    *) extra=("${common}" "${HCOM_DIR}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;
+    esac
     # The seat's own slots come first (seat_overlap_check relies on it): its directory, then its state directory.
-    for path in "$3" "${seats_root%/}/.state/$2" "${common}" "${HCOM_DIR}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run" \
-        "${srt_tmp_roots[@]}" "${HOME}/.npm/_logs"; do
+    for path in "$3" "${seats_root%/}/.state/$2" "${extra[@]}" "${srt_tmp_roots[@]}" "${HOME}/.npm/_logs"; do
         physical_path "${path}" || return 1
     done
 }
@@ -1625,6 +1704,20 @@ pinned=()
 omp_path=$(find_on_path omp) || refuse 'omp not found in the private tool directory'
 pin_exec omp "${omp_path}"
 omp_cmd=("${pinned[@]}")
+# The role table's command row: what the shim execs under srt. The omp roles run omp with --no-extensions first (U66);
+# the dsh role runs `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt alone: it lies in its own
+# write root, so no identity rule can pin it, and nothing probes it outside containment (the U251 finding).
+case ${role_launch} in
+hcom) seat_cmd=("${omp_cmd[@]}" --no-extensions) shim_tool=omp ;;
+foreground)
+    dsh_home=$(physical_path "${dsh_home}") || refuse "cannot resolve DSH_HOME ${dsh_home}"
+    require_clean_path DSH_HOME "${dsh_home}"
+    dsh_exec=$(physical_file "${dsh_home}/bin/dsh") ||
+        refuse "cannot resolve the dsh command to a physical executable file: ${dsh_home}/bin/dsh"
+    seat_cmd=("${dsh_exec}") shim_tool=dsh
+    if [[ -n ${profile_name} ]]; then seat_cmd+=(--profile "${profile_name}"); fi
+    ;;
+esac
 srt_path=$(find_on_path srt) || refuse 'srt (@anthropic-ai/sandbox-runtime) not found in the private tool directory'
 pin_exec srt "${srt_path}"
 srt_cmd=("${pinned[@]}")
@@ -1690,7 +1783,7 @@ esac
 # @noargs
 seat_sandbox_write() {
     local h dir_real common_real hcom_real seats_real sandbox_real
-    local root path settings shim json base sandbox_state origin_url push_url srt_q omp_q
+    local root path settings shim json base sandbox_state origin_url push_url srt_q cmd_q
     local write_json deny_write_json deny_read_json allow_read_json
     local write=() deny_write=() deny_read=() allow_read=()
     # srt on Linux grants writes only to paths that exist, so omp's own state directories are made first. The seat's
@@ -1699,9 +1792,11 @@ seat_sandbox_write() {
     (umask 077 && mkdir -p "${seats_root}" "${HOME}/.omp/profiles/${role}" "${HOME}/.omp/run") ||
         refuse "cannot create the seats root ${seats_root} or omp's state directories"
     for path in "${seats_root}/.state" "${seats_root}/.state/${name}" "${seats_root}/.state/${name}/claude" \
-        "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do
+        ${scratch_dir:+"${scratch_dir}"} "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do
         if [[ ! -e ${path} && ! -L ${path} ]]; then
-            (umask 077 && /bin/mkdir "${path}") || refuse "cannot create ${path}"
+            # Two launches at once (the dsh role's normal case) may both find a shared parent absent; the loser of
+            # the mkdir race takes the directory the winner made, held to a real directory by the check below.
+            (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} ]] || refuse "cannot create ${path}"
         fi
         [[ -d ${path} && ! -L ${path} ]] || refuse "${path} is not a real directory"
     done
@@ -1796,15 +1891,15 @@ seat_sandbox_write() {
     git@github.com:*) push_url=https://github.com/${origin_url#git@github.com:} ;;
     *) push_url='' ;;
     esac
-    shim=${sandbox_real}/bin/omp
+    shim=${sandbox_real}/bin/${shim_tool}
     {
         echo '#!/bin/bash'
         echo "# Generated by hcom-seat for the ${role} seat ${name} (regime-cutover U85); rewritten on every launch."
-        echo '# A canary proves the sandbox holds before omp starts; there is no uncontained fallback.'
+        echo '# A canary proves the sandbox holds before the command starts; there is no uncontained fallback.'
         echo 'set -u'
         printf -v srt_q '%q ' "${srt_cmd[@]}"
-        printf -v omp_q '%q ' "${omp_cmd[@]}"
-        echo "srt_cmd=(${srt_q}) omp_cmd=(${omp_q})"
+        printf -v cmd_q '%q ' "${seat_cmd[@]}"
+        echo "srt_cmd=(${srt_q}) cmd=(${cmd_q}) tool=${shim_tool}"
         printf 'settings=%q canary=%q state=%q push_url=%q sandbox=%q\n' "${settings}" "${sandbox_real}/canary" \
             "${sandbox_state}" "${push_url}" "${sandbox_real}"
         printf 'debug_canary=%q\n' "${h}/.claude/debug/hcom-seat-canary"
@@ -1823,16 +1918,16 @@ if cat "$2" > /dev/null 2>&1; then r=read-open; else r=read-denied; fi
 if ls "$3" > /dev/null 2>&1; then s=ssh-open; else s=ssh-denied; fi
 if true 2> /dev/null > "$4"; then d=debug-open; else d=debug-denied; fi
 echo "$w $r $s $d"' canary "${canary}" "${settings}" "${HOME}/.ssh" "${debug_canary}") || {
-    echo "hcom-seat shim: the sandbox canary did not run under ${srt_cmd[*]}; omp not started" >&2
+    echo "hcom-seat shim: the sandbox canary did not run under ${srt_cmd[*]}; ${tool} not started" >&2
     exit 2
 }
 if [[ ${probe} == 'write-denied read-denied ssh-denied debug-open' || -e ${debug_canary} ]]; then
     /bin/rm -f "${debug_canary}"
-    echo "hcom-seat shim: the sandbox does not hold (operator Claude debug writable); omp not started" >&2
+    echo "hcom-seat shim: the sandbox does not hold (operator Claude debug writable); ${tool} not started" >&2
     exit 2
 fi
 if [[ ${probe} != 'write-denied read-denied ssh-denied debug-denied' || -e ${canary} ]]; then
-    echo "hcom-seat shim: the sandbox does not hold (canary: ${probe}); omp not started" >&2
+    echo "hcom-seat shim: the sandbox does not hold (canary: ${probe}); ${tool} not started" >&2
     exit 2
 fi
 export UV_CACHE_DIR=${state}/uv-cache
@@ -1846,7 +1941,7 @@ export CLAUDE_CONFIG_DIR=${state}/claude
 token_file=${HOME}/.config/claude-code/oauth-token
 if [[ -z ${CLAUDE_CODE_OAUTH_TOKEN:-} && -f ${token_file} && -s ${token_file} ]]; then
     token=$(/usr/bin/head -n 1 -- "${token_file}") || {
-        echo "hcom-seat shim: cannot read the token file ${token_file}; omp not started" >&2
+        echo "hcom-seat shim: cannot read the token file ${token_file}; ${tool} not started" >&2
         exit 2
     }
     if [[ -n ${token} ]]; then export CLAUDE_CODE_OAUTH_TOKEN=${token}; fi
@@ -1865,7 +1960,7 @@ if [[ -n ${push_url} ]]; then
 fi
 # hcom-seat refuses to launch a seat where this is set.
 export HCOM_SEAT_SANDBOX=${sandbox}
-exec "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${omp_cmd[@]}" --no-extensions "$@"
+exec "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${cmd[@]}" "$@"
 SHIM
     } > "${shim}.tmp" || refuse "cannot write ${shim}.tmp"
     if ! chmod 700 "${shim}.tmp" || ! mv -f "${shim}.tmp" "${shim}"; then
@@ -1891,11 +1986,28 @@ seat_wrapper_write() {
     fi
 }
 
-argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr --go -- --profile "${role}" --config "${policy}" --config "${profile}" --append-system-prompt "${rules}")
-for ext in "${exts[@]}"; do
-    argv+=(-e "${ext}")
-done
-argv+=(--hcom-team "${HCOM_TEAM}")
+# The role table's launch row: the hcom launch line for the omp roles; for the dsh role the shim run in the foreground
+# under `/usr/bin/env -i` with the listed names (U272: nothing of the caller's environment reaches the shim, srt or
+# dsh; the shim sets PATH and its own exports). A caller's CLAUDE_CODE_OAUTH_TOKEN is added at the launch alone, so
+# the dry run never prints it.
+case ${role_launch} in
+hcom)
+    argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr --go -- --profile "${role}" --config "${policy}" --config "${profile}" --append-system-prompt "${rules}")
+    for ext in "${exts[@]}"; do
+        argv+=(-e "${ext}")
+    done
+    argv+=(--hcom-team "${HCOM_TEAM}")
+    ;;
+foreground)
+    seat_env=("HOME=${HOME}" "PATH=${PATH}" "DSH_HOME=${dsh_home}" "OMP_PROFILE=${role}")
+    # Only a name the caller exported rides (`inherited`, the start-up list): bash gives TERM a value of its own when
+    # the caller had none, and a `TERM=dumb` of bash's making would reach dsh as the terminal's.
+    for var in USER LANG TERM; do
+        if [[ $'\n'${inherited}$'\n' == *$'\n'"${var}"$'\n'* && -n ${!var:-} ]]; then seat_env+=("${var}=${!var}"); fi
+    done
+    argv=(/usr/bin/env -i "${seat_env[@]}" "${sandbox}/bin/${shim_tool}" ${dsh_args[@]+"${dsh_args[@]}"})
+    ;;
+esac
 # @description Make sure the hcom store `HCOM_DIR` is a real directory before anything else is created (regime-cutover
 #   U85): it is already clean (require_clean_path) and clear of every protected root by the identity of its deepest
 #   existing ancestor (seat_overlap_check, a write root of every seat). An existing store must be a directory and no
@@ -1937,9 +2049,15 @@ if ((dry_run)); then
     echo "hcom-seat: sandbox ${sandbox} (srt ${srt_cmd[*]}, omp ${omp_cmd[*]}, hcom ${hcom_cmd[*]}, herdr ${herdr_cmd[*]})" >&2
     exit 0
 fi
-# U37: a remote seat host needs this host's own login first (seat-login-preflight beside this file).
-/bin/bash "${BASH_SOURCE[0]%/*}/seat-login-preflight" "${role}" || exit $?
-if [[ ! -e ${dir} ]]; then
+# U37: a remote seat host needs this host's own login first (seat-login-preflight beside this file). The dsh role has
+# no overlay for it; the shim exports the token file into its sandbox as for every role.
+if [[ ${role_launch} == hcom ]]; then
+    /bin/bash "${BASH_SOURCE[0]%/*}/seat-login-preflight" "${role}" || exit $?
+fi
+if [[ ${role_launch} == foreground ]]; then
+    # The scratch cwd is made by seat_sandbox_write inside the per-launch slot, proved absent above.
+    :
+elif [[ ! -e ${dir} ]]; then
     # A repository without a remote (a fresh project) seats its worktrees at HEAD instead of origin/main. Only a
     # genuinely absent ref means that: a ref that is broken or names no commit, or a failed git, is a refusal.
     origin_main=$(git -C "${repo}" for-each-ref --format='%(objecttype)' refs/remotes/origin/main 2>&1) ||
@@ -1971,7 +2089,27 @@ fi
 [[ ! -e ${dir}/.omp && ! -L ${dir}/.omp ]] ||
     refuse "seat directory holds .omp, whose project settings omp would apply to the seat: ${dir}/.omp"
 seat_sandbox_write
-# hcom resolves `omp`, `hcom` and `herdr` from this PATH and pins the shim as the runner's tool path (U85); hcom
-# itself runs by the physical argv checked above, with no second lookup.
-export PATH="${sandbox}/bin:${PATH}"
-exec "${hcom_cmd[@]}" "${argv[@]:1}"
+case ${role_launch} in
+hcom)
+    # hcom resolves `omp`, `hcom` and `herdr` from this PATH and pins the shim as the runner's tool path (U85); hcom
+    # itself runs by the physical argv checked above, with no second lookup.
+    export PATH="${sandbox}/bin:${PATH}"
+    exec "${hcom_cmd[@]}" "${argv[@]:1}"
+    ;;
+foreground)
+    # The shim runs as a child so the per-launch slots can go when dsh exits. A SIGINT or SIGTERM at the terminal
+    # reaches dsh (a handler, not SIG_IGN, so the child keeps the default disposition) while this shell waits for it.
+    trap ':' INT TERM
+    status=0
+    # dsh runs in the scratch cwd (M-21: a cwd inside a read-denied path dies on `uv_cwd EPERM`); the subshell is
+    # replaced by the shim, so nothing waits twice.
+    (cd "${dir}" && exec /usr/bin/env -i "${seat_env[@]}" \
+        ${CLAUDE_CODE_OAUTH_TOKEN:+"CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}"} \
+        "${sandbox}/bin/${shim_tool}" ${dsh_args[@]+"${dsh_args[@]}"}) || status=$?
+    trap - INT TERM
+    # Both slots were absent before this launch and made by it (seat_sandbox_write); rm follows no link inside them.
+    /bin/rm -rf -- "${sandbox}" "${seats_root%/}/.state/${name}" ||
+        echo "hcom-seat: cannot remove the per-launch slots ${sandbox} and ${seats_root%/}/.state/${name}" >&2
+    exit "${status}"
+    ;;
+esac

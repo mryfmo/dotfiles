@@ -48,7 +48,9 @@ GIT_IDENTITY = quiet_git_env(
 )
 
 
-class HcomSeatTest(unittest.TestCase):
+class SeatFixture(unittest.TestCase):
+    """The scratch host every hcom-seat test launches in; `tests/unit/test_hcom_seat_dsh.py` builds on it too."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -146,6 +148,11 @@ class HcomSeatTest(unittest.TestCase):
             *(flag for ext in (*exts, self.gate) for flag in ("-e", str(ext))), "--hcom-team", team,
         ]  # fmt: skip
 
+    def settings_of(self, name):
+        return json.loads(Path(self.seats, ".sandbox", name, "srt-settings.json").read_text())
+
+
+class HcomSeatTest(SeatFixture):
     def test_a_remote_seat_without_a_login_starts_nothing(self):
         """U37: hcom-seat runs seat-login-preflight beside it before it creates or starts anything. U85 round 28: the
         preflight reads the Keychain only through `security`, a tool hcom-seat resolves, so the test's fake answers
@@ -560,7 +567,9 @@ class HcomSeatTest(unittest.TestCase):
                 run = self.seat(*args, "--seats-root", self.seats, cwd=cwd, **overrides)
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertTrue(run.stderr.startswith("hcom-seat: "), run.stderr)
-        self.assertIn("unknown role 'audit'; expected orchestrator or worker", self.seat("audit", "--dry-run").stderr)
+        self.assertIn(
+            "unknown role 'audit'; expected orchestrator, worker or dsh", self.seat("audit", "--dry-run").stderr
+        )
         (self.policies / "orchestrator.yml").write_text("tools: {}\n")
         (self.profiles / "orchestrator.yml").unlink()
         run = self.seat("orchestrator", "--seats-root", self.seats)
@@ -590,9 +599,6 @@ class HcomSeatTest(unittest.TestCase):
         self.assertIn(f"extension directory absent: {self.gate}", run.stderr, "--ext never drops the gate")
         self.assertEqual([self.calls_of(tool) for tool in ("hcom", "herdr", "omp")], [[], [], []])
         self.assertFalse(Path(self.seats).exists())
-
-    def settings_of(self, name):
-        return json.loads(Path(self.seats, ".sandbox", name, "srt-settings.json").read_text())
 
     def plant_claude_env_recorder(self):
         """Replace the omp fake with one that records the Claude variables the shim handed it (the shared fake keeps

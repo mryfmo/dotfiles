@@ -98,6 +98,70 @@ class AwsCliAcquisitionTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("Unsupported AWS CLI architecture: riscv64", result.stderr)
 
+    def test_linux_archive_and_signature_are_the_versioned_objects_version_txt_names(self):
+        # AWS overwrites the unversioned archive and its .sig at different times, so a run between the two
+        # uploads (or behind a stale CDN edge) pairs one release's archive with another's signature. The
+        # versioned objects are immutable: one read of version.txt names the release, and both downloads
+        # derive from it. gpgv fails here so the run stops after the downloads.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            home = root / "home"
+            temp = root / "tmp"
+            key = root / "key.asc"
+            urls = root / "urls"
+            home.mkdir()
+            temp.mkdir()
+            key.write_text("fixture\n")
+
+            result = self.run_shell(
+                r"""
+uname() { printf 'x86_64\n'; }
+curl() {
+    local output="" url=""
+    while [ "$#" -gt 0 ]; do
+        case "$1" in --output) output="$2"; shift 2 ;; -*) shift ;; *) url="$1"; shift ;; esac
+    done
+    printf '%s\n' "${url}" >> "${URLS_PATH}"
+    if [ -n "${output}" ]; then printf payload > "${output}"; return; fi
+    case "${url}" in */v2/version.txt) printf '2.39.6\n' ;; esac
+}
+gpg() {
+    case " $* " in
+        *" --with-colons "*)
+            printf 'pub:-:4096:1:A6310ACC4672475C:1568845749:1814472778::::::sc::::::23::0:\n'
+            printf 'fpr:::::::::@FINGERPRINT@:\n'
+            ;;
+        *" --dearmor "*)
+            while [ "$#" -gt 0 ]; do
+                if [ "$1" = --output ]; then printf keyring > "$2"; return; else shift; fi
+            done
+            ;;
+    esac
+}
+gpgv() { return 1; }
+unzip() { touch "${HOME}/unzip-ran"; }
+main
+""".replace("@FINGERPRINT@", FINGERPRINT),
+                {
+                    "AWS_CLI_KEY_PATH": str(key),
+                    "HOME": str(home),
+                    "TMPDIR": str(temp),
+                    "URLS_PATH": str(urls),
+                    "XDG_STATE_HOME": "",
+                },
+            )
+
+            self.assertNotEqual(0, result.returncode)
+            requested = urls.read_text().splitlines() if urls.exists() else []
+            versioned = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.39.6.zip"
+            self.assertEqual(
+                ["https://awscli.amazonaws.com/v2/version.txt", versioned, f"{versioned}.sig"],
+                requested,
+                result.stdout + result.stderr,
+            )
+            self.assertNotIn("https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip", requested)
+            self.assertFalse((home / "unzip-ran").exists())
+
     def test_a_failed_uname_chooses_no_archive_and_downloads_nothing(self):
         with tempfile.TemporaryDirectory() as directory:
             calls = Path(directory) / "curl"

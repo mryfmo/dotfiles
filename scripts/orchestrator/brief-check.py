@@ -28,7 +28,7 @@ later, at the prettier check and at the shebang table of `scripts/ci/run-on-lint
 their own lines and not the gates CI runs). The gates are one table of (class, name, term) rows, `GATES`: the `lint`
 class is the Makefile's `format` target, the three `scripts/ci/run-on-lint-files.sh` checks CI's test job runs before
 the unit tests; the `test` class is `python -m unittest`, `make unit-test` or `node --test`. When SCOPE names at least
-one repository path (a relative backticked span of two or more names, or one name with an extension; `~/...`, `/tmp/...`
+one repository path (a relative backticked span of two or more names, or one name with an extension; `~/...` or a path under the system temporary directory
 and `../...` are outside the repository and a bare word names no file), the ACCEPTANCE section must exist and match one
 term of each class: `no ACCEPTANCE section`, `ACCEPTANCE names no lint gate (...)` and `ACCEPTANCE names no test gate
 (...)` are the exit-1 lines. A sweep brief, whose SCOPE writes under `~/.local/state/` alone, is exempt by that shape,

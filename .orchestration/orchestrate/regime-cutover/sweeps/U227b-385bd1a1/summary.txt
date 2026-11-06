@@ -1,0 +1,10 @@
+security-audit sweep 385bd1a1e169dc6f2fcef31f521036e69b6eb24d: 0 findings, advisory partial
+(no finding lines: findings.json holds no record; the hunt produced no candidate)
+counts: critical 0, high 0, medium 0, low 0, informational 0, needs_validation 0, rejected 0
+run_status incomplete, reason independent_agents_unavailable: the seat's tool policy denies the Task tool, so no recon, hunter, critic or verifier agent ran and the run makes no clean-coverage claim
+scope: the U227b commit b49be338..385bd1a1 (9 paths, +425 -102); prior run-4 (U244, not in this head) carried as out_of_scope
+result: the gateway row is static (command omp, args auth-gateway stdio, no env or cwd, model ids restricted by DSH_MODEL_RE); the link step refuses a non-directory plugin path, a symlinked or non-directory node_modules and a non-symlink at the link name before any download, and ln -sfn converges on one relative link; no key or Ollama row survives
+hardening (not findings): the link target plugins/omp-gateway is unpinned and its source (U240) is not in this head, so opted-in hosts fail make update until it is deployed (merge order); command omp is a bare PATH name
+coverage: 41 ledger units (7 covered, 34 out_of_scope); source-only, no target code executed
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt
+wall time: output directory created 2026-11-06T08:02:35Z, summary written 2026-11-06T08:06:00Z

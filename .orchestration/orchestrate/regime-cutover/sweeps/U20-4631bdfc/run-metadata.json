@@ -1,0 +1,94 @@
+{
+  "run_id": "dotfiles-sweep-3-run-2",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "4631bdfcc83d120653bb9aac8fb6ad2556eac57b",
+    "branch": "records/sync-43",
+    "base": "cf68daf67dd1d8806a68ee08a746887e05951e29",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U20 change, records sync 43 (4631bdfc^..4631bdfc): 214 masked copies of the program store, every path under .orchestration/orchestrate/regime-cutover/ (204 added, 10 modified, all 100644 text); every other path is carried out_of_scope",
+  "scope_note": "The brief says the branch is from origin/main d1ecd495; at this head records/sync-43 is one commit on origin/main cf68daf6, which itself adds U241 (b49be338) and U254 (cf68daf6) since d1ecd495, each with its own store sweep. The brief's CONTEXT names `git diff --name-only c4195463 HEAD` (one file); it lists more. Its hunt questions (child command, JSON-line parser, abort paths, proof runner, <dsh-system>) are U240's: the omp-gateway plugin is absent at this head, so they do not apply and the hunt targeted the records-sync boundary instead. The carry set it names, sweeps/U20-2256b56c, does not exist in the store; this seat's run-1 (U240 at 6bc0c2cb) is carried instead.",
+  "scope_paths": [
+    ".orchestration/orchestrate/regime-cutover"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule). Checks are source reads plus parent-side scans of git objects with the parent's own script (agents/parent-hunter/scratch/scan-sync.cjs), which reads blobs and prints counts and locations only.",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md",
+    "AI-AND-LLM.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-1",
+      "source_ref": "6bc0c2cbd44a76901c33acc36458518a300cb2ab",
+      "findings": 0,
+      "ledger_units": 35,
+      "use": "Carried (this seat's earlier run; the brief's sweeps/U20-2256b56c is absent from the store). Its 11 covered U240 units carry as prior_covered_changed_source and out_of_scope (the plugin is absent at this head); its 24 out_of_scope units carry as prior_out_of_scope, the .orchestration one kept for the unchanged records. No finding of any verdict to carry."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T08:57:45Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (Task) and eval kernel are denied by policy on this seat, so reconnaissance, the hunter wave and both critics ran in the parent, and the one surviving candidate (records-sync/redaction/account-identity-residue-in-published-row) could not get its Phase 3 and Phase 5 independent verifiers; it stays an unvalidated candidate in the ledger and is not in findings.json",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "coverage_unit_surface": ".orchestration/orchestrate/regime-cutover#records-sync-43-copies",
+      "coverage_unit_boundary": ".orchestration/orchestrate/regime-cutover/redact-words.txt#redact-word-and-identity-scan",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work: the change is 214 text copies under one store directory; secrets, identity, paths/modes, home and host paths, and records-as-inputs each have a unit"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 1,
+  "findings_count": 0,
+  "ledger_units": 40,
+  "ledger_counts": {
+    "covered": 4,
+    "candidate": 1,
+    "out_of_scope": 35
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-06T09:04:30Z"
+}

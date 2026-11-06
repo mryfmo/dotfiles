@@ -1,0 +1,6 @@
+security-audit sweep 6bc0c2cbd44a76901c33acc36458518a300cb2ab: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+run_status: incomplete (independent_agents_unavailable: the delegation tool and eval kernel are denied by policy on this seat, so recon, the hunter wave and both critics ran in the parent; no candidate needed a verifier)
+scope: the U240 change d1ecd495..6bc0c2cbd44a76901c33acc36458518a300cb2ab incl. round 4 (U250 test/use-cases.test.mjs, the proof's --case selector, expected-output predicates and second provider route), profile standard, source-only; carried the store's U240-2256b56c records (0 findings); ledger 35 units: 11 covered (7 same-source, 2 changed-source, 2 new), 24 out_of_scope; 10 hardening notes in REPORT.md
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (parent ledger builder: agents/parent-hunter/scratch/build-ledger.cjs)
+wall time: 447s (2026-11-06T08:29:12Z to 2026-11-06T08:36:39Z)

@@ -1,0 +1,6 @@
+U230 validation at 2026-11-06T04:29:21Z
+1. node validate-findings.cjs findings.json: PASS: 0 findings valid (exit=0)
+2. node validate-coverage-ledger.cjs coverage-ledger.json: PASS: 26 coverage units valid (exit=0)
+3. grep -c 7992f1f58e75deb9e6d5493fbdbe00e2641ebae9 run-metadata.json: 1
+4. git -C ~/.local/state/omp-seats/dotfiles/worker-2 status --porcelain: '' (empty = clean)
+5. HEAD: 7992f1f58e75deb9e6d5493fbdbe00e2641ebae9

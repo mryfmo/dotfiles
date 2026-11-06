@@ -1,0 +1,10 @@
+U265 acceptance, run in the seat 2026-11-06T09:15:18Z
+validator usage lines: Usage: node validate-findings.cjs <path-to-findings.json> | Usage: node validate-coverage-ledger.cjs <path-to-coverage-ledger.json>
+1. ls run-3: FINDINGS-DETAIL.md NEEDS-VALIDATION.md REPORT.md agents architecture.md coverage-ledger.json findings.json preflight.txt run-metadata.json summary.txt validation.txt 
+2. validate-findings: PASS: 0 findings valid
+   exit=0
+3. validate-coverage-ledger: PASS: 40 coverage units valid
+   exit=0
+4. grep -c a479a47e9fe86bd6c45a16d66def1e821d74b842 run-metadata.json: 1
+5. git status --porcelain (target): []
+   target HEAD: a479a47e9fe86bd6c45a16d66def1e821d74b842

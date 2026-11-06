@@ -1,0 +1,9 @@
+security-audit sweep d1fd54ba5f5772eee06693d3f44182d4ae7c1427: 0 findings, advisory partial
+(no finding lines: findings.json holds no record; the hunt produced no candidate)
+counts: critical 0, high 0, medium 0, low 0, informational 0, needs_validation 0, rejected 0
+run_status incomplete, reason independent_agents_unavailable: the seat's tool policy denies the Task tool, so no recon, hunter, critic or verifier agent ran and the run makes no clean-coverage claim
+scope: the U244 change d1ecd495..d1fd54ba (9 paths); the brief's c4195463 diff line is the U224 sweep's text (10 paths here) and was not used; prior run is run-3 (U224 head), its 26 units carried as out_of_scope
+result: the merge gate is strictly stronger (every unit needs the exact sweep row; the brief reading, which executed brief-check.py and let a brief without TRUST skip the sweep, is gone); no refusal path opened; both lever copies identical and at the manifest pin
+coverage: 34 ledger units (8 covered, 26 out_of_scope); source-only, no target code executed
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt
+wall time: output directory created 2026-11-06T06:35:40Z, summary written 2026-11-06T06:38:51Z

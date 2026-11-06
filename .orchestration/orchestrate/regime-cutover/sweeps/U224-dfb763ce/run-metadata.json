@@ -1,0 +1,87 @@
+{
+  "run_id": "dotfiles-u236-run-3",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/worker-2",
+  "source_ref": {
+    "commit": "dfb763ce526b6cb2119ffa286b297fba5b289ed3",
+    "branch": "feat/remove-understand-anything-graphify-in",
+    "base": "c41954630b9701da70840171804aef919fafb20b",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped: the diff c4195463..dfb763ce (27 changed paths, measured with git diff --name-only; the brief's count of 29 does not match the measurement); every other top-level directory is recorded out_of_scope in the coverage ledger",
+  "scope_paths": [
+    "README.md",
+    "home/.chezmoiremove",
+    "home/dot_agents/agent-config.yaml",
+    "home/dot_claude/rules/understand-anything.md.tmpl",
+    "home/dot_codex/AGENTS.md.tmpl",
+    "home/dot_config/claude/rules/project-map.md",
+    "home/dot_config/claude/rules/understand-anything.md",
+    "home/dot_local/bin/common/executable_remove-agent-asset",
+    "home/dot_local/bin/common/executable_ua-symbol-coverage",
+    "home/dot_mise/config.toml",
+    "scripts/check-agent-runtime.py",
+    "scripts/generated-agent-outputs.json",
+    "scripts/lint-comparisons-baseline.tsv",
+    "scripts/plugin-pins.json",
+    "scripts/retired-terms.tsv",
+    "scripts/update-agent-assets.sh",
+    "scripts/validate-agent-assets.py",
+    "tests/install/common/lifecycle.bats",
+    "tests/unit/test_asset_manifest.py",
+    "tests/unit/test_check_agent_runtime.py",
+    "tests/unit/test_ci_workflows.py",
+    "tests/unit/test_graphify_asset.py",
+    "tests/unit/test_network_bounds.py",
+    "tests/unit/test_runtime_health.py",
+    "tests/unit/test_ua_symbol_coverage.py",
+    "tests/unit/test_update_agent_assets.py",
+    "tests/unit/test_update_agent_assets_ua_core.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "Source review only: the task brief forbids building, testing or executing the target's code, so no target-controlled process runs in this run and every check is method=source.",
+  "companion_files": [
+    "ATTACK-CLASSES.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/worker-2/security-audit/run-2",
+      "source_ref": "56985c8909a53b53c4d49678b7b4f67d06ea2edc",
+      "profile": "standard",
+      "scope": "the diff c4195463..56985c89",
+      "ledger_units": 26,
+      "findings": 0,
+      "use": "all 26 units carried with the same coverage_id; only scripts/update-agent-assets.sh and tests/unit/test_update_agent_assets.py changed since 56985c89 (the marketplace removal gained --scope user --json and three tests), so units whose paths include them are prior_covered_changed_source and were re-read with lines re-mapped; the rest are prior_covered_same_source or prior_out_of_scope and were re-read"
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/worker-2/security-audit/run-1",
+      "source_ref": "7992f1f58e75deb9e6d5493fbdbe00e2641ebae9",
+      "use": "read through run-2, which carried it; its one unvalidated candidate was resolved by the source change at 56985c89"
+    }
+  ],
+  "prior_run_note": "The brief names the previous run as run-3, but this seat's previous run is run-2 (U233, the 56985c89 head); run-3 is this run. run-2's findings.json held no record and its ledger no candidate.",
+  "shared_file_owner": "parent",
+  "shared_files": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the seat's tool policy denies the Task tool (tools.approval.task: deny, probed in run-2, unchanged), so no reconnaissance, hunter, post-wave critic, final-clean critic or verifier agent could be launched; the parent did reconnaissance and hunting itself, source-only. The hunt produced no candidate, so no validation was owed, but the mandatory standard-profile critics did not run and the run makes no clean-coverage claim.",
+  "agents_spent": {
+    "reconnaissance": 0,
+    "hunters": 0,
+    "post_wave_critic": 0,
+    "final_clean_critic": 0,
+    "phase3_verifiers": 0,
+    "phase5_verifiers": 0,
+    "note": "every phase was performed by the parent; the ledger check owner id parent-hunt-r3w1 names the parent, not a separate agent"
+  }
+}

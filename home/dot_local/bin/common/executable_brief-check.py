@@ -246,10 +246,12 @@ LEVER_REASON = (
 # (shfmt, ruff format, prettier) that CI's test job runs before the unit tests. The `test` class is the unit tests, a
 # `node --test` run, or a records brief's own check script run under `python3 -I` (U280: U274 wrote tables under the
 # store's `tests/` and changed no repository file, and the gate that proves such a unit is its `check-*.py`; the flag
-# is matched case-sensitively since `-i` is the interactive interpreter). The ACCEPTANCE of a brief whose SCOPE names
-# a repository path must match one term of each class in GATE_CLASSES (standing order 44, U249); the `check` rows are
-# gate forms a brief may paste that no class requires. `bats` is no gate: AGENTS.md Test Policy forbids a local run.
-RECORDS_CHECK = re.compile(r"(?-i:\bpython3 -I (?:\S*/)?check-[^\s/]*\.py\b)")
+# is matched case-sensitively since `-i` is the interactive interpreter; after `.py` the text ends or a whitespace or
+# closing backtick follows, never another path character, so `check-tables.py.bak` and `check-tables.py/run.py` are
+# no gate, U280b). The ACCEPTANCE of a brief whose SCOPE names a repository path must match one term of each class in
+# GATE_CLASSES (standing order 44, U249); the `check` rows are gate forms a brief may paste that no class requires.
+# `bats` is no gate: AGENTS.md Test Policy forbids a local run.
+RECORDS_CHECK = re.compile(r"(?-i:\bpython3 -I (?:\S*/)?check-[^\s/]*\.py(?:$|\s|`))")
 GATES = (
     ("lint", "run-on-lint-files.sh", "run-on-lint-files.sh"),
     ("lint", "make format", "make format"),

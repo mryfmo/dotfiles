@@ -521,6 +521,8 @@ class BriefCheckTest(unittest.TestCase):
         # lint gate stays required (the store's markdown is synced into the repository, where prettier runs).
         for check in (
             "`python3 -I tests/check-tables.py` exit 0.",
+            "`python3 -I tests/check-tables.py`",
+            "python3 -I tests/check-tables.py",
             "`python3 -I U0-tables/check-tables.py U0-tables/*.tsv` exit 0 and its row counts per table pasted.",
             "`python3 -I /tmp/dotfiles-wt/U0-tables/check-rows.py` exit 0.",
             "`python3 -I check-x.py` exit 0.",
@@ -541,6 +543,18 @@ class BriefCheckTest(unittest.TestCase):
             "`python3 -I tests/check-tables.sh` exit 0.",
             "`python3 -I check-tables/run.py` exit 0.",
             "`python -I tests/check-tables.py` exit 0.",
+        ):
+            with self.subTest(check=check):
+                text = brief(GOAL=CLEAN_GOAL, SCOPE=RECORDS_SCOPE, ACCEPTANCE=f"1. {check}\n2. {RECORDS_LINT}")
+                self.assert_refused_exactly(self.check_text(text), NO_TEST_GATE)
+
+    def test_a_check_script_whose_name_goes_on_after_py_is_no_test_gate(self):
+        # U280b (round-1 P2, thread 4492381429): the term ends at `.py` followed by the end of the text, whitespace or
+        # a closing backtick, so a `.bak` or `.sh` suffix and `check-tables.py` as a directory name are no gate.
+        for check in (
+            "`python3 -I tests/check-tables.py.bak` exit 0.",
+            "`python3 -I tests/check-tables.py.sh` exit 0.",
+            "`python3 -I check-tables.py/run.py` exit 0.",
         ):
             with self.subTest(check=check):
                 text = brief(GOAL=CLEAN_GOAL, SCOPE=RECORDS_SCOPE, ACCEPTANCE=f"1. {check}\n2. {RECORDS_LINT}")

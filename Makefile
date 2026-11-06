@@ -161,10 +161,11 @@ apply: update
 
 .PHONY: deploy-kit
 # The coordinator's deploy of a merged unit (regime-cutover U276): scripts/deploy-kit.sh applies, by name, only
-# the managed targets under the kit's own roots (~/.local/bin, ~/.agents, ~/.dsh; the table is in that script),
-# refuses when one of them is not what chezmoi last wrote (two-sided drift), then runs
-# scripts/update-agent-assets.sh. No pull, no operator target, no tool upgrade, no herdr reload: `make update`
-# stays the whole-home step. DRY=1 (true, yes) lists the pending targets and the refusals and applies nothing.
+# the chezmoi targets under the kit's own roots (~/.local/bin, ~/.agents, ~/.dsh; the table is in that script),
+# refuses when one of them is not what chezmoi last wrote (two-sided drift) or when a name is outside that set,
+# and never runs scripts/update-agent-assets.sh: pinned assets are the updater's separate step. No pull, no
+# operator target, no tool upgrade, no herdr reload: `make update` stays the whole-home step. DRY=1 (true, yes)
+# lists the pending targets and the refusals and applies nothing.
 deploy-kit:
 	./scripts/deploy-kit.sh$(if $(filter 1 true yes,$(DRY)), --dry-run,)
 

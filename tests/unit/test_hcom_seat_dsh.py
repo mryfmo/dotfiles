@@ -35,6 +35,7 @@ BASH_OWN_NAMES = {"PWD", "SHLVL", "OLDPWD", "_"}
 EARLIER_HEADS = (
     "52873a37745d8141eada2139ea2fa76e2773a60d",  # round one, before the read grants became a role row (U272c)
     "976fd6cdb249c76ac397ede1bbfccd931ad824c1",  # round two, before the deny row and the DSH_HOME refusal (U272d)
+    "5b950a97028205f7430a7c9f36f74b91a79e88c8",  # round three, before the refusal read the rendered deny table (U272e)
 )
 
 
@@ -79,6 +80,11 @@ FAKE_DSH = textwrap.dedent(
     with open(os.path.join(calls, "dsh"), "a") as record:
         record.write(json.dumps({{"argv": sys.argv[1:], "argv0": sys.argv[0], "cwd": os.getcwd(),
                                  "env": dict(os.environ)}}) + "\\n")
+    if os.path.exists(os.path.join(calls, "leave-locked")):
+        os.makedirs("locked/inner")
+        open("locked/inner/file", "w").close()
+        os.chmod("locked/inner", 0)
+        os.chmod("locked", 0)
     if "--version" in sys.argv[1:]:
         print("0.2.1-rc.5")
     deadline = time.monotonic() + 30
@@ -504,35 +510,38 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertNotIn(str(sibling.resolve()), dsh["allowRead"])
 
     def test_a_dsh_home_that_is_or_holds_a_denied_path_refuses_before_any_mkdir(self):
-        """U272c P1 `hcom-seat:1453`: a DSH_HOME whose physical path is, lies inside or contains a path of the deny row
+        """U272c P1 `hcom-seat:1453`: a DSH_HOME whose physical path is, lies inside or contains a path of the deny table
         refuses by name, in a dry run too, before any directory is made: the checkout's `.git` (the overlap check's
-        own-`.git` exemption admitted it as a write root, so dsh could alter objects and refs), a directory inside
-        it, and a directory holding the hcom store. bash's DEBUG trap records every command the launch ran; the only
-        mkdir is the private tool directory's."""
-        common = (self.repo / ".git").resolve()
+        own-`.git` exemption admits it as a write root, so dsh could alter objects and refs; round 4 names it by the
+        first table row it lies inside, the checkout), a directory inside it (the overlap invariant's own refusal,
+        which runs first) and a directory holding the hcom store. bash's DEBUG trap records every command the launch
+        ran; the only mkdir is the private tool directory's."""
+        checkout = self.repo.resolve()
+        common = checkout / ".git"
         holder = self.store.parent.resolve()
         hook = Path(self.temp.name) / "trace-hook.bash"
         hook.write_text('set -T\ntrap \'builtin printf "%s\\0" "$BASH_COMMAND" >> "$U272_TRACE"\' DEBUG\n')
         trace = Path(self.temp.name) / "trace"
         cases = (
-            ("the checkout's .git", common, [],
-             f"DSH_HOME {common} is, contains or lies inside the git common directory {common}"),
+            ("the checkout's .git", common, [], f"DSH_HOME {common} is, contains or lies inside {checkout}, a path the dsh role's settings deny",
+             "dsh_write_roots_check"),
             ("inside the checkout's .git", common / "objects", [],
-             f"DSH_HOME {common / 'objects'} is, contains or lies inside the git common directory {common}"),
+             f"write root {common / 'objects'} lies inside the main checkout {checkout}", "seat_overlap_check"),
             ("a directory holding the hcom store", holder, [],
-             f"DSH_HOME {holder} is, contains or lies inside the hcom store {self.store.resolve()}"),
-            ("the checkout's .git, dry run", common, ["--dry-run"], f"the git common directory {common}"),
+             f"DSH_HOME {holder} is, contains or lies inside {self.store.resolve()}, a path the dsh role's settings deny",
+             "dsh_write_roots_check"),
+            ("the checkout's .git, dry run", common, ["--dry-run"],
+             f"is, contains or lies inside {checkout}, a path the dsh role's settings deny", "dsh_write_roots_check"),
         )  # fmt: skip
-        for label, home, args, message in cases:
+        for label, home, args, message, check in cases:
             with self.subTest(case=label):
                 trace.write_text("")
                 run = self.seat("dsh", "--seats-root", self.seats, "--home", str(home), *args, "--", "--version",
                                 BASH_ENV=str(hook), U272_TRACE=str(trace))  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
-                self.assertIn("which the dsh role denies", run.stderr)
                 commands = trace.read_text().split("\0")[:-1]
-                self.assertIn("dsh_home_check", " ".join(commands), "the refusal is the check's, recorded")
+                self.assertIn(check, " ".join(commands), "the refusal is the named check's, recorded")
                 mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
                 self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
         self.assertFalse(Path(self.seats).exists())
@@ -589,6 +598,108 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         )  # fmt: skip
         self.assertEqual(real.returncode, 0, real.stderr)
         self.assertRegex(real.stdout, r"^\d{8}-\d{6}\n$")
+
+    def test_a_dsh_home_under_an_inherited_deny_refuses_from_the_rendered_table_before_any_mkdir(self):
+        """U272d P1 `hcom-seat:1660`: the refusal reads the deny table the role will run under (the worker's inherited
+        denies among its rows), not the role's own deny row. A DSH_HOME at the scratch HOME's `.aws` or `.omp/agent`,
+        inside `.aws`, or at a directory that holds what a linked deny path (`~/.kube -> <elsewhere>/aws`) physically
+        names refuses (exit 2) naming the deny path, in a dry run too, before any directory is made (the DEBUG-trap
+        recorder shows the tool directory's mkdir alone); each path named is a row of the settings a launch that goes
+        through renders."""
+        home = self.home.resolve()
+        for rel in (".aws/deeper", ".omp/agent"):
+            (home / rel).mkdir(parents=True)
+        elsewhere = Path(self.temp.name).resolve() / "elsewhere"
+        (elsewhere / "aws").mkdir(parents=True)
+        (home / ".kube").symlink_to(elsewhere / "aws")
+        hook = Path(self.temp.name) / "trace-hook.bash"
+        hook.write_text('set -T\ntrap \'builtin printf "%s\\0" "$BASH_COMMAND" >> "$U272_TRACE"\' DEBUG\n')
+        trace = Path(self.temp.name) / "trace"
+        cases = (
+            ("~/.aws", home / ".aws", [], f"DSH_HOME {home / '.aws'} is, contains or lies inside {home / '.aws'},"),
+            ("~/.omp/agent", home / ".omp/agent", [],
+             f"DSH_HOME {home / '.omp/agent'} is, contains or lies inside {home / '.omp/agent'},"),
+            ("inside ~/.aws", home / ".aws/deeper", [],
+             f"DSH_HOME {home / '.aws/deeper'} is, contains or lies inside {home / '.aws'},"),
+            ("holding what a linked deny names", elsewhere, [],
+             f"DSH_HOME {elsewhere} is, contains or lies inside {home / '.kube'} ({elsewhere / 'aws'}),"),
+            ("~/.aws, dry run", home / ".aws", ["--dry-run"], f"is, contains or lies inside {home / '.aws'},"),
+        )  # fmt: skip
+        for label, dsh_home, args, message in cases:
+            with self.subTest(case=label):
+                trace.write_text("")
+                run = self.seat("dsh", "--seats-root", self.seats, "--home", str(dsh_home), *args, "--", "--version",
+                                BASH_ENV=str(hook), U272_TRACE=str(trace))  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertIn("a path the dsh role's settings deny", run.stderr)
+                commands = trace.read_text().split("\0")[:-1]
+                self.assertIn("write_root_outside_denies", " ".join(commands), "the refusal is the table check's")
+                mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
+                self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
+        self.assertFalse(Path(self.seats).exists())
+        self.assertFalse((home / ".omp/profiles").exists())
+        self.assertEqual(self.dsh_calls(), [])
+        # Each path named is a row of the rendered settings of a launch that goes through: the rule's one source.
+        procs = self.held_launch("--", "--version")
+        (name,) = self.slots()[0]
+        rendered = self.settings_of(name)["filesystem"]
+        ((status, out, err),) = self.release(procs)
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        for path in (home / ".aws", home / ".omp/agent", home / ".kube"):
+            self.assertIn(str(path), rendered["denyRead"])
+        self.assertEqual(self.slots(), ([], []))
+
+    def test_records_that_are_a_link_into_dsh_home_refuse_the_home_and_are_denied_by_their_physical_path(self):
+        """U272d P2 `hcom-seat:1635`: the records row `<checkout>/.orchestration` enters the deny table in its physical
+        form, so a `.orchestration` that is a link into DSH_HOME refuses the DSH_HOME holding it (exit 2, naming the
+        records' physical path) before any directory is made, and a `.orchestration` linked elsewhere is denied under
+        the path the link names, for read and for write."""
+        records = self.dsh_home / "records"
+        records.mkdir()
+        link = self.repo / ".orchestration"
+        link.symlink_to(records)
+        run = self.launch("--", "--version")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"DSH_HOME {self.dsh_home} is, contains or lies inside {records},", run.stderr)
+        self.assertFalse(Path(self.seats).exists())
+        self.assertEqual(self.dsh_calls(), [])
+        link.unlink()
+        elsewhere = Path(self.temp.name).resolve() / "records-elsewhere"
+        elsewhere.mkdir()
+        link.symlink_to(elsewhere)
+        procs = self.held_launch("--", "--version")
+        (name,) = self.slots()[0]
+        rendered = self.settings_of(name)["filesystem"]
+        ((status, out, err),) = self.release(procs)
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        self.assertIn(str(elsewhere), rendered["denyRead"])
+        self.assertIn(str(elsewhere), rendered["denyWrite"])
+        self.assertNotIn(str(link), rendered["denyRead"])
+        self.assertEqual(self.slots(), ([], []))
+
+    def test_a_mode_000_directory_dsh_left_is_removed_and_a_slot_that_remains_fails_the_launch(self):
+        """U272d P2 `hcom-seat:2215`: a directory dsh leaves with mode 000 (a nested one inside it too) kept `rm -rf`
+        out of the state slot while the launch exited 0; the removal resets the modes first and both slots go, dsh's
+        status returned. It fails closed: a slot the lever cannot remove (its parent `.state` made read-only while
+        dsh runs) is named on stderr and the launch exits 2, not dsh's 0."""
+        (self.calls / "leave-locked").touch()
+        run = self.launch("--", "--version")
+        (self.calls / "leave-locked").unlink()
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        self.assertEqual(self.slots(), ([], []))
+        procs = self.held_launch("--", "--version")
+        (name,) = self.slots()[0]
+        state = Path(self.seats, ".state")
+        os.chmod(state, 0o555)
+        try:
+            ((status, out, err),) = self.release(procs)
+        finally:
+            os.chmod(state, 0o700)
+        self.assertEqual((status, out), (2, "0.2.1-rc.5\n"), err)
+        self.assertIn(f"the per-launch slot {state / name} remains after its removal", err)
+        self.assertIn("dsh exited 0; the launch exits 2", err)
+        self.assertEqual(self.slots(), ([], [name]))
 
 
 if __name__ == "__main__":

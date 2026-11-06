@@ -417,6 +417,13 @@
       "sha256": "f87d279dbc65e7f3d0119d05f820222f9903d865087394f2663d86e1058e894c"
     },
     {
+      "source": "home/dot_local/bin/common/executable_dsh-srt",
+      "target": ".local/bin/common/dsh-srt",
+      "kind": "file",
+      "executable": true,
+      "sha256": "dd9cbbd80842fea612c946f8504785e2bf8ca972bd96d7f74e3a981f202f5285"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_git-isolated.sh",
       "target": ".local/bin/common/git-isolated.sh",
       "kind": "file",
@@ -670,6 +677,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "ci-rerun.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "dsh-srt"
     },
     {
       "source": "home/dot_local/bin/common",

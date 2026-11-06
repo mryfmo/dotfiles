@@ -893,6 +893,7 @@ claude:
       pr-audit.sh: af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0
       brief-check.py: f6dd08068ef157f3c1f245f3c1ab2f6730418591fb9e020aa65b67a11795f3b1
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
+      dsh-srt: dd9cbbd80842fea612c946f8504785e2bf8ca972bd96d7f74e3a981f202f5285
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

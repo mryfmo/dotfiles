@@ -636,33 +636,73 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         self.assertEqual(f"by pid 4242 (cat, ppid 77: /bin/cat {probe.input} )", record["value"])
 
     def test_the_holder_scan_waits_for_a_reader_whose_open_has_not_returned(self):
-        # 2026-11-04 on the ubuntu-26.04 canary: the in-thread reader counted for the write-open while still inside
-        # its blocking open(), so its descriptor was not in its table when the scan looked, and the record named
-        # nobody. The holder appears 50 ms into the scan, built aside and renamed in whole so no pass sees it half made.
+        """A scan that names nobody is repeated for HOLDER_WAIT_S before its answer stands, because a reader the
+        write-open just woke has no descriptor until its own open() returns (2026-11-04 on the ubuntu-26.04 canary:
+        the in-thread reader counted for the write-open while still inside its blocking open(), so its descriptor was
+        not in its table when the scan looked, and the record named nobody). The holder here is absent from the
+        scan's first pass and present at a later one, built aside and renamed in whole so no pass sees it half made;
+        the second probe, whose tree stays empty, proves the wait is HOLDER_WAIT_S long and no longer.
+
+        U241b: the holder used to be renamed in 50 ms after the scan started, on a timer that assumed the scan was
+        still walking; on a loaded macOS runner the scan settled before the holder thread ran, and the test failed
+        healthy code with `by no process whose descriptors this user can read (0 unreadable)` (the macOS test leg of
+        PR 695, 2026-11-06). The holder is handshaken instead, as U241 did for the FIFO test: the scan's listing of
+        the proc root (`os.listdir(root)`, trusted_exec_contract.py:247 at 8f31cf5c) is wrapped to take its first
+        listing of the empty tree, signal `inside`, and hand that listing back only once `placed` is set, which the
+        holder thread does right after its rename. The first pass therefore ends on an empty tree with the holder in
+        place, and the rescan names pid 4242, on any scheduler; a scan that stops rescanning fails. Only the rename
+        happens inside the settle window, so the holder's build time cannot eat HOLDER_WAIT_S either.
+
+        U241c: the round-1 audit delayed that rename by 300 ms and healthy code failed three times out of three,
+        because the hook waits for `placed` inside the scan's first pass while the settle clock is running (`settle =
+        time.monotonic() + HOLDER_WAIT_S` is taken before the first pass, trusted_exec_contract.py:279 at 8f31cf5c),
+        and an empty pass that ends after `settle` returns without rescanning: the handshake had the production 200 ms
+        to complete, a scheduler premise wider than the 50 ms timer but a premise still. The first probe therefore
+        runs with its own HOLDER_WAIT_S of 30 s, the bound of the handshake's own waits, so however long the holder
+        thread takes to wake and rename, the first pass ends before `settle` and the rescan at POLL_S names pid 4242;
+        a scan that stops rescanning still returns the no-holder record at once. The second probe keeps the
+        production HOLDER_WAIT_S and alone measures its length."""
         import threading
 
         probe = self.worker_root_probe()
+        probe.HOLDER_WAIT_S = 30.0  # the hook below waits inside the first pass; the settle must stay out of its reach
         proc = probe.base / "proc"
         proc.mkdir()
         probe.PROC_ROOT = str(proc)
         self.assertEqual([], list(proc.iterdir()))
+        inside, placed = threading.Event(), threading.Event()
+        listdir = tec.os.listdir
+
+        def listing(path, *args, **kwargs):
+            """The scan's own listing of the proc root, the first one taken before the holder exists and handed back
+            after it is in place."""
+            entries = listdir(path, *args, **kwargs)
+            if path == probe.PROC_ROOT and not inside.is_set():
+                inside.set()
+                placed.wait(30)
+            return entries
 
         def late_holder():
-            time.sleep(0.05)
             building = proc / "building"  # not numeric, so a pass that lands here skips it
             (building / "fd").mkdir(parents=True)
             os.symlink(probe.input, building / "fd" / "7")
             (building / "comm").write_text("cat\n")
             (building / "status").write_text("Name:\tcat\nPPid:\t77\n")
             (building / "cmdline").write_bytes(b"/bin/cat\0" + os.fsencode(probe.input) + b"\0")
+            inside.wait(30)
             os.rename(building, proc / "4242")
+            placed.set()
 
         late = threading.Thread(target=late_holder, daemon=True)
         late.start()
         self.addCleanup(late.join, 5)
-        self.assertEqual(f"by pid 4242 (cat, ppid 77: /bin/cat {probe.input} )", self.holder_scan(probe))
+        with mock.patch.object(tec.os, "listdir", listing):
+            record = self.holder_scan(probe)
         late.join(5)
         self.assertFalse(late.is_alive())
+        self.assertTrue(inside.is_set(), "the scan never listed the proc root")
+        self.assertTrue(placed.is_set(), "the holder was never renamed in")
+        self.assertEqual(f"by pid 4242 (cat, ppid 77: /bin/cat {probe.input} )", record)
         never = self.worker_root_probe()
         (never.base / "proc").mkdir()
         never.PROC_ROOT = str(never.base / "proc")

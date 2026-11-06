@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
 import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createInterface } from 'node:readline'
+import { PassThrough } from 'node:stream'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { GatewayClient, GatewayError, pickEnv } from '../gateway-client.mjs'
@@ -40,6 +43,46 @@ function alive(pid) {
   } catch {
     return false
   }
+}
+
+/**
+ * In-process children for the respawn and protocol-guard tests: each spawn prints the ready line (unless
+ * `ready: false`), records the request lines it is written, and delivers `close` one macrotask after a kill, as a
+ * real process does, so the window between the kill and the close is open to the next request.
+ */
+function fakeSpawn({ ready = true } = {}) {
+  const children = []
+  const spawn = () => {
+    const child = Object.assign(new EventEmitter(), {
+      pid: 1000 + children.length + 1,
+      stdin: new PassThrough(),
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      lines: [],
+      killedWith: undefined,
+      kill(signal) {
+        this.killedWith = signal
+        setImmediate(() => this.emit('close', null, signal))
+        return true
+      },
+      reply(line) {
+        this.stdout.write(`${JSON.stringify(line)}\n`)
+      },
+    })
+    createInterface({ input: child.stdin }).on('line', line => child.lines.push(JSON.parse(line)))
+    child.stdin.on('finish', () => setImmediate(() => child.emit('close', 0, null)))
+    if (ready) child.reply({ ready: true, version: 'fake' })
+    children.push(child)
+    return child
+  }
+  return { spawn, children }
+}
+
+function fakeClient(t) {
+  const { spawn, children } = fakeSpawn()
+  const client = new GatewayClient({ command: 'fake-gateway', env: {}, readyTimeoutMs: 1000, spawn })
+  t.after(() => client.close())
+  return { client, children }
 }
 
 test('the ready line is consumed and concurrent replies are matched by id', async t => {
@@ -94,6 +137,69 @@ test('an aborted signal kills the child and rejects the request with ABORTED', a
   await assert.rejects(pending, error => error instanceof GatewayError && error.code === 'ABORTED')
   await until(() => client.pid === undefined && !alive(pid), 'the killed child to be reaped')
   assert.equal(client.pendingCount, 0)
+})
+
+test('an aborted request is followed by a fresh child on the next request', async t => {
+  const { client, children } = fakeClient(t)
+  const controller = new AbortController()
+  const first = client.request('/v1/messages', fixtures.requests.text, controller.signal)
+  await until(() => children[0]?.lines.length === 1, 'the first request to reach child 1')
+  controller.abort()
+  const second = client.request('/v1/messages', fixtures.requests.text)
+  await assert.rejects(first, { code: 'ABORTED' })
+  assert.equal(children.length, 2)
+  assert.equal(children[0].killedWith, 'SIGTERM')
+  await until(() => children[1].lines.length === 1, 'the second request to reach child 2')
+  assert.equal(children[0].lines.length, 1)
+  children[1].reply({ id: children[1].lines[0].id, status: 200, body: { from: 'child 2' } })
+  assert.deepEqual(await second, { status: 200, body: { from: 'child 2' } })
+  assert.equal(client.pid, children[1].pid)
+  assert.equal(client.pendingCount, 0)
+})
+
+test('a protocol failure is followed by a fresh child on the next request', async t => {
+  const { client, children } = fakeClient(t)
+  const first = client.request('/v1/messages', fixtures.requests.text)
+  await until(() => children[0]?.lines.length === 1, 'the first request to reach child 1')
+  children[0].reply({ id: children[0].lines[0].id + 100, status: 200, body: {} })
+  await assert.rejects(first, { code: 'PROTOCOL' })
+  const second = client.request('/v1/messages', fixtures.requests.text)
+  assert.equal(children.length, 2)
+  assert.equal(children[0].killedWith, 'SIGTERM')
+  await until(() => children[1].lines.length === 1, 'the second request to reach child 2')
+  assert.equal(children[0].lines.length, 1)
+  children[1].reply({ id: children[1].lines[0].id, status: 200, body: { from: 'child 2' } })
+  assert.deepEqual(await second, { status: 200, body: { from: 'child 2' } })
+  assert.equal(client.pid, children[1].pid)
+})
+
+for (const [guard, raw] of [
+  ['a non-JSON line', 'not json at all'],
+  ['an array line', '[]'],
+  ['a string line', '"x"'],
+  ['a reply line without a status', '{"id":1,"body":{}}'],
+]) {
+  test(`${guard} from the child is a protocol failure that kills the child`, async t => {
+    const { client, children } = fakeClient(t)
+    const pending = client.request('/v1/messages', fixtures.requests.text)
+    await until(() => children[0]?.lines.length === 1, 'the request to reach the child')
+    children[0].stdout.write(`${raw}\n`)
+    await assert.rejects(pending, error => error instanceof GatewayError && error.code === 'PROTOCOL')
+    assert.equal(children[0].killedWith, 'SIGTERM')
+    assert.equal(client.pid, undefined)
+    assert.equal(client.pendingCount, 0)
+  })
+}
+
+test('a reply line before the ready line is a protocol failure that kills the child', async t => {
+  const { spawn, children } = fakeSpawn({ ready: false })
+  const client = new GatewayClient({ command: 'fake-gateway', env: {}, readyTimeoutMs: 1000, spawn })
+  t.after(() => client.close())
+  const pending = client.request('/v1/messages', fixtures.requests.text)
+  children[0].reply({ id: 1, status: 200, body: {} })
+  await assert.rejects(pending, error => error instanceof GatewayError && error.code === 'PROTOCOL' && /ready line first/.test(error.message))
+  assert.equal(children[0].killedWith, 'SIGTERM')
+  assert.equal(client.pid, undefined)
 })
 
 test('a request whose signal is already aborted never spawns a child', async t => {

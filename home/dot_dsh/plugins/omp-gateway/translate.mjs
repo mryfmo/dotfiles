@@ -69,6 +69,11 @@ export function* toChunks(message) {
   if (message === null || typeof message !== 'object' || !Array.isArray(message.content)) {
     throw new TranslationError('omp-gateway: gateway reply is not a message with a content array', 'INVALID_RESPONSE')
   }
+  // DSH's taxonomy (`@deepseek-ai/dsh-llm` EMPTY_RESPONSE_CODE): an empty assistant message would end the turn with
+  // nothing for the loop to act on, so a degenerate completion is a failure the retry policy may repeat.
+  if (message.content.length === 0) {
+    throw new TranslationError(`omp-gateway: gateway reply ${message.id ?? '(no id)'} carries no content blocks`, 'EMPTY_RESPONSE')
+  }
   for (const [index, block] of message.content.entries()) {
     switch (block?.type) {
       case 'text':
@@ -114,7 +119,7 @@ export function toError(status, body) {
   return { code: codeFor(status, type), status, message: `omp-gateway: HTTP ${status}: ${detail}` }
 }
 
-/** Thrown by {@link toChunks} for a 200 reply whose body is not a message. */
+/** Thrown by {@link toChunks} for a 200 reply whose body is not a message, or a message with no content blocks. */
 export class TranslationError extends Error {
   constructor(message, code) {
     super(message)

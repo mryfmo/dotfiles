@@ -224,7 +224,12 @@ export class GatewayClient {
   }
 
   #kill() {
-    this.#child?.kill('SIGTERM')
+    const child = this.#child
+    if (child === undefined) return
+    // Forgotten before the signal lands: a request in the window before `close` fires would otherwise be written
+    // to the dying child and fail with GATEWAY_EXIT instead of spawning a fresh one (round-3 audit, f2).
+    this.#forget(child)
+    child.kill('SIGTERM')
   }
 
   #forget(child) {

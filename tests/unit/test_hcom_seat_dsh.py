@@ -314,7 +314,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def test_the_environment_reaching_dsh_is_the_listed_names_and_the_shims_exports(self):
         """U251d P1 `:146` and U251b P2 `:325`: nothing of the caller's environment reaches the shim, srt or dsh but
         the listed names; the shim's own exports (the bridge child's CLAUDE_CONFIG_DIR, the token, the AWS file
-        names, the signing rows) ride as for every role; the caller's token wins over the token file."""
+        names, the signing rows) ride as for every role; U312: a caller's token is no input, the token file's is."""
         caller = {
             "SECRET_OF_THE_CALLER": "never", "NODE_OPTIONS": "--require /tmp/evil.js", "USER": "u272",
             "LANG": "C.UTF-8", "TERM": "xterm", "HCOM_TEAM": "repo",
@@ -347,12 +347,20 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             self.assertNotIn("NODE_OPTIONS", call["env"])
             self.assertNotIn("HCOM_TEAM", call["env"])
         self.assertNotIn(FAKE_OAUTH_VALUE, run.stdout + run.stderr)
-        # A caller's token wins over the token file; no name is passed empty.
+        # U312: a caller's token is no input; the token file's value rides as for every role, and no name is passed
+        # empty. Without the file (the dsh role runs no login preflight) the child gets no token at all.
         run = self.launch("--", "--version", CLAUDE_CODE_OAUTH_TOKEN=CALLER_OAUTH_VALUE, USER=None)
         self.assertEqual(run.returncode, 0, run.stderr)
         env = self.dsh_calls()[-1]["env"]
-        self.assertEqual(env["CLAUDE_CODE_OAUTH_TOKEN"], CALLER_OAUTH_VALUE)
+        self.assertEqual(env["CLAUDE_CODE_OAUTH_TOKEN"], FAKE_OAUTH_VALUE)
+        self.assertNotIn(CALLER_OAUTH_VALUE, env.values())
         self.assertNotIn("USER", env)
+        self.assertNotIn(CALLER_OAUTH_VALUE, run.stdout + run.stderr)
+        self.token.unlink()
+        run = self.launch("--", "--version", CLAUDE_CODE_OAUTH_TOKEN=CALLER_OAUTH_VALUE)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        env = self.dsh_calls()[-1]["env"]
+        self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN", env)
         self.assertNotIn(CALLER_OAUTH_VALUE, run.stdout + run.stderr)
 
     def test_the_command_and_its_home_are_resolved_and_refused_like_a_tool(self):

@@ -112,12 +112,12 @@ The bridge child of a seat runs under its own `CLAUDE_CONFIG_DIR`,
 `<seats-root>/.state/<name>/claude`, which `hcom-seat`'s shim exports (regime-cutover
 U190), so its `.claude.json`, projects, sessions, backups and plugins land in the
 seat's state slot and never in the operator's `~/.claude` or `~/.claude.json`. It logs
-in by `CLAUDE_CODE_OAUTH_TOKEN` alone: the shim exports it from
-`~/.config/claude-code/oauth-token` (first line, mode 0600) when the caller has not
-already set it. The operator makes that token once with `claude setup-token` on the
-laptop and stores it in the file by hand, on every seat host alike (gate G-27).
-`seat-login-preflight <role>` counts only the variable or that file; a Keychain item or
-credentials file is reported as `host login only` and starts no seat, with the
+in by `CLAUDE_CODE_OAUTH_TOKEN` alone: the shim reads it from
+`~/.config/claude-code/oauth-token` (first line, mode 0600), the seats' current login,
+and a caller's variable is no input (U312). The operator makes that token once with
+`claude setup-token` on the laptop and stores it in the file by hand, on every seat
+host alike (gate G-27). `seat-login-preflight <role>` counts only that file; a Keychain
+item or credentials file is reported as `host login only` and starts no seat, with the
 setup-token instruction. Measured 2026-11-05 (Claude Code 2.1.316): a scratch
 `CLAUDE_CONFIG_DIR` with the host Keychain item and credentials file present answers
 `Not logged in`, so the child cannot borrow a host login. The Agent SDK reads the
@@ -134,8 +134,9 @@ the operator's own terminal; no script does this, and without it such a turn end
 (`regime-open-url` opens it on the laptop); its callback port is random (50903, 50915
 and 50920 on three runs, Claude Code 2.1.309), so the page shows a code to paste at the
 prompt. That is the host's login, not the seat's: the seat route on every host is the
-token file above. `~/.zshenv` and `~/.profile` also export the file as
-`CLAUDE_CODE_OAUTH_TOKEN` for a login shell's own `claude`. The steps are in
+token file above, which only the seat shim reads. No shell exports it (U312), so a
+login shell's own `claude` keeps the host login and its claude.ai connectors; whether
+the file stays the seat login is U314's open decision. The steps are in
 `docs/remote-host-logins.md`.
 
 ## Load check

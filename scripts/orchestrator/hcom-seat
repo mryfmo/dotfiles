@@ -103,10 +103,11 @@
 #   the own profile exempt from their structural denies by a tag that names each one row by its position in its list,
 #   never a spelling, so a DSH_HOME at or inside an exempted row's path is judged like any row), a hit refused before anything is made; DSH_HOME in the protected set
 #   before any tool is resolved; the command `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt
-#   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME, OMP_PROFILE
-#   and a caller's CLAUDE_CODE_OAUTH_TOKEN before the shim adds its own exports. No omp overlay, rules file,
-#   extension or login preflight is read for it. The per-launch sandbox and state slot are removed when dsh exits,
-#   and by the trap a hangup, interrupt or termination runs before this process ends by that signal.
+#   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME and OMP_PROFILE
+#   before the shim adds its own exports (regime-cutover U312: a caller's CLAUDE_CODE_OAUTH_TOKEN is no input for any
+#   role; the shim reads the token file). No omp overlay, rules file, extension or login preflight is read for it. The
+#   per-launch sandbox and state slot are removed when dsh exits, and by the trap a hangup, interrupt or termination
+#   runs before this process ends by that signal.
 # @arg $1 string Role: orchestrator, worker or dsh.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
@@ -2199,13 +2200,15 @@ fi
 export UV_CACHE_DIR=${state}/uv-cache
 # The bridge child's Claude Code state (`.claude.json`, projects, sessions, plugins) lives in the seat's own slot,
 # never in the operator's ~/.claude or ~/.claude.json (regime-cutover U190); under that directory the child reads
-# neither the Keychain nor the operator's credentials file, so it logs in by the token alone, exported here from the
-# operator's token file (the preflight's spelling) because a herdr pane's shell need not be a login shell that
-# exports it. The first line goes from a checked producer into the variable and nowhere else: never printed, never
-# written; a failed read refuses, since the preflight counted that file as the seat's login.
+# neither the Keychain nor the operator's credentials file, so it logs in by the token alone. The operator's token
+# file is the kit's one source of that token and this shim its one reader (regime-cutover U312): no shell exports it,
+# and a caller's variable is no input, so the name is cleared before the read. The first line goes from a checked
+# producer into the variable and nowhere else: never printed, never written; a failed read refuses, since the
+# preflight counted that file as the seat's login.
 export CLAUDE_CONFIG_DIR=${state}/claude
 token_file=${HOME}/.config/claude-code/oauth-token
-if [[ -z ${CLAUDE_CODE_OAUTH_TOKEN:-} && -f ${token_file} && -s ${token_file} ]]; then
+unset CLAUDE_CODE_OAUTH_TOKEN
+if [[ -f ${token_file} && -s ${token_file} ]]; then
     token=$(/usr/bin/head -n 1 -- "${token_file}") || {
         echo "hcom-seat shim: cannot read the token file ${token_file}; ${tool} not started" >&2
         exit 2
@@ -2254,8 +2257,7 @@ seat_wrapper_write() {
 
 # The role table's launch row: the hcom launch line for the omp roles; for the dsh role the shim run in the foreground
 # under `/usr/bin/env -i` with the listed names (U272: nothing of the caller's environment reaches the shim, srt or
-# dsh; the shim sets PATH and its own exports). A caller's CLAUDE_CODE_OAUTH_TOKEN is added at the launch alone, so
-# the dry run never prints it.
+# dsh; the shim sets PATH and its own exports, the token file's first line among them).
 case ${role_launch} in
 hcom)
     argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr --go -- --profile "${role}" --config "${policy}" --config "${profile}" --append-system-prompt "${rules}")
@@ -2441,7 +2443,6 @@ foreground)
     # dsh runs in the scratch cwd (M-21: a cwd inside a read-denied path dies on `uv_cwd EPERM`); the subshell is
     # replaced by the shim, so nothing waits twice.
     (cd "${dir}" && exec /usr/bin/env -i "${seat_env[@]}" \
-        ${CLAUDE_CODE_OAUTH_TOKEN:+"CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}"} \
         "${sandbox}/bin/${shim_tool}" ${dsh_args[@]+"${dsh_args[@]}"}) || status=$?
     trap - HUP INT TERM
     # A slot that remains is a refusal whatever dsh returned: the caller must not read a leftover slot as success.

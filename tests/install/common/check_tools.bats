@@ -175,15 +175,21 @@ function seat_login_home() {
     [[ "${output}" == *"failures=0 warnings=2"* ]]
 }
 
-@test "[common] check_seat_logins counts an exported token as the Claude login and never prints it" {
+@test "[common] check_seat_logins counts the token file as the Claude login and never prints it" {
     local home
     home="$(seat_login_home)"
+    mkdir -p "${home}/.config/claude-code"
+    printf 'fake-token-value\n' > "${home}/.config/claude-code/oauth-token"
+    chmod 600 "${home}/.config/claude-code/oauth-token"
 
-    run env -u CLAUDE_CONFIG_DIR CLAUDE_CODE_OAUTH_TOKEN=fake-token-value HOME="${home}" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
+    # U312: a token variable in the environment is no input; the file alone is the login the seat shim reads.
+    run env -u CLAUDE_CONFIG_DIR CLAUDE_CODE_OAUTH_TOKEN=unused-variable-value HOME="${home}" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins"
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: login present (env token)"* ]]
+    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: login present (token file 600, mtime 20"* ]]
+    [[ "${output}" != *"(env token)"* ]]
     [[ "${output}" != *"fake-token-value"* ]]
+    [[ "${output}" != *"unused-variable-value"* ]]
 }
 
 @test "[common] check_seat_logins fails on an unreadable SIWC record instead of calling it absent" {

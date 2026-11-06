@@ -1,0 +1,11 @@
+{
+  "name": "u240-ping-tool",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Composition-proof fixture: declares the `ping` tool the measured tool_use reply names",
+  "type": "module",
+  "main": "index.mjs",
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "*"
+  }
+}

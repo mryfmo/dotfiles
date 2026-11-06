@@ -1,0 +1,5 @@
+# Second-turn overlay of the composition proof: the scratch agent declares the `ping` tool.
+# The package resolves through the scratch profile's node_modules link made by run-proof.mjs.
+- insert:
+    - id: u240-ping-tool
+      name: u240-ping-tool

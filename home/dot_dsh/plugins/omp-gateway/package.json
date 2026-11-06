@@ -1,0 +1,21 @@
+{
+  "name": "dsh-omp-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DSH LlmAdapter plugin that reaches Claude through a child `omp auth-gateway stdio`; the login stays inside omp",
+  "type": "module",
+  "main": "index.mjs",
+  "exports": {
+    ".": "./index.mjs",
+    "./config": "./config.mjs",
+    "./translate": "./translate.mjs",
+    "./gateway-client": "./gateway-client.mjs",
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-llm": "*"
+  },
+  "scripts": {
+    "test": "node --test ."
+  }
+}

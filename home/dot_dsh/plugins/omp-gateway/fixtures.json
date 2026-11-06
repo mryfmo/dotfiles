@@ -1,0 +1,48 @@
+{
+  "measured": {
+    "gateway": "omp 18.12.6 `omp auth-gateway stdio`, cwd $HOME",
+    "text_tool_use_unknown": "2026-11-06 05:56Z to 05:58Z (U239)",
+    "models": "2026-11-06 06:2xZ (U240): two `/v1/models` lines, two 200 replies; list trimmed to the claude-bridge entries"
+  },
+  "ready": { "ready": true, "version": "18.12.6" },
+  "knownModels": ["claude-bridge/claude-haiku-5-5"],
+  "requests": {
+    "text": { "model": "claude-bridge/claude-haiku-5-5", "max_tokens": 32, "messages": [{ "role": "user", "content": "Reply with the single word pong." }] },
+    "tool_use": {
+      "model": "claude-bridge/claude-haiku-5-5",
+      "max_tokens": 32,
+      "tools": [{ "name": "ping", "description": "Answer with the current host name of the caller.", "input_schema": { "type": "object", "properties": { "word": { "type": "string" } }, "required": ["word"] } }],
+      "messages": [{ "role": "user", "content": "Call the ping tool with word=pong and nothing else." }]
+    }
+  },
+  "replies": {
+    "text": {
+      "status": 200,
+      "body": { "id": "msg_40c424f8df3e4ca3a3baa84f", "type": "message", "role": "assistant", "model": "claude-bridge/claude-haiku-5-5", "content": [{ "type": "text", "text": "pong" }], "stop_reason": "end_turn", "stop_sequence": null, "usage": { "input_tokens": 2, "output_tokens": 4, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 2453 } }
+    },
+    "tool_use": {
+      "status": 200,
+      "body": { "id": "msg_b5543bab5a494b128b58b5c8", "type": "message", "role": "assistant", "model": "claude-bridge/claude-haiku-5-5", "content": [{ "type": "tool_use", "id": "toolu_01HEFTqeaFVnJLV8YpvEypFV", "name": "ping", "input": { "word": "pong" } }], "stop_reason": "tool_use", "stop_sequence": null, "usage": { "input_tokens": 2, "output_tokens": 57, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 2923 } }
+    },
+    "unknown_model": {
+      "status": 404,
+      "body": { "error": { "message": "No available model matches \"openai-siwc/gpt-6-astra\"", "type": "invalid_request_error" } }
+    },
+    "unknown_path": {
+      "status": 404,
+      "body": { "error": "No route: POST /v1/models" }
+    },
+    "models": {
+      "status": 200,
+      "body": {
+        "object": "list",
+        "data": [
+          { "id": "claude-bridge/claude-fable-5-1", "object": "model", "owned_by": "claude-bridge", "api": "claude-bridge", "display_name": "Claude Fable 5.1 1M", "input_modalities": ["text", "image"], "context_length": 1000000, "max_output_tokens": 128000 },
+          { "id": "claude-bridge/claude-opus-5-5", "object": "model", "owned_by": "claude-bridge", "api": "claude-bridge", "display_name": "Claude Opus 5.5 1M", "input_modalities": ["text", "image"], "context_length": 1000000, "max_output_tokens": 128000 },
+          { "id": "claude-bridge/claude-sonnet-5-5", "object": "model", "owned_by": "claude-bridge", "api": "claude-bridge", "display_name": "Claude Sonnet 5.5 1M", "input_modalities": ["text", "image"], "context_length": 1000000, "max_output_tokens": 128000 },
+          { "id": "claude-bridge/claude-haiku-5-5", "object": "model", "owned_by": "claude-bridge", "api": "claude-bridge", "display_name": "Claude Haiku 5.5 1M", "input_modalities": ["text", "image"], "context_length": 1000000, "max_output_tokens": 128000 }
+        ]
+      }
+    }
+  }
+}

@@ -10,25 +10,23 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "install/common/aws_cli.sh"
-# The archive is unversioned (AWS's current release), so any reported version is a fixture value.
+# The release the fixtures' version.txt names; the installer pins nothing, so it is a fixture value.
 AWS_CLI_VERSION = "2.37.6"
 FINGERPRINT = re.search(r'^readonly AWS_CLI_FINGERPRINT="([0-9A-F]{40})"$', INSTALLER.read_text(), re.MULTILINE).group(
     1
 )
-# The macOS prelude: uname answers Darwin and arm64; curl logs each URL to $CALLS/urls, answers a HEAD with
-# ETag "pkg-2", fails the URL ending in $FAIL_URL, prints version.txt (" $RELEASE ", trimmed by the script) and
-# writes "payload" to an --output; gpgv logs its argv and fails when $GPGV_FAIL is set; bash, the installer
-# call, logs the XDG roots and its argv, exits $INSTALLER_STATUS when that is set, and otherwise leaves an aws
-# reporting $NEW_VERSION when that is set.
+# The macOS prelude: uname answers Darwin and arm64; curl logs each URL to $CALLS/urls, fails the URL ending in
+# $FAIL_URL, prints version.txt (" $RELEASE ", trimmed by the script) and writes "payload" to an --output; gpgv
+# logs its argv and fails when $GPGV_FAIL is set; bash, the installer call, logs the XDG roots and its argv,
+# exits $INSTALLER_STATUS when that is set, and otherwise leaves an aws reporting $NEW_VERSION when that is set.
 MACOS_PRELUDE = r"""
 uname() { case "$1" in -s) printf 'Darwin\n' ;; *) printf 'arm64\n' ;; esac; }
 curl() {
-    local output="" url="" head=""
+    local output="" url=""
     while [ "$#" -gt 0 ]; do
-        case "$1" in --output) output="$2"; shift 2 ;; --head) head=1; shift ;; -*) shift ;; *) url="$1"; shift ;; esac
+        case "$1" in --output) output="$2"; shift 2 ;; -*) shift ;; *) url="$1"; shift ;; esac
     done
     printf '%s\n' "${url}" >> "${CALLS}/urls"
-    if [ -n "${head}" ]; then printf 'HTTP/2 200\r\nETag: "pkg-2"\r\n\r\n'; return; fi
     case "${url}" in *"${FAIL_URL:-none}") return 22 ;; esac
     if [ -n "${output}" ]; then printf payload > "${output}"; else printf ' %s \n' "${RELEASE}"; fi
 }
@@ -81,20 +79,25 @@ class AwsCliAcquisitionTest(unittest.TestCase):
                 {"HOME": str(home), "STAGED": staged},
             )
 
-    def test_linux_urls_are_the_unversioned_current_archive_and_unknown_architecture_fails(self):
+    def test_linux_urls_are_the_versioned_archive_for_the_release_and_unknown_architecture_fails(self):
         for architecture in ("x86_64", "aarch64"):
             with self.subTest(architecture=architecture):
                 result = self.run_shell(
-                    'uname() { printf "%s\\n" "$ARCH"; }\naws_cli_url',
+                    'uname() { printf "%s\\n" "$ARCH"; }\naws_cli_url 2.39.6',
                     {"ARCH": architecture},
                 )
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(
-                    f"https://awscli.amazonaws.com/awscli-exe-linux-{architecture}.zip\n",
+                    f"https://awscli.amazonaws.com/awscli-exe-linux-{architecture}-2.39.6.zip\n",
                     result.stdout,
                 )
+        # macOS installs through v2/install.sh, which takes the version as an argument.
+        darwin = 'uname() { case "$1" in -s) printf "Darwin\\n" ;; *) printf "arm64\\n" ;; esac; }\naws_cli_url 2.39.6'
+        result = self.run_shell(darwin)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("https://awscli.amazonaws.com/v2/install.sh\n", result.stdout)
 
-        result = self.run_shell('uname() { printf "riscv64\\n"; }\naws_cli_url')
+        result = self.run_shell('uname() { printf "riscv64\\n"; }\naws_cli_url 2.39.6')
         self.assertNotEqual(0, result.returncode)
         self.assertIn("Unsupported AWS CLI architecture: riscv64", result.stderr)
 
@@ -167,8 +170,8 @@ main
             calls = Path(directory) / "curl"
             prelude = 'uname() { return 1; }\ncurl() { printf "%s\\n" "$*" >> "${CALLS}"; }\n'
             for body, message in (
-                ("aws_cli_url", "uname -s failed; no AWS CLI archive was chosen."),
-                ("install_aws_cli", "uname -s failed; the AWS CLI was not installed."),
+                ("aws_cli_url 2.39.6", "uname -s failed; no AWS CLI archive was chosen."),
+                ("install_aws_cli 2.39.6", "uname -s failed; the AWS CLI was not installed."),
             ):
                 with self.subTest(body=body):
                     result = self.run_shell(prelude + body, {"CALLS": str(calls)})
@@ -217,8 +220,8 @@ gpg() {
 }
 gpgv() { touch "${GPGV_MARKER}"; return 1; }
 unzip() { touch "${MARKER}"; }
-install_aws_cli
-""".replace("@FINGERPRINT@", FINGERPRINT),
+install_aws_cli @AWS_CLI_VERSION@
+""".replace("@FINGERPRINT@", FINGERPRINT).replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
                 {
                     "AWS_CLI_KEY_PATH": str(key),
                     "GPGV_MARKER": str(gpgv_marker),
@@ -265,8 +268,8 @@ gpg() {
 }
 gpgv() { touch "${MARKER}"; }
 unzip() { touch "${MARKER}"; }
-install_aws_cli
-""",
+install_aws_cli @AWS_CLI_VERSION@
+""".replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
                     {
                         "AWS_CLI_KEY_PATH": str(root / "key.asc"),
                         "HOME": str(home),
@@ -341,7 +344,7 @@ printf 'aws-cli/@AWS_CLI_VERSION@ Python/3.13 Linux/6\n'
 EOF
     chmod +x "${HOME}/.local/bin/aws"
 }
-install_aws_cli
+install_aws_cli @AWS_CLI_VERSION@
 """.replace("@FINGERPRINT@", FINGERPRINT).replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
                 {
                     "ARGS_PATH": str(args),
@@ -364,7 +367,7 @@ install_aws_cli
                 ],
                 args.read_text().splitlines(),
             )
-            base = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip"
+            base = f"https://awscli.amazonaws.com/awscli-exe-linux-aarch64-{AWS_CLI_VERSION}.zip"
             self.assertEqual([base, f"{base}.sig"], urls.read_text().splitlines())
             verified = gpgv_args.read_text().splitlines()
             self.assertEqual("--keyring", verified[0])
@@ -373,22 +376,31 @@ install_aws_cli
             self.assertTrue(verified[3].endswith("/awscliv2.zip"))
             self.assertEqual([], list(temp.iterdir()))
 
-    def test_staged_binary_that_is_not_aws_cli_preserves_existing_aws_and_skips_installer(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            home = root / "home"
-            temp = root / "tmp"
-            key = root / "key.asc"
-            installer_marker = root / "installer-ran"
-            aws = home / ".local/bin/aws"
-            aws.parent.mkdir(parents=True)
-            temp.mkdir()
-            key.write_text("fixture\n")
-            sentinel = b"existing aws sentinel\n"
-            aws.write_bytes(sentinel)
+    def test_staged_binary_that_is_not_the_release_preserves_existing_aws_and_skips_installer(self):
+        # The archive is the one the release version named, so a staged CLI that is not the AWS CLI, or
+        # reports another version, never reaches the upstream installer.
+        for banner, message in (
+            ("not-aws 1.0", "expected an aws-cli/<version> banner, got not-aws"),
+            (
+                "aws-cli/2.35.20 Python/3.13 Linux/6",
+                f"the archive holds aws-cli/2.35.20, not the release aws-cli/{AWS_CLI_VERSION}",
+            ),
+        ):
+            with self.subTest(banner=banner), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                home = root / "home"
+                temp = root / "tmp"
+                key = root / "key.asc"
+                installer_marker = root / "installer-ran"
+                aws = home / ".local/bin/aws"
+                aws.parent.mkdir(parents=True)
+                temp.mkdir()
+                key.write_text("fixture\n")
+                sentinel = b"existing aws sentinel\n"
+                aws.write_bytes(sentinel)
 
-            result = self.run_shell(
-                r"""
+                result = self.run_shell(
+                    r"""
 uname() { printf 'x86_64\n'; }
 curl() {
     while [ "$#" -gt 0 ]; do
@@ -421,25 +433,24 @@ touch "${INSTALLER_MARKER}"
 printf mutated > "${HOME}/.local/bin/aws"
 EOF
     chmod +x "${destination}/aws/install"
-    cat > "${destination}/aws/dist/aws" <<'EOF'
-#!/usr/bin/env bash
-printf 'not-aws 1.0\n'
-EOF
+    printf '#!/usr/bin/env bash\nprintf "%s\\n"\n' "${BANNER}" > "${destination}/aws/dist/aws"
     chmod +x "${destination}/aws/dist/aws"
 }
-install_aws_cli
-""".replace("@FINGERPRINT@", FINGERPRINT),
-                {
-                    "AWS_CLI_KEY_PATH": str(key),
-                    "HOME": str(home),
-                    "INSTALLER_MARKER": str(installer_marker),
-                    "TMPDIR": str(temp),
-                },
-            )
-            self.assertNotEqual(0, result.returncode)
-            self.assertFalse(installer_marker.exists())
-            self.assertEqual(sentinel, aws.read_bytes())
-            self.assertEqual([], list(temp.iterdir()))
+install_aws_cli @AWS_CLI_VERSION@
+""".replace("@FINGERPRINT@", FINGERPRINT).replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
+                    {
+                        "AWS_CLI_KEY_PATH": str(key),
+                        "BANNER": banner,
+                        "HOME": str(home),
+                        "INSTALLER_MARKER": str(installer_marker),
+                        "TMPDIR": str(temp),
+                    },
+                )
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(f"AWS CLI staged artifact verification failed: {message}", result.stderr)
+                self.assertFalse(installer_marker.exists())
+                self.assertEqual(sentinel, aws.read_bytes())
+                self.assertEqual([], list(temp.iterdir()))
 
     def test_exit_zero_partial_install_without_binary_fails_postcondition(self):
         result = self.run_postcondition(None)
@@ -463,48 +474,53 @@ install_aws_cli
         self.assertNotEqual(0, result.returncode)
         self.assertIn(f"aws-cli/2.35.20 is active, not the staged aws-cli/{AWS_CLI_VERSION}", result.stderr)
 
-    def run_main(self, home, head_etag, recorded_etag=None, installed=True):
-        """Run main with a fake HEAD response and install; returns the result and the install marker."""
-        state = home / ".local/state/dotfiles/aws-cli-archive.etag"
+    def run_main(self, home, release, installed=True):
+        """Run main with a fake version.txt ($release; empty: curl fails) and a stubbed install_aws_cli that logs
+        its argv; returns the result, the install log and the URL log (each a path, written when used)."""
         marker = home / "install-ran"
+        urls = home / "urls"
         if installed:
             aws = home / ".local/bin/aws"
             aws.parent.mkdir(parents=True, exist_ok=True)
-            aws.write_text("#!/bin/sh\nprintf 'aws-cli/2.37.6 Python/3.13 Linux/6\\n'\n")
+            aws.write_text(f"#!/bin/sh\nprintf 'aws-cli/{AWS_CLI_VERSION} Python/3.13 Linux/6\\n'\n")
             aws.chmod(0o755)
-        if recorded_etag is not None:
-            state.parent.mkdir(parents=True, exist_ok=True)
-            state.write_text(f"{recorded_etag}\n")
         result = self.run_shell(
             r"""
 uname() { printf 'x86_64\n'; }
 curl() {
-    [ -n "${HEAD_ETAG}" ] || return 6
-    printf 'HTTP/2 200\r\nETag: %s\r\ncontent-length: 1\r\n\r\n' "${HEAD_ETAG}"
+    local url=""
+    while [ "$#" -gt 0 ]; do
+        case "$1" in -*) shift ;; *) url="$1"; shift ;; esac
+    done
+    printf '%s\n' "${url}" >> "${HOME}/urls"
+    [ -n "${RELEASE}" ] || return 6
+    printf '%s\n' "${RELEASE}"
 }
-install_aws_cli() { touch "${HOME}/install-ran"; }
+install_aws_cli() { printf '%s\n' "$@" > "${HOME}/install-ran"; }
 main
 """,
-            {"HOME": str(home), "HEAD_ETAG": head_etag, "XDG_STATE_HOME": ""},
+            {"HOME": str(home), "RELEASE": release, "XDG_STATE_HOME": ""},
         )
-        return result, marker, state
+        return result, marker, urls
 
-    def test_main_skips_when_the_archive_etag_is_the_recorded_one(self):
+    def test_main_skips_when_the_installed_aws_cli_runs_as_the_release(self):
         with tempfile.TemporaryDirectory() as directory:
-            result, marker, _state = self.run_main(Path(directory), '"abc-1"', recorded_etag='"abc-1"')
+            result, marker, urls = self.run_main(Path(directory), f" {AWS_CLI_VERSION} \n")
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertFalse(marker.exists())
+            self.assertEqual(["https://awscli.amazonaws.com/v2/version.txt"], urls.read_text().splitlines())
+            self.assertFalse((Path(directory) / ".local/state").exists())
 
-    def test_main_reinstalls_a_broken_aws_cli_even_when_the_etag_matches(self):
+    def test_main_reinstalls_a_broken_aws_cli_even_when_its_version_directory_is_the_release(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
             aws = home / ".local/bin/aws"
             aws.parent.mkdir(parents=True)
             aws.write_text("#!/bin/sh\nexit 42\n")
             aws.chmod(0o755)
-            result, marker, _state = self.run_main(home, '"abc-1"', recorded_etag='"abc-1"', installed=False)
+            result, marker, _urls = self.run_main(home, AWS_CLI_VERSION, installed=False)
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertTrue(marker.exists())
+            self.assertEqual(f"{AWS_CLI_VERSION}\n", marker.read_text())
 
     def test_main_repairs_a_same_version_directory_the_upstream_update_would_skip(self):
         # aws/install --update exits 0 without copying when the version directory exists, so the repair
@@ -537,21 +553,16 @@ main
                     active.write_text("#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Linux/6\\n'\n")
                     active.chmod(0o755)
                 (home / ".local/bin/aws").symlink_to(active)
-                state = home / ".local/state/dotfiles/aws-cli-archive.etag"
-                state.parent.mkdir(parents=True)
-                # A broken CLI behind the current ETag; or the older install's ETag, which the stricter
-                # postcondition keeps, because the interrupted update never recorded the new one.
-                state.write_text('"abc-1"\n' if case == "broken active CLI" else '"abc-0"\n')
 
                 result = self.run_shell(
                     r"""
 uname() { printf 'x86_64\n'; }
 curl() {
-    local output="" head=""
+    local output="" url=""
     while [ "$#" -gt 0 ]; do
-        case "$1" in --output) output="$2"; shift 2 ;; --head) head=1; shift ;; *) shift ;; esac
+        case "$1" in --output) output="$2"; shift 2 ;; -*) shift ;; *) url="$1"; shift ;; esac
     done
-    if [ -n "${head}" ]; then printf 'HTTP/2 200\r\nETag: "abc-1"\r\n\r\n'; else printf payload > "${output}"; fi
+    if [ -n "${output}" ]; then printf payload > "${output}"; else printf '@AWS_CLI_VERSION@\n'; fi
 }
 gpg() {
     case " $* " in
@@ -610,24 +621,45 @@ main
                     f"aws-cli/{AWS_CLI_VERSION} Python/3.13 Linux/6\n",
                     subprocess.run([str(home / ".local/bin/aws")], text=True, capture_output=True, check=False).stdout,
                 )
-                self.assertEqual('"abc-1"\n', state.read_text())
+                self.assertFalse((home / ".local/state").exists())
 
-    def test_main_installs_and_records_a_new_archive_etag(self):
-        for recorded, installed in (('"abc-1"', True), (None, False)):
-            with self.subTest(recorded=recorded, installed=installed), tempfile.TemporaryDirectory() as directory:
-                result, marker, state = self.run_main(Path(directory), '"abc-2"', recorded, installed)
+    def test_main_installs_the_release_when_it_is_not_the_installed_aws_cli(self):
+        # An older working CLI, or none: install_aws_cli receives the release version.txt names, and no
+        # state file is written; the installed CLI is the record.
+        for installed in (True, False):
+            with self.subTest(installed=installed), tempfile.TemporaryDirectory() as directory:
+                result, marker, urls = self.run_main(Path(directory), "2.39.6", installed)
                 self.assertEqual(0, result.returncode, result.stderr)
-                self.assertTrue(marker.exists())
-                self.assertEqual('"abc-2"\n', state.read_text())
+                self.assertEqual("2.39.6\n", marker.read_text())
+                self.assertEqual(["https://awscli.amazonaws.com/v2/version.txt"], urls.read_text().splitlines())
+                self.assertFalse((Path(directory) / ".local/state").exists())
+
+    def test_main_installs_nothing_when_version_txt_is_not_a_release_version(self):
+        # Whatever version.txt holds that is not <major>.<minor>.<patch> (an error page, a malformed marker)
+        # names no release: nothing is downloaded after it, a working CLI stays, and without one it fails.
+        for release in ("<html>not found</html>", "2.39", "2.39.6-rc1"):
+            for installed in (True, False):
+                with self.subTest(release=release, installed=installed), tempfile.TemporaryDirectory() as directory:
+                    result, marker, urls = self.run_main(Path(directory), release, installed)
+                    self.assertEqual(0 if installed else 1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn("AWS CLI release check failed: version.txt names", result.stderr)
+                    self.assertFalse(marker.exists())
+                    self.assertEqual(["https://awscli.amazonaws.com/v2/version.txt"], urls.read_text().splitlines())
+                    if installed:
+                        self.assertIn(
+                            "could not read the AWS CLI release version; the installed AWS CLI stays", result.stderr
+                        )
+                    else:
+                        self.assertIn("no working AWS CLI is installed", result.stderr)
 
     def test_main_keeps_an_installed_aws_cli_offline_and_fails_a_fresh_install(self):
         with tempfile.TemporaryDirectory() as directory:
-            result, marker, _state = self.run_main(Path(directory), "", recorded_etag='"abc-1"')
+            result, marker, _urls = self.run_main(Path(directory), "")
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertIn("could not reach the AWS CLI archive; the installed AWS CLI stays", result.stderr)
+            self.assertIn("could not read the AWS CLI release version; the installed AWS CLI stays", result.stderr)
             self.assertFalse(marker.exists())
         with tempfile.TemporaryDirectory() as directory:
-            result, marker, _state = self.run_main(Path(directory), "", installed=False)
+            result, marker, _urls = self.run_main(Path(directory), "", installed=False)
             self.assertNotEqual(0, result.returncode)
             self.assertFalse(marker.exists())
         # Offline with a CLI that no longer runs: a failure, never "the installed AWS CLI stays".
@@ -637,25 +669,28 @@ main
             aws.parent.mkdir(parents=True)
             aws.write_text("#!/bin/sh\nexit 42\n")
             aws.chmod(0o755)
-            result, marker, _state = self.run_main(home, "", recorded_etag='"abc-1"', installed=False)
+            result, marker, _urls = self.run_main(home, "", installed=False)
             self.assertNotEqual(0, result.returncode)
             self.assertIn("no working AWS CLI is installed", result.stderr)
             self.assertNotIn("stays", result.stderr)
             self.assertFalse(marker.exists())
 
     def test_main_keeps_a_working_aws_cli_when_the_download_fails_and_never_on_a_bad_signature(self):
-        # The archive changed (a new ETag) but cannot be downloaded: a working CLI stays and its old ETag
-        # stays recorded, so the next apply retries; with no CLI it fails; a bad signature always fails.
-        for name, installed, env, expected_status, message in (
+        # version.txt names a release whose versioned archive cannot be downloaded (a 404 before AWS uploads
+        # it, or a network fault): a working CLI stays and the next apply compares it with version.txt again;
+        # with no CLI it fails; a bad signature always fails.
+        versioned = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.39.6.zip"
+        for name, installed, env, expected_status, message, requested in (
             (
                 "download fails, working CLI",
                 True,
                 {"DOWNLOAD_FAIL": "1"},
                 0,
                 "could not download the AWS CLI archive; the installed AWS CLI stays",
+                [versioned],
             ),
-            ("download fails, no CLI", False, {"DOWNLOAD_FAIL": "1"}, 3, ""),
-            ("bad signature, working CLI", True, {}, 1, ""),
+            ("download fails, no CLI", False, {"DOWNLOAD_FAIL": "1"}, 3, "", [versioned]),
+            ("bad signature, working CLI", True, {}, 1, "", [versioned, f"{versioned}.sig"]),
         ):
             with self.subTest(case=name), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
@@ -673,9 +708,6 @@ main
                 if installed:
                     aws.write_text("#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Linux/6\\n'\n")
                     aws.chmod(0o755)
-                state = home / ".local/state/dotfiles/aws-cli-archive.etag"
-                state.parent.mkdir(parents=True)
-                state.write_text('"abc-1"\n')
                 key = root / "key.asc"
                 key.write_text("fixture\n")
 
@@ -683,11 +715,12 @@ main
                     r"""
 uname() { printf 'x86_64\n'; }
 curl() {
-    local output="" head=""
+    local output="" url=""
     while [ "$#" -gt 0 ]; do
-        case "$1" in --output) output="$2"; shift 2 ;; --head) head=1; shift ;; *) shift ;; esac
+        case "$1" in --output) output="$2"; shift 2 ;; -*) shift ;; *) url="$1"; shift ;; esac
     done
-    if [ -n "${head}" ]; then printf 'HTTP/2 200\r\nETag: "abc-2"\r\n\r\n'; return; fi
+    printf '%s\n' "${url}" >> "${HOME}/urls"
+    if [ -z "${output}" ]; then printf '2.39.6\n'; return; fi
     [ -z "${DOWNLOAD_FAIL:-}" ] || return 22
     printf payload > "${output}"
 }
@@ -720,7 +753,11 @@ main
 
                 self.assertEqual(expected_status, result.returncode, result.stdout + result.stderr)
                 self.assertIn(message, result.stderr)
-                self.assertEqual('"abc-1"\n', state.read_text())
+                self.assertEqual(
+                    ["https://awscli.amazonaws.com/v2/version.txt", *requested],
+                    (home / "urls").read_text().splitlines(),
+                )
+                self.assertFalse((home / ".local/state").exists())
                 self.assertFalse((home / "unzip-ran").exists())
 
     def test_repository_key_has_expected_current_fingerprint(self):
@@ -787,7 +824,9 @@ main
         return result, home, calls, temp
 
     def test_macos_signature_failure_preserves_existing_aws_and_runs_no_installer(self):
-        result, home, calls, temp = self.run_macos("install_aws_cli", existing_aws="existing\n", GPGV_FAIL="1")
+        result, home, calls, temp = self.run_macos(
+            f"install_aws_cli {AWS_CLI_VERSION}", existing_aws="existing\n", GPGV_FAIL="1"
+        )
         self.assertNotEqual(0, result.returncode)
         self.assertEqual("existing\n", (home / ".local/bin/aws").read_text())
         verified = (calls / "gpgv").read_text().splitlines()
@@ -797,52 +836,57 @@ main
         self.assertFalse((calls / "bash").exists())
         self.assertEqual([], list(temp.iterdir()))
 
-    def test_macos_verified_install_runs_install_sh_with_xdg_roots(self):
-        result, home, calls, temp = self.run_macos("install_aws_cli", NEW_VERSION=AWS_CLI_VERSION)
+    def test_macos_verified_install_runs_install_sh_with_the_release_version_under_xdg_roots(self):
+        result, home, calls, temp = self.run_macos(f"install_aws_cli {AWS_CLI_VERSION}", NEW_VERSION=AWS_CLI_VERSION)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn(f"Installed aws-cli/{AWS_CLI_VERSION}.", result.stdout)
         ran = (calls / "bash").read_text().splitlines()
         self.assertEqual([f"XDG_DATA_HOME={home / '.local/share'}", f"XDG_BIN_HOME={home / '.local/bin'}"], ran[:2])
-        self.assertEqual(1, len(ran[2:]))
+        # install.sh receives the release as its argv, so it installs that one and not whatever is current.
+        self.assertEqual(3, len(ran[2:]))
         self.assertTrue(ran[2].endswith("/install.sh"))
+        self.assertEqual(["--version", AWS_CLI_VERSION], ran[3:])
         base = "https://awscli.amazonaws.com/v2/"
-        self.assertEqual(
-            [f"{base}install.sh", f"{base}install.sh.sig", f"{base}version.txt"],
-            (calls / "urls").read_text().splitlines(),
-        )
+        self.assertEqual([f"{base}install.sh", f"{base}install.sh.sig"], (calls / "urls").read_text().splitlines())
         self.assertEqual([], list(temp.iterdir()))
-        # The postcondition compares the installed CLI with version.txt: an older one left active fails.
-        result, _home, _calls, _temp = self.run_macos("install_aws_cli", NEW_VERSION="2.35.20")
+        # The postcondition compares the installed CLI with the release: an older one left active fails.
+        result, _home, _calls, _temp = self.run_macos(f"install_aws_cli {AWS_CLI_VERSION}", NEW_VERSION="2.35.20")
         self.assertNotEqual(0, result.returncode)
         self.assertIn(f"aws-cli/2.35.20 is active, not the staged aws-cli/{AWS_CLI_VERSION}", result.stderr)
-        # An installer that fails returns its status through main, which records no ETag.
-        result, home, _calls, _temp = self.run_macos("main", INSTALLER_STATUS="2")
+        # main reads version.txt once and hands that release to install_aws_cli; a failing installer returns
+        # its status through main.
+        result, home, calls, _temp = self.run_macos("main", INSTALLER_STATUS="2")
         self.assertEqual(2, result.returncode, result.stderr)
-        self.assertFalse((home / ".local/state/dotfiles/aws-cli-archive.etag").exists())
-
-    def test_macos_etag_skip_uses_the_version_txt_install_sh_installs(self):
-        result, _home, calls, _temp = self.run_macos("aws_cli_archive_etag")
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual('"pkg-2"\n', result.stdout)
-        self.assertEqual(["https://awscli.amazonaws.com/v2/version.txt"], (calls / "urls").read_text().splitlines())
-        # The same probe on Linux reads the archive URL.
-        result, _home, calls, _temp = self.run_macos('uname() { printf "x86_64\\n"; }\naws_cli_archive_etag')
-        self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(
-            ["https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"], (calls / "urls").read_text().splitlines()
+            [f"{base}version.txt", f"{base}install.sh", f"{base}install.sh.sig"],
+            (calls / "urls").read_text().splitlines(),
         )
-        # A recorded ETag equal to version.txt's, with a working CLI, skips the install.
-        working = "#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Darwin/25\\n'\n"
-        body = 'mkdir -p "$(dirname "${AWS_CLI_ETAG_FILE}")"; printf \'"pkg-2"\\n\' > "${AWS_CLI_ETAG_FILE}"\nmain'
-        result, _home, calls, _temp = self.run_macos(body, existing_aws=working)
+        self.assertEqual(["--version", AWS_CLI_VERSION], (calls / "bash").read_text().splitlines()[3:])
+        self.assertFalse((home / ".local/state").exists())
+
+    def test_macos_main_skips_when_the_installed_aws_cli_runs_as_the_release(self):
+        result, _home, calls, _temp = self.run_macos("aws_cli_release_version")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(f"{AWS_CLI_VERSION}\n", result.stdout)
+        self.assertEqual(["https://awscli.amazonaws.com/v2/version.txt"], (calls / "urls").read_text().splitlines())
+        # A working CLI that runs as the release: version.txt is the only request, and nothing is installed.
+        working = f"#!/bin/sh\nprintf 'aws-cli/{AWS_CLI_VERSION} Python/3.13 Darwin/25\\n'\n"
+        result, _home, calls, _temp = self.run_macos("main", existing_aws=working)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(["https://awscli.amazonaws.com/v2/version.txt"], (calls / "urls").read_text().splitlines())
+        self.assertFalse((calls / "bash").exists())
+        # An older working CLI is updated to the release.
+        older = "#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Darwin/25\\n'\n"
+        result, _home, calls, _temp = self.run_macos("main", existing_aws=older, NEW_VERSION=AWS_CLI_VERSION)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(f"Installed aws-cli/{AWS_CLI_VERSION}.", result.stdout)
+        self.assertEqual(["--version", AWS_CLI_VERSION], (calls / "bash").read_text().splitlines()[3:])
 
     def test_macos_download_failure_keeps_a_working_aws_and_runs_no_gpgv(self):
         working = "#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Darwin/25\\n'\n"
-        for failing in ("/v2/install.sh", "/v2/install.sh.sig", "/v2/version.txt"):
+        for failing in ("/v2/install.sh", "/v2/install.sh.sig"):
             with self.subTest(failing=failing):
-                result, _home, calls, temp = self.run_macos("install_aws_cli", FAIL_URL=failing)
+                result, _home, calls, temp = self.run_macos(f"install_aws_cli {AWS_CLI_VERSION}", FAIL_URL=failing)
                 self.assertEqual(3, result.returncode, result.stderr)
                 self.assertFalse((calls / "gpgv").exists())
                 self.assertFalse((calls / "bash").exists())
@@ -851,10 +895,19 @@ main
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("could not download the AWS CLI archive; the installed AWS CLI stays", result.stderr)
         self.assertFalse((calls / "gpgv").exists())
-        self.assertFalse((home / ".local/state/dotfiles/aws-cli-archive.etag").exists())
+        self.assertFalse((home / ".local/state").exists())
         result, _home, calls, _temp = self.run_macos("main", FAIL_URL="/v2/install.sh")
         self.assertEqual(3, result.returncode, result.stderr)
         self.assertFalse((calls / "bash").exists())
+        # version.txt unreachable: main's offline branch, before any installer download.
+        result, _home, calls, _temp = self.run_macos("main", existing_aws=working, FAIL_URL="/v2/version.txt")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("could not read the AWS CLI release version; the installed AWS CLI stays", result.stderr)
+        self.assertEqual(["https://awscli.amazonaws.com/v2/version.txt"], (calls / "urls").read_text().splitlines())
+        result, _home, calls, _temp = self.run_macos("main", FAIL_URL="/v2/version.txt")
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("no working AWS CLI is installed", result.stderr)
+        self.assertEqual(["https://awscli.amazonaws.com/v2/version.txt"], (calls / "urls").read_text().splitlines())
 
     def test_platform_package_managers_and_wrapper_own_aws_cli(self):
         mac_dependencies = (ROOT / "install/macos/common/dependencies.sh").read_text()

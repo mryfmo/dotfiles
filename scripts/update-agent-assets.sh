@@ -2797,17 +2797,36 @@ PY
 }
 
 #
+# @description Replace a sync step's manifest record with a failure mark the doctor reports. The mark is a record
+#   of the step whose one path, under the destination, no sync ever writes, so make doctor shows the step with a
+#   missing path and its repair runs the step again; the record of an earlier completed sync goes with it
+#   (verdicts/U283: a failed partial sync kept the older record, the recorded directory existed, and the doctor
+#   reported nothing while the payload was missing). A mark that cannot be written is counted too: the manifest is
+#   then unreadable or unwritable, which the doctor reports on its own.
+# @arg $1 string Step name.
+# @arg $2 string Source version the sync attempted.
+# @arg $3 path The destination.
+# @arg $4 string What failed, kept as the record's command line.
+#
+function mark_sync_failed() {
+    manifest_record "$1" rsync "$2" "$3/.sync-incomplete" -- "$4" ||
+        record_claude_failure "marking $1 failed in the installed asset manifest"
+}
+
+#
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 # @description
 #   The version is read first, then the asset root is made and the destination proven (assert_asset_destination),
-#   then rsync runs, and the record is written only for a sync that completed: a failed rsync or record is counted,
-#   so the run, full or single-step, fails at fail_on_pin_failures and make doctor reports the step until a run syncs
-#   the tree (verdicts/U276b: an exit 0 after rsync 77 recorded an installation whose payload was absent).
+#   then rsync runs, then the payload is verified present (the synced CHANGELOG.md names the source's version), and
+#   the record is the last write: a failed rsync or an absent payload is counted and marks the step failed
+#   (mark_sync_failed), so the run, full or single-step, fails at fail_on_pin_failures and make doctor reports the
+#   step until a run syncs the tree (verdicts/U276b: an exit 0 after rsync 77 recorded an installation whose payload
+#   was absent; verdicts/U283: a failed partial sync kept the older record and the doctor reported nothing).
 # @exitcode 0 Synced and recorded, or a failure counted for the run's end.
 # @exitcode 1 The version could not be read or the destination was refused; nothing synced, nothing recorded.
 #
 function update_compactiondb() {
-    local source_root version destination="${HOME}/.agents/compactiondb"
+    local source_root version synced destination="${HOME}/.agents/compactiondb"
     source_root="${DOTFILES_REPO_SOURCE_DIR}/vendor/compactiondb/"
     version="$(awk '/^## / { print $2; exit }' "${source_root}CHANGELOG.md")" || {
         printf 'Cannot read the CompactionDB version from %sCHANGELOG.md.\n' "${source_root}" >&2
@@ -2816,9 +2835,17 @@ function update_compactiondb() {
     mkdir -p "${destination%/*}" || return 1
     assert_asset_destination "${destination}" || return 1
     rsync -a --delete --exclude '.claude/contextdb/state/' --exclude '.claude/contextdb/spool/' --exclude '.claude/contextdb/health/' --exclude '.claude/contextdb/contextdb.sqlite3*' "${source_root}" "${destination}/" || {
-        record_claude_failure "syncing the CompactionDB tree to ${destination} (rsync exit $?)"
+        synced="rsync exit $?"
+        record_claude_failure "syncing the CompactionDB tree to ${destination} (${synced})"
+        mark_sync_failed update_compactiondb "${version}" "${destination}" "${synced}: the sync did not complete"
         return 0
     }
+    synced="$(awk '/^## / { print $2; exit }' "${destination}/CHANGELOG.md" 2> /dev/null)" || synced=""
+    if [ "${synced}" != "${version}" ]; then
+        record_claude_failure "verifying the CompactionDB tree at ${destination} (its CHANGELOG.md names ${synced:-no version}, the source ${version})"
+        mark_sync_failed update_compactiondb "${version}" "${destination}" "rsync exit 0 but ${destination}/CHANGELOG.md names ${synced:-no version}: the payload is not present"
+        return 0
+    fi
     manifest_record "update_compactiondb" rsync "${version}" "${destination}" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${destination}/" ||
         record_claude_failure "recording update_compactiondb in the installed asset manifest"
 }

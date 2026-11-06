@@ -1,6 +1,7 @@
 """Exercise verified artifact updates using fake downloads and installers only."""
 
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -571,6 +572,8 @@ class SecurityAuditSkillTest(unittest.TestCase):
             self.assertEqual(["sentinel"], [path.name for path in outside.iterdir()], "nothing beside the sentinel")
             self.assertEqual("kept\n", (outside / "sentinel").read_text())
             self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+            self.assertEqual(["skills"], [path.name for path in (home / ".agents").iterdir()], "no staging tree")
+            self.assertEqual(["curl"], [call.split()[0] for call in self.calls(home)], "the download, then nothing")
 
     def test_a_security_audit_tree_recorded_at_the_pin_is_skipped_and_any_other_state_is_reinstalled(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -4851,9 +4854,35 @@ class SingleStepModeTest(unittest.TestCase):
             # A local rsync forks its receiving side as `rsync --server ...` through PATH, so that call is its own.
             self.assertEqual(1, len([call for call in self.calls(home) if not call.startswith("rsync --server")]))
 
-    def test_update_compactiondb_alone_fails_when_rsync_fails_and_records_nothing(self):
+    def rsync_stub(self, bin_dir: Path, body: str) -> None:
+        (bin_dir / "rsync").write_text(f'#!/bin/bash\nprintf "rsync %s\\n" "$*" >> "$CALLS"\n{body}\n')
+
+    def doctor_findings(self, home: Path) -> list[str]:
+        """make doctor's manifest lines for HOME: scripts/check-agent-runtime.py's own reader, so the test judges
+        what the doctor reports, not what the manifest holds."""
+        spec = importlib.util.spec_from_file_location("check_agent_runtime", ROOT / "scripts/check-agent-runtime.py")
+        assert spec and spec.loader
+        doctor = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(doctor)
+        return [doctor.asset_failure_message(finding) for finding in doctor.manifest_asset_findings(home)]
+
+    def assert_marked_failed(self, home: Path, version: str) -> None:
+        step = self.manifest(home)["steps"]["update_compactiondb"]
+        self.assertEqual("rsync", step["kind"])
+        self.assertEqual(version, step["source_version"])
+        self.assertEqual([f"{home}/.agents/compactiondb/.sync-incomplete"], step["paths"])
+        # The doctor prints the recorded path as spelled (abspath, not realpath).
+        self.assertEqual(
+            [
+                f"asset manifest step 'update_compactiondb' has missing paths: {home}/.agents/compactiondb/.sync-incomplete"
+            ],
+            self.doctor_findings(home),
+        )
+
+    def test_update_compactiondb_alone_fails_when_rsync_fails_and_marks_the_step_failed(self):
         # verdicts/U276b: the real updater exited 0 after rsync exited 77 and recorded an installation whose payload
-        # was absent. The failure is counted and the single-step run ends with fail_on_pin_failures.
+        # was absent. The failure is counted, the step is marked failed and the single-step run ends with
+        # fail_on_pin_failures.
         with tempfile.TemporaryDirectory() as directory:
             home, source, bin_dir = self.fixture(directory, rsync="exit 77")
             result = self.run_updater(["update_compactiondb"], home, source, bin_dir)
@@ -4862,12 +4891,62 @@ class SingleStepModeTest(unittest.TestCase):
                 f"syncing the CompactionDB tree to {home}/.agents/compactiondb (rsync exit 77) failed", result.stderr
             )
             self.assertIn("1 plugin(s) (Claude Code or Codex) could not be checked or kept at their pin", result.stderr)
-            self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+            self.assert_marked_failed(home, "1.2.3")
+            self.assertEqual(
+                ["rsync exit 77: the sync did not complete"],
+                self.manifest(home)["steps"]["update_compactiondb"]["commands"],
+            )
             self.assertEqual(1, len(self.calls(home)), "one rsync call")
+
+    def test_a_partial_failed_sync_replaces_the_older_record_and_the_doctor_reports_it_until_a_sync_completes(self):
+        # verdicts/U283 (P2 :2818): a failed sync into a destination an earlier run had filled kept that run's record,
+        # the recorded directory existed, and the doctor reported nothing while the payload was missing. The record
+        # is the last write of a completed sync; a failed one replaces it with the failure mark the doctor reports.
+        with tempfile.TemporaryDirectory() as directory:
+            home, source, bin_dir = self.fixture(directory, rsync=self.REAL_RSYNC)
+            first = self.run_updater(["update_compactiondb"], home, source, bin_dir)
+            self.assertEqual(0, first.returncode, first.stdout + first.stderr)
+            self.assertEqual(
+                [str(home / ".agents/compactiondb")], self.manifest(home)["steps"]["update_compactiondb"]["paths"]
+            )
+            self.assertEqual([], self.doctor_findings(home))
+
+            (source / "vendor/compactiondb/CHANGELOG.md").write_text("## 1.2.4\n\n- next entry\n")
+            (source / "vendor/compactiondb/README.md").write_text("next payload\n")
+            self.rsync_stub(bin_dir, 'printf "half" > "$HOME/.agents/compactiondb/README.md"; exit 23')
+            partial = self.run_updater(["update_compactiondb"], home, source, bin_dir)
+            self.assertEqual(1, partial.returncode, partial.stdout + partial.stderr)
+            self.assertIn(
+                f"syncing the CompactionDB tree to {home}/.agents/compactiondb (rsync exit 23) failed", partial.stderr
+            )
+            self.assertTrue((home / ".agents/compactiondb").is_dir(), "the partial destination exists")
+            self.assert_marked_failed(home, "1.2.4")
+
+            self.rsync_stub(bin_dir, self.REAL_RSYNC)
+            repaired = self.run_updater(["update_compactiondb"], home, source, bin_dir)
+            self.assertEqual(0, repaired.returncode, repaired.stdout + repaired.stderr)
+            self.assertEqual("next payload\n", (home / ".agents/compactiondb/README.md").read_text())
+            step = self.manifest(home)["steps"]["update_compactiondb"]
+            self.assertEqual(("1.2.4", [str(home / ".agents/compactiondb")]), (step["source_version"], step["paths"]))
+            self.assertEqual([], self.doctor_findings(home))
+
+    def test_a_sync_whose_payload_is_absent_is_marked_failed(self):
+        # An rsync that exits 0 without the payload (nothing copied): the record waits for the synced CHANGELOG.md to
+        # name the source's version, so the step is marked failed and counted.
+        with tempfile.TemporaryDirectory() as directory:
+            home, source, bin_dir = self.fixture(directory, rsync="exit 0")
+            result = self.run_updater(["update_compactiondb"], home, source, bin_dir)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"verifying the CompactionDB tree at {home}/.agents/compactiondb (its CHANGELOG.md names no version, the source 1.2.3) failed",
+                result.stderr,
+            )
+            self.assertIn("1 plugin(s) (Claude Code or Codex) could not be checked or kept at their pin", result.stderr)
+            self.assert_marked_failed(home, "1.2.3")
 
     def test_update_compactiondb_alone_fails_when_the_manifest_record_fails(self):
         with tempfile.TemporaryDirectory() as directory:
-            home, source, bin_dir = self.fixture(directory)
+            home, source, bin_dir = self.fixture(directory, rsync=self.REAL_RSYNC)
             manifest_path = home / ".agents/.installed-manifest.json"
             manifest_path.write_text("not json\n")
             result = self.run_updater(["update_compactiondb"], home, source, bin_dir)
@@ -4900,6 +4979,32 @@ class SingleStepModeTest(unittest.TestCase):
             self.assertEqual("Pruned retired asset manifest step update_agmsg.\n", result.stdout)
             self.assertEqual({}, self.manifest(home)["steps"])
             self.assertEqual([], self.calls(home), "no rsync")
+
+    def test_prune_retired_manifest_steps_alone_refuses_a_directory_or_a_dangling_link_at_the_manifest_path(self):
+        # verdicts/U283 (P2 :2834): the library pruner returned 0 for a directory or a dangling link at the manifest
+        # path, so the wrapper's exit 0 did not mean "no retired record". Both are refused naming the path.
+        for case in ("a directory", "a dangling link"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                home, source, bin_dir = self.fixture(directory)
+                manifest_path = home / ".agents/.installed-manifest.json"
+                if case == "a directory":
+                    manifest_path.mkdir()
+                    (manifest_path / "kept").write_text("kept\n")
+                else:
+                    manifest_path.symlink_to(home / "absent")
+                result = self.run_updater(["prune_retired_manifest_steps"], home, source, bin_dir)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(
+                    f"ERROR: {manifest_path} is a link or no regular file; refusing to prune the installed asset manifest.",
+                    result.stderr,
+                )
+                self.assertIn("pruning the retired steps from the installed asset manifest failed", result.stderr)
+                self.assertEqual("", result.stdout)
+                if case == "a directory":
+                    self.assertEqual(["kept"], [path.name for path in manifest_path.iterdir()])
+                else:
+                    self.assertEqual(home / "absent", Path(os.readlink(manifest_path)))
+                self.assertEqual([".installed-manifest.json"], [path.name for path in (home / ".agents").iterdir()])
 
     def test_a_linked_compactiondb_destination_is_refused_before_rsync_runs(self):
         # verdicts/U276b: with ~/.agents/compactiondb linked outside ~/.agents, rsync --delete ran through the link
@@ -4974,6 +5079,64 @@ class SingleStepModeTest(unittest.TestCase):
                         self.assertIn(str(destination), result.stderr)
             self.assertEqual(["skills"], [path.name for path in outside.iterdir()], "nothing written outside")
 
+    def test_assert_asset_destination_refuses_when_a_physical_path_cannot_be_read(self):
+        # verdicts/U283 (P2 :141): the helper's two producers, `cd -P ... && pwd -P` of HOME and of the destination's
+        # parent, each refuse when they fail. `pwd` and `cd` are shell functions that fail for one path (the shell
+        # finds a function before its builtin), so each producer is broken on its own; the control case proves the
+        # stubs change nothing when neither fails.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "home"
+            (home / ".agents").mkdir(parents=True)
+            destination = home / ".agents/compactiondb"
+            physical_home, physical_parent = os.path.realpath(home), os.path.realpath(home / ".agents")
+            cases = (
+                ("pwd -P fails for HOME", "pwd", physical_home, 1, f"the physical path of {home} could not be read"),
+                (
+                    "pwd -P fails for the parent",
+                    "pwd",
+                    physical_parent,
+                    1,
+                    f"the physical path of {home}/.agents could not be read",
+                ),
+                ("cd -P fails for HOME", "cd", str(home), 1, f"the physical path of {home} could not be read"),
+                (
+                    "cd -P fails for the parent",
+                    "cd",
+                    str(home / ".agents"),
+                    1,
+                    f"the physical path of {home}/.agents could not be read",
+                ),
+                ("neither fails (control)", "pwd", str(home / "elsewhere"), 0, ""),
+            )
+            for case, producer, fail_at, status, message in cases:
+                with self.subTest(case=case):
+                    result = subprocess.run(
+                        [
+                            "bash",
+                            "-c",
+                            'source "$1"; '
+                            'pwd() { [ "$PWD" != "$FAIL_AT" ] || return 1; builtin pwd "$@"; }; '
+                            'cd() { [ "${*: -1}" != "$FAIL_AT" ] || return 1; builtin cd "$@"; }; '
+                            f'[ "{producer}" = pwd ] || unset -f pwd; [ "{producer}" = cd ] || unset -f cd; '
+                            'assert_asset_destination "$2"',
+                            "bash",
+                            str(UPDATER),
+                            str(destination),
+                        ],
+                        env=os.environ | scratch_env(home) | {"FAIL_AT": fail_at},
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        check=False,
+                    )
+                    self.assertEqual(status, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual("", result.stdout)
+                    if status == 0:
+                        self.assertEqual("", result.stderr)
+                    else:
+                        self.assertIn(f"ERROR: {message}; refusing to write {destination}.", result.stderr)
+            self.assertEqual([".agents"], [path.name for path in home.iterdir()], "nothing written")
+
     def test_a_misuse_prints_the_usage_naming_every_step_and_runs_nothing(self):
         for args in (["nope"], ["update_compactiondb", "check_pstack"], [""]):
             with self.subTest(args=args), tempfile.TemporaryDirectory() as directory:
@@ -5003,3 +5166,96 @@ class SingleStepModeTest(unittest.TestCase):
             )
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertEqual(list(self.STEPS), result.stdout.split())
+
+
+class DestinationGuardCallSiteTest(unittest.TestCase):
+    """Each step that deletes or syncs under the asset roots refuses a linked destination before its first write
+    (verdicts/U283 P3 :1648: the helper's own cases do not prove a call site calls it). The real step runs against
+    a linked destination with its tools as shell functions that log to $CALLS, so the recorder shows no install, sync
+    or removal call after the refusal. update_compactiondb's and update_security_audit_skill's call sites are
+    SingleStepModeTest.test_a_linked_compactiondb_destination_is_refused_before_rsync_runs and
+    SecurityAuditSkillTest.test_a_skills_directory_that_is_a_link_is_refused_before_anything_is_written_beside_it."""
+
+    def payload(self, home: Path) -> tuple[Path, str]:
+        payload = home / "payload.tgz"
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
+            info = tarfile.TarInfo("package/package.json")
+            text = b'{"name":"fixture"}\n'
+            info.size = len(text)
+            tar.addfile(info, io.BytesIO(text))
+        payload.write_bytes(buffer.getvalue())
+        return payload, hashlib.sha256(payload.read_bytes()).hexdigest()
+
+    def run_step(self, home: Path, step: str, stubs: str, payload: Path):
+        download = 'curl() { echo "curl $*" >> "$CALLS"; cp "$PAYLOAD" "${@: -1}"; }; '
+        return subprocess.run(
+            ["bash", "-c", 'source "$1"; ' + download + stubs + step, "bash", str(UPDATER)],
+            env=os.environ | scratch_env(home) | {"PAYLOAD": str(payload), "CALLS": str(home / "calls")},
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+
+    def calls(self, home: Path) -> list[str]:
+        log = home / "calls"
+        return log.read_text().splitlines() if log.exists() else []
+
+    def test_update_pi_claude_bridge_refuses_a_linked_omp_extensions_directory_before_it_unpacks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "home"
+            outside = Path(directory) / "outside"
+            outside.mkdir()
+            (outside / "sentinel").write_text("kept\n")
+            (home / ".local/lib/node_modules/@oh-my-pi/pi-coding-agent").mkdir(parents=True)
+            (home / ".local/lib/omp-extensions").symlink_to(outside)
+            assets = home / "assets"
+            (assets / "patches").mkdir(parents=True)
+            (assets / "patches/01-fixture.patch").write_text("--- a\n+++ b\n")
+            (assets / "bun.lock").write_text("fixture lockfile\n")
+            payload, digest = self.payload(home)
+            stubs = (
+                f"PI_CLAUDE_BRIDGE_TARBALL_SHA256={digest}; PI_CLAUDE_BRIDGE_ASSET_DIR={assets}; "
+                'bun() { echo "bun $*" >> "$CALLS"; }; '
+            )
+            result = self.run_step(home, "update_pi_claude_bridge", stubs, payload)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"ERROR: {home}/.local/lib/omp-extensions is a link or no directory; "
+                f"refusing to write {home}/.local/lib/omp-extensions/pi-claude-bridge through it.",
+                result.stderr,
+            )
+            self.assertEqual(["curl"], [call.split()[0] for call in self.calls(home)], "the download, then nothing")
+            self.assertEqual(["sentinel"], [path.name for path in outside.iterdir()], "no staging tree, no install")
+            self.assertEqual("kept\n", (outside / "sentinel").read_text())
+            self.assertFalse((home / ".agents").exists(), "nothing recorded")
+
+    def test_update_omp_refuses_a_linked_agent_assets_omp_directory_before_the_aside_and_the_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "home"
+            outside = Path(directory) / "outside"
+            outside.mkdir()
+            (outside / "omp.previous").write_text("kept\n")
+            (home / ".local/bin").mkdir(parents=True)
+            (home / ".local/share/agent-assets").mkdir(parents=True)
+            (home / ".local/share/agent-assets/omp").symlink_to(outside)
+            foreign = home / ".local/bin/omp"
+            foreign.write_text("#!/usr/bin/env bash\nprintf 'omp/0.0.1\\n'\n")
+            foreign.chmod(0o755)
+            payload, digest = self.payload(home)
+            stubs = f"OMP_TARBALL_SHA256={digest}; " + 'npm() { echo "npm $*" >> "$CALLS"; }; '
+            result = self.run_step(home, "update_omp", stubs, payload)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"Moving {foreign} to {home}/.local/share/agent-assets/omp/omp.previous", result.stdout)
+            self.assertIn(
+                f"ERROR: {home}/.local/share/agent-assets/omp is a link or no directory; "
+                f"refusing to write {home}/.local/share/agent-assets/omp/omp.previous through it.",
+                result.stderr,
+            )
+            self.assertEqual(["curl"], [call.split()[0] for call in self.calls(home)], "the download, then no npm")
+            self.assertEqual(["omp.previous"], [path.name for path in outside.iterdir()])
+            self.assertEqual("kept\n", (outside / "omp.previous").read_text(), "the rm -rf never ran through the link")
+            self.assertEqual("#!/usr/bin/env bash\nprintf 'omp/0.0.1\\n'\n", foreign.read_text(), "the entry stays")
+            self.assertFalse((home / ".agents").exists(), "nothing recorded")

@@ -145,24 +145,36 @@ function manifest_record() {
 #
 # @description Drop manifest records of install steps that no longer exist, so a retired step does
 #   not leave a permanent doctor failure. A step exists when its name, before any `:` identity
-#   suffix, is a function defined in the calling shell. An absent manifest is left absent.
+#   suffix, is a function defined in the calling shell. An absent manifest is left absent; a manifest
+#   path that is a link or no regular file is refused naming it (a directory or a dangling link there
+#   is not a manifest, and pruning must not read through a link). The retired set is one jq decision
+#   over the manifest and the shell's function list, each read through a status-checked command
+#   substitution: no here-string, whose failed temporary file would run no loop and keep every record
+#   while the function returned 0 (verdicts/U283).
 # @stdout Prints one line per pruned step.
+# @stderr One line naming the manifest path when it is a link or no regular file.
+# @exitcode 1 The manifest path is refused, or the manifest cannot be read or rewritten.
 #
 function _manifest_prune_retired() {
-    local manifest_path temporary_path step steps retired_json
-    local -a retired=()
+    local manifest_path temporary_path functions retired_json
 
     [ -n "${HOME:-}" ] || return 1
     manifest_path="${HOME}/.agents/.installed-manifest.json"
-    [ -f "${manifest_path}" ] || return 0
+    if [ -L "${manifest_path}" ] || { [ -e "${manifest_path}" ] && [ ! -f "${manifest_path}" ]; }; then
+        printf 'ERROR: %s is a link or no regular file; refusing to prune the installed asset manifest.\n' "${manifest_path}" >&2
+        return 1
+    fi
+    [ -e "${manifest_path}" ] || return 0
 
-    steps="$(jq -r 'if type != "object" or ((.steps // {}) | type) != "object" then error("invalid manifest") else (.steps // {}) | keys[] end' "${manifest_path}")" || return 1
-    while IFS= read -r step; do
-        [ -z "${step}" ] || declare -F "${step%%:*}" > /dev/null || retired+=("${step}")
-    done <<< "${steps}"
-    [ "${#retired[@]}" -gt 0 ] || return 0
+    functions="$(compgen -A function)" || return 1
+    # shellcheck disable=SC2016 # jq expands these jq variables; the shell must not expand them.
+    retired_json="$(jq -c --arg functions "${functions}" '
+        if type != "object" or ((.steps // {}) | type) != "object" then error("invalid manifest") else . end
+        | ($functions | split("\n")) as $defined
+        | [(.steps // {}) | keys[] | select((split(":")[0]) as $name | $defined | index($name) | not)]
+    ' "${manifest_path}")" || return 1
+    [ "${retired_json}" != "[]" ] || return 0
 
-    retired_json="$(jq -cn --args '$ARGS.positional' "${retired[@]}")" || return 1
     temporary_path="$(mktemp "${manifest_path}.tmp.XXXXXX")" || return 1
     chmod 600 "${temporary_path}" || {
         rm -f "${temporary_path}"
@@ -177,9 +189,8 @@ function _manifest_prune_retired() {
         rm -f "${temporary_path}"
         return 1
     }
-    for step in "${retired[@]}"; do
-        printf 'Pruned retired asset manifest step %s.\n' "${step}"
-    done
+    # shellcheck disable=SC2016 # jq expands $retired; the shell must not expand it.
+    jq -rn --argjson retired "${retired_json}" '$retired[] | "Pruned retired asset manifest step \(.)."'
 }
 
 #

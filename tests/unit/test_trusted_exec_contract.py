@@ -563,9 +563,21 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         self.assertEqual([], probe.errors)
 
     def test_the_holder_scan_opens_no_fifo(self):
-        # The scan must read the descriptor table without opening what it finds in it: os.stat follows a link without
-        # opening its target. A planted FIFO nobody reads is the witness, because a non-blocking write-open answers
-        # ENXIO only while the FIFO has no reader. The decoys make the scan last long enough to be polled inside.
+        """The scan reads the descriptor table without opening what it finds in it: os.stat follows a /proc fd link to
+        its target without opening it. A planted FIFO nobody reads is the witness, because a non-blocking write-open
+        answers ENXIO only while the FIFO has no reader, so a poll that lands while the scan runs tells whether the
+        scan is a reader. The fd/5 link to the sentinel is the second match that the break names the pid once for.
+
+        U241: the poll landed by scheduler luck. Until d1ecd495 the tree held 500 decoy pids whose fd/3 pointed at the
+        FIFO, so that the scan would last long enough for the main thread to poll it once; on a loaded macOS runner the
+        scan of 501 pids finished before the main thread ran at all, and the test's own guard failed healthy code with
+        `AssertionError: 0 not greater than 0 : no poll landed inside the scan` (run 42167444941, job 127727472511,
+        test (macos-15, client), PR 674, 2026-11-06, and another macOS leg at 00:37Z the same day). The decoys are
+        gone and the poll is handshaken instead: the per-pid `os.listdir(<root>/<pid>/fd)` of `_holders`
+        (trusted_exec_contract.py:255 at d1ecd495) is wrapped to signal `inside` on its first call and wait for
+        `polled`, which the main thread sets after its first poll returns nothing opened. The scan cannot pass its
+        first pid until a poll has landed inside it, so both guards hold by construction on any scheduler. The hook
+        is a directory listing, not the os.stat the test judges, and no open of the test's own touches it."""
         import threading
 
         probe = self.worker_root_probe()
@@ -574,10 +586,6 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         proc, planted = probe.base / "proc", probe.base / "planted.fifo"
         probe.PROC_ROOT = str(proc)
         os.mkfifo(planted, 0o600)
-        for pid in range(5000, 5500):
-            decoy = proc / str(pid) / "fd"
-            decoy.mkdir(parents=True)
-            os.symlink(planted, decoy / "3")
         holder = proc / "4242"
         (holder / "fd").mkdir(parents=True)
         os.symlink(planted, holder / "fd" / "3")
@@ -599,14 +607,30 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 return "" if error.errno == errno.ENXIO else f"the planted FIFO answered {error!r}"
             return "the scan opened the planted FIFO for reading"
 
+        inside, polled = threading.Event(), threading.Event()
+        listdir = tec.os.listdir
+
+        def listing(path, *args, **kwargs):
+            """The scan's own listing of a pid's fd directory, held at the first one until a poll has landed."""
+            if os.path.basename(path) == "fd" and not inside.is_set():
+                inside.set()
+                polled.wait(30)
+            return listdir(path, *args, **kwargs)
+
         record, polls = {}, 0
         scan = threading.Thread(target=lambda: record.update(value=probe._holders(None)), daemon=True)
-        scan.start()
-        while scan.is_alive():
+        with mock.patch.object(tec.os, "listdir", listing):
+            scan.start()
+            inside.wait(30)
             self.assertEqual("", opened())
             polls += 1
-        scan.join(30)
+            polled.set()
+            while scan.is_alive():
+                self.assertEqual("", opened())
+                polls += 1
+            scan.join(30)
         self.assertFalse(scan.is_alive())
+        self.assertTrue(inside.is_set(), "the scan never listed a pid's descriptor table")
         self.assertGreater(polls, 0, "no poll landed inside the scan")
         self.assertEqual("", opened())
         self.assertEqual(f"by pid 4242 (cat, ppid 77: /bin/cat {probe.input} )", record["value"])

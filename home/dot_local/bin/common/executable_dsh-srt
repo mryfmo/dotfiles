@@ -2,23 +2,34 @@
 # @file dsh-srt
 # @brief Start the DeepSeek harness (`dsh`) under Anthropic's sandbox-runtime with the worker seat's containment, behind a canary.
 # @description
-#   Regime-cutover U251. The omp seats run under `srt` through hcom-seat (U85); this launcher gives the DSH control host
-#   the same boundary: it renders `<DSH_HOME>/.sandbox/srt-settings.json` from the table of lists below, each row a
-#   copy of the worker seat's list in scripts/orchestrator/hcom-seat with the line it is copied from, runs the seat
-#   shim's canary under those settings, and only then execs `srt --settings <file> -- <DSH_HOME>/bin/dsh [--profile
-#   <name>] <args>` with the working directory a scratch root under TMPDIR and the environment reduced to the names
-#   ENV_NAMES lists. The contract: a `dsh` this launcher started runs under srt with the worker seat's read denies
-#   (credentials, the operator's Claude Code state, the chezmoi sources, `~/Workspace`, the omp and hcom state) and
-#   its domain list, writes only under `DSH_HOME`, the scratch root and the bridge child's Claude state directory
-#   `<DSH_HOME>/.state/claude` (its `CLAUDE_CONFIG_DIR`, the U190 rule), cannot read or write its own settings file,
-#   and never starts when the canary answers anything but `write-denied read-denied ssh-denied`. What differs from a
-#   seat is only what a seat has and DSH does not: no worktree, git state, hcom store or seats root (M-21 rows of
+#   Regime-cutover U251 (round 2: U251b). The omp seats run under `srt` through hcom-seat (U85); this launcher gives
+#   the DSH control host the same boundary: it renders `<DSH_HOME>/.sandbox/srt-settings.json` from the table of lists
+#   below, each row a copy of the worker seat's list in scripts/orchestrator/hcom-seat with the line it is copied from
+#   or the srt 0.0.81 source line it answers, runs the seat shim's canary under those settings, and only then execs
+#   `srt --settings <file> -- <DSH_HOME>/bin/dsh [--profile <name>] <args>` with the working directory a scratch root
+#   under TMPDIR and the environment reduced to the names ENV_NAMES lists. The contract: a `dsh` this launcher started
+#   runs under srt with the worker seat's read denies (credentials, the operator's Claude Code state, the chezmoi
+#   sources, `~/Workspace`, the omp and hcom state) and its domain list, writes only under `DSH_HOME`, the scratch
+#   root and the bridge child's Claude state directory `<DSH_HOME>/.state/claude` (its `CLAUDE_CONFIG_DIR`, the U190
+#   rule), with the paths srt 0.0.81 would make writable on its own (`/tmp/claude`, `/private/tmp/claude`,
+#   `~/.npm/_logs`) denied and its inner TMPDIR the scratch root; cannot read or write its own settings file; and never
+#   starts when the canary answers anything but `write-denied read-denied ssh-denied`. What differs from a seat is
+#   only what a seat has and DSH does not: no worktree, git state, hcom store or seats root (M-21 rows of
 #   2026-11-06T03:50:31Z: a cwd inside a read-denied checkout dies on `uv_cwd EPERM`, so the cwd is the scratch root;
-#   `DSH_HOME` is the write root; the settings file itself is read-denied; `~/.agents/skills` stays readable).
+#   `DSH_HOME` is the write root; the settings file itself is read-denied; `~/.agents/skills` stays readable), and the
+#   seat accepts srt's own write paths as roots (hcom-seat:746-757, :1373-1374) where DSH denies them (the table).
+#   Nothing a contained dsh could have written runs outside srt: every command this launcher looks up on PATH (srt,
+#   python3, the Linux tools) is refused when it lies under a write root, the dsh runtime is only stat-checked here
+#   (a regular file of this user, no group or other write) and runs under srt alone, and every directory the launcher
+#   relies on is created 0700 and refused when it exists with another owner or with group or other bits. The settings
+#   file is written through a name `mktemp` chooses inside that 0700 directory and renamed onto the final name, which
+#   is refused when it exists as anything but a regular file of this user, so a planted link is never followed.
 #   Refusals (exit 2), each before anything starts: a usage error, srt not on PATH or not of the SRT_LINE line, no
-#   executable `<DSH_HOME>/bin/dsh`, `DSH_HOME` or the scratch root inside a read-denied path (by identity, walking
-#   up), a rendered settings file python3 cannot parse as JSON, a canary that does not answer the three words or a
-#   canary file that exists afterwards. The lists are copied, not shared: a later unit may move them into one file.
+#   executable `<DSH_HOME>/bin/dsh` or one that is a link or writable by group or other, `DSH_HOME` or the scratch
+#   root inside a read-denied path or inside a path srt would make writable (by identity, walking up), a directory
+#   with the wrong owner or mode, a rendered settings file python3 cannot parse as JSON, a canary that does not answer
+#   the three words or a canary file that exists afterwards. The lists are copied, not shared: a later unit may move
+#   them into one file.
 # @option --profile <name> The DSH profile, passed as `--profile <name>` (`[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`).
 # @option --home <dir> `DSH_HOME` (default: the environment's DSH_HOME, else ~/.dsh); must be an existing directory.
 # @arg -- Everything after it is passed to `dsh` verbatim.
@@ -92,8 +103,9 @@ refuse() {
     exit 2
 }
 
-# The table of lists. Every row names the hcom-seat line it copies (origin/main b49be338), so a reviewer diffs the
-# two by eye until a later unit shares the code. HOME-relative names are joined to the physical HOME at render.
+# The table of lists. Every row names the hcom-seat line it copies (origin/main b49be338) or the srt 0.0.81 source
+# line it answers (dist/sandbox/sandbox-utils.js of the installed package), so a reviewer diffs the two by eye until
+# a later unit shares the code. HOME-relative names are joined to the physical HOME at render.
 
 # hcom-seat:223. The srt release line whose behaviours the seat boundary rests on; another major.minor is refused.
 readonly SRT_LINE=0.0
@@ -109,6 +121,20 @@ OPERATOR_CLAUDE_UNDER_HOME=(.claude .claude.json)
 # for write under DSH_HOME and under the scratch root, the two directories the bridge child may be started in.
 PROJECT_FILES=(.claude/settings.json .claude/settings.local.json .claude/hooks .claude/contextdb .omp .codex .envrc
     .mcp.json)
+# srt 0.0.81 sandbox-utils.js:499-508 (SANDBOX_OWN_WRITE_PATHS) and :514-517 (HOME_CONVENIENCE_WRITE_DIRS): the paths
+# srt makes writable without a listing, `/tmp/claude` and `/private/tmp/claude` always, `~/.npm/_logs` and
+# `~/.claude/debug` unless a read deny covers them (:525-534). hcom-seat:746-757 and :1373-1374 accept them as seat
+# write roots; DSH differs and denies them: dsh's TMPDIR is the scratch root already (srt sets the inner TMPDIR from
+# its own CLAUDE_CODE_TMPDIR, sandbox-utils.js:687-692, so the launcher passes the scratch root under that name), and
+# `/tmp/claude` is one directory shared by every srt session of the host, where nothing of DSH belongs. A write deny
+# takes precedence over every allow (README "denyWrite takes precedence over allowWrite"; macos-sandbox-utils.js:713
+# renders the allows before the denies, last match wins), measured on this host 2026-11-06 under srt 0.0.81: each of
+# the three answers `Operation not permitted` from inside. `~/.claude/debug` is dropped by srt under the `~/.claude`
+# read deny and lies under the `~/.claude` write deny, so it needs no row. `/private` exists on macOS only; on Linux
+# srt can mount a deny only on what exists, so `/private/tmp/claude` is denied there only when it exists
+# (hcom-seat:746-756, the same rule).
+SRT_OWN_WRITE_PATHS=(/tmp/claude /private/tmp/claude)
+SRT_CONVENIENCE_WRITE_UNDER_HOME=(.npm/_logs)
 # hcom-seat:1776-1779. The worker seat's domain list, verbatim: the GitHub hosts, PyPI, the Anthropic hosts, the
 # ChatGPT hosts.
 DOMAINS='"github.com","api.github.com","uploads.github.com","codeload.github.com","objects.githubusercontent.com"'
@@ -118,15 +144,22 @@ DOMAINS+=',"chatgpt.com","auth.openai.com","api.openai.com"'
 # hcom-seat:1780-1781. No unix socket, no local binding (srt 0.0.81 grants it as bind and inbound on every
 # interface), the one Mach lookup TLS needs.
 NETWORK_TAIL=',"deniedDomains":[],"allowUnixSockets":[],"allowMachLookup":["com.apple.trustd.agent"],"allowLocalBinding":false'
-# The environment dsh gets, by name, and nothing else: the caller's HOME, PATH, USER, LANG and TERM; DSH_HOME, TMPDIR
-# and CLAUDE_CONFIG_DIR set by this launcher (hcom-seat:1845: the bridge child's Claude state is its own directory);
-# and the two AWS file names set to /dev/null (hcom-seat:1855-1857: omp's Bedrock discovery stats ~/.aws at start and
-# an EPERM from the read deny ends it, measured with omp 18.12.6). USER is a measured need, not a seat row: the login
-# child `omp auth-gateway stdio` (its pi-claude-bridge spawns Claude Code) answers a turn with `HOME PATH USER` and
-# fails with `Failed to authenticate: OAuth session expired and could not be refreshed` when USER is absent, whatever
-# else of LOGNAME, TMPDIR, SHELL, LANG or TERM is present (coordinator measurement on this host, 2026-11-06T07:13Z to
-# 07:16Z, omp 18.12.6; the plugin's own default list is HOME PATH USER LOGNAME SHELL LANG LC_ALL TERM TMPDIR XDG_*).
-ENV_NAMES=(HOME PATH USER DSH_HOME TMPDIR LANG TERM CLAUDE_CONFIG_DIR AWS_SHARED_CREDENTIALS_FILE AWS_CONFIG_FILE)
+# The environment this launcher passes to srt, by name, and nothing else: the caller's HOME, PATH, USER, LANG and
+# TERM; DSH_HOME, TMPDIR, CLAUDE_CODE_TMPDIR and CLAUDE_CONFIG_DIR set by this launcher (hcom-seat:1845: the bridge
+# child's Claude state is its own directory; CLAUDE_CODE_TMPDIR is the name srt 0.0.81 reads for the TMPDIR it sets
+# inside, sandbox-utils.js:688-691); and the two AWS file names set to /dev/null (hcom-seat:1855-1857: omp's Bedrock
+# discovery stats ~/.aws at start and an EPERM from the read deny ends it, measured with omp 18.12.6). USER is a
+# measured need, not a seat row: the login child `omp auth-gateway stdio` (its pi-claude-bridge spawns Claude Code)
+# answers a turn with `HOME PATH USER` and fails with `Failed to authenticate: OAuth session expired and could not be
+# refreshed` when USER is absent, whatever else of LOGNAME, TMPDIR, SHELL, LANG or TERM is present (coordinator
+# measurement on this host, 2026-11-06T07:13Z to 07:16Z, omp 18.12.6; the plugin's own default list is HOME PATH USER
+# LOGNAME SHELL LANG LC_ALL TERM TMPDIR XDG_*). srt adds its own names on top inside the sandbox (sandbox-utils.js
+# generateProxyEnvVars, :667-840): SANDBOX_RUNTIME, TMPDIR (the CLAUDE_CODE_TMPDIR value), the proxy variables
+# (HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, GRPC_PROXY, FTP_PROXY, RSYNC_PROXY, DOCKER_HTTP_PROXY, DOCKER_HTTPS_PROXY,
+# NO_PROXY and their lower-case forms, CLOUDSDK_PROXY_*), GIT_CONFIG_PARAMETERS, GIT_SSH_COMMAND, SRT_SSH_PROXY_COMMAND
+# and JAVA_TOOL_OPTIONS; this launcher neither sets nor strips them, and the PR body's Contract names them.
+ENV_NAMES=(HOME PATH USER DSH_HOME TMPDIR CLAUDE_CODE_TMPDIR LANG TERM CLAUDE_CONFIG_DIR AWS_SHARED_CREDENTIALS_FILE
+    AWS_CONFIG_FILE)
 
 usage='usage: dsh-srt [--profile <name>] [--home <DSH_HOME>] [-- <dsh args>]'
 profile='' dsh_home=${DSH_HOME:-${HOME}/.dsh}
@@ -184,23 +217,58 @@ json_paths() {
     printf '[%s]' "${out}"
 }
 
-# @description Make `$1` a real 0700 directory when it is absent, and refuse unless it is one the caller owns (no
-#   symbolic link, no file of another user), so a path another process planted is never written into.
-# @arg $1 string The directory.
-ensure_own_dir() {
-    if [[ ! -e $1 && ! -L $1 ]]; then
-        (umask 077 && /bin/mkdir "$1") || refuse "cannot create $1"
+# @description Print the permission bits of `$1` in octal (seat-login-preflight mode_of: `stat -f %Lp` on macOS,
+#   `stat -c %a` on Linux), status first.
+# @arg $1 string The path.
+# @exitcode 2 `stat` failed or printed no mode.
+mode_of() {
+    local value
+    if [[ ${os} == Darwin ]]; then
+        value=$(/usr/bin/stat -f %Lp "$1") || return 2
+    else
+        value=$(/usr/bin/stat -c %a "$1") || return 2
     fi
-    [[ -d $1 && ! -L $1 && -O $1 ]] || refuse "$1 is not a real directory of this user"
+    [[ ${value} =~ ^[0-7]{3,4}$ ]] || return 2
+    printf '%s\n' "${value}"
 }
 
-# @description Succeed when the physical path `$1` is, or lies under, an existing entry of `deny_read`, by identity
-#   (`-ef`) at every level from the path up to `/`, so a spelling difference never hides a denied cwd.
+# @description Make `$1` a real 0700 directory when it is absent, and refuse unless it is one of this user's with no
+#   group or other bits (no symbolic link, no file of another user, no 0777 or 0750 left from before), so a path
+#   another process planted or opened is never written into.
+# @arg $1 string The directory.
+ensure_own_dir() {
+    local mode
+    if [[ ! -e $1 && ! -L $1 ]]; then
+        (umask 077 && /bin/mkdir -m 0700 "$1") || refuse "cannot create $1"
+    fi
+    [[ -d $1 && ! -L $1 && -O $1 ]] || refuse "$1 is not a real directory of this user"
+    mode=$(mode_of "$1") || refuse "cannot read the mode of $1"
+    [[ ${mode} =~ ^[0-7]?[0-7]00$ ]] ||
+        refuse "$1 has mode ${mode}; a directory dsh-srt relies on must have no group or other bits (chmod 700)"
+}
+
+# @description Refuse unless `$2`, named as `$1`, is a regular file of this user (no symbolic link) whose mode has no
+#   group or other write bit, so a file a contained process or another local user could have replaced is never run
+#   or trusted.
+# @arg $1 string What the file is.
+# @arg $2 string The path.
+require_own_file() {
+    local mode
+    [[ -f $2 && ! -L $2 && -O $2 ]] || refuse "$1 $2 is not a regular file of this user"
+    mode=$(mode_of "$2") || refuse "cannot read the mode of $1 $2"
+    [[ ${mode} =~ ^[0-7]?[0-7][0145][0145]$ ]] ||
+        refuse "$1 $2 has mode ${mode}; a file writable by group or other is refused"
+}
+
+# @description Succeed when the physical path `$1` is, or lies under, an existing entry of the paths after it, by
+#   identity (`-ef`) at every level from the path up to `/`, so a spelling difference never hides a denied cwd.
 # @arg $1 string The physical path.
-inside_denied() {
+# @arg $@ string The paths after it.
+inside_any() {
     local p=$1 d
+    shift
     while :; do
-        for d in "${deny_read[@]}"; do
+        for d in "$@"; do
             if [[ -e ${d} && ${p} -ef ${d} ]]; then return 0; fi
         done
         ((${#p} > 1)) || return 1
@@ -209,35 +277,24 @@ inside_denied() {
     done
 }
 
-# srt first (hcom-seat:1628-1640): the installed srt is of the encoded line, read by its own `--version`, status first.
-srt_path=$(type -P srt) || refuse 'srt (@anthropic-ai/sandbox-runtime) not found on PATH'
-[[ ${srt_path} == /* && -f ${srt_path} && -x ${srt_path} ]] || refuse "srt at '${srt_path}' is not an absolute executable file" # lint-comparisons: allow an absolute-path test, no path compare
-srt_version=$("${srt_path}" --version 2> /dev/null) ||
-    refuse "cannot read the srt version (${srt_path} --version failed); dsh-srt encodes the srt ${SRT_LINE} line"
-srt_version=${srt_version%%$'\n'*}
-srt_version=${srt_version%% *}
-[[ ${srt_version} =~ ^([0-9]+\.[0-9]+)(\.[0-9A-Za-z.+-]+)?$ ]] ||
-    refuse "cannot read the srt version from '${srt_version}' (${srt_path} --version); dsh-srt encodes the srt ${SRT_LINE} line"
-[[ ${BASH_REMATCH[1]} == "${SRT_LINE}" ]] ||
-    refuse "srt ${srt_version} is not of the ${SRT_LINE} line dsh-srt encodes; home/dot_mise/config.toml pins the release, and a bump is a reviewed edit of the pin and SRT_LINE together"
-os=$(uname -s) || refuse 'cannot read the operating system name (uname -s)'
-linux_tools=''
-case ${os} in
-Darwin) [[ -x /usr/bin/sandbox-exec ]] || refuse 'sandbox-exec absent: /usr/bin/sandbox-exec' ;;
-Linux)
-    # hcom-seat:1654-1669: srt looks bwrap, socat and rg up on PATH unless its settings name them.
-    bwrap_real=$(type -P bwrap) || refuse 'bwrap not found on PATH'
-    socat_real=$(type -P socat) || refuse 'socat not found on PATH'
-    rg_real=$(type -P rg) || refuse 'rg not found on PATH'
-    require_clean_path bwrap "${bwrap_real}"
-    require_clean_path socat "${socat_real}"
-    require_clean_path rg "${rg_real}"
-    linux_tools=",\"bwrapPath\":\"${bwrap_real}\",\"socatPath\":\"${socat_real}\",\"ripgrep\":{\"command\":\"${rg_real}\"}"
-    ;;
-*) refuse "no sandbox for ${os}; srt supports macOS and Linux" ;;
-esac
+# @description Print the path of the command `$1` found on PATH, refused when the found path or the file it resolves
+#   to lies under a write root of dsh (`write`, by identity walking up): a contained dsh may write there, and nothing
+#   it could have written runs outside srt.
+# @arg $1 string The command name.
+# @exitcode 1 Not on PATH.
+tool_path() {
+    local found real
+    found=$(type -P "$1") || return 1
+    [[ ${found} == /* && -f ${found} && -x ${found} ]] || refuse "$1 at '${found}' is not an absolute executable file" # lint-comparisons: allow an absolute-path test, no path compare
+    real=$(/usr/bin/readlink -f "${found}") || refuse "cannot resolve $1 at ${found}"
+    if inside_any "${found}" "${write[@]}" || inside_any "${real}" "${write[@]}"; then
+        refuse "$1 at ${found} lies under a write root of dsh (${home_real} or ${scratch}); nothing a contained dsh could have written runs outside srt"
+    fi
+    printf '%s\n' "${found}"
+}
 
-# The paths, each in physical form and clean before it reaches the settings.
+# The paths, each in physical form and clean before it reaches the settings; decided before any command is looked up,
+# so the write roots are known when PATH is read.
 require_clean_path HOME "${HOME}"
 h=$(cd "${HOME}" && pwd -P) || refuse "cannot resolve HOME ${HOME}"
 [[ -d ${dsh_home} ]] || refuse "DSH_HOME ${dsh_home} is not a directory"
@@ -255,6 +312,39 @@ sandbox=${home_real}/.sandbox
 claude_state=${home_real}/.state/claude
 settings=${sandbox}/srt-settings.json
 canary=${sandbox}/canary
+write=("${home_real}" "${scratch}" "${claude_state}")
+
+os=$(/usr/bin/uname -s) || refuse 'cannot read the operating system name (/usr/bin/uname -s)'
+# The dsh runtime is never executed here: it runs under srt alone, and its version is not read. Here it is only
+# stat-checked, so a runtime a contained dsh replaced with a link or opened to its group is refused before anything.
+require_own_file 'the dsh runtime' "${dsh}"
+
+# srt (hcom-seat:1628-1640): the installed srt is of the encoded line, read by its own `--version`, status first; it is
+# refused before that read when it lies under a write root.
+srt_path=$(tool_path srt) || refuse 'srt (@anthropic-ai/sandbox-runtime) not found on PATH'
+srt_version=$("${srt_path}" --version 2> /dev/null) ||
+    refuse "cannot read the srt version (${srt_path} --version failed); dsh-srt encodes the srt ${SRT_LINE} line"
+srt_version=${srt_version%%$'\n'*}
+srt_version=${srt_version%% *}
+[[ ${srt_version} =~ ^([0-9]+\.[0-9]+)(\.[0-9A-Za-z.+-]+)?$ ]] ||
+    refuse "cannot read the srt version from '${srt_version}' (${srt_path} --version); dsh-srt encodes the srt ${SRT_LINE} line"
+[[ ${BASH_REMATCH[1]} == "${SRT_LINE}" ]] ||
+    refuse "srt ${srt_version} is not of the ${SRT_LINE} line dsh-srt encodes; home/dot_mise/config.toml pins the release, and a bump is a reviewed edit of the pin and SRT_LINE together"
+linux_tools=''
+case ${os} in
+Darwin) [[ -x /usr/bin/sandbox-exec ]] || refuse 'sandbox-exec absent: /usr/bin/sandbox-exec' ;;
+Linux)
+    # hcom-seat:1654-1669: srt looks bwrap, socat and rg up on PATH unless its settings name them.
+    bwrap_real=$(tool_path bwrap) || refuse 'bwrap not found on PATH'
+    socat_real=$(tool_path socat) || refuse 'socat not found on PATH'
+    rg_real=$(tool_path rg) || refuse 'rg not found on PATH'
+    require_clean_path bwrap "${bwrap_real}"
+    require_clean_path socat "${socat_real}"
+    require_clean_path rg "${rg_real}"
+    linux_tools=",\"bwrapPath\":\"${bwrap_real}\",\"socatPath\":\"${socat_real}\",\"ripgrep\":{\"command\":\"${rg_real}\"}"
+    ;;
+*) refuse "no sandbox for ${os}; srt supports macOS and Linux" ;;
+esac
 
 # The lists, from the table.
 deny_read=()
@@ -271,17 +361,25 @@ if [[ -n ${CLAUDE_CONFIG_DIR:-} ]]; then
     if [[ ! -e ${h}/.claude || ! ${config} -ef ${h}/.claude ]]; then operator_claude+=("${config}"); fi
 fi
 deny_read+=("${operator_claude[@]}")
+srt_added=()
+for path in "${SRT_OWN_WRITE_PATHS[@]}"; do
+    if [[ ${os} == Darwin || -e ${path} ]]; then srt_added+=("${path}"); fi
+done
+for name in "${SRT_CONVENIENCE_WRITE_UNDER_HOME[@]}"; do srt_added+=("${h}/${name}"); done
 deny_write=("${sandbox}")
 for base in "${home_real}" "${scratch}"; do
     for name in "${PROJECT_FILES[@]}"; do deny_write+=("${base}/${name}"); done
 done
 deny_write+=("${operator_claude[@]}")
-write=("${home_real}" "${scratch}" "${claude_state}")
+deny_write+=("${srt_added[@]}")
 
 # The cwd rule (M-21): neither DSH_HOME nor the scratch root may lie in a read-denied region, where dsh could not
-# start (`uv_cwd EPERM`) or load; decided before anything is created.
-if inside_denied "${home_real}"; then refuse "DSH_HOME ${home_real} lies inside a read-denied path"; fi
-if inside_denied "${tmp_real}"; then refuse "the scratch cwd ${scratch} would lie inside a read-denied path (TMPDIR ${tmp_real})"; fi
+# start (`uv_cwd EPERM`) or load, nor in a path srt would make writable and this launcher denies, where dsh could not
+# write its own cwd; decided before anything is created.
+if inside_any "${home_real}" "${deny_read[@]}"; then refuse "DSH_HOME ${home_real} lies inside a read-denied path"; fi
+if inside_any "${tmp_real}" "${deny_read[@]}"; then refuse "the scratch cwd ${scratch} would lie inside a read-denied path (TMPDIR ${tmp_real})"; fi
+if inside_any "${home_real}" "${srt_added[@]}"; then refuse "DSH_HOME ${home_real} lies inside a path srt makes writable on its own, which dsh-srt denies"; fi
+if inside_any "${tmp_real}" "${srt_added[@]}"; then refuse "the scratch cwd ${scratch} would lie inside a path srt makes writable on its own, which dsh-srt denies (TMPDIR ${tmp_real})"; fi
 
 ensure_own_dir "${scratch}"
 ensure_own_dir "${sandbox}"
@@ -294,10 +392,16 @@ deny_read_json=$(json_paths 'a read deny' "${deny_read[@]}") || exit 2
 json="{\"network\":{\"allowedDomains\":[${DOMAINS}]${NETWORK_TAIL}}"
 json+=",\"filesystem\":{\"denyRead\":${deny_read_json},\"allowRead\":[]"
 json+=",\"allowWrite\":${write_json},\"denyWrite\":${deny_write_json}},\"allowPty\":true${linux_tools}}"
-if ! printf '%s\n' "${json}" > "${settings}.tmp" || ! mv -f "${settings}.tmp" "${settings}"; then
+# Written into the 0700 sandbox directory through a name mktemp chooses (O_EXCL), then renamed onto the final name,
+# which is refused when it exists as anything but a regular file of this user: no predictable name is ever opened for
+# writing, so a planted link is never followed.
+if [[ -e ${settings} || -L ${settings} ]]; then require_own_file 'the settings file' "${settings}"; fi
+settings_tmp=$(/usr/bin/mktemp "${sandbox}/.srt-settings.XXXXXXXX") || refuse "cannot create a temporary file in ${sandbox}"
+if ! printf '%s\n' "${json}" > "${settings_tmp}" || ! /bin/mv -f "${settings_tmp}" "${settings}"; then
+    /bin/rm -f "${settings_tmp}"
     refuse "cannot write ${settings}"
 fi
-python3_path=$(type -P python3) || refuse 'python3 not found on PATH (it checks the rendered settings parse as JSON)'
+python3_path=$(tool_path python3) || refuse 'python3 not found on PATH (it checks the rendered settings parse as JSON)'
 "${python3_path}" -I -c 'import json, sys
 with open(sys.argv[1], encoding="utf-8") as settings:
     json.load(settings)' "${settings}" || refuse "the rendered settings ${settings} do not parse as JSON"
@@ -307,7 +411,7 @@ env_args=()
 for name in "${ENV_NAMES[@]}"; do
     case ${name} in
     DSH_HOME) env_args+=("DSH_HOME=${home_real}") ;;
-    TMPDIR) env_args+=("TMPDIR=${scratch}") ;;
+    TMPDIR | CLAUDE_CODE_TMPDIR) env_args+=("${name}=${scratch}") ;;
     CLAUDE_CONFIG_DIR) env_args+=("CLAUDE_CONFIG_DIR=${claude_state}") ;;
     AWS_SHARED_CREDENTIALS_FILE | AWS_CONFIG_FILE) env_args+=("${name}=/dev/null") ;;
     *) if [[ -n ${!name+x} ]]; then env_args+=("${name}=${!name}"); fi ;;

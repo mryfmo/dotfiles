@@ -72,6 +72,20 @@ TRUST_SENTENCE = (
 SKILL_COMMAND = SKILL_SENTENCE.split("`")[1]
 CLEAN_GOAL = "The six dead installer functions leave the installers and nothing else changes."
 TRUST = "The unit trusts the pinned lever set under ~/.local/bin/common and reads no earlier job step."
+# U249 (standing order 44): an ACCEPTANCE naming one gate of each class, the lint forms and the test forms as a brief
+# pastes them, and the reason line for each class it misses.
+GATED = (
+    "1. `scripts/ci/run-on-lint-files.sh python ruff format --config ruff.toml --check` exit 0.\n"
+    "2. `uv run python -m unittest tests.unit.test_x tests.unit.test_scratch_git` OK."
+)
+LINT_GATES = ("`scripts/ci/run-on-lint-files.sh markdown prettier --check` exit 0.", "`make format` exit 0.")
+TEST_GATES = (
+    "`uv run python -m unittest tests.unit.test_x` OK (paste the count).",
+    "`make unit-test` OK.",
+    "`node --test home/dot_dsh/plugins/omp-gateway/` exit 0.",
+)
+NO_LINT_GATE = "ACCEPTANCE names no lint gate (run-on-lint-files.sh, make format)"
+NO_TEST_GATE = "ACCEPTANCE names no test gate (python -m unittest, make unit-test, node --test)"
 # U130: three lever sources as a SCOPE names them, the reason line that refuses them (names sorted), and the SKILL
 # sentence that says a brief naming more than two is split before it is sent.
 THREE_LEVERS = (
@@ -414,21 +428,29 @@ class BriefCheckTest(unittest.TestCase):
         self.assertLess(step.index(TRUST_SENTENCE), step.index(SPLIT_SENTENCE))
 
     def test_a_scope_naming_three_lever_sources_is_refused_naming_them_sorted(self):
-        self.assert_refused_exactly(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS))), SPLIT_REASON)
+        self.assert_refused_exactly(
+            self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS), ACCEPTANCE=GATED)), SPLIT_REASON
+        )
         # The installed spelling, the bare name and a `./` prefix name the same levers.
         spellings = ("~/.local/bin/common/pr-merge.sh", "brief-check.py", "./scripts/orchestrator/hcom-seat")
-        self.assert_refused_exactly(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*spellings))), SPLIT_REASON)
+        self.assert_refused_exactly(
+            self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*spellings), ACCEPTANCE=GATED)), SPLIT_REASON
+        )
 
     def test_a_scope_naming_two_lever_sources_or_none_passes(self):
-        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2]))))
-        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope("scripts/ci/run-bats.sh", "Makefile"))))
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2]), ACCEPTANCE=GATED)))
+        self.assert_passes(
+            self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope("scripts/ci/run-bats.sh", "Makefile"), ACCEPTANCE=GATED))
+        )
         self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL)))
 
     def test_a_source_and_its_installed_copy_count_once(self):
         copies = [f"home/dot_local/bin/common/executable_{Path(path).name}" for path in THREE_LEVERS]
-        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2], *copies[:2]))))
+        self.assert_passes(
+            self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2], *copies[:2]), ACCEPTANCE=GATED))
+        )
         # Three sources and their three copies are three levers, not six.
-        result = self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS, *copies)))
+        result = self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS, *copies), ACCEPTANCE=GATED))
         self.assert_refused_exactly(result, SPLIT_REASON)
 
     def test_tests_readmes_the_generated_outputs_and_the_manifest_never_count(self):
@@ -440,16 +462,88 @@ class BriefCheckTest(unittest.TestCase):
             "tests/fixtures/pr-merge.sh",
             "README.md",
         )
-        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*never))))
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*never), ACCEPTANCE=GATED)))
         # Beside two levers they still add nothing: a counted `tests/fixtures/pr-merge.sh` would make three.
-        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*never, *THREE_LEVERS[1:]))))
+        self.assert_passes(
+            self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*never, *THREE_LEVERS[1:]), ACCEPTANCE=GATED))
+        )
         # A lever named inside a command span or in prose, and a lever name in another section, count nothing.
         body = "`ls scripts/orchestrator/hcom-seat pr-merge.sh brief-check.py`; hcom-seat, pr-merge.sh, brief-check.py."
         self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=body, FORBIDDEN=scope(*THREE_LEVERS))))
 
     def test_the_lever_count_is_printed_beside_the_other_reasons_in_one_run(self):
-        result = self.check_text(brief(GOAL="A shell reader.", SCOPE=scope(*THREE_LEVERS)))
+        result = self.check_text(brief(GOAL="A shell reader.", SCOPE=scope(*THREE_LEVERS), ACCEPTANCE=GATED))
         self.assert_refused(result, 'GOAL holds "shell" (', 'GOAL holds "shell"; no TRUST section', SPLIT_REASON)
+
+    def test_a_scope_naming_a_repository_path_passes_with_a_lint_and_a_test_gate_in_acceptance(self):
+        # U249 (standing order 44): each lint form beside each test form, as a brief pastes them.
+        for lint_gate in LINT_GATES:
+            for test_gate in TEST_GATES:
+                with self.subTest(lint=lint_gate, test=test_gate):
+                    acceptance = f"1. {lint_gate}\n2. {test_gate}\n3. `make shellcheck` exit 0."
+                    text = brief(GOAL=CLEAN_GOAL, SCOPE=scope("scripts/ci/run-bats.sh"), ACCEPTANCE=acceptance)
+                    self.assert_passes(self.check_text(text))
+
+    def test_an_acceptance_with_a_lint_gate_alone_is_refused_naming_the_missing_test_gate(self):
+        # `bats` is no test gate (AGENTS.md Test Policy forbids a local run), and a `check` row stands in for neither.
+        for lint_gate in LINT_GATES:
+            with self.subTest(lint=lint_gate):
+                acceptance = f"1. {lint_gate}\n2. `bats tests/x.bats` passes.\n3. `make render-check` exit 0."
+                text = brief(GOAL=CLEAN_GOAL, SCOPE=scope("tests/unit/test_x.py"), ACCEPTANCE=acceptance)
+                self.assert_refused_exactly(self.check_text(text), NO_TEST_GATE)
+
+    def test_an_acceptance_with_a_test_gate_alone_is_refused_naming_the_missing_lint_gate(self):
+        for test_gate in TEST_GATES:
+            with self.subTest(test=test_gate):
+                acceptance = f"1. {test_gate}\n2. `make validate-agent-assets` exit 0."
+                text = brief(GOAL=CLEAN_GOAL, SCOPE=scope("AGENTS.md"), ACCEPTANCE=acceptance)
+                self.assert_refused_exactly(self.check_text(text), NO_LINT_GATE)
+        # Neither class named: one line per class, after the other reasons of the same run.
+        text = brief(GOAL="A shell reader.", SCOPE=scope(*THREE_LEVERS), ACCEPTANCE="1. `make shellcheck` exit 0.")
+        self.assert_refused(
+            self.check_text(text),
+            'GOAL holds "shell" (',
+            'GOAL holds "shell"; no TRUST section',
+            SPLIT_REASON,
+            NO_LINT_GATE,
+            NO_TEST_GATE,
+        )
+
+    def test_a_sweep_shaped_scope_with_no_repository_path_needs_no_gate(self):
+        # The U248 sweep shape, writing under ~/.local/state alone, and every other span that is no repository path:
+        # an absolute path, a path beside the tree, a `$VAR` path, a bare word, a command span, prose, nothing.
+        sweep = (
+            "No branch, no commit, no pull request, no file of the repository changes. Writes only under "
+            "`~/.local/state/omp-seats/dotfiles/.state/sweep/security-audit/run-54/` and the skill's per-agent "
+            "`scratch/` directories below it; the target is `~/.local/state/omp-seats/dotfiles/sweep`, read-only."
+        )
+        for body in (
+            sweep,
+            "Writes `/tmp/x/out.md`, `../U0-pr-body.md`, `$HOME/.cache/x`, `Makefile`, `.github/` and `~`.",
+            "`ls scripts/ci/run-bats.sh AGENTS.md`; scripts/ci/run-bats.sh and AGENTS.md in prose.",
+            "",
+        ):
+            with self.subTest(scope=body[:40]):
+                self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=body, ACCEPTANCE="1. The report.")))
+                self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=body)))
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, ACCEPTANCE="1. The report pasted.")))
+
+    def test_a_repository_path_in_scope_without_an_acceptance_section_is_refused(self):
+        # Two or more names, a directory, a `./` prefix, one file with an extension; a branch ref reads as a path too,
+        # so every brief that names its branch is held to the rule (a sweep brief names none).
+        for path in (
+            "scripts/ci/run-bats.sh",
+            "home/dot_dsh/plugins/omp-gateway/",
+            "./AGENTS.md",
+            "docs/README.md",
+            "origin/main",
+        ):
+            with self.subTest(path=path):
+                result = self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=f"May write: `{path}`."))
+                self.assert_refused_exactly(result, "no ACCEPTANCE section")
+        # An ACCEPTANCE section that is present and empty names no gate: the two class lines, not the section line.
+        result = self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope("AGENTS.md"), ACCEPTANCE=""))
+        self.assert_refused_exactly(result, NO_LINT_GATE, NO_TEST_GATE)
 
     def checkout_check(self, manifest_text, text):
         """Run a checkout-shaped copy of the script beside a scratch manifest; returns (result, manifest as named)."""
@@ -501,11 +595,14 @@ class BriefCheckTest(unittest.TestCase):
         unrelated = "other:\n  levers:\n    sha256:\n      foo: " + "0" * 64 + "\n      bar: " + "1" * 64 + "\n"
         self.assertEqual(1, text.count("\nclaude:\n"))
         planted = text.replace("\n  levers:\n", "\n  levers_gone:\n").replace("\nclaude:\n", f"\n{unrelated}claude:\n")
-        result, named = self.checkout_check(planted, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS)))
+        result, named = self.checkout_check(
+            planted, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS), ACCEPTANCE=GATED)
+        )
         self.assert_refused_to_run(result, named, "no claude.levers.sha256 block in")
         # The same unrelated block beside an intact `claude.levers` changes nothing: the three levers are counted.
         result, _ = self.checkout_check(
-            text.replace("\nclaude:\n", f"\n{unrelated}claude:\n"), brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS))
+            text.replace("\nclaude:\n", f"\n{unrelated}claude:\n"),
+            brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS), ACCEPTANCE=GATED),
         )
         self.assert_refused_exactly(result, SPLIT_REASON)
 
@@ -517,9 +614,13 @@ class BriefCheckTest(unittest.TestCase):
         for gap in ("      # a comment about the next pin\n\n", "\n# a column-0 comment\n   \n"):
             with self.subTest(gap=gap.strip() or "blank"):
                 spaced = text.replace(first + "\n", first + "\n" + gap)
-                result, _ = self.checkout_check(spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS)))
+                result, _ = self.checkout_check(
+                    spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS), ACCEPTANCE=GATED)
+                )
                 self.assert_refused_exactly(result, SPLIT_REASON)
-                result, _ = self.checkout_check(spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2])))
+                result, _ = self.checkout_check(
+                    spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2]), ACCEPTANCE=GATED)
+                )
                 self.assert_passes(result)
 
     def test_a_malformed_pin_line_in_the_block_refuses_naming_the_line(self):
@@ -546,7 +647,9 @@ class BriefCheckTest(unittest.TestCase):
         first = number - 2
         self.assertTrue(lines[first].startswith("      hcom-seat: "), lines[first])
         shorter = "\n".join(lines[:first] + ["    extensions_gone:", "      - x"] + lines[first:]) + "\n"
-        result, named = self.checkout_check(shorter, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS)))
+        result, named = self.checkout_check(
+            shorter, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS), ACCEPTANCE=GATED)
+        )
         self.assert_refused_to_run(result, named, "no claude.levers.sha256 block in")
 
     def test_a_manifest_missing_the_block_and_the_pin_names_the_block(self):
@@ -573,9 +676,13 @@ class BriefCheckTest(unittest.TestCase):
             with self.subTest(spaces=width):
                 pins = [" " * width + line.lstrip(" ") for line in lines[block:end]]
                 spaced = "\n".join(lines[:block] + pins + lines[end:]) + "\n"
-                result, _ = self.checkout_check(spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS)))
+                result, _ = self.checkout_check(
+                    spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS), ACCEPTANCE=GATED)
+                )
                 self.assert_refused_exactly(result, SPLIT_REASON)
-                result, _ = self.checkout_check(spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2])))
+                result, _ = self.checkout_check(
+                    spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2]), ACCEPTANCE=GATED)
+                )
                 self.assert_passes(result)
         # A pin of this lever outside the block is not the pin: at six spaces under another key, with the block's
         # entry gone, the refusal is the absent pin, not a match on indentation.
@@ -755,11 +862,11 @@ class InstalledBriefCheckTest(unittest.TestCase):
                 self.assert_refused(result, f"no single sha256 pin for brief-check.py in {self.manifest}")
 
     def test_the_installed_copy_counts_levers_from_the_deployed_manifest(self):
-        result = self.run_skill_command(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS)))
+        result = self.run_skill_command(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS), ACCEPTANCE=GATED))
         self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
         expected = [f"brief-check: .orchestration/orchestrate/p/briefs/U1-x.md: {SPLIT_REASON}"]
         self.assertEqual(expected, result.stdout.splitlines())
-        result = self.run_skill_command(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2])))
+        result = self.run_skill_command(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2]), ACCEPTANCE=GATED))
         self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
 
     def test_a_deployed_manifest_without_the_levers_block_refuses(self):

@@ -2786,52 +2786,63 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         bounded the 2,000-to-8,000 step, where the 2 to 3 ms fixed cost of a run dominates the 2,000 run: CI on
         17d2d99b (run 40830602891, the macos-15 and ubuntu-26.04 client rows) measured 8.1x there (0.0022 to 0.0179 s,
         0.0032 to 0.0258 s) on the linear scan, so only the step whose runs are tens of milliseconds is judged. The
-        value behind the padding is still reported, with the whole rest of the line as the secret."""
+        value behind the padding is still reported, with the whole rest of the line as the secret.
+
+        U234: a 4x step still failed healthy linear code on shared runners, whose load burst on the larger size alone
+        bridged linear growth to the bound: the report test below at 8.0048x under its former 8x bound (run
+        41611489155, PR 634, 2026-11-03) and at 8.9x the next day (run 41761193225), and this test at 13.4x under the
+        bound of 12 on the macOS leg after 920 s of a loaded shard (run 42163122761, PR 675, 2026-11-06), each a CI
+        cycle and an empty commit. So the judged step is 8,000 to 64,000, where a linear scan grows 8x and a quadratic
+        one 64x, the bound is 24 (three times linear, under half of quadratic), and the five repetitions run every size
+        once in turn, so a load burst falls on both sizes of the step alike rather than on the larger size's runs."""
         module = self.module
         mask = module.SECRET_MASK
-        lengths = (2_000, 8_000, 32_000)
-        # Judged on the 8,000-to-32,000 step: a linear scan grows about 4x (the densest-window measure visits one
-        # window per character), a quadratic one 16x (the round-7 lookahead grew 14.7x and 16.1x). The bound 12 is
-        # three times linear and still below the quadratic growth the test exists to catch. Measured on the base and
-        # on two heads of U107b (least of five, 2,000 to 128,000 characters, both padding kinds, all three forms):
-        # every step 3.8x to 4.1x. On GitHub's runners the same scans ran 3x slower at 8,000 and 6x to 13x slower at
-        # 32,000 and 128,000 (a bound of 8 saw 8.0x, 8.9x and 9.2x; a 128,000-character run took 2.5 s against 0.2 s
-        # locally), so the judged step stays at 32,000 and the bound carries that jitter. Least of five, not three.
-        growth_bound = 12
-        judged_step = (8_000, 32_000)
+        lengths = (2_000, 8_000, 64_000)
+        # Judged on the 8,000-to-64,000 step: a linear scan grows about 8x (the densest-window measure visits one
+        # window per character), a quadratic one 64x (the round-7 lookahead grew 14.7x and 16.1x per 4x step). Measured
+        # on the base and on two heads of U107b (least of five, 2,000 to 128,000 characters, both padding kinds, all
+        # three forms): every 4x step 3.8x to 4.1x. On GitHub's runners the same scans ran 3x slower at 8,000 and 6x to
+        # 13x slower at 32,000 and 128,000 (a 128,000-character run took 2.5 s against 0.2 s locally), so the bound 24
+        # carries a runner three times slower on the larger size and the 20 s cap stays far above a 64,000 run.
+        growth_bound = 24
+        judged_step = (8_000, 64_000)
         hang_bound = 20.0
 
-        def least_of_three(scan) -> float:
-            times = []
+        def least_of_five_interleaved(scans) -> list[float]:
+            times = [[] for _ in scans]
             for _ in range(5):
-                started = time.perf_counter()
-                scan()
-                times.append(time.perf_counter() - started)
-            return min(times)
+                for index, scan in enumerate(scans):
+                    started = time.perf_counter()
+                    scan()
+                    times[index].append(time.perf_counter() - started)
+            return [min(runs) for runs in times]
 
         for padding_kind, unit in (("spaces", " "), ("low-entropy characters", "low-")):
             for kind in ("inside the quotes", "after the value", "in a JSON string"):
-                times = []
+                texts = []
                 for length in lengths:
                     padding = unit * (length // len(unit))
                     if kind == "after the value":
-                        text = f'{FIELD} = "{HIGH_ENTROPY_VALUE}"{padding}\n'
+                        texts.append(f'{FIELD} = "{HIGH_ENTROPY_VALUE}"{padding}\n')
                     else:
-                        text = f'{FIELD} = "{padding}{HIGH_ENTROPY_VALUE}"\n'
+                        texts.append(f'{FIELD} = "{padding}{HIGH_ENTROPY_VALUE}"\n')
+                if kind == "in a JSON string":
+                    # The padded line as a JSON member, masked per decoded string as the JSON masker does.
+                    documents = [{"note": text.rstrip("\n")} for text in texts]
+                    scans = [lambda document=document: module.mask_json_strings(document) for document in documents]
+                else:
+                    scans = [
+                        lambda text=text: (module.secret_findings(text), module.mask_secret_matches(text))
+                        for text in texts
+                    ]
+                # Every time is recorded before any assertion, so the step below is judged even when a run fails the cap.
+                times = least_of_five_interleaved(scans)
+                for index, length in enumerate(lengths):
+                    text, elapsed = texts[index], times[index]
                     with self.subTest(length=length, padding=padding_kind, kind=kind):
-                        if kind == "in a JSON string":
-                            # The padded line as a JSON member, masked per decoded string as the JSON masker does.
-                            document = {"note": text.rstrip("\n")}
-                            elapsed = least_of_three(lambda: module.mask_json_strings(document))
-                        else:
-                            elapsed = least_of_three(
-                                lambda: (module.secret_findings(text), module.mask_secret_matches(text))
-                            )
-                        # Recorded before any assertion, so the step below is judged even when a run fails the cap.
-                        times.append(elapsed)
                         self.assertLess(elapsed, hang_bound, f"{length:,} {padding_kind} {kind} took {elapsed:.3f} s")
                         if kind == "in a JSON string":
-                            self.assertEqual(module.mask_json_strings(document), ({"note": mask}, 1))
+                            self.assertEqual(module.mask_json_strings(documents[index]), ({"note": mask}, 1))
                         else:
                             secret = text.split(" = ", 1)[1].rstrip()
                             findings = [(f.rule.id, f.secret) for f in module.secret_findings(text)]
@@ -2846,7 +2857,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                         after / before,
                         growth_bound,
                         f"{padding_kind} {kind}: {before:.4f} s at {shorter:,} to {after:.4f} s at {longer:,}, "
-                        f"{after / before:.1f}x per 4x step",
+                        f"{after / before:.1f}x per 8x step",
                     )
 
     def test_a_finding_is_placed_on_its_line_by_the_file_index(self) -> None:
@@ -2924,53 +2935,55 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         8.9x per 4x step, the growth bound); run 41762642788 (test (ubuntu-24.04, server)) is the third run of that
         day's record and passed both tests. The cap is a hang detector, not a speed measure: the quadratic scan took
         7.5 s at 32,000 findings and 28.7 s at 128,000. Every finding is reported on its own line, the first on
-        line 1 and the last on line N."""
+        line 1 and the last on line N.
+
+        U234: the 4x step failed linear code on loaded runners twice more after round 10 (8.0048x under the former 8x
+        bound, run 41611489155, PR 634, 2026-11-03; and the padded-line test above at 13.4x under 12, run 42163122761,
+        PR 675, 2026-11-06), a load burst on the larger count alone being enough to reach a bound three times linear.
+        So the step is 8,000 to 64,000 findings, where linear grows 8x and the round-10 quadratic count 64x, the bound
+        is 24 (three times linear, under half of quadratic), and the five repetitions scan both counts in turn (the
+        fixture rewritten before each timed scan), so a burst falls on both counts alike."""
         module = self.module
         planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
-        counts = (8_000, 32_000)
-        growth_bound = 12
+        counts = (8_000, 64_000)
+        growth_bound = 24
         hang_bound = 20.0
         path = self.write_text_file("fixtures/planted.md", "")
+        texts = ["".join(f"line {number} holds {planted}\n" for number in range(1, count + 1)) for count in counts]
+        reports = [io.StringIO() for _ in counts]
 
-        def least_of_five(scan) -> float:
-            times = []
-            for _ in range(5):
-                started = time.perf_counter()
-                scan()
-                times.append(time.perf_counter() - started)
-            return min(times)
+        def scan(index: int) -> float:
+            path.write_text(texts[index])
+            report = reports[index]
+            report.seek(0)
+            report.truncate()
+            started = time.perf_counter()
+            with contextlib.redirect_stderr(report), self.assertRaises(SystemExit):
+                module.validate_no_obvious_secrets()
+            return time.perf_counter() - started
 
-        times = []
-        for count in counts:
-            text = "".join(f"line {number} holds {planted}\n" for number in range(1, count + 1))
-            path.write_text(text)
-            report = io.StringIO()
-
-            def scan() -> None:
-                report.seek(0)
-                report.truncate()
-                with contextlib.redirect_stderr(report), self.assertRaises(SystemExit):
-                    module.validate_no_obvious_secrets()
-
+        runs = [[] for _ in counts]
+        for _ in range(5):
+            for index in range(len(counts)):
+                runs[index].append(scan(index))
+        # Every time is recorded before any assertion, so the step below is judged even when a run fails the cap.
+        times = [min(each) for each in runs]
+        for index, count in enumerate(counts):
+            text, report, elapsed = texts[index], reports[index].getvalue(), times[index]
             with self.subTest(count=count):
-                elapsed = least_of_five(scan)
-                # Recorded before any assertion, so the step below is judged even when a run fails the cap.
-                times.append(elapsed)
                 self.assertLess(elapsed, hang_bound, f"{count:,} findings reported in {elapsed:.3f} s")
                 self.assertEqual(len(module.secret_findings(text)), count)
-                self.assertIn(f"{count} finding(s)", report.getvalue())
-                self.assertIn(f"possible committed secret fixtures/planted.md:github-pat:1 ghp_...", report.getvalue())
-                self.assertIn(
-                    f"possible committed secret fixtures/planted.md:github-pat:{count} ghp_...", report.getvalue()
-                )
-                self.assertEqual(report.getvalue().count("possible committed secret "), count)
+                self.assertIn(f"{count} finding(s)", report)
+                self.assertIn(f"possible committed secret fixtures/planted.md:github-pat:1 ghp_...", report)
+                self.assertIn(f"possible committed secret fixtures/planted.md:github-pat:{count} ghp_...", report)
+                self.assertEqual(report.count("possible committed secret "), count)
         shorter, longer = counts
         before, after = times
         with self.subTest(step=f"{shorter:,} to {longer:,}"):
             self.assertLess(
                 after / before,
                 growth_bound,
-                f"{before:.4f} s at {shorter:,} findings to {after:.4f} s at {longer:,}, {after / before:.1f}x per 4x step",
+                f"{before:.4f} s at {shorter:,} findings to {after:.4f} s at {longer:,}, {after / before:.1f}x per 8x step",
             )
 
     def test_a_key_spelled_with_a_letter_the_regex_folds_is_reported_and_masked(self) -> None:

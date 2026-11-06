@@ -271,6 +271,54 @@ class UbuntuClientInstallerTest(unittest.TestCase):
         self.assertEqual([], calls)
         self.assertEqual(f"{self.SKIP_LINE}\n", stdout)
 
+    def test_a_direct_run_resolves_the_helper_with_an_empty_path(self) -> None:
+        """The snap-unavailable bats case runs the installer with an empty PATH on purpose; the helper's path must
+        then come from a parameter expansion, since no external command can run (U297c, the round-1 P1)."""
+        result = subprocess.run(
+            [
+                "/bin/bash",
+                "-c",
+                'source "$1"; declare -F is_ci_runner > /dev/null; install_chromium',
+                "_",
+                "install/ubuntu/client/misc.sh",
+            ],
+            env=host_env(PATH=""),
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout + result.stderr)
+
+    def test_a_helper_that_cannot_be_read_or_sourced_refuses_and_names_it(self) -> None:
+        """Failure injection for the guarded source (standing order 21, U297c): the installer in a tree of the
+        repository's shape whose helper is absent, unreadable or does not parse exits 2 with the helper's path on
+        stderr, before install_chromium can decide without it."""
+        cases = {"absent": None, "unreadable": LIB.read_text(), "unparsable": "function is_ci_runner( {\n"}
+        for label, helper_text in cases.items():
+            with self.subTest(label), tempfile.TemporaryDirectory() as temp:
+                if label == "unreadable" and os.geteuid() == 0:
+                    self.skipTest("root reads a mode 000 file")
+                installer = Path(temp, "install/ubuntu/client/misc.sh")
+                helper = Path(temp, "scripts/lib/ci-runner.sh")
+                installer.parent.mkdir(parents=True)
+                shutil.copy(ROOT / "install/ubuntu/client/misc.sh", installer)
+                if helper_text is not None:
+                    helper.parent.mkdir(parents=True)
+                    helper.write_text(helper_text)
+                    if label == "unreadable":
+                        helper.chmod(0o000)
+                result = subprocess.run(
+                    ["/bin/bash", "-c", 'source "$1"; install_chromium', "_", str(installer)],
+                    env=host_env(),
+                    cwd=ROOT,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(2, result.returncode, result.stderr)
+                self.assertIn(f"{installer.parent}/../../../scripts/lib/ci-runner.sh", result.stderr)
+                self.assertEqual("", result.stdout)
+
 
 @unittest.skipUnless(CHEZMOI, "chezmoi is not installed")
 class DecryptRetryTest(unittest.TestCase):

@@ -11,10 +11,22 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
 fi
 
-# The chezmoi script includes scripts/lib/ci-runner.sh before this file; a direct run sources it.
+# The chezmoi script includes scripts/lib/ci-runner.sh before this file, so the rendered run_once already defines
+# is_ci_runner; a direct run (a test, an operator's shell) sources it from the tree. The helper's directory is a
+# parameter expansion, never a command substitution: the snap-unavailable test runs this file with an empty PATH,
+# and a producer's status would be lost in the source line (standing order 21, regime-cutover U297c). A helper that
+# cannot be read or sourced refuses here, naming its path: the snap decision below must never run without it.
 if ! declare -F is_ci_runner > /dev/null; then
+    case ${BASH_SOURCE[0]} in
+    */*) ci_runner_helper="${BASH_SOURCE[0]%/*}/../../../scripts/lib/ci-runner.sh" ;;
+    *) ci_runner_helper="../../../scripts/lib/ci-runner.sh" ;;
+    esac
+    if [ ! -r "${ci_runner_helper}" ]; then
+        echo "install/ubuntu/client/misc.sh: ci-runner helper unreadable: ${ci_runner_helper}" >&2
+        exit 2
+    fi
     # shellcheck source=scripts/lib/ci-runner.sh
-    source "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/lib/ci-runner.sh"
+    source "${ci_runner_helper}" || exit 2
 fi
 
 readonly PACKAGES=(

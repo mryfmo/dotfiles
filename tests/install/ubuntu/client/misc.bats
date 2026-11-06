@@ -104,11 +104,24 @@ function path_keeping_sudo() {
 }
 
 @test "[ubuntu-client] install_chromium is a no-op when snap is unavailable" {
+    # A PATH holding no command also proves the guarded source of ci-runner.sh runs no external command (U297c).
     run env PATH="${BATS_TEST_TMPDIR}" /bin/bash -c '
         source "'"${SCRIPT_PATH}"'"
+        declare -F is_ci_runner > /dev/null
         install_chromium
     '
     [ "${status}" -eq 0 ]
+}
+
+@test "[ubuntu-client] a copy whose ci-runner helper is missing is refused with the helper's path" {
+    # Failure injection for the guarded source (standing order 21, U297c): the copy's tree has no scripts/lib.
+    local tree="${BATS_TEST_TMPDIR}/bare"
+    mkdir -p "${tree}/install/ubuntu/client"
+    cp "${SCRIPT_PATH}" "${tree}/install/ubuntu/client/misc.sh"
+    run /bin/bash -c 'source "$1"; install_chromium' _ "${tree}/install/ubuntu/client/misc.sh"
+    [ "${status}" -eq 2 ]
+    [[ "${output}" == *"ci-runner helper unreadable: ${tree}/install/ubuntu/client/../../../scripts/lib/ci-runner.sh"* ]]
+    [ ! -e "${BATS_TEST_TMPDIR}/snap_calls" ]
 }
 
 @test "[ubuntu-client] install_misc asks apt-get for every package in PACKAGES at once" {

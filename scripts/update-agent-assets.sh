@@ -2369,7 +2369,10 @@ PY
 #   .chezmoiremove deletes the plugin's cache and marketplace clone, but installed_plugins.json and the
 #   enabledPlugins entry still name it, and manifest_prune_retired drops the record remove-agent-asset would use,
 #   so make doctor would report a plugin with no files on every run. Claude Code owns both files, so only its own
-#   commands change them, each run outside any project and at user scope, the kit's boundary. Every read comes
+#   commands change them, each run outside any project and naming `--scope user`, the kit's boundary: without it
+#   `marketplace remove` drops the declaration from every scope and with it the project and local installation
+#   records (Claude Code 2.1.316). The marketplace list carries no scope, so the removal runs with `--json`, and
+#   its `not_configured` refusal (no user-scope declaration) is a WARN, not a failure. Every read comes
 #   before the first change: the marketplace list (a host where it does not work yet gets the plugin steps' WARN
 #   and no change), then the installation records. A user-scope installation is uninstalled only when the
 #   understand-anything marketplace is registered from the kit's source; a project or local one is the project's
@@ -2386,7 +2389,7 @@ PY
 function retire_understand_anything() {
     local plugin_id="understand-anything@understand-anything" marketplace="understand-anything"
     local source="Egonex-AI/Understand-Anything" listing state reason installs count index scope project enabled
-    local status=0 users=0 found=0
+    local removal failure status=0 users=0 found=0
 
     if ! has_command claude; then
         printf 'Skipping the Understand-Anything retirement: claude command not found.\n' >&2
@@ -2449,11 +2452,15 @@ function retire_understand_anything() {
     done
     case "${state}" in
     registered)
-        if ! claude_outside_projects plugin marketplace remove "${marketplace}"; then
-            printf 'ERROR: claude plugin marketplace remove %s failed.\n' "${marketplace}" >&2
+        removal="$(claude_outside_projects plugin marketplace remove "${marketplace}" --scope user --json)" || status=$?
+        if [ "${status}" -eq 0 ]; then
+            printf 'Ran: claude plugin marketplace remove %s --scope user\n' "${marketplace}"
+        elif failure="$(jq -er '.failureCode' <<< "${removal##*$'\n'}" 2> /dev/null)" && [ "${failure}" = not_configured ]; then
+            printf 'WARN: the Claude Code marketplace %s is not declared in the user settings (a project or local declaration); left in place.\n' "${marketplace}" >&2
+        else
+            printf 'ERROR: claude plugin marketplace remove %s --scope user failed (exit %s).\n' "${marketplace}" "${status}" >&2
             return 1
         fi
-        printf 'Ran: claude plugin marketplace remove %s\n' "${marketplace}"
         found=1
         ;;
     foreign)

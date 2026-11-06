@@ -3977,8 +3977,9 @@ claude() {
 
 class RetireUnderstandAnythingTest(unittest.TestCase):
     """retire_understand_anything against a fake claude that logs its arguments and working directory: every read
-    before the first change, a host whose marketplace list does not work warned and left unchanged, user scope only,
-    the marketplace's source checked before an uninstall, and a stale enabled entry disabled (U224c, U224d)."""
+    before the first change, a host whose marketplace list does not work warned and left unchanged, user scope only on
+    every command, the marketplace's source checked before an uninstall, and a stale enabled entry disabled (U224c,
+    U224d, U224e)."""
 
     PLUGIN = "understand-anything@understand-anything"
     LIST = "plugin marketplace list --json"
@@ -3993,7 +3994,21 @@ claude() {
         cat "${MARKETS}"
         ;;
     "plugin uninstall "*) [ -z "${UNINSTALL_FAILS:-}" ] || return 1 ;;
-    "plugin marketplace remove "*) [ -z "${REMOVE_FAILS:-}" ] || return 1 ;;
+    "plugin marketplace remove understand-anything --scope user --json")
+        # The refusals Claude Code 2.1.316 prints as its --json result line.
+        if [ -n "${NOT_DECLARED:-}" ]; then
+            printf '%s\n' '{"command":"marketplace-remove","marketplace":"understand-anything","outcome":"failed","message":"Marketplace '"'"'understand-anything'"'"' is not declared in user settings. Omit --scope to remove it from all scopes.","failureCode":"not_configured"}'
+            return 1
+        fi
+        if [ -n "${REMOVE_FAILS:-}" ]; then
+            printf '%s\n' '{"command":"marketplace-remove","marketplace":"understand-anything","outcome":"failed","message":"write failed"}'
+            return 1
+        fi
+        ;;
+    "plugin marketplace remove "*)
+        # Without --scope the declaration goes from every scope and the project records with it (Claude Code 2.1.316).
+        printf '{"version": 2, "plugins": {}}\n' > "${HOME}/.claude/plugins/installed_plugins.json"
+        ;;
     "plugin disable "*) [ -z "${DISABLE_FAILS:-}" ] || return 1 ;;
     esac
 }
@@ -4086,12 +4101,12 @@ claude() {
             [
                 self.LIST,
                 f"plugin uninstall {self.PLUGIN} --scope user",
-                "plugin marketplace remove understand-anything",
+                "plugin marketplace remove understand-anything --scope user --json",
             ],
             calls,
         )
         self.assertIn(f"Ran: claude plugin uninstall {self.PLUGIN} --scope user", result.stdout)
-        self.assertIn("Ran: claude plugin marketplace remove understand-anything", result.stdout)
+        self.assertIn("Ran: claude plugin marketplace remove understand-anything --scope user", result.stdout)
         self.assertNotIn("already retired", result.stdout + result.stderr)
         # Every command runs from a scratch directory, never a project's.
         self.assertTrue(all(Path(cwd).resolve().parent == (work / "tmp").resolve() for cwd in cwds), cwds)
@@ -4103,11 +4118,13 @@ claude() {
             [
                 self.LIST,
                 f"plugin uninstall {self.PLUGIN} --scope user",
-                "plugin marketplace remove understand-anything",
+                "plugin marketplace remove understand-anything --scope user --json",
             ],
             calls,
         )
-        self.assertIn("ERROR: claude plugin marketplace remove understand-anything failed.", result.stderr)
+        self.assertIn(
+            "ERROR: claude plugin marketplace remove understand-anything --scope user failed (exit 1).", result.stderr
+        )
 
     def test_retire_understand_anything_stops_when_the_uninstall_fails(self):
         result, calls, _, _ = self.run_step([{"scope": "user"}], self.REGISTERED, UNINSTALL_FAILS="1")
@@ -4122,6 +4139,40 @@ claude() {
         self.assertIn(f"WARN: {self.PLUGIN} has a project-scope installation in {work / 'project'}", result.stderr)
         self.assertNotIn(str((work / "project").resolve()), [str(Path(cwd).resolve()) for cwd in cwds])
         self.assertNotIn("already retired", result.stderr)
+
+    def test_retire_understand_anything_removes_the_marketplace_at_user_scope_beside_a_project_installation(self):
+        # Reaches the remove branch with a project record present: an unscoped remove would drop that record.
+        result, calls, _, work = self.run_step([{"scope": "project"}], self.REGISTERED)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([self.LIST, "plugin marketplace remove understand-anything --scope user --json"], calls)
+        record = json.loads((work / "home/.claude/plugins/installed_plugins.json").read_text())
+        self.assertEqual(["project"], [entry["scope"] for entry in record["plugins"][self.PLUGIN]])
+        self.assertIn(f"WARN: {self.PLUGIN} has a project-scope installation in {work / 'project'}", result.stderr)
+
+    def test_retire_understand_anything_leaves_a_marketplace_declared_outside_the_user_settings(self):
+        result, calls, _, _ = self.run_step([], self.REGISTERED, NOT_DECLARED="1")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual([self.LIST, "plugin marketplace remove understand-anything --scope user --json"], calls)
+        self.assertIn(
+            "WARN: the Claude Code marketplace understand-anything is not declared in the user settings", result.stderr
+        )
+        self.assertNotIn("ERROR", result.stderr)
+        self.assertEqual("", result.stdout)
+
+    def test_retire_understand_anything_names_the_user_scope_on_every_plugin_command(self):
+        text = UPDATER.read_text()
+        body = text[text.index("function retire_understand_anything() {") :]
+        body = body[: body.index("\n}\n")]
+        commands = [line.strip() for line in body.splitlines() if "claude_outside_projects plugin" in line]
+        self.assertEqual(4, len(commands), commands)
+        # `marketplace list` is the one read and takes no --scope (Claude Code 2.1.316); every command that changes
+        # state names the user scope.
+        unscoped = [line for line in commands if "--scope user" not in line]
+        self.assertEqual(1, len(unscoped), unscoped)
+        self.assertIn("claude_outside_projects plugin marketplace list --json", unscoped[0])
+        # No claude plugin call bypasses claude_outside_projects (message text and comments aside).
+        code = [line.strip() for line in body.splitlines() if not line.strip().startswith(("#", "printf"))]
+        self.assertEqual([], [line for line in code if re.search(r"(^|[\s(;])claude\s+plugin", line)])
 
     def test_retire_understand_anything_leaves_a_plugin_whose_marketplace_is_another_source(self):
         # The understand-anything marketplace comes from other/..., and a same-name plugin of the other marketplace

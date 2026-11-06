@@ -228,6 +228,98 @@ class MacosInstallerTest(unittest.TestCase):
             self.assertEqual(["trust"], self.brew_calls("brew.sh", "handle_ci_untrusted_taps", env))
 
 
+class UbuntuClientInstallerTest(unittest.TestCase):
+    """install/ubuntu/client/misc.sh with a fake snap that records its argv: the chromium snap runs everywhere but on
+    a GitHub Actions runner, where the bootstrap check proves the kit's path and not the snap store (U297)."""
+
+    SKIP_LINE = "install_chromium: skipped on CI (snap store)"
+
+    def install_chromium(self, env: dict[str, str]) -> tuple[str, list[str]]:
+        """Run install_chromium under `env`; return its stdout and the fake snap's recorded calls."""
+        with tempfile.TemporaryDirectory() as temp:
+            calls = Path(temp, "snap_calls")
+            fake = Path(temp, "bin")
+            fake.mkdir()
+            (fake / "snap").write_text(f'#!/bin/sh\nprintf "snap %s\\n" "$*" >> "{calls}"\n')
+            # GNU timeout is not on every macOS PATH; the fake drops the two timeout arguments and runs the command.
+            (fake / "timeout").write_text('#!/bin/sh\nshift 2\nexec "$@"\n')
+            for tool in ("snap", "timeout"):
+                (fake / tool).chmod(0o755)
+            # sudo as a function that runs its argument as this user, so `sudo timeout … snap` resolves to the fakes.
+            script = 'sudo() { "$@"; }\nsource "$1"; install_chromium'
+            result = subprocess.run(
+                ["bash", "-c", script, "_", "install/ubuntu/client/misc.sh"],
+                env=env | {"PATH": f"{fake}:{env['PATH']}", "SNAP_RETRY_DELAY": "0"},
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            recorded = calls.read_text().splitlines() if calls.exists() else []
+        return result.stdout, recorded
+
+    def test_the_host_and_an_agent_shell_install_the_chromium_snap(self) -> None:
+        for label, env in (("host", host_env()), ("agent shell", host_env(**AGENT_SHELL))):
+            with self.subTest(label):
+                stdout, calls = self.install_chromium(env)
+                self.assertEqual(["snap install chromium"], calls)
+                self.assertNotIn("skipped on CI", stdout)
+
+    def test_a_runner_skips_the_chromium_snap_and_prints_the_skip_line(self) -> None:
+        with tempfile.TemporaryDirectory() as runner_temp:
+            stdout, calls = self.install_chromium(host_env(CI="true", GITHUB_ACTIONS="true", RUNNER_TEMP=runner_temp))
+        self.assertEqual([], calls)
+        self.assertEqual(f"{self.SKIP_LINE}\n", stdout)
+
+    def test_a_direct_run_resolves_the_helper_with_an_empty_path(self) -> None:
+        """The snap-unavailable bats case runs the installer with an empty PATH on purpose; the helper's path must
+        then come from a parameter expansion, since no external command can run (U297c, the round-1 P1)."""
+        result = subprocess.run(
+            [
+                "/bin/bash",
+                "-c",
+                'source "$1"; declare -F is_ci_runner > /dev/null; install_chromium',
+                "_",
+                "install/ubuntu/client/misc.sh",
+            ],
+            env=host_env(PATH=""),
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout + result.stderr)
+
+    def test_a_helper_that_cannot_be_read_or_sourced_refuses_and_names_it(self) -> None:
+        """Failure injection for the guarded source (standing order 21, U297c): the installer in a tree of the
+        repository's shape whose helper is absent, unreadable or does not parse exits 2 with the helper's path on
+        stderr, before install_chromium can decide without it."""
+        cases = {"absent": None, "unreadable": LIB.read_text(), "unparsable": "function is_ci_runner( {\n"}
+        for label, helper_text in cases.items():
+            with self.subTest(label), tempfile.TemporaryDirectory() as temp:
+                if label == "unreadable" and os.geteuid() == 0:
+                    self.skipTest("root reads a mode 000 file")
+                installer = Path(temp, "install/ubuntu/client/misc.sh")
+                helper = Path(temp, "scripts/lib/ci-runner.sh")
+                installer.parent.mkdir(parents=True)
+                shutil.copy(ROOT / "install/ubuntu/client/misc.sh", installer)
+                if helper_text is not None:
+                    helper.parent.mkdir(parents=True)
+                    helper.write_text(helper_text)
+                    if label == "unreadable":
+                        helper.chmod(0o000)
+                result = subprocess.run(
+                    ["/bin/bash", "-c", 'source "$1"; install_chromium', "_", str(installer)],
+                    env=host_env(),
+                    cwd=ROOT,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(2, result.returncode, result.stderr)
+                self.assertIn(f"{installer.parent}/../../../scripts/lib/ci-runner.sh", result.stderr)
+                self.assertEqual("", result.stdout)
+
+
 @unittest.skipUnless(CHEZMOI, "chezmoi is not installed")
 class DecryptRetryTest(unittest.TestCase):
     """An apply without a terminal cannot ask for the age passphrase; the next apply must ask again."""

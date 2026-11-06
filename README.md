@@ -208,7 +208,14 @@ symbolic link, is refused with its path before anything is read. Every pending
 name must be one `chezmoi managed` listed under the roots, or the run refuses
 naming it. A kit target whose content is not what chezmoi last wrote (`chezmoi
 status` first column `M`, two-sided drift) is refused with its path and nothing
-is applied, so a local edit is never dropped. `make deploy-kit DRY=1` prints
+is applied, so a local edit is never dropped. The roots are read again after
+the status read, and a root that changed between the reads, or whose own status
+row shows two-sided drift, refuses naming it. `chezmoi apply` runs with
+`--recursive=false`, so a pending directory is applied as its own entry and no
+child the managed listing did not name is installed. A target the source
+retired (`chezmoi status` second column `D`) is verified by its absence after
+the apply; every other applied name by one `chezmoi verify` over the names
+`chezmoi managed` still lists. `make deploy-kit DRY=1` prints
 the pending targets and the refusals without applying. The pinned assets the
 kit installs (CompactionDB, the DSH harness, the security-audit skill, the
 pstack skills) are refreshed by `scripts/update-agent-assets.sh`, the separate

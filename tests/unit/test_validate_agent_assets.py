@@ -145,64 +145,73 @@ def deny_write_for(os_name: str, roots: list[str]) -> list[str]:
 
 
 class LinearGrowth(NamedTuple):
-    """The least-of-N times of a scan under test and of the reference scan at the two sizes of a judged step."""
+    """The CPU time of a scan under test and of the reference scan at the two sizes of a judged step, each the least
+    of REPEATS interleaved runs, and the loop count the reference was sized to.
+
+    The measurement rule, as data. CLOCK is this process's CPU time (`time.process_time_ns`), never the wall clock:
+    a CI runner runs six unittest shards at once, so the process is descheduled for slices of tens of milliseconds
+    at any point; the wall clock sees every slice, the CPU clock none of them. REPEATS runs of each (workload, size)
+    are interleaved (scan small, reference small, scan large, reference large, five times) and the least is kept, so
+    a run hit by a cache miss, a frequency step or a slower core is discarded rather than averaged in. The reference
+    (`re.findall` of one character at a time over the same text, linear by construction) is repeated ROUNDS times,
+    chosen by a short calibration so that its least time at the small size is within a factor of 2 of the scan's,
+    so both workloads sit at the same time scale and whatever the clock still leaks hits them alike."""
 
     scan_before: float
     scan_after: float
     reference_before: float
     reference_after: float
+    rounds: int
+
+    clock = time.process_time_ns
+    repeats = 5
 
     @property
     def judged(self) -> float:
         """The scan's growth over the step in units of the reference's growth over the same step: about 1 for a
-        linear scan and about the size factor for a quadratic one, whatever the runner's speed or load, as long as
-        the load falls on the scan and the reference alike."""
+        linear scan and about the size factor for a quadratic one, whatever the runner's speed or load."""
         return (self.scan_after / self.scan_before) / (self.reference_after / self.reference_before)
 
     def describe(self, shorter: int, longer: int, unit: str) -> str:
         return (
             f"scan {self.scan_before:.4f} s at {shorter:,} {unit} to {self.scan_after:.4f} s at {longer:,} "
-            f"({self.scan_after / self.scan_before:.1f}x); reference {self.reference_before:.4f} s to "
-            f"{self.reference_after:.4f} s ({self.reference_after / self.reference_before:.1f}x); "
-            f"{self.judged:.2f}x the reference's growth"
+            f"({self.scan_after / self.scan_before:.1f}x); reference ({self.rounds} rounds, "
+            f"{self.reference_before / self.scan_before:.2f}x the scan at {shorter:,}) {self.reference_before:.4f} s "
+            f"to {self.reference_after:.4f} s ({self.reference_after / self.reference_before:.1f}x); "
+            f"{self.judged:.2f}x the reference's growth; CPU time, least of {self.repeats} interleaved runs"
         )
 
+    @classmethod
+    def measure(cls, scan, texts: list[str]) -> LinearGrowth:
+        """Measure `scan(0)` and `scan(1)`, the scan under test at the shorter and the longer size of a step, against
+        the reference scan of TEXTS, the two inputs of those sizes, under the rule above."""
 
-def linear_growth(scan, texts: list[str], repetitions: int = 5) -> LinearGrowth:
-    """Time `scan(0)` and `scan(1)`, the scan under test at the shorter and the longer size of a step, against a
-    reference scan of TEXTS, the two inputs of those sizes, that is linear by construction (`re.findall` of one
-    character at a time). Each repetition runs the four in turn (short scan, short reference, long scan, long
-    reference) and the least time of each is kept, so a load burst on the runner falls on the scan and the reference
-    of a size alike and cancels in `LinearGrowth.judged`, where a fixed bound on `scan_after / scan_before` measured
-    the runner's load (the two macOS failures of 2026-11-06 recorded on the padded-line test).
+        def timed(call) -> int:
+            started = cls.clock()
+            call()
+            return cls.clock() - started
 
-    The reference is repeated ROUNDS times per call, calibrated once so that it runs about as long as the scan at the
-    shorter size: a run is slowed by a loaded runner in proportion to how many scheduler quanta it spans, so a 1 ms
-    reference beside an 80 ms scan would not share the scan's slowdown (measured: under 24 busy processes on 18 cores
-    the scan grew 10.2x over an 8x step while the 1 ms reference grew 7.4x; the calibrated one grew 10.4x)."""
+        def reference(index: int, rounds: int) -> None:
+            for _ in range(rounds):
+                re.findall(".", texts[index])
 
-    def timed(call) -> float:
-        started = time.perf_counter()
-        call()
-        return time.perf_counter() - started
-
-    def reference(index: int, rounds: int) -> None:
-        for _ in range(rounds):
-            re.findall(".", texts[index])
-
-    rounds = max(1, round(timed(lambda: scan(0)) / timed(lambda: reference(0, 1))))
-    calls = (
-        lambda: scan(0),
-        lambda: reference(0, rounds),
-        lambda: scan(1),
-        lambda: reference(1, rounds),
-    )
-    times: list[list[float]] = [[] for _ in calls]
-    for _ in range(repetitions):
-        for index, call in enumerate(calls):
-            times[index].append(timed(call))
-    scan_before, reference_before, scan_after, reference_after = (min(runs) for runs in times)
-    return LinearGrowth(scan_before, scan_after, reference_before, reference_after)
+        # The calibration is itself a least-of-three of CPU time: U234b sized the reference from one wall-clock sample
+        # of each, and a descheduled sample sized it 18x and 28x the scan on the two failing runs.
+        scan_small = min(timed(lambda: scan(0)) for _ in range(3))
+        one_round = max(1, min(timed(lambda: reference(0, 1)) for _ in range(3)))
+        rounds = max(1, round(scan_small / one_round))
+        calls = (
+            lambda: scan(0),
+            lambda: reference(0, rounds),
+            lambda: scan(1),
+            lambda: reference(1, rounds),
+        )
+        times: list[list[int]] = [[] for _ in calls]
+        for _ in range(cls.repeats):
+            for index, call in enumerate(calls):
+                times[index].append(timed(call))
+        scan_before, reference_before, scan_after, reference_after = (min(runs) / 1e9 for runs in times)
+        return cls(scan_before, scan_after, reference_before, reference_after, rounds)
 
 
 class ValidateAgentAssetsTest(unittest.TestCase):
@@ -2839,39 +2848,43 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         origin/main, and a small padded file could stall validation. The capture is one greedy class to the LF and
         the trailing whitespace is trimmed in code, so the scan is linear in the line.
 
-        The rule: the line is scanned and masked at 2,000, 8,000 and 32,000 padding characters in this process (the
-        least of three runs each), the 8,000-to-32,000 step may grow the time by less than 8x, and one loose absolute
-        cap of 20 s on any single run still fails a hang. The cap was 2 s until U165, when the 2 s cap of the report
-        test below failed a linear scan on a healthy runner (run 41759432402, 32,000 findings in 2.318 s), so it is a
-        hang detector only. Round 8 bounded every run at 0.5 s, which measured the
-        runner's speed, not the scanner's complexity: CI on 1bd17d87 (run 40826819351, the ubuntu-26.04 client row)
-        took 0.648 and 0.676 s for 32,000 low-entropy characters, a linear scan on a slow shared runner. Round 9 also
-        bounded the 2,000-to-8,000 step, where the 2 to 3 ms fixed cost of a run dominates the 2,000 run: CI on
-        17d2d99b (run 40830602891, the macos-15 and ubuntu-26.04 client rows) measured 8.1x there (0.0022 to 0.0179 s,
-        0.0032 to 0.0258 s) on the linear scan, so only the step whose runs are tens of milliseconds is judged. The
-        value behind the padding is still reported, with the whole rest of the line as the secret.
+        The rule (U234c): the line is scanned and masked at 8,000 and 64,000 padding characters in this process and
+        LinearGrowth.measure times the scan and a reference that is linear by construction (`re.findall` of one
+        character at a time over the same two texts, repeated a calibrated number of rounds so it runs about as long
+        as the scan at 8,000) in CPU time of this process (`time.process_time_ns`), interleaved, the least of five runs
+        of each. The judged quantity is the scan's growth over the 8x step in units of the reference's growth: about 1
+        for a linear scan and about 8 for a quadratic one, and the bound is 3. One loose cap of 20 s of CPU time on a
+        judged run still fails a hang. The 2,000 size keeps its correctness assertions and is not timed (its runs were
+        fixed cost since round 9), and the value behind the padding is still reported, with the whole rest of the
+        line as the secret.
 
-        U234: a 4x step still failed healthy linear code on shared runners, whose load burst on the larger size alone
-        bridged linear growth to the bound: the report test below at 8.0048x under its former 8x bound (run
-        41611489155, PR 634, 2026-11-03) and at 8.9x the next day (run 41761193225), and this test at 13.4x under the
-        bound of 12 on the macOS leg after 920 s of a loaded shard (run 42163122761, PR 675, 2026-11-06), each a CI
-        cycle and an empty commit. So the judged step is 8,000 to 64,000, where a linear scan grows 8x and a quadratic
-        one 64x, the bound is 24 (three times linear, under half of quadratic), and the five repetitions run every size
-        once in turn, so a load burst falls on both sizes of the step alike rather than on the larger size's runs.
-
-        U234b: the bound 24 failed healthy code twice more on the macOS leg the morning it landed (PR 686 at 09:2xZ
-        and PR 680 at 09:5xZ, 2026-11-06, this test over 24 at the 8x step, every other leg green, each an empty
-        commit and a CI cycle). Every bound since round 8 shared one premise, that a fixed ratio of two wall times
-        measures the scanner's complexity on a shared runner; the macOS leg keeps refuting it, a loaded runner slowing
-        a run in proportion to how many scheduler quanta it spans, so the longer runs grow more than the size factor
-        however the repetitions are ordered. The premise is removed: linear_growth times a reference scan that is
-        linear by construction (`re.findall` of one character at a time over the same texts, repeated so it runs as
-        long as the scan at 8,000) in the same process, interleaved with the scan, and the judged quantity is the
-        scan's growth in units of the reference's, about 1 for a linear scan and about 8 for a quadratic one at this
-        step, whatever the runner's load as long as it hits the pair alike. The bound is 3. Measured on this host:
-        0.96 to 1.01 idle, 0.73 to 1.32 under 24 busy processes on 18 cores (the scan alone grew 7.8x to 10.8x there).
-        The 2,000 size keeps its correctness assertions and is no longer timed: its runs were fixed cost since round 9.
-        The 20 s cap stays on the two judged sizes as the hang detector."""
+        The lineage of this rule is the macOS test leg refuting every wall-clock form on healthy code. Round 8 capped
+        every run at 0.5 s and CI on 1bd17d87 (run 40826819351) took 0.648 and 0.676 s for 32,000 low-entropy
+        characters; round 9 bounded the 2,000-to-8,000 step and CI on 17d2d99b (run 40830602891) measured 8.1x there,
+        the 2 to 3 ms fixed cost of a run dominating the 2,000 run; U165 raised the 2 s cap to 20 s after run
+        41759432402 reported 32,000 findings in 2.318 s. U234 (PR 676) judged the 8,000-to-64,000 step against a fixed
+        bound after the 4x step failed at 8.0048x (run 41611489155, PR 634), 8.9x (run 41761193225) and 13.4x under 12
+        after 920 s of a loaded shard (run 42163122761, PR 675); its bound of 24 failed twice the morning it landed
+        (PR 686 at 09:2xZ, PR 680 at 09:5xZ, 2026-11-06). U234b (PR 695) judged against the reference measured
+        alongside, sized from one wall-clock sample each of the scan and of one reference round, and failed the same
+        day on PR 696 (run 42215027918: scan 0.0450 s at 8,000 to 0.8383 s at 64,000, 18.6x; reference 0.8153 s to
+        4.7060 s, 5.8x; judged 3.23) and PR 697 (run 42215458536: scan 0.0406 s to 0.9746 s, 24.0x; reference
+        1.1446 s to 6.7686 s, 5.9x; judged 4.06). Every form shared one premise: that the wall-clock time of a run
+        per size, even the least of five, is comparable between a 45 ms workload and an 815 ms one on a runner that
+        runs six unittest shards at once. The numbers say why it is not. The reference ran 18x and 28x longer than
+        the scan at 8,000 because its one calibration sample of the scan was a descheduled one, so the two workloads
+        sat at different time scales; and the least of five wall times favours the shorter workload, since a run of
+        10 ms of CPU can finish inside the slices the scheduler gives it while a run of 80 ms spans many slices and
+        sees the runner's average share, so the scan's own wall growth was 18.6x and 24.0x for an 8x step while the
+        two long reference runs grew 5.8x and 5.9x. The scan is linear under CPU time on this host on Python 3.13
+        and 3.15 (7.9x to 8.2x per 8x step idle, 7.2x to 9.5x under 36 busy processes on 18 cores, where the larger
+        text falls out of cache and the process lands on a slower core, which the reference shares: judged 0.98 to
+        1.06 over 20 idle runs, 0.81 to 1.24 over 10 runs under that load, 0.95 to 1.08 over 10 runs beside two
+        parallel unittest shards), so the test was measuring the scheduler. CPU time sees none of the slices the
+        process is descheduled for, the least of five discards the runs hit by a cache or frequency effect, and the
+        calibration from least-of-three CPU times keeps the reference within a factor of 2 of the scan (the chosen
+        rounds and the ratio are in the failure message). The residual is CPU-frequency scaling between repeats,
+        bounded by the least of five."""
         module = self.module
         mask = module.SECRET_MASK
         lengths = (2_000, 8_000, 64_000)
@@ -2914,7 +2927,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                         module.secret_findings(texts[judged[index]])
                         module.mask_secret_matches(texts[judged[index]])
 
-                growth = linear_growth(scan, [texts[index] for index in judged])
+                growth = LinearGrowth.measure(scan, [texts[index] for index in judged])
                 shorter, longer = judged_step
                 for length, elapsed in zip(judged_step, (growth.scan_before, growth.scan_after)):
                     with self.subTest(length=length, padding=padding_kind, kind=kind):
@@ -2989,35 +3002,28 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         planted provider tokens took 1.85, 7.23 and 28.71 s (0.96, 1.92 and 3.84 MB), and PR-controlled text could
         stall validation. The line starts are indexed once per file and each finding bisects the index.
 
-        The rule, in the shape of the padded-line test: a file of 8,000 and then 32,000 planted provider tokens, one
-        per line, is scanned by the tree scan in this process (secret_findings, the line placement and the allowlist
-        of every finding, the least of five runs each); the 8,000-to-32,000 step may grow the time by less than 12x
-        and one loose cap of 20 s on any run still fails a hang. Linear is about 4x; the quadratic count grew 14.7x
-        per step on cd56bd93 on this host (0.513 to 7.524 s, against 0.029 to 0.120 s on this head), so the bound 12,
-        three times linear as the padded-line test's, still catches it. Round 10's least of three, 8x and 2 s
-        measured the runner, not the scan, as that test's rounds 8 and 9 had: on 2026-11-04, with the code unchanged,
-        the linear scan failed run 41759432402 (test (macos-15, client): 32,000 findings reported in 2.318 s, the
-        cap) and run 41761193225 (test (ubuntu-26.04, client): 0.1051 s at 8,000 findings to 0.9372 s at 32,000,
-        8.9x per 4x step, the growth bound); run 41762642788 (test (ubuntu-24.04, server)) is the third run of that
-        day's record and passed both tests. The cap is a hang detector, not a speed measure: the quadratic scan took
-        7.5 s at 32,000 findings and 28.7 s at 128,000. Every finding is reported on its own line, the first on
-        line 1 and the last on line N.
+        The rule (U234c), in the shape of the padded-line test: a file of 8,000 and then 64,000 planted provider
+        tokens, one per line, is scanned by the tree scan in this process (secret_findings, the line placement and the
+        allowlist of every finding) and LinearGrowth.measure times that scan and the reference that is linear by
+        construction (`re.findall` of one character at a time over the two texts, repeated so it runs about as long as
+        the scan at 8,000 findings) in CPU time of this process, interleaved, the least of five runs of each; the
+        judged quantity is the scan's growth over the 8x step in units of the reference's, about 1 for a linear report
+        and about 8 for the round-10 quadratic count (14.7x per 4x step on cd56bd93 on this host, 0.513 to 7.524 s),
+        and the bound is 3. One loose cap of 20 s of CPU time on a judged run still fails a hang (the quadratic scan
+        took 7.5 s at 32,000 findings and 28.7 s at 128,000). The fixture is written inside the timed call (the write
+        is linear in the text and the file must hold the count under scan when the tree scan reads it). Every finding
+        is reported on its own line, the first on line 1 and the last on line N.
 
-        U234: the 4x step failed linear code on loaded runners twice more after round 10 (8.0048x under the former 8x
-        bound, run 41611489155, PR 634, 2026-11-03; and the padded-line test above at 13.4x under 12, run 42163122761,
-        PR 675, 2026-11-06), a load burst on the larger count alone being enough to reach a bound three times linear.
-        So the step is 8,000 to 64,000 findings, where linear grows 8x and the round-10 quadratic count 64x, the bound
-        is 24 (three times linear, under half of quadratic), and the five repetitions scan both counts in turn (the
-        fixture rewritten before each timed scan), so a burst falls on both counts alike.
-
-        U234b: the fixed bound failed the padded-line test above twice more on the macOS leg on 2026-11-06 (PR 686 at
-        09:2xZ, PR 680 at 09:5xZ), so both tests drop the premise that a fixed ratio of wall times measures the
-        scanner on a shared runner. linear_growth times a reference scan that is linear by construction over the two
-        texts (`re.findall` of one character at a time, repeated so it runs as long as the scan at 8,000 findings) in
-        the same process, interleaved with the tree scan, and the judged quantity is the scan's growth in units of
-        the reference's: about 1 for a linear report and about 8 for the round-10 quadratic count at this step, so
-        the bound is 3. The fixture is written inside the timed call (the write is linear in the text and the file
-        must hold the count under scan when the tree scan reads it). The 20 s cap stays as the hang detector."""
+        The lineage is the padded-line test's: this test's own wall-clock forms failed healthy code at 2.318 s against
+        the 2 s cap (run 41759432402, macos-15), at 8.0048x under an 8x bound for a 4x step (run 41611489155, PR 634)
+        and at 8.9x (run 41761193225, ubuntu-26.04), and the padded-line test's fixed bounds of 12 and 24 and U234b's
+        wall-clock reference ratio (PR 696 judged 3.23, PR 697 judged 4.06 against 3, 2026-11-06) failed after them.
+        The premise every form shared, that the wall-clock time of one run per size is comparable between workloads
+        of different lengths on a runner that runs six shards at once, is written down in the padded-line test and
+        abandoned there for both tests: CPU time sees none of the slices the process is descheduled for, the least of
+        five discards the runs a cache or frequency effect hit, and the reference is sized to the scan's own magnitude
+        from least-of-three CPU times. Measured on this host: judged 0.96 to 1.00 over 20 idle runs, 0.95 to 1.09 over
+        10 runs under 36 busy processes on 18 cores, 0.95 to 1.00 over 10 runs beside two parallel unittest shards."""
         module = self.module
         planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
         counts = (8_000, 64_000)
@@ -3035,7 +3041,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             with contextlib.redirect_stderr(report), self.assertRaises(SystemExit):
                 module.validate_no_obvious_secrets()
 
-        growth = linear_growth(scan, texts)
+        growth = LinearGrowth.measure(scan, texts)
         times = (growth.scan_before, growth.scan_after)
         for index, count in enumerate(counts):
             text, report, elapsed = texts[index], reports[index].getvalue(), times[index]

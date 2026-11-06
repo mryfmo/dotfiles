@@ -244,6 +244,7 @@ LEVERS = (
     "brief-check.py",
     "bus-history.sh",
     "checkout-guard.sh",
+    "dsh-srt",
     "git-isolated.sh",
     "hcom-dispatch",
     "hcom-seat",

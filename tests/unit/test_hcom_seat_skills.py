@@ -225,7 +225,8 @@ class HcomSeatSkillsTest(unittest.TestCase):
     def test_step_four_names_the_sweep_as_a_worker_task_whose_findings_are_advisory_rows(self):
         verify = step(ORCHESTRATION.read_text(), "The loop", 4)
         self.assertIn(SWEEP_TASK, verify)
-        self.assertIn("A unit of the trust-boundary class (its brief carries a `TRUST` section)", verify)
+        self.assertIn("Every unit and every program milestone also gets one security sweep", verify)
+        self.assertNotIn("trust-boundary class", verify)
         # the sweep is one sentence of step 4, after the audit route it never replaces
         self.assertLess(verify.index(AUDIT_ROUTE), verify.index(SWEEP_TASK))
         self.assertEqual(verify.count("security-audit-skill c1c8a8c1"), 1)

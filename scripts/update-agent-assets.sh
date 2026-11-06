@@ -2865,20 +2865,20 @@ function prune_retired_manifest_steps() {
 # @description Install and refresh managed agent plugin assets, or run one step alone when its name is the only
 #   argument (make doctor's checks, the coordinator's deploy of one pin). The single-step run ends with the full
 #   run's exit rule, fail_on_pin_failures, so its exit 0 means the step did what it says.
-# @arg $1 string Optional single step: update_omp, update_hcom, update_pi_claude_bridge, update_security_audit_skill, update_deepseek_harness, update_compactiondb, prune_retired_manifest_steps, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies, retire_marketplace_dev_workflows or retire_agmsg_shim.
+# @arg $1 string Optional single step: update_omp, update_hcom, update_pi_claude_bridge, update_security_audit_skill, update_deepseek_harness, update_compactiondb, prune_retired_manifest_steps, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies, retire_marketplace_dev_workflows, retire_understand_anything or retire_agmsg_shim.
 # @exitcode 2 The arguments name no single step; nothing ran.
 #
 function main() {
     if [ "$#" -gt 0 ]; then
         case "$#:$1" in
-        1:update_omp | 1:update_hcom | 1:update_pi_claude_bridge | 1:update_security_audit_skill | 1:update_deepseek_harness | 1:update_compactiondb | 1:prune_retired_manifest_steps | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_agmsg_shim)
+        1:update_omp | 1:update_hcom | 1:update_pi_claude_bridge | 1:update_security_audit_skill | 1:update_deepseek_harness | 1:update_compactiondb | 1:prune_retired_manifest_steps | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_understand_anything | 1:retire_agmsg_shim)
             export PATH="${HOME}/.local/share/mise/shims:${PATH}"
             "$1"
             fail_on_pin_failures
             return
             ;;
         esac
-        printf 'Usage: scripts/update-agent-assets.sh [update_omp | update_hcom | update_pi_claude_bridge | update_security_audit_skill | update_deepseek_harness | update_compactiondb | prune_retired_manifest_steps | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_agmsg_shim]\n' >&2
+        printf 'Usage: scripts/update-agent-assets.sh [update_omp | update_hcom | update_pi_claude_bridge | update_security_audit_skill | update_deepseek_harness | update_compactiondb | prune_retired_manifest_steps | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_understand_anything | retire_agmsg_shim]\n' >&2
         exit 2
     fi
 

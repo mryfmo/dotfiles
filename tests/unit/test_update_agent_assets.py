@@ -4782,20 +4782,19 @@ class SingleStepModeTest(unittest.TestCase):
     resolves outside the asset root, is refused before rsync runs; a misuse prints the usage naming every step and runs
     nothing. The updater runs as a program here, the way make doctor and the coordinator call it."""
 
-    STEPS = (
+    # The whitelist is read from main's dispatch line (whitelist()): one member's name is a retired term the lint
+    # scripts/lint-retired-terms.py forbids in this file, so the tests pin the list's size and the members they
+    # can name, and compare the usage and the function table against the line itself.
+    WHITELIST_SIZE = 13
+    NAMED_STEPS = (
         "update_omp",
-        "update_hcom",
-        "update_pi_claude_bridge",
-        "update_security_audit_skill",
         "update_deepseek_harness",
         "update_compactiondb",
         "prune_retired_manifest_steps",
-        "check_pi_claude_bridge",
         "check_pstack",
-        "retire_shared_pstack_copies",
-        "retire_marketplace_dev_workflows",
-        "retire_agmsg_shim",
+        "retire_understand_anything",
     )
+    PLUGIN = "understand-anything@understand-anything"
     # The real rsync by its absolute path: main prepends the mise shims to PATH, so a stub that strips one PATH entry
     # would call itself again.
     REAL_RSYNC = f'exec "{shutil.which("rsync")}" "$@"'
@@ -4839,6 +4838,16 @@ class SingleStepModeTest(unittest.TestCase):
 
     def manifest(self, home: Path) -> dict:
         return json.loads((home / ".agents/.installed-manifest.json").read_text())
+
+    def whitelist(self) -> list[str]:
+        """The step names of main's one single-step dispatch line, in its order."""
+        lines = UPDATER.read_text().splitlines()
+        dispatch = [index for index, line in enumerate(lines) if line.strip() == 'case "$#:$1" in']
+        self.assertEqual(1, len(dispatch), "one single-step dispatch in main")
+        steps = re.findall(r"1:([a-z_]+)", lines[dispatch[0] + 1])
+        self.assertEqual(self.WHITELIST_SIZE, len(steps), steps)
+        self.assertLessEqual(set(self.NAMED_STEPS), set(steps), steps)
+        return steps
 
     def test_update_compactiondb_alone_syncs_records_and_exits_zero(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -4973,10 +4982,10 @@ class SingleStepModeTest(unittest.TestCase):
                 "commands": [],
                 "source_version": "1",
             }
-            manifest_path.write_text(json.dumps({"version": 1, "steps": {"update_agmsg": record}}))
+            manifest_path.write_text(json.dumps({"version": 1, "steps": {"update_fixture_step": record}}))
             result = self.run_updater(["prune_retired_manifest_steps"], home, source, bin_dir)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-            self.assertEqual("Pruned retired asset manifest step update_agmsg.\n", result.stdout)
+            self.assertEqual("Pruned retired asset manifest step update_fixture_step.\n", result.stdout)
             self.assertEqual({}, self.manifest(home)["steps"])
             self.assertEqual([], self.calls(home), "no rsync")
 
@@ -5137,6 +5146,52 @@ class SingleStepModeTest(unittest.TestCase):
                         self.assertIn(f"ERROR: {message}; refusing to write {destination}.", result.stderr)
             self.assertEqual([".agents"], [path.name for path in home.iterdir()], "nothing written")
 
+    def test_retire_understand_anything_alone_runs_the_step_and_fails_when_its_claude_command_fails(self):
+        # tests/ng-u288.md g13: the plugin stayed installed and enabled on the laptop because its retirement ran
+        # only under the full main. The step runs alone with a fake claude in bin/ that logs its arguments and whose
+        # marketplace list registers the kit's source; a failed uninstall ends the run with the step's exit (set -e),
+        # so an exit 0 means the plugin was uninstalled and its marketplace removed.
+        list_call = "claude plugin marketplace list --json"
+        uninstall = f"plugin uninstall {self.PLUGIN} --scope user"
+        remove = "plugin marketplace remove understand-anything --scope user --json"
+        for uninstall_exit in (0, 1):
+            with self.subTest(uninstall_exit=uninstall_exit), tempfile.TemporaryDirectory() as directory:
+                home, source, bin_dir = self.fixture(directory)
+                (home / ".claude/plugins").mkdir(parents=True)
+                install = {
+                    "scope": "user",
+                    "version": "2.9.7",
+                    "installPath": f"{home}/.claude/plugins/cache/understand-anything/understand-anything/2.9.7",
+                }
+                (home / ".claude/plugins/installed_plugins.json").write_text(
+                    json.dumps({"version": 2, "plugins": {self.PLUGIN: [install]}})
+                )
+                (home / "markets.json").write_text(json.dumps(RetireUnderstandAnythingTest.REGISTERED))
+                (bin_dir / "claude").write_text(
+                    "#!/bin/bash\n"
+                    'printf "claude %s\\n" "$*" >> "$CALLS"\n'
+                    'case "$*" in\n'
+                    f'"plugin marketplace list --json") cat "{home}/markets.json" ;;\n'
+                    f'"plugin uninstall "*) exit {uninstall_exit} ;;\n'
+                    "esac\n"
+                )
+                (bin_dir / "claude").chmod(0o755)
+                result = self.run_updater(["retire_understand_anything"], home, source, bin_dir)
+                if uninstall_exit == 0:
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual([list_call, f"claude {uninstall}", f"claude {remove}"], self.calls(home))
+                    self.assertEqual(
+                        f"Ran: claude {uninstall}\nRan: claude plugin marketplace remove understand-anything --scope user\n",
+                        result.stdout,
+                    )
+                    self.assertNotIn("ERROR", result.stderr)
+                else:
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual([list_call, f"claude {uninstall}"], self.calls(home), "no marketplace remove")
+                    self.assertIn(f"ERROR: claude plugin uninstall {self.PLUGIN} --scope user failed.", result.stderr)
+                    self.assertEqual("", result.stdout)
+                self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "the step records nothing")
+
     def test_a_misuse_prints_the_usage_naming_every_step_and_runs_nothing(self):
         for args in (["nope"], ["update_compactiondb", "check_pstack"], [""]):
             with self.subTest(args=args), tempfile.TemporaryDirectory() as directory:
@@ -5146,18 +5201,15 @@ class SingleStepModeTest(unittest.TestCase):
                 self.assertEqual("", result.stdout)
                 self.assertRegex(result.stderr, r"^Usage: scripts/update-agent-assets\.sh \[.*\]\n$")
                 listed = result.stderr.strip().removeprefix("Usage: scripts/update-agent-assets.sh [").removesuffix("]")
-                self.assertEqual(list(self.STEPS), listed.split(" | "))
+                self.assertEqual(self.whitelist(), listed.split(" | "))
                 self.assertEqual([], self.calls(home), "no function ran")
                 self.assertEqual([], list((home / ".agents").iterdir()), "nothing written")
 
     def test_the_dispatch_names_the_same_steps_as_the_usage_and_each_is_a_function(self):
-        lines = UPDATER.read_text().splitlines()
-        dispatch = [index for index, line in enumerate(lines) if line.strip() == 'case "$#:$1" in']
-        self.assertEqual(1, len(dispatch), "one single-step dispatch in main")
-        self.assertEqual(list(self.STEPS), re.findall(r"1:([a-z_]+)", lines[dispatch[0] + 1]))
+        steps = self.whitelist()
         with tempfile.TemporaryDirectory() as directory:
             result = subprocess.run(
-                ["bash", "-c", 'source "$1"; shift; declare -F "$@"', "bash", str(UPDATER), *self.STEPS],
+                ["bash", "-c", 'source "$1"; shift; declare -F "$@"', "bash", str(UPDATER), *steps],
                 env=os.environ | scratch_env(Path(directory)),
                 capture_output=True,
                 text=True,
@@ -5165,7 +5217,7 @@ class SingleStepModeTest(unittest.TestCase):
                 check=False,
             )
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertEqual(list(self.STEPS), result.stdout.split())
+        self.assertEqual(steps, result.stdout.split())
 
 
 class DestinationGuardCallSiteTest(unittest.TestCase):

@@ -1,0 +1,45 @@
+{
+  "run_id": "dotfiles-u256-run-5",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/worker-2",
+  "source_ref": {
+    "commit": "385bd1a1e169dc6f2fcef31f521036e69b6eb24d",
+    "branch": "feat/dsh-profile-login-route",
+    "base": "b49be3388ee39a2e51656b81cf57fbab9915cb19",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped: the U227b commit b49be338..385bd1a1 (9 changed paths, 425 insertions, 102 deletions, the brief's GOAL figures). The brief names origin/main d1ecd495 as the base, but the head's parent is b49be338 (U241 on main after d1ecd495), and d1ecd495..HEAD adds U241's test file (10 paths); the brief's CONTEXT line `git diff --name-only c4195463 HEAD` is the U224 sweep's text and was not used. Every other area is recorded out_of_scope in the coverage ledger.",
+  "scope_paths": [
+    "home/dot_agents/agent-config.yaml",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/profiles/thak/package.json",
+    "scripts/generate-agent-configs.py",
+    "scripts/update-agent-assets.sh",
+    "tests/unit/test_dsh_profile.py",
+    "tests/unit/test_network_bounds.py",
+    "tests/unit/test_update_agent_assets.py",
+    "tests/unit/test_validate_agent_assets.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "Source review only: the task brief forbids building, testing or executing the target's code, so no target-controlled process runs in this run and every check is method=source.",
+  "companion_files": ["ATTACK-CLASSES.md", "SUPPLY-CHAIN-AND-RELEASE.md"],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/worker-2/security-audit/run-4",
+      "source_ref": "d1fd54ba5f5772eee06693d3f44182d4ae7c1427",
+      "profile": "standard",
+      "scope": "the U244 change d1ecd495..d1fd54ba",
+      "ledger_units": 34,
+      "findings": 0,
+      "use": "all 34 units carried with the same coverage_id as out_of_scope: the 8 U244 units (prior_covered_changed_source; d1fd54ba is not an ancestor of this head and the lever here still carries the brief reading) and the 26 units run-4 already held out of scope (prior_out_of_scope); no prior record to carry"
+    }
+  ],
+  "prior_run_note": "The brief names the previous run as run-4 and calls it the U227b head; run-4 is this seat's previous run but it swept U244 (d1fd54ba), a different unit. run-5 is this run.",
+  "shared_file_owner": "parent",
+  "shared_files": ["run-metadata.json", "architecture.md", "coverage-ledger.json", "findings.json", "REPORT.md", "FINDINGS-DETAIL.md", "NEEDS-VALIDATION.md"],
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the seat's tool policy denies the Task tool (tools.approval.task: deny, probed in run-2), so no reconnaissance, hunter, post-wave critic, final-clean critic or verifier agent could be launched; the parent did reconnaissance and hunting itself, source-only. The hunt produced no candidate, so no validation was owed, but the mandatory standard-profile critics did not run and the run makes no clean-coverage claim.",
+  "agents_spent": {"reconnaissance": 0, "hunters": 0, "post_wave_critic": 0, "final_clean_critic": 0, "phase3_verifiers": 0, "phase5_verifiers": 0, "note": "every phase was performed by the parent; the ledger check owner id parent-hunt-r5w1 names the parent, not a separate agent"}
+}

@@ -1,0 +1,3 @@
+50dd240c43f6984ffc9c8b9c6aafd09fda4bb2ba
+status-porcelain:[]
+output-directory: run-6 (the brief's run-5 holds the U258 sweep of 2256b56c, finished 2026-11-06T08:21:00Z; not overwritten)

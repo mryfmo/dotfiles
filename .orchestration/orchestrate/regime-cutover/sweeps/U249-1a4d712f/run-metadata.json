@@ -1,0 +1,67 @@
+{
+  "run_id": "dotfiles-run-8",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "1a4d712f040bd811af284f1cd99a269945d7c14a",
+    "branch": "feat/brief-check-ci-gates",
+    "merged_main": "cf68daf67",
+    "round_1_head": "effff558445ded75c7d7dd6855086b4490d21133",
+    "worktree_dirty": false
+  },
+  "output_directory_note": "The brief names run-4 as the output directory; run-4 already held the U255 sweep of the U249 round-1 head effff558445ded75c7d7dd6855086b4490d21133, so this run writes to run-8, the next unused directory, and leaves run-4 untouched. The RESULT line names run-8.",
+  "profile": "standard",
+  "scope": "scoped run: the U249 change against the merged main, cf68daf67..1a4d712f040bd811af284f1cd99a269945d7c14a (6 files: scripts/orchestrator/brief-check.py, home/dot_local/bin/common/executable_brief-check.py, the manifest pin, scripts/generated-agent-outputs.json, scripts/orchestrator/README.md, tests/unit/test_brief_check.py); round 2 (effff558..1a4d712f) merges main and rewords one docstring line, moving the pin; every other top-level directory and the root files are carried out_of_scope",
+  "scope_note": "The brief names d1ecd495 as the base and `git diff --name-only c4195463 HEAD` (29 paths) as the change, and calls run-3 the U249 head; run-3 swept U240. The diff against the merged main is exactly the GOAL's 6 files, 274 insertions, 29 deletions.",
+  "scope_paths": [
+    "scripts/orchestrator/brief-check.py",
+    "home/dot_local/bin/common/executable_brief-check.py",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_brief_check.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the copy and pin were compared with git cat-file, cmp and shasum over the committed blobs.",
+  "selected_companions": ["SUPPLY-CHAIN-AND-RELEASE.md"],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-4",
+      "source_ref": "effff558445ded75c7d7dd6855086b4490d21133",
+      "findings": 0,
+      "use": "The U249 round-1 sweep: its 5 covered units are re-checked at this head with the same canonical identities (4 prior_covered_changed_source: brief-check.py, its copy and the pin changed; 1 prior_covered_same_source: the tests and README)."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-7",
+      "source_ref": "1d23154b71932e74902cf9ac95b2eeaf7b055215",
+      "findings": 0,
+      "ledger_units": 43,
+      "use": "The newest ledger, carrying every unit of run-1 to run-6: its 6 covered U227b units carry as prior_covered_changed_source (U227b is absent at this head) and its 32 other out_of_scope units as prior_out_of_scope. No finding of any verdict to carry."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T09:09:38Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the platform's delegation tool (Task) and eval kernel are denied by policy on this seat, so reconnaissance, the hunter wave and both coverage-critic passes ran in the parent; no fresh independent critic ran. No candidate survived the hunt, so no Phase 3 or Phase 5 verifier was needed and findings.json holds no record",
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 verifier per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter for the ledger checks)"
+  },
+  "critic_passes": [
+    {"pass": "post-wave", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; the merged main's U254 change is outside the U249 change and was swept in run-6"},
+    {"pass": "final-clean", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; no planned unit remains"}
+  ],
+  "candidate_count": 0,
+  "findings_count": 0,
+  "finished_at": "2026-11-06T09:11:45Z",
+  "shared_files_written": ["run-metadata.json", "architecture.md", "coverage-ledger.json", "findings.json", "REPORT.md", "FINDINGS-DETAIL.md", "NEEDS-VALIDATION.md"]
+}

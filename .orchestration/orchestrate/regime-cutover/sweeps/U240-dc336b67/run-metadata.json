@@ -1,0 +1,81 @@
+{
+  "run_id": "dotfiles-run-2",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "dc336b67ebe6456c976716288b9587555d802922",
+    "branch": "feat/dsh-omp-gateway-adapter",
+    "base": "d1ecd495",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U240 diff d1ecd495..dc336b67ebe6456c976716288b9587555d802922 (15 new files under home/dot_dsh/plugins/omp-gateway/, no existing file changed); every other top-level directory and the root files are seeded out_of_scope",
+  "scope_note": "The brief's CONTEXT names `git diff --name-only c4195463 HEAD` (one file) as the change; that command lists 16 paths at this head and is not the U240 change. The GOAL's description (the branch from origin/main d1ecd495, 15 new files) was followed.",
+  "scope_paths": [
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target, and the seat provides no empty allowlisted environment or explicit resource limits. Every check is a source check.",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md",
+    "AI-AND-LLM.md",
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "PROTOCOLS-RPC-AND-MESSAGING.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-1",
+      "source_ref": "0b475694e95f2061dffa73563c7036260dfa11d6",
+      "findings": 0,
+      "ledger_units": 19,
+      "use": "Carried as the prior ledger. run-1 swept the U226 head (branch fix/dsh-build-commit-input), not U240 as the brief's CONTEXT says; this head descends from d1ecd495, which does not contain U226, so run-1's six covered units have changed source (prior_covered_changed_source) and its 13 out_of_scope units stay out of scope (prior_out_of_scope). run-1 has no finding of any verdict to carry."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T06:31:26Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the platform's delegation tool (Task) and eval kernel are denied by policy on this seat, so reconnaissance, the hunter wave and both coverage-critic passes ran in the parent; no fresh independent critic ran. No candidate survived the hunt, so no Phase 3 or Phase 5 verifier was needed and findings.json holds no record",
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 verifier per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter for the ledger checks)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; DSH's own tool dispatch, approval and sandbox (where the adapter's tool calls land) are upstream code outside the target and are noted in REPORT.md, not seeded as units"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 0,
+  "findings_count": 0,
+  "finished_at": "2026-11-06T06:36:25Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

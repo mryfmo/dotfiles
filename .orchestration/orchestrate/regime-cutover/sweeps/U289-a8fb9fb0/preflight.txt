@@ -1,0 +1,6 @@
+head: a8fb9fb0c072c03de2e69a6707bdae6026c6cabc
+status --porcelain: '' (empty = clean)
+output directory: run-12 (the brief's run-11 already holds the U285 sweep of 114b974b and is left untouched)
+note: the head a8fb9fb0 is U276d (deploy-kit round 4, branch fix/deploy-kit-verify-and-recheck over the merged U276 29439083, PR #698), not the U251 dsh-srt change the brief's GOAL describes
+note: git diff 114b974b 29439083 over the four U276 paths is empty: the merged U276 is the head run-11 swept; round 4 is 29439083..a8fb9fb0 (3 paths, +345 -62)
+output directory created 2026-11-06T13:47:28Z

@@ -1,0 +1,84 @@
+{
+  "run_id": "dotfiles-sweep-3-run-5",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "179de4dbf984617d48e823ca2123de59dea6d9d3",
+    "branch": "test/linear-time-tests-judge-against-a-baseline",
+    "base": "d2389a05ef32fa827ccbd71619e2eff2d6b8c075",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U234b change d2389a05..179de4db, one file (tests/unit/test_validate_agent_assets.py, +115 -52: the linear_growth helper and the two linear-time tests of the committed-secret scanner); the scanner itself (scripts/) is unchanged; every other path is carried out_of_scope",
+  "scope_note": "The brief calls run-4 'the U234b head'; run-4 swept records sync 45 (2f1f2c67). It is this seat's previous run and is carried as the brief asks. The brief's CONTEXT names `git diff --name-only c4195463 HEAD` (one file); d2389a05..HEAD is the one file, which was followed.",
+  "scope_paths": [
+    "tests/unit/test_validate_agent_assets.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule): the tests were read, not run. Every check is a source check.",
+  "selected_companions": [
+    "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-4",
+      "source_ref": "2f1f2c6772ec56fb7eb7a1574411cb0d166d6e48",
+      "findings": 0,
+      "unvalidated_candidates": 1,
+      "ledger_units": 40,
+      "use": "Carried. Its five store units (records sync 45) are out of scope here, because the records sync commits are not on this branch; the unit that held the unvalidated candidate records-sync/redaction/account-identity-residue-in-published-row records that the row is absent at this head and on origin/main d2389a05, so the candidate stays open on the records/sync-43..45 branches only. Its 35 out_of_scope units carry as prior_out_of_scope; tests#unchanged-paths now excludes the one changed module, which has its own units."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T10:18:56Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (Task) and eval kernel are denied by policy on this seat, so reconnaissance, the hunter wave and both coverage-critic passes ran in the parent; no fresh independent critic ran. No candidate survived the hunt, so no Phase 3 or Phase 5 verifier was needed and findings.json holds no record",
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 verifier per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work: the one changed module has two surfaces, the timing guard and its fixtures, each with a unit"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 0,
+  "findings_count": 0,
+  "ledger_units": 42,
+  "ledger_counts": {
+    "covered": 2,
+    "out_of_scope": 40
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-06T10:22:00Z"
+}

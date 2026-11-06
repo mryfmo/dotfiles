@@ -228,6 +228,50 @@ class MacosInstallerTest(unittest.TestCase):
             self.assertEqual(["trust"], self.brew_calls("brew.sh", "handle_ci_untrusted_taps", env))
 
 
+class UbuntuClientInstallerTest(unittest.TestCase):
+    """install/ubuntu/client/misc.sh with a fake snap that records its argv: the chromium snap runs everywhere but on
+    a GitHub Actions runner, where the bootstrap check proves the kit's path and not the snap store (U297)."""
+
+    SKIP_LINE = "install_chromium: skipped on CI (snap store)"
+
+    def install_chromium(self, env: dict[str, str]) -> tuple[str, list[str]]:
+        """Run install_chromium under `env`; return its stdout and the fake snap's recorded calls."""
+        with tempfile.TemporaryDirectory() as temp:
+            calls = Path(temp, "snap_calls")
+            fake = Path(temp, "bin")
+            fake.mkdir()
+            (fake / "snap").write_text(f'#!/bin/sh\nprintf "snap %s\\n" "$*" >> "{calls}"\n')
+            # GNU timeout is not on every macOS PATH; the fake drops the two timeout arguments and runs the command.
+            (fake / "timeout").write_text('#!/bin/sh\nshift 2\nexec "$@"\n')
+            for tool in ("snap", "timeout"):
+                (fake / tool).chmod(0o755)
+            # sudo as a function that runs its argument as this user, so `sudo timeout … snap` resolves to the fakes.
+            script = 'sudo() { "$@"; }\nsource "$1"; install_chromium'
+            result = subprocess.run(
+                ["bash", "-c", script, "_", "install/ubuntu/client/misc.sh"],
+                env=env | {"PATH": f"{fake}:{env['PATH']}", "SNAP_RETRY_DELAY": "0"},
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            recorded = calls.read_text().splitlines() if calls.exists() else []
+        return result.stdout, recorded
+
+    def test_the_host_and_an_agent_shell_install_the_chromium_snap(self) -> None:
+        for label, env in (("host", host_env()), ("agent shell", host_env(**AGENT_SHELL))):
+            with self.subTest(label):
+                stdout, calls = self.install_chromium(env)
+                self.assertEqual(["snap install chromium"], calls)
+                self.assertNotIn("skipped on CI", stdout)
+
+    def test_a_runner_skips_the_chromium_snap_and_prints_the_skip_line(self) -> None:
+        with tempfile.TemporaryDirectory() as runner_temp:
+            stdout, calls = self.install_chromium(host_env(CI="true", GITHUB_ACTIONS="true", RUNNER_TEMP=runner_temp))
+        self.assertEqual([], calls)
+        self.assertEqual(f"{self.SKIP_LINE}\n", stdout)
+
+
 @unittest.skipUnless(CHEZMOI, "chezmoi is not installed")
 class DecryptRetryTest(unittest.TestCase):
     """An apply without a terminal cannot ask for the age passphrase; the next apply must ask again."""

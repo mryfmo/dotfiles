@@ -11,6 +11,12 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
 fi
 
+# The chezmoi script includes scripts/lib/ci-runner.sh before this file; a direct run sources it.
+if ! declare -F is_ci_runner > /dev/null; then
+    # shellcheck source=scripts/lib/ci-runner.sh
+    source "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/lib/ci-runner.sh"
+fi
+
 readonly PACKAGES=(
     gparted
     language-pack-ja
@@ -51,13 +57,25 @@ function install_misc() {
 #   runs under `timeout`; an attempt that outlives it is not retried, because
 #   snapd keeps running the change after its client stops, and a second
 #   install would only report that change as in progress.
+#   On a GitHub Actions runner (is_ci_runner, never the generic CI variable an
+#   agent shell exports) the snap is skipped with one printed line: the
+#   bootstrap check proves the kit's bootstrap path, not the snap store, whose
+#   automatic snapd restart on the runner image outlived SNAP_INSTALL_TIMEOUT
+#   three times on 2026-11-06 and blocked every merge (regime-cutover U297).
+#   An operator's host, an agent shell's CI=true included, still installs it.
 # @env SNAP_RETRY_DELAY Seconds between attempts; tests set 0. Default: 10, then 30.
 # @env SNAP_INSTALL_TIMEOUT Seconds one attempt may take; default 600 (a passing CI run spends
 #   under 90 s on the whole misc install, apt packages included).
+# @stdout `install_chromium: skipped on CI (snap store)` on a GitHub Actions runner; nothing otherwise.
+# @exitcode 0 Skipped on a GitHub Actions runner, or no snap on PATH, or Chromium installed.
 # @exitcode 124 An attempt outlived SNAP_INSTALL_TIMEOUT.
 # @exitcode The last `snap install` exit status after the final failed attempt.
 #
 function install_chromium() {
+    if is_ci_runner; then
+        printf 'install_chromium: skipped on CI (snap store)\n'
+        return 0
+    fi
     command -v snap > /dev/null 2>&1 || return 0
     local -a delays=("${SNAP_RETRY_DELAY:-10}" "${SNAP_RETRY_DELAY:-30}")
     local limit="${SNAP_INSTALL_TIMEOUT:-600}" attempt=1 status=0

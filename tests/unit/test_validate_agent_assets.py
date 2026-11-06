@@ -18,6 +18,7 @@ import time
 import tomllib
 import unittest
 from pathlib import Path
+from typing import NamedTuple
 from unittest import mock
 
 from tests.unit.test_generate_agent_configs import MANAGED_ALLOW, load_manifest_fixture, render_claude_template
@@ -141,6 +142,67 @@ HCOM_DENY_WRITE = {
 def deny_write_for(os_name: str, roots: list[str]) -> list[str]:
     """The sorted denyWrite list for the granted `roots` on `os_name`, from the literal table above."""
     return sorted(entry for root in roots for entry in HCOM_DENY_WRITE.get((os_name, root), []))
+
+
+class LinearGrowth(NamedTuple):
+    """The least-of-N times of a scan under test and of the reference scan at the two sizes of a judged step."""
+
+    scan_before: float
+    scan_after: float
+    reference_before: float
+    reference_after: float
+
+    @property
+    def judged(self) -> float:
+        """The scan's growth over the step in units of the reference's growth over the same step: about 1 for a
+        linear scan and about the size factor for a quadratic one, whatever the runner's speed or load, as long as
+        the load falls on the scan and the reference alike."""
+        return (self.scan_after / self.scan_before) / (self.reference_after / self.reference_before)
+
+    def describe(self, shorter: int, longer: int, unit: str) -> str:
+        return (
+            f"scan {self.scan_before:.4f} s at {shorter:,} {unit} to {self.scan_after:.4f} s at {longer:,} "
+            f"({self.scan_after / self.scan_before:.1f}x); reference {self.reference_before:.4f} s to "
+            f"{self.reference_after:.4f} s ({self.reference_after / self.reference_before:.1f}x); "
+            f"{self.judged:.2f}x the reference's growth"
+        )
+
+
+def linear_growth(scan, texts: list[str], repetitions: int = 5) -> LinearGrowth:
+    """Time `scan(0)` and `scan(1)`, the scan under test at the shorter and the longer size of a step, against a
+    reference scan of TEXTS, the two inputs of those sizes, that is linear by construction (`re.findall` of one
+    character at a time). Each repetition runs the four in turn (short scan, short reference, long scan, long
+    reference) and the least time of each is kept, so a load burst on the runner falls on the scan and the reference
+    of a size alike and cancels in `LinearGrowth.judged`, where a fixed bound on `scan_after / scan_before` measured
+    the runner's load (the two macOS failures of 2026-11-06 recorded on the padded-line test).
+
+    The reference is repeated ROUNDS times per call, calibrated once so that it runs about as long as the scan at the
+    shorter size: a run is slowed by a loaded runner in proportion to how many scheduler quanta it spans, so a 1 ms
+    reference beside an 80 ms scan would not share the scan's slowdown (measured: under 24 busy processes on 18 cores
+    the scan grew 10.2x over an 8x step while the 1 ms reference grew 7.4x; the calibrated one grew 10.4x)."""
+
+    def timed(call) -> float:
+        started = time.perf_counter()
+        call()
+        return time.perf_counter() - started
+
+    def reference(index: int, rounds: int) -> None:
+        for _ in range(rounds):
+            re.findall(".", texts[index])
+
+    rounds = max(1, round(timed(lambda: scan(0)) / timed(lambda: reference(0, 1))))
+    calls = (
+        lambda: scan(0),
+        lambda: reference(0, rounds),
+        lambda: scan(1),
+        lambda: reference(1, rounds),
+    )
+    times: list[list[float]] = [[] for _ in calls]
+    for _ in range(repetitions):
+        for index, call in enumerate(calls):
+            times[index].append(timed(call))
+    scan_before, reference_before, scan_after, reference_after = (min(runs) for runs in times)
+    return LinearGrowth(scan_before, scan_after, reference_before, reference_after)
 
 
 class ValidateAgentAssetsTest(unittest.TestCase):
@@ -2794,28 +2856,30 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         bound of 12 on the macOS leg after 920 s of a loaded shard (run 42163122761, PR 675, 2026-11-06), each a CI
         cycle and an empty commit. So the judged step is 8,000 to 64,000, where a linear scan grows 8x and a quadratic
         one 64x, the bound is 24 (three times linear, under half of quadratic), and the five repetitions run every size
-        once in turn, so a load burst falls on both sizes of the step alike rather than on the larger size's runs."""
+        once in turn, so a load burst falls on both sizes of the step alike rather than on the larger size's runs.
+
+        U234b: the bound 24 failed healthy code twice more on the macOS leg the morning it landed (PR 686 at 09:2xZ
+        and PR 680 at 09:5xZ, 2026-11-06, this test over 24 at the 8x step, every other leg green, each an empty
+        commit and a CI cycle). Every bound since round 8 shared one premise, that a fixed ratio of two wall times
+        measures the scanner's complexity on a shared runner; the macOS leg keeps refuting it, a loaded runner slowing
+        a run in proportion to how many scheduler quanta it spans, so the longer runs grow more than the size factor
+        however the repetitions are ordered. The premise is removed: linear_growth times a reference scan that is
+        linear by construction (`re.findall` of one character at a time over the same texts, repeated so it runs as
+        long as the scan at 8,000) in the same process, interleaved with the scan, and the judged quantity is the
+        scan's growth in units of the reference's, about 1 for a linear scan and about 8 for a quadratic one at this
+        step, whatever the runner's load as long as it hits the pair alike. The bound is 3. Measured on this host:
+        0.96 to 1.01 idle, 0.73 to 1.32 under 24 busy processes on 18 cores (the scan alone grew 7.8x to 10.8x there).
+        The 2,000 size keeps its correctness assertions and is no longer timed: its runs were fixed cost since round 9.
+        The 20 s cap stays on the two judged sizes as the hang detector."""
         module = self.module
         mask = module.SECRET_MASK
         lengths = (2_000, 8_000, 64_000)
-        # Judged on the 8,000-to-64,000 step: a linear scan grows about 8x (the densest-window measure visits one
-        # window per character), a quadratic one 64x (the round-7 lookahead grew 14.7x and 16.1x per 4x step). Measured
-        # on the base and on two heads of U107b (least of five, 2,000 to 128,000 characters, both padding kinds, all
-        # three forms): every 4x step 3.8x to 4.1x. On GitHub's runners the same scans ran 3x slower at 8,000 and 6x to
-        # 13x slower at 32,000 and 128,000 (a 128,000-character run took 2.5 s against 0.2 s locally), so the bound 24
-        # carries a runner three times slower on the larger size and the 20 s cap stays far above a 64,000 run.
-        growth_bound = 24
         judged_step = (8_000, 64_000)
+        # A linear scan grows about as the reference does (the densest-window measure visits one window per character),
+        # a quadratic one about 8x the reference over this 8x step (the round-7 lookahead grew 14.7x and 16.1x per 4x
+        # step, and U234's quadratic stand-in 27.1x to 56.8x per 8x step, 3.4 to 7.1 in the reference's units).
+        growth_bound = 3
         hang_bound = 20.0
-
-        def least_of_five_interleaved(scans) -> list[float]:
-            times = [[] for _ in scans]
-            for _ in range(5):
-                for index, scan in enumerate(scans):
-                    started = time.perf_counter()
-                    scan()
-                    times[index].append(time.perf_counter() - started)
-            return [min(runs) for runs in times]
 
         for padding_kind, unit in (("spaces", " "), ("low-entropy characters", "low-")):
             for kind in ("inside the quotes", "after the value", "in a JSON string"):
@@ -2826,21 +2890,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                         texts.append(f'{FIELD} = "{HIGH_ENTROPY_VALUE}"{padding}\n')
                     else:
                         texts.append(f'{FIELD} = "{padding}{HIGH_ENTROPY_VALUE}"\n')
-                if kind == "in a JSON string":
-                    # The padded line as a JSON member, masked per decoded string as the JSON masker does.
-                    documents = [{"note": text.rstrip("\n")} for text in texts]
-                    scans = [lambda document=document: module.mask_json_strings(document) for document in documents]
-                else:
-                    scans = [
-                        lambda text=text: (module.secret_findings(text), module.mask_secret_matches(text))
-                        for text in texts
-                    ]
-                # Every time is recorded before any assertion, so the step below is judged even when a run fails the cap.
-                times = least_of_five_interleaved(scans)
+                # The padded line as a JSON member, masked per decoded string as the JSON masker does.
+                documents = [{"note": text.rstrip("\n")} for text in texts]
                 for index, length in enumerate(lengths):
-                    text, elapsed = texts[index], times[index]
+                    text = texts[index]
                     with self.subTest(length=length, padding=padding_kind, kind=kind):
-                        self.assertLess(elapsed, hang_bound, f"{length:,} {padding_kind} {kind} took {elapsed:.3f} s")
                         if kind == "in a JSON string":
                             self.assertEqual(module.mask_json_strings(documents[index]), ({"note": mask}, 1))
                         else:
@@ -2850,14 +2904,25 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                             self.assertEqual(
                                 module.mask_secret_matches(text), (f"{mask}{text[len(text.rstrip()) :]}", 1)
                             )
+                judged = [lengths.index(length) for length in judged_step]
+
+                def scan(index: int) -> None:
+                    if kind == "in a JSON string":
+                        module.mask_json_strings(documents[judged[index]])
+                    else:
+                        module.secret_findings(texts[judged[index]])
+                        module.mask_secret_matches(texts[judged[index]])
+
+                growth = linear_growth(scan, [texts[index] for index in judged])
                 shorter, longer = judged_step
-                before, after = times[lengths.index(shorter)], times[lengths.index(longer)]
+                for length, elapsed in zip(judged_step, (growth.scan_before, growth.scan_after)):
+                    with self.subTest(length=length, padding=padding_kind, kind=kind):
+                        self.assertLess(elapsed, hang_bound, f"{length:,} {padding_kind} {kind} took {elapsed:.3f} s")
                 with self.subTest(step=f"{shorter:,} to {longer:,}", padding=padding_kind, kind=kind):
                     self.assertLess(
-                        after / before,
+                        growth.judged,
                         growth_bound,
-                        f"{padding_kind} {kind}: {before:.4f} s at {shorter:,} to {after:.4f} s at {longer:,}, "
-                        f"{after / before:.1f}x per 8x step",
+                        f"{padding_kind} {kind}: {growth.describe(shorter, longer, 'characters')}",
                     )
 
     def test_a_finding_is_placed_on_its_line_by_the_file_index(self) -> None:
@@ -2942,32 +3007,35 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         PR 675, 2026-11-06), a load burst on the larger count alone being enough to reach a bound three times linear.
         So the step is 8,000 to 64,000 findings, where linear grows 8x and the round-10 quadratic count 64x, the bound
         is 24 (three times linear, under half of quadratic), and the five repetitions scan both counts in turn (the
-        fixture rewritten before each timed scan), so a burst falls on both counts alike."""
+        fixture rewritten before each timed scan), so a burst falls on both counts alike.
+
+        U234b: the fixed bound failed the padded-line test above twice more on the macOS leg on 2026-11-06 (PR 686 at
+        09:2xZ, PR 680 at 09:5xZ), so both tests drop the premise that a fixed ratio of wall times measures the
+        scanner on a shared runner. linear_growth times a reference scan that is linear by construction over the two
+        texts (`re.findall` of one character at a time, repeated so it runs as long as the scan at 8,000 findings) in
+        the same process, interleaved with the tree scan, and the judged quantity is the scan's growth in units of
+        the reference's: about 1 for a linear report and about 8 for the round-10 quadratic count at this step, so
+        the bound is 3. The fixture is written inside the timed call (the write is linear in the text and the file
+        must hold the count under scan when the tree scan reads it). The 20 s cap stays as the hang detector."""
         module = self.module
         planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
         counts = (8_000, 64_000)
-        growth_bound = 24
+        growth_bound = 3
         hang_bound = 20.0
         path = self.write_text_file("fixtures/planted.md", "")
         texts = ["".join(f"line {number} holds {planted}\n" for number in range(1, count + 1)) for count in counts]
         reports = [io.StringIO() for _ in counts]
 
-        def scan(index: int) -> float:
+        def scan(index: int) -> None:
             path.write_text(texts[index])
             report = reports[index]
             report.seek(0)
             report.truncate()
-            started = time.perf_counter()
             with contextlib.redirect_stderr(report), self.assertRaises(SystemExit):
                 module.validate_no_obvious_secrets()
-            return time.perf_counter() - started
 
-        runs = [[] for _ in counts]
-        for _ in range(5):
-            for index in range(len(counts)):
-                runs[index].append(scan(index))
-        # Every time is recorded before any assertion, so the step below is judged even when a run fails the cap.
-        times = [min(each) for each in runs]
+        growth = linear_growth(scan, texts)
+        times = (growth.scan_before, growth.scan_after)
         for index, count in enumerate(counts):
             text, report, elapsed = texts[index], reports[index].getvalue(), times[index]
             with self.subTest(count=count):
@@ -2978,13 +3046,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertIn(f"possible committed secret fixtures/planted.md:github-pat:{count} ghp_...", report)
                 self.assertEqual(report.count("possible committed secret "), count)
         shorter, longer = counts
-        before, after = times
         with self.subTest(step=f"{shorter:,} to {longer:,}"):
-            self.assertLess(
-                after / before,
-                growth_bound,
-                f"{before:.4f} s at {shorter:,} findings to {after:.4f} s at {longer:,}, {after / before:.1f}x per 8x step",
-            )
+            self.assertLess(growth.judged, growth_bound, growth.describe(shorter, longer, "findings"))
 
     def test_a_key_spelled_with_a_letter_the_regex_folds_is_reported_and_masked(self) -> None:
         """Round 8 verdict on 1bd17d87: the keyword filter looked for a keyword in the lower-cased text while the

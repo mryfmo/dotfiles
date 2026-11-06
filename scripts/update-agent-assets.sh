@@ -2368,23 +2368,48 @@ PY
 # @description
 #   .chezmoiremove deletes the plugin's cache and marketplace clone, but installed_plugins.json and the
 #   enabledPlugins entry still name it, and manifest_prune_retired drops the record remove-agent-asset would use,
-#   so make doctor would report a plugin with no files on every run. Claude Code owns both files, so its own
-#   commands clear them: `claude plugin uninstall` per recorded installation, then `claude plugin marketplace
-#   remove`. A marketplace of that name from another source is not ours and is only reported. main runs it after
-#   the Claude plugin convergence: the claude CLI is repaired by then, and a failure here (set -e) skips no pin check.
+#   so make doctor would report a plugin with no files on every run. Claude Code owns both files, so only its own
+#   commands change them, each run outside any project and at user scope, the kit's boundary. Every read comes
+#   before the first change: the marketplace list (a host where it does not work yet gets the plugin steps' WARN
+#   and no change), then the installation records. A user-scope installation is uninstalled only when the
+#   understand-anything marketplace is registered from the kit's source; a project or local one is the project's
+#   and is only reported. With nothing installed and no marketplace, a stale user enabledPlugins entry is disabled:
+#   `claude plugin list` omits a plugin that is not installed and `claude plugin uninstall` refuses one (Claude
+#   Code 2.1.316), so `disable --scope user` is the command that clears it. main runs it after the Claude plugin
+#   convergence: the claude CLI is repaired by then, and a failure here (set -e) skips no pin check.
 # @stdout One line per command run.
-# @stderr `already retired` when nothing was present, or the skip line on a host without claude.
-# @exitcode 1 When installed_plugins.json or the marketplace list cannot be read, or a claude command fails; no
-#   later command runs.
+# @stderr A WARN per record left in place, `already retired` when nothing was present, or the skip line.
+# @exitcode 0 When retired or already retired, and when the marketplace list cannot be read (a WARN).
+# @exitcode 1 When installed_plugins.json or settings.json cannot be read, or a claude command fails; no later
+#   command runs.
 #
 function retire_understand_anything() {
     local plugin_id="understand-anything@understand-anything" marketplace="understand-anything"
-    local source="Egonex-AI/Understand-Anything" installs count index scope project listing state ran=0
+    local source="Egonex-AI/Understand-Anything" listing state reason installs count index scope project enabled
+    local status=0 users=0 found=0
 
     if ! has_command claude; then
         printf 'Skipping the Understand-Anything retirement: claude command not found.\n' >&2
         return 0
     fi
+    listing="$(claude_outside_projects plugin marketplace list --json)" || status=$?
+    reason="exit ${status}"
+    if [ "${status}" -eq 0 ]; then
+        # The parser's error goes into the WARN, so a host without a working claude logs no ERROR line.
+        state="$(pin_record claude-marketplace "${marketplace}" "${source}" <<< "${listing}" 2>&1)" || status=$?
+        [ "${status}" -eq 0 ] || reason="${state#ERROR: }"
+    fi
+    if [ "${status}" -ne 0 ]; then
+        printf 'WARN: claude plugin %s was not retired: "claude plugin marketplace list --json" gave no marketplace list (%s), so its marketplace cannot be verified on this host, and nothing was uninstalled, removed or disabled. Run make update once "claude plugin marketplace list" works.\n' "${plugin_id}" "${reason}" >&2
+        return 0
+    fi
+    case "${state}" in
+    registered | foreign | absent) ;;
+    *)
+        printf 'ERROR: unexpected marketplace state %q for %s.\n' "${state}" "${marketplace}" >&2
+        return 1
+        ;;
+    esac
     if ! installs="$(claude_plugin_installs "${plugin_id}")"; then
         printf 'ERROR: cannot read %s; %s is not retired.\n' "${AGENT_CLAUDE_DIR}/plugins/installed_plugins.json" "${plugin_id}" >&2
         return 1
@@ -2392,37 +2417,36 @@ function retire_understand_anything() {
     count="$(jq -er 'length' <<< "${installs}")" || return 1
     for ((index = 0; index < count; index++)); do
         scope="$(jq -er ".[${index}].scope" <<< "${installs}")" || return 1
+        found=1
         case "${scope}" in
         user)
-            if ! claude_outside_projects plugin uninstall "${plugin_id}" --scope user; then
-                printf 'ERROR: claude plugin uninstall %s --scope user failed.\n' "${plugin_id}" >&2
-                return 1
-            fi
-            printf 'Ran: claude plugin uninstall %s --scope user\n' "${plugin_id}"
+            users=1
+            case "${state}" in
+            registered)
+                if ! claude_outside_projects plugin uninstall "${plugin_id}" --scope user; then
+                    printf 'ERROR: claude plugin uninstall %s --scope user failed.\n' "${plugin_id}" >&2
+                    return 1
+                fi
+                printf 'Ran: claude plugin uninstall %s --scope user\n' "${plugin_id}"
+                ;;
+            foreign)
+                printf 'WARN: the user-scope %s comes from the marketplace %s registered from another source than %s; left in place.\n' "${plugin_id}" "${marketplace}" "${source}" >&2
+                ;;
+            absent)
+                printf 'WARN: the user-scope %s names the marketplace %s, which is not registered, so its source cannot be verified; left in place.\n' "${plugin_id}" "${marketplace}" >&2
+                ;;
+            esac
             ;;
         project | local)
-            if ! project="$(jq -er ".[${index}].projectPath | strings" <<< "${installs}")"; then
-                printf 'ERROR: the %s-scope installation of %s names no project path.\n' "${scope}" "${plugin_id}" >&2
-                return 1
-            fi
-            if ! (cd "${project}" && claude plugin uninstall "${plugin_id}" --scope "${scope}"); then
-                printf 'ERROR: claude plugin uninstall %s --scope %s failed in %s.\n' "${plugin_id}" "${scope}" "${project}" >&2
-                return 1
-            fi
-            printf 'Ran: claude plugin uninstall %s --scope %s (in %s)\n' "${plugin_id}" "${scope}" "${project}"
+            project="$(jq -er ".[${index}].projectPath // \"(no project path)\"" <<< "${installs}")" || return 1
+            printf 'WARN: %s has a %s-scope installation in %s, outside the user scope the kit manages; this step does not uninstall it (in that project: claude plugin uninstall %s --scope %s).\n' "${plugin_id}" "${scope}" "${project}" "${plugin_id}" "${scope}" >&2
             ;;
         *)
             printf 'ERROR: unexpected installation scope %q for %s.\n' "${scope}" "${plugin_id}" >&2
             return 1
             ;;
         esac
-        ran=1
     done
-    if ! listing="$(claude_outside_projects plugin marketplace list --json)"; then
-        printf 'ERROR: claude plugin marketplace list --json failed; the %s marketplace is not retired.\n' "${marketplace}" >&2
-        return 1
-    fi
-    state="$(pin_record claude-marketplace "${marketplace}" "${source}" <<< "${listing}")" || return 1
     case "${state}" in
     registered)
         if ! claude_outside_projects plugin marketplace remove "${marketplace}"; then
@@ -2430,18 +2454,35 @@ function retire_understand_anything() {
             return 1
         fi
         printf 'Ran: claude plugin marketplace remove %s\n' "${marketplace}"
-        ran=1
+        found=1
         ;;
     foreign)
         printf 'WARN: the Claude Code marketplace %s is registered from another source than %s; left in place.\n' "${marketplace}" "${source}" >&2
-        ;;
-    absent) ;;
-    *)
-        printf 'ERROR: unexpected marketplace state %q for %s.\n' "${state}" "${marketplace}" >&2
-        return 1
+        found=1
         ;;
     esac
-    [ "${ran}" -eq 1 ] || printf 'Understand-Anything: already retired.\n' >&2
+    if [ "${users}" -eq 0 ] && [ "${state}" = absent ]; then
+        if ! enabled="$(claude_user_enabled "${plugin_id}")"; then
+            printf 'ERROR: cannot read %s; %s is not retired.\n' "${AGENT_CLAUDE_DIR}/settings.json" "${plugin_id}" >&2
+            return 1
+        fi
+        case "${enabled}" in
+        enabled)
+            if ! claude_outside_projects plugin disable "${plugin_id}" --scope user; then
+                printf 'ERROR: claude plugin disable %s --scope user failed.\n' "${plugin_id}" >&2
+                return 1
+            fi
+            printf 'Ran: claude plugin disable %s --scope user\n' "${plugin_id}"
+            found=1
+            ;;
+        disabled | unset) ;;
+        *)
+            printf 'WARN: the user settings hold %s for %s, which disable cannot clear; left in place.\n' "${enabled}" "${plugin_id}" >&2
+            found=1
+            ;;
+        esac
+    fi
+    [ "${found}" -eq 1 ] || printf 'Understand-Anything: already retired.\n' >&2
 }
 
 #

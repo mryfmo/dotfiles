@@ -97,10 +97,10 @@
 #   (U272d: srt reads everything an explicit deny does not name, so a grant the role lacks denies nothing) naming the
 #   physical paths of the checkout's git directory and common directory, the `.git` entry of every linked worktree
 #   git lists, the hcom store and every existing `~/.local/state/hcom-*` sibling, the records
-#   `<checkout>/.orchestration` and every other seat's directory, denied for read and for write; a write root the
-#   role takes from its inputs (DSH_HOME, the scratch cwd, the state slot) that is, contains or lies inside any path
-#   of the final denyRead or denyWrite list (U272e: the refusal reads the rendered table, the inherited worker
-#   denies included, every path physical and by identity) refused before anything is made; DSH_HOME in the protected set
+#   `<checkout>/.orchestration` and every other seat's directory, denied for read and for write; every row of the
+#   final allowRead and allowWrite lists judged against every row of the final denyRead and denyWrite lists (U272f:
+#   the rendered settings are the refusal's only source; every path physical and by identity; the own slots and the
+#   own profile exempt by tag where they re-open their structural denies), a hit refused before anything is made; DSH_HOME in the protected set
 #   before any tool is resolved; the command `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt
 #   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME, OMP_PROFILE
 #   and a caller's CLAUDE_CODE_OAUTH_TOKEN before the shim adds its own exports. No omp overlay, rules file,
@@ -251,7 +251,7 @@ bridge=${HOME}/.local/lib/omp-extensions/pi-claude-bridge
 siwc=${HOME}/.agents/omp/extensions/openai-siwc
 gate=${HOME}/.agents/omp/hooks
 # The role table (regime-cutover U272): every difference between the roles is a row read here or in the places keyed
-# on the role below (seat_write_roots, the deny row and the DSH_HOME refusal before the overlap check, the read grants
+# on the role below (seat_write_roots, the deny row before the overlap check and the judge after it, the read grants
 # in seat_sandbox_write, the command the shim execs, the launch and its trap), never a branch elsewhere. The omp roles
 # launch through hcom into a herdr pane; the dsh role runs its shim in the foreground.
 case ${role} in
@@ -1387,7 +1387,7 @@ physical_paths() {
 
 # @description Set `phys_list` to the physical form of each absolute path `$@` (physical_path: every link followed,
 #   a file or an absent tail kept by name), in order, in one subshell for all of them (regime-cutover U272e). The
-#   inputs are rendered settings paths, directories and files alike, so physical_paths' directory rule does not
+#   inputs are rendered settings rows (settings_judge), directories and files alike, so physical_paths' directory rule does not
 #   apply. Fail-closed per record: one line per path, the physical path or `fail`; anything else, a record too many
 #   or too few, or a result that is not a clean path refuses (exit 2).
 # @arg $@ string Absolute paths.
@@ -1680,10 +1680,11 @@ dsh_deny_paths() {
 
 # @description Render the seat's settings lists (regime-cutover U272e): `write` (the allowWrite roots, exactly
 #   seat_write_roots' list, so the protected set and the sandbox cannot drift), `deny_write` with the macOS
-#   `deny_write_patterns`, `deny_read`, `allow_read` and `slot_rows`. The lists are the one statement of the seat's
-#   boundary: seat_sandbox_write writes them into the settings file, and the dsh role judges its write roots against
-#   the deny rows before anything is made (dsh_write_roots_check), so a refusal reads what the settings will say and
-#   no hand-kept list of denied places can lack a member. Every directory is resolved by physical_path, present or
+#   `deny_write_patterns`, `deny_read` and `allow_read`, with the structural rows tagged where they are rendered
+#   (tag_rows). The lists are the one statement of the seat's boundary: seat_sandbox_write writes them into the
+#   settings file, and the dsh role judges every grant of them against every deny of them before anything is made
+#   (settings_judge, regime-cutover U272f), so a refusal reads what the settings will say and no hand-kept list of
+#   inputs or of denied places can lack a member. Every directory is resolved by physical_path, present or
 #   absent, so the lists are the same before and after the slots are made. The settings name what the seat may
 #   write (its directory, the repository's git common directory, the program's hcom store, its own omp profile and
 #   the omp session leases, and its own state slot, which holds the bridge child's Claude Code state (the
@@ -1701,8 +1702,9 @@ dsh_deny_paths() {
 # @set deny_write The denyWrite paths; `deny_write_patterns` the macOS patterns appended to them.
 # @set deny_read The denyRead paths.
 # @set allow_read The allowRead paths.
-# @set slot_rows The deny rows that are the seat's own slot's by construction: the seats-root denies its own
-#   allowRead re-opens, and the project-file denies under its directory.
+# @set row_tag_paths The rows tagged structural, by their rendered spelling, and `row_tags` their tags: `slot` for
+#   the seat's own slots (its directory and state slot), the seats-root denies they re-open and the project-file
+#   denies under its directory; `profile` for its own omp profile and the profiles deny it re-opens.
 seat_settings_render() {
     local root path base
     h=$(physical_path "${HOME}") || refuse "cannot resolve HOME ${HOME}"
@@ -1712,8 +1714,10 @@ seat_settings_render() {
     seats_real=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
     sandbox_state=${seats_real}/.state/${name}
     write=("${seat_write[@]}")
+    row_tag_paths=() row_tags=()
+    # The seat's own slots come first in seat_write_roots' list; the same two paths are the read grants' first rows.
+    tag_rows slot "${dir_real}" "${sandbox_state}"
     deny_write=("${seats_real}/.sandbox")
-    slot_rows=()
     # The hook shims under .claude/hooks import their code from .claude/contextdb, run by sessions outside the seat.
     for base in "${dir_real}" "${checkout}"; do
         deny_write+=("${base}/.claude/settings.json" "${base}/.claude/settings.local.json" "${base}/.claude/hooks"
@@ -1721,7 +1725,7 @@ seat_settings_render() {
     done
     # The project-file rows under the seat's own directory are refinements inside its write root (srt keeps the
     # deeper deny), so the slot and the cwd contain them by construction.
-    slot_rows+=("${deny_write[@]:1:8}")
+    tag_rows slot "${deny_write[@]:1:8}"
     # The git state host git reads for any worktree of this repository (regime-cutover U85): a seat that could write
     # it could make a later host git command run a program of its choosing (`core.fsmonitor`, `core.hooksPath`,
     # filter and textconv drivers, includes). git_state_check refuses a launch over such state and creates the files
@@ -1746,15 +1750,18 @@ seat_settings_render() {
         "${h}/.codex" "${h}/.omp/agent" "${h}/.omp/profiles" "${h}/.hcom" "${h}/.local/state/hcom"
         "${h}/.local/share/chezmoi" "${h}/.local/share/chezmoi-private" "${h}/.config/chezmoi"
         "${h}/.config/chezmoi-private" "${h}/Workspace" "${seats_real}/.sandbox")
+    # The seat's own omp profile is the one directory re-opened under the profiles deny, by its rendered name: a
+    # profile root that is a link lies elsewhere and the tag does not carry (settings_judge).
+    tag_rows profile "${h}/.omp/profiles" "${h}/.omp/profiles/${role}"
     # Every program's seats root is unreadable but this seat's own paths: the whole ~/.local/state/omp-seats tree
     # and every configured seats root. srt keeps a deeper deny under an allow (measured, 0.0.81), so each
     # `.sandbox` stays unreadable inside an allowed root. These rows exist to be re-opened by the own slot alone.
     deny_read+=("${h}/.local/state/omp-seats" "${seats_real}")
-    slot_rows+=("${h}/.local/state/omp-seats" "${seats_real}")
+    tag_rows slot "${h}/.local/state/omp-seats" "${seats_real}"
     if [[ -n ${REGIME_SEATS_ROOT:-} ]]; then
         root=$(physical_path "${REGIME_SEATS_ROOT}") || refuse "cannot resolve the seats root ${REGIME_SEATS_ROOT}"
         deny_read+=("${root}")
-        slot_rows+=("${root}")
+        tag_rows slot "${root}"
     fi
     operator_claude_paths
     deny_write+=("${operator_claude[@]}")
@@ -1787,63 +1794,81 @@ seat_settings_render() {
     esac
 }
 
-# @description Decide whether the write root `$1` (physical) keeps clear of every deny path `$@` after it: it may
-#   not be, contain or lie inside one (regime-cutover U272e). Every deny path is resolved to its physical form first
-#   (physical_each): a link at the end of a rendered path (`<checkout>/.orchestration -> <DSH_HOME>/records`, U272d's
-#   finding; `~/.aws -> /Volumes/x/aws`) hides its physical ancestry from the identity table, whose chains follow
-#   the spelled parents. The decision is then by identity for everything that exists, and by the absent components
-#   below one shared deepest existing ancestor otherwise (identity_table, within_ix): a deny path that does not
-#   exist on the host is compared by that ancestor's identity and its name. Only the resolver and one stat run.
-# @arg $1 string The write root, physical.
-# @arg $@ string The deny paths after it, as rendered.
-# @set deny_hit The first deny path the root is, contains or lies inside, as rendered and, when it differs, its
-#   physical form in parentheses; empty when the root is clear.
-# @exitcode 0 The root is clear of every deny path.
-# @exitcode 1 It is not; `deny_hit` names the path.
-write_root_outside_denies() {
-    local root=$1 i n denies
+# @description Tag the rendered rows `$@` (by their rendered spelling) with the structural tag `$1`, where they are
+#   rendered (regime-cutover U272f): a tag names why a grant may overlap a deny by construction, and settings_judge
+#   exempts a (grant, deny) pair only when both rows carry the same tag.
+# @arg $1 string The tag.
+# @arg $@ string The rows, as rendered.
+# @set row_tag_paths The tagged rows so far; `row_tags` their tags, one per row.
+tag_rows() {
+    local tag=$1 p
     shift
-    denies=("$@")
-    n=$#
-    deny_hit=''
-    ((n)) || return 0
-    physical_each "$@"
-    identity_table "${root}" "${phys_list[@]}"
-    for ((i = 0; i < n; i++)); do
-        if within_ix 0 $((i + 1)) || within_ix $((i + 1)) 0; then
-            deny_hit=${denies[i]}
-            # The same row in two spellings when the rendered one goes through a link; the reader needs both.
-            [[ ${phys_list[i]} == "${denies[i]}" ]] || deny_hit+=" (${phys_list[i]})" # lint-comparisons: allow one row's rendered and physical spellings, both from physical producers, no decision rests on it
-            return 1
-        fi
+    for p in "$@"; do
+        row_tag_paths+=("${p}") row_tags+=("${tag}")
     done
 }
 
-# @description Refuse (exit 2) when a write root the dsh role takes from its inputs, `DSH_HOME` (the caller's) or
-#   its per-launch state slot and scratch cwd (placed by --seats-root), is, contains or lies inside a path of the deny
-#   table the role will run under (seat_settings_render's `deny_read` and `deny_write`, the one statement of its
-#   boundary; regime-cutover U272e). U272d's refusal compared against the role's own deny row alone, so
-#   `DSH_HOME=~/.aws` and `~/.omp/agent`, inherited worker denies, were accepted with allowRead and allowWrite: srt
-#   re-opens an allowed path under a deny of the same or a wider spelling (measured, round 1), so such a root defeats
-#   the deny. The slot and the cwd are judged without the rows that are theirs by construction (`slot_rows`: the
-#   seats-root denies the own slot's allowRead re-opens, the project-file denies under the cwd); an omission in that
-#   short list refuses a launch, never admits one. Runs after the overlap invariant, in a dry run too, before any
-#   directory is made.
-# @noargs
-dsh_write_roots_check() {
-    local p q own table=() slot=${seats_real}/.state/${name}
-    write_root_outside_denies "${dsh_home}" "${deny_read[@]}" "${deny_write[@]}" ||
-        refuse "DSH_HOME ${dsh_home} is, contains or lies inside ${deny_hit}, a path the dsh role's settings deny; choose another DSH_HOME"
-    for p in "${deny_read[@]}" "${deny_write[@]}"; do
-        own=0
-        for q in ${slot_rows[@]+"${slot_rows[@]}"}; do
-            [[ ${p} != "${q}" ]] || own=1 # lint-comparisons: allow the same rendered row in one spelling, both sides from seat_settings_render
-        done
-        ((own)) || table+=("${p}")
+# @description Set `tag_of` to the structural tag of the rendered row `$1` (tag_rows), or to the empty string for an
+#   untagged row. By rendered spelling: both sides come from seat_settings_render, so a row a link redirects (a
+#   profile root that is a link to `~/.aws` is rendered as `~/.aws` in the write list) carries no tag.
+# @arg $1 string The row, as rendered.
+# @set tag_of The tag or empty.
+row_tag() {
+    local i
+    tag_of=''
+    for ((i = 0; i < ${#row_tag_paths[@]}; i++)); do
+        [[ ${row_tag_paths[i]} != "$1" ]] || tag_of=${row_tags[i]} # lint-comparisons: allow one rendered row in one spelling, both sides from seat_settings_render
     done
-    for p in "${slot}" "${dir_real}"; do
-        write_root_outside_denies "${p}" ${table[@]+"${table[@]}"} ||
-            refuse "the dsh role's per-launch slot ${p} is, contains or lies inside ${deny_hit}, a path the role's settings deny; choose another --seats-root"
+}
+
+# @description Judge the rendered grants against the rendered denies (regime-cutover U272f): every row of the final
+#   `allowRead` and `allowWrite` lists against every row of the final `denyRead` and `denyWrite` lists, and nothing
+#   else is the boundary. Rounds 3 and 4 each judged a list of inputs (`DSH_HOME`, then the slot and the cwd too)
+#   and each time a rendered grant was missing from that list (round 4: the profile root `~/.omp/profiles/dsh`,
+#   linked to `~/.aws`, was granted write); the input list is gone and the lists seat_sandbox_write will write are
+#   the judge's only source. Every row is resolved to its physical form first (physical_each, one subshell): a link
+#   at the end of a rendered path hides its ancestry from the identity table, whose chains follow the spelled
+#   parents. The decision is by identity for everything that exists, and by the absent components below one shared
+#   deepest existing ancestor otherwise (identity_table, within_ix; one table, one stat). A grant that is, contains
+#   or lies inside a deny is a hit unless the pair is structural: both rows carry the same tag (tag_rows: the own
+#   slots under the seats-root denies and over the project-file denies, the own profile under the profiles deny)
+#   and the grant lies where it is rendered (its physical path is its rendered path), so a tagged grant that a link
+#   moves elsewhere (`~/.omp/profiles/dsh -> ~/.omp/profiles/orchestrator`) is judged like any row. The read
+#   grants go first: they are spelled as rendered (the profile by its name), so the first hit names the row as the
+#   caller knows it. The macOS write patterns are not rows (no grant of the role lies under the common directory).
+# @set judge_grant The first grant that hits: `<kind> row <path>` and, when it differs, its physical path in
+#   parentheses; empty when every grant is clear.
+# @set judge_deny The deny it hits: `<path>[ (<physical>)], a row of its <kind> list`; empty when clear.
+# @exitcode 0 Every grant keeps clear of every deny it is not structurally paired with.
+# @exitcode 1 A pair overlaps; `judge_grant` and `judge_deny` name it.
+settings_judge() {
+    local i j n m rows=() kinds=() tags=()
+    for i in "${allow_read[@]}"; do rows+=("${i}") kinds+=(allowRead); done
+    for i in "${write[@]}"; do rows+=("${i}") kinds+=(allowWrite); done
+    n=${#rows[@]}
+    for i in "${deny_read[@]}"; do rows+=("${i}") kinds+=(denyRead); done
+    for i in "${deny_write[@]}"; do rows+=("${i}") kinds+=(denyWrite); done
+    m=$((${#rows[@]} - n))
+    judge_grant='' judge_deny=''
+    ((n && m)) || return 0
+    for i in "${rows[@]}"; do
+        row_tag "${i}"
+        tags+=("${tag_of}")
+    done
+    physical_each "${rows[@]}"
+    identity_table "${phys_list[@]}"
+    for ((i = 0; i < n; i++)); do
+        for ((j = n; j < n + m; j++)); do
+            within_ix "${j}" "${i}" || within_ix "${i}" "${j}" || continue
+            if [[ -n ${tags[i]} && ${tags[i]} == "${tags[j]}" && ${phys_list[i]} == "${rows[i]}" ]]; then continue; fi # lint-comparisons: allow two tag words, and one row's rendered and physical spellings from the same physical producers; the overlap was decided by identity above
+            judge_grant="${kinds[i]} row ${rows[i]}"
+            judge_deny=${rows[j]}
+            # The same row in two spellings when the rendered one goes through a link; the reader needs both.
+            [[ ${phys_list[i]} == "${rows[i]}" ]] || judge_grant+=" (${phys_list[i]})" # lint-comparisons: allow one row's rendered and physical spellings, both from physical producers, no decision rests on it
+            [[ ${phys_list[j]} == "${rows[j]}" ]] || judge_deny+=" (${phys_list[j]})"  # lint-comparisons: allow one row's rendered and physical spellings, both from physical producers, no decision rests on it
+            judge_deny+=", a row of its ${kinds[j]} list"
+            return 1
+        done
     done
 }
 
@@ -1952,12 +1977,14 @@ while IFS= read -r root; do orchestrator_write+=("${root}"); done <<< "${other_r
 # directory its write list holds; the main checkout stays protected for it only when it is not that checkout.
 repo_phys=$(physical_path "${repo}") || refuse "cannot resolve the launch checkout ${repo}"
 seat_overlap_check orchestrator "${repo_phys}" "${orchestrator_write[@]}"
-# The role table's refusal row (U272e): the dsh role's settings are rendered now and its write roots judged against
-# their deny rows, after the overlap invariant (whose refusals name the protected place) and before anything is made,
-# in a dry run too. The omp roles render theirs once their worktree exists (its `.git` file is one of the denies).
+# The role table's refusal row (U272e, U272f): the dsh role's settings are rendered now and every grant of them is
+# judged against every deny of them, after the overlap invariant (whose refusals name the protected place) and
+# before anything is made, in a dry run too. The omp roles render theirs once their worktree exists (its `.git` file
+# is one of the denies).
 if [[ ${role_launch} == foreground ]]; then
     seat_settings_render
-    dsh_write_roots_check
+    settings_judge ||
+        refuse "the dsh role's ${judge_grant} is, contains or lies inside ${judge_deny}; the launch is refused before anything is made"
 fi
 roots=("${seat_write[@]}" "${seats_root}" "${HCOM_DIR}" "${common}")
 while IFS= read -r root; do roots+=("${root}"); done <<< "${other_roots}"
@@ -2333,11 +2360,19 @@ slots_remove() {
 #   and then ends this process by the same signal, its disposition restored, so the caller's status names the
 #   signal. bash runs the trap once the foreground child (the shim, srt, dsh) has ended; a signal to the process
 #   group, a terminal hangup included, ends the child first. The subshell the child runs in resets the trapped
-#   signals to their defaults, so dsh keeps its own disposition.
+#   signals to their defaults, so dsh keeps its own disposition. The removal's status is read (regime-cutover U272f):
+#   under `set -e` a failed removal ended the handler before the signal was restored, and the launch exited 1 with
+#   the slot behind; a slot that remains is named (slots_remove) and the exit is 2 whatever the signal, as on the
+#   normal exit, so the caller never reads a leftover slot as the signal's own status.
 # @arg $1 string The signal name.
 foreground_signal() {
+    local removed=0
     trap - HUP INT TERM
-    slots_remove
+    slots_remove || removed=$?
+    ((removed == 0)) || {
+        echo "hcom-seat: ended by SIG$1; the launch exits 2 because a per-launch slot remains" >&2
+        exit 2
+    }
     kill -s "$1" $$
     exit 2
 }

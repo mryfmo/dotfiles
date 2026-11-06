@@ -1438,7 +1438,15 @@ class HcomSeatTest(SeatFixture):
         failing after plausible output; git_state_check's one mkdir for every missing info/ and hooks/ refuses when
         it fails, fails after a partial creation, or leaves a link."""
         text = SEAT.read_text()
-        names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
+        names = (
+            "refuse",
+            "clean_path",
+            "require_clean_path",
+            "physical_path",
+            "physical_paths",
+            "physical_each",
+            "sizes_of",
+        )
         names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix")
         names += ("operator_claude_paths", "seat_overlap_check")
         names += ("dir_entries", "admin_dirs_match", "git_state_check", "git_form_path")
@@ -1510,6 +1518,39 @@ class HcomSeatTest(SeatFixture):
                 self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
                 self.assertIn(f"the worktree record {root / path} is not backed by a directory", result.stderr)
                 self.assertIn("git worktree prune", result.stderr)
+        # physical_each (U272f), the judge's resolver over rendered settings rows, files and absent tails included:
+        # a batch whose subshell fails, an empty batch, a short batch, a `fail` record, a malformed record and a
+        # record too many each refuse; the real batch resolves every row.
+        each_call = 'physical_each "$@"\nprintf "%s\\n" "${phys_list[@]}"'
+        rows = [*dirs, str(root / "file"), str(root / "c/file-gone")]
+        good = run(each_call, rows)
+        self.assertEqual(good.returncode, 0, good.stderr)
+        self.assertEqual(
+            good.stdout.split(),
+            [
+                str(root / n)
+                for n in ("a", "b", "real", "absent", "real/gone/deeper", "d/gone", "file", "real/file-gone")
+            ],
+        )
+        real_each = (
+            "physical_path_real() {" + functions[functions.index("physical_path() {") + len("physical_path() {") :]
+        )
+        real_each = real_each[: real_each.index("\n}\n") + 3]
+        each_cases = {
+            "the batch fails after plausible output": 'printf() { [[ $# == 3 && $2 == */b ]] && exit 7; builtin printf "$@"; }',
+            "an empty batch": "physical_path() { return 0; }",
+            "a short batch": real_each + '\nphysical_path() { [[ $1 == */b ]] || physical_path_real "$1"; }',
+            "a fail record": real_each + '\nphysical_path() { [[ $1 != */b ]] && physical_path_real "$1"; }',
+            "a malformed record": real_each
+            + '\nphysical_path() { if [[ $1 == */b ]]; then echo relative; else physical_path_real "$1"; fi; }',
+            "a record too many": real_each
+            + '\nphysical_path() { physical_path_real "$1" && [[ $1 != */b ]] || physical_path_real "$1"; }',
+        }
+        for label, prelude in each_cases.items():
+            with self.subTest(producer="physical_each", case=label):
+                result = run(each_call, rows, prelude=prelude)
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("settings path", result.stderr)
         sizes_call = 'sizes_of "$@"\nprintf "%s\\n" "${size_list[@]}"'
         self.assertEqual(run(sizes_call, pointers).stdout.split(), ["6", "6"])
         stat_cases = {

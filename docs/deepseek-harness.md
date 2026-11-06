@@ -24,13 +24,16 @@ directory, the `.git` entry of every linked worktree git lists, the hcom store
 `HCOM_DIR` and every existing `~/.local/state/hcom-*` sibling store (the
 lever's own `hcom-seat` directory excepted), the records directory
 `<checkout>/.orchestration` and every other seat's directory under the seats
-root. A write root the role takes from its inputs, `DSH_HOME`, the scratch
-cwd or the state slot, that is, contains or lies inside any path of the
-settings' final `denyRead` or `denyWrite` list (the inherited worker denies
-such as `~/.aws` and `~/.omp/agent` included, every path compared physically
-and by identity) is refused by name before any directory is made, and the
-per-launch slots are removed with their modes reset, a slot that remains
-failing the launch (U272e).
+root. Every row of the settings' final `allowRead` and `allowWrite` lists is
+judged against every row of their final `denyRead` and `denyWrite` lists
+(every path compared physically and by identity), and a grant that is,
+contains or lies inside a deny is refused by name before any directory is
+made, the only exemptions being the own slot and cwd against the seats-root
+and project-file rows they overlap by construction and the own profile
+against the profiles deny, each by a tag the rendering attaches and only
+while the grant lies where it is rendered (U272f); the per-launch slots are
+removed with their modes reset, a slot that remains failing the launch with
+exit 2 on a normal exit and under a signal alike (U272e, U272f).
 Git directories elsewhere on the host are not computed by the lever and are
 not denied. The domain list, no unix socket and no local binding are the
 worker's. The lever's

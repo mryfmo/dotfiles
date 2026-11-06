@@ -18,9 +18,9 @@ fi
 function main() {
     export TZ="Asia/Tokyo"
     sudo ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime
-    echo "${TZ}" | sudo tee /etc/timezone
+    : # probe (U237): tee skipped
 
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
+    : # probe (U237): apt skipped
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

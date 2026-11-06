@@ -4785,10 +4785,11 @@ class SingleStepModeTest(unittest.TestCase):
     # The whitelist is read from main's dispatch line (whitelist()): one member's name is a retired term the lint
     # scripts/lint-retired-terms.py forbids in this file, so the tests pin the list's size and the members they
     # can name, and compare the usage and the function table against the line itself.
-    WHITELIST_SIZE = 13
+    WHITELIST_SIZE = 14
     NAMED_STEPS = (
         "update_omp",
         "update_deepseek_harness",
+        "update_dsh_superagent",
         "update_compactiondb",
         "prune_retired_manifest_steps",
         "check_pstack",

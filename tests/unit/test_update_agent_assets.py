@@ -693,6 +693,8 @@ class DeepseekHarnessTest(unittest.TestCase):
     TAG_MATCH = re.search(r'^DSH_PIN_TAG="([^"]+)"$', INSTALLER_PINS, re.MULTILINE)
     TAG = TAG_MATCH[1] if TAG_MATCH else "dsh-v0.0.0"
     URL = f"https://github.com/deepseek-ai/deepseek-harness/archive/refs/tags/{TAG}.tar.gz"
+    COMMIT_MATCH = re.search(r'^DSH_COMMIT="([^"]+)"$', INSTALLER_PINS, re.MULTILINE)
+    COMMIT = COMMIT_MATCH[1] if COMMIT_MATCH else ""
     BUILD_CALLS = [
         "mise exec -- pnpm install --frozen-lockfile",
         "mise exec -- pnpm run build",
@@ -740,16 +742,19 @@ class DeepseekHarnessTest(unittest.TestCase):
         prelude: str | None = None,
         cwd: Path | None = None,
     ):
-        # curl is a shell function that writes $PAYLOAD to its -o path and logs its arguments; mise logs its arguments
-        # and succeeds unless a test hands it a body; nothing is downloaded, built or installed through pnpm. shasum
-        # and jq are the real producers unless a test hands one a body (a failure injection over `command shasum` or
-        # `command jq`). The prelude is any shell text placed before the stubs: a test defines pwd, readlink, mktemp,
-        # bash, ln or mv there as functions (failing_call makes one whose n-th call fails).
+        # curl is a shell function that writes $PAYLOAD to its -o path and logs its arguments; mise logs its arguments,
+        # writes the DSH_CLIENT_COMMIT_HASH the build call sees (or <unset>) to $HOME/build-commit, and succeeds unless
+        # a test hands it a body; nothing is downloaded, built or installed through pnpm. shasum and jq are the real
+        # producers unless a test hands one a body (a failure injection over `command shasum` or `command jq`). The
+        # prelude is any shell text placed before the stubs: a test defines pwd, readlink, mktemp, bash, ln or mv there
+        # as functions (failing_call makes one whose n-th call fails), or overrides a sourced pin such as DSH_COMMIT.
         download = curl or 'cp "$PAYLOAD" "${@: -1}"'
         stubs = (
             f"DSH_ARCHIVE_SHA256={digest}; "
             'curl() { echo "curl $*" >> "$CALLS"; ' + download + "; }; "
             'mise() { echo "mise $*" >> "$CALLS"; '
+            'if [ "$*" = "exec -- pnpm run build" ]; then '
+            'printf "%s\\n" "${DSH_CLIENT_COMMIT_HASH-<unset>}" > "$HOME/build-commit"; fi; '
             + (mise or "return 0")
             + "; }; "
             + (f"shasum() {{ {shasum}; }}; " if shasum else "")
@@ -923,6 +928,8 @@ class DeepseekHarnessTest(unittest.TestCase):
             self.assertEqual(1, len([call for call in calls if call.startswith("curl ")]))
             self.assertIn(f" {self.URL} -o ", calls[0])
             self.assertEqual(self.BUILD_CALLS, [call for call in calls if call.startswith("mise ")])
+            # The tag archive has no .git, so the build reads the commit from DSH_CLIENT_COMMIT_HASH, the rendered pin.
+            self.assertEqual(f"{self.COMMIT}\n", (home / "build-commit").read_text())
             # Nothing beside the one tree under dsh/: no staging, previous or failed tree.
             self.assertEqual(["current", install.name], sorted(path.name for path in (dsh_home / "dsh").iterdir()))
             self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is removed")
@@ -941,6 +948,50 @@ class DeepseekHarnessTest(unittest.TestCase):
             self.assertIn(f"DeepSeek harness {self.TAG} is already installed", skipped.stdout)
             self.assertEqual(calls, self.calls(home), "the skip downloads nothing and runs no mise")
             self.assertEqual(install, self.installed_tree(dsh_home), "the skip keeps the tree")
+
+    def test_the_build_sees_the_pinned_commit_as_dsh_client_commit_hash_and_the_receipt_names_it(self):
+        # The first host install of 2026-11-06 failed in `pnpm run build`: the upstream build runs `git rev-parse HEAD`
+        # unless DSH_CLIENT_COMMIT_HASH is set, and the tag archive carries no .git.
+        self.assertRegex(self.COMMIT, r"^[0-9a-f]{40}$", "installer-pins.sh renders DSH_COMMIT from ref_commit")
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(f"{self.COMMIT}\n", (home / "build-commit").read_text())
+            commands = json.loads((home / ".agents/.installed-manifest.json").read_text())["steps"][
+                "update_deepseek_harness"
+            ]["commands"]
+            self.assertIn(f"DSH_CLIENT_COMMIT_HASH={self.COMMIT} pnpm run build", commands)
+            self.assertNotIn("pnpm run build", commands)
+
+    def assert_commit_refused(self, prelude: str, given: str) -> None:
+        """The step with DSH_COMMIT overridden by `prelude` refuses before any download, build or record."""
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                "update_deepseek_harness: DSH_COMMIT (assets.deepseek-harness ref_commit, rendered into "
+                f"scripts/lib/installer-pins.sh) is unset or not 40 lowercase hex ({given} given), so the build has no "
+                "DSH_CLIENT_COMMIT_HASH; nothing installed, nothing recorded.",
+                result.stderr,
+            )
+            self.assertEqual([], self.calls(home), "no curl and no mise call")
+            self.assertFalse((home / "build-commit").exists(), "no build ran")
+            self.assertEqual(["profiles"], [path.name for path in dsh_home.iterdir()], "nothing installed")
+            self.assertFalse((home / ".agents").exists(), "nothing recorded")
+
+    def test_an_empty_or_unset_dsh_commit_refuses_the_step_before_any_download(self):
+        for prelude in ("DSH_COMMIT=", "unset DSH_COMMIT"):
+            with self.subTest(prelude=prelude):
+                self.assert_commit_refused(prelude, "")
+
+    def test_a_dsh_commit_that_is_not_40_lowercase_hex_refuses_the_step_before_any_download(self):
+        for value in ("not-a-sha", self.COMMIT.upper(), self.COMMIT[:-1], f"{self.COMMIT}0"):
+            with self.subTest(value=value):
+                self.assert_commit_refused(f"DSH_COMMIT={value}", value)
 
     def receipt(self, home: Path, version: str, paths: list[str] | None = None) -> tuple[Path, str]:
         """The installed-manifest receipt recording the step at `version` with `paths` (this layout's two unless a test

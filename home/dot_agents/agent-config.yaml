@@ -1355,6 +1355,7 @@ assets:
     pin: dsh-v0.2.1-rc.5
     verify: sha256
     sha256: a2b94ff1183a87bb1f1d898c6274ae5f8b78accc38931594afd97b58cf0db81f
+    ref_commit: b830ec950faba0a46dda564be3e2d854afed94f1
     reason: >-
       the harness is a developer preview that promises compatibility-breaking changes and publishes release
       candidates and alphas weekly with no attestation and no signature, only the tag, so the reviewed sha256 of
@@ -1370,12 +1371,13 @@ assets:
       update_deepseek_harness only on a host whose operator exported DSH_HOME and created it, under $DSH_HOME/dsh/<tag>
       with a wrapper at $DSH_HOME/bin/dsh, and the thak profile's plugins through pnpm from mise; no lever starts it
       and its own command sandbox is off in the kit profile, since the seat boundary is srt or nothing; the install
-      path ~/.dsh is $DSH_HOME, the opt-in
+      path ~/.dsh is $DSH_HOME, the opt-in; ref_commit is the tag's commit as read from the GitHub API on 2026-11-06
+      and is the build's DSH_CLIENT_COMMIT_HASH, because the tag archive carries no git metadata for the build to read
     install_path: ~/.dsh
     installer: scripts/update-agent-assets.sh#update_deepseek_harness
     render:
       file: scripts/lib/installer-pins.sh
-      constants: {DSH_PIN_TAG: pin, DSH_ARCHIVE_SHA256: sha256}
+      constants: {DSH_PIN_TAG: pin, DSH_ARCHIVE_SHA256: sha256, DSH_COMMIT: ref_commit}
   graphifyy:
     source: github-release
     upstream: Graphify-Labs/graphify

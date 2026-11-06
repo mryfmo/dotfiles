@@ -1,18 +1,24 @@
-"""Exercise scripts/orchestrator/dsh-srt against a fake srt and a fake dsh (regime-cutover U251, round 2 U251b).
+"""Exercise scripts/orchestrator/dsh-srt against a fake srt and a fake dsh (regime-cutover U251, rounds 2 and 3: U251b,
+U251c).
 
-HOME is a scratch directory holding `.dsh/bin/dsh`, a shell script that records its argv, cwd and whole environment
-to a file (the launcher starts it under `env -i`, so nothing is read from the environment, and the record path is
-baked into each fake). The fake `srt` is first on PATH: it records every argv, answers `--version` from a control
-file the test writes (`0.0.81` by default), plays the canary (the probe script runs for real with paths under a
-directory that does not exist, so the three probes fail as the sandbox makes them fail; the control file's `canary`
-is printed instead when set, `canary_exit` ends the canary with that status, `leave_canary` writes the canary file
-behind it), and execs the command it is given. The lists the rendered settings must carry are read from hcom-seat's
-source text, so a drift between the two files fails here.
+HOME is a scratch directory holding `.dsh/bin/dsh`, a shell script that records its argv, cwd, whole environment and
+the `node` its PATH finds to a file (the launcher starts it under `env -i`, so nothing is read from the environment,
+and the record path is baked into each fake). The fake `srt` is first on PATH: it records every argv with the argv
+its interpreter was started with (`sys.orig_argv`, which tells an explicit `<interpreter> <srt>` start from the
+kernel's `#!` lookup), answers `--version` from a control file the test writes (`0.0.81` by default), plays the canary
+(the probe script runs for real with paths under a directory that does not exist, so the three probes fail as the
+sandbox makes them fail; the control file's `canary` is printed instead when set, `canary_exit` ends the canary with
+that status, `leave_canary` writes the canary file behind it), and execs the command it is given. Its `#!` line is
+the test interpreter's absolute path by default; `use_env_node_srt` rewrites it as `/usr/bin/env node`, the real
+srt's line, with a `node` link to the interpreter in its own directory on the caller's PATH. The lists the rendered
+settings must carry are read from hcom-seat's source text, so a drift between the two files fails here.
 
 `DSH_SRT_UNDER_TEST` names another launcher file to run (a scratch copy with a guard removed, for the mutation run
-of U251b); the default is the checkout's.
+of U251b); the default is the checkout's. `launcher_with` writes such a copy itself, pinned by a manifest beside it,
+to inject failures into the system producers the launcher names by absolute path (`stat`, `readlink`, `head`).
 """
 
+import hashlib
 import json
 import os
 import re
@@ -78,13 +84,15 @@ SRT_ADDED_ENV_NAMES = {
 }
 THREE_WORDS = "write-denied read-denied ssh-denied"
 
-FAKE_SRT = r"""#!{python}
+FAKE_SRT = r"""#!{shebang}
 import json, os, subprocess, sys
 CALLS = {calls!r}
 CONTROL = {control!r}
 argv = sys.argv[1:]
 with open(CALLS, "a", encoding="utf-8") as calls:
-    calls.write(json.dumps({{"argv": argv, "cwd": os.getcwd(), "env": dict(os.environ)}}) + "\n")
+    calls.write(
+        json.dumps({{"argv": argv, "cwd": os.getcwd(), "env": dict(os.environ), "orig_argv": sys.orig_argv}}) + "\n"
+    )
 control = json.load(open(CONTROL, encoding="utf-8")) if os.path.exists(CONTROL) else {{}}
 if argv == ["--version"]:
     version = control.get("version", "0.0.81")
@@ -150,10 +158,9 @@ class DshSrtTest(unittest.TestCase):
         self.control = self.calls / "srt-control.json"
         self.bindir = root / "bin"
         self.bindir.mkdir()
-        (self.bindir / "srt").write_text(
-            FAKE_SRT.format(python=PYTHON, calls=str(self.srt_calls), control=str(self.control))
-        )
-        (self.bindir / "srt").chmod(0o755)
+        # Explicit: the launcher trusts a tool directory only with no group or other write, whatever the umask.
+        self.bindir.chmod(0o755)
+        self.write_fake_srt(PYTHON)
         self.write_fake_dsh(self.dsh_home)
         self.tmpdir = root / "tmp"
         self.tmpdir.mkdir()
@@ -167,6 +174,48 @@ class DshSrtTest(unittest.TestCase):
             "USER": "u251",
             "SECRET_OF_THE_CALLER": "never-passed",
         }
+        # What the launcher builds from the fake srt's directory, its interpreter's directory and the system
+        # directories (dsh-srt RUN_PATH), and what dsh gets inside: RUN_PATH, then the caller's entries.
+        self.run_path = f"{self.bindir}:{PYTHON_DIR}:{SYSTEM_PATH}"
+        self.inner_path = f"{self.run_path}:{self.env['PATH']}"
+
+    def write_fake_srt(self, shebang):
+        (self.bindir / "srt").write_text(
+            FAKE_SRT.format(shebang=shebang, calls=str(self.srt_calls), control=str(self.control))
+        )
+        (self.bindir / "srt").chmod(0o755)
+
+    def use_env_node_srt(self):
+        """The real srt's form: `#!/usr/bin/env node`, with `node` a link to the test interpreter in its own 0755
+        directory first on the caller's PATH, so the launcher must look the interpreter up once, pin it and start srt
+        as `<interpreter> <srt>`. Returns the directory."""
+        self.write_fake_srt("/usr/bin/env node")
+        interp = Path(self.temp.name).resolve() / "interp"
+        interp.mkdir()
+        interp.chmod(0o755)
+        (interp / "node").symlink_to(PYTHON)
+        self.env["PATH"] = f"{interp}:{self.env['PATH']}"
+        self.run_path = f"{self.bindir}:{interp}:{SYSTEM_PATH}"
+        self.inner_path = f"{self.run_path}:{self.env['PATH']}"
+        return interp
+
+    def launcher_with(self, replacements):
+        """A scratch copy of the launcher with each literal replaced, pinned by a manifest beside it so
+        `lever_self_check` accepts the copy (the form of U251b's mutation run, Verification 5), for injecting a
+        failure into a producer the launcher names by its absolute path."""
+        root = Path(self.temp.name).resolve() / "copy"
+        copy = root / "scripts/orchestrator/dsh-srt"
+        copy.parent.mkdir(parents=True, exist_ok=True)
+        text = LAUNCHER.read_text()
+        for old, new in replacements.items():
+            self.assertIn(old, text, "the launcher still names the producer this test replaces")
+            text = text.replace(old, new)
+        copy.write_text(text)
+        copy.chmod(0o755)
+        manifest = root / "home/dot_agents/agent-config.yaml"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        manifest.write_text(f"      dsh-srt: {hashlib.sha256(copy.read_bytes()).hexdigest()}\n")
+        return copy
 
     def write_fake_dsh(self, dsh_home):
         dsh = dsh_home / "bin/dsh"
@@ -175,6 +224,7 @@ class DshSrtTest(unittest.TestCase):
             "#!/bin/sh\n"
             f"record={shlex.quote(str(self.dsh_record))}\n"
             '{ for a in "$@"; do printf "arg:%s\\n" "$a"; done; printf "cwd:%s\\n" "$(pwd -P)"; '
+            'printf "node:%s\\n" "$(command -v node || echo none)"; '
             'env | sed "s/^/env:/"; } > "$record"\n'
             'echo "fake dsh ran"\n'
         )
@@ -187,12 +237,17 @@ class DshSrtTest(unittest.TestCase):
         path.write_text(f"#!/bin/sh\n: > {shlex.quote(str(marker))}\necho 0.0.81\n")
         path.chmod(0o755)
 
-    def launch(self, *args, cwd=None, **overrides):
+    def launch(self, *args, cwd=None, launcher=None, **overrides):
         env = {**self.env, **{key: value for key, value in overrides.items() if value is not None}}
         for key in (key for key, value in overrides.items() if value is None):
             env.pop(key, None)
         return subprocess.run(
-            [str(LAUNCHER), *args], cwd=cwd or self.home, env=env, capture_output=True, text=True, check=False
+            [str(launcher or LAUNCHER), *args],
+            cwd=cwd or self.home,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
         )
 
     def srt_calls_made(self):
@@ -201,14 +256,16 @@ class DshSrtTest(unittest.TestCase):
         return [json.loads(line) for line in self.srt_calls.read_text().splitlines()]
 
     def dsh_run(self):
-        """The fake dsh's record: its argv, cwd and environment, or None when it never ran."""
+        """The fake dsh's record: its argv, cwd, environment and the `node` its PATH found, or None when it never
+        ran."""
         if not self.dsh_record.exists():
             return None
         lines = self.dsh_record.read_text().splitlines()
         argv = [line.removeprefix("arg:") for line in lines if line.startswith("arg:")]
         cwd = next(line.removeprefix("cwd:") for line in lines if line.startswith("cwd:"))
+        node = next(line.removeprefix("node:") for line in lines if line.startswith("node:"))
         env = dict(line.removeprefix("env:").split("=", 1) for line in lines if line.startswith("env:"))
-        return {"argv": argv, "cwd": cwd, "env": env}
+        return {"argv": argv, "cwd": cwd, "node": node, "env": env}
 
     @staticmethod
     def passed_names(record):
@@ -304,6 +361,8 @@ class DshSrtTest(unittest.TestCase):
                 "--settings",
                 settings,
                 "--",
+                "/usr/bin/env",
+                f"PATH={self.inner_path}",
                 str(self.dsh_home / "bin/dsh"),
                 "--profile",
                 "thak",
@@ -312,6 +371,7 @@ class DshSrtTest(unittest.TestCase):
                 "a b",
             ],
             launch["argv"],
+            "dsh runs by its path with the composed inner PATH applied under srt (hcom-seat:1868)",
         )
         self.assertFalse((self.dsh_home / ".sandbox/canary").exists())
         dsh = self.dsh_run()
@@ -326,11 +386,16 @@ class DshSrtTest(unittest.TestCase):
     def test_the_environment_passed_to_srt_is_the_listed_names_and_nothing_else(self):
         run = self.launch("--", "--version")
         self.assertEqual(run.returncode, 0, run.stderr)
-        for record in (self.srt_calls_made()[1]["env"], self.srt_calls_made()[2]["env"], self.dsh_run()["env"]):
-            self.assertEqual(ENV_NAMES, self.passed_names(record), "the canary, the launch and dsh get the names only")
+        probe, canary, launch = self.srt_calls_made()
+        for record in (probe["env"], canary["env"], launch["env"], self.dsh_run()["env"]):
+            self.assertEqual(
+                ENV_NAMES, self.passed_names(record), "the probe, the canary, the launch and dsh: the names only"
+            )
+        for record in (probe, canary, launch):
+            self.assertEqual(self.run_path, record["env"]["PATH"], "srt gets RUN_PATH, nothing of the caller's PATH")
         env = self.dsh_run()["env"]
         self.assertEqual(str(self.home), env["HOME"])
-        self.assertEqual(self.env["PATH"], env["PATH"])
+        self.assertEqual(self.inner_path, env["PATH"], "dsh gets RUN_PATH, then the caller's entries")
         self.assertEqual("u251", env["USER"])
         self.assertEqual(str(self.dsh_home), env["DSH_HOME"])
         self.assertEqual(str(self.scratch), env["TMPDIR"], "the scratch root is dsh's TMPDIR too")
@@ -631,6 +696,129 @@ class DshSrtTest(unittest.TestCase):
         )
         self.assertEqual("write-open read-open ssh-open\n", probe.stdout)
         self.assertTrue(writable.exists())
+
+    def test_the_version_probe_runs_under_the_reduced_environment(self):
+        """The round-2 P2 (f10 s3): the srt version read ran before the environment reduction and received the
+        caller's variables. Now it is the first command under the one environment: the names of ENV_NAMES, the
+        values the launcher sets, PATH the RUN_PATH it built, and nothing of the caller's."""
+        run = self.launch("--", "--version")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        probe = self.srt_calls_made()[0]
+        self.assertEqual(["--version"], probe["argv"])
+        self.assertEqual(ENV_NAMES, self.passed_names(probe["env"]))
+        self.assertNotIn("SECRET_OF_THE_CALLER", probe["env"])
+        self.assertEqual(self.run_path, probe["env"]["PATH"])
+        self.assertEqual(str(self.home), probe["env"]["HOME"])
+        self.assertEqual("u251", probe["env"]["USER"])
+        self.assertEqual(str(self.dsh_home), probe["env"]["DSH_HOME"])
+        self.assertEqual(
+            (str(self.scratch), str(self.scratch)), (probe["env"]["TMPDIR"], probe["env"]["CLAUDE_CODE_TMPDIR"])
+        )
+        self.assertEqual(str(self.dsh_home / ".state/claude"), probe["env"]["CLAUDE_CONFIG_DIR"])
+        self.assertEqual(
+            ("/dev/null", "/dev/null"), (probe["env"]["AWS_SHARED_CREDENTIALS_FILE"], probe["env"]["AWS_CONFIG_FILE"])
+        )
+        # The probe is started as `<interpreter> <srt>`, the pinned argv, like the canary and the launch.
+        for call in self.srt_calls_made():
+            self.assertEqual([PYTHON, str(self.bindir / "srt")], call["orig_argv"][:2], call["argv"])
+
+    def test_a_planted_interpreter_never_runs_outside_srt(self):
+        """The round-2 P1 (f2 s10) reproduction: srt is a `/usr/bin/env node` script, so the kernel looked `node` up
+        on the caller's PATH and a planted `DSH_HOME/bin/node` ran outside containment. Now the launcher looks the
+        interpreter up once, refuses it under a write root or in a path writable by group or other, and starts srt as
+        `<node> <srt>` under RUN_PATH, so the planted file's marker never appears."""
+        interp = self.use_env_node_srt()
+        run = self.launch("--", "--version")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        for call in self.srt_calls_made():
+            self.assertEqual(
+                [PYTHON, str(self.bindir / "srt")], call["orig_argv"][:2], "no `#!` lookup left to the kernel"
+            )
+            self.assertEqual(self.run_path, call["env"]["PATH"])
+        self.assertEqual(str(interp / "node"), self.dsh_run()["node"], "inside, dsh finds the pinned interpreter first")
+        self.dsh_record.unlink()
+        self.srt_calls.unlink()
+        # A node planted under DSH_HOME or the scratch root (the first launch created it), first on the caller's PATH:
+        # refused unexecuted, srt never started.
+        for planted in (self.dsh_home / "bin/node", self.scratch / "node"):
+            with self.subTest(planted=str(planted)):
+                marker = self.calls / "planted-node-ran"
+                self.write_marker_script(planted, marker)
+                run = self.launch("--", "--version", PATH=f"{planted.parent}:{self.env['PATH']}")
+                self.assert_refused(run, f"node at {planted} lies under a write root of dsh")
+                self.assertFalse(marker.exists(), "the planted node never ran")
+                self.assertEqual([], self.srt_calls_made(), "srt was not started either")
+                self.assertIsNone(self.dsh_run())
+                planted.unlink()
+        # A node in a directory open to its group, or a node file open to its group, outside every write root: refused
+        # by the trust rule, the marker absent.
+        loose_dir = Path(self.temp.name).resolve() / "loose"
+        marker = self.calls / "loose-node-ran"
+        self.write_marker_script(loose_dir / "node", marker)
+        loose_dir.chmod(0o775)
+        run = self.launch("--", "--version", PATH=f"{loose_dir}:{self.env['PATH']}")
+        self.assert_refused(run, f"the directory of node {loose_dir} has mode 775")
+        loose_dir.chmod(0o755)
+        (loose_dir / "node").chmod(0o775)
+        run = self.launch("--", "--version", PATH=f"{loose_dir}:{self.env['PATH']}")
+        self.assert_refused(run, f"node {loose_dir}/node has mode 775")
+        self.assertFalse(marker.exists())
+        self.assertEqual([], self.srt_calls_made())
+        # A node planted later on the caller's PATH than the pinned one never runs outside srt: the probe, the canary
+        # and the launch get RUN_PATH, which has no entry of the caller's; the marker stays absent.
+        (loose_dir / "node").chmod(0o755)
+        run = self.launch("--", "--version", PATH=f"{self.env['PATH']}:{loose_dir}")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertFalse(marker.exists())
+        for call in self.srt_calls_made():
+            self.assertEqual(self.run_path, call["env"]["PATH"])
+            self.assertNotIn(str(loose_dir), call["env"]["PATH"])
+        self.assertEqual(f"{self.inner_path}:{loose_dir}", self.dsh_run()["env"]["PATH"], "inside, after RUN_PATH")
+        self.assertEqual(str(interp / "node"), self.dsh_run()["node"])
+        # The caller's entries under a write root are dropped from the inner PATH as well.
+        self.dsh_record.unlink()
+        run = self.launch("--", "--version", PATH=f"{self.env['PATH']}:{self.dsh_home}/bin")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.inner_path, self.dsh_run()["env"]["PATH"])
+        # A planted srt interpreter that is itself a script is refused: the kernel would look its interpreter up.
+        self.dsh_record.unlink()
+        (interp / "node").unlink()
+        self.write_marker_script(interp / "node", marker)
+        run = self.launch("--", "--version")
+        self.assert_refused(run, f"the interpreter {interp}/node of srt is itself a script")
+        self.assertFalse(marker.exists())
+
+    def test_a_stat_readlink_or_head_that_fails_or_prints_nothing_refuses_before_anything_runs(self):
+        """Standing order 21: the mode and owner reads (`stat`), the physical resolution (`readlink -f`) and the
+        interpreter-line reads (`head`) are producers whose status and output the launcher checks; a copy of the
+        launcher naming a fake in place of each refuses with exit 2 before srt, dsh or any directory exists."""
+        fakes = Path(self.temp.name).resolve() / "fakes"
+        fakes.mkdir()
+        failing = fakes / "failing"
+        failing.write_text("#!/bin/sh\nexit 1\n")
+        failing.chmod(0o755)
+        silent = fakes / "silent"
+        silent.write_text("#!/bin/sh\nexit 0\n")
+        silent.chmod(0o755)
+        cases = (
+            ("/usr/bin/stat", failing, f"cannot read the mode of the dsh runtime {self.dsh_home}/bin/dsh"),
+            ("/usr/bin/stat", silent, f"cannot read the mode of the dsh runtime {self.dsh_home}/bin/dsh"),
+            ("/usr/bin/readlink", failing, f"cannot resolve srt at {self.bindir}/srt (readlink -f failed)"),
+            ("/usr/bin/readlink", silent, f"cannot resolve srt at {self.bindir}/srt (readlink -f named no file: '')"),
+            ("/usr/bin/head", failing, f"cannot read srt at {self.bindir}/srt"),
+        )
+        for producer, fake, message in cases:
+            with self.subTest(producer=producer, fake=fake.name):
+                copy = self.launcher_with({producer: str(fake)})
+                run = self.launch("--", "--version", launcher=copy)
+                self.assert_refused(run, message)
+                self.assertEqual([], self.srt_calls_made(), "srt never started")
+                self.assertFalse((self.dsh_home / ".sandbox").exists(), "nothing created")
+                self.assertFalse(self.scratch.exists())
+        # The unchanged copy, pinned the same way, launches: the harness itself is not what refuses.
+        copy = self.launcher_with({})
+        run = self.launch("--", "--version", launcher=copy)
+        self.assertEqual(run.returncode, 0, run.stderr)
 
 
 if __name__ == "__main__":

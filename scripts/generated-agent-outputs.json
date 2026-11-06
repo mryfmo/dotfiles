@@ -421,7 +421,7 @@
       "target": ".local/bin/common/dsh-srt",
       "kind": "file",
       "executable": true,
-      "sha256": "ee739da6bb70135bdb3aef0c6b25346f6608bbb343a63b42c108139fdc30990f"
+      "sha256": "3771662cd95f6637aa3fe768ecb04bd098be21941a8decb7fab8f10d05cb6349"
     },
     {
       "source": "home/dot_local/bin/common/executable_git-isolated.sh",

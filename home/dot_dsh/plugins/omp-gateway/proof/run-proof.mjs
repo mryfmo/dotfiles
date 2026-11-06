@@ -41,7 +41,7 @@ const patch = [
   { id: 'bash-sandbox', disabled: true },
   { id: 'session-log-deepseek', config: { enabled: false } },
   { id: 'agent-default-model', config: { provider: 'claude-bridge', model: 'claude-haiku-5-5' } },
-  { insert: [{ id: 'omp-gateway', name: 'dsh-omp-gateway', config: { command, args, env: ['HOME', 'PATH'], ...flags.cwd === undefined ? {} : { cwd: flags.cwd } } }] },
+  { insert: [{ id: 'omp-gateway', name: 'dsh-omp-gateway', config: { command, args, ...flags.cwd === undefined ? {} : { cwd: flags.cwd } } }] },
 ]
 writeFileSync(join(profileDir, 'cordis.patch.yml'), `${JSON.stringify(patch, null, 2)}\n`)
 

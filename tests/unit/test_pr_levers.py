@@ -1059,6 +1059,24 @@ def ledger_row(
     return f"{ts}\t{unit}\t{pr}\t{head}\t{verdict}\tcodex exec\t{evidence}\n"
 
 
+# The pin the manifest declares for the skill (`assets.security-audit-skill.pin`), the one pr-merge.sh compares a sweep
+# row's pin word with; the fixture rows carry its first 8 characters, as the AGENTS.md sweep bullet's example does.
+MANIFEST_PIN = re.search(
+    r"^  security-audit-skill:\n(?:    .*\n)*?    pin: ([0-9a-f]{40})$",
+    (ROOT / "home/dot_agents/agent-config.yaml").read_text(),
+    re.MULTILINE,
+).group(1)
+PIN8 = MANIFEST_PIN[:8]
+
+
+def sweep_row(head=SHA_A, unit="U71", ts="2026-10-25T09:30:00Z", verdict="sweep", pr="-", verifier=None, evidence=None):
+    """The advisory row the AGENTS.md Audit sweep rule describes: verdict `sweep`, pr `-`, the swept sha, the skill and
+    its pin as the verifier, the findings file under the store as the evidence."""
+    verifier = verifier or f"security-audit-skill {PIN8}"
+    evidence = evidence or f"sweeps/{unit}-{head[:8]}.json"
+    return f"{ts}\t{unit}\t{pr}\t{head}\t{verdict}\t{verifier}\t{evidence}\n"
+
+
 DISPOSITIONS_HEADER = "ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference\n"
 UNITS_HEADER = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote\n"
 # A `## Findings` line as pr-audit.sh's reader writes it since U125, `- P<n> (<confidence>) [f<n> s<n>] <path>:<line>:
@@ -1109,19 +1127,30 @@ class PrMergeTest(PrLeverTestCase):
         self.reader = self.repo / "scripts/orchestrator/ledger.py"
         self.reader.parent.mkdir(parents=True)
         shutil.copy2(LEVERS / "ledger.py", self.reader)
-        # The checker the lever's trust probe loads by path (U147 round 2) and the manifest its import checks its pin in.
-        shutil.copy2(LEVERS / "brief-check.py", self.repo / "scripts/orchestrator/brief-check.py")
-        (self.repo / "home/dot_agents").mkdir(parents=True)
-        shutil.copy2(ROOT / "home/dot_agents/agent-config.yaml", self.repo / "home/dot_agents/agent-config.yaml")
-        (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\nhome/\n")
+        (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
+        self.sweeps = self.records / "sweeps"
         self.ledger(ledger_row(SHA_A))
         self.verdict()
-        (self.records / "briefs").mkdir()
-        (self.records / "briefs/U71-fixture.md").write_text("GOAL\nfixture\n")  # no TRUST heading (U147)
         self.body = f"## Summary\n\nProgram-Unit: regime-cutover/U71\n\n{FOOTER}\n"
 
     def ledger(self, *rows):
-        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + "".join(rows))
+        """The store's ledger: the given rows, then one sweep row of U71 for each 40-hex head they name, with its
+        findings file. Since U244 every unit needs its sweep row at the audited head, and these tests judge the verdict
+        gate; a row's own sweep cases are tests.unit.test_pr_merge's. The sweep rows come last, so a line number a test
+        names is the given row's, and a head that is not 40 hex gets none, so the reader's answer stays the given row's."""
+        heads = []
+        for row in rows:
+            head = row.split("\t")[3] if row.count("\t") >= 3 else ""
+            if re.fullmatch(r"[0-9a-f]{40}", head) and head not in heads:
+                heads.append(head)
+        # The findings files the sweep rows name (U147 round 4: a regular file of this user under `sweeps/`); the
+        # directory is made here, since a test may rebuild the store before it writes the ledger again.
+        self.sweeps.mkdir(exist_ok=True)
+        for head in heads:
+            (self.sweeps / f"U71-{head[:8]}.json").write_text("{}\n")
+        (self.records / "ledger.tsv").write_text(
+            LEDGER_HEADER + "".join(rows) + "".join(sweep_row(head) for head in heads)
+        )
 
     def verdict(self, *findings, head=SHA_A, unit="U71", last="Verdict: correct", notes="none"):
         """The store's `verdicts/U<n>-<sha8>.md`, the lever's verdict.md in the reader's shape (`- none` by default)."""

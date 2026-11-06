@@ -84,18 +84,21 @@
 #   0 ready, 1 launch failed, 2 still launching or blocked on user attention).
 #   The dsh role (regime-cutover U272, after the four audits of the standalone launcher of PR 687): the DeepSeek
 #   harness control host is contained the same way, by this lever, as a role whose differences from the worker are
-#   rows of the role table (the `case ${role}` after the options, seat_write_roots, the command the shim execs, the
-#   launch at the end) and nothing else. Its rows: no pane and no hcom bus (the launch runs the shim
-#   `<sandbox>/bin/dsh` in the foreground, waits and returns dsh's status); a per-launch seat name
-#   `<name>-<utc stamp>-<pid>`, so the sandbox, its settings file, the state slot and the bridge child's
-#   CLAUDE_CONFIG_DIR are per launch and two launches at once share no file; the cwd `<seats-root>/.state/<name>/cwd`,
-#   a scratch directory this lever makes (no worktree); the write roots DSH_HOME, that slot, the role's own omp profile
-#   `~/.omp/profiles/dsh` (the login child `omp auth-gateway stdio` lives there, selected by OMP_PROFILE, and writes
-#   its agent.db at start) and `~/.omp/run`, with no git common directory and no hcom store; DSH_HOME in the protected
-#   set before any tool is resolved; the command `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt
-#   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME, OMP_PROFILE and a
-#   caller's CLAUDE_CODE_OAUTH_TOKEN before the shim adds its own exports. No omp overlay, rules file, extension or
-#   login preflight is read for it. The per-launch sandbox and state slot are removed when dsh exits.
+#   rows of the role table (the `case ${role}` after the options, seat_write_roots, the read grants in
+#   seat_sandbox_write, the command the shim execs, the launch at the end) and nothing else. Its rows: no pane and no
+#   hcom bus (the launch runs the shim `<sandbox>/bin/dsh` in the foreground, waits and returns dsh's status); a
+#   per-launch seat name `<name>-<utc stamp>-<pid>`, so the sandbox, its settings file, the state slot and the bridge
+#   child's CLAUDE_CONFIG_DIR are per launch and two launches at once share no file; the cwd
+#   `<seats-root>/.state/<name>/cwd`, a scratch directory this lever makes (no worktree); the write roots DSH_HOME,
+#   that slot, the role's own omp profile `~/.omp/profiles/dsh` (the login child `omp auth-gateway stdio` lives there,
+#   selected by OMP_PROFILE, and writes its agent.db at start) and `~/.omp/run`, with no git common directory and no
+#   hcom store; the read grants the cwd, that slot, DSH_HOME, that profile, `~/.agents/skills` and the pinned tool
+#   directory, with no git common directory, no hcom store and no record of the main checkout (U272c); DSH_HOME in
+#   the protected set before any tool is resolved; the command `<DSH_HOME>/bin/dsh`, a physical executable file that
+#   runs inside srt only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME,
+#   OMP_PROFILE and a caller's CLAUDE_CODE_OAUTH_TOKEN before the shim adds its own exports. No omp overlay, rules
+#   file, extension or login preflight is read for it. The per-launch sandbox and state slot are removed when dsh
+#   exits.
 # @arg $1 string Role: orchestrator, worker or dsh.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
@@ -230,9 +233,10 @@ done
 bridge=${HOME}/.local/lib/omp-extensions/pi-claude-bridge
 siwc=${HOME}/.agents/omp/extensions/openai-siwc
 gate=${HOME}/.agents/omp/hooks
-# The role table (regime-cutover U272): every difference between the roles is a row read here or in the three places
-# keyed on the role below (seat_write_roots, the command the shim execs, the launch), never a branch elsewhere. The
-# omp roles launch through hcom into a herdr pane; the dsh role runs its shim in the foreground.
+# The role table (regime-cutover U272): every difference between the roles is a row read here or in the four places
+# keyed on the role below (seat_write_roots, the read grants in seat_sandbox_write, the command the shim execs, the
+# launch), never a branch elsewhere. The omp roles launch through hcom into a herdr pane; the dsh role runs its shim in
+# the foreground.
 case ${role} in
 orchestrator | worker)
     # The extension the role's model route needs first, the optional one second.
@@ -1850,13 +1854,30 @@ seat_sandbox_write() {
     operator_claude_paths
     deny_write+=("${operator_claude[@]}")
     deny_read+=("${operator_claude[@]}")
-    allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}")
-    # The main checkout is unreadable to a worker wherever it lives, but for its git directory (the worktree's objects
-    # and refs) and the coordinator's records (briefs, verdict files), read by absolute path.
-    if [[ ${role} != orchestrator ]]; then deny_read+=("${checkout}"); fi
-    allow_read+=("${checkout}/.orchestration/orchestrate")
-    # The orchestrator reads the worker clones of its own program, which it reviews; a worker reads no other seat.
-    if [[ ${role} == orchestrator ]]; then allow_read+=("${seats_real}"); fi
+    # The role table's read-grant row (U272c): denyRead is broad and every allowRead entry re-opens a path under it,
+    # so the list is the role's own. The omp roles re-open their directory, the repository's git directory (the
+    # worktree's objects and refs), the hcom store, their omp profile, their state slot and the coordinator's records
+    # under the main checkout (briefs, verdict files), read by absolute path; the main checkout itself is unreadable
+    # to a worker wherever it lives, and the orchestrator also reads the worker clones of its own program, which it
+    # reviews. The dsh role has no worktree, no bus and no store: it re-opens its scratch cwd and state slot,
+    # DSH_HOME, its own omp profile, the skills it loads and the pinned tool directory on its PATH, and no git, hcom
+    # or record path.
+    case ${role} in
+    orchestrator)
+        allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
+            "${checkout}/.orchestration/orchestrate" "${seats_real}")
+        ;;
+    worker)
+        deny_read+=("${checkout}")
+        allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
+            "${checkout}/.orchestration/orchestrate")
+        ;;
+    dsh)
+        deny_read+=("${checkout}")
+        allow_read=("${dir_real}" "${sandbox_state}" "${dsh_home}" "${h}/.omp/profiles/${role}" "${h}/.agents/skills"
+            "${tools_dir}")
+        ;;
+    esac
     settings=${sandbox_real}/srt-settings.json
     write_json=$(json_paths 'a seat write root' "${write[@]}") || exit 2
     deny_write_json=$(json_paths 'a seat write deny' "${deny_write[@]}") || exit 2

@@ -15,6 +15,7 @@ import shlex
 import stat
 import subprocess
 import sys
+import tarfile
 import textwrap
 import time
 import unittest
@@ -29,6 +30,8 @@ FAKE_OAUTH_VALUE = test_hcom_seat.FAKE_OAUTH_VALUE
 CALLER_OAUTH_VALUE = "caller-" + "value-u272"
 # bash itself exports these into every child; the role's list is everything else.
 BASH_OWN_NAMES = {"PWD", "SHLVL", "OLDPWD", "_"}
+# The head before the read grants became a role row (U272c); the omp roles' settings are held to its rendering.
+ROUND_ONE_HEAD = "52873a37745d8141eada2139ea2fa76e2773a60d"
 
 
 def interpreter_own_names():
@@ -138,8 +141,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
 
     def test_the_dsh_settings_are_the_workers_but_the_named_rows(self):
         """The role table's rows are the only difference: the cwd and state slot for the worktree, DSH_HOME and the
-        role's own omp profile for the git common directory, the hcom store and the worker profile; the read denies,
-        the network and everything else are the worker's."""
+        role's own omp profile for the git common directory, the hcom store and the worker profile, the role's own
+        read grants; the read denies, the network and everything else are the worker's."""
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
         worker = self.settings_of("worker")
@@ -164,10 +167,15 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertIn(str(home / ".omp/run"), write_d)
         self.assertNotIn(common, write_d)
         self.assertNotIn(store, write_d)
-        # allowRead: the same substitution, the checkout's records included for both.
+        # allowRead (U272c): the role's own grants, in the row's order; none of the worker's rows but the substituted
+        # cwd, state slot and profile (the git directory, the store and the checkout's records are the worker's alone).
         read_w, read_d = worker["filesystem"]["allowRead"], dsh["filesystem"]["allowRead"]
-        substitute = {clone: cwd, str(home / ".omp/profiles/worker"): str(home / ".omp/profiles/dsh"), state_w: state_d}
-        self.assertEqual(read_d, [substitute.get(entry, entry) for entry in read_w])
+        self.assertEqual(read_w[:3], [clone, common, store])
+        self.assertEqual(
+            read_d,
+            [cwd, state_d, str(self.dsh_home), str(home / ".omp/profiles/dsh"), str(home / ".agents/skills"),
+             str(self.tools)],
+        )  # fmt: skip
         # denyWrite: the project files under the seat directory move with it; the worker's `.git` file has no dsh
         # counterpart (no worktree); every other deny is the same.
         deny_w = [entry for entry in worker["filesystem"]["denyWrite"] if not entry.startswith(clone + "/")]
@@ -183,6 +191,70 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                          {k: v for k, v in worker.items() if k not in ("filesystem", "network")})  # fmt: skip
         # The slots are per launch: both are gone once dsh exited; the worker's stay.
         self.assertEqual(self.slots(), (["worker"], ["worker"]))
+
+    def test_the_dsh_read_grants_name_no_git_hcom_or_record_path(self):
+        """PR 697 thread 4492139503 (U272c): an allowRead entry re-opens a path under the broad denyRead, so the dsh
+        role's list names neither the checkout's git common directory, nor the hcom store, nor the coordinator's
+        records under the checkout, by itself or by an ancestor; the checkout stays read-denied. The worker's list
+        does name them, so the fixture's paths are the ones the role would have inherited."""
+        procs = self.held_launch("--", "--version")
+        (name,) = self.slots()[0]
+        dsh = self.settings_of(name)["filesystem"]
+        ((status, out, err),) = self.release(procs)
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        worker = self.settings_of("worker")["filesystem"]
+        checkout = self.repo.resolve()
+        common, store, records = checkout / ".git", self.store.resolve(), checkout / ".orchestration/orchestrate"
+        for path in (common, store, records):
+            with self.subTest(path=str(path)):
+                self.assertIn(str(path), worker["allowRead"], "the worker's grant, the one the role used to inherit")
+                self.assertFalse(
+                    [entry for entry in dsh["allowRead"] if Path(entry) in (path, *path.parents)],
+                    f"the dsh role re-opens {path} or an ancestor: {dsh['allowRead']}",
+                )
+        # The checkout is read-denied and no grant re-opens it or lies under it (the records row was the one that did).
+        self.assertIn(str(checkout), dsh["denyRead"])
+        for entry in dsh["allowRead"]:
+            self.assertNotIn(str(checkout), (entry, *(str(p) for p in Path(entry).parents)), entry)
+        self.assertEqual(self.slots(), (["worker"], ["worker"]))
+
+    def test_the_omp_roles_settings_are_byte_identical_to_the_round_one_head(self):
+        """The read-grant row changes no omp role's settings: the worker's and the orchestrator's `srt-settings.json`
+        rendered by this head equal, byte for byte, the ones the round-one head renders on the same scratch host.
+        The round-one lever runs from its own tree (git archive of its `scripts/orchestrator` and manifest, so its
+        self-check reads its own pin); a checkout without that commit skips."""
+        probe = subprocess.run(
+            ["git", "-C", str(test_hcom_seat.ROOT), "cat-file", "-e", f"{ROUND_ONE_HEAD}^{{commit}}"],
+            env=self.env, capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        if probe.returncode != 0:
+            self.skipTest(f"the round-one head {ROUND_ONE_HEAD} is not in this checkout (a shallow or squashed clone)")
+        old_root = Path(self.temp.name).resolve() / "round-one"
+        old_root.mkdir()
+        archive = old_root / "tree.tar"
+        subprocess.run(
+            ["git", "-C", str(test_hcom_seat.ROOT), "archive", "--format=tar", "-o", str(archive), ROUND_ONE_HEAD,
+             "scripts/orchestrator", "home/dot_agents/agent-config.yaml"],
+            env=self.env, capture_output=True, text=True, check=True,
+        )  # fmt: skip
+        with tarfile.open(archive) as tar:
+            tar.extractall(old_root, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
+        old_seat = old_root / "scripts/orchestrator/hcom-seat"
+        self.assertTrue(os.access(old_seat, os.X_OK), old_seat)
+        for role in ("worker", "orchestrator"):
+            rendered = {}
+            for label, seat in (("round one", old_seat), ("this head", test_hcom_seat.SEAT)):
+                run = subprocess.run(
+                    [str(seat), role, "--seats-root", self.seats], cwd=self.repo, env=self.env,
+                    capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual(run.returncode, 0, f"{label} {role}: {run.stderr}")
+                rendered[label] = Path(self.seats, ".sandbox", role, "srt-settings.json").read_bytes()
+            with self.subTest(role=role):
+                self.assertEqual(rendered["round one"], rendered["this head"])
+                self.assertIn(b'"allowRead":[', rendered["this head"])
 
     def test_two_launches_at_once_share_no_settings_file_and_each_slot_goes_with_its_dsh(self):
         """U251d P1 `:704`: every launch has its own sandbox, settings file, state slot and CLAUDE_CONFIG_DIR."""

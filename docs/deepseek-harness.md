@@ -11,14 +11,19 @@ environment's `DSH_HOME`, else `~/.dsh`), a per-launch state slot
 `<seats-root>/.state/dsh-<utc stamp>-<pid>` holding the scratch cwd and the
 bridge child's `CLAUDE_CONFIG_DIR`, the role's own omp profile
 `~/.omp/profiles/dsh` (where the login child `omp auth-gateway stdio` lives,
-selected by `OMP_PROFILE`) and `~/.omp/run`; the read denies (credentials, the
-operator's Claude Code state, `~/.omp/agent`, the chezmoi sources,
-`~/Workspace`, the hcom stores, every seats root), the domain list, no unix
-socket and no local binding are the worker's. The lever's existing containment
-does the rest: every tool it runs outside the sandbox is pinned by its physical
-argv and refused when it, or a directory above it, has the identity of any
-seat write root, `DSH_HOME` included from the first statement, so a `node` or
-`python3` planted under `DSH_HOME` never runs; the shim
+selected by `OMP_PROFILE`) and `~/.omp/run`; the read grants are the role's own
+as well (the scratch cwd and its state slot, `DSH_HOME`, `~/.omp/profiles/dsh`,
+`~/.agents/skills` and the lever's pinned tool directory), so the checkout's
+git directory, the hcom store and the coordinator's records under the
+checkout, which a worker re-opens, stay unreadable to dsh (U272c); the read
+denies (credentials, the operator's Claude Code state, `~/.omp/agent`, the
+chezmoi sources, `~/Workspace`, the hcom stores, every seats root), the domain
+list, no unix socket and no local binding are the worker's. The lever's
+existing containment does the rest: every tool it runs outside the sandbox
+is pinned by its physical argv and refused when it, or a directory above it,
+has the identity of any seat write root, `DSH_HOME` included from the first
+statement, so a `node` or `python3` planted under `DSH_HOME` never runs; the
+shim
 `<seats-root>/.sandbox/dsh-<stamp>-<pid>/bin/dsh` proves the sandbox with the
 four-word canary (a write into the sandbox directory, reads of the settings
 file and `~/.ssh`, a write under the operator's `~/.claude/debug` must all fail

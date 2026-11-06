@@ -171,9 +171,20 @@ jobs:
           # setup.sh's output is kept so this row can require the externals cache check's verdict (U111): the line
           # names the chezmoi version and the network-denial guard it ran under, or that it ran unguarded. pipefail
           # keeps a failed setup.sh failing through the tee.
+          # Probe (regime-cutover U237, never to merge): the server leg has stalled at about 9.05 MB of output on every
+          # run since 2026-11-06T00:52Z; bound the run and dump the process table and the log tail when it stalls.
+          status=0
           printf 'ci@example.invalid\n%s\n' "${SYSTEM}" | \
             DOTFILES_REPO_URL="${GITHUB_WORKSPACE}" BRANCH_NAME=bootstrap-under-test \
-            bash "${GITHUB_WORKSPACE}/setup.sh" | tee "${RUNNER_TEMP}/setup.log"
+            timeout --kill-after=30 12m bash "${GITHUB_WORKSPACE}/setup.sh" | tee "${RUNNER_TEMP}/setup.log" || status=$?
+          if [ "${status}" -ne 0 ]; then
+            echo "::group::probe: setup.sh exited ${status}"
+            echo "setup.log bytes: $(wc -c < "${RUNNER_TEMP}/setup.log")"; df -h "${RUNNER_TEMP}" "${HOME}" /tmp || true
+            echo "--- last 60 lines of setup.log"; tail -n 60 "${RUNNER_TEMP}/setup.log" || true
+            echo "--- processes"; ps -eo pid,ppid,stat,etime,wchan:32,cmd --forest | tail -n 80 || true
+            echo "::endgroup::"
+            exit "${status}"
+          fi
           grep -F 'chezmoi externals: chezmoi read the externals from its cache' "${RUNNER_TEMP}/setup.log"
 
           test "$(git -C "${HOME}/.local/share/chezmoi" rev-parse HEAD)" = "${GITHUB_SHA}"

@@ -1,0 +1,19 @@
+U248 validation, run-54, source ref 140df37fb27bad1f0f89706706d22ee42dd0c8c7
+validator usage: Usage: node validate-findings.cjs <path-to-findings.json> | Usage: node validate-coverage-ledger.cjs <path-to-coverage-ledger.json>
+--- ACCEPTANCE 1: ls <output-dir>
+FINDINGS-DETAIL.md NEEDS-VALIDATION.md REPORT.md agents architecture.md coverage-ledger.json findings.json preflight.txt run-metadata.json summary.txt validation.txt  (agents/ holds the skill's per-role scratch and artifacts directories)
+expected ten files missing: none
+--- ACCEPTANCE 2: node ~/.agents/skills/security-audit/validate-findings.cjs <output-dir>/findings.json
+PASS: 14 findings valid
+exit 0
+--- ACCEPTANCE 3: node ~/.agents/skills/security-audit/validate-coverage-ledger.cjs <output-dir>/coverage-ledger.json
+PASS: 58 coverage units valid
+exit 0
+--- ACCEPTANCE 4: grep -c 140df37fb27bad1f0f89706706d22ee42dd0c8c7 <output-dir>/run-metadata.json
+1
+--- ACCEPTANCE 5: git -C ~/.local/state/omp-seats/dotfiles/sweep status --porcelain (empty = clean)
+''
+--- extra: head 140df37fb27bad1f0f89706706d22ee42dd0c8c7
+--- extra: cited file:line check at this head: missing=0
+--- extra: forbidden-content scan of every retained file (home path, token shapes, the store's redact words): files with problems: 0 (redact list size 5)
+--- note: the findings validator counts 14 records; 7 are findings (needs_validation) and 7 are rejected records

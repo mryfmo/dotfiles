@@ -1,0 +1,63 @@
+{
+  "run_id": "dotfiles-run-7",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "1d23154b71932e74902cf9ac95b2eeaf7b055215",
+    "branch": "feat/dsh-profile-login-route",
+    "parent_of_change": "b49be338",
+    "commits": ["385bd1a1e (U227b)", "1d23154b7 (U227c)"],
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U227b change b49be338..1d23154b71932e74902cf9ac95b2eeaf7b055215 (two commits; the DSH profile renderer in scripts/generate-agent-configs.py and its rendered home/dot_dsh/profiles/thak/{cordis.patch.yml,package.json}, the manifest's dsh model rows, the updater's plugin link step in scripts/update-agent-assets.sh, and their tests); every other top-level directory and the root files are carried out_of_scope",
+  "scope_note": "The brief names d1ecd495 as the base and `git diff --name-only c4195463 HEAD` (29 paths) as the change; the change's parent is b49be338 (main after U241), so the two U227b/U227c commits alone were hunted (9 files). The brief calls run-6 the U227b head; run-6 swept U254 (50dd240c).",
+  "scope_paths": [
+    "home/dot_agents/agent-config.yaml",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/profiles/thak/package.json",
+    "scripts/generate-agent-configs.py",
+    "scripts/update-agent-assets.sh",
+    "tests/unit/test_dsh_profile.py",
+    "tests/unit/test_network_bounds.py",
+    "tests/unit/test_update_agent_assets.py",
+    "tests/unit/test_validate_agent_assets.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check.",
+  "selected_companions": ["SUPPLY-CHAIN-AND-RELEASE.md", "DESKTOP-MOBILE-AND-LOCAL-IPC.md"],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-6",
+      "source_ref": "50dd240c43f6984ffc9c8b9c6aafd09fda4bb2ba",
+      "findings": 0,
+      "ledger_units": 37,
+      "use": "Carried. run-6 swept U254, which is absent at this head: its 4 covered setup_timezone units carry as prior_covered_changed_source and stay out of scope, and its 33 out_of_scope units carry as prior_out_of_scope. No finding of any verdict to carry."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T08:32:13Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the platform's delegation tool (Task) and eval kernel are denied by policy on this seat, so reconnaissance, the hunter wave and both coverage-critic passes ran in the parent; no fresh independent critic ran. No candidate survived the hunt, so no Phase 3 or Phase 5 verifier was needed and findings.json holds no record",
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 verifier per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter for the ledger checks)"
+  },
+  "critic_passes": [
+    {"pass": "post-wave", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; the plugin's own code (U240) is absent at this head and was swept at its heads in runs 2 to 5; the merge-ordering dependency is recorded as a hardening note on the plugin-loading unit"},
+    {"pass": "final-clean", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; no planned unit remains"}
+  ],
+  "candidate_count": 0,
+  "findings_count": 0,
+  "finished_at": "2026-11-06T08:35:44Z",
+  "shared_files_written": ["run-metadata.json", "architecture.md", "coverage-ledger.json", "findings.json", "REPORT.md", "FINDINGS-DETAIL.md", "NEEDS-VALIDATION.md"]
+}

@@ -1,0 +1,6 @@
+security-audit sweep 2256b56c83975cef17d8058ede5660c25f6cf35f: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+run_status: incomplete (independent_agents_unavailable: the delegation tool is denied by policy on this seat, so recon, the hunter wave and both critics ran in the parent; no candidate needed a verifier)
+scope: the U240 change d1ecd495..2256b56c83975cef17d8058ede5660c25f6cf35f incl. round 3 (forget-before-kill, EMPTY_RESPONSE, proof env defaults, forged-tag and protocol-guard tests), profile standard, source-only; run-4 carried (0 findings); ledger 33 units: 9 covered, 24 out_of_scope; 7 hardening notes in REPORT.md
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (parent ledger builder: agents/parent-hunter/scratch/build-ledger.cjs)
+wall time: 165s (2026-11-06T08:18:15Z to 2026-11-06T08:21:00Z)

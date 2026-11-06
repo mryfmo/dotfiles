@@ -1,0 +1,7 @@
+security-audit sweep 50dd240c43f6984ffc9c8b9c6aafd09fda4bb2ba: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+run_status: incomplete (independent_agents_unavailable: the delegation tool is denied by policy on this seat, so recon, the hunter wave and both critics ran in the parent; no candidate needed a verifier)
+scope: the U254 change b49be338..50dd240c43f6984ffc9c8b9c6aafd09fda4bb2ba (setup_timezone.sh runner skip and idempotence check, bats test), profile standard, source-only; run-5 carried (0 findings); ledger 37 units: 4 covered, 33 out_of_scope; 2 hardening notes in REPORT.md
+output directory: run-6, because the brief's run-5 holds the U258 sweep of 2256b56c (left untouched)
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (parent ledger builder: agents/parent-hunter/scratch/build-ledger.cjs)
+wall time: 177s (2026-11-06T08:25:16Z to 2026-11-06T08:28:13Z)

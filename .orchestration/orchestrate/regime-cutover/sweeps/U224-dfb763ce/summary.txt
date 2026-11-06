@@ -1,0 +1,8 @@
+security-audit sweep dfb763ce526b6cb2119ffa286b297fba5b289ed3: 0 findings, advisory partial
+(no finding lines: findings.json holds no record; the hunt produced no candidate)
+counts: critical 0, high 0, medium 0, low 0, informational 0, needs_validation 0, rejected 0
+run_status incomplete, reason independent_agents_unavailable: the seat's tool policy denies the Task tool, so no recon, hunter, critic or verifier agent ran and the run makes no clean-coverage claim
+prior run: run-2 (56985c89; the brief's 'run-3' is this run), 26 ledger units carried with the same ids, changed-source units re-read with lines re-mapped; the round-5 change (marketplace remove --scope user --json, scripts/update-agent-assets.sh:2453-2465) closes the unscoped-removal gap and adds no candidate
+coverage: 26 ledger units (14 covered, 12 out_of_scope), scoped to git diff c4195463..dfb763ce (27 paths; the brief's 29 does not match the measurement); source-only, no target code executed
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt
+wall time: output directory created 2026-11-06T05:14:29Z, summary written 2026-11-06T05:16:13Z

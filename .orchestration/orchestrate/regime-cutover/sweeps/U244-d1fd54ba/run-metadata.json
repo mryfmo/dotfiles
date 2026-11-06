@@ -1,0 +1,45 @@
+{
+  "run_id": "dotfiles-u247-run-4",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/worker-2",
+  "source_ref": {
+    "commit": "d1fd54ba5f5772eee06693d3f44182d4ae7c1427",
+    "branch": "feat/pr-merge-sweep-every-unit (checked out detached at the head)",
+    "base": "d1ecd495b3ac7436dd02db434a52fe6c09cb941a",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped: the diff d1ecd495..d1fd54ba (9 changed paths, 214 insertions, 798 deletions, measured with git diff --stat). The brief's CONTEXT line names `git diff --name-only c4195463 HEAD` (29 paths), which is the U224 sweep's text; it measures 10 paths here (the U234 change on main plus this one) and is not the unit's change, so this run follows the GOAL and CHANGE: the U244 change against d1ecd495. Every other area is recorded out_of_scope in the coverage ledger.",
+  "scope_paths": [
+    "AGENTS.md",
+    "home/dot_agents/agent-config.yaml",
+    "home/dot_agents/regime/AGENTS-audit-section.md",
+    "home/dot_local/bin/common/executable_pr-merge.sh",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "scripts/orchestrator/pr-merge.sh",
+    "tests/unit/test_pr_levers.py",
+    "tests/unit/test_pr_merge.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "Source review only: the task brief forbids building, testing or executing the target's code, so no target-controlled process runs in this run and every check is method=source.",
+  "companion_files": ["ATTACK-CLASSES.md", "SUPPLY-CHAIN-AND-RELEASE.md"],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/worker-2/security-audit/run-3",
+      "source_ref": "dfb763ce526b6cb2119ffa286b297fba5b289ed3",
+      "profile": "standard",
+      "scope": "the U224 diff c4195463..dfb763ce (branch feat/remove-understand-anything-graphify-in)",
+      "ledger_units": 26,
+      "findings": 0,
+      "use": "all 26 units carried with the same coverage_id as out_of_scope: the 14 U224 units (prior_covered_changed_source; their source, retire_understand_anything and the rest of the U224 change, is not in this head) and the 12 area units (prior_out_of_scope); no prior record to carry"
+    }
+  ],
+  "prior_run_note": "The brief names the previous run as run-4, but this seat's previous run is run-3 (U236, the U224 head dfb763ce); run-4 is this run. runs 1 to 3 swept U224, a different unit and diff.",
+  "shared_file_owner": "parent",
+  "shared_files": ["run-metadata.json", "architecture.md", "coverage-ledger.json", "findings.json", "REPORT.md", "FINDINGS-DETAIL.md", "NEEDS-VALIDATION.md"],
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the seat's tool policy denies the Task tool (tools.approval.task: deny, probed in run-2), so no reconnaissance, hunter, post-wave critic, final-clean critic or verifier agent could be launched; the parent did reconnaissance and hunting itself, source-only. The hunt produced no candidate, so no validation was owed, but the mandatory standard-profile critics did not run and the run makes no clean-coverage claim.",
+  "agents_spent": {"reconnaissance": 0, "hunters": 0, "post_wave_critic": 0, "final_clean_critic": 0, "phase3_verifiers": 0, "phase5_verifiers": 0, "note": "every phase was performed by the parent; the ledger check owner id parent-hunt-r4w1 names the parent, not a separate agent"}
+}

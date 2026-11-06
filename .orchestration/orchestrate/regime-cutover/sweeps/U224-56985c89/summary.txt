@@ -1,0 +1,8 @@
+security-audit sweep 56985c8909a53b53c4d49678b7b4f67d06ea2edc: 0 findings, advisory partial
+(no finding lines: findings.json holds no record; the hunt produced no candidate)
+counts: critical 0, high 0, medium 0, low 0, informational 0, needs_validation 0, rejected 0
+run_status incomplete, reason independent_agents_unavailable: the seat's tool policy denies the Task tool (probed again), so no recon, hunter, critic or verifier agent ran and the run makes no clean-coverage claim
+prior run: run-1 (7992f1f5; the brief's 'run-2' is this run), 26 ledger units carried with the same ids; its one unvalidated candidate retire-understand-anything:project-scope-cwd is resolved by the source change (scripts/update-agent-assets.sh:2440-2443 now only warns for project and local scope)
+coverage: 26 ledger units (14 covered, 12 out_of_scope), scoped to git diff c4195463..56985c89 (27 paths; the brief's 29 does not match the measurement); source-only, no target code executed
+files: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt
+wall time: output directory created 2026-11-06T04:53:08Z, summary written 2026-11-06T04:56:30Z

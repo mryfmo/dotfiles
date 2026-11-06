@@ -1,0 +1,56 @@
+{
+  "run_id": "dotfiles-run-6",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "50dd240c43f6984ffc9c8b9c6aafd09fda4bb2ba",
+    "branch": "fix/server-timezone-step-on-a-runner",
+    "parent": "b49be338",
+    "worktree_dirty": false
+  },
+  "output_directory_note": "The brief names run-5 as the output directory; run-5 already held the U258 sweep of 2256b56c83975cef17d8058ede5660c25f6cf35f (finished 2026-11-06T08:21:00Z), so this run writes to run-6, the next unused directory, and leaves run-5 untouched. The RESULT line names run-6.",
+  "profile": "standard",
+  "scope": "scoped run: the U254 change b49be338..50dd240c43f6984ffc9c8b9c6aafd09fda4bb2ba (one commit; install/ubuntu/server/setup_timezone.sh and tests/install/ubuntu/server/setup_timezone.bats); every other top-level directory and the root files are carried out_of_scope",
+  "scope_note": "The brief names d1ecd495 as the base and `git diff --name-only c4195463 HEAD` (29 paths) as the change; the head's parent is b49be338 (main after U241), so the U254 commit alone was hunted, matching the GOAL's 2 files, 83 insertions, 12 deletions.",
+  "scope_paths": [
+    "install/ubuntu/server/setup_timezone.sh",
+    "tests/install/ubuntu/server/setup_timezone.bats"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target, and AGENTS.md forbids a local bats run. Every check is a source check.",
+  "selected_companions": ["DESKTOP-MOBILE-AND-LOCAL-IPC.md"],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-5",
+      "source_ref": "2256b56c83975cef17d8058ede5660c25f6cf35f",
+      "findings": 0,
+      "ledger_units": 33,
+      "use": "Carried as the newest ledger. The brief names run-3 as the set to carry (and calls it the U254 head); run-3 swept U240 at 6531a212, and run-5 already carries every unit of run-1 to run-4. run-5's 9 covered U240 units carry as prior_covered_changed_source (U240 is absent at this head) and its 24 out_of_scope units as prior_out_of_scope. No finding of any verdict to carry."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T08:25:16Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the platform's delegation tool (Task) and eval kernel are denied by policy on this seat, so reconnaissance, the hunter wave and both coverage-critic passes ran in the parent; no fresh independent critic ran. No candidate survived the hunt, so no Phase 3 or Phase 5 verifier was needed and findings.json holds no record",
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 verifier per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter for the ledger checks)"
+  },
+  "critic_passes": [
+    {"pass": "post-wave", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; the chezmoi run_once wiring is read by the test unit, and the server bootstrap workflows that set GITHUB_ACTIONS are CI configuration outside the change"},
+    {"pass": "final-clean", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; no planned unit remains"}
+  ],
+  "candidate_count": 0,
+  "findings_count": 0,
+  "finished_at": "2026-11-06T08:27:23Z",
+  "shared_files_written": ["run-metadata.json", "architecture.md", "coverage-ledger.json", "findings.json", "REPORT.md", "FINDINGS-DETAIL.md", "NEEDS-VALIDATION.md"]
+}

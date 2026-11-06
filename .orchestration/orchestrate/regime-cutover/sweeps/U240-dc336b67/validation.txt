@@ -1,0 +1,9 @@
+U246 acceptance, run in the seat 2026-11-06T06:36:35Z
+1. ls run-2: FINDINGS-DETAIL.md NEEDS-VALIDATION.md REPORT.md agents architecture.md coverage-ledger.json findings.json preflight.txt run-metadata.json summary.txt validation.txt 
+2. validate-findings: PASS: 0 findings valid
+   exit=0
+3. validate-coverage-ledger: PASS: 27 coverage units valid
+   exit=0
+4. grep -c head run-metadata.json: 2
+5. git status --porcelain (target): []
+   target HEAD: dc336b67ebe6456c976716288b9587555d802922

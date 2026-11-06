@@ -1,0 +1,6 @@
+U248 preflight, run-54
+$ git -C ~/.local/state/omp-seats/dotfiles/sweep log -1 --format=%H
+140df37fb27bad1f0f89706706d22ee42dd0c8c7
+$ git -C ~/.local/state/omp-seats/dotfiles/sweep status --porcelain
+'' (empty = clean)
+started: 2026-11-06T06:46:54Z epoch 1793947614

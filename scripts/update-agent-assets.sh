@@ -1925,6 +1925,7 @@ function dsh_prune_older() {
 #   type and by identity before any download; a state outside the table is refused, never repaired, and identities
 #   are compared by inode (-ef) or by jq, never as text. The table, one line per row with its accepted states:
 #   DSH_HOME: exported, absolute, a directory whose physical path (pwd -P) equals ~/.dsh's.
+#   DSH_COMMIT: 40 lowercase hex (assets.deepseek-harness ref_commit), the build's DSH_CLIENT_COMMIT_HASH.
 #   DSH_HOME/dsh and DSH_HOME/bin: absent, or a directory that is not a symlink.
 #   DSH_HOME/profiles/thak: a directory that is not a symlink (the rendered profile); absent is a WARN with exit 0.
 #   DSH_HOME/dsh/current: absent, or a symlink whose target is a non-symlink directory directly under dsh/ named
@@ -1945,20 +1946,27 @@ function dsh_prune_older() {
 # @exitcode 0 Installed, already installed, repaired (the wrapper rewritten for the tree current names, no download),
 #   no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh (a WARN), or the download failed (a WARN; nothing
 #   installed or recorded).
-# @exitcode 1 A producer read, a shape or layout check, the digest check, the unpack, the archive version, the build,
-#   the profile install, the wrapper, the current link or the record failed; the line printed names the state left.
+# @exitcode 1 DSH_COMMIT unset or malformed, a producer read, a shape or layout check, the digest check, the unpack,
+#   the archive version, the build, the profile install, the wrapper, the current link or the record failed; the line
+#   printed names the state left.
 #
 function update_deepseek_harness() (
     local recorded download_dir="" tarball actual tree="" version physical expected target="" leaf="" installed repair="" prior_target="" wrapper_tmp="" wrapper_step="" quote="'" quoted_home row record_status=0
     # One record line for the install and for the rewrite on the already-installed exit, so the two cannot drift; it
     # writes the two paths the table's last row names (dsh/current, bin/dsh).
     dsh_record() {
-        manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"
+        manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "DSH_CLIENT_COMMIT_HASH=${DSH_COMMIT} pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"
     }
     section "DeepSeek harness"
     if [ -z "${DSH_HOME:-}" ] || [ ! -d "${DSH_HOME}" ]; then
         printf 'Skipping DeepSeek harness: DSH_HOME is unset or names no directory (export it and create it to opt in).\n'
         return 0
+    fi
+    # The tag archive carries no .git, and the upstream build runs `git rev-parse HEAD` unless DSH_CLIENT_COMMIT_HASH
+    # names the commit, so the build fails without the pinned one; it is checked here, before any read or download.
+    if [[ ! ${DSH_COMMIT:-} =~ ^[0-9a-f]{40}$ ]]; then
+        printf 'update_deepseek_harness: DSH_COMMIT (assets.deepseek-harness ref_commit, rendered into scripts/lib/installer-pins.sh) is unset or not 40 lowercase hex (%s given), so the build has no DSH_CLIENT_COMMIT_HASH; nothing installed, nothing recorded.\n' "${DSH_COMMIT:-}" >&2
+        return 1
     fi
     # A relative DSH_HOME would pass the pwd -P comparison below and stay relative in the link target, the wrapper
     # and the receipt, so the spelling is checked before the identity.
@@ -2158,7 +2166,7 @@ function update_deepseek_harness() (
             printf 'DeepSeek harness archive version %s is not the pin %s; install refused.\n' "${version}" "${DSH_PIN_TAG#dsh-v}" >&2
             return 1
         fi
-        (cd "${tree}" && mise exec -- pnpm install --frozen-lockfile && mise exec -- pnpm run build) || return 1
+        (cd "${tree}" && mise exec -- pnpm install --frozen-lockfile && DSH_CLIENT_COMMIT_HASH="${DSH_COMMIT}" mise exec -- pnpm run build) || return 1
         # The download directory holds only the verified archive, whose tree is now built, so its removal is no read
         # the step decides on: it goes here, before anything the host runs changes, and a removal that fails is a WARN
         # that never changes the step's flow (under set -e a bare failing rm would end the subshell, and a retry of it

@@ -1073,6 +1073,14 @@ def finding_line(priority, path, line, rationale, confidence="high", f=5, s=5):
 
 P2_LINE = finding_line("P2", "scripts/orchestrator/pr-merge.sh", 236, "the row is read, the findings are not")
 P3_LINE = finding_line("P3", "scripts/orchestrator/README.md", 275, "the lever row omits the verdict file", "medium")
+# The first line of the U190 round-5 verdict (regime-cutover `verdicts/U190-6f66ffdc.md`, as the auditor wrote it):
+# the rationale holds a `<path>:<line>:` of its own, and a greedy path group read the path as `scripts/orchestrator/
+# hcom-seat:1548: Carried P2 at hcom-seat` (U207). The path is the first colon-free, whitespace-free token.
+STORE_RATIONALE = (
+    "Carried P2 at hcom-seat:1548: operator paths inherit the own-directory exemption, so CLAUDE_CONFIG_DIR=$checkout"
+    " passes the orchestrator overlap check instead of refusing."
+)
+STORE_LINE = finding_line("P2", "scripts/orchestrator/hcom-seat", 1548, STORE_RATIONALE, f=1, s=8)
 
 
 def disposition_row(
@@ -1810,10 +1818,14 @@ class PrMergeTest(PrLeverTestCase):
         """Round 2 (P2): the two readers of a verdict file's leading `## Findings` section, this lever (bash,
         `findings_grammar`) and `scripts/orchestrator/audit-carry.py` (Python, `FINDINGS_GRAMMAR`), accept and refuse
         the same sections: `- none` alone or finding lines alone are read; an empty section, `- none` beside a
-        finding, `- none` twice, a line of another shape and a path with a colon or whitespace are malformed verdicts
-        for both, exit 2 naming the file (30c05715's audit-carry.py rendered an empty section as no findings). Since
-        U125 (rounds b and c) both read the scored line form, so one text of each fixture goes to both files: a line
-        without the `[f<n> s<n>]` token and a score outside 1 to 10 are malformed to both as well."""
+        finding, `- none` twice, a line of another shape and a first token with a colon or whitespace before its
+        `:<line>:` are malformed verdicts for both, exit 2 naming the file (30c05715's audit-carry.py rendered an empty
+        section as no findings). Since U125 (rounds b and c) both read the scored line form, so one text of each
+        fixture goes to both files: a line without the `[f<n> s<n>]` token and a score outside 1 to 10 are malformed
+        to both as well. Since U207 the path is the first colon-free, whitespace-free token and the rationale free
+        text, so the U190 verdict's line, whose rationale holds `hcom-seat:1548:`, is a finding to both, read as path
+        `scripts/orchestrator/hcom-seat`, line 1548 and the whole rationale (the carry table, the filed list and the
+        gate's disposition key show the reading)."""
         carry = LEVERS / "audit-carry.py"
         self.git("switch", "-q", "-c", "feat")
         (self.repo / "a.txt").write_text("one\n")
@@ -1829,15 +1841,39 @@ class PrMergeTest(PrLeverTestCase):
         merge_file = self.records / f"verdicts/U71-{SHA_A[:8]}.md"
         carry_file = self.records / f"verdicts/U71-{earlier[:8]}.md"
         tail = "\n\n## Reproduced\n\n- the head builds\n\n## Notes\n\nnone\n\nBlocking: 0\nFiled: 0\nVerdict: correct\n"
+
+        def render():
+            self.ledger(ledger_row(earlier))
+            return subprocess.run(
+                [
+                    sys.executable,
+                    "-I",
+                    str(carry),
+                    str(self.records),
+                    "U71",
+                    "7",
+                    head,
+                    "--render",
+                    "--repo",
+                    str(self.repo),
+                ],
+                capture_output=True,
+                text=True,
+                env=self.env,
+                check=False,
+                timeout=60,
+            )
+
         for name, section, accepted in (
             ("- none", "- none", True),
             ("one finding line", P2_LINE, True),
+            ("a rationale holding a path:line: of its own", STORE_LINE, True),
             ("an empty section", "", False),
             ("- none beside a finding", f"- none\n{P2_LINE}", False),
             ("- none twice", "- none\n- none", False),
             ("a line of another shape", "- P2 (high) a.txt: no line", False),
-            ("a path with a colon", finding_line("P2", "file:1: real.sh", 9, "boom"), False),
-            ("a path with whitespace", finding_line("P2", "a b.txt", 1, "boom"), False),
+            ("a path with a colon", finding_line("P2", "a:b", 1, "text"), False),
+            ("a path with whitespace", finding_line("P2", "a b", 1, "text"), False),
             ("a line without the scores", "- P2 (high) a.txt:1: boom", False),
             ("a frequency of 0", finding_line("P2", "a.txt", 1, "boom", f=0), False),
             ("a severity of 11", finding_line("P2", "a.txt", 1, "boom", s=11), False),
@@ -1851,26 +1887,7 @@ class PrMergeTest(PrLeverTestCase):
                 self.calls.unlink(missing_ok=True)
                 self.github()
                 merged = self.merge()
-                self.ledger(ledger_row(earlier))
-                rendered = subprocess.run(
-                    [
-                        sys.executable,
-                        "-I",
-                        str(carry),
-                        str(self.records),
-                        "U71",
-                        "7",
-                        head,
-                        "--render",
-                        "--repo",
-                        str(self.repo),
-                    ],
-                    capture_output=True,
-                    text=True,
-                    env=self.env,
-                    check=False,
-                    timeout=60,
-                )
+                rendered = render()
                 if accepted:
                     self.assertEqual((0, 0), (merged.returncode, rendered.returncode), merged.stderr + rendered.stderr)
                     self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
@@ -1878,6 +1895,44 @@ class PrMergeTest(PrLeverTestCase):
                     self.assert_refused(merged, f"{merge_file}:")
                     self.assertEqual((2, ""), (rendered.returncode, rendered.stdout), rendered.stderr)
                     self.assertIn(f"audit-carry: {carry_file}", rendered.stderr)
+        # The store's line as both readers read it: the carry table and the filed list print the first token as the
+        # path, the digits after it as the line and the rationale whole, its own `hcom-seat:1548:` included.
+        text = f"## Findings\n\n{STORE_LINE}" + tail
+        merge_file.write_text(text)
+        carry_file.write_text(text)
+        rendered = render()
+        self.assertEqual(rendered.returncode, 0, rendered.stderr)
+        self.assertIn("P2\t1\t8\tscripts/orchestrator/hcom-seat\t1548\tnone\t-", rendered.stdout.splitlines())
+        listed = subprocess.run(
+            [sys.executable, "-I", str(LEVERS / "filed-findings.py"), str(self.records)],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        for head8 in (SHA_A[:8], earlier[:8]):
+            row = f"U71\t{head8}\tP2\t1\t8\tscripts/orchestrator/hcom-seat:1548\t{STORE_RATIONALE}"
+            self.assertIn(row, listed.stdout.splitlines())
+        # At weight 16 the gate asks for the row of that first location and no other.
+        heavy = finding_line("P2", "scripts/orchestrator/hcom-seat", 1548, STORE_RATIONALE, f=2, s=8)
+        merge_file.write_text(f"## Findings\n\n{heavy}" + tail)
+        self.ledger(ledger_row(SHA_A))
+        self.calls.unlink(missing_ok=True)
+        self.github()
+        self.assert_refused(
+            self.merge(), "lists P2 at scripts/orchestrator/hcom-seat:1548 without a holding disposition"
+        )
+        self.assertEqual(self.writes(), [])
+        self.dispositions(
+            disposition_row(),
+            disposition_row(path="scripts/orchestrator/hcom-seat", line=1548, ts="2026-10-25T09:31:00Z"),
+        )
+        self.calls.unlink(missing_ok=True)
+        self.github()
+        merged = self.merge()
+        self.assertEqual(merged.returncode, 0, merged.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
 
     def test_the_lever_reads_no_local_git_objects(self):
         # Only gh and the ledger decide: a planted replace ref, grafts or a broken object store change nothing.
@@ -2143,7 +2198,10 @@ class PrMergeTest(PrLeverTestCase):
             (
                 "a path with a colon",
                 lambda: self.verdict(finding_line("P2", "a:b.sh", 3, "boom")),
-                "a Findings line's path (the text before its last ':<line>: ') holds a colon or whitespace",
+                (
+                    "a Findings line is not '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' with a path"
+                    " free of colons and whitespace, the first such token"
+                ),
             ),
             ("prose in the section", lambda: self.verdict("none found"), "a Findings line is not"),
             ("no list", lambda: self.verdict(""), "the Findings section lists nothing"),
@@ -2185,40 +2243,29 @@ class PrMergeTest(PrLeverTestCase):
     def test_a_findings_line_is_read_from_its_structure_never_at_its_first_colon(self):
         # U119 round 4 (audit of dc08660f, P2): the gate took the first `:<digits>: ` of the line, so a reader-written
         # path `file:1: real.sh` at line 9 was read as `file` line 1, and that other location's residual row satisfied
-        # it. The path is now the text before the line's last `:<line>: ` and may hold no colon and no whitespace.
+        # it. Since U207 the path is the first token after `] ` free of colons and whitespace, the line the digits
+        # after it and the rationale free text: the writer's grammar puts the location first and a disposition row
+        # names that first location, so `file:1: real.sh:9: boom` is path `file` line 1 with a rationale that names
+        # real.sh:9, and no row for real.sh:9 can satisfy it (the U190 verdict's rationales hold such a `path:line:`).
         self.units("U71", "U72")
-        # path `file` line 1, a rationale that begins with `real.sh:9`: only the row for file:1 holds
-        self.verdict(finding_line("P2", "file", 1, "real.sh:9 is the line it misreads"))
-        self.dispositions(disposition_row(path="real.sh", line=9))
-        self.github()
-        self.assert_refused(self.merge(), "lists P2 at file:1 without a holding disposition: no ")
-        self.dispositions(disposition_row(path="file", line=1))
-        self.calls.unlink()
-        self.github()
-        run = self.merge()
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
-        # the audit's line, path `file:1: real.sh` at line 9 as the reader writes it, and a rationale holding
-        # `:<digits>: `: each is refused naming the line, with rows for both readings present (red on dc08660f: the
-        # first merged on the row for file:1)
-        self.dispositions(
-            disposition_row(path="file", line=1), disposition_row(path="real.sh", line=9, ts="2026-10-25T09:31:00Z")
-        )
         for line in (
-            finding_line("P2", "file:1: real.sh", 9, "boom"),
+            finding_line("P2", "file", 1, "real.sh:9 is the line it misreads"),
             finding_line("P2", "file", 1, "see real.sh:9: the same shape"),
+            finding_line("P2", "file:1: real.sh", 9, "boom"),
         ):
             with self.subTest(line):
                 self.verdict(line)
+                self.dispositions(disposition_row(path="real.sh", line=9))
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                self.assert_refused(self.merge(), "lists P2 at file:1 without a holding disposition: no ")
+                self.assertEqual(self.writes(), [])
+                self.dispositions(disposition_row(path="file", line=1))
                 self.calls.unlink(missing_ok=True)
                 self.github()
                 run = self.merge()
-                self.assert_refused(
-                    run,
-                    "a Findings line's path (the text before its last ':<line>: ') holds a colon or whitespace, so its"
-                    f" path and line cannot be told from its rationale: {line}",
-                )
-                self.assertEqual(self.writes(), [])
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
 
     def test_only_the_leading_findings_section_of_the_verdict_file_is_read(self):
         # U119 round 4 (audit of dc08660f, P2): every `## Findings` line reopened the list, so a finding-free correct

@@ -39,8 +39,9 @@
 #   and parses its leading `## Findings` section, from the first `## Findings` line to the next `## ` heading (a later
 #   `## Findings` line, in the Notes or a rationale, is text; U119 round 4), the lines pr-audit.sh's reader writes
 #   since U125 (`- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>`: the frequency and severity scores,
-#   each one of 1 to 10, read by value and never second-guessed, then the path, the text before the line's last
-#   `:<line>: `, which holds no colon and no whitespace, or `- none`; a line without the `[f<n> s<n>]` token is refused
+#   each one of 1 to 10, read by value and never second-guessed, then the path, the first token after `] ` that holds
+#   no colon and no whitespace, the line the digits after it, and the rationale the free text after the following
+#   `: `, or `- none`; a line without the `[f<n> s<n>]` token is refused
 #   naming it, since this reader always writes it and a verdict of the unscored reader belongs to a merged unit, never
 #   to a merge head). That file is the `verdict.md` of `pr-audit.sh`, the audit route
 #   (`hcom-orchestration` SKILL step 4, U119 round 3), copied into the store; a verdict of the retired omp-run.sh
@@ -59,8 +60,8 @@
 #   naming any other head, or any `fixed` row when the head being merged is the audited head itself, names the later
 #   head that fixed the finding and never satisfies the gate for the head it judges. The first finding without such a
 #   row is named in the refusal. A P0 or P1 line at or above the threshold under a `correct` row, a `## Findings`
-#   line of another shape or without its scores, a score outside 1 to 10, a line whose path
-#   holds a colon or whitespace (its path and line cannot be told from its rationale), a verdict file whose last
+#   line of another shape or without its scores, a score outside 1 to 10, a line whose first token after `] ` is
+#   no `<path>:<line>:` with a path free of colons and whitespace, a verdict file whose last
 #   line is not `Verdict: correct`, and a `dispositions.tsv` or `units.tsv` row whose column count is not its
 #   header's or whose required column is empty are refusals naming the line (standing order 21); the rows are split
 #   by awk on the tab alone, since bash's `read` merges adjacent tabs (U119 round 3). Every store path the lever
@@ -239,21 +240,23 @@ WEIGHT_THRESHOLD=10
 # A `## Findings` list line as pr-audit.sh's reader writes it since U125, `- P<n> (<confidence>) [f<n> s<n>]
 # <path>:<line>: <rationale>`, read from its structure (U119 round 4, audit of dc08660f): the two scores are the
 # text between `[f` and ` s` and between ` s` and the first `]`, each read by value as one of the strings 1 to 10
-# (score_re; `0`, `11`, `x` or `05` is a malformed line, never a weight); the path is everything from `] ` to the
-# last `:<digits>: ` of the line (POSIX gives the first subexpression the longest text the whole match allows), the
-# line those digits. A line without the `[f<n> s<n>]` token is refused naming the line: this branch's reader always
+# (score_re; `0`, `11`, `x` or `05` is a malformed line, never a weight); the path is the first token after `] `
+# that holds no colon and no whitespace, the line the digits after its colon, and the rationale everything after
+# the `: ` that follows, free text that may hold a `<path>:<line>:` of its own. The first token is the location
+# because the writer's grammar puts it first and a disposition row names that first location, so no other location
+# can satisfy the row (U207: the path group was `(.+)`, which POSIX gives the longest text the whole match allows, so
+# a rationale of the form `Carried P2 at hcom-seat:1548: ...` made the path `hcom-seat:1548: Carried P2 at hcom-seat`
+# and the gate refused a well-formed line of the U190 verdict). The character class of the path group is the whole
+# path rule, so a path with a colon or a space is a line finding_re does not match, and no second check on the
+# matched path exists. A line without the `[f<n> s<n>]` token is refused naming the line: this branch's reader always
 # writes it, and a verdict of the unscored reader belongs to a merged unit, never to a merge head.
-# A path the gate accepts holds no colon and no whitespace (path_re), so a line whose path, read that way, holds
-# either (the reader wrote a path with a colon or a space, or the rationale holds a `:<digits>: `) is refused naming
-# the line, never read as a shorter path and an earlier line that another location's row could satisfy.
-finding_re='^- (P[0-3]) \((high|medium|low)\) \[f([^]]*) s([^]]*)\] (.+):([1-9][0-9]*): '
+finding_re='^- (P[0-3]) \((high|medium|low)\) \[f([^]]*) s([^]]*)\] ([^[:space:]:]+):([1-9][0-9]*): '
 score_re='^(10|[1-9])$'
-path_re='^[^[:space:]:]+$'
 # The grammar of the leading `## Findings` section, stated once here and once in audit-carry.py (FINDINGS_GRAMMAR),
-# which reads the same files: one `- none` line, or one or more finding_re lines whose scores match score_re and
-# whose path matches path_re; an empty section, `- none` beside a finding line, or `- none` twice is a malformed
-# verdict (round 2). The two readers are run over one fixture set by tests.unit.test_pr_levers.
-findings_grammar="the leading '## Findings' section is one '- none' line, or one or more lines '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' with scores 1 to 10 and a path free of colons and whitespace"
+# which reads the same files: one `- none` line, or one or more finding_re lines whose scores match score_re; an
+# empty section, `- none` beside a finding line, or `- none` twice is a malformed verdict (round 2). The two readers
+# are run over one fixture set by tests.unit.test_pr_levers.
+findings_grammar="the leading '## Findings' section is one '- none' line, or one or more lines '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' with scores 1 to 10 and a path free of colons and whitespace; the path is the first such token; the rationale after the line's ': ' is free text"
 # The trust-boundary mark is read by the brief checker's own module (U147 round 2): this probe, run as `python3 -I -S
 # -c` with the brief and the checker's path as its two arguments, loads `scripts/orchestrator/brief-check.py` by path
 # (its import runs the checker's own pin self-check, so a rewritten checker reads no brief), reads the brief as the
@@ -551,7 +554,7 @@ unit_row_exists() {
 
 # @description Set `priority`, `path` and `lineno` from a pending entry of require_dispositions (U119 round 5),
 #   `<priority>\t<path>\t<lineno>`, by parameter expansion and no `IFS` write: the fields are the lever's own matched
-#   text (finding_re, path_re), so none is empty and the path holds no tab.
+#   text (finding_re), so none is empty and the path holds no tab.
 # @arg $1 string The entry.
 # @set priority path lineno The three fields.
 pending_fields() {
@@ -615,14 +618,12 @@ require_dispositions() {
         fi
         listed=1
         [[ ${entry} =~ ${finding_re} ]] ||
-            refuse "${verdict_file}: a Findings line is not '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' (the reader writes the frequency and severity scores since U125; a line without them is the unscored reader's, whose verdicts belong to merged units, never to a merge head): ${entry}"
+            refuse "${verdict_file}: a Findings line is not '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' with a path free of colons and whitespace, the first such token (the reader writes the frequency and severity scores since U125; a line without them is the unscored reader's, whose verdicts belong to merged units, never to a merge head): ${entry}"
         priority=${BASH_REMATCH[1]} frequency=${BASH_REMATCH[3]} severity=${BASH_REMATCH[4]} path=${BASH_REMATCH[5]} lineno=${BASH_REMATCH[6]}
         [[ ${frequency} =~ ${score_re} ]] ||
             refuse "${verdict_file}: a Findings line's frequency score 'f${frequency}' is not one of 1 to 10, so its weight cannot be read: ${entry}"
         [[ ${severity} =~ ${score_re} ]] ||
             refuse "${verdict_file}: a Findings line's severity score 's${severity}' is not one of 1 to 10, so its weight cannot be read: ${entry}"
-        [[ ${path} =~ ${path_re} ]] || # lint-comparisons: allow the path is the text the reader wrote, judged by its characters, never resolved
-            refuse "${verdict_file}: a Findings line's path (the text before its last ':<line>: ') holds a colon or whitespace, so its path and line cannot be told from its rationale: ${entry}"
         # Both scores matched score_re, so the product is arithmetic on two small decimals the gate itself read.
         weight=$((frequency * severity))
         case ${priority} in

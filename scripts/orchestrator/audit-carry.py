@@ -52,9 +52,10 @@ of that head's verdict file (`verdicts/<row unit>-<sha8>.md`, named by the row's
 `U7b` row's verdict is `U7b-<sha8>.md`), the leading `## Findings` section read under FINDINGS_GRAMMAR below (one
 `- none` line, or one or more `- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>` lines, the scored form
 the reader writes since U125: the frequency and severity scores, each one of the strings 1 to 10, are read by value
-and carried into the table as data, never second-guessed; an empty section, `- none` beside a finding, a line of
-another shape, a line without the `[f<n> s<n>]` token or a score outside 1 to 10 is a malformed verdict, as
-pr-merge.sh reads it), joined with its
+and carried into the table as data, never second-guessed; the path is the first colon-free, whitespace-free token
+after `] ` and the rationale free text (U207); an empty section, `- none` beside a finding, a line of another shape,
+a line without the `[f<n> s<n>]` token or a score outside 1 to 10 is a malformed verdict, as pr-merge.sh reads it),
+joined with its
 `dispositions.tsv` rows (`ts unit head_sha priority path line disposition reference`; one table row per disposition
 row of the same unit, head, priority, path and line, `none` and `-` when the finding has none), plus every line range
 the diff between the two heads touches: the `-z` raw records of `git diff-tree -r <earlier> <head>` name the changed
@@ -172,18 +173,22 @@ NUMBER = re.compile(r"^(0|[1-9][0-9]{0,6})$")
 # (findings_grammar), which reads the same files: `tests.unit.test_pr_levers` runs both readers over one fixture set.
 # A line as pr-audit.sh's reader writes it since U125, read as pr-merge.sh reads it (U119 round 4): the two scores
 # are the text between `[f` and ` s` and between ` s` and the first `]`, each one of the strings 1 to 10 (SCORE; `0`,
-# `11`, `x` or `05` is a malformed line, never a score); the path is the text after `] ` and before the line's last
-# `:<line>: ` and holds no colon and no whitespace. A line without the token is refused naming it: the reader always
-# writes it, and a verdict of the unscored reader belongs to a merged unit, never to a head the next audit follows.
+# `11`, `x` or `05` is a malformed line, never a score); the path is the first token after `] ` that holds no colon
+# and no whitespace, the line the digits after its colon, and the rationale everything after the `: ` that follows,
+# free text that may hold a `<path>:<line>:` of its own (U207: the writer's grammar puts the location first and a
+# disposition row names that first location, so a greedy path group, which took `a:1: at b:2: x` as path `a:1: at b`,
+# refused a well-formed line and no other location could have satisfied the row). The character class of the path
+# group is the whole path rule; no second check on the matched path exists. A line without the token is refused
+# naming it: the reader always writes it, and a verdict of the unscored reader belongs to a merged unit, never to a
+# head the next audit follows.
 FINDINGS_GRAMMAR = (
     "the leading '## Findings' section is one '- none' line, or one or more lines "
     "'- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' with scores 1 to 10 and a path free of colons "
-    "and whitespace"
+    "and whitespace; the path is the first such token; the rationale after the line's ': ' is free text"
 )
-FINDING = re.compile(r"^- (P[0-3]) \((high|medium|low)\) \[f([^\]]*) s([^\]]*)\] (.+):([1-9][0-9]*): ")
+FINDING = re.compile(r"^- (P[0-3]) \((high|medium|low)\) \[f([^\]]*) s([^\]]*)\] ([^\s:]+):([1-9][0-9]*): ")
 SCORE = re.compile(r"^(10|[1-9])$")
 SCORE_NAMES = {"f": "frequency", "s": "severity"}
-PATH = re.compile(r"^[^\s:]+$")
 HUNK = re.compile(rb"^@@ -[0-9]+(?:,[0-9]+)? \+([0-9]+)(?:,([0-9]+))? @@")
 # One record of `diff-tree -r -z --raw --no-renames`: old mode, new mode, old blob, new blob and a status letter
 # without a score (no rename or copy is detected, so no second path); the path is the NUL-terminated field after it.
@@ -404,8 +409,9 @@ def scored(verdict_file):
 def findings_of(verdict_file):
     """The (priority, frequency, severity, path, line, rationale) of every line of the file's leading `## Findings`
     section under FINDINGS_GRAMMAR: `- none` lists none, and a section that is neither `- none` alone nor finding
-    lines alone is malformed. The rationale is the text after the line's `:<line>: `, read as it is (round d: the
-    filed-findings list prints it; this lever's table leaves it out)."""
+    lines alone is malformed. The path is the first colon-free, whitespace-free token after `] `, the line the digits
+    after it, and the rationale the free text after the `: ` that follows, read as it is, whatever `<path>:<line>:`
+    it holds (U207; round d: the filed-findings list prints it; this lever's table leaves it out)."""
     seen = section = False
     listed, nones = [], 0
     for line_number, line in enumerate(read_text(verdict_file).split("\n"), 1):
@@ -424,7 +430,7 @@ def findings_of(verdict_file):
             nones += 1
             continue
         match = FINDING.match(line)
-        if match is None or not PATH.match(match.group(5)):
+        if match is None:
             raise Malformed(f"{verdict_file}:{line_number}: not a Findings line; {FINDINGS_GRAMMAR}: {line}")
         where = f"{verdict_file}:{line_number}"
         listed.append(

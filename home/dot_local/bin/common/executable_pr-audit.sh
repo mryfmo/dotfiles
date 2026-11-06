@@ -1267,7 +1267,7 @@ prompt=${run}/prompt.md
                     printf '\n</carried-%s>\n' "${nonce}"
             }
         } &&
-        printf '\nRun tests or scripts that need no network if they help (python3 -m unittest, shellcheck, bash -n). Do not edit files; no gh or network.\n\nYour final response is the JSON object of the schema this run passes with --output-schema, nothing else. The rule above that ends the final message with one `Verdict:` line is met by the `verdict` field of that object: the lever writes the line `Verdict: <value>` into verdict.md from it, and a `Verdict:` line or any other text outside the object is not the JSON object and is refused. The fields: `verdict` (`correct`, `incorrect` or `blocked`); `findings`, one object per finding with `priority` (P0, P1, P2 or P3), `confidence` (high, medium or low), `frequency` (an integer from 1 to 10: how often the case arises in the real runs of this repository, 1 for a case no run, test, incident or user has produced, 10 for every run), `severity` (an integer from 1 to 10: what the case costs when it arises, 1 for cosmetic, 10 for data loss, a secret leaving the host or a wrong merge), `path` (the file, relative to the repository), `line` (the exact line of the finding, as the rules ask: an integer from 1 to 2147483647, never null; for a whole file, its first line) and `rationale` (one line); `reproduced`, one string per test or command you ran and what it showed; `notes`, a string or null. A finding has a weight, its frequency times its severity. A P0 or P1 finding with weight 10 or more means `incorrect`; with none the verdict is `correct`, or `blocked` when you could not complete the audit. A finding of any priority with weight under 10 is filed: report it with its scores, and the code is left as it is. Report every P2 and P3 finding with weight 10 or more with its priority and confidence; they do not change the verdict. List every finding of the whole scope in this one pass, P0 to P3, and do not stop after a few; the findings list is a census of the head against the Contract, not a sample. The verdict is checked against the findings and a contradiction is refused.\n'
+        printf '\nRun tests or scripts that need no network if they help (python3 -m unittest, shellcheck, bash -n). Do not edit files; no gh or network.\n\nYour final response is the JSON object of the schema this run passes with --output-schema, nothing else. The rule above that ends the final message with one `Verdict:` line is met by the `verdict` field of that object: the lever writes the line `Verdict: <value>` into verdict.md from it, and a `Verdict:` line or any other text outside the object is not the JSON object and is refused. The fields: `verdict` (`correct`, `incorrect` or `blocked`); `findings`, one object per finding with `priority` (P0, P1, P2 or P3), `confidence` (high, medium or low), `frequency` (an integer from 1 to 10: how often the case arises in the real runs of this repository, 1 for a case no run, test, incident or user has produced, 10 for every run), `severity` (an integer from 1 to 10: what the case costs when it arises, 1 for cosmetic, 10 for data loss, a secret leaving the host or a wrong merge), `path` (the file, relative to the repository, holding no colon and no whitespace: the verdict line is read as `<path>:<line>: <rationale>` and the path is its first colon-free token, so a path with a colon or whitespace is refused and no verdict is taken), `line` (the exact line of the finding, as the rules ask: an integer from 1 to 2147483647, never null; for a whole file, its first line) and `rationale` (one line); `reproduced`, one string per test or command you ran and what it showed; `notes`, a string or null. A finding has a weight, its frequency times its severity. A P0 or P1 finding with weight 10 or more means `incorrect`; with none the verdict is `correct`, or `blocked` when you could not complete the audit. A finding of any priority with weight under 10 is filed: report it with its scores, and the code is left as it is. Report every P2 and P3 finding with weight 10 or more with its priority and confidence; they do not change the verdict. List every finding of the whole scope in this one pass, P0 to P3, and do not stop after a few; the findings list is a census of the head against the Contract, not a sample. The verdict is checked against the findings and a contradiction is refused.\n'
 } > "${prompt}" || fail "cannot write the prompt ${prompt}"
 rm -f -- "${run}/body.md" "${run}/carried.md" || fail "cannot remove ${run}/body.md and ${run}/carried.md"
 
@@ -1308,7 +1308,11 @@ verdict_schema='{
             "maximum": 10,
             "description": "What it costs when it arises: 1 cosmetic, 10 data loss, a secret leaving the host or a wrong merge."
           },
-          "path": { "type": "string", "description": "The file, relative to the repository." },
+          "path": {
+            "type": "string",
+            "pattern": "^[^\\s:]+$",
+            "description": "The file, relative to the repository: no colon, no whitespace (the verdict line is read as <path>:<line>: <rationale>, the path its first colon-free token)."
+          },
           "line": {
             "type": "integer",
             "minimum": 1,
@@ -1346,6 +1350,7 @@ verdict_reader='
 import decimal
 import json
 import os
+import re
 import sys
 
 BLOCKING = ("P0", "P1")
@@ -1357,7 +1362,11 @@ WEIGHT_THRESHOLD = 10
 # pair outside this table is a contradiction and is refused, never corrected.
 ACCEPTED_WITH = {"correct": "correct", "incorrect": "incorrect", "blocked": "correct"}
 # The JSON Schema keywords this reader implements: the subset the schema above is written in. Any other keyword in a
-# schema is refused before a verdict is read, so a rule can never bind codex and not the lever.
+# schema is refused before a verdict is read, so a rule can never bind codex and not the lever. `pattern` and
+# `minLength` are the path rule (regime-cutover U207 round 2): the verdict line is read by two readers as
+# `<path>:<line>: <rationale>` with the path its first colon-free, whitespace-free token, so a path holding a colon or
+# whitespace would be written at one location and read at another; it is refused here, where the path is still a
+# field, never serialized.
 KEYWORDS = frozenset(
     (
         "title",
@@ -1370,6 +1379,8 @@ KEYWORDS = frozenset(
         "items",
         "minimum",
         "maximum",
+        "minLength",
+        "pattern",
     )
 )
 
@@ -1478,6 +1489,13 @@ def check_schema(schema, where, path):
         check_schema(schema["items"], f"{where}.items", path)
 
 
+def ecma(pattern):
+    """A JSON Schema pattern is an ECMA-262 regular expression (draft 2020-12, section 6.4), whose `$` is the end of
+    the text alone; the `$` of Python also matches before a final newline, so `^[^\\s:]+$` would pass a path ending
+    in a newline and the writer would break the line. A closing `$` is read as `\\Z`, the end of text in Python."""
+    return re.sub(r"(?<!\\)\$\Z", r"\\Z", pattern)
+
+
 def check(value, schema, where, path):
     kinds = kinds_of(schema)
     if kinds and not any(IS_TYPE[kind](value) for kind in kinds):
@@ -1491,6 +1509,12 @@ def check(value, schema, where, path):
     if "enum" in schema and value not in schema["enum"]:
         allowed = ", ".join(schema["enum"])
         refuse(path, f"{where} is {shown(value)}, not one of {allowed}")
+    if isinstance(value, str):
+        shortest, pattern = schema.get("minLength"), schema.get("pattern")
+        if shortest is not None and len(value) < shortest:
+            refuse(path, f"{where} is {shown(value)}, shorter than the minLength {shortest}")
+        if pattern is not None and re.search(ecma(pattern), value) is None:
+            refuse(path, f"{where} is {shown(value)}, which does not match the pattern {pattern}")
     if isinstance(value, dict):
         for key in schema.get("required", []):
             if key not in value:
@@ -1565,9 +1589,10 @@ def main():
     for finding in findings:
         priority, confidence, path, line = (finding[key] for key in ("priority", "confidence", "path", "line"))
         frequency, severity = int(finding["frequency"]), int(finding["severity"])
-        at = f"{path}:{int(line)}"
+        # The path passed the pattern of the schema (no colon, no whitespace), so `<path>:<line>` is the location the
+        # two readers will read: the first colon-free token. The rationale is free text and is folded to one line.
         rationale = one_line(finding["rationale"])
-        lines.append(f"- {priority} ({confidence}) [f{frequency} s{severity}] {one_line(at)}: {rationale}")
+        lines.append(f"- {priority} ({confidence}) [f{frequency} s{severity}] {path}:{int(line)}: {rationale}")
     if not findings:
         lines.append("- none")
     lines += ["", "## Reproduced", ""]

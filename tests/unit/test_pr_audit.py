@@ -12,6 +12,7 @@ with its findings (U106), and that nothing outside the run directory under TMPDI
 
 import contextlib
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -1488,6 +1489,53 @@ class PrAuditTest(unittest.TestCase):
                 self.assertNotIn("Traceback", run.stderr)
                 self.assertFalse((rundir / "verdict.md").exists(), "a refused verdict writes no verdict text")
 
+    def test_a_path_holding_a_colon_or_whitespace_is_refused_where_it_is_still_a_field(self):
+        """The two readers of a verdict line take the first colon-free, whitespace-free token as the path (U207), so a
+        path the model answers with a colon or whitespace (`file:1: real.sh`, line 9) would be written as
+        `file:1: real.sh:9:` and read as `file` line 1, a location the writer never meant, whose disposition row could
+        satisfy the merge gate (U207 round 2, the round-1 verdict's P1). The schema's `pattern` states the rule for
+        codex (the one string keyword the strict structured-output mode is documented to accept; its `+` already
+        requires a character), and the reader applies it to the field before any line is written: exit 1 naming
+        verdict.json, the finding and the path as given, no stdout line, no verdict.md. The rationale is free text: a
+        `path:line:` inside it is written as it is and read back by audit-carry.py's `findings_of` as the rationale,
+        the path staying `file.sh` (the round-table of the writer and the readers)."""
+
+        def document(path, rationale="Why."):
+            finding = {"priority": "P2", "confidence": "high", "frequency": 5, "severity": 5, "line": 9}
+            finding |= {"path": path, "rationale": rationale}
+            return json.dumps({"verdict": "correct", "findings": [finding], "reproduced": [], "notes": None})
+
+        pattern = "which does not match the pattern ^[^\\s:]+$"
+        refused = (
+            ("file:1: real.sh", f'findings[0].path is "file:1: real.sh", {pattern}'),
+            ("a b.sh", f'findings[0].path is "a b.sh", {pattern}'),
+            ("a.sh\n", f'findings[0].path is "a.sh\\n", {pattern}'),
+            ("", f'findings[0].path is "", {pattern}'),
+        )
+        for path, message in refused:
+            with self.subTest(path=path):
+                for entry in self.tmp.iterdir():
+                    shutil.rmtree(entry)
+                run = self.run_lever("7", FAKE_CODEX_VERDICT=document(path))
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                (rundir,) = self.tmp.iterdir()
+                self.assertIn(f"{rundir / 'verdict.json'} refused: the verdict.{message}", run.stderr)
+                self.assertNotIn("Traceback", run.stderr)
+                self.assertFalse((rundir / "verdict.md").exists(), "a refused verdict writes no verdict text")
+        for entry in self.tmp.iterdir():
+            shutil.rmtree(entry)
+        run = self.run_lever("7", FAKE_CODEX_VERDICT=document("file.sh", "see other.sh:9: text"))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        (rundir,) = self.tmp.iterdir()
+        self.assertEqual(run.stdout, f"{rundir / 'verdict.md'}\nVerdict: correct\n")
+        self.assertIn("- P2 (high) [f5 s5] file.sh:9: see other.sh:9: text\n", (rundir / "verdict.md").read_text())
+        spec = importlib.util.spec_from_file_location("audit_carry", ROOT / "scripts/orchestrator/audit-carry.py")
+        carry = importlib.util.module_from_spec(spec)
+        sys.modules["audit_carry"] = carry  # the dataclasses of the lever resolve their namespace through sys.modules
+        spec.loader.exec_module(carry)
+        self.assertEqual(carry.findings_of(rundir / "verdict.md"), [("P2", 5, 5, "file.sh", 9, "see other.sh:9: text")])
+
     def test_a_text_the_json_module_takes_but_json_does_not_is_refused(self):
         """The reader reads JSON as RFC 8259 defines it, not as Python's json module extends it (U106 audit round 4:
         `"notes": NaN, "notes": null` was read as a conforming null, `"line": 1e9999999999999999999` raised
@@ -1537,7 +1585,7 @@ class PrAuditTest(unittest.TestCase):
 
     def test_the_reader_refuses_a_schema_outside_its_keyword_and_type_tables(self):
         """The schema codex is sent and the one the reader applies are one file; a keyword the reader does not implement
-        (a `pattern`, say) or a type outside JSON Schema would bind codex alone. The reader, run on its own with the
+        (a `format`, say) or a type outside JSON Schema would bind codex alone. The reader, run on its own with the
         lever's embedded schema as the control, refuses such a schema naming the schema file, before the verdict is read
         and without a traceback."""
         reader, schema = embedded_reader()
@@ -1565,8 +1613,8 @@ class PrAuditTest(unittest.TestCase):
         line = schema["properties"]["findings"]["items"]["properties"]["line"]
         cases = (
             (
-                {**schema, "pattern": "x"},
-                "the schema uses the keyword pattern, which the verdict reader does not implement",
+                {**schema, "format": "x"},
+                "the schema uses the keyword format, which the verdict reader does not implement",
             ),
             (
                 {

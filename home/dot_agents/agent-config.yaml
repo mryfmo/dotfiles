@@ -888,9 +888,9 @@ claude:
       pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
       pr-threads-check.sh: 984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c
       records-sync.sh: 234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e
-      pr-merge.sh: 3f9eade3d16534fa1f646641aa56decdcda6f3072cc60d103980867d0b6d2a12
+      pr-merge.sh: 094e32568e3c6c73a14fbf52be3dd9800d83df33c07ce726e813213a0c041469
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
-      pr-audit.sh: 07788a4ec344341dc1e00518cfed9d6fea924e883624197821adadc3468e40e3
+      pr-audit.sh: af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0
       brief-check.py: f6dd08068ef157f3c1f245f3c1ab2f6730418591fb9e020aa65b67a11795f3b1
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
     # The only extension directories `hcom-seat` passes with `-e`, by default or

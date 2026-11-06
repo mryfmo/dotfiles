@@ -8,10 +8,13 @@ load "../../helpers/apt_record"
 #   script as a program, reaches `sudo timeout ... snap install chromium`, and on an Ubuntu runner that was the real
 #   snap client against the real store, which stalled the whole test leg for nine minutes on 2026-11-05. The fake
 #   records its argv and succeeds at once; a case that needs another behaviour overrides it with fake_snap on the
-#   same path.
+#   same path. The runner's GITHUB_ACTIONS and RUNNER_TEMP are unset first (U297): with both set install_chromium
+#   skips the snap, so every case that asserts a snap call would see none; a case that wants the runner branch
+#   passes them again to run_install_chromium or in front of `run`.
 # @noargs
 # @set PATH string The fixture's bin first: the fake snap and the PATH-keeping sudo, before anything of the host.
 function setup() {
+    unset GITHUB_ACTIONS RUNNER_TEMP
     source "${SCRIPT_PATH}"
     path_keeping_sudo
     fake_snap 'exit 0'
@@ -101,11 +104,24 @@ function path_keeping_sudo() {
 }
 
 @test "[ubuntu-client] install_chromium is a no-op when snap is unavailable" {
+    # A PATH holding no command also proves the guarded source of ci-runner.sh runs no external command (U297c).
     run env PATH="${BATS_TEST_TMPDIR}" /bin/bash -c '
         source "'"${SCRIPT_PATH}"'"
+        declare -F is_ci_runner > /dev/null
         install_chromium
     '
     [ "${status}" -eq 0 ]
+}
+
+@test "[ubuntu-client] a copy whose ci-runner helper is missing is refused with the helper's path" {
+    # Failure injection for the guarded source (standing order 21, U297c): the copy's tree has no scripts/lib.
+    local tree="${BATS_TEST_TMPDIR}/bare"
+    mkdir -p "${tree}/install/ubuntu/client"
+    cp "${SCRIPT_PATH}" "${tree}/install/ubuntu/client/misc.sh"
+    run /bin/bash -c 'source "$1"; install_chromium' _ "${tree}/install/ubuntu/client/misc.sh"
+    [ "${status}" -eq 2 ]
+    [[ "${output}" == *"ci-runner helper unreadable: ${tree}/install/ubuntu/client/../../../scripts/lib/ci-runner.sh"* ]]
+    [ ! -e "${BATS_TEST_TMPDIR}/snap_calls" ]
 }
 
 @test "[ubuntu-client] install_misc asks apt-get for every package in PACKAGES at once" {
@@ -116,7 +132,11 @@ function path_keeping_sudo() {
 }
 
 @test "[ubuntu-client] the recorded install_misc call catches an installer that drops a package" {
-    local mutant="${BATS_TEST_TMPDIR}/misc.sh" calls
+    # The mutant lives at the script's depth in a tree of its own, so its ci-runner.sh source line resolves there.
+    local tree="${BATS_TEST_TMPDIR}/tree" mutant calls
+    mkdir -p "${tree}/install/ubuntu/client" "${tree}/scripts/lib"
+    cp scripts/lib/ci-runner.sh "${tree}/scripts/lib/ci-runner.sh"
+    mutant="${tree}/install/ubuntu/client/misc.sh"
     sed 's/apt-get install -y "${PACKAGES\[@\]}"/apt-get install -y "${PACKAGES[@]:1}"/' "${SCRIPT_PATH}" > "${mutant}"
     if cmp -s "${SCRIPT_PATH}" "${mutant}"; then
         false
@@ -182,4 +202,30 @@ function run_install_chromium() {
     [[ "${output}" == *"install_chromium: snap install chromium timed out after 1 s (SNAP_INSTALL_TIMEOUT)"* ]]
     # Not retried: snapd keeps the change running after its client stops.
     [ "$(grep -c '^snap install chromium$' "${BATS_TEST_TMPDIR}/snap_calls")" -eq 1 ]
+}
+
+@test "[ubuntu-client] install_chromium skips the snap on a GitHub Actions runner and prints the skip line" {
+    run_install_chromium GITHUB_ACTIONS=true RUNNER_TEMP="${BATS_TEST_TMPDIR}"
+    [ "${status}" -eq 0 ]
+    [ "${output}" = "install_chromium: skipped on CI (snap store)" ]
+    # The fake was never reached: it writes snap_calls on its first call.
+    [ ! -e "${BATS_TEST_TMPDIR}/snap_calls" ]
+}
+
+@test "[ubuntu-client] install_chromium installs under an agent shell's CI=true off the runner" {
+    # omp's bash tool exports CI=true on the operator's hosts (scripts/lib/ci-runner.sh); that never skips the snap.
+    run_install_chromium CI=true
+    [ "${status}" -eq 0 ]
+    [[ "${output}" != *"skipped on CI"* ]]
+    [ "$(grep -c '^snap install chromium$' "${BATS_TEST_TMPDIR}/snap_calls")" -eq 1 ]
+}
+
+@test "[ubuntu-client] main on a GitHub Actions runner installs the apt packages and skips the snap" {
+    # A fake that would fail the run if reached: the runner branch must return before it.
+    fake_snap 'exit 99'
+    GITHUB_ACTIONS=true RUNNER_TEMP="${BATS_TEST_TMPDIR}" run record_apt_calls "${SCRIPT_PATH}" main
+    [ "${status}" -eq 0 ]
+    grep -qxF "apt-get install -y ${PACKAGES[*]}" <<< "${output}"
+    grep -qxF "install_chromium: skipped on CI (snap store)" <<< "${output}"
+    [ ! -e "${BATS_TEST_TMPDIR}/snap_calls" ]
 }

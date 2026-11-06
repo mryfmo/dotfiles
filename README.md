@@ -196,6 +196,24 @@ make doctor
 upgrades. Other values, including `SYSTEM=0`, keep `make update` in user-level
 tooling mode.
 
+**`make deploy-kit`.** The narrow deploy an agent runs after a pull request
+merges: `scripts/deploy-kit.sh` applies, by name, only the chezmoi targets
+under the kit's own roots, `~/.local/bin` (the levers), `~/.agents` (the agent
+assets) and `~/.dsh` (the DSH profiles), verifies them, and does nothing else.
+It pulls nothing, upgrades no tool, reloads no herdr, runs no step of
+`scripts/update-agent-assets.sh` and touches no other target (`~/.codex`,
+`~/.claude`, the shell rc files, `~/.config` stay as they are). The three roots
+must be real directories: a missing root, or one that is or lies behind a
+symbolic link, is refused with its path before anything is read. Every pending
+name must be one `chezmoi managed` listed under the roots, or the run refuses
+naming it. A kit target whose content is not what chezmoi last wrote (`chezmoi
+status` first column `M`, two-sided drift) is refused with its path and nothing
+is applied, so a local edit is never dropped. `make deploy-kit DRY=1` prints
+the pending targets and the refusals without applying. The pinned assets the
+kit installs (CompactionDB, the DSH harness, the security-audit skill, the
+pstack skills) are refreshed by `scripts/update-agent-assets.sh`, the separate
+step under its own contract; `make update` remains the whole-home step.
+
 **Tool versions.** Only a held tool commits a version. `home/dot_mise/config.toml`
 requests `"latest"` for every tool that is not held back (below), and there is no
 `mise.lock`, so `make update` moves each of those tools to the newest release

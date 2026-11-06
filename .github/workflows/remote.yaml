@@ -173,35 +173,31 @@ jobs:
           # keeps a failed setup.sh failing through the tee.
           # Probe (regime-cutover U237, never to merge): the server leg has stalled at about 9.05 MB of output on every
           # run since 2026-11-06T00:52Z; the first probe's 12-minute `timeout` could not end the step (a root child of sudo kept
-          # the tee pipe open), so setup.sh writes to a file and a watchdog dumps the process table, the lock holders
-          # and the log tail at the bound, then kills the root children so the step ends and the log uploads.
+          # the tee pipe open); the second probe's dump used sudo and never ended either, so setup.sh writes to a file
+          # under the bound, the dump reads /proc without sudo, and every sudo in the dump is bounded by 20 s, with one
+          # `sudo -n true` that tells whether sudo itself is what hangs.
           status=0
           printf 'ci@example.invalid\n%s\n' "${SYSTEM}" | \
             DOTFILES_REPO_URL="${GITHUB_WORKSPACE}" BRANCH_NAME=bootstrap-under-test \
-            bash "${GITHUB_WORKSPACE}/setup.sh" > "${RUNNER_TEMP}/setup.log" 2>&1 &
-          setup_pid=$!
-          for _ in $(seq 1 72); do kill -0 "${setup_pid}" 2>/dev/null || break; sleep 10; done
-          if kill -0 "${setup_pid}" 2>/dev/null; then
-            echo "::group::probe: setup.sh still running after 12 minutes"
-            echo "setup.log bytes: $(wc -c < "${RUNNER_TEMP}/setup.log")"; df -h "${RUNNER_TEMP}" "${HOME}" /tmp || true
+            timeout --kill-after=20 12m bash "${GITHUB_WORKSPACE}/setup.sh" > "${RUNNER_TEMP}/setup.log" 2>&1 || status=$?
+          if [ "${status}" -ne 0 ]; then
+            echo "::group::probe: setup.sh exited ${status} (124 is the 12-minute bound)"
+            date -u +%FT%TZ; cat /proc/loadavg
+            echo "setup.log bytes: $(wc -c < "${RUNNER_TEMP}/setup.log")"
             echo "--- last 80 lines of setup.log"; tail -n 80 "${RUNNER_TEMP}/setup.log" || true
-            echo "--- processes"; ps -eo pid,ppid,user,stat,etime,wchan:32,cmd --forest || true
-            echo "--- apt and dpkg locks"; sudo fuser -v /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock 2>&1 || true
-            for pid in $(pgrep -f 'apt-get|dpkg|needrestart|whiptail|debconf|unattended|chezmoi|setup_timezone|misc.sh|starship' || true); do
+            echo "--- processes (no sudo)"; ps -eo pid,ppid,user,stat,etime,wchan:32,cmd --forest || true
+            for pid in $(pgrep -f 'apt-get|dpkg|needrestart|whiptail|debconf|unattended|chezmoi|setup_timezone|misc.sh|starship|sudo' || true); do
               echo "--- pid ${pid}: $(tr '\0' ' ' < "/proc/${pid}/cmdline" 2>/dev/null | cut -c 1-200)"
-              sudo cat "/proc/${pid}/wchan" 2>/dev/null; echo
-              sudo cat "/proc/${pid}/stack" 2>/dev/null || true
-              sudo ls -l "/proc/${pid}/fd" 2>/dev/null | head -n 12 || true
+              echo "  stat: $(cut -d' ' -f3 "/proc/${pid}/stat" 2>/dev/null) wchan: $(cat "/proc/${pid}/wchan" 2>/dev/null)"
             done
-            echo "--- journal tail"; sudo journalctl --no-pager -n 40 2>/dev/null || true
+            echo "--- does sudo itself answer within 20 s"; timeout 20 sudo -n true; echo "sudo probe exit=$?"
+            echo "--- lock holders (bounded sudo)"; timeout 20 sudo -n fuser -v /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock 2>&1 || true
+            echo "--- journal tail (bounded sudo)"; timeout 20 sudo -n journalctl --no-pager -n 40 2>/dev/null || true
             echo "::endgroup::"
-            sudo pkill -9 -f 'apt-get|dpkg|needrestart|chezmoi|setup.sh' || true
-            kill -9 "${setup_pid}" 2>/dev/null || true
-            exit 1
+            timeout 20 sudo -n pkill -9 -f 'apt-get|dpkg|needrestart|chezmoi' || true
+            exit "${status}"
           fi
-          wait "${setup_pid}" || status=$?
           cat "${RUNNER_TEMP}/setup.log"
-          if [ "${status}" -ne 0 ]; then echo "probe: setup.sh exited ${status}"; exit "${status}"; fi
           grep -F 'chezmoi externals: chezmoi read the externals from its cache' "${RUNNER_TEMP}/setup.log"
 
           test "$(git -C "${HOME}/.local/share/chezmoi" rev-parse HEAD)" = "${GITHUB_SHA}"

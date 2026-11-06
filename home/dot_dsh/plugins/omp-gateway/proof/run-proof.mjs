@@ -1,9 +1,10 @@
 /**
  * Composition proof: a scratch `DSH_HOME`, a scratch profile that links this plugin (and the ping tool) the way
- * `dsh plugin add link:<dir>` would, and two headless `dsh` turns against the stub gateway.
+ * `dsh plugin add link:<dir>` would, and headless `dsh` turns against the stub gateway.
  *
- * Usage: node proof/run-proof.mjs [--home <dir>] [--dsh <path>] [--command <cmd>] [--args <json list>] [--cwd <dir>]
- *   --command omp --args '["auth-gateway","stdio"]' runs the same two turns against the real gateway.
+ * Usage: node proof/run-proof.mjs [--home <dir>] [--dsh <path>] [--command <cmd>] [--args <json list>] [--cwd <dir>] [--case <id>]...
+ *   --command omp --args '["auth-gateway","stdio"]' runs the same turns against the real gateway.
+ *   --case selects turns from CASES (repeatable); without it the two turns of round 1 run (`pong`, `ping`).
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
@@ -14,6 +15,16 @@ import { fileURLToPath } from 'node:url'
 const proofDir = dirname(fileURLToPath(import.meta.url))
 const pluginDir = resolve(proofDir, '..')
 const pingToolDir = join(proofDir, 'ping-tool')
+const pingPatch = join(proofDir, 'ping-tool.patch.yml')
+
+/** The turns a `--case` can select; `model` overrides the profile's default model for that turn. */
+const CASES = {
+  pong: { title: 'turn 1: pong', args: ['Reply with the single word pong.'] },
+  ping: { title: 'turn 2: ping tool (--json)', args: ['--patch', pingPatch, '--json', 'Call the ping tool with word=pong and nothing else.'] },
+  loop3: { title: 'turn 3: three-step tool loop (--json)', args: ['--patch', pingPatch, '--json', 'Call the ping tool with word=one, then call it again with word=two, then reply with the single word done.'] },
+  siwc: { title: 'turn 4: SIWC model id', args: ['Reply with the single word pong.'], model: { provider: 'openai-siwc', model: 'gpt-6-astra' } },
+}
+
 const flags = parseFlags(process.argv.slice(2))
 const home = flags.home ?? mkdtempSync(join(tmpdir(), 'u240-dsh-home-'))
 const profileDir = join(home, 'profiles', 'omp-proof')
@@ -22,6 +33,7 @@ const stubLog = join(home, 'stub.log')
 const dsh = flags.dsh ?? join(homedir(), '.dsh', 'bin', 'dsh')
 const command = flags.command ?? process.execPath
 const args = flags.args ?? [join(pluginDir, 'stub-gateway.mjs'), '--fixtures', join(pluginDir, 'fixtures.json'), '--log', stubLog]
+const selected = flags.cases.length === 0 ? ['pong', 'ping'] : flags.cases
 
 mkdirSync(join(profileDir, 'node_modules'), { recursive: true })
 mkdirSync(cwd, { recursive: true })
@@ -41,7 +53,8 @@ const patch = [
   { id: 'bash-sandbox', disabled: true },
   { id: 'session-log-deepseek', config: { enabled: false } },
   { id: 'agent-default-model', config: { provider: 'claude-bridge', model: 'claude-haiku-5-5' } },
-  { insert: [{ id: 'omp-gateway', name: 'dsh-omp-gateway', config: { command, args, ...flags.cwd === undefined ? {} : { cwd: flags.cwd } } }] },
+  // Both routes, so the `siwc` case reaches the gateway and the 404 is the gateway's answer, not DSH's NO_ADAPTER.
+  { insert: [{ id: 'omp-gateway', name: 'dsh-omp-gateway', config: { command, args, providers: ['claude-bridge', 'openai-siwc'], ...flags.cwd === undefined ? {} : { cwd: flags.cwd } } }] },
 ]
 writeFileSync(join(profileDir, 'cordis.patch.yml'), `${JSON.stringify(patch, null, 2)}\n`)
 
@@ -49,13 +62,23 @@ console.log(`DSH_HOME=${home}`)
 console.log(`profile=${profileDir}`)
 console.log(`gateway command=${command} args=${JSON.stringify(args)}`)
 console.log(`dsh=${dsh} cwd=${cwd}`)
+console.log(`cases=${selected.join(',')}`)
 
-const pong = turn('turn 1: pong', ['--profile', 'omp-proof', 'Reply with the single word pong.'])
-const ping = turn('turn 2: ping tool (--json)', ['--profile', 'omp-proof', '--patch', join(proofDir, 'ping-tool.patch.yml'), '--json', 'Call the ping tool with word=pong and nothing else.'])
+const results = selected.map(id => {
+  const turnCase = CASES[id]
+  const overlay = turnCase.model === undefined ? [] : ['--patch', modelPatch(id, turnCase.model)]
+  return turn(turnCase.title, ['--profile', 'omp-proof', ...overlay, ...turnCase.args])
+})
 
 console.log('\n=== stub log (one line per answered request) ===')
 console.log(existsSync(stubLog) ? readFileSync(stubLog, 'utf8').trimEnd() : '(no stub log: the gateway was not the stub)')
-process.exitCode = pong.status === 0 && ping.status === 0 ? 0 : 1
+process.exitCode = results.every(result => result.status === 0) ? 0 : 1
+
+function modelPatch(id, model) {
+  const path = join(home, `${id}-model.patch.yml`)
+  writeFileSync(path, `${JSON.stringify([{ id: 'agent-default-model', config: model }], null, 2)}\n`)
+  return path
+}
 
 function turn(title, dshArgs) {
   console.log(`\n=== ${title} ===`)
@@ -81,7 +104,7 @@ function quote(arg) {
 }
 
 function parseFlags(argv) {
-  const parsed = { home: undefined, dsh: undefined, command: undefined, args: undefined, cwd: undefined }
+  const parsed = { home: undefined, dsh: undefined, command: undefined, args: undefined, cwd: undefined, cases: [] }
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index]
     const value = argv[index + 1]
@@ -92,7 +115,10 @@ function parseFlags(argv) {
     else if (flag === '--command') parsed.command = value
     else if (flag === '--args') parsed.args = JSON.parse(value)
     else if (flag === '--cwd') parsed.cwd = resolve(value)
-    else throw new Error(`run-proof: unknown flag ${flag}`)
+    else if (flag === '--case') {
+      if (!Object.hasOwn(CASES, value)) throw new Error(`run-proof: unknown case ${value}; one of ${Object.keys(CASES).join(', ')}`)
+      parsed.cases.push(value)
+    } else throw new Error(`run-proof: unknown flag ${flag}`)
   }
   return parsed
 }

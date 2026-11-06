@@ -2364,6 +2364,87 @@ PY
 }
 
 #
+# @description Uninstall the retired Understand-Anything Claude Code plugin and remove its marketplace.
+# @description
+#   .chezmoiremove deletes the plugin's cache and marketplace clone, but installed_plugins.json and the
+#   enabledPlugins entry still name it, and manifest_prune_retired drops the record remove-agent-asset would use,
+#   so make doctor would report a plugin with no files on every run. Claude Code owns both files, so its own
+#   commands clear them: `claude plugin uninstall` per recorded installation, then `claude plugin marketplace
+#   remove`. A marketplace of that name from another source is not ours and is only reported. main runs it after
+#   the Claude plugin convergence: the claude CLI is repaired by then, and a failure here (set -e) skips no pin check.
+# @stdout One line per command run.
+# @stderr `already retired` when nothing was present, or the skip line on a host without claude.
+# @exitcode 1 When installed_plugins.json or the marketplace list cannot be read, or a claude command fails; no
+#   later command runs.
+#
+function retire_understand_anything() {
+    local plugin_id="understand-anything@understand-anything" marketplace="understand-anything"
+    local source="Egonex-AI/Understand-Anything" installs count index scope project listing state ran=0
+
+    if ! has_command claude; then
+        printf 'Skipping the Understand-Anything retirement: claude command not found.\n' >&2
+        return 0
+    fi
+    if ! installs="$(claude_plugin_installs "${plugin_id}")"; then
+        printf 'ERROR: cannot read %s; %s is not retired.\n' "${AGENT_CLAUDE_DIR}/plugins/installed_plugins.json" "${plugin_id}" >&2
+        return 1
+    fi
+    count="$(jq -er 'length' <<< "${installs}")" || return 1
+    for ((index = 0; index < count; index++)); do
+        scope="$(jq -er ".[${index}].scope" <<< "${installs}")" || return 1
+        case "${scope}" in
+        user)
+            if ! claude_outside_projects plugin uninstall "${plugin_id}" --scope user; then
+                printf 'ERROR: claude plugin uninstall %s --scope user failed.\n' "${plugin_id}" >&2
+                return 1
+            fi
+            printf 'Ran: claude plugin uninstall %s --scope user\n' "${plugin_id}"
+            ;;
+        project | local)
+            if ! project="$(jq -er ".[${index}].projectPath | strings" <<< "${installs}")"; then
+                printf 'ERROR: the %s-scope installation of %s names no project path.\n' "${scope}" "${plugin_id}" >&2
+                return 1
+            fi
+            if ! (cd "${project}" && claude plugin uninstall "${plugin_id}" --scope "${scope}"); then
+                printf 'ERROR: claude plugin uninstall %s --scope %s failed in %s.\n' "${plugin_id}" "${scope}" "${project}" >&2
+                return 1
+            fi
+            printf 'Ran: claude plugin uninstall %s --scope %s (in %s)\n' "${plugin_id}" "${scope}" "${project}"
+            ;;
+        *)
+            printf 'ERROR: unexpected installation scope %q for %s.\n' "${scope}" "${plugin_id}" >&2
+            return 1
+            ;;
+        esac
+        ran=1
+    done
+    if ! listing="$(claude_outside_projects plugin marketplace list --json)"; then
+        printf 'ERROR: claude plugin marketplace list --json failed; the %s marketplace is not retired.\n' "${marketplace}" >&2
+        return 1
+    fi
+    state="$(pin_record claude-marketplace "${marketplace}" "${source}" <<< "${listing}")" || return 1
+    case "${state}" in
+    registered)
+        if ! claude_outside_projects plugin marketplace remove "${marketplace}"; then
+            printf 'ERROR: claude plugin marketplace remove %s failed.\n' "${marketplace}" >&2
+            return 1
+        fi
+        printf 'Ran: claude plugin marketplace remove %s\n' "${marketplace}"
+        ran=1
+        ;;
+    foreign)
+        printf 'WARN: the Claude Code marketplace %s is registered from another source than %s; left in place.\n' "${marketplace}" "${source}" >&2
+        ;;
+    absent) ;;
+    *)
+        printf 'ERROR: unexpected marketplace state %q for %s.\n' "${state}" "${marketplace}" >&2
+        return 1
+        ;;
+    esac
+    [ "${ran}" -eq 1 ] || printf 'Understand-Anything: already retired.\n' >&2
+}
+
+#
 # @description Remove the launcher shim the retired agmsg skill wrote to ~/.agents/bin/agy-tui.
 # @description
 #   agmsg wrote ~/.agents/bin/agy-tui outside its skill tree, so .chezmoiremove (which deletes ~/.agents/skills/agmsg)
@@ -2553,6 +2634,7 @@ function main() {
     update_claude_crit
     update_claude_ponytail
     converge_claude_plugins
+    retire_understand_anything
     ensure_mise_npm_agent_cli codex "npm:@openai/codex"
     ensure_gh_extensions
     update_codex_superpowers

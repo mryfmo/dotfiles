@@ -3975,6 +3975,125 @@ claude() {
         self.assertEqual(reinstall, calls)
 
 
+class RetireUnderstandAnythingTest(unittest.TestCase):
+    """retire_understand_anything against a fake claude that logs its arguments and working directory: one uninstall
+    per recorded installation, then the marketplace remove, each read fail-closed (U224c)."""
+
+    PLUGIN = "understand-anything@understand-anything"
+    REGISTERED = [{"name": "understand-anything", "source": "github", "repo": "Egonex-AI/Understand-Anything"}]
+    FAKE_CLAUDE = r"""
+claude() {
+    printf '%s\n' "$*" >> "${CALLS}"
+    printf '%s\n' "${PWD}" >> "${CWDS}"
+    case "$*" in
+    "plugin marketplace list --json") cat "${MARKETS}" ;;
+    "plugin uninstall "*) [ -z "${UNINSTALL_FAILS:-}" ] || return 1 ;;
+    esac
+}
+"""
+
+    def run_step(self, installs, markets, *, has_claude=True, **env):
+        """INSTALLS: [{scope, projectPath?}] for the plugin, or raw text for installed_plugins.json."""
+        work = Path(tempfile.mkdtemp(prefix="retire-ua-"))
+        self.addCleanup(shutil.rmtree, work)
+        home = work / "home"
+        (home / ".claude/plugins").mkdir(parents=True)
+        (work / "tmp").mkdir()
+        (work / "project").mkdir()
+        record = home / ".claude/plugins/installed_plugins.json"
+        if isinstance(installs, str):
+            record.write_text(installs)
+        else:
+            entries = [
+                {
+                    "version": "2.9.7",
+                    "installPath": f"{home}/.claude/plugins/cache/understand-anything/understand-anything/2.9.7",
+                    **({"projectPath": str(work / "project")} if entry["scope"] != "user" else {}),
+                    **entry,
+                }
+                for entry in installs
+            ]
+            record.write_text(json.dumps({"version": 2, "plugins": {self.PLUGIN: entries} if entries else {}}))
+        (work / "markets.json").write_text(json.dumps(markets))
+        stubs = (
+            self.FAKE_CLAUDE
+            if has_claude
+            else 'has_command() { [ "$1" != claude ] && command -v "$1" > /dev/null 2>&1; }\n'
+        )
+        result = subprocess.run(
+            ["bash", "-c", f'source "$1"; {stubs}\nretire_understand_anything', "bash", str(UPDATER)],
+            env=os.environ
+            | scratch_env(home)
+            | {
+                "CALLS": str(work / "calls"),
+                "CWDS": str(work / "cwds"),
+                "MARKETS": str(work / "markets.json"),
+                "TMPDIR": str(work / "tmp"),
+            }
+            | env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        calls = (work / "calls").read_text().splitlines() if (work / "calls").exists() else []
+        cwds = (work / "cwds").read_text().splitlines() if (work / "cwds").exists() else []
+        return result, calls, cwds, work
+
+    def test_retire_understand_anything_uninstalls_then_removes_the_marketplace(self):
+        result, calls, _, _ = self.run_step([{"scope": "user"}], self.REGISTERED)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(
+            [
+                f"plugin uninstall {self.PLUGIN} --scope user",
+                "plugin marketplace list --json",
+                "plugin marketplace remove understand-anything",
+            ],
+            calls,
+        )
+        self.assertIn(f"Ran: claude plugin uninstall {self.PLUGIN} --scope user", result.stdout)
+        self.assertIn("Ran: claude plugin marketplace remove understand-anything", result.stdout)
+        self.assertNotIn("already retired", result.stdout + result.stderr)
+
+    def test_retire_understand_anything_changes_nothing_when_nothing_is_present(self):
+        # The marketplace list is the one read left; nothing is uninstalled or removed.
+        result, calls, _, _ = self.run_step([], [])
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["plugin marketplace list --json"], calls)
+        self.assertIn("Understand-Anything: already retired.", result.stderr)
+        self.assertEqual("", result.stdout)
+
+    def test_retire_understand_anything_refuses_an_unreadable_installation_record(self):
+        result, calls, _, work = self.run_step("{not json", self.REGISTERED)
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"cannot read {work}/home/.claude/plugins/installed_plugins.json", result.stderr)
+        self.assertEqual([], calls)
+
+    def test_retire_understand_anything_stops_when_the_uninstall_fails(self):
+        result, calls, _, _ = self.run_step([{"scope": "user"}], self.REGISTERED, UNINSTALL_FAILS="1")
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"claude plugin uninstall {self.PLUGIN} --scope user failed", result.stderr)
+        self.assertEqual([f"plugin uninstall {self.PLUGIN} --scope user"], calls)
+
+    def test_retire_understand_anything_skips_a_host_without_claude(self):
+        result, calls, _, _ = self.run_step([{"scope": "user"}], self.REGISTERED, has_claude=False)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("Skipping the Understand-Anything retirement: claude command not found.", result.stderr)
+        self.assertEqual([], calls)
+
+    def test_retire_understand_anything_uninstalls_a_project_scope_from_its_project(self):
+        result, calls, cwds, work = self.run_step([{"scope": "project"}], [])
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([f"plugin uninstall {self.PLUGIN} --scope project", "plugin marketplace list --json"], calls)
+        self.assertEqual(str((work / "project").resolve()), str(Path(cwds[0]).resolve()))
+
+    def test_retire_understand_anything_leaves_a_foreign_marketplace_of_that_name(self):
+        foreign = [{"name": "understand-anything", "source": "github", "repo": "someone/else"}]
+        result, calls, _, _ = self.run_step([], foreign)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["plugin marketplace list --json"], calls)
+        self.assertIn("registered from another source", result.stderr)
+
+
 class MaskedStatusTest(unittest.TestCase):
     """Structural guard: no exit status of an agent CLI, gh or mise is lost on its way to a decision."""
 

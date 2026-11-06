@@ -17,8 +17,12 @@ fi
 #
 function main() {
     export TZ="Asia/Tokyo"
-    sudo ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime
-    echo "${TZ}" | sudo tee /etc/timezone
+    if command -v timedatectl > /dev/null 2>&1 && [ -d /run/systemd/system ]; then
+        sudo timedatectl set-timezone "${TZ}" # probe (U237): the systemd route instead of ln and tee
+    else
+        sudo ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime
+        echo "${TZ}" | sudo tee /etc/timezone
+    fi
 
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
 }

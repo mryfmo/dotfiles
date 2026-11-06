@@ -1,7 +1,6 @@
-"""Exercise scripts/deploy-kit.sh against a fake chezmoi and a fake asset updater that record their calls."""
+"""Exercise scripts/deploy-kit.sh against a fake chezmoi that records its calls."""
 
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -11,19 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/deploy-kit.sh"
-UPDATER = ROOT / "scripts/update-agent-assets.sh"
 KIT_ROOTS = (".local/bin", ".agents", ".dsh")
-# The kit asset function table of scripts/deploy-kit.sh, in its order: the updater steps whose writes stay under
-# the kit roots. A change here is a boundary change and needs the table, the whitelist and the body changed too.
-KIT_ASSET_FUNCTIONS = (
-    "retire_shared_pstack_copies",
-    "retire_marketplace_dev_workflows",
-    "retire_agmsg_shim",
-    "update_security_audit_skill",
-    "update_deepseek_harness",
-    "update_compactiondb",
-    "manifest_prune_retired",
-)
 # The recorder: every call appends its argv; managed and status answer from fixture files; FAIL names the one
 # subcommand that exits non-zero (failure injection, FAIL_STATUS the status); anything else the script never calls
 # is refused.
@@ -38,14 +25,14 @@ verify) ;;
 *) exit 9 ;;
 esac
 """
-# The fake updater: records its argv, refuses a call without exactly one function name (the updater's main would
-# run every step, the operator's included), and fails on the function FAIL names.
-FAKE_ASSETS = r"""#!/usr/bin/env bash
-printf '%s\n' "update-agent-assets.sh $*" >> "${CALLS}"
-[ "$#" -eq 1 ] || exit 2
-[ "$1" != "${FAIL:-}" ]
+# Failure injection for the physical-path reads: `pwd` is a bash builtin, so a PATH stub never reaches it; bash
+# reads BASH_ENV before a non-interactive script runs, and a function named pwd shadows the builtin. The function
+# fails for the one physical directory FAIL_PWD names and answers as the builtin otherwise.
+FAKE_PWD_ENV = r"""pwd() {
+    [[ ${PWD} != "${FAIL_PWD}" ]] || return 1
+    builtin pwd "$@"
+}
 """
-FAKE_DIRNAME = "#!/usr/bin/env bash\nexit 1\n"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
@@ -59,18 +46,15 @@ def tearDownModule() -> None:
     restore_agent_homes()
 
 
-def asset_calls(names):
-    return [f"update-agent-assets.sh {name}" for name in names]
-
-
 class DeployKitTest(unittest.TestCase):
     def run_deploy(self, status_rows, *, managed=None, fail="", fail_status=1, dry_run=False, roots=None):
-        """Run a copy of the script beside a fake asset updater, with HOME a scratch directory.
+        """Run a copy of the script with HOME a scratch directory and a fake chezmoi first on PATH.
 
         status_rows: `XY <target relative to HOME>` lines; managed: the relative targets chezmoi lists (defaults
-        to every status target plus two of the operator's); fail: the chezmoi subcommand, the kit function or the
-        producer (`dirname`) that fails; roots: how each kit root is laid out (`dir`, `link`, `missing`,
-        `parent-link`; every root a real directory by default). Returns (result, recorded calls, home).
+        to every status target plus two of the operator's); fail: the chezmoi subcommand that fails, or
+        `pwd:<relative directory>` (`pwd:.` for HOME) for a failing physical-path read; roots: how each kit root
+        is laid out (`dir`, `link`, `missing`, `parent-link`; every root a real directory by default). Returns
+        (result, recorded calls, home).
         """
         with tempfile.TemporaryDirectory() as directory:
             scratch = Path(directory)
@@ -94,18 +78,16 @@ class DeployKitTest(unittest.TestCase):
             scripts = scratch / "scripts"
             scripts.mkdir()
             shutil.copy(SCRIPT, scripts / "deploy-kit.sh")
-            assets = scripts / "update-agent-assets.sh"
-            assets.write_text(FAKE_ASSETS)
-            assets.chmod(0o755)
             fakes = scratch / "bin"
             fakes.mkdir()
             chezmoi = fakes / "chezmoi"
             chezmoi.write_text(FAKE_CHEZMOI)
             chezmoi.chmod(0o755)
-            if fail == "dirname":
-                dirname = fakes / "dirname"
-                dirname.write_text(FAKE_DIRNAME)
-                dirname.chmod(0o755)
+            injection = {}
+            if fail.startswith("pwd:"):
+                env_file = scratch / "bash_env"
+                env_file.write_text(FAKE_PWD_ENV)
+                injection = {"BASH_ENV": str(env_file), "FAIL_PWD": os.path.realpath(home / fail[4:])}
             status_lines = [row[:3] + str(home / row[3:]) for row in status_rows]
             if managed is None:
                 managed = [row[3:] for row in status_rows] + [".zshrc", ".codex/config.toml"]
@@ -126,7 +108,8 @@ class DeployKitTest(unittest.TestCase):
                     "STATUS": str(status_file),
                     "FAIL": fail,
                     "FAIL_STATUS": str(fail_status),
-                },
+                }
+                | injection,
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
@@ -143,7 +126,7 @@ class DeployKitTest(unittest.TestCase):
             f"chezmoi status --path-style absolute --refresh-externals=never -- {roots}",
         ]
 
-    def test_only_the_pending_kit_targets_are_applied_by_name_then_verified_then_the_assets_refreshed(self):
+    def test_only_the_pending_kit_targets_are_applied_by_name_then_verified(self):
         rows = [
             " M .local/bin/pr-merge.sh",
             " A .agents/omp/profiles/dsh.yml",
@@ -163,8 +146,7 @@ class DeployKitTest(unittest.TestCase):
             + [
                 f"chezmoi apply --verbose --refresh-externals=never {lever} {profile}",
                 f"chezmoi verify --refresh-externals=never {lever} {profile}",
-            ]
-            + asset_calls(KIT_ASSET_FUNCTIONS),
+            ],
             calls,
         )
         self.assertIn("deploy-kit: managed kit targets: 3\n", result.stdout)
@@ -172,33 +154,18 @@ class DeployKitTest(unittest.TestCase):
         self.assertIn(f"deploy-kit: applied: 2\n  {lever}\n  {profile}\n", result.stdout)
         self.assertNotIn(".codex", "".join(call for call in calls if call.startswith("chezmoi apply")))
 
-    def test_the_asset_step_calls_the_updater_once_per_kit_function_by_name_and_never_without_an_argument(self):
-        result, calls, _ = self.run_deploy(["   .local/bin/pr-merge.sh"])
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        updater_calls = [call for call in calls if call.startswith("update-agent-assets.sh")]
-        self.assertEqual(asset_calls(KIT_ASSET_FUNCTIONS), updater_calls)
-        self.assertNotIn("update-agent-assets.sh ", updater_calls)
-        self.assertEqual(len(KIT_ASSET_FUNCTIONS), len(set(updater_calls)))
-        for name in KIT_ASSET_FUNCTIONS:
-            self.assertRegex(result.stdout, rf"deploy-kit: \S*update-agent-assets\.sh {name}\n")
-
-    def test_a_failing_kit_function_stops_the_asset_step_with_its_name(self):
-        failing = KIT_ASSET_FUNCTIONS[3]
-        result, calls, _ = self.run_deploy(["   .local/bin/pr-merge.sh"], fail=failing)
-        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-        self.assertIn(f"update-agent-assets.sh {failing} failed; the later kit asset steps not run", result.stderr)
-        self.assertEqual(asset_calls(KIT_ASSET_FUNCTIONS[:4]), calls[2:])
-        self.assertNotIn("deploy-kit: applied:", result.stdout)
-
-    def test_every_kit_function_is_in_the_updaters_single_function_whitelist(self):
-        text = UPDATER.read_text()
-        match = re.search(r'case "\$#:\$1" in\n\s*((?:1:\w+(?: \| )?)+)\)', text)
-        self.assertIsNotNone(match, "the updater's main has no single-function case")
-        whitelist = [entry.removeprefix("1:") for entry in match.group(1).split(" | ")]
-        main_body = text[text.index("function main()") :]
-        for name in KIT_ASSET_FUNCTIONS:
-            self.assertIn(name, whitelist)
-            self.assertIn(f"\n    {name}\n", main_body, f"{name} is not a step of the updater's main")
+    def test_a_pending_name_outside_the_managed_kit_set_refuses_by_name_and_applies_nothing(self):
+        rows = [" M .local/bin/pr-merge.sh", " A .agents/skills/new/SKILL.md", " M .dsh/profiles/thak/package.json"]
+        managed = [".local/bin/pr-merge.sh", ".dsh/profiles/thak/package.json", ".zshrc"]
+        for dry_run in (False, True):
+            with self.subTest(dry_run=dry_run):
+                result, calls, home = self.run_deploy(rows, managed=managed, dry_run=dry_run)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn("deploy-kit: refused: 1 pending names are not in the managed kit set", result.stderr)
+                self.assertIn(f"   A {home / '.agents/skills/new/SKILL.md'}\n", result.stderr)
+                self.assertIn("nothing applied", result.stderr)
+                self.assertNotIn("deploy-kit: applied:", result.stdout)
+                self.assertEqual(self.read_calls(home), calls)
 
     def test_a_kit_target_that_is_not_what_chezmoi_last_wrote_refuses_with_its_row_and_applies_nothing(self):
         rows = [
@@ -215,10 +182,9 @@ class DeployKitTest(unittest.TestCase):
                 self.assertIn(f"  DA {home / '.dsh/profiles/thak/package.json'}\n", result.stderr)
                 self.assertEqual(self.read_calls(home), calls)
 
-    def test_a_failing_producer_refuses_before_anything_is_applied(self):
+    def test_a_failing_chezmoi_read_refuses_before_anything_is_applied(self):
         rows = [" M .local/bin/pr-merge.sh"]
         expected = {
-            "dirname": (1, 0, "dirname failed"),
             "managed": (1, 1, "chezmoi managed failed"),
             "status": (3, 2, "chezmoi status failed"),
         }
@@ -229,6 +195,27 @@ class DeployKitTest(unittest.TestCase):
                 self.assertIn(message, result.stderr)
                 self.assertIn("nothing applied", result.stderr)
                 self.assertEqual(self.read_calls(home)[:read_count], calls)
+
+    def test_a_failing_physical_path_read_of_home_or_a_root_refuses_before_any_chezmoi_call(self):
+        rows = [" M .local/bin/pr-merge.sh", " M .agents/permgate-policy.yaml", " M .dsh/profiles/thak/package.json"]
+        for directory in (".",) + KIT_ROOTS:
+            with self.subTest(directory=directory):
+                result, calls, home = self.run_deploy(rows, fail=f"pwd:{directory}")
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn("pwd -P", result.stderr)
+                self.assertIn("nothing applied", result.stderr)
+                if directory == ".":
+                    self.assertIn(f"the physical path of HOME {home} could not be read", result.stderr)
+                else:
+                    self.assertIn(
+                        f"the physical path of the kit root {home / directory} could not be read", result.stderr
+                    )
+                self.assertEqual([], calls)
+        # The injection is the one named directory: the same BASH_ENV with a directory the script never enters
+        # leaves the run untouched, so a passing case above is the script's refusal and not a broken fixture.
+        result, calls, home = self.run_deploy(rows, fail="pwd:elsewhere", dry_run=True)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(self.read_calls(home), calls)
 
     def test_a_linked_or_missing_kit_root_refuses_with_its_path_before_any_read(self):
         rows = [" M .local/bin/pr-merge.sh", " M .agents/permgate-policy.yaml", " M .dsh/profiles/thak/package.json"]
@@ -270,30 +257,32 @@ class DeployKitTest(unittest.TestCase):
             f"deploy-kit: pending: 2\n   M {home / '.local/bin/pr-merge.sh'}\n   A {home / '.agents/omp/profiles/dsh.yml'}\n",
             result.stdout,
         )
-        self.assertIn("deploy-kit: dry run; nothing applied", result.stdout)
+        self.assertIn("deploy-kit: dry run; nothing applied.\n", result.stdout)
 
-    def test_the_asset_step_runs_only_after_a_successful_apply_and_verify(self):
+    def test_a_failed_apply_or_verify_exits_1_with_the_producer_named_and_no_applied_list(self):
         rows = [" M .local/bin/pr-merge.sh"]
-        for fail, message in (("apply", "chezmoi apply failed"), ("verify", "chezmoi verify finds")):
+        for fail, message, call_count in (("apply", "chezmoi apply failed", 3), ("verify", "chezmoi verify finds", 4)):
             with self.subTest(fail=fail):
-                result, calls, _ = self.run_deploy(rows, fail=fail)
+                result, calls, home = self.run_deploy(rows, fail=fail)
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
                 self.assertIn(message, result.stderr)
-                self.assertEqual([], [call for call in calls if call.startswith("update-agent-assets.sh")])
+                self.assertNotIn("deploy-kit: applied:", result.stdout)
+                self.assertEqual(call_count, len(calls), calls)
+                self.assertIn(f"--refresh-externals=never {home / '.local/bin/pr-merge.sh'}", calls[2])
 
-    def test_a_second_run_with_nothing_pending_applies_nothing_and_still_runs_the_asset_step(self):
+    def test_a_second_run_with_nothing_pending_applies_nothing_and_exits_0(self):
         rows = ["   .local/bin/pr-merge.sh", " M .codex/config.toml"]
         result, calls, home = self.run_deploy(rows)
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertEqual(self.read_calls(home) + asset_calls(KIT_ASSET_FUNCTIONS), calls)
+        self.assertEqual(self.read_calls(home), calls)
         self.assertIn("deploy-kit: pending: 0\n", result.stdout)
         self.assertIn("deploy-kit: applied: 0\n", result.stdout)
 
-    def test_the_script_has_no_here_string_and_no_bare_updater_call(self):
+    def test_the_script_has_no_here_string_and_never_names_the_asset_updater(self):
         text = SCRIPT.read_text()
         self.assertNotIn("<<<", text)
-        self.assertIsNone(re.search(r'update-agent-assets\.sh"?\s*$', text, re.MULTILINE))
         self.assertNotIn("<(", text)
+        self.assertNotIn("update-agent-assets", text)
 
 
 class DeployKitMakeTargetTest(unittest.TestCase):

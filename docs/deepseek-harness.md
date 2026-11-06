@@ -51,7 +51,13 @@ in the foreground under `/usr/bin/env -i` with `HOME`, `USER`, `LANG`, `TERM`,
 `PATH`, `DSH_HOME`, `OMP_PROFILE` and a caller's `CLAUDE_CODE_OAUTH_TOKEN`
 alone, waits, removes the per-launch slots and returns dsh's status; a hangup,
 interrupt or termination runs the same removal before the lever ends by that
-signal, so the caller's status names it. The dsh
+signal. Before the launch the lever places the kit's rendered overlay
+`~/.agents/omp/profiles/dsh.yml` (the bridge route as `modelRoles.default`,
+the bridge extension, the seat providers off) as the profile's own
+`~/.omp/profiles/dsh/agent/config.yml`, the file the gateway child reads for
+its providers, with the extension entry at its canonical allow-list path,
+leaving an equal file alone, replacing a different one and refusing a linked
+`agent/` or `config.yml` (U310). The dsh
 runtime is never executed outside srt. Two launches at once share no settings
 file. The role's rows and the hazard-by-hazard account of the four verdicts
 are in `scripts/orchestrator/README.md` ("The dsh role") and the tests in

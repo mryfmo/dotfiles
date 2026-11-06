@@ -39,6 +39,7 @@ EARLIER_HEADS = (
     "5b950a97028205f7430a7c9f36f74b91a79e88c8",  # round three, before the refusal read the rendered deny table (U272e)
     "d1ffd91939e4d069b01d0e4d467c12eff971a944",  # round four, before the judge read every rendered grant (U272f)
     "d191911256d88f4a71ebde559500353dbc4d1e19",  # round five, before the exemptions named one row by position (U272g)
+    "2b2415f6cae8b5d1db8d65a560f7cfb9e48e5ab6",  # main after U306, before the profile config row (U310)
 )
 
 
@@ -99,6 +100,28 @@ FAKE_DSH = textwrap.dedent(
     sys.exit(int(open(status).read()) if os.path.exists(status) else 0)
     """
 )
+# The dsh role's rendered profile config overlay (regime-cutover U310), as the generator renders it with the fixture's
+# home: the lever places it as the profile's `agent/config.yml` with the extension entry at its canonical allow-list
+# path. The extension line is a parameter so a test can spell it through a link.
+DSH_OVERLAY = textwrap.dedent(
+    """\
+    # Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.
+    modelRoles:
+      default: claude-bridge/claude-opus-5-5
+    skills:
+      enabled: false
+    extensions:
+      - {extension}
+    disabledProviders:
+      - agent-plugins
+      - openai-codex
+      - native
+    setupVersion: 2
+    startup:
+      setupWizard: false
+      checkUpdate: false
+    """
+)
 
 
 class HcomSeatDshTest(test_hcom_seat.SeatFixture):
@@ -111,6 +134,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.dsh = self.dsh_home / "bin/dsh"
         self.dsh.write_text(FAKE_DSH.format(calls=str(self.calls)))
         self.dsh.chmod(0o755)
+        # The rendered overlay the role's profile config is placed from (U310), as chezmoi deploys it.
+        (self.profiles / "dsh.yml").write_text(DSH_OVERLAY.format(extension=self.bridge))
+        self.profile_config = self.home / ".omp/profiles/dsh/agent/config.yml"
 
     def dsh_calls(self):
         return self.calls_of("dsh")
@@ -961,6 +987,110 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual((proc.returncode, out), (2, ""), err)
         self.assertIn(f"cannot read whether the per-launch slot {state / name} exists (", err)
         self.assertEqual(self.slots(), ([], [name]))
+
+    def test_the_profile_config_is_placed_replaced_or_kept_with_the_extension_at_its_allow_list_path(self):
+        """U310: the dsh role's profile config row. The rendered overlay `~/.agents/omp/profiles/dsh.yml` is placed as
+        the profile's own `~/.omp/profiles/dsh/agent/config.yml` before the launch (the file the gateway child reads for
+        its providers), its extension entry rewritten to the canonical allow-list path when the overlay spells it
+        through a link; a config that differs is replaced and the launch says so; an equal one is left alone (the
+        DEBUG-trap recorder shows no write to it and its inode and mtime stand); a dry run prints the decision and
+        makes nothing."""
+        overlay = self.profiles / "dsh.yml"
+        link = self.home / "link-to-bridge"
+        link.symlink_to(self.bridge)
+        overlay.write_text(DSH_OVERLAY.format(extension=link))
+        expected = DSH_OVERLAY.format(extension=self.bridge)
+        run = self.launch("--dry-run", "--", "--version")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(
+            f"hcom-seat: the dsh profile config {self.profile_config} is absent; the launch places it from {overlay}",
+            run.stderr,
+        )
+        self.assertFalse((self.home / ".omp").exists(), "a dry run places nothing")
+        run = self.launch("--", "--version")
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        self.assertIn(f"{self.profile_config} is absent; the launch places it from {overlay}", run.stderr)
+        self.assertEqual(self.profile_config.read_text(), expected)
+        agent = self.profile_config.parent
+        self.assertTrue(agent.is_dir() and not agent.is_symlink() and not self.profile_config.is_symlink())
+        self.assertEqual(stat.S_IMODE(agent.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE(self.profile_config.stat().st_mode), 0o600)
+        self.assertFalse((agent / "config.yml.tmp").exists())
+        self.profile_config.write_text("modelRoles:\n  default: stale/model\n")
+        run = self.launch("--", "--version")
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        self.assertIn(f"{self.profile_config} differs from {overlay}; the launch replaces it", run.stderr)
+        self.assertEqual(self.profile_config.read_text(), expected)
+        before = self.profile_config.stat()
+        hook = Path(self.temp.name) / "trace-hook.bash"
+        hook.write_text('set -T\ntrap \'builtin printf "%s\\0" "$BASH_COMMAND" >> "$U272_TRACE"\' DEBUG\n')
+        trace = Path(self.temp.name) / "trace"
+        trace.write_text("")
+        run = self.launch("--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace))
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        self.assertIn(f"{self.profile_config} equals {overlay}; the launch leaves it", run.stderr)
+        commands = trace.read_text().split("\0")[:-1]
+        self.assertIn("profile_config_write", commands, "the write step ran and decided to leave the file")
+        self.assertEqual([c for c in commands if "${target}.tmp" in c or '/bin/mkdir "${agent}"' in c], [])
+        after = self.profile_config.stat()
+        self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
+        self.assertEqual(self.profile_config.read_text(), expected)
+        self.assertEqual(len(self.dsh_calls()), 3)
+        self.assertEqual(self.slots(), ([], []))
+
+    def test_a_linked_agent_directory_or_config_and_a_bad_overlay_refuse_before_any_mkdir(self):
+        """U310: an `agent/` or `config.yml` that is a symbolic link refuses (exit 2) naming it, in a dry run too,
+        before any directory is made (the recorder shows the tool directory's mkdir alone) and without following the
+        link; an overlay that is absent, names no extension or names a directory outside the allow-list refuses the
+        same way. Nothing reaches the link's target and no dsh starts."""
+        home = self.home.resolve()
+        overlay = self.profiles / "dsh.yml"
+        elsewhere = Path(self.temp.name).resolve() / "elsewhere"
+        elsewhere.mkdir()
+        profile = home / ".omp/profiles/dsh"
+        agent = profile / "agent"
+        hook = Path(self.temp.name) / "trace-hook.bash"
+        hook.write_text('set -T\ntrap \'builtin printf "%s\\0" "$BASH_COMMAND" >> "$U272_TRACE"\' DEBUG\n')
+        trace = Path(self.temp.name) / "trace"
+        inside = "the dsh role writes its profile config inside its profile only"
+
+        def agent_link():
+            profile.mkdir(parents=True)
+            agent.symlink_to(elsewhere)
+
+        def config_link():
+            agent.mkdir(parents=True)
+            self.profile_config.symlink_to(elsewhere / "config.yml")
+
+        cases = (
+            ("agent is a link", agent_link, [], f"{agent} is a symbolic link; {inside}"),
+            ("agent is a link, dry run", agent_link, ["--dry-run"], f"{agent} is a symbolic link; {inside}"),
+            ("config is a link", config_link, [], f"{self.profile_config} is a symbolic link; {inside}"),
+            ("config is a link, dry run", config_link, ["--dry-run"], f"{self.profile_config} is a symbolic link; {inside}"),
+            ("overlay absent", overlay.unlink, [], f"profile config overlay absent or a symbolic link: {overlay}"),
+            ("overlay names no extension", lambda: overlay.write_text("modelRoles:\n  default: x/y\n"), [],
+             f"the profile config overlay {overlay} names no extension; the gateway child needs the bridge route"),
+            ("overlay names a directory outside the allow-list",
+             lambda: overlay.write_text(DSH_OVERLAY.format(extension=elsewhere)), [],
+             f"extension directory is not in the allow-list (claude.levers.extensions): {elsewhere}"),
+        )  # fmt: skip
+        for label, arrange, args, message in cases:
+            with self.subTest(case=label):
+                if agent.is_symlink():
+                    agent.unlink()
+                shutil.rmtree(profile, ignore_errors=True)
+                overlay.write_text(DSH_OVERLAY.format(extension=self.bridge))
+                arrange()
+                trace.write_text("")
+                run = self.launch(*args, "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+                commands = trace.read_text().split("\0")[:-1]
+                mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
+                self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
+                self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), [], "nothing reaches the link's target")
+                self.assertFalse(Path(self.seats).exists())
+        self.assertEqual(self.dsh_calls(), [])
 
 
 if __name__ == "__main__":

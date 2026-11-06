@@ -198,6 +198,18 @@ omp:
     orchestrator: deep
     worker: standard
     audit: audit
+  # The gateway role (regime-cutover U310). The dsh role of hcom-seat runs no omp session: its omp is
+  # the child `omp auth-gateway stdio` the dsh-omp-gateway plugin starts in the role's own profile
+  # ~/.omp/profiles/dsh (OMP_PROFILE), and that child reads the profile's agent/config.yml alone, no
+  # --config overlay and no -e list, so with none in place it had no claude-bridge provider (item g6,
+  # 2026-11-06T19:22Z: `HTTP 404: No available model matches "claude-bridge/claude-opus-5-5"`). One
+  # overlay renders per key to ~/.agents/omp/profiles/<role>.yml with the gateway route of the named
+  # profile's dsh model as modelRoles.default, the bridge directory of extension_providers as
+  # `extensions`, every seat provider off and skills off (DSH reads ~/.agents/skills itself); hcom-seat
+  # places it as ~/.omp/profiles/<role>/agent/config.yml before the launch, the extension entry
+  # rewritten to the canonical claude.levers.extensions path, left alone when already equal.
+  gateway_roles:
+    dsh: deep
 
 # The dangerous GitHub-write and destructive commands no agent runs on its own (regime-cutover U76).
 # One list, rendered by scripts/generate-agent-configs.py to three consumers:
@@ -858,7 +870,7 @@ claude:
   # allowed by the orchestrator policy alone; it reads one brief and writes nothing.
   levers:
     sha256:
-      hcom-seat: 5e1b92b20b9306f0e03c5a79a1c06e0d7ba8c499d7b9c7a1a9e980a8eef22eed
+      hcom-seat: 4d6b1f00abb0eef336fa7ad2bde1c38452bded4d336b152067c26394671e1a9c
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293

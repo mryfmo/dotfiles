@@ -48,6 +48,12 @@
       "executable": false
     },
     {
+      "source": "home/dot_agents/omp/profiles/dsh.yml.tmpl",
+      "target": ".agents/omp/profiles/dsh.yml",
+      "kind": "template",
+      "executable": false
+    },
+    {
       "source": "home/dot_agents/omp/profiles/orchestrator.yml.tmpl",
       "target": ".agents/omp/profiles/orchestrator.yml",
       "kind": "template",
@@ -429,7 +435,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "5e1b92b20b9306f0e03c5a79a1c06e0d7ba8c499d7b9c7a1a9e980a8eef22eed"
+      "sha256": "4d6b1f00abb0eef336fa7ad2bde1c38452bded4d336b152067c26394671e1a9c"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",

@@ -2035,6 +2035,41 @@ def omp_roles(manifest: dict[str, Any]) -> dict[str, str]:
     return roles
 
 
+def omp_gateway_roles(manifest: dict[str, Any]) -> dict[str, str]:
+    """Gateway role -> model profile (regime-cutover U310); one profile config overlay renders per key, none when absent.
+
+    A gateway role runs no omp session: hcom-seat places its overlay as the role's own `~/.omp/profiles/<role>/agent/
+    config.yml`, which the child `omp auth-gateway stdio` reads. The profile must carry a dsh entry (the route the
+    gateway serves), and a key may not be a seat role as well, whose overlay rides the launch flags instead.
+    """
+    roles = manifest.get("omp", {}).get("gateway_roles", {})
+    if not isinstance(roles, dict):
+        fail("omp.gateway_roles must be a mapping of gateway role to model profile")
+    profiles = model_profiles(manifest)
+    seat_roles = omp_roles(manifest)
+    for role, profile in roles.items():
+        if not PROFILE_NAME_RE.match(str(role)):
+            fail(f"omp.gateway_roles key is not launcher-safe: {role!r}")
+        if role in seat_roles:
+            fail(f"omp.gateway_roles.{role} is a seat role too; a role's overlay is placed or passed, never both")
+        if profile not in profiles:
+            fail(f"omp.gateway_roles.{role} must name a model profile: {profile!r}")
+        if "dsh" not in profiles[profile]:
+            fail(f"omp.gateway_roles.{role} names {profile!r}, which carries no dsh entry for the gateway route")
+    return roles
+
+
+def omp_extension_provider_dir(manifest: dict[str, Any], provider: str) -> str:
+    """The extension directory `omp.extension_providers` declares for a model route, as the manifest spells it."""
+    providers = manifest.get("omp", {}).get("extension_providers")
+    if not isinstance(providers, dict) or not all(isinstance(value, str) for value in providers.values()):
+        fail("omp.extension_providers must map omp provider ids to extension directories")
+    directory = providers.get(provider)
+    if directory is None or not SKILLS_DIRECTORY_RE.fullmatch(directory):
+        fail(f"omp.extension_providers must name the extension directory of {provider} as a ~/ or absolute path")
+    return directory
+
+
 def omp_extensions(manifest: dict[str, Any]) -> list[str]:
     """Extension directories a plain omp launch loads through the top-level `extensions` setting; none when absent.
 
@@ -2239,6 +2274,28 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
     # A seat profile has no setup record, so omp's cold-launch gate (src/main.ts:671-680) would open the
     # first-run wizard over the pane: startup.setupWizard=false empties the scene list (pi-tui
     # src/setup/wizard.ts:52) and setupVersion=2 (CURRENT_SETUP_VERSION) skips the gate's wizard import.
+    return overlay + "setupVersion: 2\n" + omp_startup_yaml(manifest, "setupWizard: false")
+
+
+def render_omp_gateway_overlay(manifest: dict[str, Any], role: str) -> str:
+    """A gateway role's profile config (regime-cutover U310), placed by hcom-seat as `~/.omp/profiles/<role>/agent/config.yml`.
+
+    The child `omp auth-gateway stdio` resolves a request's model among the providers its own settings load (omp 18.12.6
+    src/cli/auth-gateway-stdio.ts:60-64: `Settings.init`, then `loadCliExtensionProviders`), and a named profile's
+    settings are that profile's `agent/config.yml` alone, no `--config` overlay and no `-e` list; without the bridge
+    directory in its `extensions` the child answers 404 for every `claude-bridge/<model>` (item g6, 2026-11-06T19:22Z).
+    The overlay carries the gateway route of the profile's dsh model as `modelRoles.default`, the bridge directory
+    `omp.extension_providers` declares for that route (hcom-seat rewrites the entry to the canonical allow-list path
+    when it places the file), the seat providers off as every seat overlay has them, skills off (DSH reads
+    `~/.agents/skills` itself; the gateway child runs no session) and the seat overlays' wizard and update rows.
+    """
+    profile = model_profiles(manifest)[omp_gateway_roles(manifest)[role]]
+    model = f"{DSH_GATEWAY_PROVIDER}/{profile['dsh']['model']}"
+    extension = re.sub(r"^~/", "{{ .chezmoi.homeDir }}/", omp_extension_provider_dir(manifest, DSH_GATEWAY_PROVIDER))
+    overlay = omp_config_yaml(model, "skills:\n  enabled: false\n") + omp_list_yaml("extensions", [extension])
+    disabled = "".join(f"  - {provider}\n" for provider in omp_seat_disabled_providers(manifest))
+    if disabled:
+        overlay += f"disabledProviders:\n{disabled}"
     return overlay + "setupVersion: 2\n" + omp_startup_yaml(manifest, "setupWizard: false")
 
 
@@ -2516,6 +2573,8 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs[ROOT / "home/.chezmoitemplates/omp-config-managed.yml"] = render_omp_config(manifest)
     for role in omp_roles(manifest):
         outputs[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"] = render_omp_role_overlay(manifest, role)
+    for role in omp_gateway_roles(manifest):
+        outputs[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"] = render_omp_gateway_overlay(manifest, role)
     outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
     outputs[ROOT / "home/dot_claude/agents/project-map.md"] = render_claude_project_map_agent(manifest)
     outputs[ROOT / CODEX_COMMAND_RULES] = render_codex_command_rules(manifest)

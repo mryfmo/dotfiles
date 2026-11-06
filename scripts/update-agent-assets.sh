@@ -1909,7 +1909,8 @@ function dsh_prune_older() {
 
 #
 # @description Install the pinned DeepSeek harness (assets.deepseek-harness) under DSH_HOME on a host whose operator
-#   opted in, with a wrapper at $DSH_HOME/bin/dsh and the thak profile's plugins; nothing starts it.
+#   opted in, with a wrapper at $DSH_HOME/bin/dsh, the thak profile's plugins and the dsh-omp-gateway plugin link;
+#   nothing starts it.
 # @description
 #   The opt-in is DSH_HOME exported and naming an existing directory: chezmoi deploys the rendered thak profile to
 #   ~/.dsh/profiles/thak on every host, so a directory alone cannot be the opt-in, and a DSH_HOME other than ~/.dsh
@@ -1918,7 +1919,10 @@ function dsh_prune_older() {
 #   downloaded into a mktemp directory and verified against its reviewed sha256 before anything is unpacked; the
 #   archive's own package.json version must equal the pin; the tree is unpacked and built whole in its final place
 #   under a name of its own ($DSH_HOME/dsh/<tag>.XXXXXX), the download directory goes, the profile's plugins are
-#   installed and the wrapper is written and parsed beside its path, all before anything the host runs changes; then
+#   installed, the dsh-omp-gateway plugin is linked into the profile's node_modules (one relative symlink the step
+#   writes itself, `dsh plugin add link:` failing on the mise pnpm shim; the same link converges on the repair and
+#   the already-installed exit, before the receipt is read, so a host installed before the row existed gets it on
+#   the next run) and the wrapper is written and parsed beside its path, all before anything the host runs changes; then
 #   current is pointed at the new tree by one link call, the wrapper is replaced by one rename, the step is recorded,
 #   and only then are the older trees under $DSH_HOME/dsh pruned (dsh_prune_older: the step's own name shapes, never
 #   the inode current names). No tree is ever moved. Every input the step reads is one row of a table, checked by
@@ -1927,6 +1931,11 @@ function dsh_prune_older() {
 #   DSH_HOME: exported, absolute, a directory whose physical path (pwd -P) equals ~/.dsh's.
 #   DSH_HOME/dsh and DSH_HOME/bin: absent, or a directory that is not a symlink.
 #   DSH_HOME/profiles/thak: a directory that is not a symlink (the rendered profile); absent is a WARN with exit 0.
+#   DSH_HOME/plugins/omp-gateway: a directory (the plugin chezmoi deploys, the link's one target); absent or anything
+#   else is refused, so no harness is installed whose profile could reach no model.
+#   DSH_HOME/profiles/thak/node_modules: absent, or a directory that is not a symlink (pnpm's own directory).
+#   DSH_HOME/profiles/thak/node_modules/dsh-omp-gateway: absent, or a symlink whatever its target (relinked); a
+#   directory or a file there is refused, since ln -sfn onto a directory makes a link inside it.
 #   DSH_HOME/dsh/current: absent, or a symlink whose target is a non-symlink directory directly under dsh/ named
 #   dsh-v* and whose inode is that directory's (-ef the leaf readlink named; the text read cannot mangle an inode).
 #   The entries under DSH_HOME/dsh: the prune removes only a non-symlink directory named dsh-v* or .staging.* that
@@ -1946,14 +1955,25 @@ function dsh_prune_older() {
 #   no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh (a WARN), or the download failed (a WARN; nothing
 #   installed or recorded).
 # @exitcode 1 A producer read, a shape or layout check, the digest check, the unpack, the archive version, the build,
-#   the profile install, the wrapper, the current link or the record failed; the line printed names the state left.
+#   the profile install, the plugin link, the wrapper, the current link or the record failed; the line printed names
+#   the state left.
 #
 function update_deepseek_harness() (
     local recorded download_dir="" tarball actual tree="" version physical expected target="" leaf="" installed repair="" prior_target="" wrapper_tmp="" wrapper_step="" quote="'" quoted_home row record_status=0
     # One record line for the install and for the rewrite on the already-installed exit, so the two cannot drift; it
     # writes the two paths the table's last row names (dsh/current, bin/dsh).
     dsh_record() {
-        manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"
+        manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "ln -sfn ../../../plugins/omp-gateway ${DSH_HOME}/profiles/thak/node_modules/dsh-omp-gateway" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"
+    }
+    # The link's target is relative (three levels up from node_modules is DSH_HOME), so a DSH_HOME moved whole keeps
+    # working; ln -sfn replaces a symlink of any target and the table above refuses anything else at the path, so
+    # every run converges on the same link. The caller names the state a failure leaves.
+    dsh_link_plugin() {
+        mkdir -p "${DSH_HOME}/profiles/thak/node_modules" &&
+            ln -sfn ../../../plugins/omp-gateway "${DSH_HOME}/profiles/thak/node_modules/dsh-omp-gateway" &&
+            return 0
+        printf 'update_deepseek_harness: the plugin link %s could not be written; %s\n' "${DSH_HOME}/profiles/thak/node_modules/dsh-omp-gateway" "$1" >&2
+        return 1
     }
     section "DeepSeek harness"
     if [ -z "${DSH_HOME:-}" ] || [ ! -d "${DSH_HOME}" ]; then
@@ -2004,6 +2024,22 @@ function update_deepseek_harness() (
     if [ ! -d "${DSH_HOME}/profiles/thak" ]; then
         printf 'WARN: update_deepseek_harness: %s is absent, so the kit has not rendered the thak profile here; nothing installed.\n' "${DSH_HOME}/profiles/thak" >&2
         return 0
+    fi
+    # The plugin link's three inputs: the plugin directory is what chezmoi deploys and the link's one target, so a
+    # host without it gets no harness whose profile could reach no model; node_modules is pnpm's directory, so a
+    # symlink or a file there is not the step's to write into; the link path holds a symlink or nothing, since ln -sfn
+    # onto a real directory makes a link inside it and succeeds.
+    if [ ! -d "${DSH_HOME}/plugins/omp-gateway" ]; then
+        printf 'update_deepseek_harness: %s is absent or not a directory; the thak profile loads the dsh-omp-gateway plugin from there (chezmoi apply deploys it; then rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/plugins/omp-gateway" >&2
+        return 1
+    fi
+    if [ -L "${DSH_HOME}/profiles/thak/node_modules" ] || { [ -e "${DSH_HOME}/profiles/thak/node_modules" ] && [ ! -d "${DSH_HOME}/profiles/thak/node_modules" ]; }; then
+        printf 'update_deepseek_harness: %s is a symlink or not a directory; the step links the plugin only inside the directory pnpm makes there (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/profiles/thak/node_modules" >&2
+        return 1
+    fi
+    if [ -e "${DSH_HOME}/profiles/thak/node_modules/dsh-omp-gateway" ] && [ ! -L "${DSH_HOME}/profiles/thak/node_modules/dsh-omp-gateway" ]; then
+        printf 'update_deepseek_harness: %s is not a symlink; the step refuses to replace it (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/profiles/thak/node_modules/dsh-omp-gateway" >&2
+        return 1
     fi
     # ln -sfn onto a real directory at current makes a link inside it and succeeds, so a current that is neither a
     # symlink nor absent is refused before anything is downloaded or linked.
@@ -2086,6 +2122,7 @@ function update_deepseek_harness() (
         if [ "${installed}" = "${DSH_PIN_TAG#dsh-v}" ] && [ -f "${target}/apps/cli/lib/bin.js" ]; then
             if [ -f "${DSH_HOME}/bin/dsh" ] && [ -x "${DSH_HOME}/bin/dsh" ]; then
                 printf 'DeepSeek harness %s is already installed.\n' "${DSH_PIN_TAG}"
+                dsh_link_plugin "the receipt and the older trees are kept." || return 1
                 # The receipt's paths are what the doctor checks for existence. A receipt from the earlier layout
                 # names dsh/<tag>, an older tree the prune below removes, and so does one a failed record left behind
                 # a kept new tree; a receipt whose paths are not exactly this layout's two is rewritten first, and
@@ -2171,8 +2208,10 @@ function update_deepseek_harness() (
             printf 'update_deepseek_harness: the profile install failed; nothing recorded; current, the wrapper and the older trees are untouched.\n' >&2
             return 1
         }
+        dsh_link_plugin "nothing recorded; current, the wrapper and the older trees are untouched." || return 1
     else
         trap 'rm -rf ${wrapper_tmp:+"${wrapper_tmp}"} || :' EXIT
+        dsh_link_plugin "nothing recorded; the live wrapper, current and the older trees are untouched." || return 1
     fi
     # The wrapper is written beside its path, parsed and given its mode before the link, and moved over the live one
     # by one rename after it, so a failure before the rename leaves the live launcher byte-identical. It carries the

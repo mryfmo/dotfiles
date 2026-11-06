@@ -399,7 +399,7 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
     ),
     (
         "scripts/update-agent-assets.sh",
-        'manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"',
+        'manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "ln -sfn ../../../plugins/omp-gateway ${DSH_HOME}/profiles/thak/node_modules/dsh-omp-gateway" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"',
     ): Exempt(
         "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
     ),

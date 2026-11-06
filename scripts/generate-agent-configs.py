@@ -159,12 +159,19 @@ OMP_THINKING_LEVELS = ("minimal", "low", "medium", "high", "xhigh", "max")
 OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
 # The same routes as a set, for omp.disabled_providers; a test keeps it equal to OMP_MODEL_RE's alternation.
 OMP_MODEL_ROUTES = ("openai-siwc", "anthropic", "claude-bridge")
-# The DeepSeek harness routes a profile may name (the DeepSeek harness research note's route decision: Ollama Cloud or
-# an on-prem server by default, the official API opt-in per engagement, so no official route stands here).
-DSH_ROUTES = ("ollama-cloud",)
-# An Ollama library id: a name with an optional `:tag` (ollama.com/library, deepseek-v4-pro:0813), which
-# PROFILE_VALUE_RE's launcher-safe form does not admit.
-DSH_MODEL_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*(:[a-z0-9._-]+)?$")
+# The DeepSeek harness route a profile may name: the operator's Claude login through the dsh-omp-gateway plugin, a
+# child `omp auth-gateway stdio` (the frame row of 2026-11-06 withdrew every API-key route; U238 chose this one).
+DSH_ROUTES = ("omp-gateway",)
+# A bridge model id without its provider prefix: `claude-` then PROFILE_VALUE_RE's launcher-safe form, which admits
+# no `:tag`, so the withdrawn route's tagged library ids (deepseek-v4-pro:0813) are refused.
+DSH_MODEL_RE = re.compile(r"^claude-" + PROFILE_VALUE_RE.pattern.removeprefix("^"))
+# The provider route the gateway serves (the bridge serves claude-bridge/<model>), the gateway command, and the plugin
+# row's package name and `link:` dependency: U240's loading mechanism is the profile package.json dependency, the
+# node_modules symlink the updater writes, and a bare-name insert row.
+DSH_GATEWAY_PROVIDER = "claude-bridge"
+DSH_GATEWAY_COMMAND = ("omp", "auth-gateway", "stdio")
+DSH_GATEWAY_PLUGIN = "dsh-omp-gateway"
+DSH_GATEWAY_LINK = "link:../../plugins/omp-gateway"
 # The DeepSeek harness plan's names: the kit's one profile and the Claude Code settings file whose hooks it mounts.
 DSH_PROFILE = "thak"
 DSH_HOOKS_SETTINGS = "~/.claude/settings.json"
@@ -229,7 +236,8 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
                 fail(f"model profile {name}.dsh must be a mapping of exactly model and route: {dsh!r}")
             if not isinstance(dsh["model"], str) or not DSH_MODEL_RE.fullmatch(dsh["model"]):
                 fail(
-                    f"model profile {name}.dsh.model must be an Ollama id (name with an optional :tag): {dsh['model']!r}"
+                    f"model profile {name}.dsh.model must be a bridge model id without its provider prefix"
+                    f" (claude- and a launcher-safe tail, no :tag): {dsh['model']!r}"
                 )
             if dsh["route"] not in DSH_ROUTES:
                 fail(f"model profile {name}.dsh.route must be one of {', '.join(DSH_ROUTES)}: {dsh['route']!r}")
@@ -2229,18 +2237,23 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
 
 
 def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
-    """The kit's DeepSeek harness profile (U172): its package.json and the cordis patch over the base bundles.
+    """The kit's DeepSeek harness profile (U172, U227b): its package.json and the cordis patch over the base bundles.
 
     The rows are addressed by the ids the base bundle mounts them under: the session-log upload off, the official API
-    adapters and the harness's own command sandbox disabled (the seat boundary stays outside the harness), one provider
-    per route of DSH_ROUTES with the distinct dsh models of the profiles that name it, and the Claude hooks plugin
-    inserted with an absolute configPath (the harness resolves a relative one from its launch directory). A manifest
-    whose profiles name no dsh model (the generator's fixtures) renders no profile; one that does needs the pinned
-    asset, whose version the hooks plugin dependency follows.
+    adapters and the harness's own command sandbox disabled (the seat boundary stays outside the harness), the agent's
+    default model as the interactive profile's dsh model on the gateway's provider, and two plugins inserted: the
+    omp-gateway adapter (the package the profile's package.json links and the updater symlinks into node_modules; its
+    config names the gateway command and the distinct dsh models of every profile, each under the provider) and the
+    Claude hooks plugin with an absolute configPath (the harness resolves a relative one from its launch directory). A
+    manifest whose profiles name no dsh model (the generator's fixtures) renders no profile; one that does needs the
+    pinned asset, whose version the hooks plugin dependency follows.
     """
     dsh = {name: profile["dsh"] for name, profile in model_profiles(manifest).items() if "dsh" in profile}
     if not dsh:
         return {}
+    default = interactive_profile(manifest).get("dsh")
+    if default is None:
+        fail(f"interactive_profile {manifest.get('interactive_profile')!r} names no dsh model for agent-default-model")
     asset = manifest.get("assets", {}).get("deepseek-harness")
     if not isinstance(asset, dict) or not isinstance(asset.get("pin"), str):
         fail("model_profiles name dsh models, so assets.deepseek-harness must carry the pin their profile follows")
@@ -2252,7 +2265,7 @@ def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
             "manifestVersion": 1,
             "profile": {"bundles": ["@deepseek-ai/dsh-base", f"@deepseek-ai/dsh-{DSH_BASE_PROFILE}"]},
         },
-        "dependencies": {"@deepseek-ai/dsh-hooks-claude-code": pin},
+        "dependencies": {"@deepseek-ai/dsh-hooks-claude-code": pin, DSH_GATEWAY_PLUGIN: DSH_GATEWAY_LINK},
     }
     lines = [
         f"# {GENERATED_HEADER}",
@@ -2265,25 +2278,26 @@ def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
         "  disabled: true",
         "- id: bash-sandbox",
         "  disabled: true",
-        "- id: llm-pi-ai",
+        "- id: agent-default-model",
         "  config:",
-        "    providers:",
+        f"    provider: {DSH_GATEWAY_PROVIDER}",
+        f"    model: {default['model']}",
     ]
-    for route in DSH_ROUTES:
-        models = sorted({entry["model"] for entry in dsh.values() if entry["route"] == route})
-        lines += [
-            f"      {route}:",
-            "        displayName: Ollama Cloud",
-            "        api: openai-responses",
-            "        baseURL: https://ollama.com/v1",
-            "        apiKeyEnv: OLLAMA_API_KEY",
-            "        models:",
-            *(f"          - id: {model}" for model in models),
-        ]
+    models = sorted({f"{DSH_GATEWAY_PROVIDER}/{entry['model']}" for entry in dsh.values()})
     # The `!!js` expression is the form the shipped headless patch uses for environment values.
     config_path = f"!!js process.env.HOME + '{DSH_HOOKS_SETTINGS.removeprefix('~')}'"
     lines += [
         "- insert:",
+        f"    - id: {DSH_ROUTES[0]}",
+        f"      name: {DSH_GATEWAY_PLUGIN}",
+        "      config:",
+        f"        command: {DSH_GATEWAY_COMMAND[0]}",
+        "        args:",
+        *(f"          - {arg}" for arg in DSH_GATEWAY_COMMAND[1:]),
+        "        providers:",
+        f"          - {DSH_GATEWAY_PROVIDER}",
+        "        models:",
+        *(f"          - {model}" for model in models),
         "    - id: hooks-claude-code",
         "      name: '@deepseek-ai/dsh-hooks-claude-code'",
         "      config:",

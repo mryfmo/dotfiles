@@ -1,0 +1,733 @@
+[
+  {
+    "verdict": "rejected",
+    "fingerprint": "assets.graphify:installer-skips-pinned-sha256",
+    "title": "graphify's recorded installer resolves by version and never checks the pinned wheel sha256",
+    "description": "Run-4 (U150 head a2b96f8b) raised this lead: the graphify asset recorded verify: sha256 and the reviewed wheel digest, but its installer was `uv tool install graphifyy==0.9.99`, a by-version index resolve that passed no digest. Run-5 (round 3) rejected it: the installer downloads the one reviewed wheel, compares its sha256 with the pin and installs the local file. At 2329bd97 (round 4) the rejection holds and is stronger: the digest read checks shasum's status, and the asset, now keyed graphifyy with its wheel files entry, is skipped by make update's uv tool upgrade loop, so no later step replaces the verified install. At 8e3258bc (round 5) the installer is unchanged and a failure-injection test now runs it against stubs, so the rejection rests on an executed check in CI as well as on the source. At 6d2feb0e (round 6) the installer and its tests are unchanged apart from module-level agent-home isolation in the test file.",
+    "claimed_root_cause": "The graphify asset's installer was a by-version index resolve with no hash input, so the entry's verify: sha256 and recorded digest bound nothing at install time.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "home/dot_agents/agent-config.yaml",
+        "line": 1417,
+        "scope": "assets.graphifyy.installer",
+        "description": "The operator step: mktemp, curl of the one wheel URL, sha256 read and comparison, local-file install."
+      },
+      {
+        "kind": "propagation",
+        "file": "home/dot_agents/agent-config.yaml",
+        "line": 1421,
+        "scope": "assets.graphifyy.installer",
+        "description": "h=$(shasum -a 256 <wheel>) with its status checked (|| exit 1), then [ \"${h%% *}\" = <pinned digest> ] at line 1347, chained by && before the install."
+      },
+      {
+        "kind": "sink",
+        "file": "home/dot_agents/agent-config.yaml",
+        "line": 1423,
+        "scope": "assets.graphifyy.installer",
+        "description": "uv tool install --force of the verified local wheel file, reached only when the digest matched."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "home/dot_agents/agent-config.yaml",
+        "line": 1394,
+        "description": "verify: sha256, with the digest at line 1320, applied by the installer."
+      },
+      {
+        "file": "home/dot_agents/agent-config.yaml",
+        "line": 1396,
+        "description": "files.any names the one wheel URL (line 1322), the .whl entry manifest_wheel_pin looks for."
+      },
+      {
+        "file": "tests/unit/test_graphify_asset.py",
+        "line": 179,
+        "description": "The test refuses a by-version install (no graphifyy==) and requires the wheel name and shasum -a 256 (lines 179-181), download before verify before install (lines 182-187)."
+      },
+      {
+        "file": "tests/unit/test_graphify_asset.py",
+        "line": 198,
+        "description": "The test requires the status-checked digest read and no other pipe in the command (lines 198-200)."
+      },
+      {
+        "file": "tests/unit/test_graphify_asset.py",
+        "line": 202,
+        "description": "test_make_update_skips_the_pinned_tool runs upgrade-tools.sh's manifest_wheel_pin over the manifest: 0.9.99 for graphifyy, nothing for graphify (lines 202-205)."
+      },
+      {
+        "file": "scripts/upgrade-tools.sh",
+        "line": 552,
+        "description": "upgrade_uv_tools asks manifest_wheel_pin before `uv tool upgrade` and skips a pinned wheel tool (lines 553-557)."
+      },
+      {
+        "file": "scripts/update-agent-assets.sh",
+        "line": 1694,
+        "description": "The same download, compare, install-the-file form as update_hcom (install at line 1699)."
+      },
+      {
+        "file": "tests/unit/test_graphify_asset.py",
+        "line": 207,
+        "description": "Round 5's failure-injection test runs the installer line against stub curl, uv and mktemp in a scratch directory: uv is reached once when the digest matches and never for mismatched bytes, a shasum that prints the pin and exits 1, or a failed curl (lines 207-229)."
+      }
+    ],
+    "reason": "Refuted by the current source: the recorded installer (agent-config.yaml:1417-1424) binds the reviewed digest at install time (download, status-checked shasum -a 256 compared with the pin, && before the local-file install), test_graphify_asset.py:175-205 holds that form and the make-update skip, and test_graphify_asset.py:207-229 runs the gate against stubs, and upgrade-tools.sh:552-557 never upgrades the tool afterwards. The unhashed dependency closure of the one trial `uv tool install <wheel>` is a separate, smaller residual shared with the hcom install and is recorded as hardening, not as this claim."
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "audit-carry:digest-drops-hunk-positions",
+    "title": "The carry digest drops every hunk position, so a head that moves an audited line elsewhere in the same file inherits the earlier head's audit verdict",
+    "description": "Run-25's lead at f3a20724: the carry digest hashed zero-context hunks with their `@@` positions dropped, so a head that added or deleted the same lines at another place of a file carried the earlier head's verdict. Rejected at 23d9d28b (round 2 bound each hunk to its place) and withdrawn at 4bfa54f1 (round 3 restores main's digest); see reason.",
+    "claimed_root_cause": "The carry digest hashes zero-context hunks without their positions, so it equates changes that place the same lines at different places in a file, and both the carry and the fixed-under-carry rule treat digest equality as change equality.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/orchestrator/audit-carry.py",
+        "line": 742,
+        "scope": "main",
+        "description": "The carry run hashes the new head's change against its merge base."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/orchestrator/audit-carry.py",
+        "line": 559,
+        "scope": "raw_records",
+        "description": "The raw records name both blob ids of every changed path."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/orchestrator/audit-carry.py",
+        "line": 659,
+        "scope": "diff_digest",
+        "description": "The digest is the sha256 over the sorted records and paths."
+      },
+      {
+        "kind": "sink",
+        "file": "scripts/orchestrator/audit-carry.py",
+        "line": 750,
+        "scope": "main",
+        "description": "Digest equality decides the carry."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/orchestrator/pr-merge.sh",
+        "line": 667,
+        "description": "The fixed-under-carry rule's premise, which main's digest makes true."
+      },
+      {
+        "file": "scripts/orchestrator/pr-merge.sh",
+        "line": 398,
+        "description": "The note after the carried digest admits only a space, ;, ,, . or )."
+      }
+    ],
+    "reason": "Withdrawn at 4bfa54f1 (U180 round 3): the position-free digest the lead described is gone, and scripts/orchestrator/audit-carry.py is main's again, its digest the sorted raw records with both blob ids of every changed path (scripts/orchestrator/audit-carry.py:559, :659), so two heads that place the same lines at different places of a file have different new blobs and never hash alike. Round 2's fix was rejected the same way at 23d9d28b (run-26). The claim stays suppressed only while this source is unchanged."
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "claude-sandbox:allow-write-covers-seat-launch-inputs",
+    "title": "The Claude Code sandbox still lets a contained command write the seat-launch inputs of the per-slug hcom stores and seat sandboxes on Linux, and of a renamed store or seat directory on macOS",
+    "description": "The managed Claude Code settings grant every session on the host sandboxed write access to ~/.local/state/hcom-regime, ~/.local/state/hcom and ~/.local/state/omp-seats with autoAllowBashIfSandboxed (home/.chezmoitemplates/claude-settings-managed.json:568, :575-581; linux :670, :677-682). U195 and U195b take the seat-launch inputs back with filesystem.denyWrite, rendered per OS from one derivation (scripts/generate-agent-configs.py:876-918). On linux the Linux sandbox discards every entry holding an interior `*`, so only the static store hcom-regime is denied (:689-698): every per-slug store under ~/.local/state/hcom (config.toml, env, config.env, .tmp/launch, scripts, integrations, shell_env.json) and every seat's .sandbox (its srt settings and omp shim) stay writable from a contained Bash command, including one a session runs on untrusted repository content. On darwin every path is denied as written (:590-605) but no directory above a denied path is pinned, so a contained command can rename a slug, program or `.tmp` directory within its root, write the control files there unmatched and move it back. The next seat launch reads those files outside any sandbox (hcom-seat denies its seats the same names, scripts/orchestrator/hcom-seat:1740). The README and the orchestrator threat row record both as same-user residuals owned by gate G17 (README.md:606-621; scripts/orchestrator/README.md:260). Fix if validated: move the check to the unsandboxed consumer, hcom-seat refusing a launch whose store control files or seat sandbox are not the ones it last wrote (owner, mode and content recorded at its last write), or keep ~/.local/state/hcom and ~/.local/state/omp-seats out of the Claude Code sandbox's allowWrite on linux.",
+    "claimed_root_cause": "The sandbox grants the hcom parent and the seats root whole, and neither OS's denyWrite can name their per-slug and per-program children durably: linux drops interior globs and darwin has no pin against a parent rename.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "home/.chezmoitemplates/claude-settings-managed.json",
+        "line": 670,
+        "scope": "linux sandbox",
+        "description": "autoAllowBashIfSandboxed: a contained Bash command runs without a prompt."
+      },
+      {
+        "kind": "propagation",
+        "file": "home/.chezmoitemplates/claude-settings-managed.json",
+        "line": 677,
+        "scope": "linux sandbox.filesystem.allowWrite",
+        "description": "The hcom parent and the seats root are write roots on linux."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/generate-agent-configs.py",
+        "line": 916,
+        "scope": "render_claude_deny_write",
+        "description": "On linux no entry holding `*` renders, so no per-slug store or seat sandbox is denied."
+      },
+      {
+        "kind": "sink",
+        "file": "home/.chezmoitemplates/claude-settings-managed.json",
+        "line": 689,
+        "scope": "linux sandbox.filesystem.denyWrite",
+        "description": "The linux list names the static store hcom-regime alone."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/generate-agent-configs.py",
+        "line": 914,
+        "description": "On darwin no pin renders above a denied path, leaving the rename route."
+      },
+      {
+        "file": "home/.chezmoitemplates/claude-settings-managed.json",
+        "line": 601,
+        "description": "On darwin each slug's env is denied as written."
+      },
+      {
+        "file": "README.md",
+        "line": 612,
+        "description": "A sandboxed command can rename such a directory, write its control files unmatched and move it back."
+      },
+      {
+        "file": "README.md",
+        "line": 617,
+        "description": "On linux the per-slug stores and the seat sandboxes stay writable to a sandboxed command."
+      },
+      {
+        "file": "scripts/orchestrator/README.md",
+        "line": 260,
+        "description": "The threat row records both as residual for gate G17."
+      },
+      {
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1740,
+        "description": "Seats are denied the same seven names, the sibling control."
+      },
+      {
+        "file": "scripts/validate-agent-assets.py",
+        "line": 719,
+        "description": "The validator refuses an interior glob on linux, so the gap cannot be papered over."
+      }
+    ],
+    "blockers": [
+      "Whether Claude Code's linux sandbox grants writes below an allowWrite root to names no honoured denyWrite covers, and whether darwin's Seatbelt lets a contained command rename a directory above a denied path, is product behaviour; the README records the linux forms as unmeasured and this run may not execute agent code.",
+      "hcom's consumption of config.toml, env, config.env, scripts, integrations, .tmp/launch and shell_env.json at seat launch happens in the external hcom binary; the repository only asserts it (scripts/orchestrator/README.md:260)."
+    ],
+    "validation_plan": {
+      "local": "Under a scratch HOME with a dummy hcom store at ~/.local/state/hcom/<slug> and the rendered settings, on linux run one sandboxed Claude Code Bash command that appends MARKER=1 to <slug>/env; on darwin run one that moves <slug> to <slug>.x, appends MARKER=1 to <slug>.x/env and moves it back; observe whether each succeeds. Stop there.",
+      "deployment": "The owner states which hosts run Claude Code sessions beside hcom stores seats launch from, and which store files the installed hcom reads at launch."
+    }
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "disk-gc:forged-worktree-root-removes-seat-denied-tree",
+    "title": "disk-gc's worktree-root proof reads git metadata a seat can forge, so the daily sweep can remove a directory holding seat-denied files",
+    "description": "U188's worktree_root accepts a candidate when git, run in it, reports it as its own toplevel and names the repository's common directory (round 3 refuses a common-directory name ending in a newline, which a forged entry need not use) (home/dot_local/bin/common/executable_disk-gc:207-242); the later checks read HEAD, the index and the default branch, which prefers refs/remotes/origin/HEAD (:154-166, :283-307); and the tree then goes to `git worktree remove --force --force` (:332) under the unsandboxed daily timer. Every one of those facts lives in files a seat can write: the repository's common directory is a seat write root (scripts/orchestrator/hcom-seat:1373), where on Linux a new worktrees/<id> admin entry and a ref are not denied (:1729), and the orchestrator seat writes the main checkout (:1151), where `.claude/` itself is not denied, only its settings, hooks and, since U189, the contextdb package (:1753-1758). A `.claude/.git` file naming a hand-made admin entry, an index of a commit whose tree is `.claude`'s files and an origin/HEAD naming that commit would present `.claude` as a merged, clean, idle, unlocked worktree root, and git would delete it with the seat-denied hooks and settings inside; on Linux srt binds only existing deny paths, so a later launch could leave them writable. Fix if validated: keep a candidate that lies inside the main worktree (walk its parents by -ef against the main worktree), and read the default branch from origin/main or origin/master before origin/HEAD, with a fixture test of a forged root under the checkout.",
+    "claimed_root_cause": "The root proof and the removal criteria are all answers git derives from metadata at the candidate and from refs, both writable by a seat, and nothing confines a candidate to lie outside the main worktree.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "home/dot_config/systemd/user/disk-gc.service.tmpl",
+        "line": 6,
+        "scope": "ExecStart",
+        "description": "The daily unsandboxed sweep."
+      },
+      {
+        "kind": "propagation",
+        "file": "home/dot_local/bin/common/executable_disk-gc",
+        "line": 218,
+        "scope": "worktree_root",
+        "description": "The toplevel answer comes from git at the candidate, so a .git file there decides it."
+      },
+      {
+        "kind": "propagation",
+        "file": "home/dot_local/bin/common/executable_disk-gc",
+        "line": 226,
+        "scope": "worktree_root",
+        "description": "The common directory answer comes from the candidate's own .git file and admin entry."
+      },
+      {
+        "kind": "propagation",
+        "file": "home/dot_local/bin/common/executable_disk-gc",
+        "line": 156,
+        "scope": "default_branch",
+        "description": "The default branch prefers the refs/remotes/origin/HEAD symbolic ref."
+      },
+      {
+        "kind": "sink",
+        "file": "home/dot_local/bin/common/executable_disk-gc",
+        "line": 332,
+        "scope": "worktree_gc",
+        "description": "git worktree remove --force --force deletes the candidate recursively."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1373,
+        "description": "The repository's common directory is a seat write root."
+      },
+      {
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1151,
+        "description": "The orchestrator seat's directory is the main checkout."
+      },
+      {
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1719,
+        "description": "Per base only named children of .claude are denied (settings, hooks, contextdb), not .claude itself."
+      },
+      {
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1729,
+        "description": "On Linux a worktree admin entry created after launch is not denied."
+      },
+      {
+        "file": "tests/unit/test_disk_gc.py",
+        "line": 346,
+        "description": "The tests keep a listed subdirectory with no .git of its own, not a forged root."
+      }
+    ],
+    "blockers": [
+      "Whether `git worktree remove --force --force` removes a directory through a hand-made worktrees/<id> entry and a matching <dir>/.git file, and whether a crafted index and an origin/HEAD set in the common directory meet disk-gc's merge, status and recency checks, is git behaviour that needs a fixture run, which this run may not perform.",
+      "Whether an orchestrator seat runs on an Ubuntu host that also runs the disk-gc timer, and whether srt on Linux then leaves the removed deny paths writable at the next launch, are deployment and srt facts."
+    ],
+    "validation_plan": {
+      "local": "In a scratch HOME with a fixture repository under a scratch DISK_GC_WORKSPACE, create a directory inside its main worktree holding two old files, a .git file naming a new worktrees/<id> entry, an index and HEAD of a commit whose tree is those files, and set refs/remotes/origin/HEAD to that commit; run `disk-gc` (report mode) and then `disk-gc --apply` with DISK_GC_REPOS set to the fixture; observe whether the directory is reported and removed. Stop at that result.",
+      "deployment": "The owner states whether seats run on the Ubuntu host the disk-gc timer runs on, and inspects the checkout's .git/worktrees for entries no git worktree add made."
+    }
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "disk-gc:worktree-porcelain-path-field-split",
+    "title": "disk-gc splits worktree paths on whitespace and can rm -rf a different directory",
+    "description": "Run-1's lead: disk-gc cut worktree paths at the first space with awk and fell back to `rm -rf` on a path git refused to remove, so a crafted listing entry could make the daily unsandboxed sweep delete another directory. U188 reads the listing whole and removes only through git; see reason.",
+    "claimed_root_cause": "worktree_gc derives worktree paths with awk whitespace field splitting instead of NUL-delimited porcelain, and falls back to rm -rf on a path git refused to remove as a worktree.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "home/dot_config/systemd/user/disk-gc.service.tmpl",
+        "line": 6,
+        "scope": "ExecStart",
+        "description": "The daily unsandboxed sweep."
+      },
+      {
+        "kind": "propagation",
+        "file": "home/dot_local/bin/common/executable_disk-gc",
+        "line": 180,
+        "scope": "read_worktrees",
+        "description": "The -z listing goes to a file whose status is read."
+      },
+      {
+        "kind": "propagation",
+        "file": "home/dot_local/bin/common/executable_disk-gc",
+        "line": 182,
+        "scope": "read_worktrees",
+        "description": "Each NUL-terminated record is read whole."
+      },
+      {
+        "kind": "sink",
+        "file": "home/dot_local/bin/common/executable_disk-gc",
+        "line": 332,
+        "scope": "worktree_gc",
+        "description": "Removal is git worktree remove alone; a refusal keeps the tree."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "home/dot_local/bin/common/executable_disk-gc",
+        "line": 207,
+        "description": "worktree_root proves a candidate by identity before removal."
+      },
+      {
+        "file": "tests/unit/test_disk_gc.py",
+        "line": 271,
+        "description": "A path with a space is removed whole and its prefix untouched."
+      }
+    ],
+    "reason": "Refuted at 299f8d79 (U188): disk-gc no longer splits `git worktree list --porcelain` on whitespace; it reads the `-z` listing into an array, each record whole (home/dot_local/bin/common/executable_disk-gc:176-191), proves each candidate a linked worktree root of the repository by identity before anything removes it (:207-242), and removes a tree only through `git worktree remove`, with no `rm -rf` fallback (:332-335). A cut prefix can no longer be named, and a path git refuses is kept. A forged worktree root is a separate root cause (disk-gc:forged-worktree-root-removes-seat-denied-tree). The claim stays suppressed only while this source is unchanged."
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "dsh-installer:profile-plugins-resolve-outside-the-digest",
+    "title": "The DeepSeek harness installer resolves the thak profile's plugins from the npm registry with no lockfile, outside the reviewed digest",
+    "description": "update_deepseek_harness verifies GitHub's tag archive of the harness against a reviewed sha256 and builds it from its own lockfile, but then runs `mise exec -- pnpm install` in the deployed thak profile directory (scripts/update-agent-assets.sh:2170) with no lockfile and no --frozen-lockfile. The profile's only dependency, @deepseek-ai/dsh-hooks-claude-code at 0.2.1-rc.5 (home/dot_dsh/profiles/thak/package.json:14), therefore comes from the npm registry, not from the verified archive, and its own dependencies resolve to whatever versions their ranges admit at install time; the kit renders no lockfile for the profile (scripts/generate-agent-configs.py:2643-2644). That code is loaded into the harness and runs as the operator whenever dsh starts (and at install if pnpm runs its dependencies' lifecycle scripts). The repository's npm cooldown, min-release-age=3 (home/dot_npmrc:1), is npm's key; pnpm 12.8.1 from mise performs this install. A malicious or hijacked release of any package in that closure, inside its range and younger than any cooldown pnpm applies, would run on every opted-in host at its next harness install. Fix if validated: commit a generated pnpm-lock.yaml for the profile (or install the hooks plugin from the verified archive's own workspace) and run `pnpm install --frozen-lockfile` there, and set pnpm's own minimum-release-age for the profile install.",
+    "claimed_root_cause": "The profile's plugin install resolves its dependency closure fresh at install time, outside the archive digest and the archive's lockfile that bind the harness itself.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/update-agent-assets.sh",
+        "line": 2743,
+        "scope": "main",
+        "description": "make update runs update_deepseek_harness on every host; it proceeds only where DSH_HOME is exported and names ~/.dsh."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/update-agent-assets.sh",
+        "line": 2137,
+        "scope": "update_deepseek_harness",
+        "description": "The reviewed sha256 binds the downloaded harness archive only."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/update-agent-assets.sh",
+        "line": 2161,
+        "scope": "update_deepseek_harness",
+        "description": "The harness builds from its digest-bound lockfile with --frozen-lockfile."
+      },
+      {
+        "kind": "sink",
+        "file": "scripts/update-agent-assets.sh",
+        "line": 2170,
+        "scope": "update_deepseek_harness",
+        "description": "The profile's plugins install with `mise exec -- pnpm install`, no lockfile and no --frozen-lockfile."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "home/dot_dsh/profiles/thak/package.json",
+        "line": 14,
+        "description": "The one dependency, the Claude hooks plugin, an exact prerelease version from the npm registry."
+      },
+      {
+        "file": "scripts/generate-agent-configs.py",
+        "line": 2643,
+        "description": "The rendered profile scope names package.json and cordis.patch.yml only; no lockfile is rendered."
+      },
+      {
+        "file": "tests/unit/test_check_agent_runtime.py",
+        "line": 456,
+        "description": "The lockfile pnpm writes in the deployed profile is an unmanaged byproduct the doctor is told to ignore."
+      },
+      {
+        "file": "home/dot_npmrc",
+        "line": 1,
+        "description": "The repository's npm cooldown is npm's own key, min-release-age."
+      },
+      {
+        "file": "home/dot_mise/config.toml",
+        "line": 42,
+        "description": "pnpm comes from mise as npm:pnpm 12.8.1."
+      },
+      {
+        "file": "scripts/update-agent-assets.sh",
+        "line": 1362,
+        "description": "The Understand-Anything build in the same file tries pnpm install --frozen-lockfile first."
+      }
+    ],
+    "blockers": [
+      "Whether pnpm 12.8.1 applies ~/.npmrc's min-release-age (npm's key) or only its own minimum-release-age setting is pnpm behaviour, not visible in this repository.",
+      "The dependency ranges of @deepseek-ai/dsh-hooks-claude-code@0.2.1-rc.5, whether pnpm runs their lifecycle scripts, and whether the harness loads the plugin from the profile's node_modules or from its own verified workspace are facts of the registry and the upstream harness."
+    ],
+    "validation_plan": {
+      "local": "In a scratch HOME with an empty pnpm store, copy home/dot_dsh/profiles/thak/package.json into an empty directory and run `mise exec npm:pnpm@12.8.1 -- pnpm install --lockfile-only --ignore-scripts`; read the written pnpm-lock.yaml for packages resolved through ranges and for versions published less than three days before, and `pnpm config get minimum-release-age`. Stop at the lockfile; build and run nothing.",
+      "deployment": "The owner reads the published manifest of @deepseek-ai/dsh-hooks-claude-code@0.2.1-rc.5 and the harness's plugin resolution, and decides whether the profile gets a committed lockfile."
+    }
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+    "title": "The kit's only DeepSeek harness profile turns the harness's command sandbox off, and nothing makes a dsh run happen inside an srt seat",
+    "description": "The rendered thak profile disables the harness's own command-isolation row, bash-sandbox (home/dot_dsh/profiles/thak/cordis.patch.yml:9-10), and the asset's note gives the reason: 'the seat boundary is srt or nothing' (home/dot_agents/agent-config.yaml:1383). No code of this head provides that seat: scripts/orchestrator/hcom-seat starts only omp seats (:3-11), no lever starts dsh, and the wrapper update_deepseek_harness installs at ~/.dsh/bin/dsh execs the harness directly under mise's node with no seat check (scripts/update-agent-assets.sh:2191). Every run of the installed harness is therefore 'nothing': a session driven by a cloud model over ollama.com (cordis.patch.yml:14-18), reading repository and tool content that may carry injected instructions, runs its shell tool on the operator's account with the operator's credentials and no isolation, which is the outcome the repository refuses for Claude Code (agent-config.yaml:916-921, failIfUnavailable). Whether a command runs without an approval prompt under the headless bundle decides how much of this is reachable. The Claude hooks plugin the profile mounts over ~/.claude/settings.json (cordis.patch.yml:22-26) is no second gate at this pin: the table U179 computes from upstream source at dsh-v0.2.1-rc.5 (tests/unit/test_dsh_hook_coverage.py:126-132) puts the kit's permission gate, permgate (home/.chezmoitemplates/claude-settings-managed.json:813-819), on PermissionRequest, an event the bridge never reads, and its PreToolUse group on the matcher Bash, a name no DSH tool carries (the shell tool is bash), so neither runs on the harness's shell tool. Fix if validated: keep bash-sandbox enabled in the kit profile and disable it only in a seat overlay, or make ~/.dsh/bin/dsh refuse to start outside an srt seat (for example when HCOM_SEAT_SANDBOX is unset), the way hcom-seat refuses to launch without srt.",
+    "claimed_root_cause": "The profile disables the harness's command sandbox on the premise of an srt seat boundary that no launch path of this head applies.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/update-agent-assets.sh",
+        "line": 2191,
+        "scope": "update_deepseek_harness",
+        "description": "The installed wrapper starts the harness directly under mise's node; it checks for no seat."
+      },
+      {
+        "kind": "propagation",
+        "file": "home/dot_dsh/profiles/thak/package.json",
+        "line": 9,
+        "scope": "dsh.profile.bundles",
+        "description": "The profile composes the headless bundle."
+      },
+      {
+        "kind": "sink",
+        "file": "home/dot_dsh/profiles/thak/cordis.patch.yml",
+        "line": 9,
+        "scope": "bash-sandbox",
+        "description": "The harness's own command-isolation row is disabled in every run of the profile."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "home/dot_agents/agent-config.yaml",
+        "line": 1383,
+        "description": "The asset's note: its own command sandbox is off since the seat boundary is srt or nothing."
+      },
+      {
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 3,
+        "description": "The seat launcher starts omp seats through hcom omp, nothing else."
+      },
+      {
+        "file": "home/dot_dsh/profiles/thak/cordis.patch.yml",
+        "line": 17,
+        "description": "The model behind the session is served from ollama.com."
+      },
+      {
+        "file": "home/dot_agents/agent-config.yaml",
+        "line": 921,
+        "description": "Claude Code is configured to refuse to start rather than run commands unsandboxed."
+      },
+      {
+        "file": "tests/unit/test_dsh_profile.py",
+        "line": 118,
+        "description": "The test asserts the sandbox row disabled by id."
+      },
+      {
+        "file": "home/.chezmoitemplates/claude-settings-managed.json",
+        "line": 813,
+        "description": "The kit's permission gate is a PermissionRequest hook that runs permgate."
+      },
+      {
+        "file": "tests/unit/test_dsh_hook_coverage.py",
+        "line": 131,
+        "description": "The table pins the kit's PermissionRequest group as uncovered: the bridge's event tuple (:33-35) has no PermissionRequest."
+      },
+      {
+        "file": "tests/unit/test_dsh_hook_coverage.py",
+        "line": 127,
+        "description": "The PreToolUse group's matcher Bash is pinned uncovered: the bridge compares tool names exactly and DSH names its shell tool bash."
+      }
+    ],
+    "blockers": [
+      "Whether the dsh headless bundle asks for approval before its shell tool runs a command, or runs it, is behaviour of the upstream harness at dsh-v0.2.1-rc.5.",
+      "That the installed @deepseek-ai/dsh-hooks-claude-code runs neither the kit's PreToolUse Bash group nor its PermissionRequest group (permgate) on the harness's shell tool is the coordinator's reading of upstream source at dsh-v0.2.1-rc.5, held as constants in tests/unit/test_dsh_hook_coverage.py:126-132, not an observed run of the plugin."
+    ],
+    "validation_plan": {
+      "local": "On a scratch account with no credentials and a scratch HOME, install the pinned harness with DSH_HOME=~/.dsh and point a scratch copy of the patch's ollama-cloud baseURL at a local stub that answers one tool call running `touch \"$HOME/dsh-probe\"`; start ~/.dsh/bin/dsh with the thak profile and observe whether it prompts, refuses or runs the command, and whether a PreToolUse hook (matchers Bash and bash) or the PermissionRequest hook in the scratch ~/.claude/settings.json is called. Stop at the probe file.",
+      "deployment": "The owner states whether dsh is to run only inside an srt seat; if so, the wrapper or a launcher enforces it, or the kit profile keeps bash-sandbox on outside seats."
+    }
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "hcom-bus:sender-identity-caller-asserted",
+    "title": "Bus sender identity is caller-asserted while the seats treat a row's from as identity",
+    "description": "The bus trust boundary (README:177) states that identities are hcom participant names, the from and delivered_to of a row, and that no seat writes under $HCOM_DIR except through hcom. hcom-dispatch sets from from its own argument (`--from <from>` is the external sender identity), and every seat's srt settings grant write access to the whole hcom store with only its launch inputs denied, so hcom.db is seat-writable and `hcom send --from` is reachable. A worker seat can plausibly post a row whose from names the coordinator or another seat; the omp stop gate already decides a seat's task state by from. The effect on a recipient is bounded by the rule that bus text never authorises a command, but the orchestrator seat writes the main checkout and acts on TASK and RESULT lines by sender. Fix if validated: deny seats direct write to hcom.db (only hcom, binding the sender to the launched participant, should write it) or have recipients and the stop gate verify from against hcom's process binding rather than the row value.",
+    "claimed_root_cause": "The bus identity seats rely on is supplied by the sender (hcom send --from, or a direct row write to the seat-writable hcom.db) instead of being bound by hcom to the launched seat.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1373,
+        "scope": "seat_write_roots",
+        "description": "HCOM_DIR, the program's store, is a write root of every seat."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1740,
+        "scope": "seat_sandbox_write",
+        "description": "Only the store's launch inputs are denied; hcom.db stays writable."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/orchestrator/hcom-dispatch",
+        "line": 136,
+        "scope": "send",
+        "description": "hcom send ... --from \"${from}\" with a caller-chosen from."
+      },
+      {
+        "kind": "sink",
+        "file": "home/dot_agents/omp/hooks/stop-gate.ts",
+        "line": 81,
+        "scope": "task tracking",
+        "description": "The stop gate decides a task's open or closed move by comparing the row's from with the seat name."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/orchestrator/README.md",
+        "line": 177,
+        "description": "Bus trust boundary: identities are the row's from and delivered_to, and no seat writes under $HCOM_DIR except through hcom."
+      },
+      {
+        "file": "scripts/orchestrator/hcom-dispatch",
+        "line": 16,
+        "description": "Documents --from <from> as the external sender identity that becomes the row's from."
+      },
+      {
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1758,
+        "description": "The store is also in every seat's allowRead."
+      },
+      {
+        "file": "home/dot_agents/omp/policies/orchestrator.yml",
+        "line": 10,
+        "description": "The orchestrator seat runs approvalMode yolo."
+      }
+    ],
+    "blockers": [
+      "Whether hcom accepts --from naming another participant from inside a launched seat, and whether a row written directly into hcom.db is delivered with that from, is behavior of the external hcom binary.",
+      "How the orchestrator and worker seats weigh from when acting on a line is runtime model behavior, observable only in a seat run."
+    ],
+    "validation_plan": {
+      "local": "With two dummy seats on a scratch HCOM_DIR, from seat B run `hcom send @seatA --from coordinator -- PING test` and, separately inside B's srt sandbox, insert a message row with from=coordinator into the scratch hcom.db with sqlite3; check what sender seat A's delivery and bus-history.sh show. Stop at the delivered row.",
+      "deployment": "Owner checks in the installed hcom version whether send honors --from for a launched participant and whether it binds the sender to HCOM_PROCESS_ID."
+    }
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "hcom-seat:srt-deny-write-misses-claude-hook-package",
+    "title": "Orchestrator seat can rewrite the Python package that the checkout's Claude Code project hooks import",
+    "description": "Run-1's lead: the per-base srt write-deny list protected the hook registration and the hook shims but not .claude/contextdb, the package the shims import, so the orchestrator seat could change code the coordinator's Claude Code sessions run as unsandboxed hooks. U189 denies it; see reason.",
+    "claimed_root_cause": "The deny_write loop protects the hook registration and the hooks/ shims but not the package directory those shims import from, so the protection does not cover the code the hooks execute.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1151,
+        "scope": "seat directory",
+        "description": "For the orchestrator the seat directory is the main checkout."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1719,
+        "scope": "seat_sandbox_write deny loop",
+        "description": "The deny loop runs for the seat directory and the checkout."
+      },
+      {
+        "kind": "sink",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1721,
+        "scope": "seat_sandbox_write deny loop",
+        "description": "The package directory .claude/contextdb is denied beside the hooks."
+      }
+    ],
+    "evidence": [
+      {
+        "file": ".claude/hooks/contextdb_hook.py",
+        "line": 7,
+        "description": "The shim's package root is .claude/contextdb."
+      },
+      {
+        "file": ".claude/contextdb/contextdb/paths.py",
+        "line": 126,
+        "description": "The package's config, which names its one external command, is inside the denied directory."
+      },
+      {
+        "file": "tests/unit/test_hcom_seat.py",
+        "line": 648,
+        "description": "The test asserts the deny for the worker's clone."
+      }
+    ],
+    "reason": "Refuted at cf1d51bb (U189): hcom-seat's per-base loop denies ${base}/.claude/contextdb for the seat directory and the checkout (scripts/orchestrator/hcom-seat:1719-1721), so neither the package the hook shims import nor its config.json, which names the only external command it runs, is writable from a seat; the tracked .claude/ holds nothing else the hooks run. The claim stays suppressed only while this source is unchanged."
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "hcom-seat:srt-deny-write-misses-claude-project-instructions",
+    "title": "The seat's per-base write-deny list omits the project-scope Claude Code instructions and commands of the checkout",
+    "description": "Since U190 the user-scope Claude Code files that sessions outside the seat load are out of every seat's write roots (~/.claude and ~/.claude.json are no root, scripts/orchestrator/hcom-seat:1373-1374). The project scope is still written: the per-base loop for the seat directory and the checkout denies only settings, hooks and, since U189, the contextdb package (:1719-1721). For the orchestrator seat the seat directory is the main checkout (:1151), so a yolo seat (home/dot_agents/omp/policies/orchestrator.yml:10) that reads worker pull requests and bus text can rewrite CLAUDE.md, which imports AGENTS.md (CLAUDE.md:1), and create .claude/commands, .claude/agents, .claude/skills or .claude/rules, none tracked today, which a Claude Code session the coordinator opens in the checkout loads as memory, commands, subagents and skills. The result is instructions, and possibly frontmatter hooks, persisting from the seat into the coordinator's unsandboxed session. Fix if validated: deny the same names per base as at user scope (${base}/CLAUDE.md, ${base}/AGENTS.md, ${base}/.claude/commands, ${base}/.claude/agents, ${base}/.claude/skills, ${base}/.claude/rules), creating the directories first so srt on Linux binds them, with a test beside the U189 asserts.",
+    "claimed_root_cause": "The per-base deny loop enumerates the project's hook code and settings but not the project-scope instruction and command files (CLAUDE.md, .claude/commands, agents, skills, rules) that a Claude Code session opened in the checkout loads.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1151,
+        "scope": "seat directory",
+        "description": "The orchestrator seat's directory, its first write root, is the main checkout."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1719,
+        "scope": "seat_sandbox_write deny loop",
+        "description": "The per-base deny loop runs for the seat directory and the checkout."
+      },
+      {
+        "kind": "sink",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1721,
+        "scope": "seat_sandbox_write deny loop",
+        "description": "Per base only settings, hooks, contextdb, .omp, .codex, .envrc and .mcp.json are denied."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1373,
+        "description": "Since U190 the user scope is no write root: seat_write_roots lists no ~/.claude, ~/.claude.json or CLAUDE_CONFIG_DIR (lines 1371-1372), so only the project scope stays writable."
+      },
+      {
+        "file": "CLAUDE.md",
+        "line": 1,
+        "description": "The checkout's CLAUDE.md imports AGENTS.md."
+      },
+      {
+        "file": "home/dot_agents/omp/policies/orchestrator.yml",
+        "line": 10,
+        "description": "The orchestrator seat runs approvalMode yolo."
+      },
+      {
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1373,
+        "description": "seat_write_roots starts with the seat directory itself."
+      }
+    ],
+    "blockers": [
+      "Whether the installed Claude Code loads a project's CLAUDE.md imports and .claude/commands, agents, skills and rules into a session without a prompt, and whether a skill's or subagent's frontmatter hooks run outside the Bash sandbox, is product behaviour not visible in this repository.",
+      "Whether srt lets a seat create new entries below an allowed write root for names absent from denyWrite needs a sandboxed run, which this run may not perform."
+    ],
+    "validation_plan": {
+      "local": "In a scratch copy of the repository launched as a scratch orchestrator seat, inside srt with the rendered settings, append one harmless marker sentence to CLAUDE.md and add .claude/skills/probe/SKILL.md whose frontmatter hook writes a marker file into scratch; then open Claude Code in the scratch copy outside srt and check whether the sentence is in its memory and whether the marker file appears when the skill loads. Stop there.",
+      "deployment": "The owner confirms whether the coordinator opens Claude Code in the main checkout and compares its CLAUDE.md, AGENTS.md and .claude/ with origin/main after orchestrator seat sessions."
+    }
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "hcom-seat:srt-write-roots-share-operator-claude-config",
+    "title": "Seat srt sandbox can write the operator's Claude Code config (~/.claude.json, ~/.claude/rules) that unsandboxed Claude Code sessions load",
+    "description": "Run-1's lead 2: every seat's write roots held the operator's ${CLAUDE_CONFIG_DIR:-~/.claude} and ~/.claude.json, with a deny list under ~/.claude that left ~/.claude.json and ~/.claude/rules writable, so a yolo seat could add a user-scope MCP server or rule that the operator's next unsandboxed Claude Code session loads. U190 removes both roots and gives the bridge child its own CLAUDE_CONFIG_DIR; U190b denies the operator's state explicitly, protects it from every root and probes it in the canary; see reason.",
+    "claimed_root_cause": "seat_write_roots shared the operator's own Claude Code configuration directory and ~/.claude.json with every seat, and the deny loop enumerated only some of the files Claude Code executes or loads as instructions.",
+    "reason": "Refuted at 0a125510 (U190, U190b): the fix the triage named (a per-seat CLAUDE_CONFIG_DIR for the bridge child and the removal of the two roots) is met and made explicit. seat_write_roots lists neither ~/.claude, ~/.claude.json nor a caller's CLAUDE_CONFIG_DIR (scripts/orchestrator/hcom-seat:1373-1374) and allowWrite is exactly that list (:1716); because srt 0.0.81 grants ~/.claude/debug on its own (:1363), the same paths, from operator_claude_paths (:1481-1493), are in denyWrite and denyRead (:1755-1757) and protected by the overlap check (:1545-1548), and the shim's canary refuses a launch whose sandbox lets a write open under ~/.claude/debug (:1820-1833). The bridge child runs under CLAUDE_CONFIG_DIR=<seats-root>/.state/<name>/claude (:1845), created 0700 and refused unless real (:1701-1706). tests/unit/test_hcom_seat.py:655-704 asserts both roles' settings: no root under the operator's state and each of its paths denied once for write and read. Source evidence only (no sandboxed run). The claim stays suppressed only while this source is unchanged.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1373,
+        "scope": "seat_write_roots",
+        "description": "The seat's write roots (continued on line 1374) hold no ~/.claude, ~/.claude.json or CLAUDE_CONFIG_DIR."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1484,
+        "scope": "operator_claude_paths",
+        "description": "One list of the operator's Claude Code state: ~/.claude, ~/.claude.json and a different caller CLAUDE_CONFIG_DIR (lines 1484-1491)."
+      },
+      {
+        "kind": "propagation",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1756,
+        "scope": "seat_sandbox_write",
+        "description": "That list is denied for write (and for read on line 1757), against srt's own grant of ~/.claude/debug."
+      },
+      {
+        "kind": "sink",
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1829,
+        "scope": "seat shim canary",
+        "description": "A canary write that opens under ~/.claude/debug refuses the launch before omp starts."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1545,
+        "description": "The overlap check protects the same paths, so no store or seats root may cover them."
+      },
+      {
+        "file": "scripts/orchestrator/hcom-seat",
+        "line": 1845,
+        "description": "The shim exports CLAUDE_CONFIG_DIR=<state>/claude, the seat's own slot."
+      },
+      {
+        "file": "tests/unit/test_hcom_seat.py",
+        "line": 661,
+        "description": "Both roles' rendered settings deny the operator's Claude Code state for write and read (assert_operator_claude_denied, line 706)."
+      },
+      {
+        "file": "tests/unit/test_hcom_seat.py",
+        "line": 1292,
+        "description": "A store or seats root at or under the operator's Claude Code state refuses."
+      },
+      {
+        "file": "scripts/orchestrator/README.md",
+        "line": 193,
+        "description": "The threat row for the operator's Claude Code state reads closed (U190, U190b)."
+      }
+    ]
+  }
+]

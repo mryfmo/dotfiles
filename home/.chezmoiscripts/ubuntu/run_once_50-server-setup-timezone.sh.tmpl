@@ -1,6 +1,6 @@
 {{ if eq .chezmoi.os "linux" -}}
 {{   if eq .chezmoi.osRelease.idLike "debian" -}}
-{{     if eq .system "server" -}}
+{{     if false -}}  {{/* probe: this server-only step is skipped to bisect the bootstrap stall (regime-cutover U237, not to merge) */}}
 {{       include "../install/ubuntu/server/setup_timezone.sh" }}
 {{     end -}}
 {{   end -}}

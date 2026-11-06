@@ -48,7 +48,9 @@ GIT_IDENTITY = quiet_git_env(
 )
 
 
-class HcomSeatTest(unittest.TestCase):
+class SeatFixture(unittest.TestCase):
+    """The scratch host every hcom-seat test launches in; `tests/unit/test_hcom_seat_dsh.py` builds on it too."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -146,6 +148,11 @@ class HcomSeatTest(unittest.TestCase):
             *(flag for ext in (*exts, self.gate) for flag in ("-e", str(ext))), "--hcom-team", team,
         ]  # fmt: skip
 
+    def settings_of(self, name):
+        return json.loads(Path(self.seats, ".sandbox", name, "srt-settings.json").read_text())
+
+
+class HcomSeatTest(SeatFixture):
     def test_a_remote_seat_without_a_login_starts_nothing(self):
         """U37: hcom-seat runs seat-login-preflight beside it before it creates or starts anything. U85 round 28: the
         preflight reads the Keychain only through `security`, a tool hcom-seat resolves, so the test's fake answers
@@ -560,7 +567,9 @@ class HcomSeatTest(unittest.TestCase):
                 run = self.seat(*args, "--seats-root", self.seats, cwd=cwd, **overrides)
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertTrue(run.stderr.startswith("hcom-seat: "), run.stderr)
-        self.assertIn("unknown role 'audit'; expected orchestrator or worker", self.seat("audit", "--dry-run").stderr)
+        self.assertIn(
+            "unknown role 'audit'; expected orchestrator, worker or dsh", self.seat("audit", "--dry-run").stderr
+        )
         (self.policies / "orchestrator.yml").write_text("tools: {}\n")
         (self.profiles / "orchestrator.yml").unlink()
         run = self.seat("orchestrator", "--seats-root", self.seats)
@@ -590,9 +599,6 @@ class HcomSeatTest(unittest.TestCase):
         self.assertIn(f"extension directory absent: {self.gate}", run.stderr, "--ext never drops the gate")
         self.assertEqual([self.calls_of(tool) for tool in ("hcom", "herdr", "omp")], [[], [], []])
         self.assertFalse(Path(self.seats).exists())
-
-    def settings_of(self, name):
-        return json.loads(Path(self.seats, ".sandbox", name, "srt-settings.json").read_text())
 
     def plant_claude_env_recorder(self):
         """Replace the omp fake with one that records the Claude variables the shim handed it (the shared fake keeps
@@ -1432,7 +1438,15 @@ class HcomSeatTest(unittest.TestCase):
         failing after plausible output; git_state_check's one mkdir for every missing info/ and hooks/ refuses when
         it fails, fails after a partial creation, or leaves a link."""
         text = SEAT.read_text()
-        names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
+        names = (
+            "refuse",
+            "clean_path",
+            "require_clean_path",
+            "physical_path",
+            "physical_paths",
+            "physical_each",
+            "sizes_of",
+        )
         names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix")
         names += ("operator_claude_paths", "seat_overlap_check")
         names += ("dir_entries", "admin_dirs_match", "git_state_check", "git_form_path")
@@ -1504,6 +1518,39 @@ class HcomSeatTest(unittest.TestCase):
                 self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
                 self.assertIn(f"the worktree record {root / path} is not backed by a directory", result.stderr)
                 self.assertIn("git worktree prune", result.stderr)
+        # physical_each (U272f), the judge's resolver over rendered settings rows, files and absent tails included:
+        # a batch whose subshell fails, an empty batch, a short batch, a `fail` record, a malformed record and a
+        # record too many each refuse; the real batch resolves every row.
+        each_call = 'physical_each "$@"\nprintf "%s\\n" "${phys_list[@]}"'
+        rows = [*dirs, str(root / "file"), str(root / "c/file-gone")]
+        good = run(each_call, rows)
+        self.assertEqual(good.returncode, 0, good.stderr)
+        self.assertEqual(
+            good.stdout.split(),
+            [
+                str(root / n)
+                for n in ("a", "b", "real", "absent", "real/gone/deeper", "d/gone", "file", "real/file-gone")
+            ],
+        )
+        real_each = (
+            "physical_path_real() {" + functions[functions.index("physical_path() {") + len("physical_path() {") :]
+        )
+        real_each = real_each[: real_each.index("\n}\n") + 3]
+        each_cases = {
+            "the batch fails after plausible output": 'printf() { [[ $# == 3 && $2 == */b ]] && exit 7; builtin printf "$@"; }',
+            "an empty batch": "physical_path() { return 0; }",
+            "a short batch": real_each + '\nphysical_path() { [[ $1 == */b ]] || physical_path_real "$1"; }',
+            "a fail record": real_each + '\nphysical_path() { [[ $1 != */b ]] && physical_path_real "$1"; }',
+            "a malformed record": real_each
+            + '\nphysical_path() { if [[ $1 == */b ]]; then echo relative; else physical_path_real "$1"; fi; }',
+            "a record too many": real_each
+            + '\nphysical_path() { physical_path_real "$1" && [[ $1 != */b ]] || physical_path_real "$1"; }',
+        }
+        for label, prelude in each_cases.items():
+            with self.subTest(producer="physical_each", case=label):
+                result = run(each_call, rows, prelude=prelude)
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("settings path", result.stderr)
         sizes_call = 'sizes_of "$@"\nprintf "%s\\n" "${size_list[@]}"'
         self.assertEqual(run(sizes_call, pointers).stdout.split(), ["6", "6"])
         stat_cases = {

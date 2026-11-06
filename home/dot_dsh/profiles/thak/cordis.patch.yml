@@ -19,6 +19,10 @@
         models:
           - id: deepseek-v4-pro:0813
           - id: deepseek-v4.1-flash:1017
+- id: agent-default-model
+  config:
+    provider: ollama-cloud
+    model: deepseek-v4.1-flash:1017
 - insert:
     - id: hooks-claude-code
       name: '@deepseek-ai/dsh-hooks-claude-code'

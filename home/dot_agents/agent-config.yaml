@@ -600,6 +600,9 @@ model_profiles:
     omp: { model: "openai-siwc/gpt-6-astra", effort: xhigh }
     dsh: { model: "deepseek-v4-pro:0813", route: ollama-cloud }
 interactive_profile: deep
+# The tier whose dsh entry is the DeepSeek harness profile's default model; interactive_profile is the Claude, Codex
+# and omp sessions' tier and stays separate.
+dsh_default_profile: standard
 
 codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml

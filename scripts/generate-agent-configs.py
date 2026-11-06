@@ -2233,10 +2233,11 @@ def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
 
     The rows are addressed by the ids the base bundle mounts them under: the session-log upload off, the official API
     adapters and the harness's own command sandbox disabled (the seat boundary stays outside the harness), one provider
-    per route of DSH_ROUTES with the distinct dsh models of the profiles that name it, and the Claude hooks plugin
-    inserted with an absolute configPath (the harness resolves a relative one from its launch directory). A manifest
-    whose profiles name no dsh model (the generator's fixtures) renders no profile; one that does needs the pinned
-    asset, whose version the hooks plugin dependency follows.
+    per route of DSH_ROUTES with the distinct dsh models of the profiles that name it, the agent's default model set to
+    the dsh entry of the `dsh_default_profile` tier (the base bundle's default names the disabled official adapter),
+    and the Claude hooks plugin inserted with an absolute configPath (the harness resolves a relative one from its
+    launch directory). A manifest whose profiles name no dsh model (the generator's fixtures) renders no profile; one
+    that does needs the pinned asset, whose version the hooks plugin dependency follows.
     """
     dsh = {name: profile["dsh"] for name, profile in model_profiles(manifest).items() if "dsh" in profile}
     if not dsh:
@@ -2245,6 +2246,12 @@ def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
     if not isinstance(asset, dict) or not isinstance(asset.get("pin"), str):
         fail("model_profiles name dsh models, so assets.deepseek-harness must carry the pin their profile follows")
     pin = asset["pin"].removeprefix("dsh-v")
+    tier = manifest.get("dsh_default_profile")
+    default = dsh.get(tier)
+    if default is None:
+        fail(f"dsh_default_profile must name a model profile with a dsh entry: {tier!r}")
+    if default["route"] not in DSH_ROUTES:
+        fail(f"dsh_default_profile {tier} routes to {default['route']!r}, not one of {', '.join(DSH_ROUTES)}")
     package = {
         "name": DSH_PROFILE,
         "private": True,
@@ -2280,6 +2287,13 @@ def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
             "        models:",
             *(f"          - id: {model}" for model in models),
         ]
+    # The agent's provider is the route as llm-pi-ai registers it: the providers dict key itself.
+    lines += [
+        "- id: agent-default-model",
+        "  config:",
+        f"    provider: {default['route']}",
+        f"    model: {default['model']}",
+    ]
     # The `!!js` expression is the form the shipped headless patch uses for environment values.
     config_path = f"!!js process.env.HOME + '{DSH_HOOKS_SETTINGS.removeprefix('~')}'"
     lines += [

@@ -4,10 +4,16 @@
  */
 
 /**
+ * Tag of the text block that carries DSH's system text inside the first user turn. One constant, so the test
+ * and any later reader of a gateway line share the name with the writer.
+ */
+export const SYSTEM_BLOCK_TAG = 'dsh-system'
+
+/**
  * Map one DSH request into an Anthropic messages body.
  * @param {object} options DSH `GenerateOptions`: provider, model, messages, system, tools, maxTokens, temperature, stop.
  * @param {{maxTokens?: number}} [defaults] plugin-level fallbacks for fields the request leaves unset.
- * @returns {object} the body of one `{"path":"/v1/messages"}` gateway line.
+ * @returns {object} the body of one `{"path":"/v1/messages"}` gateway line. It never carries `system`: see {@link foldSystem}.
  */
 export function toMessagesBody(options, defaults = {}) {
   const system = []
@@ -40,7 +46,7 @@ export function toMessagesBody(options, defaults = {}) {
     max_tokens: options.maxTokens ?? defaults.maxTokens ?? 4096,
     messages,
   }
-  if (system.length > 0) body.system = system.join('\n\n')
+  if (system.length > 0) foldSystem(messages, system)
   if (Array.isArray(options.tools) && options.tools.length > 0) {
     body.tools = options.tools.map(tool => ({
       name: tool.name,
@@ -162,6 +168,20 @@ function append(messages, role, content) {
   // Anthropic alternates roles; consecutive same-role rows (a tool result after a tool result) share one message.
   if (last !== undefined && last.role === role) last.content.push(...content)
   else messages.push({ role, content })
+}
+
+/**
+ * Prepend the collected system text to the first user turn as one tagged text block. The gateway's
+ * pi-claude-bridge runs a request without `system` on Claude Code's preset prompt and throws on a `system` that
+ * matches no prompt captured from a pi session (`prompt-capture.ts` `resolveOrDerive`); a DSH client has no pi
+ * session, so `system` is never sent and the instructions travel here as the first thing the model reads.
+ * The block is built from `options.system` and `system`-role rows only, never from user content.
+ */
+function foldSystem(messages, system) {
+  const block = { type: 'text', text: `<${SYSTEM_BLOCK_TAG}>\n${system.join('\n\n')}\n</${SYSTEM_BLOCK_TAG}>` }
+  const first = messages[0]
+  if (first !== undefined && first.role === 'user') first.content.unshift(block)
+  else messages.unshift({ role: 'user', content: [block] })
 }
 
 function textOf(blocks) {

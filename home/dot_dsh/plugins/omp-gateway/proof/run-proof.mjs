@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Composition proof: a scratch `DSH_HOME`, a scratch profile that links this plugin (and the ping tool) the way
  * `dsh plugin add link:<dir>` would, and two headless `dsh` turns against the stub gateway.

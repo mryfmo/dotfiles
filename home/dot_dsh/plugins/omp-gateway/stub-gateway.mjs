@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Stub `omp auth-gateway stdio`: prints the measured ready line, then answers each JSON request line from
  * `fixtures.json`. The reply is chosen by a selector over the request (path, model, the last user text, a

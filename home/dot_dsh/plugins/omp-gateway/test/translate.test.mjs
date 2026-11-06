@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { toChunks, toError, toMessagesBody, TranslationError } from '../translate.mjs'
+import { SYSTEM_BLOCK_TAG, toChunks, toError, toMessagesBody, TranslationError } from '../translate.mjs'
 
 const fixtures = JSON.parse(readFileSync(new URL('../fixtures.json', import.meta.url), 'utf8'))
 
@@ -36,12 +36,11 @@ test('toMessagesBody reproduces the measured tool declaration', () => {
   assert.deepEqual(body.tools, fixtures.requests.tool_use.tools)
 })
 
-test('toMessagesBody maps a loop-built history: system row, tool call, tool result, developer row dropped', () => {
+test('toMessagesBody maps a loop-built history: tool call, tool result, developer row dropped', () => {
   const body = toMessagesBody({
     provider: 'claude-bridge',
     model: 'claude-haiku-5-5',
     messages: [
-      { role: 'system', content: [{ type: 'text', text: 'You are a coding agent.' }] },
       { role: 'user', content: [{ type: 'text', text: 'Call the ping tool with word=pong and nothing else.' }] },
       { role: 'developer', content: [{ type: 'tool-addition', toolName: 'ping' }] },
       { role: 'assistant', content: [{ type: 'tool-call', id: 'toolu_1', name: 'ping', arguments: '{"word":"pong"}' }] },
@@ -49,11 +48,10 @@ test('toMessagesBody maps a loop-built history: system row, tool call, tool resu
       { role: 'tool', toolCallId: 'toolu_2', isError: true, content: [{ type: 'text', text: 'no such tool' }] },
     ],
   }, { maxTokens: 1234 })
-  assert.equal(body.system, 'You are a coding agent.')
   assert.equal(body.max_tokens, 1234)
   assert.deepEqual(body.messages, [
     { role: 'user', content: [{ type: 'text', text: 'Call the ping tool with word=pong and nothing else.' }] },
-    { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_1', name: 'ping', input: { word: 'pong' } }] },
+    { role: 'assistant', content: [{ role: undefined, type: 'tool_use', id: 'toolu_1', name: 'ping', input: { word: 'pong' } }].map(({ role, ...block }) => block) },
     { role: 'user', content: [
       { type: 'tool_result', tool_use_id: 'toolu_1', content: 'pong from host' },
       { type: 'tool_result', tool_use_id: 'toolu_2', content: 'no such tool', is_error: true },
@@ -61,17 +59,82 @@ test('toMessagesBody maps a loop-built history: system row, tool call, tool resu
   ])
 })
 
+const systemBlock = text => ({ type: 'text', text: `<${SYSTEM_BLOCK_TAG}>\n${text}\n</${SYSTEM_BLOCK_TAG}>` })
+
+test('toMessagesBody folds the system prompt into the first user turn as a tagged leading block and sends no system field', () => {
+  const body = toMessagesBody({
+    provider: 'claude-bridge',
+    model: 'claude-haiku-5-5',
+    system: 'You are a coding agent.',
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'Reply with the single word pong.' }] }],
+  })
+  assert.equal(SYSTEM_BLOCK_TAG, 'dsh-system')
+  assert.equal(Object.hasOwn(body, 'system'), false)
+  assert.deepEqual(body.messages, [{ role: 'user', content: [
+    systemBlock('You are a coding agent.'),
+    { type: 'text', text: 'Reply with the single word pong.' },
+  ] }])
+})
+
+test('toMessagesBody inserts a user message holding the block alone when the history starts with an assistant turn', () => {
+  const body = toMessagesBody({
+    provider: 'claude-bridge',
+    model: 'claude-haiku-5-5',
+    system: 'You are a coding agent.',
+    messages: [
+      { role: 'assistant', content: [{ type: 'text', text: 'How can I help?' }] },
+      { role: 'user', content: [{ type: 'text', text: 'Reply with the single word pong.' }] },
+    ],
+  })
+  assert.equal(Object.hasOwn(body, 'system'), false)
+  assert.deepEqual(body.messages, [
+    { role: 'user', content: [systemBlock('You are a coding agent.')] },
+    { role: 'assistant', content: [{ type: 'text', text: 'How can I help?' }] },
+    { role: 'user', content: [{ type: 'text', text: 'Reply with the single word pong.' }] },
+  ])
+})
+
+test('toMessagesBody sends the user message unchanged and no system field when the request has no system text', () => {
+  const body = toMessagesBody({
+    provider: 'claude-bridge',
+    model: 'claude-haiku-5-5',
+    system: '',
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'Reply with the single word pong.' }] }],
+  })
+  assert.equal(Object.hasOwn(body, 'system'), false)
+  assert.deepEqual(body.messages, [{ role: 'user', content: [{ type: 'text', text: 'Reply with the single word pong.' }] }])
+})
+
+test('toMessagesBody folds a system-role message from the middle of the history into the same leading block, in order', () => {
+  const body = toMessagesBody({
+    provider: 'claude-bridge',
+    model: 'claude-haiku-5-5',
+    system: 'You are a coding agent.',
+    messages: [
+      { role: 'user', content: [{ type: 'text', text: 'hi' }] },
+      { role: 'assistant', content: [{ type: 'text', text: 'hello' }] },
+      { role: 'system', content: [{ type: 'text', text: 'Answer in one word.' }] },
+      { role: 'user', content: [{ type: 'text', text: 'Reply with the single word pong.' }] },
+    ],
+  })
+  assert.equal(Object.hasOwn(body, 'system'), false)
+  assert.deepEqual(body.messages, [
+    { role: 'user', content: [systemBlock('You are a coding agent.\n\nAnswer in one word.'), { type: 'text', text: 'hi' }] },
+    { role: 'assistant', content: [{ type: 'text', text: 'hello' }] },
+    { role: 'user', content: [{ type: 'text', text: 'Reply with the single word pong.' }] },
+  ])
+  assert.equal(body.messages.some(message => message.role === 'system'), false)
+})
+
 test('toMessagesBody keeps a model id that already names its provider and forwards one-shot fields', () => {
   const body = toMessagesBody({
     provider: 'claude-bridge',
     model: 'claude-bridge/claude-haiku-5-5',
-    system: 'Be terse.',
     temperature: 0.2,
     stop: ['END'],
     messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }, { type: 'image', attachment: {} }] }],
   })
   assert.equal(body.model, 'claude-bridge/claude-haiku-5-5')
-  assert.equal(body.system, 'Be terse.')
   assert.equal(body.temperature, 0.2)
   assert.deepEqual(body.stop_sequences, ['END'])
   assert.deepEqual(body.messages[0].content, [{ type: 'text', text: 'hi' }, { type: 'text', text: '[image attachment omitted]' }])

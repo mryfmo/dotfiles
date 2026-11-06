@@ -1,0 +1,45 @@
+# U213 the security-audit sweep of unit U207's head 5f4f74cd on the srt worker seat
+
+GOAL
+Run the `security-audit` skill in full audit mode over this repository at the U207 head 5f4f74cdb568595a1f62daaf87d5db593fed16bb (an empty commit on `fix/finding-path-grammar` whose tree equals the round-2 head 445a2d22, made for a fresh CI run after the snap-store timeout of 2026-11-05) from the srt worker seat `sweep`, so unit U207, in the trust-boundary class (two levers, the verdict readers), has its sweep row at the head that merges (the sweep bullet of the Audit section, `AGENTS.md:71`). This unit changes no code and opens no pull request; its product is the validated findings set under the seat's state root and the RESULT line that names it. The coordinator copies the findings file into the store and writes the advisory row. The run-46 records (the U210 round-2 head, seven `needs_validation` records carried since run-44 and six rejected) are the ones to carry and re-verify at this head with their lines re-mapped; run-44 (the U207 round-2 head 445a2d22, the same tree as this head) holds the U207 reading to carry as well: the writer refusal of a path with a colon or whitespace in `scripts/orchestrator/pr-audit.sh`, the first-colon-free-token readers in `scripts/orchestrator/audit-carry.py` and `scripts/orchestrator/pr-merge.sh`, and their generated copies and pins.
+
+SCOPE
+No branch, no commit, no pull request, no file of the repository changes. Writes only under `~/.local/state/omp-seats/dotfiles/.state/sweep/security-audit/run-47/` (the output directory, created by step 1) and the skill's per-agent `scratch/` directories below it. The target is the seat's own checkout `~/.local/state/omp-seats/dotfiles/sweep`, read-only for the run: `git -C ~/.local/state/omp-seats/dotfiles/sweep status --porcelain` prints nothing before and after.
+
+CONTEXT
+Measured 2026-11-05 on this host. The skill is installed at `~/.agents/skills/security-audit/` (`SKILL.md`, `HUNTING.md`, `VALIDATION-AND-REPORTING.md`, `RECONNAISSANCE.md`, the attack-class files, `report-schema.json`, `validate-findings.cjs`, `validate-coverage-ledger.cjs`) by `scripts/update-agent-assets.sh#update_security_audit_skill` at the pinned commit c1c8a8c1 (the manifest's `assets.security-audit-skill`), with audience `omp-worker` only. The seat's containment lets it write only its own checkout, its state root `~/.local/state/omp-seats/dotfiles/.state/sweep` and the bus store, and gives it no network; the skill's "Universal execution safety" asks exactly that for anything the target controls, and source inspection is read-only anyway. The coordinator positioned the checkout at 5f4f74cd before this TASK. The earlier runs sit beside the output directory as `run-1` to `run-46`; `run-46/findings.json` holds the records to carry; `run-44/` is the sweep of the same tree under its earlier commit. `git -C ~/.local/state/omp-seats/dotfiles/sweep diff 445a2d22 HEAD` prints nothing (an empty commit); `git diff --name-only origin/main...HEAD` names the U207 files: `scripts/orchestrator/pr-audit.sh`, `scripts/orchestrator/audit-carry.py`, `scripts/orchestrator/pr-merge.sh`, their generated copies under `home/dot_local/bin/common/`, `home/dot_agents/agent-config.yaml` (the pins) and the unit tests.
+
+CHANGE
+1. `mkdir -p ~/.local/state/omp-seats/dotfiles/.state/sweep/security-audit/run-47`; confirm `git -C ~/.local/state/omp-seats/dotfiles/sweep log -1 --format=%H` prints 5f4f74cdb568595a1f62daaf87d5db593fed16bb and `git -C ~/.local/state/omp-seats/dotfiles/sweep status --porcelain` prints nothing; write both result lines into `<output-dir>/preflight.txt`.
+2. Read `~/.agents/skills/security-audit/SKILL.md` whole, then the phase files it names as each phase needs them. Resolve the full-audit setup values: skill directory `~/.agents/skills/security-audit`, target `~/.local/state/omp-seats/dotfiles/sweep`, repo name `dotfiles`, output directory the one of step 1, source ref 5f4f74cd, checkout clean.
+3. Run the six phases in order and write the seven shared files into the output directory. Carry the run-46 records and re-verify each at this head with its lines re-mapped; hunt on the U207 change (`git -C ~/.local/state/omp-seats/dotfiles/sweep diff --name-only origin/main...HEAD`): the writer's refusal in `pr-audit.sh` (which paths it refuses, whether a path can still carry a second location into a written line), the two readers' first-token rule (whether a rationale can still be read as a location, whether a path with a colon can reach the readers from any writer other than the refused one), and the generated copies and pins. Every finding carries the fields `report-schema.json` requires: the trust boundary violated, the affected principal or resource, `file:line` evidence at this head, a safe reproduction or `needs_validation`, severity, and the smallest effective fix. Coverage over volume: the coverage ledger names every top-level directory of the target with a verdict (covered, or skipped with the reason).
+4. Validate: read the usage line of each validator, then `node ~/.agents/skills/security-audit/validate-findings.cjs <output-dir>/findings.json` and `node ~/.agents/skills/security-audit/validate-coverage-ledger.cjs <output-dir>/coverage-ledger.json`, both exit 0; paste both result lines into `<output-dir>/validation.txt`. A validation failure is fixed in the JSON, never by dropping a finding to make it pass.
+5. Write `<output-dir>/summary.txt`: first line `security-audit sweep 5f4f74cdb568595a1f62daaf87d5db593fed16bb: <count> findings, advisory`, then one line per finding `<severity><TAB><id><TAB><file:line><TAB><title>`, then the counts by severity, the files written, and the wall time of the run.
+
+ACCEPTANCE
+1. `ls ~/.local/state/omp-seats/dotfiles/.state/sweep/security-audit/run-47` lists `run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt`.
+2. `node ~/.agents/skills/security-audit/validate-findings.cjs <output-dir>/findings.json` exit 0.
+3. `node ~/.agents/skills/security-audit/validate-coverage-ledger.cjs <output-dir>/coverage-ledger.json` exit 0.
+4. `grep -c 5f4f74cdb568595a1f62daaf87d5db593fed16bb <output-dir>/run-metadata.json` prints 1 or more.
+5. `git -C ~/.local/state/omp-seats/dotfiles/sweep status --porcelain` prints nothing.
+
+VERIFY
+The commands of ACCEPTANCE in the seat, their result lines pasted into `<output-dir>/validation.txt`.
+
+CLOSURE
+remove
+
+TRUST
+TRUST: the unit trusts the `security-audit` skill at its pinned commit c1c8a8c1 and the seat's srt containment as the bounds of the run, and the run-46 and run-44 records as the sets to carry; it changes no file of the repository, removes nothing and opens no pull request; its product is the validated findings set and the RESULT line.
+
+TIMEBOX
+300 minutes. On expiry, validate what exists, write `summary.txt` with the word `partial` after `advisory` in its first line, and send the RESULT.
+
+FORBIDDEN
+No edit, commit, branch, push or pull request; no write outside the output directory; no network; no build, test or execution of the target's code; no installation; no `gh` call; no read of a credential store or `~/.ssh`; no secret in any file you write (a token is redacted to its first four characters); no absolute home directory in the findings (write `~/...`); no word of the store's `redact-words.txt`.
+
+REPORT
+One line on the team thread when the output directory holds the ten files and both validators exit 0 (the `hcom-worker` skill's Reply section: `hcom send --thread regime -- "<line>"`): `RESULT v1 task_id=U213 status=ready_for_review pr=none head=5f4f74cdb568595a1f62daaf87d5db593fed16bb note=<count> findings validated in run-47`. Nothing else goes on the bus; the files are the report.
+
+STANDING
+`~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/preferences.md` (standing orders 6, 9, 11, 13, 21, 27); `AGENTS.md:70-71`; `~/.agents/skills/security-audit/SKILL.md`; `briefs/U209-security-audit-sweep-u207-round2-head.md` (the sweep of the same tree at 445a2d22).

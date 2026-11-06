@@ -378,6 +378,18 @@
       "executable": false
     },
     {
+      "source": "home/dot_dsh/profiles/router/cordis.patch.yml",
+      "target": ".dsh/profiles/router/cordis.patch.yml",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_dsh/profiles/router/package.json",
+      "target": ".dsh/profiles/router/package.json",
+      "kind": "file",
+      "executable": false
+    },
+    {
       "source": "home/dot_dsh/profiles/thak/cordis.patch.yml",
       "target": ".dsh/profiles/thak/cordis.patch.yml",
       "kind": "file",
@@ -430,6 +442,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "5e1b92b20b9306f0e03c5a79a1c06e0d7ba8c499d7b9c7a1a9e980a8eef22eed"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_intake-observe.py",
+      "target": ".local/bin/common/intake-observe.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "fb94b10549a1d1640aef94a32d64dfabb003b5c1c7a3b69f1c8d71c6e3ddc73d"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
@@ -684,6 +703,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "hcom-seat"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "intake-observe.py"
     },
     {
       "source": "home/dot_local/bin/common",

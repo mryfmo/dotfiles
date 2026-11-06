@@ -1,4 +1,5 @@
-"""The kit's rendered DeepSeek harness profile under home/dot_dsh/profiles/thak (regime-cutover U172, U227b).
+"""The kit's rendered DeepSeek harness profiles under home/dot_dsh/profiles/thak (regime-cutover U172, U227b) and
+home/dot_dsh/profiles/router (U317, the dsh-superagent Router).
 
 The patch carries a `!!js` tag that plain YAML does not load, so the tests read it as text and compare it with the
 manifest's `model_profiles.<profile>.dsh` entries and the asset pin, read through the chezmoi template renderer
@@ -192,6 +193,185 @@ class DshProfileTest(unittest.TestCase):
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             generator.render_dsh_profile_patch(manifest)
         self.assertIn(f"interactive_profile {manifest['interactive_profile']!r} names no dsh model", stderr.getvalue())
+
+
+ROUTER_DIR = ROOT / "home/dot_dsh/profiles/router"
+
+
+def sandbox_rows(patch: str) -> list[list[str]]:
+    """Every `- id: bash-sandbox` row of the patch, at any depth, with the lines of its block (until the next item at
+    the same indentation or a shallower line)."""
+    lines = patch.splitlines()
+    found: list[list[str]] = []
+    for index, line in enumerate(lines):
+        if line.strip() != "- id: bash-sandbox":
+            continue
+        indent = len(line) - len(line.lstrip())
+        block = [line]
+        for later in lines[index + 1 :]:
+            depth = len(later) - len(later.lstrip())
+            if depth < indent or (depth == indent and later.lstrip().startswith("- ")):
+                break
+            block.append(later)
+        found.append(block)
+    return found
+
+
+class DshRouterProfileTest(unittest.TestCase):
+    """The router profile: the thak rows, the loopback bind, the stateDir under the Router state root, every
+    bash-sandbox row disabled, no API key, the GitHub Source row as data, and the accept-mode allowlist."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.temp_dir = Path(tempfile.mkdtemp(prefix="dsh-router-test-"))
+        cls.manifest = load_manifest_fixture(cls.temp_dir)
+        cls.patch = (ROUTER_DIR / "cordis.patch.yml").read_text()
+        cls.package = json.loads((ROUTER_DIR / "package.json").read_text())
+        cls.thak = (PROFILE_DIR / "cordis.patch.yml").read_text()
+        cls.rows = rows(cls.patch)
+        cls.plugins = inserted(cls.rows["insert:"])
+        cls.asset = cls.manifest["assets"]["dsh-superagent"]
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        shutil.rmtree(cls.temp_dir)
+
+    def test_the_patch_names_observe_and_the_source_repository_from_the_manifest(self) -> None:
+        github = self.asset["sources"]["github"]
+        self.assertEqual("observe", github["accept_mode"])
+        self.assertRegex(github["repository"], r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+        self.assertIn(f"repository {github['repository']}, accept_mode\n# observe", self.patch)
+        self.assertIn(f"ladder row {github['accept_mode_row']}", self.patch)
+        self.assertIn("the allowed list is empty", self.patch)
+        self.assertIn(f"pin {self.asset['pin']}", self.patch)
+
+    def test_the_session_log_upload_is_off_and_the_thak_rows_are_carried(self) -> None:
+        self.assertIn("- id: session-log-deepseek\n  config:\n    enabled: false\n", self.patch)
+        for row in ("id: llm-deepseek", "id: llm-deepseek-account", "id: web-search-deepseek", "id: web-deepseek-api"):
+            self.assertEqual("  disabled: true\n", self.rows[row], row)
+        tier = self.manifest["interactive_profile"]
+        self.assertEqual(
+            f"  config:\n    provider: {PROVIDER}\n    model: {self.manifest['model_profiles'][tier]['dsh']['model']}\n",
+            self.rows["id: agent-default-model"],
+        )
+        # The gateway insert is the thak profile's, rendered from the same manifest values.
+        self.assertEqual(inserted(rows(self.thak)["insert:"])["omp-gateway"], self.plugins["omp-gateway"])
+        self.assertNotIn("hooks-claude-code", self.patch, "the Router mounts no Claude Code hooks")
+
+    def test_every_bash_sandbox_row_is_disabled(self) -> None:
+        blocks = sandbox_rows(self.patch)
+        # The base row and one inside each of the two presets (the shell groups).
+        self.assertEqual(3, len(blocks), [block[0] for block in blocks])
+        for block in blocks:
+            self.assertIn("disabled: true", [line.strip() for line in block], block)
+        self.assertEqual(2, self.patch.count("name: '@deepseek-ai/dsh-bash-sandbox'"))
+        for preset in ("dsh-superagent-worker-preset", "dsh-superagent-router-preset"):
+            self.assertIn(f"- id: {preset}\n  name: '@deepseek-ai/dsh-agent-preset'\n  config:\n", self.patch)
+
+    def test_no_api_key_row_is_enabled_and_no_model_id_outside_model_profiles(self) -> None:
+        for name, text in (("cordis.patch.yml", self.patch), ("package.json", json.dumps(self.package))):
+            with self.subTest(file=name):
+                self.assertNotRegex(text, r"(?i)ollama|apiKeyEnv|api[_-]?key|baseURL|api\.deepseek\.com")
+        models = {entry["dsh"]["model"] for entry in self.manifest["model_profiles"].values()}
+        for line in self.patch.splitlines():
+            if "model:" in line and not line.lstrip().startswith("#"):
+                self.assertIn(line.split("model:")[1].strip(), models, line)
+
+    def test_the_webserver_binds_loopback_and_the_state_dir_is_under_the_router_state_root(self) -> None:
+        self.assertEqual("  config:\n    host: 127.0.0.1\n    port: 3082\n", self.rows["id: webserver"])
+        self.assertEqual(
+            "  config:\n    stateDir: !!js process.env.HOME + '/.local/state/dsh-router/state'\n",
+            self.rows["id: dsh-superagent"],
+        )
+
+    def test_the_package_links_the_bundle_and_the_gateway_over_the_web_profiles_bundles(self) -> None:
+        self.assertEqual("router", self.package["name"])
+        self.assertIs(True, self.package["private"])
+        self.assertEqual(
+            {"manifestVersion": 1, "profile": {"bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"]}},
+            self.package["dsh"],
+        )
+        self.assertEqual(
+            {"dsh-superagent": "link:../../plugins/dsh-superagent", GATEWAY_PLUGIN: "link:../../plugins/omp-gateway"},
+            self.package["dependencies"],
+        )
+        self.assertEqual("~/.dsh/plugins/dsh-superagent", self.asset["install_path"])
+        self.assertEqual("scripts/update-agent-assets.sh#update_dsh_superagent", self.asset["installer"])
+
+    def test_the_presets_restate_the_archives_rows_with_the_sandbox_off(self) -> None:
+        # The names upstream's tests/bundle-patch.spec.ts asserts for each preset, and the ones it refuses.
+        generator = load_generator()
+        presets = generator.dsh_superagent_presets()
+
+        def flat(entries: list[dict]) -> list[dict]:
+            return [row for entry in entries for row in [entry, *(flat(entry["config"]) if entry.get("group") else [])]]
+
+        worker = flat(presets["dsh-superagent-worker-preset"]["plugins"])
+        router = flat(presets["dsh-superagent-router-preset"]["plugins"])
+        names = lambda entries: [row["name"] for row in entries]  # noqa: E731
+        for name in (
+            "@deepseek-ai/dsh-tool-fs",
+            "@deepseek-ai/dsh-tool-fs-search",
+            "@deepseek-ai/dsh-tool-bash",
+            "@deepseek-ai/dsh-tool-skill",
+            "@deepseek-ai/dsh-tool-todo",
+            "@deepseek-ai/dsh-tool-subagent",
+            "@deepseek-ai/dsh-tool-subagent-control",
+            "@deepseek-ai/dsh-compaction-basic",
+            "@deepseek-ai/dsh-compaction-tool-result-pruner",
+            "@deepseek-ai/dsh-agent-instructions",
+        ):
+            self.assertIn(name, names(worker))
+        for name in ("@deepseek-ai/dsh-tool-subagent", "@deepseek-ai/dsh-tool-web", "@deepseek-ai/dsh-tool-fs-search"):
+            self.assertNotIn(name, names(router))
+        self.assertEqual(
+            [{"write": False, "edit": False}], [r["config"] for r in router if r["name"] == "@deepseek-ai/dsh-tool-fs"]
+        )
+        for entries in (worker, router):
+            sandbox = [row for row in entries if row["name"] == "@deepseek-ai/dsh-bash-sandbox"]
+            self.assertEqual([True], [row["disabled"] for row in sandbox])
+            self.assertEqual([{"timeoutMs": 5000, "maxTimeoutMs": 5000}], [row["config"] for row in sandbox])
+            pwsh = [row for row in entries if row["name"] == "@deepseek-ai/dsh-pwsh-sandbox"]
+            self.assertEqual(["process.platform !== 'win32'"], [row["disabled"].expression for row in pwsh])
+        self.assertEqual(
+            (90, 91),
+            (presets["dsh-superagent-worker-preset"]["order"], presets["dsh-superagent-router-preset"]["order"]),
+        )
+
+    def test_the_accept_mode_allowlist_refuses_auto_without_its_row_and_unknown_keys_by_name(self) -> None:
+        generator = load_generator()
+        base = copy.deepcopy(self.manifest)
+        self.assertTrue(generator.render_dsh_router_profile(base), "the real manifest renders")
+
+        def refused(mutate, expected: str) -> None:
+            manifest = copy.deepcopy(base)
+            mutate(manifest["assets"]["dsh-superagent"]["sources"]["github"])
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                generator.render_dsh_router_profile(manifest)
+            self.assertIn(expected, stderr.getvalue())
+
+        refused(lambda row: row.update(accept_mode="auto"), "accept_mode auto needs accept_mode_auto_row")
+        refused(
+            lambda row: row.update(accept_mode="always"),
+            "accept_mode 'always' is not one of ['off', 'observe', 'auto']",
+        )
+        refused(lambda row: row.update(allowed="someone"), "unknown key(s) ['allowed']")
+        refused(lambda row: row.update(repository="dotfiles"), "repository 'dotfiles' is not owner/name")
+        refused(
+            lambda row: row.update(accept_mode_row="yesterday"),
+            "accept_mode_row 'yesterday' is not a decisions.tsv timestamp",
+        )
+        manifest = copy.deepcopy(base)
+        manifest["assets"]["dsh-superagent"]["sources"]["github"].update(
+            accept_mode="auto", accept_mode_auto_row="2026-11-08T00:00:00Z"
+        )
+        outputs = generator.render_dsh_router_profile(manifest)
+        patch = outputs[generator.ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"]
+        self.assertIn(
+            "accept_mode\n# auto (M-18 ladder row 2026-11-06T23:24:00Z, accept_mode_auto_row 2026-11-08T00:00:00Z)",
+            patch,
+        )
 
 
 if __name__ == "__main__":

@@ -247,6 +247,7 @@ LEVERS = (
     "git-isolated.sh",
     "hcom-dispatch",
     "hcom-seat",
+    "intake-observe.py",
     "omp-run.sh",
     "pr-audit.sh",
     "pr-body-edit.sh",

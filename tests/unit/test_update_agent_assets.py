@@ -5311,3 +5311,234 @@ class DestinationGuardCallSiteTest(unittest.TestCase):
             self.assertEqual("kept\n", (outside / "omp.previous").read_text(), "the rm -rf never ran through the link")
             self.assertEqual("#!/usr/bin/env bash\nprintf 'omp/0.0.1\\n'\n", foreign.read_text(), "the entry stays")
             self.assertFalse((home / ".agents").exists(), "nothing recorded")
+
+
+class DshSuperagentTest(unittest.TestCase):
+    """update_dsh_superagent over an archive built here, never downloaded (U317): the opt-in, the digest check before
+    anything is unpacked, the archive root naming the pin, the build inside the new tree, the one rename into place,
+    the router profile install and the manifest record. mise is a stub that logs its arguments, so no pnpm runs; each
+    producer the step reads (shasum, tar's member list, jq on the receipt) gets a failure injection that prints the
+    right value and exits non-zero (standing order 21)."""
+
+    COMMIT_MATCH = re.search(r'^DSH_SUPERAGENT_COMMIT="([^"]+)"$', INSTALLER_PINS, re.MULTILINE)
+    COMMIT = COMMIT_MATCH[1] if COMMIT_MATCH else "0" * 40
+    URL = f"https://codeload.github.com/deepseek-ai/dsh-superagent-prototype/tar.gz/{COMMIT}"
+    BUILD_CALLS = [
+        "mise exec -- pnpm install --frozen-lockfile",
+        "mise exec -- pnpm build",
+        "mise exec -- pnpm install",
+    ]
+
+    def archive(self, home: Path, root: str | None = None) -> tuple[Path, str]:
+        """GitHub's commit archive: <repository>-<commit>/{package.json, pnpm-lock.yaml, src/index.ts}."""
+        root = f"dsh-superagent-prototype-{self.COMMIT}" if root is None else root
+        members = {
+            "package.json": json.dumps({"name": "dsh-superagent", "version": "0.1.0"}) + "\n",
+            "pnpm-lock.yaml": "lockfileVersion: '9.0'\n",
+            "src/index.ts": "// fixture plugin\n",
+        }
+        payload = home / "archive.tgz"
+        with tarfile.open(payload, "w:gz") as tar:
+            for name, text in members.items():
+                data = text.encode()
+                info = tarfile.TarInfo(f"{root}/{name}")
+                info.size = len(data)
+                tar.addfile(info, io.BytesIO(data))
+        return payload, hashlib.sha256(payload.read_bytes()).hexdigest()
+
+    def opted_in_home(self, directory: str) -> tuple[Path, Path]:
+        home = Path(directory)
+        dsh_home = home / ".dsh"
+        (dsh_home / "profiles/router").mkdir(parents=True)
+        (dsh_home / "profiles/router/package.json").write_text('{"name": "router"}\n')
+        (dsh_home / "plugins/omp-gateway").mkdir(parents=True)
+        (home / "tmp").mkdir()
+        return home, dsh_home
+
+    def run_step(self, home: Path, payload: Path, digest: str, *, dsh_home: Path | None, mise=None, prelude=None):
+        stubs = (
+            f"DSH_SUPERAGENT_SHA256={digest}; "
+            'curl() { echo "curl $*" >> "$CALLS"; cp "$PAYLOAD" "${@: -1}"; }; '
+            'mise() { echo "mise $*" >> "$CALLS"; ' + (mise or "return 0") + "; }; "
+        )
+        env = os.environ | {"HOME": str(home), "PAYLOAD": str(payload), "CALLS": str(home / "calls")}
+        if (home / "tmp").is_dir():
+            env["TMPDIR"] = str(home / "tmp")
+        env.pop("DSH_HOME", None)
+        if dsh_home is not None:
+            env["DSH_HOME"] = str(dsh_home)
+        script = 'source "$1"; ' + (prelude + "\n" if prelude else "") + stubs + "update_dsh_superagent"
+        return subprocess.run(
+            ["bash", "-c", script, "bash", str(UPDATER)],
+            env=env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+
+    def calls(self, home: Path) -> list[str]:
+        log = home / "calls"
+        return log.read_text().splitlines() if log.exists() else []
+
+    def plugin_entries(self, dsh_home: Path) -> list[str]:
+        return sorted(path.name for path in (dsh_home / "plugins").iterdir()) if (dsh_home / "plugins").exists() else []
+
+    def test_no_opt_in_installs_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            result = self.run_step(home, payload, digest, dsh_home=None)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn("has not opted in; nothing installed", result.stdout)
+            self.assertEqual([], self.calls(home))
+            elsewhere = home / "elsewhere"
+            elsewhere.mkdir()
+            result = self.run_step(home, payload, digest, dsh_home=elsewhere)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"WARN: update_dsh_superagent: DSH_HOME is {elsewhere}, not {home}/.dsh", result.stderr)
+            self.assertEqual([], self.calls(home))
+            self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home))
+
+    def test_installs_builds_links_and_records_in_one_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            calls = self.calls(home)
+            self.assertEqual(4, len(calls), calls)
+            self.assertTrue(
+                calls[0].startswith(
+                    f"curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 {self.URL} -o "
+                )
+            )
+            self.assertEqual(self.BUILD_CALLS, calls[1:])
+            install = dsh_home / "plugins/dsh-superagent"
+            self.assertEqual('{"name": "dsh-superagent", "version": "0.1.0"}\n', (install / "package.json").read_text())
+            self.assertTrue((install / "src/index.ts").is_file())
+            self.assertEqual(
+                ["dsh-superagent", "omp-gateway"], self.plugin_entries(dsh_home), "no temporary tree is left"
+            )
+            self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is gone")
+            self.assertIn(f"dsh-superagent {self.COMMIT} installed into {install}.", result.stdout)
+            step = json.loads((home / ".agents/.installed-manifest.json").read_text())["steps"]["update_dsh_superagent"]
+            self.assertEqual(
+                ("installer", self.COMMIT, [str(install)]), (step["kind"], step["source_version"], step["paths"])
+            )
+            self.assertIn("pnpm build", step["commands"])
+            self.assertIn(f"pnpm install in {dsh_home}/profiles/router", step["commands"])
+
+    def test_a_digest_mismatch_refuses_before_anything_is_unpacked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            result = self.run_step(home, payload, "0" * 64, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"dsh-superagent checksum mismatch: expected {'0' * 64}, got {digest}.", result.stderr)
+            self.assertEqual(["curl"], [call.split()[0] for call in self.calls(home)], "the download, then no mise")
+            self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "nothing unpacked")
+            self.assertFalse((home / ".agents").exists(), "nothing recorded")
+
+    def test_a_digest_read_that_fails_refuses_the_step_whatever_it_printed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            prelude = f'shasum() {{ printf "%s  %s\\n" {digest} "$2"; return 77; }}'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                "update_dsh_superagent: the digest of the downloaded archive could not be read; install refused.",
+                result.stderr,
+            )
+            self.assertEqual(["curl"], [call.split()[0] for call in self.calls(home)])
+            self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "nothing unpacked")
+
+    def test_an_archive_whose_root_names_another_commit_is_refused_before_the_build(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home, root="dsh-superagent-prototype-" + "d" * 40)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"dsh-superagent archive root dsh-superagent-prototype-{'d' * 40} does not name the pin {self.COMMIT}; install refused.",
+                result.stderr,
+            )
+            self.assertEqual(["curl"], [call.split()[0] for call in self.calls(home)], "no mise call")
+            self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "nothing unpacked")
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            prelude = 'tar() { if [ "$1" = tzf ]; then command tar "$@"; return 77; fi; command tar "$@"; }'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("the member list of the archive could not be read; install refused.", result.stderr)
+            self.assertEqual(["curl"], [call.split()[0] for call in self.calls(home)], "no mise call")
+
+    def test_a_failed_build_removes_the_new_tree_and_records_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            mise = 'if [ "$*" = "exec -- pnpm build" ]; then return 1; fi; return 0'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, mise=mise)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                "update_dsh_superagent: the build failed; the new tree is removed; nothing installed, nothing recorded",
+                result.stderr,
+            )
+            self.assertEqual(self.BUILD_CALLS[:2], self.calls(home)[1:], "no profile install after a failed build")
+            self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "the new tree is gone")
+            self.assertFalse((home / ".agents").exists(), "nothing recorded")
+
+    def test_an_absent_router_profile_warns_and_installs_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            shutil.rmtree(dsh_home / "profiles/router")
+            payload, digest = self.archive(home)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"WARN: update_dsh_superagent: {dsh_home}/profiles/router is absent", result.stderr)
+            self.assertEqual([], self.calls(home), "no download")
+
+    def test_an_already_installed_pin_downloads_nothing_and_a_previous_tree_goes_after_the_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            install = dsh_home / "plugins/dsh-superagent"
+            install.mkdir()
+            (install / "older").write_text("the tree of an earlier pin\n")
+            payload, digest = self.archive(home)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertFalse((install / "older").exists(), "the previous tree is replaced")
+            self.assertTrue((install / "package.json").is_file())
+            self.assertEqual(
+                ["dsh-superagent", "omp-gateway"], self.plugin_entries(dsh_home), "the previous tree is gone"
+            )
+            (home / "calls").unlink()
+            (dsh_home / "profiles/router/node_modules/dsh-superagent").mkdir(parents=True)
+            again = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, again.returncode, again.stdout + again.stderr)
+            self.assertIn(f"dsh-superagent {self.COMMIT} is already installed at {install}.", again.stdout)
+            self.assertEqual([], self.calls(home), "no download, no mise call")
+
+    def test_a_receipt_read_that_fails_refuses_the_step_before_any_download(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            (home / ".agents").mkdir()
+            (home / ".agents/.installed-manifest.json").write_text('{"version": 1, "steps": {}}\n')
+            payload, digest = self.archive(home)
+            prelude = 'jq() { command jq "$@"; return 77; }'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                "update_dsh_superagent: the installed-manifest receipt could not be read; step refused.", result.stderr
+            )
+            self.assertEqual([], self.calls(home), "no download, no mise call")
+            link = home / ".agents/.installed-manifest.json"
+            link.unlink()
+            link.symlink_to(home / "elsewhere.json")
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"the installed-manifest receipt {link} is a symlink or not a regular file", result.stderr)
+            self.assertEqual([], self.calls(home))

@@ -2267,6 +2267,192 @@ function update_deepseek_harness() (
     dsh_prune_older "${DSH_HOME}"
 )
 
+# Rendered from assets.dsh-superagent in home/dot_agents/agent-config.yaml through scripts/lib/installer-pins.sh
+# (DSH_SUPERAGENT_COMMIT, DSH_SUPERAGENT_SHA256); the archive is GitHub's source archive of the pinned commit, never a
+# branch head. The repository path is the asset's upstream; the fork (T-M-26-01) moves it with the manifest's upstream.
+readonly DSH_SUPERAGENT_REPOSITORY="deepseek-ai/dsh-superagent-prototype"
+readonly DSH_SUPERAGENT_ARCHIVE_URL="https://codeload.github.com/${DSH_SUPERAGENT_REPOSITORY}/tar.gz/${DSH_SUPERAGENT_COMMIT}"
+
+#
+# @description Install the pinned dsh-superagent bundle (assets.dsh-superagent) under $DSH_HOME/plugins/dsh-superagent
+#   on a host whose operator opted in, and install the rendered router profile's plugins, which link it; nothing
+#   starts it (the Router is started by `hcom-seat dsh --profile router` under srt).
+# @description
+#   The opt-in is update_deepseek_harness's: DSH_HOME exported, absolute and a directory whose identity (-ef) is
+#   ~/.dsh's, where the kit renders the router profile. The step is the harness step's shape: GitHub's archive of the
+#   pinned commit is downloaded into a mktemp directory and verified against its reviewed sha256 before anything is
+#   unpacked; the archive's one top-level member must name the pinned commit (the git-commit form of "the archive
+#   version equals the pin"); the tree is unpacked and built whole under a name of its own
+#   ($DSH_HOME/plugins/dsh-superagent.XXXXXX) with pnpm from mise (MISE_EXEC_AUTO_INSTALL=false, so a missing Node or
+#   pnpm refuses the build instead of installing a tool); the download directory goes; the previous tree, when there
+#   is one, is renamed aside and the new tree renamed into place (one rename publishes it, and a failed publication
+#   puts the previous tree back); the router profile's plugins are installed (its package.json links the tree by a
+#   relative link: dependency, so the link follows the directory name); the step is recorded; and only then does the
+#   previous tree go. Every input is one row of a table, checked before any download:
+#   DSH_HOME: exported, absolute, a directory -ef ~/.dsh (elsewhere is a WARN with exit 0; unset or absent is a skip).
+#   DSH_SUPERAGENT_COMMIT: 40 lowercase hex; DSH_SUPERAGENT_SHA256: 64 lowercase hex (the rendered constants).
+#   DSH_HOME/plugins: absent, or a directory that is not a symlink.
+#   DSH_HOME/plugins/dsh-superagent: absent, or a directory that is not a symlink (the installed tree); anything else
+#   is refused, never removed.
+#   DSH_HOME/profiles/router: a directory that is not a symlink (the rendered profile); absent is a WARN with exit 0.
+#   ~/.agents/.installed-manifest.json: absent, or a regular file that is not a symlink; the step's recorded
+#   source_version equal to the pin with the tree in place is the already-installed exit (the profile install is
+#   run again only when the profile's node_modules holds no dsh-superagent entry).
+#   Every producer the step reads (pwd -P, shasum, tar's member list, jq, mktemp) refuses the step on a failed answer
+#   (standing order 21); a download that fails is one WARN line, nothing installed, nothing recorded.
+# @exitcode 0 Installed, already installed, no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh or the router
+#   profile absent (a WARN), or the download failed (a WARN; nothing installed or recorded).
+# @exitcode 1 A constant malformed, a producer read, a shape check, the digest check, the archive member check, the
+#   unpack, the build, the publication, the profile install or the record failed; the line printed names the state
+#   left.
+#
+function update_dsh_superagent() (
+    local download_dir="" tarball actual tree="" members first top previous="" recorded install_dir row
+    install_dir="${DSH_HOME:-}/plugins/dsh-superagent"
+    dsh_superagent_record() {
+        manifest_record "update_dsh_superagent" installer "${DSH_SUPERAGENT_COMMIT}" "${install_dir}" -- "curl -fsSL ${DSH_SUPERAGENT_ARCHIVE_URL}" "shasum -a 256 <archive>" "tar tzf <archive> (one member root named ${DSH_SUPERAGENT_REPOSITORY##*/}-${DSH_SUPERAGENT_COMMIT})" "mktemp -d ${install_dir}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm build" "mv <tree> ${install_dir}" "pnpm install in ${DSH_HOME}/profiles/router"
+    }
+    case ${DSH_SUPERAGENT_COMMIT:-} in
+    [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
+    *)
+        printf 'update_dsh_superagent: DSH_SUPERAGENT_COMMIT (assets.dsh-superagent pin, rendered into scripts/lib/installer-pins.sh) is unset or not 40 lowercase hex (%s given); nothing installed, nothing recorded.\n' "${DSH_SUPERAGENT_COMMIT:-}" >&2
+        return 1
+        ;;
+    esac
+    if [ "${#DSH_SUPERAGENT_SHA256}" -ne 64 ]; then
+        printf 'update_dsh_superagent: DSH_SUPERAGENT_SHA256 is not 64 characters (%s given); nothing installed, nothing recorded.\n' "${DSH_SUPERAGENT_SHA256:-}" >&2
+        return 1
+    fi
+    if [ -z "${DSH_HOME:-}" ] || [ ! -d "${DSH_HOME}" ]; then
+        printf 'dsh-superagent: DSH_HOME is not exported to an existing directory, so this host has not opted in; nothing installed.\n'
+        return 0
+    fi
+    case ${DSH_HOME} in # lint-comparisons: allow the case reads the spelling (absolute or not); the -ef comparison below reads the identity
+    /*) ;;
+    *)
+        printf 'WARN: update_dsh_superagent: DSH_HOME must be an absolute path (%s given); nothing installed.\n' "${DSH_HOME}" >&2
+        return 0
+        ;;
+    esac
+    if [ ! -d "${HOME}/.dsh" ] || [ ! "${DSH_HOME}" -ef "${HOME}/.dsh" ]; then
+        printf 'WARN: update_dsh_superagent: DSH_HOME is %s, not %s, where the kit renders the router profile; nothing installed.\n' "${DSH_HOME}" "${HOME}/.dsh" >&2
+        return 0
+    fi
+    for row in plugins plugins/dsh-superagent; do
+        if [ -L "${DSH_HOME}/${row}" ] || { [ -e "${DSH_HOME}/${row}" ] && [ ! -d "${DSH_HOME}/${row}" ]; }; then
+            printf 'update_dsh_superagent: %s is a symlink or not a directory; the step uses only a directory of its own there (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/${row}" >&2
+            return 1
+        fi
+    done
+    if [ -L "${DSH_HOME}/profiles/router" ] || { [ -e "${DSH_HOME}/profiles/router" ] && [ ! -d "${DSH_HOME}/profiles/router" ]; }; then
+        printf 'update_dsh_superagent: %s is a symlink or not a directory; the step installs the profile plugins only into the directory the kit renders (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/profiles/router" >&2
+        return 1
+    fi
+    if [ ! -d "${DSH_HOME}/profiles/router" ]; then
+        printf 'WARN: update_dsh_superagent: %s is absent, so the kit has not rendered the router profile here; nothing installed.\n' "${DSH_HOME}/profiles/router" >&2
+        return 0
+    fi
+    if [ -L "${HOME}/.agents/.installed-manifest.json" ] || { [ -e "${HOME}/.agents/.installed-manifest.json" ] && [ ! -f "${HOME}/.agents/.installed-manifest.json" ]; }; then
+        printf 'update_dsh_superagent: the installed-manifest receipt %s is a symlink or not a regular file; the step reads and writes only a regular file there (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${HOME}/.agents/.installed-manifest.json" >&2
+        return 1
+    fi
+    recorded=""
+    if [ -f "${HOME}/.agents/.installed-manifest.json" ]; then
+        recorded="$(jq -r '.steps["update_dsh_superagent"].source_version // empty' "${HOME}/.agents/.installed-manifest.json" 2> /dev/null)" || {
+            printf 'update_dsh_superagent: the installed-manifest receipt could not be read; step refused.\n' >&2
+            return 1
+        }
+    fi
+    if [ "${recorded}" = "${DSH_SUPERAGENT_COMMIT}" ] && [ -f "${install_dir}/package.json" ]; then
+        printf 'dsh-superagent %s is already installed at %s.\n' "${DSH_SUPERAGENT_COMMIT}" "${install_dir}"
+        if [ ! -e "${DSH_HOME}/profiles/router/node_modules/dsh-superagent" ]; then
+            (cd "${DSH_HOME}/profiles/router" && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm install) || {
+                printf 'update_dsh_superagent: the router profile install failed; the installed tree and the record are untouched.\n' >&2
+                return 1
+            }
+        fi
+        return 0
+    fi
+    download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || {
+        printf 'update_dsh_superagent: the download directory could not be made; step refused.\n' >&2
+        return 1
+    }
+    # ${name:+"${name}"} and `|| :` as in update_deepseek_harness: the subshell's locals may be unwound before the EXIT
+    # trap runs on macOS bash, and a failing cleanup must not become the step's status.
+    trap 'rm -rf ${download_dir:+"${download_dir}"} ${tree:+"${tree}"} || :' EXIT
+    tarball="${download_dir}/dsh-superagent-${DSH_SUPERAGENT_COMMIT}.tar.gz"
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${DSH_SUPERAGENT_ARCHIVE_URL}" -o "${tarball}" || {
+        printf 'WARN: update_dsh_superagent: the dsh-superagent archive could not be downloaded (%s); nothing installed, nothing recorded; the existing install is unchanged and the next make update retries.\n' "${DSH_SUPERAGENT_ARCHIVE_URL}" >&2
+        return 0
+    }
+    actual="$(shasum -a 256 "${tarball}")" || {
+        printf 'update_dsh_superagent: the digest of the downloaded archive could not be read; install refused.\n' >&2
+        return 1
+    }
+    if [ "${actual%% *}" != "${DSH_SUPERAGENT_SHA256}" ]; then
+        printf 'dsh-superagent checksum mismatch: expected %s, got %s.\n' "${DSH_SUPERAGENT_SHA256}" "${actual%% *}" >&2
+        return 1
+    fi
+    # GitHub's commit archive has one root member, <repository>-<commit>/; a verified archive whose root names another
+    # commit is a constant pairing error (the digest of one pin beside the commit of another) and is refused.
+    members="${download_dir}/members"
+    tar tzf "${tarball}" > "${members}" || {
+        printf 'update_dsh_superagent: the member list of the archive could not be read; install refused.\n' >&2
+        return 1
+    }
+    IFS= read -r first < "${members}" || {
+        printf 'update_dsh_superagent: the archive lists no member; install refused.\n' >&2
+        return 1
+    }
+    top="${first%%/*}"
+    if [ "${top}" != "${DSH_SUPERAGENT_REPOSITORY##*/}-${DSH_SUPERAGENT_COMMIT}" ]; then
+        printf 'dsh-superagent archive root %s does not name the pin %s; install refused.\n' "${top}" "${DSH_SUPERAGENT_COMMIT}" >&2
+        return 1
+    fi
+    mkdir -p "${DSH_HOME}/plugins" || {
+        printf 'update_dsh_superagent: the plugin directory %s could not be made; install refused.\n' "${DSH_HOME}/plugins" >&2
+        return 1
+    }
+    tree="$(mktemp -d "${install_dir}.XXXXXX")" || {
+        printf 'update_dsh_superagent: the install tree under %s could not be made; install refused.\n' "${DSH_HOME}/plugins" >&2
+        return 1
+    }
+    tar xzf "${tarball}" -C "${tree}" --strip-components=1 || return 1
+    (cd "${tree}" && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm install --frozen-lockfile && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm build) || {
+        printf 'update_dsh_superagent: the build failed; the new tree is removed; nothing installed, nothing recorded; the previous install, when there is one, is unchanged.\n' >&2
+        return 1
+    }
+    rm -rf "${download_dir}" || printf 'WARN: update_dsh_superagent: the download directory %s could not be removed; it holds only the verified archive and the next make update makes a new one.\n' "${download_dir}" >&2
+    download_dir=""
+    if [ -d "${install_dir}" ]; then
+        previous="$(mktemp -d "${install_dir}.previous.XXXXXX")" || {
+            printf 'update_dsh_superagent: a directory for the previous tree could not be made; the new tree is removed; nothing installed, nothing recorded.\n' >&2
+            return 1
+        }
+        if ! rmdir "${previous}" || ! mv "${install_dir}" "${previous}"; then
+            printf 'update_dsh_superagent: the previous tree %s could not be renamed aside; the new tree is removed; nothing installed, nothing recorded.\n' "${install_dir}" >&2
+            return 1
+        fi
+    fi
+    mv "${tree}" "${install_dir}" || {
+        [ -z "${previous}" ] || mv "${previous}" "${install_dir}" || printf 'update_dsh_superagent: the previous tree could not be put back from %s.\n' "${previous}" >&2
+        printf 'update_dsh_superagent: the new tree could not be renamed into %s; the new tree is removed; nothing recorded.\n' "${install_dir}" >&2
+        return 1
+    }
+    tree=""
+    (cd "${DSH_HOME}/profiles/router" && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm install) || {
+        printf 'update_dsh_superagent: the router profile install failed; the new tree is at %s but nothing is recorded, so the next make update installs again%s.\n' "${install_dir}" "${previous:+; the previous tree is kept at ${previous}}" >&2
+        return 1
+    }
+    printf 'dsh-superagent %s installed into %s.\n' "${DSH_SUPERAGENT_COMMIT}" "${install_dir}"
+    dsh_superagent_record || {
+        printf 'update_dsh_superagent: the record failed; the tree at %s stands unrecorded and the next make update installs again%s.\n' "${install_dir}" "${previous:+; the previous tree is kept at ${previous}}" >&2
+        return 1
+    }
+    # Only now, with the record written, does the previous tree go.
+    [ -z "${previous}" ] || rm -rf "${previous}" || printf 'WARN: update_dsh_superagent: the previous tree %s could not be removed; remove it by hand.\n' "${previous}" >&2
+)
+
 #
 # @description Load the installed pi-claude-bridge in one omp session and fail on a load error.
 # @description
@@ -2865,20 +3051,20 @@ function prune_retired_manifest_steps() {
 # @description Install and refresh managed agent plugin assets, or run one step alone when its name is the only
 #   argument (make doctor's checks, the coordinator's deploy of one pin). The single-step run ends with the full
 #   run's exit rule, fail_on_pin_failures, so its exit 0 means the step did what it says.
-# @arg $1 string Optional single step: update_omp, update_hcom, update_pi_claude_bridge, update_security_audit_skill, update_deepseek_harness, update_compactiondb, prune_retired_manifest_steps, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies, retire_marketplace_dev_workflows, retire_understand_anything or retire_agmsg_shim.
+# @arg $1 string Optional single step: update_omp, update_hcom, update_pi_claude_bridge, update_security_audit_skill, update_deepseek_harness, update_dsh_superagent, update_compactiondb, prune_retired_manifest_steps, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies, retire_marketplace_dev_workflows, retire_understand_anything or retire_agmsg_shim.
 # @exitcode 2 The arguments name no single step; nothing ran.
 #
 function main() {
     if [ "$#" -gt 0 ]; then
         case "$#:$1" in
-        1:update_omp | 1:update_hcom | 1:update_pi_claude_bridge | 1:update_security_audit_skill | 1:update_deepseek_harness | 1:update_compactiondb | 1:prune_retired_manifest_steps | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_understand_anything | 1:retire_agmsg_shim)
+        1:update_omp | 1:update_hcom | 1:update_pi_claude_bridge | 1:update_security_audit_skill | 1:update_deepseek_harness | 1:update_dsh_superagent | 1:update_compactiondb | 1:prune_retired_manifest_steps | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_understand_anything | 1:retire_agmsg_shim)
             export PATH="${HOME}/.local/share/mise/shims:${PATH}"
             "$1"
             fail_on_pin_failures
             return
             ;;
         esac
-        printf 'Usage: scripts/update-agent-assets.sh [update_omp | update_hcom | update_pi_claude_bridge | update_security_audit_skill | update_deepseek_harness | update_compactiondb | prune_retired_manifest_steps | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_understand_anything | retire_agmsg_shim]\n' >&2
+        printf 'Usage: scripts/update-agent-assets.sh [update_omp | update_hcom | update_pi_claude_bridge | update_security_audit_skill | update_deepseek_harness | update_dsh_superagent | update_compactiondb | prune_retired_manifest_steps | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_understand_anything | retire_agmsg_shim]\n' >&2
         exit 2
     fi
 
@@ -2906,6 +3092,7 @@ function main() {
     update_pi_claude_bridge
     update_security_audit_skill
     update_deepseek_harness
+    update_dsh_superagent
     update_hcom
     update_compactiondb
     ensure_herdr_integrations

@@ -56,3 +56,22 @@ runtime is never executed outside srt. Two launches at once share no settings
 file. The role's rows and the hazard-by-hazard account of the four verdicts
 are in `scripts/orchestrator/README.md` ("The dsh role") and the tests in
 `tests/unit/test_hcom_seat_dsh.py`.
+
+The dsh-superagent intake (regime-cutover U317) is a second profile under the
+same role: `assets.dsh-superagent` pins the prototype at one commit with the
+sha256 of GitHub's archive and zero patches, `update_dsh_superagent` (the
+harness step's sibling, the same `DSH_HOME` opt-in) installs and builds it under
+`$DSH_HOME/plugins/dsh-superagent` and runs `pnpm install` in the rendered
+`router` profile, whose `package.json` links it beside the omp-gateway plugin.
+The rendered `home/dot_dsh/profiles/router/cordis.patch.yml` keeps the thak
+rows (the session log upload off, the API-key rows and the harness sandbox
+disabled, the default model on the gateway provider), binds the panel to
+`127.0.0.1:3082`, puts `stateDir` under `~/.local/state/dsh-router/state`, and
+restates the bundle's two agent presets with their sandbox rows disabled. The
+GitHub Source row (`assets.dsh-superagent.sources.github`: the repository and
+`accept_mode: observe`, the M-18 ladder row) is data for the Management API
+save; in observe mode the allowed list is empty, so a positive assessment is an
+ignore Decision marked would-accept and nothing is accepted.
+`hcom-seat dsh --profile router -- --no-open` starts the Router under srt, and
+`intake-observe.py <orchestrator.sqlite> <decisions.tsv>` appends the
+would-accept Decisions as rows, reading the store read-only.

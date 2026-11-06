@@ -2270,34 +2270,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../home/dot_local/bin/common/executable_ua-symbol-coverage/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_ua-symbol-coverage
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../home/dot_local/bin/common/executable_uv-format/" class="md-nav__link">
         
   
@@ -5477,7 +5449,6 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>build_understand_anything_core</code></li>
 <li><code>check_pi_claude_bridge</code></li>
 <li><code>check_pstack</code></li>
 <li><code>claude_outside_projects</code></li>
@@ -5516,7 +5487,6 @@
 <li><code>pi_claude_bridge_inputs</code></li>
 <li><code>pin_record</code></li>
 <li><code>plugin_pin</code></li>
-<li><code>provision_codex_understand_anything_runtime</code></li>
 <li><code>record_claude_failure</code></li>
 <li><code>record_claude_plugin_step</code></li>
 <li><code>refresh_codex_hook_trust</code></li>
@@ -5525,17 +5495,16 @@
 <li><code>retire_agmsg_shim</code></li>
 <li><code>retire_marketplace_dev_workflows</code></li>
 <li><code>retire_shared_pstack_copies</code></li>
+<li><code>retire_understand_anything</code></li>
 <li><code>run_pinned_installer</code></li>
 <li><code>section</code></li>
 <li><code>uname_platform</code></li>
 <li><code>update_claude_crit</code></li>
 <li><code>update_claude_ponytail</code></li>
 <li><code>update_claude_superpowers</code></li>
-<li><code>update_claude_understand_anything</code></li>
 <li><code>update_codex_crit</code></li>
 <li><code>update_codex_ponytail</code></li>
 <li><code>update_codex_superpowers</code></li>
-<li><code>update_codex_understand_anything</code></li>
 <li><code>update_compactiondb</code></li>
 <li><code>update_terminal_browser</code></li>
 <li><code>update_terminal_code</code></li>
@@ -5615,15 +5584,6 @@
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="o">=</span><span class="s2">"ponytail@ponytail"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_NAME</span><span class="o">=</span><span class="s2">"ponytail"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_SOURCE</span><span class="o">=</span><span class="s2">"https://github.com/DietrichGebert/ponytail.git"</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="o">=</span><span class="s2">"understand-anything@understand-anything"</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE</span><span class="o">=</span><span class="s2">"Egonex-AI/Understand-Anything"</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME</span><span class="o">=</span><span class="s2">"understand-anything"</span>
-<span class="c1"># Rendered from assets.understand-anything-installer in</span>
-<span class="c1"># home/dot_agents/agent-config.yaml; change the commit and sha256 there together</span>
-<span class="c1"># after reviewing the upstream installer diff.</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT</span><span class="o">=</span><span class="s2">"6df3065f1d8ddc2ce3615314d1d493f36d6b1c80"</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256</span><span class="o">=</span><span class="s2">"cb84ca53ced03f41662c5c86edf11fa598a0403c347f1e815f987ccaae5bc464"</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL</span><span class="o">=</span><span class="s2">"https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/</span><span class="si">${</span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT</span><span class="si">}</span><span class="s2">/install.sh"</span>
 <span class="c1"># Versions and installer checksums for both URLs are pinned in</span>
 <span class="c1"># scripts/lib/installer-pins.sh, rendered from assets: in agent-config.yaml.</span>
 <span class="c1"># Rendered from assets.pi-claude-bridge in home/dot_agents/agent-config.yaml; change the version and sha256 there</span>
@@ -5877,8 +5837,6 @@
 <span class="c1"># @description Ensure the Crit Claude Code plugin marketplace is configured.</span>
 <span class="c1">#</span>
 <span class="c1"># @description Ensure the Ponytail Claude Code plugin marketplace is configured.</span>
-<span class="c1">#</span>
-<span class="c1"># @description Ensure the Understand-Anything Claude Code plugin marketplace is configured.</span>
 <span class="c1">#</span>
 <span class="c1"># @description Run scripts/pin_records.py, the one strict reader of every record the pin checks use: it prints</span>
 <span class="c1">#   the parsed value, or exits 2 with `ERROR: &lt;record&gt;: &lt;field&gt;: &lt;why&gt;` for a record it cannot read, one of an</span>
@@ -6541,25 +6499,6 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Keep the Claude Code Understand-Anything plugin at its recorded pin.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>update_claude_understand_anything<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>claude<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Claude Code Understand-Anything plugin: claude command not found.\n'</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span>section<span class="w"> </span><span class="s2">"Claude Code Understand-Anything plugin"</span>
-<span class="w">    </span><span class="c1"># Refreshed only once its identity is verified; converge_claude_step verifies again and reports and judges</span>
-<span class="w">    </span><span class="c1"># any failure, so this call\'s own messages are not repeated.</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>ensure_claude_plugin_marketplace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>claude_outside_projects<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>update<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span>converge_claude_step<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span>record_claude_plugin_step<span class="w"> </span><span class="s2">"update_claude_understand_anything"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_CLAUDE_DIR</span><span class="si">}</span><span class="s2">/plugins/cache/understand-anything/understand-anything"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_CLAUDE_DIR</span><span class="si">}</span><span class="s2">/settings.json"</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"claude plugin marketplace add </span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"claude plugin marketplace update </span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"claude plugin install </span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"claude plugin update </span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">"</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
 <span class="c1"># @description The one parser of the Codex plugin copy Codex loads (pin_records.py codex-copy: Codex's own</span>
 <span class="c1">#   choice among the cached versions, its plugin.json read strictly). It maps the reader's reply to exactly</span>
 <span class="c1">#   `absent` or `copy &lt;version&gt;` with a version that is one strict component ([A-Za-z0-9][A-Za-z0-9._+-]*).</span>
@@ -6866,151 +6805,6 @@
 <span class="w">    </span><span class="nv">plugin_version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">'NR == 1 { print $2 }'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">crit_output</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">"update_codex_crit"</span><span class="w"> </span>plugin<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_CODEX_DIR</span><span class="si">}</span><span class="s2">/plugins/crit"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_CODEX_DIR</span><span class="si">}</span><span class="s2">/config.toml"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/crit"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/crit-cli"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/crit-story"</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"ensure_crit_cli"</span><span class="w"> </span><span class="s2">"crit install codex-plugin --force"</span><span class="w"> </span><span class="o">||</span>
 <span class="w">        </span>record_claude_failure<span class="w"> </span><span class="s2">"recording update_codex_crit in the installed asset manifest"</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Build Understand-Anything packages/core in a plugin tree when its dist is missing or stale.</span>
-<span class="c1"># @description</span>
-<span class="c1">#   Mirrors upstream skills/understand/SKILL.md, which builds in place wherever</span>
-<span class="c1">#   the plugin root resolves. It rebuilds when dist/index.js is missing or older</span>
-<span class="c1">#   than any file under packages/core/src or the root pnpm-lock.yaml, the same</span>
-<span class="c1">#   freshness rule `make doctor` reports, and otherwise skips (idempotent). With</span>
-<span class="c1">#   mise, pnpm always runs as `mise exec npm:pnpm`, which installs the pinned</span>
-<span class="c1">#   version on demand: a mise shim can exist before that version is installed</span>
-<span class="c1">#   ("No version is set for shim"). A bare pnpm from PATH is used only without</span>
-<span class="c1">#   mise.</span>
-<span class="c1">#   A missing pnpm or a failed build only warns, so make update never fails</span>
-<span class="c1">#   for it.</span>
-<span class="c1"># @arg $1 path Plugin tree that contains packages/core.</span>
-<span class="c1"># @stderr One WARN line naming the manual command when the build cannot run or fails.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>build_understand_anything_core<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">root</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span>pnpm_cmd
-
-<span class="w">    </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/packages/core"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/packages/core/dist/index.js"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>find<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/packages/core/src"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/pnpm-lock.yaml"</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-newer<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/packages/core/dist/index.js"</span><span class="w"> </span>-print<span class="w"> </span>-quit<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">pnpm_cmd</span><span class="o">=(</span>mise<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>npm:pnpm<span class="w"> </span>--<span class="w"> </span>pnpm<span class="o">)</span>
-<span class="w">    </span><span class="k">elif</span><span class="w"> </span>has_command<span class="w"> </span>pnpm<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">pnpm_cmd</span><span class="o">=(</span>pnpm<span class="o">)</span>
-<span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: Understand-Anything core not built: pnpm not found; run: cd %q &amp;&amp; pnpm install --frozen-lockfile &amp;&amp; pnpm --filter @understand-anything/core build\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="o">(</span>
-<span class="w">        </span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">            </span><span class="o">{</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_cmd</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>install<span class="w"> </span>--frozen-lockfile<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_cmd</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>install<span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_cmd</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--filter<span class="w"> </span>@understand-anything/core<span class="w"> </span>build
-<span class="w">    </span><span class="o">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: Understand-Anything core build failed in %s; run: cd %q &amp;&amp; %s install --frozen-lockfile &amp;&amp; %s --filter @understand-anything/core build\n'</span><span class="w"> </span><span class="se">\</span>
-<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_cmd</span><span class="p">[*]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_cmd</span><span class="p">[*]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Provision Codex Understand-Anything runtime files from the matching Claude release artifact.</span>
-<span class="c1"># @description</span>
-<span class="c1">#   Builds packages/core in the release artifact first (upstream builds there</span>
-<span class="c1">#   in Claude sessions) and copies dist/node_modules into the Codex clone.</span>
-<span class="c1">#   Without a matching release artifact it builds directly in the clone.</span>
-<span class="c1"># @stdout Prints a skip message when no matching Claude release artifact is available.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>provision_codex_understand_anything_runtime<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>plugin_root<span class="w"> </span>claude_cache<span class="w"> </span>release_root<span class="w"> </span><span class="nb">source</span><span class="w"> </span>destination
-
-<span class="w">    </span><span class="nv">plugin_root</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.understand-anything/repo/understand-anything-plugin"</span>
-<span class="w">    </span><span class="nv">claude_cache</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_CLAUDE_DIR</span><span class="si">}</span><span class="s2">/plugins/cache/understand-anything/understand-anything"</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>python3<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'</span>
-<span class="w">        </span>build_understand_anything_core<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_root</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nv">release_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>
-<span class="w">        </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_root</span><span class="si">}</span><span class="s2">/.claude-plugin/plugin.json"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_cache</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt; 'PY'</span>
-<span class="s">import json</span>
-<span class="s">import sys</span>
-<span class="s">from pathlib import Path</span>
-
-<span class="s">plugin_manifest = Path(sys.argv[1])</span>
-<span class="s">cache_root = Path(sys.argv[2])</span>
-<span class="s">try:</span>
-<span class="s">    version = json.loads(plugin_manifest.read_text())["version"]</span>
-<span class="s">except (OSError, json.JSONDecodeError, KeyError):</span>
-<span class="s">    sys.exit(0)</span>
-
-<span class="s">matches = []</span>
-<span class="s">for candidate in cache_root.iterdir() if cache_root.is_dir() else ():</span>
-<span class="s">    try:</span>
-<span class="s">        if json.loads((candidate / ".claude-plugin/plugin.json").read_text())["version"] == version:</span>
-<span class="s">            matches.append(candidate)</span>
-<span class="s">    except (OSError, json.JSONDecodeError, KeyError):</span>
-<span class="s">        pass</span>
-<span class="s">try:</span>
-<span class="s">    release_root = max(matches, key=lambda path: tuple(int(part) for part in path.name.split(".")))</span>
-<span class="s">except ValueError:</span>
-<span class="s">    release_root = max(matches, key=lambda path: path.name, default=None)</span>
-<span class="s">print(release_root or "")</span>
-<span class="s">PY</span>
-<span class="w">    </span><span class="k">)</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">release_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'</span>
-<span class="w">        </span>build_understand_anything_core<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_root</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span>build_understand_anything_core<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">release_root</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"packages/core/dist"</span><span class="w"> </span><span class="s2">"packages/core/node_modules"</span><span class="w"> </span><span class="s2">"node_modules"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="nv">destination</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_root</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">release_root</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">        </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">destination</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">destination</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
-<span class="w">        </span>cp<span class="w"> </span>-R<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">release_root</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">destination</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">done</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Install or update the Codex Understand-Anything skills via the vendor installer.</span>
-<span class="c1"># @description</span>
-<span class="c1">#   The installer clones the upstream repo into ~/.understand-anything/repo and</span>
-<span class="c1">#   symlinks its skills into ~/.agents/skills; check-agent-runtime.py reports</span>
-<span class="c1">#   those symlinks as an expected unmanaged-skill WARN.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>update_codex_understand_anything<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>codex<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Codex Understand-Anything skills: codex command not found.\n'</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span>section<span class="w"> </span><span class="s2">"Codex Understand-Anything skills"</span>
-<span class="w">    </span><span class="o">(</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span>actual<span class="w"> </span>installer
-<span class="w">        </span><span class="nv">installer</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="s2">"</span>
-<span class="w">        </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -f "${installer}"'</span><span class="w"> </span>EXIT
-<span class="w">        </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>--connect-timeout<span class="w"> </span><span class="m">30</span><span class="w"> </span>--speed-limit<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--speed-time<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">            </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Codex Understand-Anything skills: installer download failed.\n'</span>
-<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">        </span><span class="o">}</span>
-<span class="w">        </span><span class="nv">actual</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{ print $1 }'</span><span class="k">)</span><span class="s2">"</span>
-<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">actual</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Understand-Anything installer checksum mismatch\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">        </span><span class="o">}</span>
-<span class="w">        </span>bash<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>codex<span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Understand-Anything installer failed; Codex skills unchanged.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">        </span><span class="o">}</span>
-<span class="w">        </span>provision_codex_understand_anything_runtime
-<span class="w">        </span><span class="c1"># shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n'</span>
-<span class="w">    </span><span class="o">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">"update_codex_understand_anything"</span><span class="w"> </span>installer<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.understand-anything/repo"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-chat"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-dashboard"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-diff"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-domain"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-explain"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-figma"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-knowledge"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-onboard"</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"curl -fsSL </span><span class="si">${</span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"shasum -a 256 &lt;installer&gt;"</span><span class="w"> </span><span class="s2">"bash &lt;installer&gt; codex"</span><span class="w"> </span><span class="o">||</span>
-<span class="w">        </span>record_claude_failure<span class="w"> </span><span class="s2">"recording update_codex_understand_anything in the installed asset manifest"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -8083,6 +7877,135 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Uninstall the retired Understand-Anything Claude Code plugin and remove its marketplace.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   .chezmoiremove deletes the plugin's cache and marketplace clone, but installed_plugins.json and the</span>
+<span class="c1">#   enabledPlugins entry still name it, and manifest_prune_retired drops the record remove-agent-asset would use,</span>
+<span class="c1">#   so make doctor would report a plugin with no files on every run. Claude Code owns both files, so only its own</span>
+<span class="c1">#   commands change them, each run outside any project and naming `--scope user`, the kit's boundary: without it</span>
+<span class="c1">#   `marketplace remove` drops the declaration from every scope and with it the project and local installation</span>
+<span class="c1">#   records (Claude Code 2.1.316). The marketplace list carries no scope, so the removal runs with `--json`, and</span>
+<span class="c1">#   its `not_configured` refusal (no user-scope declaration) is a WARN, not a failure. Every read comes</span>
+<span class="c1">#   before the first change: the marketplace list (a host where it does not work yet gets the plugin steps' WARN</span>
+<span class="c1">#   and no change), then the installation records. A user-scope installation is uninstalled only when the</span>
+<span class="c1">#   understand-anything marketplace is registered from the kit's source; a project or local one is the project's</span>
+<span class="c1">#   and is only reported. With nothing installed and no marketplace, a stale user enabledPlugins entry is disabled:</span>
+<span class="c1">#   `claude plugin list` omits a plugin that is not installed and `claude plugin uninstall` refuses one (Claude</span>
+<span class="c1">#   Code 2.1.316), so `disable --scope user` is the command that clears it. main runs it after the Claude plugin</span>
+<span class="c1">#   convergence: the claude CLI is repaired by then, and a failure here (set -e) skips no pin check.</span>
+<span class="c1"># @stdout One line per command run.</span>
+<span class="c1"># @stderr A WARN per record left in place, `already retired` when nothing was present, or the skip line.</span>
+<span class="c1"># @exitcode 0 When retired or already retired, and when the marketplace list cannot be read (a WARN).</span>
+<span class="c1"># @exitcode 1 When installed_plugins.json or settings.json cannot be read, or a claude command fails; no later</span>
+<span class="c1">#   command runs.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>retire_understand_anything<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">plugin_id</span><span class="o">=</span><span class="s2">"understand-anything@understand-anything"</span><span class="w"> </span><span class="nv">marketplace</span><span class="o">=</span><span class="s2">"understand-anything"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source</span><span class="o">=</span><span class="s2">"Egonex-AI/Understand-Anything"</span><span class="w"> </span>listing<span class="w"> </span>state<span class="w"> </span>reason<span class="w"> </span>installs<span class="w"> </span>count<span class="w"> </span>index<span class="w"> </span>scope<span class="w"> </span>project<span class="w"> </span>enabled
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>removal<span class="w"> </span>failure<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">users</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">found</span><span class="o">=</span><span class="m">0</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>claude<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping the Understand-Anything retirement: claude command not found.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>claude_outside_projects<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>list<span class="w"> </span>--json<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"exit </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># The parser's error goes into the WARN, so a host without a working claude logs no ERROR line.</span>
+<span class="w">        </span><span class="nv">state</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>pin_record<span class="w"> </span>claude-marketplace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="p">#ERROR: </span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: claude plugin %s was not retired: "claude plugin marketplace list --json" gave no marketplace list (%s), so its marketplace cannot be verified on this host, and nothing was uninstalled, removed or disabled. Run make update once "claude plugin marketplace list" works.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reason</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>registered<span class="w"> </span><span class="p">|</span><span class="w"> </span>foreign<span class="w"> </span><span class="p">|</span><span class="w"> </span>absent<span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: unexpected marketplace state %q for %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">installs</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>claude_plugin_installs<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: cannot read %s; %s is not retired.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_CLAUDE_DIR</span><span class="si">}</span><span class="s2">/plugins/installed_plugins.json"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">count</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-er<span class="w"> </span><span class="s1">'length'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installs</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="o">((</span><span class="nv">index</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">;</span><span class="w"> </span>index<span class="w"> </span>&lt;<span class="w"> </span>count<span class="p">;</span><span class="w"> </span>index++<span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">scope</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-er<span class="w"> </span><span class="s2">".[</span><span class="si">${</span><span class="nv">index</span><span class="si">}</span><span class="s2">].scope"</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installs</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="nv">found</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scope</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span>user<span class="o">)</span>
+<span class="w">            </span><span class="nv">users</span><span class="o">=</span><span class="m">1</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">            </span>registered<span class="o">)</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>claude_outside_projects<span class="w"> </span>plugin<span class="w"> </span>uninstall<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--scope<span class="w"> </span>user<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: claude plugin uninstall %s --scope user failed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">                    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">                </span><span class="k">fi</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Ran: claude plugin uninstall %s --scope user\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">                </span><span class="p">;;</span>
+<span class="w">            </span>foreign<span class="o">)</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: the user-scope %s comes from the marketplace %s registered from another source than %s; left in place.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">                </span><span class="p">;;</span>
+<span class="w">            </span>absent<span class="o">)</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: the user-scope %s names the marketplace %s, which is not registered, so its source cannot be verified; left in place.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">                </span><span class="p">;;</span>
+<span class="w">            </span><span class="k">esac</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>project<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nb">local</span><span class="o">)</span>
+<span class="w">            </span><span class="nv">project</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-er<span class="w"> </span><span class="s2">".[</span><span class="si">${</span><span class="nv">index</span><span class="si">}</span><span class="s2">].projectPath // \"(no project path)\""</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installs</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: %s has a %s-scope installation in %s, outside the user scope the kit manages; this step does not uninstall it (in that project: claude plugin uninstall %s --scope %s).\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scope</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scope</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>*<span class="o">)</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: unexpected installation scope %q for %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scope</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>registered<span class="o">)</span>
+<span class="w">        </span><span class="nv">removal</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>claude_outside_projects<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>remove<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--scope<span class="w"> </span>user<span class="w"> </span>--json<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Ran: claude plugin marketplace remove %s --scope user\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="nv">failure</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-er<span class="w"> </span><span class="s1">'.failureCode'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">removal</span><span class="p">##*</span><span class="s1">$'\n'</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">failure</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>not_configured<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: the Claude Code marketplace %s is not declared in the user settings (a project or local declaration); left in place.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: claude plugin marketplace remove %s --scope user failed (exit %s).\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">found</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>foreign<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: the Claude Code marketplace %s is registered from another source than %s; left in place.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nv">found</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">users</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>absent<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">enabled</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>claude_user_enabled<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: cannot read %s; %s is not retired.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_CLAUDE_DIR</span><span class="si">}</span><span class="s2">/settings.json"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">enabled</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span>enabled<span class="o">)</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>claude_outside_projects<span class="w"> </span>plugin<span class="w"> </span>disable<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--scope<span class="w"> </span>user<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: claude plugin disable %s --scope user failed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">            </span><span class="k">fi</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Ran: claude plugin disable %s --scope user\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="nv">found</span><span class="o">=</span><span class="m">1</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>disabled<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nb">unset</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">        </span>*<span class="o">)</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: the user settings hold %s for %s, which disable cannot clear; left in place.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">enabled</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nv">found</span><span class="o">=</span><span class="m">1</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">found</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Understand-Anything: already retired.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Remove the launcher shim the retired agmsg skill wrote to ~/.agents/bin/agy-tui.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   agmsg wrote ~/.agents/bin/agy-tui outside its skill tree, so .chezmoiremove (which deletes ~/.agents/skills/agmsg)</span>
@@ -8271,14 +8194,13 @@
 <span class="w">    </span>update_claude_superpowers
 <span class="w">    </span>update_claude_crit
 <span class="w">    </span>update_claude_ponytail
-<span class="w">    </span>update_claude_understand_anything
 <span class="w">    </span>converge_claude_plugins
+<span class="w">    </span>retire_understand_anything
 <span class="w">    </span>ensure_mise_npm_agent_cli<span class="w"> </span>codex<span class="w"> </span><span class="s2">"npm:@openai/codex"</span>
 <span class="w">    </span>ensure_gh_extensions
 <span class="w">    </span>update_codex_superpowers
 <span class="w">    </span>update_codex_crit
 <span class="w">    </span>update_codex_ponytail
-<span class="w">    </span>update_codex_understand_anything
 <span class="w">    </span>update_terminal_code
 <span class="w">    </span>update_terminal_browser
 <span class="w">    </span>update_omp

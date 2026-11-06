@@ -38,6 +38,7 @@ EARLIER_HEADS = (
     "976fd6cdb249c76ac397ede1bbfccd931ad824c1",  # round two, before the deny row and the DSH_HOME refusal (U272d)
     "5b950a97028205f7430a7c9f36f74b91a79e88c8",  # round three, before the refusal read the rendered deny table (U272e)
     "d1ffd91939e4d069b01d0e4d467c12eff971a944",  # round four, before the judge read every rendered grant (U272f)
+    "d191911256d88f4a71ebde559500353dbc4d1e19",  # round five, before the exemptions named one row by position (U272g)
 )
 
 
@@ -753,11 +754,13 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def test_a_grant_row_under_any_deny_of_the_rendered_tables_refuses(self):
         """U272f: the judge's only source is the rendered tables, so a grant added under any deny of them refuses. The
         judge runs from the lever's own text over the tables a going launch rendered (its allowRead, allowWrite,
-        denyRead and denyWrite, the macOS patterns aside) with the structural tags the lever renders (the own slots
-        and the seats-root and project-file rows they overlap, the own profile and the profiles deny): the tables as
-        rendered pass; for every deny path, one untagged row added to allowWrite below it and one added to allowRead
-        equal to it each hit, naming the added row and a deny it lies inside; a tagged row that a link moves off its
-        rendered path hits too."""
+        denyRead and denyWrite, the macOS patterns aside) with the structural tags as the lever renders them, each
+        naming one row by its list and position (U272g: the own cwd and state slot, rows 0 and 1 of both grant lists,
+        the own profile, row 3 of both, the seats-root and project-file denies they overlap and the profiles deny):
+        the tables as rendered pass; for every deny path, one row added to allowWrite below it and one added to
+        allowRead equal to it each hit, naming the added row and a deny it lies inside (a row equal to a tagged deny
+        carries no tag: the tag names the deny's position, not its spelling); a row of the own profile's spelling at
+        DSH_HOME's position hits; a tagged row that a link moves off its rendered path hits too."""
         procs = self.held_launch("--", "--version")
         (name,) = self.slots()[0]
         rendered = self.settings_of(name)["filesystem"]
@@ -766,14 +769,25 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         home = self.home.resolve()
         seats = Path(self.seats).resolve()
         cwd, slot = str(seats / ".state" / name / "cwd"), str(seats / ".state" / name)
-        tags = {cwd: "slot", slot: "slot", str(seats): "slot", str(home / ".local/state/omp-seats"): "slot"}
-        tags.update({row: "slot" for row in rendered["denyWrite"] if row.startswith(cwd + "/")})
-        tags.update({str(home / ".omp/profiles"): "profile", str(home / ".omp/profiles/dsh"): "profile"})
+        profile, profiles = str(home / ".omp/profiles/dsh"), str(home / ".omp/profiles")
+        deny_read = rendered["denyRead"]
+        deny_write = [row for row in rendered["denyWrite"] if "*" not in row]
+        for kind in ("allowRead", "allowWrite"):
+            self.assertEqual([rendered[kind][i] for i in (0, 1, 3)], [cwd, slot, profile], kind)
+        tags = [(tag, kind, ix, path) for kind in ("allowRead", "allowWrite")
+                for tag, ix, path in (("slot", 0, cwd), ("slot", 1, slot), ("profile", 3, profile))]  # fmt: skip
+        tags += [("slot", "denyWrite", ix, row) for ix, row in enumerate(deny_write) if row.startswith(cwd + "/")]
+        tags += [
+            ("slot", "denyRead", deny_read.index(row), row)
+            for row in (str(home / ".local/state/omp-seats"), str(seats))
+        ]
+        tags += [("profile", "denyRead", deny_read.index(profiles), profiles)]
+        self.assertEqual(len(tags), 6 + 8 + 2 + 1, tags)
         text = test_hcom_seat.SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_each", "ancestors_of")
-        names += ("identity_table", "ascii_lower", "within_ix", "tag_rows", "row_tag", "settings_judge")
+        names += ("identity_table", "ascii_lower", "within_ix", "tag_row", "row_tag", "settings_judge")
         functions = "\n".join(
-            text[text.index(f"{fn}() {{") : text.index("\n}\n", text.index(f"{fn}() {{")) + 3] for fn in names
+            text[text.index(f"\n{fn}() {{") : text.index("\n}\n", text.index(f"\n{fn}() {{")) + 3] for fn in names
         )
         stat_args = "stat_args=(-L -f '%d:%i')" if sys.platform == "darwin" else "stat_args=(-L -c '%d:%i')"
 
@@ -782,13 +796,12 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 f"{var}=({' '.join(shlex.quote(row) for row in rows)})"
                 for var, rows in (("allow_read", allow_read), ("write", write), ("deny_read", deny_read), ("deny_write", deny_write))
             )  # fmt: skip
-            tagged = "\n".join(f"tag_rows {tag} {shlex.quote(row)}" for row, tag in tags.items())
-            script = f"set -euo pipefail\n{stat_args}\n{functions}\n{lists}\nrow_tag_paths=() row_tags=()\n{tagged}\n"
+            tagged = "\n".join(f"tag_row {tag} {kind} {ix} {shlex.quote(path)}" for tag, kind, ix, path in tags)
+            script = f"set -euo pipefail\n{stat_args}\n{functions}\n{lists}\n"
+            script += f"row_tags=() row_tag_kinds=() row_tag_ixs=() row_tag_paths=()\n{tagged}\n"
             script += 'settings_judge || { printf "grant=%s\\ndeny=%s\\n" "${judge_grant}" "${judge_deny}"; exit 3; }\n'
             return subprocess.run(["/bin/bash", "-c", script], capture_output=True, text=True, check=False, timeout=60)
 
-        deny_read = rendered["denyRead"]
-        deny_write = [row for row in rendered["denyWrite"] if "*" not in row]
         clear = judge(rendered["allowRead"], rendered["allowWrite"], deny_read, deny_write)
         self.assertEqual((clear.returncode, clear.stdout), (0, ""), clear.stderr)
         denies = [(row, "denyRead") for row in deny_read] + [(row, "denyWrite") for row in deny_write]
@@ -798,10 +811,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             # it, or (for a row equal to it) one below it.
             related = [row for row, _ in denies
                        if Path(deny) == Path(row) or Path(row) in Path(deny).parents or Path(deny) in Path(row).parents]  # fmt: skip
-            cases = [("below it in allowWrite", f"{deny}/u272f-added", rendered["allowRead"], [*rendered["allowWrite"], f"{deny}/u272f-added"])]  # fmt: skip
-            # A row equal to a tagged deny carries the deny's tag by its spelling and is the structural pair by design.
-            if deny not in tags:
-                cases.append(("equal to it in allowRead", deny, [*rendered["allowRead"], deny], rendered["allowWrite"]))
+            cases = [
+                ("below it in allowWrite", f"{deny}/u272f-added", rendered["allowRead"], [*rendered["allowWrite"], f"{deny}/u272f-added"]),
+                ("equal to it in allowRead", deny, [*rendered["allowRead"], deny], rendered["allowWrite"]),
+            ]  # fmt: skip
             for label, added, allow_read, write in cases:
                 with self.subTest(deny=deny, kind=kind, case=label):
                     hit = judge(allow_read, write, deny_read, deny_write)
@@ -813,17 +826,27 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     self.assertIn(
                         named.removeprefix("deny=").split(", a row of its ")[0].split(" (")[0], related, hit.stdout
                     )
-        # A tagged row moved by a link: the profile row is still spelled as rendered, so its tag is found, and the
-        # exemption fails because its physical path is elsewhere.
+        # The own profile's spelling at DSH_HOME's position (allowRead row 2): the tag names row 3 alone, so the row
+        # hits the profiles deny like any other, where round 5's spelling-keyed tag exempted it.
+        same = judge(
+            [*rendered["allowRead"][:2], profile, *rendered["allowRead"][3:]],
+            rendered["allowWrite"],
+            deny_read,
+            deny_write,
+        )
+        self.assertEqual(same.returncode, 3, same.stdout + same.stderr)
+        self.assertEqual(
+            same.stdout.splitlines(), [f"grant=allowRead row {profile}", f"deny={profiles}, a row of its denyRead list"]
+        )
+        # A tagged row moved by a link: the profile row is still at its position and spelled as rendered, so its tag
+        # is found, and the exemption fails because its physical path is elsewhere.
         shutil.rmtree(home / ".omp/profiles/dsh")
         (home / ".omp/profiles/dsh").symlink_to(home / ".omp/profiles/orchestrator")
         (home / ".omp/profiles/orchestrator").mkdir()
         moved = judge(rendered["allowRead"], rendered["allowWrite"], deny_read, deny_write)
         self.assertEqual(moved.returncode, 3, moved.stdout + moved.stderr)
-        self.assertIn(
-            f"grant=allowRead row {home / '.omp/profiles/dsh'} ({home / '.omp/profiles/orchestrator'})", moved.stdout
-        )
-        self.assertIn(f"deny={home / '.omp/profiles'}, a row of its denyRead list", moved.stdout)
+        self.assertIn(f"grant=allowRead row {profile} ({home / '.omp/profiles/orchestrator'})", moved.stdout)
+        self.assertIn(f"deny={profiles}, a row of its denyRead list", moved.stdout)
 
     def test_a_termination_that_cannot_remove_a_slot_exits_2_naming_it(self):
         """U272e P2 `hcom-seat:2340`: when the slot removal failed under a signal, `set -e` ended the handler before the
@@ -843,6 +866,100 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual((proc.returncode, out), (2, ""), err)
         self.assertIn(f"the per-launch slot {state / name} remains after its removal", err)
         self.assertIn("ended by SIGTERM; the launch exits 2 because a per-launch slot remains", err)
+        self.assertEqual(self.slots(), ([], [name]))
+
+    def test_a_dsh_home_or_run_root_at_the_profiles_directory_refuses_while_the_own_profile_passes(self):
+        """U272f P1 `hcom-seat:1863`: round 5 keyed the exemption tags by rendered spelling, so a DSH_HOME equal to the
+        profiles directory, or a `~/.omp/run` linked to it, was rendered in that spelling, inherited the own-profile
+        exemption and put the whole profiles directory into allowWrite. A tag now names one row by its list and
+        position: a DSH_HOME at the scratch HOME's `.omp/profiles` (holding a working `bin/dsh`), a DSH_HOME equal to
+        the own profile `~/.omp/profiles/dsh` (the exempted row's own spelling, at another position) and a `~/.omp/run`
+        linked to the profiles directory each refuse (exit 2) naming the profiles deny, before any directory is made
+        (the DEBUG-trap recorder shows the tool directory's mkdir alone); the own profile row still passes."""
+        home = self.home.resolve()
+        profiles = home / ".omp/profiles"
+        (profiles / "bin").mkdir(parents=True)
+        for path in (profiles / "bin/dsh", profiles / "dsh/bin/dsh"):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(FAKE_DSH.format(calls=str(self.calls)))
+            path.chmod(0o755)
+        run_root = home / ".omp/run"
+        hook = Path(self.temp.name) / "trace-hook.bash"
+        hook.write_text('set -T\ntrap \'builtin printf "%s\\0" "$BASH_COMMAND" >> "$U272_TRACE"\' DEBUG\n')
+        trace = Path(self.temp.name) / "trace"
+        cases = (
+            ("DSH_HOME at the profiles directory", profiles, None,
+             f"allowRead row {profiles} is, contains or lies inside {profiles}, a row of its denyRead list"),
+            ("DSH_HOME at the profiles directory, dry run", profiles, "--dry-run",
+             f"allowRead row {profiles} is, contains or lies inside {profiles}, a row of its denyRead list"),
+            ("DSH_HOME equal to the own profile", profiles / "dsh", None,
+             f"allowRead row {profiles / 'dsh'} is, contains or lies inside {profiles}, a row of its denyRead list"),
+            ("~/.omp/run linked to the profiles directory", self.dsh_home, None,
+             f"allowWrite row {profiles} is, contains or lies inside {profiles}, a row of its denyRead list"),
+        )  # fmt: skip
+        for label, dsh_home, option, message in cases:
+            with self.subTest(case=label):
+                if dsh_home == self.dsh_home:
+                    run_root.symlink_to(profiles)
+                trace.write_text("")
+                run = self.seat("dsh", "--seats-root", self.seats, "--home", str(dsh_home), *([option] if option else []),
+                                "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace))  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertIn("the launch is refused before anything is made", run.stderr)
+                commands = trace.read_text().split("\0")[:-1]
+                self.assertIn("settings_judge", " ".join(commands), "the refusal is the judge's")
+                mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
+                self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
+        self.assertFalse(Path(self.seats).exists())
+        self.assertTrue(run_root.is_symlink(), "the launch neither removed nor replaced the link")
+        self.assertEqual(self.dsh_calls(), [])
+        # The own profile row, at its own position, passes: the same launch goes through once `~/.omp/run` is a
+        # directory again, with the profiles directory in no grant list but as the own profile row.
+        run_root.unlink()
+        procs = self.held_launch("--", "--version")
+        (name,) = self.slots()[0]
+        rendered = self.settings_of(name)["filesystem"]
+        ((status, out, err),) = self.release(procs)
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        for kind in ("allowRead", "allowWrite"):
+            self.assertEqual(rendered[kind][3], str(profiles / "dsh"), kind)
+            self.assertNotIn(str(profiles), rendered[kind], kind)
+        self.assertIn(str(profiles), rendered["denyRead"])
+        self.assertTrue(run_root.is_dir() and not run_root.is_symlink())
+        self.assertEqual(self.slots(), ([], []))
+
+    def test_an_unsearchable_state_parent_at_cleanup_exits_2_naming_the_slot(self):
+        """U272f P2 `hcom-seat:2347`: `[[ -e ]]` and `[[ -L ]]` are both false for a slot whose parent cannot be
+        searched, so a `.state` of mode 000 at cleanup made the lever read its slot as absent and exit 0 with the slot
+        behind. The existence read is a status-checked stat: a failed read that is not ENOENT refuses (exit 2) naming
+        the slot and the error, on the normal exit and under a signal alike; the sandbox slot, read and removed
+        first, is gone."""
+        state = Path(self.seats, ".state")
+        procs = self.held_launch("--", "--version")
+        (name,) = self.slots()[0]
+        os.chmod(state, 0)
+        try:
+            ((status, out, err),) = self.release(procs)
+        finally:
+            os.chmod(state, 0o700)
+        self.assertEqual((status, out), (2, "0.2.1-rc.5\n"), err)
+        self.assertIn(f"cannot read whether the per-launch slot {state / name} exists (", err)
+        self.assertIn("Permission denied", err)
+        self.assertNotIn("remains after its removal", err, "a failed read is not read as a slot that was removed")
+        self.assertEqual(self.slots(), ([], [name]))
+        shutil.rmtree(state / name)
+        (proc,) = self.held_launch("--", "--version", new_session=True)
+        (name,) = self.slots()[0]
+        os.chmod(state, 0)
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+            out, err = proc.communicate(timeout=60)
+        finally:
+            os.chmod(state, 0o700)
+            (self.calls / "hold").unlink()
+        self.assertEqual((proc.returncode, out), (2, ""), err)
+        self.assertIn(f"cannot read whether the per-launch slot {state / name} exists (", err)
         self.assertEqual(self.slots(), ([], [name]))
 
 

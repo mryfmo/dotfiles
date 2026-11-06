@@ -99,8 +99,9 @@
 #   git lists, the hcom store and every existing `~/.local/state/hcom-*` sibling, the records
 #   `<checkout>/.orchestration` and every other seat's directory, denied for read and for write; every row of the
 #   final allowRead and allowWrite lists judged against every row of the final denyRead and denyWrite lists (U272f:
-#   the rendered settings are the refusal's only source; every path physical and by identity; the own slots and the
-#   own profile exempt by tag where they re-open their structural denies), a hit refused before anything is made; DSH_HOME in the protected set
+#   the rendered settings are the refusal's only source; every path physical and by identity; U272g: the own slots and
+#   the own profile exempt from their structural denies by a tag that names each one row by its position in its list,
+#   never a spelling, so a DSH_HOME at or inside an exempted row's path is judged like any row), a hit refused before anything is made; DSH_HOME in the protected set
 #   before any tool is resolved; the command `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt
 #   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME, OMP_PROFILE
 #   and a caller's CLAUDE_CODE_OAUTH_TOKEN before the shim adds its own exports. No omp overlay, rules file,
@@ -811,8 +812,8 @@ if [[ ${os} == Linux && ! -x /usr/bin/jq ]]; then
     refuse 'the system jq /usr/bin/jq is absent; it reads the seat sandbox settings on Linux (apt install jq)'
 fi
 case ${os} in
-Darwin) stat_args=(-L -f '%d:%i') size_args=(-L -f '%z') ;;
-Linux) stat_args=(-L -c '%d:%i') size_args=(-L -c '%s') ;;
+Darwin) stat_args=(-L -f '%d:%i') lstat_args=(-f '%d:%i') size_args=(-L -f '%z') ;;
+Linux) stat_args=(-L -c '%d:%i') lstat_args=(-c '%d:%i') size_args=(-L -c '%s') ;;
 *) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
 # srt 0.0.81 keeps its own TMPDIR writable whatever the policy says (SANDBOX_OWN_WRITE_PATHS in
@@ -1702,11 +1703,12 @@ dsh_deny_paths() {
 # @set deny_write The denyWrite paths; `deny_write_patterns` the macOS patterns appended to them.
 # @set deny_read The denyRead paths.
 # @set allow_read The allowRead paths.
-# @set row_tag_paths The rows tagged structural, by their rendered spelling, and `row_tags` their tags: `slot` for
-#   the seat's own slots (its directory and state slot), the seats-root denies they re-open and the project-file
-#   denies under its directory; `profile` for its own omp profile and the profiles deny it re-opens.
+# @set row_tags The structural tags, each naming one row by list and position (tag_row): `slot` for the seat's own
+#   slots (its directory and state slot), the seats-root denies they re-open and the project-file denies under its
+#   directory; `profile` for its own omp profile and the profiles deny it re-opens. The grant tags are the dsh
+#   role's, whose judge reads them; the deny tags are rendered for every role and change no list.
 seat_settings_render() {
-    local root path base
+    local root path kind project_files=()
     h=$(physical_path "${HOME}") || refuse "cannot resolve HOME ${HOME}"
     dir_real=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"
     common_real=$(physical_path "${common}") || refuse "cannot resolve the git common directory ${common}"
@@ -1714,18 +1716,17 @@ seat_settings_render() {
     seats_real=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
     sandbox_state=${seats_real}/.state/${name}
     write=("${seat_write[@]}")
-    row_tag_paths=() row_tags=()
-    # The seat's own slots come first in seat_write_roots' list; the same two paths are the read grants' first rows.
-    tag_rows slot "${dir_real}" "${sandbox_state}"
+    row_tags=() row_tag_kinds=() row_tag_ixs=() row_tag_paths=()
     deny_write=("${seats_real}/.sandbox")
     # The hook shims under .claude/hooks import their code from .claude/contextdb, run by sessions outside the seat.
-    for base in "${dir_real}" "${checkout}"; do
-        deny_write+=("${base}/.claude/settings.json" "${base}/.claude/settings.local.json" "${base}/.claude/hooks"
-            "${base}/.claude/contextdb" "${base}/.omp" "${base}/.codex" "${base}/.envrc" "${base}/.mcp.json")
-    done
+    project_files=(.claude/settings.json .claude/settings.local.json .claude/hooks .claude/contextdb .omp .codex .envrc .mcp.json)
     # The project-file rows under the seat's own directory are refinements inside its write root (srt keeps the
-    # deeper deny), so the slot and the cwd contain them by construction.
-    tag_rows slot "${deny_write[@]:1:8}"
+    # deeper deny), so the slot and the cwd contain them by construction: each is tagged at its position.
+    for path in "${project_files[@]}"; do
+        tag_row slot denyWrite ${#deny_write[@]} "${dir_real}/${path}"
+        deny_write+=("${dir_real}/${path}")
+    done
+    for path in "${project_files[@]}"; do deny_write+=("${checkout}/${path}"); done
     # The git state host git reads for any worktree of this repository (regime-cutover U85): a seat that could write
     # it could make a later host git command run a program of its choosing (`core.fsmonitor`, `core.hooksPath`,
     # filter and textconv drivers, includes). git_state_check refuses a launch over such state and creates the files
@@ -1747,21 +1748,24 @@ seat_settings_render() {
         deny_write+=("${hcom_real}/${path}")
     done
     deny_read=("${h}/.ssh" "${h}/.gnupg" "${h}/.aws" "${h}/.netrc" "${h}/.docker" "${h}/.kube" "${h}/.config/gcloud"
-        "${h}/.codex" "${h}/.omp/agent" "${h}/.omp/profiles" "${h}/.hcom" "${h}/.local/state/hcom"
+        "${h}/.codex" "${h}/.omp/agent")
+    # The profiles deny: the seat's own omp profile is the one row re-opened under it (the dsh case below tags that
+    # row; settings_judge pairs the two tags).
+    tag_row profile denyRead ${#deny_read[@]} "${h}/.omp/profiles"
+    deny_read+=("${h}/.omp/profiles" "${h}/.hcom" "${h}/.local/state/hcom"
         "${h}/.local/share/chezmoi" "${h}/.local/share/chezmoi-private" "${h}/.config/chezmoi"
         "${h}/.config/chezmoi-private" "${h}/Workspace" "${seats_real}/.sandbox")
-    # The seat's own omp profile is the one directory re-opened under the profiles deny, by its rendered name: a
-    # profile root that is a link lies elsewhere and the tag does not carry (settings_judge).
-    tag_rows profile "${h}/.omp/profiles" "${h}/.omp/profiles/${role}"
     # Every program's seats root is unreadable but this seat's own paths: the whole ~/.local/state/omp-seats tree
     # and every configured seats root. srt keeps a deeper deny under an allow (measured, 0.0.81), so each
     # `.sandbox` stays unreadable inside an allowed root. These rows exist to be re-opened by the own slot alone.
-    deny_read+=("${h}/.local/state/omp-seats" "${seats_real}")
-    tag_rows slot "${h}/.local/state/omp-seats" "${seats_real}"
+    for path in "${h}/.local/state/omp-seats" "${seats_real}"; do
+        tag_row slot denyRead ${#deny_read[@]} "${path}"
+        deny_read+=("${path}")
+    done
     if [[ -n ${REGIME_SEATS_ROOT:-} ]]; then
         root=$(physical_path "${REGIME_SEATS_ROOT}") || refuse "cannot resolve the seats root ${REGIME_SEATS_ROOT}"
+        tag_row slot denyRead ${#deny_read[@]} "${root}"
         deny_read+=("${root}")
-        tag_rows slot "${root}"
     fi
     operator_claude_paths
     deny_write+=("${operator_claude[@]}")
@@ -1790,34 +1794,49 @@ seat_settings_render() {
         deny_write+=(${dsh_deny[@]+"${dsh_deny[@]}"})
         allow_read=("${dir_real}" "${sandbox_state}" "${dsh_home}" "${h}/.omp/profiles/${role}" "${h}/.agents/skills"
             "${tools_dir}")
+        # The judge's exempted grants, each one row by its position (tag_row, regime-cutover U272g): the own cwd and
+        # state slot, rows 0 and 1 of both grant lists (seat_write_roots puts them first), and the own omp profile,
+        # row 3 of both. DSH_HOME (row 2) and `~/.omp/run` (write row 4) carry no tag whatever they are spelled, so a
+        # DSH_HOME at or inside the profiles directory, or a `~/.omp/run` linked there, is judged like any row.
+        for kind in allowRead allowWrite; do
+            tag_row slot "${kind}" 0 "${dir_real}"
+            tag_row slot "${kind}" 1 "${sandbox_state}"
+            tag_row profile "${kind}" 3 "${h}/.omp/profiles/${role}"
+        done
         ;;
     esac
 }
 
-# @description Tag the rendered rows `$@` (by their rendered spelling) with the structural tag `$1`, where they are
-#   rendered (regime-cutover U272f): a tag names why a grant may overlap a deny by construction, and settings_judge
-#   exempts a (grant, deny) pair only when both rows carry the same tag.
+# @description Tag one rendered row, the one at position `$3` of the list `$2`, with the structural tag `$1`
+#   (regime-cutover U272g): a tag names why that row may overlap another by construction, and settings_judge exempts a
+#   (grant, deny) pair only when both rows carry the same tag. A tag is a reference to one row by its position, never
+#   a pattern over spellings: round 5 keyed the tags by rendered spelling, so a `DSH_HOME` equal to the profiles
+#   directory, or a `~/.omp/run` linked there, was rendered in that spelling and inherited the profile tag (verdict
+#   U272f P1). `$4` is the path the lever rendered at that position; row_tag applies the tag only to a row byte-equal
+#   to it, so a list that drifted from its tags exempts nothing.
 # @arg $1 string The tag.
-# @arg $@ string The rows, as rendered.
-# @set row_tag_paths The tagged rows so far; `row_tags` their tags, one per row.
-tag_rows() {
-    local tag=$1 p
-    shift
-    for p in "$@"; do
-        row_tag_paths+=("${p}") row_tags+=("${tag}")
-    done
+# @arg $2 string The list: allowRead, allowWrite, denyRead or denyWrite.
+# @arg $3 string The row's position in that list.
+# @arg $4 string The path rendered at that position.
+# @set row_tags The tags so far; `row_tag_kinds` their lists, `row_tag_ixs` their positions and `row_tag_paths` their
+#   paths, one entry per tagged row.
+tag_row() {
+    row_tags+=("$1") row_tag_kinds+=("$2") row_tag_ixs+=("$3") row_tag_paths+=("$4")
 }
 
-# @description Set `tag_of` to the structural tag of the rendered row `$1` (tag_rows), or to the empty string for an
-#   untagged row. By rendered spelling: both sides come from seat_settings_render, so a row a link redirects (a
-#   profile root that is a link to `~/.aws` is rendered as `~/.aws` in the write list) carries no tag.
-# @arg $1 string The row, as rendered.
+# @description Set `tag_of` to the structural tag of the row `$3` at position `$2` of the list `$1` (tag_row), or to
+#   the empty string when no tag names that position or the row there is not byte-equal to the path the tag was
+#   rendered with.
+# @arg $1 string The list.
+# @arg $2 string The position.
+# @arg $3 string The row at it, as rendered.
 # @set tag_of The tag or empty.
 row_tag() {
     local i
     tag_of=''
-    for ((i = 0; i < ${#row_tag_paths[@]}; i++)); do
-        [[ ${row_tag_paths[i]} != "$1" ]] || tag_of=${row_tags[i]} # lint-comparisons: allow one rendered row in one spelling, both sides from seat_settings_render
+    for ((i = 0; i < ${#row_tags[@]}; i++)); do
+        [[ ${row_tag_kinds[i]} == "$1" && ${row_tag_ixs[i]} == "$2" && ${row_tag_paths[i]} == "$3" ]] || continue # lint-comparisons: allow a list name, a position, and one rendered row against the path rendered at that position, both from seat_settings_render
+        tag_of=${row_tags[i]}
     done
 }
 
@@ -1830,29 +1849,31 @@ row_tag() {
 #   at the end of a rendered path hides its ancestry from the identity table, whose chains follow the spelled
 #   parents. The decision is by identity for everything that exists, and by the absent components below one shared
 #   deepest existing ancestor otherwise (identity_table, within_ix; one table, one stat). A grant that is, contains
-#   or lies inside a deny is a hit unless the pair is structural: both rows carry the same tag (tag_rows: the own
-#   slots under the seats-root denies and over the project-file denies, the own profile under the profiles deny)
-#   and the grant lies where it is rendered (its physical path is its rendered path), so a tagged grant that a link
-#   moves elsewhere (`~/.omp/profiles/dsh -> ~/.omp/profiles/orchestrator`) is judged like any row. The read
-#   grants go first: they are spelled as rendered (the profile by its name), so the first hit names the row as the
-#   caller knows it. The macOS write patterns are not rows (no grant of the role lies under the common directory).
+#   or lies inside a deny is a hit unless the pair is structural: both rows carry the same tag, each tag naming its
+#   one row by list and position (tag_row, regime-cutover U272g: the own cwd and state slot under the seats-root
+#   denies and over the project-file denies, the own profile under the profiles deny), and the grant lies where it
+#   is rendered (its physical path is its rendered path), so a tagged grant that a link moves elsewhere
+#   (`~/.omp/profiles/dsh -> ~/.omp/profiles/orchestrator`) is judged like any row, and so is an untagged row of
+#   an exempted row's spelling (`DSH_HOME=~/.omp/profiles/dsh`, `~/.omp/run -> ~/.omp/profiles`). The read grants
+#   go first: they are spelled as rendered (the profile by its name), so the first hit names the row as the caller
+#   knows it. The macOS write patterns are not rows (no grant of the role lies under the common directory).
 # @set judge_grant The first grant that hits: `<kind> row <path>` and, when it differs, its physical path in
 #   parentheses; empty when every grant is clear.
 # @set judge_deny The deny it hits: `<path>[ (<physical>)], a row of its <kind> list`; empty when clear.
 # @exitcode 0 Every grant keeps clear of every deny it is not structurally paired with.
 # @exitcode 1 A pair overlaps; `judge_grant` and `judge_deny` name it.
 settings_judge() {
-    local i j n m rows=() kinds=() tags=()
-    for i in "${allow_read[@]}"; do rows+=("${i}") kinds+=(allowRead); done
-    for i in "${write[@]}"; do rows+=("${i}") kinds+=(allowWrite); done
+    local i j n m rows=() kinds=() ixs=() tags=()
+    for ((i = 0; i < ${#allow_read[@]}; i++)); do rows+=("${allow_read[i]}") kinds+=(allowRead) ixs+=("${i}"); done
+    for ((i = 0; i < ${#write[@]}; i++)); do rows+=("${write[i]}") kinds+=(allowWrite) ixs+=("${i}"); done
     n=${#rows[@]}
-    for i in "${deny_read[@]}"; do rows+=("${i}") kinds+=(denyRead); done
-    for i in "${deny_write[@]}"; do rows+=("${i}") kinds+=(denyWrite); done
+    for ((i = 0; i < ${#deny_read[@]}; i++)); do rows+=("${deny_read[i]}") kinds+=(denyRead) ixs+=("${i}"); done
+    for ((i = 0; i < ${#deny_write[@]}; i++)); do rows+=("${deny_write[i]}") kinds+=(denyWrite) ixs+=("${i}"); done
     m=$((${#rows[@]} - n))
     judge_grant='' judge_deny=''
     ((n && m)) || return 0
-    for i in "${rows[@]}"; do
-        row_tag "${i}"
+    for ((i = 0; i < n + m; i++)); do
+        row_tag "${kinds[i]}" "${ixs[i]}" "${rows[i]}"
         tags+=("${tag_of}")
     done
     physical_each "${rows[@]}"
@@ -2333,23 +2354,46 @@ fi
 # cwd's .omp tools, MCP servers, rules and skills out of the running seat (measured the same way).
 [[ ! -e ${dir}/.omp && ! -L ${dir}/.omp ]] ||
     refuse "seat directory holds .omp, whose project settings omp would apply to the seat: ${dir}/.omp"
+# @description Set `slot_present` to 1 when the path `$1` exists (a symbolic link counted by itself, not by its target)
+#   and to 0 when it is absent, from one `/usr/bin/stat` whose status and message are read (regime-cutover U272g,
+#   standing order 21): `[[ -e ]]` and `[[ -L ]]` are false for an absent path and for one whose parent cannot be
+#   searched alike, so a `.state` of mode 000 made the cleanup read its slot as gone and the launch exit 0 with the
+#   slot behind (verdict U272f P2). Only the documented "No such file or directory" (ENOENT) is an absence; every
+#   other failure (EACCES, ENOTDIR, EPERM, a stat that cannot run) refuses (exit 2) naming the path and the message.
+# @arg $1 string An absolute path.
+# @set slot_present 1 or 0.
+path_presence() {
+    local err
+    if err=$(/usr/bin/stat "${lstat_args[@]}" -- "$1" 2>&1 > /dev/null); then
+        slot_present=1
+        return 0
+    fi
+    slot_present=0
+    case ${err} in
+    *'No such file or directory'*) return 0 ;;
+    esac
+    refuse "cannot read whether the per-launch slot $1 exists (${err}); it may remain: restore the mode of its parent and remove it by hand"
+}
 # @description Remove the dsh role's per-launch slots, the sandbox and the state slot (regime-cutover U272): both were
 #   absent before this launch and made by it (seat_sandbox_write), and neither chmod nor rm follows a link inside
 #   them. A directory dsh left without its owner's read or write bit (mode 000) keeps rm out, so the mode is reset
 #   first (U272d's finding); the removal fails closed: a slot that remains is named and the function fails, so the
-#   launch never ends 0 with a slot behind (regime-cutover U272e). The normal exit and the signal trap run this one
-#   function.
+#   launch never ends 0 with a slot behind (regime-cutover U272e). Each existence read is path_presence, so a slot
+#   that cannot be read is a refusal, never an absence (regime-cutover U272g). The normal exit and the signal trap
+#   run this one function.
 # @exitcode 0 Both slots are gone.
 # @exitcode 1 A slot remains, named on stderr.
 slots_remove() {
     local path remaining=()
     for path in "${sandbox}" "${seats_root%/}/.state/${name}"; do
-        [[ -e ${path} || -L ${path} ]] || continue
+        path_presence "${path}"
+        ((slot_present)) || continue
         # Links in the tree are not followed (the traversal default of both chmods); a failure here shows below. No
         # `--`: BSD chmod reads everything after the mode as a file. The paths are absolute.
         /bin/chmod -R u+rwX "${path}" || :
         /bin/rm -rf -- "${path}" || :
-        if [[ -e ${path} || -L ${path} ]]; then remaining+=("${path}"); fi
+        path_presence "${path}"
+        ((! slot_present)) || remaining+=("${path}")
     done
     ((${#remaining[@]} == 0)) || {
         echo "hcom-seat: the per-launch slot ${remaining[*]} remains after its removal (chmod -R u+rwX, rm -rf); remove it by hand" >&2

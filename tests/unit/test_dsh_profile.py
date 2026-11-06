@@ -7,6 +7,8 @@ manifest's `model_profiles.<profile>.dsh` entries and the asset pin, read throug
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import re
 import shutil
@@ -19,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PROFILE_DIR = ROOT / "home/dot_dsh/profiles/thak"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from test_generate_agent_configs import load_manifest_fixture
+from test_generate_agent_configs import load_generator, load_manifest_fixture
 
 ID_LINE = re.compile(r"^(\s*)- id: (\S+)$")
 
@@ -118,6 +120,25 @@ class DshProfileTest(unittest.TestCase):
     def test_the_harness_sandbox_row_is_disabled_by_id(self) -> None:
         self.assertIn("- id: bash-sandbox\n  disabled: true\n", self.patch)
         self.assertNotIn("dsh-bash-sandbox", self.patch)
+
+    def test_the_agent_default_model_is_the_default_tiers_dsh_model_on_its_route(self) -> None:
+        self.assertEqual(1, len(re.findall(r"^- id: agent-default-model$", self.patch, re.MULTILINE)))
+        entry = self.dsh[self.manifest["dsh_default_profile"]]
+        self.assertEqual(
+            f"  config:\n    provider: {entry['route']}\n    model: {entry['model']}\n",
+            self.rows["id: agent-default-model"],
+        )
+        providers = self.rows["id: llm-pi-ai"]
+        route = providers.split(f"\n      {entry['route']}:\n", 1)[1]
+        self.assertIn(entry["model"], nested_ids(route, "models:"))
+
+    def test_a_default_tier_without_a_dsh_entry_fails_naming_the_tier(self) -> None:
+        manifest = load_manifest_fixture(self.temp_dir)
+        del manifest["model_profiles"][manifest["dsh_default_profile"]]["dsh"]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            load_generator().render_dsh_profile_patch(manifest)
+        self.assertIn("dsh_default_profile must name a model profile with a dsh entry: 'standard'", stderr.getvalue())
 
 
 if __name__ == "__main__":

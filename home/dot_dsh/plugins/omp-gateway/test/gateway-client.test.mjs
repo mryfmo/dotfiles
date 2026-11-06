@@ -7,6 +7,7 @@ import { createInterface } from 'node:readline'
 import { PassThrough } from 'node:stream'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { DEFAULT_ENV_NAMES } from '../config.mjs'
 import { GatewayClient, GatewayError, pickEnv } from '../gateway-client.mjs'
 
 const stub = fileURLToPath(new URL('../stub-gateway.mjs', import.meta.url))
@@ -245,4 +246,38 @@ test('a command that cannot be spawned rejects with SPAWN', async t => {
 
 test('pickEnv copies only the named variables that exist', () => {
   assert.deepEqual(pickEnv(['A', 'B', 'C'], { A: '1', C: '3', D: '4' }), { A: '1', C: '3' })
+})
+
+/**
+ * A fake `omp` that records: it prints the ready line and answers every request with the sorted names of its own
+ * environment, so a test reads exactly what the child was spawned with. Darwin's libc adds `__CF_USER_TEXT_ENCODING`
+ * to every child; it is no row of the plugin's and is dropped here.
+ */
+const RECORDER = [
+  "import { createInterface } from 'node:readline'",
+  "const out = line => process.stdout.write(JSON.stringify(line) + String.fromCharCode(10))",
+  "out({ ready: true, version: 'recorder' })",
+  "createInterface({ input: process.stdin }).on('line', text => {",
+  '  const { id } = JSON.parse(text)',
+  "  out({ id, status: 200, body: { env: Object.keys(process.env).filter(name => !name.startsWith('__CF_')).sort() } })",
+  '})',
+].join('\n')
+
+async function recordedChildEnv(t, source) {
+  const client = new GatewayClient({
+    command: process.execPath,
+    args: ['--input-type=module', '-e', RECORDER],
+    env: pickEnv(DEFAULT_ENV_NAMES, source),
+    readyTimeoutMs: 5000,
+  })
+  t.after(() => client.close())
+  const reply = await client.request('/v1/messages', {})
+  return reply.body.env
+}
+
+test('the child carries OMP_PROFILE when the plugin has it and not when it is unset', async t => {
+  // The hcom-seat dsh role exports OMP_PROFILE=dsh (U272); the child must live in that profile, not the denied default.
+  const launcher = { HOME: '/Users/operator', PATH: process.env.PATH, USER: 'operator', NOT_A_ROW: 'x' }
+  assert.deepEqual(await recordedChildEnv(t, { ...launcher, OMP_PROFILE: 'dsh' }), ['HOME', 'OMP_PROFILE', 'PATH', 'USER'])
+  assert.deepEqual(await recordedChildEnv(t, launcher), ['HOME', 'PATH', 'USER'])
 })

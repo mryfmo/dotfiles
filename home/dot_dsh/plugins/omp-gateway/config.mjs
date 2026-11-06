@@ -1,9 +1,15 @@
 /** Configuration rows of the omp-gateway plugin, normalised once at the cordis boundary. */
 
-/** Environment names handed to the gateway child when the row `env` is omitted. */
+/**
+ * Environment names handed to the gateway child when the row `env` is omitted. The list is the child's boundary: a
+ * name absent here never reaches `omp auth-gateway stdio`, whatever the plugin's own environment holds. `USER` stays
+ * (measured 2026-11-06: without it the login answers 502). `OMP_PROFILE` rides when the launcher sets it, so the
+ * child lives in the profile the launcher names (the hcom-seat dsh role: `~/.omp/profiles/dsh`, U272) instead of the
+ * default `~/.omp/agent`, which that role denies (U306, the g6 failure `SQLITE_AUTH: authorization denied`).
+ */
 export const DEFAULT_ENV_NAMES = Object.freeze([
   'HOME', 'PATH', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'TERM', 'TMPDIR',
-  'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_STATE_HOME',
+  'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_STATE_HOME', 'OMP_PROFILE',
 ])
 
 export const DEFAULT_CONFIG = Object.freeze({

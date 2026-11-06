@@ -689,7 +689,9 @@ class DeepseekHarnessTest(unittest.TestCase):
     have a refusal or rewrite test here. U227b: the dsh-omp-gateway plugin link (one relative symlink in the profile's
     node_modules, written on the install, the repair and the already-installed exit) is created, converges on every
     run, is recorded, and is refused before any download when the plugin directory is absent or the link path is
-    not a symlink."""
+    not a symlink. Round 3 (U227c): the link joins the two physical paths (a symlinked profiles/ parent gets a target
+    that resolves; a plugin or a profile that resolves outside DSH_HOME is refused before any download) and is
+    written beside its name and renamed into place, so a failed relink leaves the previous link standing."""
 
     # The rendered pin; a tree without the constant (the red proof against origin/main) gets a placeholder so the
     # module still imports and the tests themselves fail on the absent step.
@@ -974,9 +976,12 @@ class DeepseekHarnessTest(unittest.TestCase):
             step = json.loads((home / ".agents/.installed-manifest.json").read_text())["steps"][
                 "update_deepseek_harness"
             ]
+            self.assertIn("ln -s ../../../plugins/omp-gateway <link tmp>", step["commands"])
             self.assertIn(
-                f"ln -sfn ../../../plugins/omp-gateway {dsh_home}/profiles/thak/node_modules/dsh-omp-gateway",
+                f"os.replace <link tmp> {(dsh_home / 'profiles/thak/node_modules').resolve()}/dsh-omp-gateway"
+                f" (resolves to {(dsh_home / 'plugins/omp-gateway').resolve()})",
                 step["commands"],
+                "the receipt records the physical target",
             )
             calls = self.calls(home)
             receipt = (home / ".agents/.installed-manifest.json").read_text()
@@ -1086,7 +1091,9 @@ class DeepseekHarnessTest(unittest.TestCase):
     ):
         # The link is written after the profile install and before anything the host runs changes, so its failure
         # needs no rollback on the install; on the already-installed exit it keeps the receipt and the older trees.
-        prelude = 'ln() { case "${@: -1}" in */node_modules/dsh-omp-gateway) return 77 ;; esac; command ln "$@"; }'
+        prelude = (
+            'ln() { case "${@: -1}" in */node_modules/dsh-omp-gateway.tmp.*) return 77 ;; esac; command ln "$@"; }'
+        )
         with self.subTest(path="the install"), tempfile.TemporaryDirectory() as directory:
             home, dsh_home = self.opted_in_home(directory)
             payload, digest = self.archive(home)
@@ -1094,13 +1101,19 @@ class DeepseekHarnessTest(unittest.TestCase):
             result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn(
-                f"update_deepseek_harness: the plugin link {self.plugin_link(dsh_home)} could not be written; nothing"
-                " recorded; current, the wrapper and the older trees are untouched.",
+                f"update_deepseek_harness: the plugin link {self.plugin_link(dsh_home)} could not be written (its"
+                f" temporary {self.plugin_link(dsh_home)}.tmp.",
+                result.stderr,
+            )
+            self.assertIn(
+                "the previous link is untouched; nothing recorded; current, the wrapper and the older trees are"
+                " untouched.",
                 result.stderr,
             )
             self.assertEqual(self.BUILD_CALLS, [call for call in self.calls(home) if call.startswith("mise ")])
             self.assert_previous_install_untouched(dsh_home, install, previous)
             self.assertFalse(self.plugin_link(dsh_home).exists(), "no link")
+            self.assertEqual([], list(self.plugin_link(dsh_home).parent.iterdir()), "no temporary beside it")
             self.assertFalse((dsh_home / "bin/dsh").exists(), "no wrapper")
             self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
         with self.subTest(path="the already-installed exit"), tempfile.TemporaryDirectory() as directory:
@@ -1115,15 +1128,188 @@ class DeepseekHarnessTest(unittest.TestCase):
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn(f"DeepSeek harness {self.TAG} is already installed", result.stdout)
             self.assertIn(
-                f"update_deepseek_harness: the plugin link {self.plugin_link(dsh_home)} could not be written; the"
-                " receipt and the older trees are kept.",
+                f"update_deepseek_harness: the plugin link {self.plugin_link(dsh_home)} could not be written (its"
+                f" temporary {self.plugin_link(dsh_home)}.tmp.",
                 result.stderr,
             )
+            self.assertIn("the previous link is untouched; the receipt and the older trees are kept.", result.stderr)
             self.assertEqual([], self.calls(home), "no curl call, no mise call")
             self.assertEqual(receipt, (home / ".agents/.installed-manifest.json").read_text(), "the receipt as it was")
             self.assertEqual(["current", self.TAG, tree.name], sorted(p.name for p in (dsh_home / "dsh").iterdir()))
             self.assertEqual(text, (tree / "package.json").read_text(), "the tree as it was")
             self.assertEqual(wrapper_text, wrapper.read_text(), "the wrapper as it was")
+
+    def test_a_symlinked_profiles_parent_gets_a_link_that_resolves_and_one_outside_dsh_home_is_refused(self):
+        # Round-3 finding f1 s5: the constant target ../../../plugins/omp-gateway counted three levels from the link's
+        # logical path, so a profiles/ that is a symlink elsewhere passed every row and left a dangling link with exit
+        # 0. The target is now computed between the two physical paths; a profile that resolves outside DSH_HOME is
+        # refused before any download, since the step links the plugin only inside DSH_HOME.
+        for case in ("under DSH_HOME", "outside DSH_HOME"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                payload, digest = self.archive(home)
+                store = dsh_home / "store" if case == "under DSH_HOME" else home / "elsewhere"
+                store.mkdir()
+                shutil.move(dsh_home / "profiles", store / "profiles")
+                os.symlink(store / "profiles", dsh_home / "profiles")
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+                link = self.plugin_link(dsh_home)
+                if case == "under DSH_HOME":
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    self.installed_tree(dsh_home)
+                    self.assertTrue(link.is_symlink(), f"{link} is a symlink")
+                    self.assertEqual(
+                        "../../../../plugins/omp-gateway", os.readlink(link), "counted from the physical place"
+                    )
+                    self.assertEqual((dsh_home / "plugins/omp-gateway").resolve(), link.resolve())
+                    self.assertEqual('{"name": "dsh-omp-gateway"}\n', (link / "package.json").read_text())
+                    step = json.loads((home / ".agents/.installed-manifest.json").read_text())["steps"][
+                        "update_deepseek_harness"
+                    ]
+                    self.assertIn("ln -s ../../../../plugins/omp-gateway <link tmp>", step["commands"])
+                    again = self.run_step(home, payload, digest, dsh_home=dsh_home)
+                    self.assertEqual(0, again.returncode, again.stdout + again.stderr)
+                    self.assertIn(f"DeepSeek harness {self.TAG} is already installed", again.stdout)
+                    self.assertEqual("../../../../plugins/omp-gateway", os.readlink(link), "converged")
+                else:
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(
+                        f"update_deepseek_harness: {dsh_home}/profiles/thak resolves to"
+                        f" {(store / 'profiles/thak').resolve()}, outside {dsh_home.resolve()}; the step links the"
+                        " plugin only into a profile under DSH_HOME (move the profile back and rerun make update);"
+                        " nothing installed, nothing recorded.",
+                        result.stderr,
+                    )
+                    self.assertEqual([], self.calls(home), "no download, no mise call")
+                    self.assertEqual(
+                        ["package.json"],
+                        [path.name for path in (store / "profiles/thak").iterdir()],
+                        "nothing made under the profile",
+                    )
+                    self.assertFalse((dsh_home / "dsh").exists(), "nothing unpacked, no current link")
+                    self.assertFalse((dsh_home / "bin").exists(), "no wrapper")
+                    self.assertFalse((home / ".agents").exists(), "nothing recorded")
+
+    def test_a_plugin_directory_that_resolves_outside_dsh_home_is_refused_and_one_inside_is_linked_physically(self):
+        # Round-3 finding f1 s6: -d follows a symlink, so a plugins/omp-gateway linked to a directory outside DSH_HOME
+        # was accepted and a turn would import whatever stands there. The plugin's physical path must lie under
+        # DSH_HOME's; a link to another directory under DSH_HOME is accepted and the link is written to that physical
+        # directory.
+        for case in ("outside DSH_HOME", "under DSH_HOME"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                payload, digest = self.archive(home)
+                plugin = dsh_home / "plugins/omp-gateway"
+                real = home / "external-plugin" if case == "outside DSH_HOME" else dsh_home / "plugins/omp-gateway-real"
+                shutil.move(plugin, real)
+                os.symlink(real, plugin)
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+                if case == "outside DSH_HOME":
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(
+                        f"update_deepseek_harness: {plugin} resolves to {real.resolve()}, outside {dsh_home.resolve()};"
+                        " the thak profile loads the dsh-omp-gateway plugin only from a directory under DSH_HOME"
+                        " (chezmoi apply deploys it there; move the link aside and rerun make update); nothing"
+                        " installed, nothing recorded.",
+                        result.stderr,
+                    )
+                    self.assertEqual([], self.calls(home), "no download, no mise call")
+                    self.assertEqual(
+                        ["package.json"],
+                        [path.name for path in (dsh_home / "profiles/thak").iterdir()],
+                        "nothing under the profile changed",
+                    )
+                    self.assertEqual(real, Path(os.readlink(plugin)), "the plugin link as it was")
+                    self.assertEqual(["package.json"], [path.name for path in real.iterdir()], "nothing written there")
+                    self.assertFalse((dsh_home / "dsh").exists(), "nothing unpacked, no current link")
+                    self.assertFalse((dsh_home / "bin").exists(), "no wrapper")
+                    self.assertFalse((home / ".agents").exists(), "nothing recorded")
+                else:
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    link = self.plugin_link(dsh_home)
+                    self.assertEqual("../../../plugins/omp-gateway-real", os.readlink(link), "the physical directory")
+                    self.assertEqual(real.resolve(), link.resolve())
+                    self.assertEqual('{"name": "dsh-omp-gateway"}\n', (link / "package.json").read_text())
+
+    def test_a_relink_that_fails_leaves_the_previous_link_standing_and_names_the_state(self):
+        # Round-3 finding f2 s4: ln -sfn unlinked the previous link before it failed, so the live profile lost its
+        # plugin, and the failure test injected before the unlink. The link is now a temporary beside the name renamed
+        # into place: a failure at the temporary (node_modules read-only) or at the rename (the python3 rename call
+        # fails) leaves the previous link as it was, by inode, with no temporary beside it, and exits 1 naming the state.
+        rename_fails = (
+            'python3() { case "${@: -1}" in */node_modules/dsh-omp-gateway) return 77 ;; esac; command python3 "$@"; }'
+        )
+        for case in ("the rename fails", "node_modules is read-only"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                if case == "node_modules is read-only" and os.geteuid() == 0:
+                    self.skipTest("root writes into a read-only directory")
+                home, dsh_home = self.opted_in_home(directory)
+                payload, digest = self.archive(home)
+                tree, text = self.canonical_install(dsh_home)
+                wrapper, wrapper_text = self.own_wrapper(dsh_home)
+                _, receipt = self.receipt(home, self.TAG)
+                link = self.plugin_link(dsh_home)
+                link.parent.mkdir()
+                os.symlink("../../../plugins/omp-gateway", link)
+                before = os.lstat(link)
+                try:
+                    if case == "node_modules is read-only":
+                        link.parent.chmod(0o555)
+                    prelude = rename_fails if case == "the rename fails" else None
+                    result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+                finally:
+                    link.parent.chmod(0o755)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"DeepSeek harness {self.TAG} is already installed", result.stdout)
+                failed = (
+                    f"could not be renamed into place from {link}.tmp."
+                    if case == "the rename fails"
+                    else f"could not be written (its temporary {link}.tmp."
+                )
+                self.assertIn(f"update_deepseek_harness: the plugin link {link} {failed}", result.stderr)
+                self.assertIn("the previous link is untouched", result.stderr)
+                self.assertIn("the receipt and the older trees are kept.", result.stderr)
+                self.assertTrue(link.is_symlink(), "the previous link stands")
+                self.assertEqual("../../../plugins/omp-gateway", os.readlink(link))
+                self.assertEqual('{"name": "dsh-omp-gateway"}\n', (link / "package.json").read_text(), "and resolves")
+                self.assertEqual(before.st_ino, os.lstat(link).st_ino, "the same inode: never unlinked")
+                self.assertEqual(["dsh-omp-gateway"], [path.name for path in link.parent.iterdir()], "no temporary")
+                self.assertEqual([], self.calls(home), "no download, no mise call")
+                self.assertEqual(
+                    receipt, (home / ".agents/.installed-manifest.json").read_text(), "the receipt as it was"
+                )
+                self.assertEqual(wrapper_text, wrapper.read_text(), "the wrapper as it was")
+                self.assertEqual(text, (tree / "package.json").read_text(), "the tree as it was")
+
+    def test_a_real_directory_at_the_link_name_is_refused_and_left_alone_on_the_already_installed_exit(self):
+        # A rename onto a real directory would move the temporary inside it, so a directory at the link name is refused
+        # before anything is written and its contents stay as they were. The U227b refusal test covers the fresh host;
+        # this is the installed host, whose rows are read before the receipt.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            tree, text = self.canonical_install(dsh_home)
+            wrapper, wrapper_text = self.own_wrapper(dsh_home)
+            _, receipt = self.receipt(home, self.TAG)
+            link = self.plugin_link(dsh_home)
+            link.mkdir(parents=True)
+            (link / "index.js").write_text("// the operator's own\n")
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"update_deepseek_harness: {link} is not a symlink; the step refuses to replace it (move it aside and"
+                " rerun make update); nothing installed, nothing recorded.",
+                result.stderr,
+            )
+            self.assertNotIn("is already installed", result.stdout, "refused before the receipt is read")
+            self.assertTrue(link.is_dir() and not link.is_symlink(), "the directory as it was")
+            self.assertEqual("// the operator's own\n", (link / "index.js").read_text())
+            self.assertEqual(["index.js"], [path.name for path in link.iterdir()], "nothing moved inside it")
+            self.assertEqual(["dsh-omp-gateway"], [path.name for path in link.parent.iterdir()], "no temporary")
+            self.assertEqual([], self.calls(home), "no download, no mise call")
+            self.assertEqual(receipt, (home / ".agents/.installed-manifest.json").read_text(), "the receipt as it was")
+            self.assertEqual(wrapper_text, wrapper.read_text(), "the wrapper as it was")
+            self.assertEqual(text, (tree / "package.json").read_text(), "the tree as it was")
 
     def receipt(self, home: Path, version: str, paths: list[str] | None = None) -> tuple[Path, str]:
         """The installed-manifest receipt recording the step at `version` with `paths` (this layout's two unless a test
@@ -1732,7 +1918,7 @@ class DeepseekHarnessTest(unittest.TestCase):
         # is the plugin link (U227b) and behaves; in the first case the third call, the restore, behaves, in the
         # second it fails the same way.
         unlink_and_fail = 'command rm -f "${@: -1}"; return 1'
-        spare_plugin_link = 'case "${@: -1}" in */node_modules/dsh-omp-gateway) command ln "$@"; return ;; esac'
+        spare_plugin_link = 'case "${@: -1}" in */node_modules/dsh-omp-gateway.tmp.*) command ln "$@"; return ;; esac'
         for case in ("the restore succeeds", "the restore fails too"):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
                 home, dsh_home = self.opted_in_home(directory)

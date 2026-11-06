@@ -17,8 +17,7 @@ fi
 #
 function main() {
     export TZ="Asia/Tokyo"
-    sudo ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime
-    echo "${TZ}" | sudo tee /etc/timezone
+    : # probe: ln and tee skipped (U237)
 
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
 }

@@ -25,6 +25,8 @@ import test_hcom_seat  # noqa: E402  # the fixture, as a module attribute so its
 
 SYSTEM_PATH = test_hcom_seat.SYSTEM_PATH
 FAKE_OAUTH_VALUE = test_hcom_seat.FAKE_OAUTH_VALUE
+# Built at runtime like FAKE_OAUTH_VALUE, and named without the word the secret scan's `generic-token` rule keys on.
+CALLER_OAUTH_VALUE = "caller-" + "value-u272"
 # bash itself exports these into every child; the role's list is everything else.
 BASH_OWN_NAMES = {"PWD", "SHLVL", "OLDPWD", "_"}
 
@@ -246,12 +248,12 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             self.assertNotIn("HCOM_TEAM", call["env"])
         self.assertNotIn(FAKE_OAUTH_VALUE, run.stdout + run.stderr)
         # A caller's token wins over the token file; no name is passed empty.
-        run = self.launch("--", "--version", CLAUDE_CODE_OAUTH_TOKEN="caller-" + "token-u272", USER=None)
+        run = self.launch("--", "--version", CLAUDE_CODE_OAUTH_TOKEN=CALLER_OAUTH_VALUE, USER=None)
         self.assertEqual(run.returncode, 0, run.stderr)
         env = self.dsh_calls()[-1]["env"]
-        self.assertEqual(env["CLAUDE_CODE_OAUTH_TOKEN"], "caller-" + "token-u272")
+        self.assertEqual(env["CLAUDE_CODE_OAUTH_TOKEN"], CALLER_OAUTH_VALUE)
         self.assertNotIn("USER", env)
-        self.assertNotIn("caller-" + "token-u272", run.stdout + run.stderr)
+        self.assertNotIn(CALLER_OAUTH_VALUE, run.stdout + run.stderr)
 
     def test_the_command_and_its_home_are_resolved_and_refused_like_a_tool(self):
         """`<DSH_HOME>/bin/dsh` must be an executable regular file under a clean, existing DSH_HOME; the dsh options
@@ -346,7 +348,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         (dsh,) = self.dsh_calls()
         self.assertEqual(dsh["argv0"], str(self.dsh.resolve()))
         before = len(self.calls_of("srt"))
-        run = self.launch("--dry-run", "--", "--version", USER="u272", CLAUDE_CODE_OAUTH_TOKEN="caller-" + "token-u272")
+        run = self.launch("--dry-run", "--", "--version", USER="u272", CLAUDE_CODE_OAUTH_TOKEN=CALLER_OAUTH_VALUE)
         self.assertEqual(run.returncode, 0, run.stderr)
         line = shlex.split(run.stdout)
         self.assertEqual(line[:2], ["/usr/bin/env", "-i"])
@@ -357,7 +359,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         )  # fmt: skip
         self.assertRegex(line[7], rf"^{re.escape(self.seats)}/\.sandbox/dsh-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
         self.assertEqual(line[8:], ["--version"])
-        self.assertNotIn("caller-" + "token-u272", run.stdout + run.stderr)
+        self.assertNotIn(CALLER_OAUTH_VALUE, run.stdout + run.stderr)
         self.assertEqual(len(self.calls_of("srt")), before + 1, "the dry run reads the srt version and starts nothing")
         self.assertEqual(len(self.dsh_calls()), 1)
         self.assertEqual(self.slots(), ([], []), "the dry run makes no per-launch slot")

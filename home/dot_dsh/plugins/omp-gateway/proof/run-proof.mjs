@@ -19,10 +19,10 @@ const pingPatch = join(proofDir, 'ping-tool.patch.yml')
 
 /** The turns a `--case` can select; `model` overrides the profile's default model for that turn. */
 const CASES = {
-  pong: { title: 'turn 1: pong', args: ['Reply with the single word pong.'] },
-  ping: { title: 'turn 2: ping tool (--json)', args: ['--patch', pingPatch, '--json', 'Call the ping tool with word=pong and nothing else.'] },
-  loop3: { title: 'turn 3: three-step tool loop (--json)', args: ['--patch', pingPatch, '--json', 'Call the ping tool with word=one, then call it again with word=two, then reply with the single word done.'] },
-  siwc: { title: 'turn 4: SIWC model id', args: ['Reply with the single word pong.'], model: { provider: 'openai-siwc', model: 'gpt-6-astra' } },
+  pong: { title: 'turn 1: pong', args: ['Reply with the single word pong.'], expect: out => out.stdout.trim().endsWith('pong') },
+  ping: { title: 'turn 2: ping tool (--json)', args: ['--patch', pingPatch, '--json', 'Call the ping tool with word=pong and nothing else.'], expect: out => /"type":"tool_call".*"tool":"ping".*"word":"pong"/.test(out.stdout) && /"type":"tool_result".*"status":"completed"/.test(out.stdout) },
+  loop3: { title: 'turn 3: three-step tool loop (--json)', args: ['--patch', pingPatch, '--json', 'Call the ping tool with word=one, then call it again with word=two, then reply with the single word done.'], expect: out => (out.stdout.match(/"type":"tool_call"/g) ?? []).length >= 2 && /"word":"one"/.test(out.stdout) && /"word":"two"/.test(out.stdout) && /"type":"final".*done/.test(out.stdout) },
+  siwc: { title: 'turn 4: SIWC model id', args: ['Reply with the single word pong.'], model: { provider: 'openai-siwc', model: 'gpt-6-astra' }, expect: out => out.status !== 0 && /No available model matches "openai-siwc\/gpt-6-astra"/.test(out.stderr + out.stdout) },
 }
 
 const flags = parseFlags(process.argv.slice(2))
@@ -67,12 +67,17 @@ console.log(`cases=${selected.join(',')}`)
 const results = selected.map(id => {
   const turnCase = CASES[id]
   const overlay = turnCase.model === undefined ? [] : ['--patch', modelPatch(id, turnCase.model)]
-  return turn(turnCase.title, ['--profile', 'omp-proof', ...overlay, ...turnCase.args])
+  const result = turn(turnCase.title, ['--profile', 'omp-proof', ...overlay, ...turnCase.args])
+  // A passing exit status alone proved nothing (an audit ran the proof with --dsh /usr/bin/true and it passed), so
+  // each case states what its output must hold.
+  const expected = turnCase.expect(result)
+  console.log(`--- expected output ${expected ? 'present' : 'ABSENT'}`)
+  return { ...result, expected }
 })
 
 console.log('\n=== stub log (one line per answered request) ===')
 console.log(existsSync(stubLog) ? readFileSync(stubLog, 'utf8').trimEnd() : '(no stub log: the gateway was not the stub)')
-process.exitCode = results.every(result => result.status === 0) ? 0 : 1
+process.exitCode = results.every(result => result.expected) ? 0 : 1
 
 function modelPatch(id, model) {
   const path = join(home, `${id}-model.patch.yml`)

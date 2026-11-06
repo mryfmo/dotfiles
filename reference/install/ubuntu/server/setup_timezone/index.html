@@ -5472,7 +5472,7 @@
 
 
 <h1 id="installubuntuserversetup_timezonesh">install/ubuntu/server/setup_timezone.sh<a class="headerlink" href="#installubuntuserversetup_timezonesh" title="Permanent link">&para;</a></h1>
-<p>Points the system timezone at <code>Asia/Tokyo</code> and installs <code>tzdata</code> non-interactively.</p>
+<p>Points <code>/etc/localtime</code> and <code>/etc/timezone</code> at <code>Asia/Tokyo</code> and installs <code>tzdata</code> non-interactively, once. It does nothing on a GitHub runner, because replacing <code>/etc/localtime</code> there stalled every server bootstrap leg until the 35-minute cancel (regime-cutover U254, bisected by PRs 681 to 690) and the runner's clock is not the kit's to set. It does nothing when <code>/etc/localtime</code> already resolves to the zone, so a second run on a host changes no file.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/ubuntu/server/setup_timezone.sh</code></li>
@@ -5481,6 +5481,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>current_zone_file</code></li>
 <li><code>main</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
@@ -5489,8 +5490,11 @@
 <span class="c1"># @file install/ubuntu/server/setup_timezone.sh</span>
 <span class="c1"># @brief Configure the server timezone.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Points the system timezone at `Asia/Tokyo` and installs `tzdata`</span>
-<span class="c1">#   non-interactively.</span>
+<span class="c1">#   Points `/etc/localtime` and `/etc/timezone` at `Asia/Tokyo` and installs `tzdata` non-interactively, once.</span>
+<span class="c1">#   It does nothing on a GitHub runner, because replacing `/etc/localtime` there stalled every server bootstrap</span>
+<span class="c1">#   leg until the 35-minute cancel (regime-cutover U254, bisected by PRs 681 to 690) and the runner's clock is not</span>
+<span class="c1">#   the kit's to set. It does nothing when `/etc/localtime` already resolves to the zone, so a second run on a host</span>
+<span class="c1">#   changes no file.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -5499,11 +5503,39 @@
 <span class="k">fi</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Apply the repository's preferred timezone configuration.</span>
+<span class="c1"># @description Print the zone file `/etc/localtime` resolves to.</span>
+<span class="c1"># @stdout The resolved path, `/usr/share/zoneinfo/Asia/Tokyo` on a configured host.</span>
+<span class="c1"># @exitcode 1 The link cannot be resolved; the caller reads this as an unknown zone.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>current_zone_file<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>readlink<span class="w"> </span>-f<span class="w"> </span>/etc/localtime<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Apply the repository's preferred timezone configuration, or print why it is left as it is.</span>
+<span class="c1"># @set TZ string `Asia/Tokyo`, exported for the rest of the bootstrap.</span>
+<span class="c1"># @stdout One line: `timezone: unchanged on a GitHub runner ...`, `timezone: already &lt;TZ&gt;`, or `timezone: setting</span>
+<span class="c1">#   &lt;TZ&gt; (was &lt;zone file or unknown&gt;)` followed by the commands' own output.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">export</span><span class="w"> </span><span class="nv">TZ</span><span class="o">=</span><span class="s2">"Asia/Tokyo"</span>
-<span class="w">    </span>sudo<span class="w"> </span>ln<span class="w"> </span>-snf<span class="w"> </span>/usr/share/zoneinfo/<span class="si">${</span><span class="nv">TZ</span><span class="si">}</span><span class="w"> </span>/etc/localtime
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">GITHUB_ACTIONS</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"timezone: unchanged on a GitHub runner (GITHUB_ACTIONS is set; replacing /etc/localtime stalls the runner, regime-cutover U254)"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>current_zone_file
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">current_zone_file</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>current_zone_file<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">current_zone_file</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current_zone_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*/<span class="s2">"</span><span class="si">${</span><span class="nv">TZ</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow zone-is-the-path-tail (the file was resolved by readlink -f above; tzdata names a zone by its path under zoneinfo, so the tail is the zone, not a path identity)</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"timezone: already </span><span class="si">${</span><span class="nv">TZ</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"timezone: setting </span><span class="si">${</span><span class="nv">TZ</span><span class="si">}</span><span class="s2"> (was </span><span class="si">${</span><span class="nv">current_zone_file</span><span class="k">:-</span><span class="nv">unknown</span><span class="si">}</span><span class="s2">)"</span>
+<span class="w">    </span>sudo<span class="w"> </span>ln<span class="w"> </span>-snf<span class="w"> </span><span class="s2">"/usr/share/zoneinfo/</span><span class="si">${</span><span class="nv">TZ</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>/etc/localtime
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TZ</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>/etc/timezone
 
 <span class="w">    </span>sudo<span class="w"> </span><span class="nv">DEBIAN_FRONTEND</span><span class="o">=</span>noninteractive<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>tzdata

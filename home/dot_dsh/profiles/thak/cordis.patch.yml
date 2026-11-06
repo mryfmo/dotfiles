@@ -6,6 +6,10 @@
   disabled: true
 - id: llm-deepseek-account
   disabled: true
+- id: web-search-deepseek
+  disabled: true
+- id: web-deepseek-api
+  disabled: true
 - id: bash-sandbox
   disabled: true
 - id: agent-default-model

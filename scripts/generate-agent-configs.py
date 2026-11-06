@@ -2246,7 +2246,8 @@ def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
     """The kit's DeepSeek harness profile (U172, U227b): its package.json and the cordis patch over the base bundles.
 
     The rows are addressed by the ids the base bundle mounts them under: the session-log upload off, the official API
-    adapters and the harness's own command sandbox disabled (the seat boundary stays outside the harness), the agent's
+    adapters, the two web rows that read a DeepSeek API key from the environment (U288 row d20) and the harness's own
+    command sandbox disabled (the seat boundary stays outside the harness), the agent's
     default model as the interactive profile's dsh model on the gateway's provider, and two plugins inserted: the
     omp-gateway adapter (the package the profile's package.json links and the updater symlinks into node_modules; its
     config names the gateway command and the distinct dsh models of every profile, each under the provider) and the
@@ -2281,6 +2282,10 @@ def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
         "- id: llm-deepseek",
         "  disabled: true",
         "- id: llm-deepseek-account",
+        "  disabled: true",
+        "- id: web-search-deepseek",
+        "  disabled: true",
+        "- id: web-deepseek-api",
         "  disabled: true",
         "- id: bash-sandbox",
         "  disabled: true",

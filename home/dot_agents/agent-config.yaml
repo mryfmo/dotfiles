@@ -906,9 +906,9 @@ claude:
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
-      acp-broker: cd58bce6a2923422bf97c152f74a4ace49f851758d4dfa8bdbfe8db536a968d3
-      acp-relay.py: f4c3a2779e332936cbfb44f151f9b4f8cd759c526e030c5fbda5d1be03c3e055
-      acp-seat: 9fe73e7b148d24b7c27f575a5f62ee37c1b2dd41084d723009642b9a90fdd47f
+      acp-broker: 34bf053c7a77b556696c63b6254cb0bf387728593b4ddc032ddcd8341d13b923
+      acp-relay.py: d2b4852980affd6b536666fb46d6caa736def9f48924a608bf6f81440124a6b9
+      acp-seat: 4b1e50a5b7c9464c2b28914961847d49771fbc9bdbaf70e72cecf049a41370dd
       intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the

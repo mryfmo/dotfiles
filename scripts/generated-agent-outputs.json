@@ -412,21 +412,21 @@
       "target": ".local/bin/common/acp-broker",
       "kind": "file",
       "executable": true,
-      "sha256": "cd58bce6a2923422bf97c152f74a4ace49f851758d4dfa8bdbfe8db536a968d3"
+      "sha256": "34bf053c7a77b556696c63b6254cb0bf387728593b4ddc032ddcd8341d13b923"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-relay.py",
       "target": ".local/bin/common/acp-relay.py",
       "kind": "file",
       "executable": true,
-      "sha256": "f4c3a2779e332936cbfb44f151f9b4f8cd759c526e030c5fbda5d1be03c3e055"
+      "sha256": "d2b4852980affd6b536666fb46d6caa736def9f48924a608bf6f81440124a6b9"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-seat",
       "target": ".local/bin/common/acp-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "9fe73e7b148d24b7c27f575a5f62ee37c1b2dd41084d723009642b9a90fdd47f"
+      "sha256": "4b1e50a5b7c9464c2b28914961847d49771fbc9bdbaf70e72cecf049a41370dd"
     },
     {
       "source": "home/dot_local/bin/common/executable_brief-check.py",

@@ -126,21 +126,30 @@ class Relay:
         self.threads = []
 
     def serve(self, conn):
-        """Start the handler for `conn` and copy bytes both ways until the handler exits; then close `conn`."""
-        try:
-            child = subprocess.Popen(
-                self.handler, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=None, close_fds=True
-            )
-        except OSError as exc:
-            print(f"{LEVER}: cannot start the connection handler {self.handler[0]}: {exc}", file=sys.stderr)
+        """Start the handler for `conn` and copy bytes both ways until the handler exits; then close `conn`.
+        The start and the registration happen under the one lock `stop` takes (verdict U343d-136fbe0a P2 `:250`):
+        a stop that began first turns the connection away unstarted, and a handler that was started is in the
+        table before `stop` reads it, so no handler escapes the termination."""
+        with self.lock:
+            if self.stopping:
+                child = None
+            else:
+                try:
+                    child = subprocess.Popen(
+                        self.handler, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=None, close_fds=True
+                    )
+                except OSError as exc:
+                    print(f"{LEVER}: cannot start the connection handler {self.handler[0]}: {exc}", file=sys.stderr)
+                    child = None
+                else:
+                    self.children[child.pid] = child
+        if child is None:
             try:
                 conn.sendall(b"acp-broker: refused: cannot start the connection handler\n")
             except OSError:
                 pass
             conn.close()
             return
-        with self.lock:
-            self.children[child.pid] = child
         sending = [True]
 
         def to_child():
@@ -241,12 +250,15 @@ class Relay:
         return 0 if self.remove_socket() else 2
 
     def stop(self):
-        """Terminate every live handler and wait for each: its trap ends omp, logs the exit and removes its slot."""
+        """Terminate every live handler and wait for each: its trap ends omp, logs the exit and removes its slot.
+        The stopping flag is set under the lock before the table is read, so a `serve` that passed the flag has
+        its handler in the table."""
         try:
             self.listener.close()
         except OSError:
             pass
         with self.lock:
+            self.stopping = True
             children = list(self.children.values())
         for child in children:
             try:

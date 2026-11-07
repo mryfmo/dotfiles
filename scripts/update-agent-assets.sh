@@ -1790,8 +1790,9 @@ function dsh_prune_older() {
 #   Every producer is read with its status (standing order 21): `type -P srt` (the kit pins
 #   npm:@anthropic-ai/sandbox-runtime in home/dot_mise/config.toml; it is on PATH under mise), `mise which pnpm` and
 #   `mise which node` under MISE_EXEC_AUTO_INSTALL=false (nothing is installed on the step's behalf, verdicts/U276b),
-#   pwd -P of HOME, of /tmp, of the directory and of the store, resolve_dotfiles_source_dir and `git rev-parse
-#   --git-common-dir` for the checkout's git directories, and srt's own exit. The settings file is created here
+#   pwd -P of HOME, of /tmp, of /private/tmp where it is a directory, of the directory and of the store,
+#   resolve_dotfiles_source_dir and `git rev-parse --git-common-dir` for the checkout's git directories, and srt's own
+#   exit. The settings file is created here
 #   (umask 077, noclobber) at a path that holds nothing and is not a link, and is removed after the run; a path that
 #   exists is refused, never reused. The read denies are the rows hcom-seat's dsh role denies for every seat
 #   (seat_settings_render, by the same spellings, physical): ~/.ssh, ~/.gnupg, ~/.aws, ~/.netrc, ~/.docker, ~/.kube,
@@ -1799,9 +1800,11 @@ function dsh_prune_older() {
 #   sources, ~/Workspace, ~/.local/state/omp-seats, ~/.claude and ~/.claude.json, then the dotfiles checkout and its git
 #   common directory. The write denies are the paths srt 0.0.81 grants on its own when `denyWrite` is empty
 #   (sandbox-utils.js SANDBOX_OWN_WRITE_PATHS and HOME_CONVENIENCE_WRITE_DIRS; hcom-seat names the same three as
-#   `srt_tmp_roots` and `~/.npm/_logs`): `/tmp/claude`, its physical spelling (`/private/tmp/claude` on macOS) and
-#   `~/.npm/_logs`, each in pwd -P form (regime-cutover U322b; `~/.claude/debug`, the fourth, srt drops itself under
-#   the `~/.claude` read deny). Every path in the settings is clean (components of [A-Za-z0-9._@+-], none . or .., no
+#   `srt_tmp_roots` and `~/.npm/_logs`): `/tmp/claude`, its pwd -P spelling where /tmp is a link (macOS:
+#   `/private/tmp/claude`), srt's second literal `/private/tmp/claude` wherever `/private/tmp` is a directory (a Linux
+#   host that has one; U322d), each once, and `~/.npm/_logs` in HOME's pwd -P form (regime-cutover U322b;
+#   `~/.claude/debug`, the fourth, srt drops itself under the `~/.claude` read deny). Every path in the settings is
+#   clean (components of [A-Za-z0-9._@+-], none . or .., no
 #   trailing slash: srt reads a settings path as a pattern) and every host matches [A-Za-z0-9.-]; the JSON is written
 #   by the shell and no JSON tool runs.
 # @description
@@ -1825,7 +1828,7 @@ function dsh_prune_older() {
 # @exitcode * The command's exit status under srt, passed through.
 #
 function build_under_srt() {
-    local dir="$1" settings="$2" hosts=() host srt pnpm_bin node_bin home_real tmp_real dir_real store store_real source_root source_real common common_real path row deny=() deny_write=() write_json='' deny_json='' deny_write_json='' hosts_json='' json status=0
+    local dir="$1" settings="$2" hosts=() host srt pnpm_bin node_bin home_real tmp_real tmp_second tmp_second_real='' dir_real store store_real source_root source_real common common_real path row spelling spellings=() deny=() deny_write=() write_json='' deny_json='' deny_write_json='' hosts_json='' json status=0
     shift 2
     while [ $# -gt 0 ] && [ "$1" != -- ]; do
         hosts+=("$1")
@@ -1889,6 +1892,19 @@ function build_under_srt() {
         printf 'build_under_srt: the physical path of %s could not be read, which the deny of srt'\''s own %s needs; nothing run.\n' "${deny_write[0]%/*}" "${deny_write[0]}" >&2
         return 1
     }
+    # srt's second literal spelling of that root is `/private` before the same word (SANDBOX_OWN_WRITE_PATHS), granted
+    # wherever it exists: on macOS it is the physical /tmp read above; on a Linux host that has a /private/tmp
+    # directory it is a third root unless denied (verdicts/U322c P1 :1940). Where the directory exists, its physical
+    # path is read as well and both spellings join the deny below. The predicate is spelled `test` so that the module's
+    # tests can stand a Linux host's answer in for this host's (a function shadows `test`; bash 3.2 crashes on one
+    # that shadows `[`).
+    tmp_second="/private${deny_write[0]%/*}"
+    if test -d "${tmp_second}"; then
+        tmp_second_real="$(cd "${tmp_second}" && pwd -P)" || {
+            printf 'build_under_srt: the physical path of %s could not be read, which the deny of srt'\''s own %s/claude needs; nothing run.\n' "${tmp_second}" "${tmp_second}" >&2
+            return 1
+        }
+    fi
     if [ -L "${dir}" ] || [ ! -d "${dir}" ] || [ ! -O "${dir}" ]; then
         printf 'build_under_srt: %s is not a directory of this user, or is a symlink; nothing run.\n' "${dir}" >&2
         return 1
@@ -1936,10 +1952,17 @@ function build_under_srt() {
     done
     deny+=("${source_real}" "${common_real}")
     # srt 0.0.81's implicit write grants, closed by name (hcom-seat's form for the operator's Claude Code state, U190b):
-    # its own TMPDIR root in both spellings where they differ, and npm's log directory under the home.
-    if [ "${tmp_real}" != "${deny_write[0]%/*}" ]; then # lint-comparisons: allow a spelling test, pwd -P of /tmp against its logical name
-        deny_write+=("${tmp_real}/claude")
+    # its own TMPDIR root in every spelling the kernel may see, each once, and npm's log directory under the home.
+    spellings=("${tmp_real}/claude")
+    if [ -n "${tmp_second_real}" ]; then
+        spellings+=("${tmp_second}/claude" "${tmp_second_real}/claude")
     fi
+    for spelling in "${spellings[@]}"; do
+        for row in "${deny_write[@]}"; do
+            [ "${row}" != "${spelling}" ] || continue 2
+        done
+        deny_write+=("${spelling}")
+    done
     deny_write+=("${home_real}/.npm/_logs")
     for path in "${dir_real}" "${store_real}" "${deny[@]}" "${deny_write[@]}"; do
         if [[ ! ${path} =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || [[ /${path}/ == */./* ]] || [[ /${path}/ == */../* ]]; then # lint-comparisons: allow a component test on one path, no path compare

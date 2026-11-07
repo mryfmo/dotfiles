@@ -875,13 +875,38 @@ exit 0
         return [f"{home_real}/{row}" for row in self.DENY_ROWS] + [str(ROOT.resolve()), str(Path(common).resolve())]
 
     def expected_deny_write(self, home: Path) -> list[str]:
-        """srt 0.0.81's implicit write grants in physical form (U322b): /tmp/claude, its spelling under the physical
-        /tmp where that is a link (macOS: /private/tmp/claude), and ~/.npm/_logs under the physical HOME."""
+        """srt 0.0.81's implicit write grants in physical form (U322b, U322d): /tmp/claude, its spelling under the
+        physical /tmp where that is a link (macOS: /private/tmp/claude), srt's second literal /private/tmp/claude and
+        its physical form wherever /private/tmp is a directory, each once, and ~/.npm/_logs under the physical HOME."""
         rows = ["/tmp/claude"]
-        tmp_real = Path("/tmp").resolve()
-        if tmp_real != Path("/tmp"):  # lint-comparisons: allow a spelling test for a second, physical /tmp
-            rows.append(f"{tmp_real}/claude")
+        spellings = [f"{Path('/tmp').resolve()}/claude"]
+        if Path("/private/tmp").is_dir():
+            spellings += ["/private/tmp/claude", f"{Path('/private/tmp').resolve()}/claude"]
+        for spelling in spellings:
+            if spelling not in rows:
+                rows.append(spelling)
         return rows + [f"{home.resolve()}/.npm/_logs"]
+
+    def linux_shaped_tmp(self, home: Path, *, second: str | None, second_real: str = "/private/tmp") -> str:
+        """A prelude for run_build_under_srt that answers as a Linux host would (U322d): `pwd -P` of /tmp is /tmp (no
+        link), and /private/tmp is `second`: None for a host without one (`test -d` says no), else a fixture directory
+        under the scratch HOME that `cd /private/tmp` enters and whose `pwd -P` answers `second_real` (/private/tmp for
+        a directory of its own, /tmp for a link to /tmp). The three stand-ins are shell functions, as the module's
+        other producer injections are; everything else runs the builtin."""
+        fixture = home / "private-tmp"
+        fixture.mkdir(exist_ok=True)
+        pwd = (
+            'pwd() { if [ "${1-}" = -P ]; then case "$PWD" in /tmp) printf "/tmp\\n"; return 0 ;;'
+            f' "{fixture}") printf "%s\\n" "{second_real}"; return 0 ;; esac; fi; builtin pwd "$@"; }}; '
+        )
+        if second is None:
+            test = (
+                'test() { if [ "${1-}" = -d ] && [ "${2-}" = /private/tmp ]; then return 1; fi; builtin test "$@"; }; '
+            )
+            return pwd + test
+        test = 'test() { if [ "${1-}" = -d ] && [ "${2-}" = /private/tmp ]; then return 0; fi; builtin test "$@"; }; '
+        cd = f'cd() {{ if [ "${{1-}}" = /private/tmp ]; then builtin cd "{fixture}"; return; fi; builtin cd "$@"; }}; '
+        return pwd + test + cd
 
     def archive(
         self, home: Path, version: str | None = None, lockfile: str | None = "lockfileVersion: '9.0'\n"
@@ -3407,6 +3432,104 @@ exit 0
                         self.assertIn(f"build_under_srt: {message}", result.stderr)
                         self.assertEqual([], self.srt_calls(home), "no srt run")
                     self.assertFalse(settings.exists(), "no settings file left")
+
+    def test_build_under_srt_denies_srt_s_second_temporary_spelling_where_private_tmp_is_a_directory(self):
+        # verdicts/U322c P1 (:1940): on a Linux host whose /private/tmp is a directory of its own, srt 0.0.81 grants
+        # /private/tmp/claude (SANDBOX_OWN_WRITE_PATHS names it literally and the Linux sandbox binds what exists),
+        # while `pwd -P` of /tmp answers /tmp, so the round-2 deny named one spelling and left a third root. Both
+        # spellings are denied now, each once: a /private/tmp that is a link to /tmp resolves to the first spelling and
+        # adds nothing twice.
+        for case, second_real in (("a directory of its own", "/private/tmp"), ("a link to /tmp", "/tmp")):
+            with self.subTest(private_tmp=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                build = dsh_home / "dsh/build"
+                build.mkdir(parents=True)
+                settings = dsh_home / "dsh/build.srt.json"
+                prelude = self.linux_shaped_tmp(home, second="fixture", second_real=second_real)
+                result = self.run_build_under_srt(
+                    home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                [seen] = self.settings_seen(home)
+                self.assertEqual(
+                    ["/tmp/claude", "/private/tmp/claude", f"{home.resolve()}/.npm/_logs"],
+                    seen["filesystem"]["denyWrite"],
+                )
+                self.assertFalse(settings.exists(), "the settings file is removed after the run")
+
+    def test_build_under_srt_adds_no_second_spelling_where_private_tmp_is_absent(self):
+        # The other Linux shape: no /private/tmp at all. The deny names /tmp/claude and the npm logs, and no /private
+        # spelling (a path srt would bind a placeholder over, and a word this file must not carry as a literal).
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            build = dsh_home / "dsh/build"
+            build.mkdir(parents=True)
+            settings = dsh_home / "dsh/build.srt.json"
+            prelude = self.linux_shaped_tmp(home, second=None)
+            result = self.run_build_under_srt(
+                home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            [seen] = self.settings_seen(home)
+            self.assertEqual(["/tmp/claude", f"{home.resolve()}/.npm/_logs"], seen["filesystem"]["denyWrite"])
+            self.assertEqual([], [row for row in seen["filesystem"]["denyWrite"] if row.startswith("/private/tmp")])
+
+    def test_build_under_srt_refuses_when_a_resolver_of_the_deny_list_fails_naming_it(self):
+        # verdicts/U322c P2 (:1914): the resolver reads the pwd injections above do not reach. The `cd` of the deny
+        # root's parent (the first spelling's read fails at its cd, not its pwd), the `pwd -P` of /private/tmp (the
+        # second spelling's producer, on a Linux-shaped host where the directory exists) and resolve_dotfiles_source_dir
+        # (the checkout whose git directories the deny list names) each refuse by name; no settings file is written and
+        # no srt runs.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            build = dsh_home / "dsh/build"
+            build.mkdir(parents=True)
+            settings = dsh_home / "dsh/build.srt.json"
+            fixture = home / "private-tmp"
+            cases = (
+                (
+                    "cd of /tmp",
+                    'cd() { if [ "${1-}" = /tmp ]; then return 1; fi; builtin cd "$@"; }',
+                    "the physical path of /tmp could not be read, which the deny of srt's own /tmp/claude needs;"
+                    " nothing run.",
+                ),
+                (
+                    "pwd -P of /private/tmp",
+                    self.linux_shaped_tmp(home, second="fixture")
+                    + f'pwd() {{ if [ "${{1-}}" = -P ] && [ "$PWD" = "{fixture}" ]; then return 1; fi;'
+                    ' if [ "${1-}" = -P ] && [ "$PWD" = /tmp ]; then printf "/tmp\\n"; return 0; fi;'
+                    ' builtin pwd "$@"; }',
+                    "the physical path of /private/tmp could not be read, which the deny of srt's own"
+                    " /private/tmp/claude needs; nothing run.",
+                ),
+                (
+                    "resolve_dotfiles_source_dir",
+                    'resolve_dotfiles_source_dir() { printf "%s\\n" "$HOME/not-a-checkout"; return 1; }',
+                    "the dotfiles checkout could not be resolved, so its git directories cannot be denied; nothing run.",
+                ),
+            )
+            for case, prelude, message in cases:
+                with self.subTest(producer=case):
+                    for leftover in (home / "calls", home / "srt-env", home / "srt-settings.jsonl"):
+                        leftover.unlink(missing_ok=True)
+                    result = self.run_build_under_srt(
+                        home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+                    )
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(f"build_under_srt: {message}", result.stderr)
+                    self.assertEqual([], self.srt_calls(home), "no srt run")
+                    self.assertFalse(settings.exists(), "no settings written")
+                    self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host")
+
+    def test_the_harness_page_names_srt_and_build_under_srt(self):
+        # The docs row of the threat table (verdicts/U322c P2 docs/deepseek-harness.md:60): the page describes the
+        # contained build by its function, not the uncontained one or the round-1 form.
+        text = (ROOT / "docs/deepseek-harness.md").read_text()
+        self.assertEqual(
+            ["`build_under_srt`", "srt --settings"],
+            [word for word in ("`build_under_srt`", "srt --settings") if word in text],
+            "the page names the shared function and the srt form it runs",
+        )
 
     def test_build_under_srt_refuses_when_the_settings_file_cannot_be_created_or_the_store_cannot_be_made(self):
         # P2 (:1902): the settings creation (umask 077, noclobber) is a decision of its own, after every check: the

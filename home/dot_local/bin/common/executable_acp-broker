@@ -1,0 +1,872 @@
+#!/bin/bash
+# @file acp-broker
+# @brief Start omp workers in sibling srt sandboxes for a DSH control host that itself runs inside srt, one per connection on a Unix socket.
+# @description
+#   Regime-cutover U343 (M-24 part 1, shape A of the U342 design note). srt does not nest (M-22), so the Router, the
+#   dsh-superagent control host that `hcom-seat router` runs inside srt, cannot start a worker sandbox of its own.
+#   This lever runs outside every sandbox as the operator's user, started by `hcom-seat` beside the Router (U344),
+#   and listens on `<seats-root>/.state/<router seat>/broker/sock`, the one Unix socket the router row's
+#   `network.allowUnixSockets` opens (U342 measured: that directory's sockets and nothing else). Inside the Router's
+#   sandbox `dsh-subagent-acp` spawns the thin client `acp-seat`, which connects, sends one header line and relays
+#   the ACP stdio stream; this lever starts `srt --settings <worker> -- omp acp --profile dsh` per connection in the
+#   task cwd and pipes the connection to it. The Router and every worker are separate srt processes started outside
+#   both (R-45), the worker never inherits the Router's settings, and the Router cannot name the settings file.
+#   The socket. `acp-broker <seats-root> <router seat> <router scratch cwd>` makes `<seats-root>/.state/<router seat>/
+#   broker/` 0700 (an existing entry must be a real directory of this user, never a link) and listens on `sock` there
+#   (mode 0600), one listener per Router launch: a second broker for the same slot refuses while `sock` exists. The
+#   listener and the byte relay are the one non-bash part, `acp-relay.py` beside this file, run as `python3 -I -S`
+#   by its pinned physical argv after its own `claude.levers.sha256` pin was checked here; per connection it starts
+#   `acp-broker --connection <the same three arguments>` with the connection as its stdin and stdout and copies
+#   bytes both ways until either side closes. The socket and its directory are removed when the listener ends, and
+#   by the trap a hangup, interrupt or termination runs before this process ends by that signal.
+#   The header. The first line of a connection is `ACP-SEAT v1 cwd=<path> name=<name>`: the cwd a clean absolute
+#   path (clean_path) whose physical form is a directory strictly under the Router's scratch cwd by physical prefix,
+#   the name in the seat-name grammar `^[a-z0-9][a-z0-9_-]{0,63}$` (never `claude`, the shared Claude Code
+#   directory's name), nothing after the fourth field. Anything else is refused with one line
+#   `acp-broker: refused: <reason>` on the connection and the connection closed, nothing made.
+#   The worker's settings. The dsh row's shape, rendered per connection into the slot
+#   `<seats-root>/.sandbox/acp-<name>-<utc stamp>-<pid>/settings.json` (the slot 0700, made by this connection, its
+#   identity held until the launch). The deny table is the Router's own, read from the settings `hcom-seat` rendered
+#   for this launch at `<seats-root>/.sandbox/<router seat>/srt-settings.json` (the router row is the dsh row with
+#   the loopback grant and the state root, U321, so its `denyRead` and `denyWrite` lists are the dsh row's deny table
+#   for this seats root, checkout, store and host): every row must be a clean path (the macOS worktree patterns, a
+#   clean prefix and the fixed `worktrees/*/<file>` suffix, are the one exception, as in `hcom-seat`), the rows under
+#   the Router's scratch cwd (its project-file denies) are re-rooted under the task cwd, and `denyRead` gains the
+#   Router's credential root `~/.local/state/dsh-router/credentials`. The grants are the role's own: `allowWrite`
+#   the task cwd, the shared Claude Code directory `<seats-root>/.state/claude` (the worker's bridge child keeps the
+#   seats root's one login there, U318), `~/.omp/profiles/dsh` (the worker's omp profile, `OMP_PROFILE=dsh`),
+#   `~/.omp/run`, and srt 0.0.81's own writable paths (`/tmp/claude`, `/private/tmp/claude` on macOS,
+#   `~/.npm/_logs`), every one physical; `allowRead` the task cwd, the shared Claude Code directory, that profile,
+#   `~/.agents/skills` and the private tool directory `~/.local/state/hcom-seat/tools`. No DSH_HOME and no state
+#   slot: the worker is omp, not dsh, and the launch log is this lever's to write. `allowLocalBinding` false,
+#   `allowUnixSockets` empty, the domain list `hcom-seat`'s. This copy of the dsh row's shape is interim: U344
+#   extracts one writer for both levers, and tests/unit/test_acp_broker.py holds the two renderings together
+#   until then.
+#   The canary (R-44). Before omp starts, the four-word probe of the `hcom-seat` shim runs under the worker's settings
+#   by the physical srt argv: a write into the slot, a read of the settings file, a listing of `~/.ssh` and a write
+#   under the operator's `~/.claude/debug` must all fail inside (`write-denied read-denied ssh-denied
+#   debug-denied`); any other answer, a canary that did not run, or a file a probe could make refuses with one line,
+#   the slot removed and no omp started. The answer is appended as `<utc> acp-broker: canary <four words>` to
+#   `<seats-root>/.state/<name>/acp-launch.log` (the directory made 0700 when absent), then omp's version is read
+#   under the same settings and `omp acp start omp <version> cwd <path>` logged, then the launch, then
+#   `omp acp exit <status>`; a log line that cannot be appended refuses by name. The three lines of one launch are in
+#   that order.
+#   The launch. `/usr/bin/env -i HOME PATH OMP_PROFILE=dsh CLAUDE_CONFIG_DIR AWS_SHARED_CREDENTIALS_FILE=/dev/null
+#   AWS_CONFIG_FILE=/dev/null HCOM_SEAT_SANDBOX=<slot> [USER LANG when this process has them] <srt> --settings
+#   <slot>/settings.json -- /usr/bin/env PATH=<seat path> <omp> acp --profile dsh`, in the task cwd, its stdin and
+#   stdout the connection; nothing else of this process's environment reaches srt or omp, and `CLAUDE_CODE_OAUTH_TOKEN`
+#   is unset before the first child (U312). `HCOM_SEAT_SANDBOX` makes `hcom-seat` and this lever refuse inside the
+#   worker. The outer PATH is the private tool directory and the system directories; inside, omp gets that list
+#   followed by this process's caller's absolute PATH entries (the construction of `hcom-seat`'s seat path). When
+#   omp exits, the trailer `omp acp exit <status>` is the last line on the connection (the client's exit status), the
+#   slot is removed (a slot that remains is exit 2, named), and the connection closes.
+#   Tools. srt, omp and python3 (and bwrap, socat, rg on Linux, which srt runs by path and which must be binaries)
+#   are taken from the private tool directory `~/.local/state/hcom-seat/tools` that `hcom-seat` links on every
+#   launch, else from this process's caller's PATH, and run by their physical argv (pin_tool: every link followed,
+#   a `#!` script run by its physical interpreter, an interpreter that is itself a script refused, no mise shim,
+#   nothing under the seats root or the Router's scratch cwd). Every input path (HOME, the seats root, the scratch
+#   cwd, the header cwd) and every path written into the settings is clean: absolute, components of
+#   `[A-Za-z0-9._@+-]`, no `.` or `..`, no trailing `/`, since srt reads a settings path as a pattern. No caller PATH
+#   entry runs anything: the first statement sets PATH to the system directories.
+#   Refusals. A launch inside a seat (`HCOM_LAUNCHED`, `HCOM_PROCESS_ID` or `HCOM_SEAT_SANDBOX` set), an unclean or
+#   unresolvable path, a Router state slot or settings file that is absent, a link or another user's, a scratch cwd
+#   outside the Router's state slot, a template row that is no clean path, a tool that cannot be pinned, a second
+#   broker on the slot, and every failed producer (mkdir, a physical resolution, the template read, the settings
+#   write, the canary, srt's version read, the log append) is exit 2 with the reason on stderr; in a connection the
+#   same line goes to the client first. Every producer's status is read (standing order 21); a failed read is never
+#   an absence.
+# @arg $1 string The seats root `hcom-seat` runs the Router in (its `--seats-root`).
+# @arg $2 string The Router's per-launch seat name (`router-<utc stamp>-<pid>`), whose state slot and settings exist.
+# @arg $3 string The Router's scratch cwd, `<seats-root>/.state/<router seat>/cwd`; every task cwd lies strictly under it.
+# @option --connection Serve one connection on stdin and stdout (run by acp-relay.py per accepted connection).
+# @env HOME The user's home; the private tool directory, the omp profile and the credential denies derive from it.
+# @env DSH_HOME Not read: the worker is omp, and nothing of the Router's home reaches it.
+# @stdout `acp-broker: listening on <sock>` once the socket accepts; in a connection, omp's stdout and the trailer.
+# @exitcode 0 The listener ended on its own with the socket and its directory removed; in a connection, omp exited 0.
+# @exitcode 2 A refusal; a slot or the socket directory that remains after its removal.
+# @exitcode * In a connection, omp's own exit status, also written as the trailer.
+# @example
+#   acp-broker ~/.local/state/omp-seats/dotfiles router-20261107-120000-4242 ~/.local/state/omp-seats/dotfiles/.state/router-20261107-120000-4242/cwd
+set -euo pipefail
+# No caller PATH entry runs anything (regime-cutover U85): PATH holds the fixed system directories only, and srt, omp
+# and python3 are resolved below from the private tool directory hcom-seat builds, else from the caller's PATH.
+caller_path=${PATH:-}
+system_path=/usr/bin:/bin:/usr/sbin:/sbin
+PATH=${system_path}
+# A caller's CLAUDE_CODE_OAUTH_TOKEN is no input to any child (regime-cutover U312): the worker's login is the shared
+# Claude Code directory, so the name goes before the first child process.
+unset CLAUDE_CODE_OAUTH_TOKEN
+# Everything this lever makes (the broker directory, the socket, the slot, its settings, the log) is this user's alone.
+umask 077
+
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+# @set LEVER_DIR The physical directory of this file, where the relay helper sits.
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    LEVER_DIR=${dir}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${self}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
+
+usage='usage: acp-broker [--connection] <seats-root> <router-seat-name> <router-scratch-cwd>'
+connection=0
+slot=''
+slot_made=0
+child=''
+
+# @description Print the UTC time, `YYYY-MM-DDTHH:MM:SSZ` for a log line or `YYYYMMDD-HHMMSS` for a slot name, from
+#   `/bin/date` read status first (standing order 21); the caller refuses (exit 2) when this fails, so a failed read
+#   or one outside the shape names no slot and no log line.
+# @arg $1 string `log` or `slot`.
+# @stdout The stamp.
+# @exitcode 1 The time could not be read in the shape.
+utc_stamp() {
+    local stamp
+    case $1 in
+    log)
+        stamp=$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ) || return 1
+        [[ ${stamp} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 1
+        ;;
+    *)
+        stamp=$(/bin/date -u +%Y%m%d-%H%M%S) || return 1
+        [[ ${stamp} =~ ^[0-9]{8}-[0-9]{6}$ ]] || return 1
+        ;;
+    esac
+    printf '%s\n' "${stamp}"
+}
+
+# @description Set `slot_present` to 1 when the path `$1` exists (a symbolic link counted by itself) and to 0 when it
+#   is absent, from one `/usr/bin/stat` whose status and message are read (regime-cutover U272g, standing order 21):
+#   only the documented ENOENT is an absence; every other failure refuses (exit 2) naming the path and the message.
+# @arg $1 string An absolute path.
+# @set slot_present 1 or 0.
+path_presence() {
+    local err
+    if err=$(/usr/bin/stat "${lstat_args[@]}" -- "$1" 2>&1 > /dev/null); then
+        slot_present=1
+        return 0
+    fi
+    slot_present=0
+    case ${err} in
+    *'No such file or directory'*) return 0 ;;
+    esac
+    echo "acp-broker: refused: cannot read whether ${1} exists (${err}); it may remain: remove it by hand" >&2
+    exit 2
+}
+
+# @description Remove this connection's slot when it was made (the sandbox directory with its settings and canary).
+#   A directory left without its owner's bits keeps rm out, so the mode is reset first; the removal fails closed: a
+#   slot that remains is named and the function fails, so the connection never ends 0 with a slot behind.
+# @exitcode 0 The slot is gone, or none was made.
+# @exitcode 1 The slot remains, named on stderr.
+slot_remove() {
+    ((slot_made)) || return 0
+    path_presence "${slot}"
+    ((slot_present)) || return 0
+    # Links in the tree are not followed (the traversal default of both chmods); a failure here shows below.
+    if /bin/chmod -R u+rwX "${slot}"; then :; fi
+    if /bin/rm -rf -- "${slot}"; then :; fi
+    path_presence "${slot}"
+    ((! slot_present)) || {
+        echo "acp-broker: the per-connection slot ${slot} remains after its removal (chmod -R u+rwX, rm -rf); remove it by hand" >&2
+        return 1
+    }
+}
+
+# @description Refuse (exit 2) with the reason on stderr; in a connection the same line goes to the client first, and
+#   a slot this connection made is removed (slot_remove), a slot that remains naming itself.
+# @arg $@ string The reason.
+refuse() {
+    if ((connection)); then printf 'acp-broker: refused: %s\n' "$*"; fi
+    echo "acp-broker: refused: $*" >&2
+    if ! slot_remove; then :; fi
+    exit 2
+}
+
+case ${1:-} in
+--connection)
+    connection=1
+    shift
+    ;;
+esac
+(($# == 3)) || refuse "${usage}"
+seats_root=$1 router=$2 scratch=$3
+
+# A seat never starts a broker (regime-cutover U85, gate G7): hcom marks the seat's environment, the hcom-seat shim
+# marks its own, and this lever marks every worker it starts.
+for marker in HCOM_LAUNCHED HCOM_PROCESS_ID HCOM_SEAT_SANDBOX; do
+    [[ -z ${!marker:-} ]] || refuse "refused inside a seat (${marker} is set): the broker runs outside every seat, started by hcom-seat beside the Router"
+done
+
+# @description Succeed when `$1` is a clean absolute path that srt cannot read as a pattern: `/` followed by
+#   components of `[A-Za-z0-9._@+-]` only, none of them empty, `.` or `..`, and no trailing `/` (the rule of
+#   `hcom-seat`; srt 0.0.81 turns a settings path into a Seatbelt regex or a glob).
+# @arg $1 string The path.
+# @exitcode 1 The path is not clean.
+clean_path() {
+    [[ $1 =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || return 1
+    [[ /$1/ != */./* && /$1/ != */../* ]] # lint-comparisons: allow a component test on one path, no path compare
+}
+
+# @description Refuse (exit 2) unless `$2` is a clean absolute path (clean_path).
+# @arg $1 string What the path is, for the refusal.
+# @arg $2 string The path.
+require_clean_path() {
+    clean_path "$2" ||
+        refuse "$1 '$2' is not a clean absolute path: every component must be [A-Za-z0-9._@+-] and neither '.' nor '..', with no trailing '/'"
+}
+
+# @description Succeed when `$1` is a row the settings may carry: a clean path, or (for `denyWrite`, `$2` = 1) one of
+#   the macOS worktree patterns `hcom-seat` renders, a clean prefix and the fixed `worktrees/*/<file>` suffix.
+# @arg $1 string The row.
+# @arg $2 int 1 when the pattern form is allowed.
+# @exitcode 1 The row is neither.
+clean_row() {
+    clean_path "$1" && return 0
+    (($2)) || return 1
+    [[ $1 =~ ^(/[A-Za-z0-9._@+-]+)+/worktrees/\*/(config\.worktree|info|commondir|gitdir)$ ]] || return 1
+    [[ /${1%/worktrees/*}/ != */./* && /${1%/worktrees/*}/ != */../* ]] # lint-comparisons: allow a component test on one pattern's clean prefix, no path compare
+}
+
+# @description Refuse (exit 2) unless every row `$@` is one the settings may carry (clean_row); run in the main
+#   shell, never inside a command substitution, so the refusal reaches the client.
+# @arg $1 string What the list is, for the refusal.
+# @arg $2 int 1 when the macOS pattern form is allowed.
+# @arg $@ string The rows after them.
+check_rows() {
+    local what=$1 patterns=$2 row
+    shift 2
+    for row in "$@"; do
+        clean_row "${row}" "${patterns}" || refuse "${what} '${row}' is not a clean absolute path"
+    done
+}
+
+# @description Print a JSON array of the rows `$@`, each already checked (check_rows), so no JSON escaping is needed
+#   and no settings tool runs.
+# @arg $@ string The rows.
+json_list() {
+    local row out='' sep=''
+    for row in "$@"; do
+        out+=${sep}\"${row}\"
+        sep=,
+    done
+    printf '[%s]' "${out}"
+}
+
+# @description Print the physical form of the absolute path `$1`: every symlink followed (at most 40 hops in all) and
+#   the directory in its `pwd -P` form; a path that does not exist yet is its nearest existing ancestor's physical
+#   form with the rest appended (the resolver of `hcom-seat`). Only shell builtins and `/usr/bin/readlink` run.
+# @arg $1 string An absolute path.
+# @stdout The physical path.
+# @exitcode 1 Not absolute, a control character in it or in a link, more than 40 links, or a directory that cannot
+#   be resolved.
+physical_path() {
+    local p=$1 tail='' link dir n=0
+    [[ ${p} == /* && ${p} != *[[:cntrl:]]* ]] || return 1 # lint-comparisons: allow an absolute-path and content test
+    while :; do
+        while [[ ! -e ${p} && ! -L ${p} ]]; do
+            tail=/${p##*/}${tail}
+            p=${p%/*}
+            [[ -n ${p} ]] || p=/
+        done
+        [[ -L ${p} ]] || break
+        n=$((n + 1))
+        ((n <= 40)) || return 1
+        link=$(/usr/bin/readlink "${p}" && printf .) || return 1
+        link=${link%.}
+        link=${link%$'\n'}
+        [[ -n ${link} && ${link} != *[[:cntrl:]]* ]] || return 1
+        case ${link} in
+        /*) p=${link} ;;
+        *) p=${p%/*}/${link} ;;
+        esac
+    done
+    if [[ ${p} == / ]]; then # lint-comparisons: allow the root itself, whose `cd //` form pwd prints as `//`
+        printf '%s\n' "${tail:-/}"
+    elif [[ -d ${p} ]]; then
+        dir=$(cd "${p}/" && pwd -P) || return 1
+        printf '%s%s\n' "${dir%/}" "${tail}"
+    else
+        dir=$(cd "${p%/*}/" && pwd -P) || return 1
+        printf '%s/%s%s\n' "${dir%/}" "${p##*/}" "${tail}"
+    fi
+}
+
+# @description Print the physical, clean form of the path `$1` (physical_path, clean_path); the caller refuses
+#   (exit 2) naming the path when this fails, so the refusal is never swallowed by a command substitution.
+# @arg $1 string An absolute path.
+# @stdout The physical path.
+# @exitcode 1 The path cannot be resolved, or its physical form is not clean.
+physical_clean() {
+    local p
+    p=$(physical_path "$1") || return 1
+    clean_path "${p}" || return 1
+    printf '%s\n' "${p}"
+}
+
+# @description Refuse (exit 2) naming `$1` when the path `$2` has no clean physical form (physical_clean).
+# @arg $1 string What the path is.
+# @arg $2 string The path.
+unresolved() {
+    refuse "cannot resolve $1 $2 to a clean physical path (absent components, a link that cannot be read, more than 40 links, or a component outside [A-Za-z0-9._@+-])"
+}
+
+# @description Refuse (exit 2) unless `$2` is a real directory of this user: present, a directory, no symbolic link.
+# @arg $1 string What the directory is.
+# @arg $2 string The path.
+require_own_dir() {
+    [[ ! -L $2 ]] || refuse "$1 $2 is a symbolic link; it must be a real directory"
+    [[ -d $2 ]] || refuse "$1 $2 is not a directory"
+    [[ -O $2 ]] || refuse "$1 $2 is not this user's directory"
+}
+
+# @description Make the directory `$2` 0700 when absent and hold it to a real directory of this user. Two processes
+#   at once (the Router's connections) may both find a shared parent absent; the loser of the mkdir race takes the
+#   directory the winner made, held by the same check.
+# @arg $1 string What the directory is.
+# @arg $2 string The path.
+ensure_own_dir() {
+    if [[ ! -e $2 && ! -L $2 ]]; then
+        /bin/mkdir "$2" || [[ -d $2 && ! -L $2 ]] || refuse "cannot create $1 $2"
+    fi
+    require_own_dir "$1" "$2"
+}
+
+# Every input path is clean before anything is resolved, created or run.
+require_clean_path HOME "${HOME}"
+require_clean_path 'the seats root' "${seats_root}"
+require_clean_path "the Router's scratch cwd" "${scratch}"
+[[ ${router} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "the Router seat name '${router}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
+[[ ${router} != claude ]] || refuse "the seat name 'claude' is the shared Claude Code directory <seats-root>/.state/claude, not a Router"
+
+os=$(/usr/bin/uname -s) || refuse 'cannot read the operating system name (uname -s)'
+case ${os} in
+Darwin) lstat_args=(-f '%d:%i') srt_tmp_roots=(/tmp/claude /private/tmp/claude) ;;
+Linux)
+    lstat_args=(-c '%d:%i') srt_tmp_roots=(/tmp/claude)
+    # srt on Linux binds only what exists (hcom-seat srt_tmp_roots_for); /private exists on macOS alone.
+    if [[ -e /private/tmp/claude ]]; then srt_tmp_roots+=(/private/tmp/claude); fi
+    [[ -x /usr/bin/jq ]] || refuse 'the system jq /usr/bin/jq is absent; it reads the Router settings on Linux (apt install jq)'
+    ;;
+*) refuse "no worker sandbox for ${os}; srt supports macOS and Linux" ;;
+esac
+
+h=$(physical_clean "${HOME}") || unresolved HOME "${HOME}"
+seats_real=$(physical_clean "${seats_root}") || unresolved 'the seats root' "${seats_root}"
+require_own_dir 'the seats root' "${seats_real}"
+state_dir=${seats_real}/.state/${router}
+require_own_dir "the Router's state slot" "${state_dir}"
+scratch_real=$(physical_clean "${scratch}") || unresolved "the Router's scratch cwd" "${scratch}"
+[[ -d ${scratch_real} ]] || refuse "the Router's scratch cwd ${scratch} resolves to ${scratch_real}, which is not a directory"
+# The scratch cwd lies inside the Router's own state slot (hcom-seat's directory row for the router role), so every
+# task cwd, a directory strictly under it, lies there too; both sides physical, the trailing slash makes the prefix
+# a whole component.
+[[ ${scratch_real}/ == "${state_dir}"/* ]] || # lint-comparisons: allow both operands physical (physical_path); the trailing slash makes the prefix a whole component
+    refuse "the Router's scratch cwd ${scratch} resolves to ${scratch_real}, outside the Router's state slot ${state_dir}"
+# The Router's settings, hcom-seat's rendering of the dsh row with the router cells for this launch: the worker's
+# deny table is read from them (template_rows) and nothing is derived from the file's spelling.
+template=${seats_real}/.sandbox/${router}/srt-settings.json
+[[ ! -L ${template} ]] || refuse "the Router's settings ${template} is a symbolic link"
+[[ -f ${template} ]] || refuse "the Router's settings ${template} is absent or not a regular file (hcom-seat renders it on the Router's launch)"
+[[ -O ${template} ]] || refuse "the Router's settings ${template} is not this user's file"
+claude_config=${seats_real}/.state/claude
+[[ ! -L ${claude_config} ]] || refuse "the shared Claude Code directory ${claude_config} is a symbolic link; it must be a real directory"
+claude_real=$(physical_clean "${claude_config}") || unresolved 'the shared Claude Code directory' "${claude_config}"
+broker_dir=${state_dir}/broker
+sock=${broker_dir}/sock
+tools_dir=${h}/.local/state/hcom-seat/tools
+tools_real=''
+if [[ -e ${tools_dir} || -L ${tools_dir} ]]; then
+    require_own_dir 'the private tool directory' "${tools_dir}"
+    tools_real=$(physical_clean "${tools_dir}") || unresolved 'the private tool directory' "${tools_dir}"
+fi
+
+# @description Set `rows` to the entries of the Router settings' `filesystem.$1` list, read whole by the system's
+#   reader (`/usr/bin/plutil … json` on macOS, which escapes `/` as `\/`; `/usr/bin/jq -c` on Linux) and parsed here
+#   from the one JSON array text: each element a double-quoted string holding no quote and no backslash once `\/` is
+#   undone, each then a clean row (clean_row). Fail-closed: a failed read, a text that is no array of such strings,
+#   or a row that is not clean refuses (exit 2) naming the file and the list.
+# @arg $1 string The list: denyRead or denyWrite.
+# @set rows The entries, in the file's order.
+template_rows() {
+    local list=$1 text rest item patterns=0 slash_esc='\/'
+    [[ ${list} != denyWrite ]] || patterns=1
+    case ${os} in
+    Darwin) text=$(/usr/bin/plutil -extract "filesystem.${list}" json -o - "${template}") || refuse "cannot read filesystem.${list} from the Router's settings ${template}" ;;
+    *) text=$(/usr/bin/jq -c ".filesystem.${list}" "${template}") || refuse "cannot read filesystem.${list} from the Router's settings ${template}" ;;
+    esac
+    text=${text%$'\n'}
+    [[ ${text} == \[*\] ]] || refuse "filesystem.${list} in the Router's settings ${template} is not a JSON array ('${text}')"
+    rest=${text#\[}
+    rest=${rest%\]}
+    rows=()
+    while [[ -n ${rest} ]]; do
+        [[ ${rest} == \"* ]] || refuse "filesystem.${list} in the Router's settings ${template} holds an element that is no string ('${rest}')"
+        rest=${rest#\"}
+        [[ ${rest} == *\"* ]] || refuse "filesystem.${list} in the Router's settings ${template} holds an unterminated string"
+        item=${rest%%\"*}
+        rest=${rest#*\"}
+        item=${item//"${slash_esc}"/\/}
+        clean_row "${item}" "${patterns}" || refuse "filesystem.${list} in the Router's settings ${template} holds '${item}', not a clean absolute path"
+        rows+=("${item}")
+        case ${rest} in
+        '') ;;
+        ,\"*) rest=${rest#,} ;;
+        *) refuse "filesystem.${list} in the Router's settings ${template} is malformed after '${item}'" ;;
+        esac
+    done
+}
+
+# @description Print the first executable `$1` in the private tool directory (hcom-seat's links), else on the caller's
+#   PATH; the private directory first, so the tool hcom-seat checked on the Router's launch is the one a worker runs.
+# @arg $1 string The command name.
+# @stdout The path, symlinks not yet followed.
+# @exitcode 1 None found.
+find_tool() {
+    local path_dir path_dirs=()
+    if [[ -n ${tools_real} && -x ${tools_real}/$1 && ! -d ${tools_real}/$1 ]]; then
+        printf '%s\n' "${tools_real}/$1"
+        return 0
+    fi
+    IFS=: read -r -a path_dirs <<< "${caller_path}"
+    for path_dir in ${path_dirs[@]+"${path_dirs[@]}"}; do
+        [[ ${path_dir} == /* && ${path_dir} != *[[:cntrl:]]* ]] || continue # lint-comparisons: allow an absolute-path and content test
+        [[ -x ${path_dir}/$1 && ! -d ${path_dir}/$1 ]] || continue
+        printf '%s\n' "${path_dir}/$1"
+        return 0
+    done
+    return 1
+}
+
+# @description Refuse (exit 2) a tool file that a seat could rewrite: one that is or lies under the seats root or
+#   the Router's scratch cwd (both physical, prefix on a whole component), or a mise shim (named mise, or found in or
+#   resolving to a `shims` directory, as scripts/orchestrator/ci-rerun.sh decides it), which reads the cwd's config.
+# @arg $1 string A label for the refusal.
+# @arg $2 string The path the tool was found at.
+# @arg $3 string Its physical file.
+tool_place_check() {
+    local d
+    [[ ${3}/ != "${seats_real}"/* && ${3}/ != "${scratch_real}"/* ]] || # lint-comparisons: allow both operands physical (physical_path); the trailing slash makes the prefix a whole component
+        refuse "$1 $3 lies under the seats root or the Router's scratch cwd, where a seat could rewrite it"
+    [[ ${3##*/} != [Mm][Ii][Ss][Ee] ]] || refuse "$1 $3 is mise itself" # lint-comparisons: allow a file-name test, not a comparison of two paths
+    for d in "${2%/*}" "${3%/*}"; do
+        d=$(physical_path "${d:-/}") || refuse "cannot resolve the directory of $1 $2"
+        [[ ${d}/ != */[Ss][Hh][Ii][Mm][Ss]/* ]] || refuse "no $1 from a shims directory ('$2'): a mise shim picks its version from the cwd" # lint-comparisons: allow a directory-name test, not a comparison of two paths
+    done
+}
+
+# @description Resolve the tool `$1` to the argv that runs it with no lookup left (hcom-seat pin_exec): its physical
+#   file (find_tool, physical_path), preceded by the physical interpreter when it is a `#!` script (`#!/abs/interp`
+#   or `#!/usr/bin/env <name>`, no arguments; the name found as a tool is; an interpreter that is itself a script is
+#   refused). Each file passes tool_place_check. A failure exits 2 naming `$1`.
+# @arg $1 string The tool's name.
+# @set pinned The argv.
+pin_tool() {
+    local label=$1 found file first magic interp name extra interp_path
+    found=$(find_tool "$1") || refuse "${label} not found in the private tool directory ${tools_dir} or on the caller's PATH; run hcom-seat once (make update)"
+    file=$(physical_path "${found}") || refuse "cannot resolve ${label} to a physical file: ${found}"
+    [[ -f ${file} && -x ${file} && -r ${file} ]] || refuse "${label} ${found} resolves to ${file}, not a readable executable file"
+    tool_place_check "${label}" "${found}" "${file}"
+    # Each read's status is checked (pipefail covers head; /usr/bin/od only formats): a failed read is refused, never
+    # taken for a file without an interpreter line.
+    magic=$(/usr/bin/head -c 2 -- "${file}" | /usr/bin/od -An -tx1) || refuse "cannot read ${label}: ${file}"
+    first=''
+    if [[ ${magic//[[:space:]]/} == 2321 ]]; then # lint-comparisons: allow the hex bytes of `#!`, no path compare
+        first=$(/usr/bin/head -n 1 -- "${file}") || refuse "cannot read the interpreter line of ${label}: ${file}"
+    fi
+    pinned=("${file}")
+    case ${first} in
+    '#!'*)
+        extra=''
+        read -r interp name extra <<< "${first#??}"
+        if [[ ${interp} == /usr/bin/env ]]; then # lint-comparisons: allow the literal interpreter line, no path compare
+            [[ -n ${name} && -z ${extra} && ${name} != -* ]] ||
+                refuse "${label}: unsupported interpreter line '${first}' in ${file}"
+            interp_path=$(find_tool "${name}") || refuse "${label}: interpreter ${name} not found in the private tool directory or on the caller's PATH"
+        else
+            [[ -z ${name} ]] || refuse "${label}: unsupported interpreter line '${first}' in ${file}"
+            [[ ${interp} == /* ]] || # lint-comparisons: allow an absolute-path test
+                refuse "${label}: interpreter line '${first}' in ${file} names no absolute path"
+            interp_path=${interp}
+        fi
+        interp=$(physical_path "${interp_path}") || refuse "cannot resolve the interpreter of ${label}: ${interp_path}"
+        [[ -f ${interp} && -x ${interp} && -r ${interp} ]] || refuse "the interpreter of ${label}, ${interp_path}, resolves to ${interp}, not a readable executable file"
+        tool_place_check "the interpreter of ${label}" "${interp_path}" "${interp}"
+        magic=$(/usr/bin/head -c 2 -- "${interp}" | /usr/bin/od -An -tx1) || refuse "cannot read the interpreter of ${label}: ${interp}"
+        [[ ${magic//[[:space:]]/} != 2321 ]] || refuse "${label}: its interpreter ${interp} is itself a script" # lint-comparisons: allow the hex bytes of `#!`, no path compare
+        pinned=("${interp}" "${file}")
+        ;;
+    esac
+}
+
+# The tools, by their physical argv, before anything is made: the deny table is read once here too, so a Router
+# settings file that does not read refuses the broker before it listens and a connection before its slot exists.
+pin_tool srt
+srt_cmd=("${pinned[@]}")
+pin_tool omp
+omp_cmd=("${pinned[@]}")
+pin_tool python3
+python_cmd=("${pinned[@]}")
+linux_tools=''
+if [[ ${os} == Linux ]]; then
+    # srt runs bwrap, socat and rg by the paths the settings name, so each must be a binary (no interpreter lookup).
+    bwrap_real='' socat_real='' rg_real=''
+    for tool in bwrap socat rg; do
+        pin_tool "${tool}"
+        ((${#pinned[@]} == 1)) || refuse "${tool} ${pinned[1]} is a script; srt runs it by path, so it must be a binary"
+        case ${tool} in
+        bwrap) bwrap_real=${pinned[0]} ;;
+        socat) socat_real=${pinned[0]} ;;
+        rg) rg_real=${pinned[0]} ;;
+        esac
+    done
+    require_clean_path bwrap "${bwrap_real}"
+    require_clean_path socat "${socat_real}"
+    require_clean_path rg "${rg_real}"
+    linux_tools=",\"bwrapPath\":\"${bwrap_real}\",\"socatPath\":\"${socat_real}\",\"ripgrep\":{\"command\":\"${rg_real}\"}"
+else
+    [[ -x /usr/bin/sandbox-exec ]] || refuse 'sandbox-exec absent: /usr/bin/sandbox-exec'
+fi
+template_rows denyRead
+template_deny_read=("${rows[@]}")
+template_rows denyWrite
+template_deny_write=(${rows[@]+"${rows[@]}"})
+
+# The worker's PATH inside the sandbox: the private tool directory and the system directories, then the caller's
+# absolute entries (hcom-seat's seat path); outside, srt itself runs with the first two alone.
+outer_path=${tools_real:+${tools_real}:}${system_path}
+seat_path=${outer_path}
+IFS=: read -r -a caller_dirs <<< "${caller_path}"
+for caller_dir in ${caller_dirs[@]+"${caller_dirs[@]}"}; do
+    if [[ ${caller_dir} == /* && ${caller_dir} != *[[:cntrl:]]* ]]; then seat_path+=:${caller_dir}; fi # lint-comparisons: allow an absolute-path and content test
+done
+
+# @description Remove the socket and the broker directory after the listener ended (the normal end and the trap):
+#   the socket when present, then the directory, each failure named; a directory that remains fails the function.
+# @exitcode 0 Both are gone.
+# @exitcode 1 One remains, named on stderr.
+broker_cleanup() {
+    path_presence "${sock}"
+    if ((slot_present)); then
+        /bin/rm -f -- "${sock}" || echo "acp-broker: cannot remove the socket ${sock}" >&2
+    fi
+    path_presence "${broker_dir}"
+    if ((slot_present)); then
+        /bin/rmdir -- "${broker_dir}" || echo "acp-broker: cannot remove the broker directory ${broker_dir}" >&2
+    fi
+    path_presence "${sock}"
+    ((! slot_present)) || {
+        echo "acp-broker: the socket ${sock} remains after its removal; remove it by hand" >&2
+        return 1
+    }
+    path_presence "${broker_dir}"
+    ((! slot_present)) || {
+        echo "acp-broker: the broker directory ${broker_dir} remains after its removal; remove it by hand" >&2
+        return 1
+    }
+}
+
+# @description The listener's signal trap: a hangup, interrupt or termination ends the relay (and, through it, every
+#   worker it started), removes the socket and its directory and then ends this process by the same signal, its
+#   disposition restored; a directory that remains is exit 2 whatever the signal.
+# @arg $1 string The signal name.
+# shellcheck disable=SC2329 # invoked by the trap installed below
+broker_signal() {
+    local removed=0
+    trap - HUP INT TERM
+    if [[ -n ${child} ]]; then
+        if kill -TERM "${child}" 2> /dev/null; then :; fi
+        if wait "${child}"; then :; fi
+    fi
+    broker_cleanup || removed=$?
+    ((removed == 0)) || {
+        echo "acp-broker: ended by SIG$1; the broker exits 2 because the socket or its directory remains" >&2
+        exit 2
+    }
+    kill -s "$1" $$
+    exit 2
+}
+
+# @description Wait for the child `$1` and set `child_status` to its status, reading `wait` again when a trapped
+#   signal interrupted it (bash returns from `wait` with the signal's status and runs the trap first).
+# @arg $1 int The pid.
+# @set child_status The exit status.
+wait_child() {
+    child_status=0
+    while :; do
+        # The status is read in the else branch, where `$?` is still `wait`'s own.
+        if wait "$1"; then
+            child_status=0
+        else
+            child_status=$?
+        fi
+        if kill -0 "$1" 2> /dev/null; then continue; fi
+        return 0
+    done
+}
+
+if ((! connection)); then
+    # The relay helper beside this file, held to its own pin before it runs (the sourced-helper rule of regime-env).
+    helper=${LEVER_DIR}/acp-relay.py
+    [[ -r ${helper} && ! -L ${helper} ]] || refuse "the relay helper is unreadable or a link beside this script: ${helper}"
+    helper_pin=$(sed -n -E 's/^      acp-relay\.py: ([0-9a-f]{64})$/\1/p' "${LEVER_MANIFEST}") || refuse "cannot read ${LEVER_MANIFEST}"
+    [[ ${helper_pin} =~ ^[0-9a-f]{64}$ ]] || refuse "no single sha256 pin for acp-relay.py in ${LEVER_MANIFEST}"
+    if command -v sha256sum > /dev/null; then
+        helper_digest=$(sha256sum < "${helper}") || helper_digest=''
+    else
+        helper_digest=$(shasum -a 256 < "${helper}") || helper_digest=''
+    fi
+    helper_digest=${helper_digest%% *}
+    [[ ${helper_digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash ${helper}"
+    [[ ${helper_digest} == "${helper_pin}" ]] || refuse "sha256 ${helper_digest} of ${helper} differs from the pin in ${LEVER_MANIFEST}"
+    self_file=${LEVER_DIR}/${BASH_SOURCE[0]##*/}
+    [[ -r ${self_file} ]] || refuse "cannot read ${self_file}"
+    ensure_own_dir 'the broker directory' "${broker_dir}"
+    [[ ! -e ${sock} && ! -L ${sock} ]] || refuse "a broker already listens for the Router ${router} (${sock} exists); one listener per Router launch"
+    # Installed before the relay starts, so a signal while it listens removes what it made.
+    # shellcheck disable=SC2064 # expanded now on purpose: the handler needs the signal's name
+    for sig in HUP INT TERM; do trap "broker_signal ${sig}" "${sig}"; done
+    # The relay runs as a child, so the socket and its directory can go when it ends; every connection it accepts
+    # re-enters this lever by its physical path under /bin/bash (the interpreter line), with the same three arguments
+    # and the caller's PATH, from which each connection resolves the tools as this process did.
+    PATH=${caller_path} "${python_cmd[@]}" -I -S "${helper}" "${sock}" -- /bin/bash "${self_file}" --connection "${seats_root}" "${router}" "${scratch}" &
+    child=$!
+    wait_child "${child}"
+    status=${child_status}
+    trap - HUP INT TERM
+    broker_cleanup || {
+        echo "acp-broker: the relay exited ${status}; the broker exits 2 because the socket or its directory remains" >&2
+        exit 2
+    }
+    exit "${status}"
+fi
+
+# One connection: the header line first, from the connection's bytes, at most 1024 characters (a clean header is
+# shorter); bash reads a pipe one byte at a time, so omp inherits the stream right after the line.
+# A file size limit must fail a write (EFBIG) and refuse by name, never end this process by SIGXFSZ with the slot
+# behind; the relay restores the signal's default in every handler, so the disposition is set here.
+trap '' XFSZ
+header=''
+IFS= read -r -n 1024 header || refuse 'no header line arrived before the connection closed'
+f1='' f2='' f3='' f4='' extra=''
+read -r f1 f2 f3 f4 extra <<< "${header}"
+[[ ${f1} == ACP-SEAT && ${f2} == v1 ]] || refuse "the header '${header}' does not begin 'ACP-SEAT v1'"
+[[ ${f3} == cwd=?* ]] || refuse "the header '${header}' has no 'cwd=<path>' third field"
+[[ ${f4} == name=?* ]] || refuse "the header '${header}' has no 'name=<name>' fourth field"
+[[ -z ${extra} ]] || refuse "the header '${header}' has more than four fields"
+cwd=${f3#cwd=}
+name=${f4#name=}
+require_clean_path 'the header cwd' "${cwd}"
+[[ ${name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "the header name '${name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
+[[ ${name} != claude ]] || refuse "the seat name 'claude' is taken by the shared Claude Code directory <seats-root>/.state/claude; choose another name"
+[[ -d ${cwd} ]] || refuse "the header cwd ${cwd} is not a directory"
+cwd_real=$(physical_clean "${cwd}") || unresolved 'the header cwd' "${cwd}"
+[[ -d ${cwd_real} ]] || refuse "the header cwd ${cwd} resolves to ${cwd_real}, which is not a directory"
+# Strictly under the Router's scratch cwd, both physical: a cwd that is the scratch cwd itself, or a link out of it,
+# is refused, so the worker's write root is one task directory the Router made.
+[[ ${cwd_real}/ == "${scratch_real}"/?* ]] || # lint-comparisons: allow both operands physical (physical_path); the trailing slash makes the prefix a whole component
+    refuse "the header cwd ${cwd} resolves to ${cwd_real}, not a directory strictly under the Router's scratch cwd ${scratch_real}"
+stamp=$(utc_stamp slot) || refuse 'cannot read the time (/bin/date failed or answered outside the shape)'
+slot_name=acp-${name}-${stamp}-$$
+[[ ${slot_name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "the per-connection slot name '${slot_name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$; choose a shorter name"
+slot=${seats_real}/.sandbox/${slot_name}
+log_dir=${seats_real}/.state/${name}
+log=${log_dir}/acp-launch.log
+
+# The worker's settings: the deny table from the Router's settings, the project-file rows re-rooted under the task
+# cwd and the credential root added; the grants the role's own (the file header). Every row physical, every list
+# rendered before anything is made.
+deny_read=("${template_deny_read[@]}")
+deny_read+=("${h}/.local/state/dsh-router/credentials")
+deny_write=()
+for row in ${template_deny_write[@]+"${template_deny_write[@]}"}; do
+    if [[ ${row}/ == "${scratch_real}"/?* ]]; then # lint-comparisons: allow both operands physical (hcom-seat renders its rows physical, scratch_real is physical_path); the trailing slash makes the prefix a whole component
+        row=${cwd_real}/${row#"${scratch_real}"/}
+    fi
+    deny_write+=("${row}")
+done
+profile_real=$(physical_clean "${h}/.omp/profiles/dsh") || unresolved "the worker's omp profile" "${h}/.omp/profiles/dsh"
+run_real=$(physical_clean "${h}/.omp/run") || unresolved "omp's run directory" "${h}/.omp/run"
+skills_real=$(physical_clean "${h}/.agents/skills") || unresolved 'the skills directory' "${h}/.agents/skills"
+tools_row=$(physical_clean "${tools_dir}") || unresolved 'the private tool directory' "${tools_dir}"
+allow_read=("${cwd_real}" "${claude_real}" "${profile_real}" "${skills_real}" "${tools_row}")
+allow_write=("${cwd_real}" "${claude_real}" "${profile_real}" "${run_real}")
+for row in "${srt_tmp_roots[@]}" "${h}/.npm/_logs"; do
+    row_real=$(physical_clean "${row}") || unresolved "srt's own write path" "${row}"
+    allow_write+=("${row_real}")
+done
+check_rows 'a worker read deny' 0 "${deny_read[@]}"
+check_rows 'a worker write deny' 1 ${deny_write[@]+"${deny_write[@]}"}
+check_rows 'a worker read root' 0 "${allow_read[@]}"
+check_rows 'a worker write root' 0 "${allow_write[@]}"
+deny_read_json=$(json_list "${deny_read[@]}")
+deny_write_json=$(json_list ${deny_write[@]+"${deny_write[@]}"})
+allow_read_json=$(json_list "${allow_read[@]}")
+allow_write_json=$(json_list "${allow_write[@]}")
+domains='"github.com","api.github.com","uploads.github.com","codeload.github.com","objects.githubusercontent.com"'
+domains+=',"raw.githubusercontent.com","release-assets.githubusercontent.com","pypi.org","files.pythonhosted.org"'
+domains+=',"api.anthropic.com","claude.ai","platform.claude.com","console.anthropic.com"'
+domains+=',"chatgpt.com","auth.openai.com","api.openai.com"'
+json="{\"network\":{\"allowedDomains\":[${domains}],\"deniedDomains\":[],\"allowUnixSockets\":[]"
+json+=",\"allowMachLookup\":[\"com.apple.trustd.agent\"],\"allowLocalBinding\":false}"
+json+=",\"filesystem\":{\"denyRead\":${deny_read_json},\"allowRead\":${allow_read_json}"
+json+=",\"allowWrite\":${allow_write_json},\"denyWrite\":${deny_write_json}},\"allowPty\":true${linux_tools}}"
+
+# The worker's environment, built and never inherited (hcom-seat's dsh launch): HOME, the outer PATH, the profile,
+# the shared Claude Code directory, the AWS file names omp's Bedrock discovery stats (an EPERM there ends omp), the
+# seat marker, and USER and LANG when this process's caller exported them.
+worker_env=("HOME=${HOME}" "PATH=${outer_path}" OMP_PROFILE=dsh "CLAUDE_CONFIG_DIR=${claude_real}"
+    AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null "HCOM_SEAT_SANDBOX=${slot}")
+inherited=$(compgen -e) || refuse 'cannot list the environment'
+for var in USER LANG; do
+    if [[ $'\n'${inherited}$'\n' == *$'\n'"${var}"$'\n'* && -n ${!var:-} ]]; then worker_env+=("${var}=${!var}"); fi
+done
+
+# @description Append one log line `<utc> acp-broker: $*` to the launch log, the directory made 0700 when absent;
+#   a line that cannot be appended refuses by name.
+# @arg $@ string The event.
+log_line() {
+    local when
+    when=$(utc_stamp log) || refuse 'cannot read the time (/bin/date failed or answered outside the shape)'
+    ensure_own_dir "the worker's state slot" "${log_dir}"
+    [[ ! -L ${log} ]] || refuse "the launch log ${log} is a symbolic link"
+    printf '%s acp-broker: %s\n' "${when}" "$*" >> "${log}" || refuse "cannot append to the launch log ${log}"
+}
+
+# @description The connection's signal trap: a hangup, interrupt or termination ends the worker, logs its exit,
+#   removes the slot and ends this process by the same signal; a slot that remains is exit 2 whatever the signal.
+# @arg $1 string The signal name.
+# shellcheck disable=SC2329 # invoked by the trap installed below
+connection_signal() {
+    local removed=0 when
+    trap - HUP INT TERM
+    if [[ -n ${child} ]]; then
+        if kill -TERM "${child}" 2> /dev/null; then :; fi
+        wait_child "${child}"
+        when=$(utc_stamp log) || when=unknown-time
+        if printf '%s acp-broker: omp acp exit %s\n' "${when}" "${child_status}" >> "${log}"; then :; fi
+    fi
+    slot_remove || removed=$?
+    ((removed == 0)) || {
+        echo "acp-broker: ended by SIG$1; the connection exits 2 because a per-connection slot remains" >&2
+        exit 2
+    }
+    kill -s "$1" $$
+    exit 2
+}
+
+# Now the slot: the sandbox directory when absent (two connections may race for it), then this connection's own
+# directory, which no other process made (mkdir takes no existing entry), its identity held for the launch.
+ensure_own_dir 'the sandbox directory' "${seats_real}/.sandbox"
+# shellcheck disable=SC2064 # expanded now on purpose: the handler needs the signal's name
+for sig in HUP INT TERM; do trap "connection_signal ${sig}" "${sig}"; done
+/bin/mkdir "${slot}" || refuse "cannot create the per-connection slot ${slot}"
+slot_made=1
+require_own_dir 'the per-connection slot' "${slot}"
+slot_id=$(/usr/bin/stat "${lstat_args[@]}" -- "${slot}") || refuse "cannot read the identity of the per-connection slot ${slot}"
+settings=${slot}/settings.json
+if ! printf '%s\n' "${json}" > "${settings}.tmp" || ! /bin/mv -f -- "${settings}.tmp" "${settings}"; then
+    refuse "cannot write the worker settings ${settings}"
+fi
+# srt on Linux grants writes only to paths that exist, so omp's own directories are made first (hcom-seat does the
+# same on every launch); the task cwd and the shared Claude Code directory exist already or the launch refuses.
+/bin/mkdir -p "${profile_real}" "${run_real}" || refuse "cannot create omp's directories ${profile_real} and ${run_real}"
+[[ -d ${claude_real} ]] || refuse "the shared Claude Code directory ${claude_real} does not exist; hcom-seat makes it on the Router's launch"
+
+# The canary (R-44), the four-word probe of the hcom-seat shim under the worker's settings, stdin /dev/null so the
+# connection's bytes stay for omp. `true`, not `:`: a failed redirection on a special builtin ends a POSIX shell.
+/bin/rm -f -- "${slot}/canary" || refuse "cannot clear ${slot}/canary"
+debug_canary=${h}/.claude/debug/acp-broker-canary-$$
+# shellcheck disable=SC2016 # the probe is /bin/sh's text; its $1..$4 are the four paths passed after it
+probe=$(/usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /bin/sh -c 'if true 2> /dev/null > "$1"; then w=write-open; else w=write-denied; fi
+if cat "$2" > /dev/null 2>&1; then r=read-open; else r=read-denied; fi
+if ls "$3" > /dev/null 2>&1; then s=ssh-open; else s=ssh-denied; fi
+if true 2> /dev/null > "$4"; then d=debug-open; else d=debug-denied; fi
+echo "$w $r $s $d"' canary "${slot}/canary" "${settings}" "${HOME}/.ssh" "${debug_canary}" < /dev/null) ||
+    refuse "the sandbox canary did not run under ${srt_cmd[*]}; omp acp not started"
+if [[ ${probe} == 'write-denied read-denied ssh-denied debug-open' || -e ${debug_canary} ]]; then
+    if /bin/rm -f -- "${debug_canary}"; then :; fi
+    refuse 'the sandbox does not hold (operator Claude debug writable); omp acp not started'
+fi
+if [[ ${probe} != 'write-denied read-denied ssh-denied debug-denied' || -e ${slot}/canary ]]; then
+    refuse "the sandbox does not hold (canary: ${probe}); omp acp not started"
+fi
+log_line "canary ${probe}"
+# omp's version under the same settings, by the checked argv, status first: a failed or shapeless read refuses.
+version=$(/usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${omp_cmd[@]}" --version < /dev/null) ||
+    refuse "cannot read the omp version (${omp_cmd[*]} --version failed under ${srt_cmd[*]}); omp acp not started"
+version=${version%%$'\n'*}
+version=${version%% *}
+# omp 18.12.6 prints `omp/<version>`; the log carries the version alone.
+version=${version#omp/}
+[[ ${version} =~ ^[0-9A-Za-z.+-]+$ ]] || refuse "cannot read the omp version from '${version}'; omp acp not started"
+# The slot is the one this connection made: its identity has not changed since.
+slot_now=$(/usr/bin/stat "${lstat_args[@]}" -- "${slot}") || refuse "cannot read the identity of the per-connection slot ${slot}"
+[[ ${slot_now} == "${slot_id}" ]] || refuse "the per-connection slot ${slot} changed identity since it was made (${slot_id} to ${slot_now}); omp acp not started" # lint-comparisons: allow compares (device, inode) identities, not paths
+log_line "omp acp start omp ${version} cwd ${cwd_real}"
+# omp runs as a child, not an exec, so the exit line and the trailer can be written and the slot removed; the explicit
+# `<&0` keeps the connection as its stdin (a background command gets /dev/null otherwise), and its stdout is the
+# connection. The cwd is the task directory (M-21: a cwd inside a read-denied path dies on `uv_cwd EPERM`).
+cd "${cwd_real}" || refuse "cannot enter the task cwd ${cwd_real}"
+/usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${omp_cmd[@]}" acp --profile dsh <&0 &
+child=$!
+wait_child "${child}"
+status=${child_status}
+child=''
+trap - HUP INT TERM
+log_line "omp acp exit ${status}"
+# The trailer is the connection's last line: the client's exit status.
+printf 'omp acp exit %s\n' "${status}" || echo "acp-broker: cannot write the exit trailer to the connection" >&2
+slot_remove || {
+    echo "acp-broker: omp acp exited ${status}; the connection exits 2 because a per-connection slot remains" >&2
+    exit 2
+}
+exit "${status}"

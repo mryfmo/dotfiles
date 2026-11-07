@@ -1,0 +1,97 @@
+#!/bin/bash
+# @file router-gh
+# @brief The dsh-superagent Router's GitHub CLI: `gh` signed in as the agent account alone, through a `GH_CONFIG_DIR` under the Router's credential root.
+# @description
+#   Regime-cutover U353 (M-26 stage B). Upstream's deployment guide gives the Router a `gh` wrapper whose
+#   `GH_CONFIG_DIR` is the agent account's own directory (docs/006-deployment.md "Agent GitHub account", `gh-agent`), and
+#   the Router's GitHub Source names it as its `cli` (`src/sources/github.ts:46-47`): the Router acts as the account that
+#   wrapper is signed in to, and the Executor calls it as `gh`. This file is that wrapper for the kit. The directory is
+#   `<DSH_HOME>/router-credentials/gh`: the credential root is the one directory the router role of `hcom-seat` reads
+#   beyond the dsh row's grants (allowRead row 7, held like the state root and made 0700 by the launch), the dsh row
+#   denies it for read and for write, and no role writes it (the login inside it is the operator's step,
+#   docs/engagement-handout.md: `gh auth login --insecure-storage` under that `GH_CONFIG_DIR`, because the Keychain is
+#   not readable under srt). `DSH_HOME` is the one `hcom-seat` exports into the Router (its held physical form); unset,
+#   `~/.dsh` as the kit's default. The root is read physically (`pwd -P`) and must be a real directory: a link or an
+#   absent root refuses (exit 2) before `gh` runs. The token names `GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN`
+#   and `GITHUB_ENTERPRISE_TOKEN` are removed first, so the account is the credential root's login and never a value of
+#   the caller's environment (the Router's setup removes them too, docs/006-deployment.md "Setup checks"); `GH_HOST` is
+#   removed so the host is github.com. `gh` is resolved from the caller's PATH (`type -P`, inside the sandbox the seat's
+#   PATH), and an absent `gh` refuses by name. Every other argument reaches `gh` verbatim.
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @arg $@ string gh's arguments, verbatim.
+# @exitcode 2 The self-check, `DSH_HOME`, the credential root or `gh` refused.
+# @exitcode * gh's own status.
+# @example
+#   DSH_HOME=~/.dsh router-gh api user --jq .login
+set -u
+
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''             # producer-status: allow the if below takes an empty home as the checkout layout
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
+    else
+        digest=$(shasum -a 256 < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
+
+# @description Print the refusal on stderr and exit 2.
+# @arg $1 string The reason.
+refuse() {
+    echo "router-gh: $1" >&2
+    exit 2
+}
+
+dsh_home=${DSH_HOME:-${HOME}/.dsh}
+[[ ${dsh_home} == /* ]] || refuse "DSH_HOME '${dsh_home}' is not an absolute path" # lint-comparisons: allow an absolute-path shape test, not a comparison of two paths
+root=${dsh_home}/router-credentials
+[[ ! -L ${root} ]] || refuse "the credential root ${root} is a symbolic link; it must be a real directory inside DSH_HOME"
+[[ -d ${root} ]] || refuse "the credential root ${root} is not a directory; hcom-seat router makes it, and the agent account's login inside it is the operator's step"
+root_phys=$(cd "${root}" && pwd -P) || refuse "cannot resolve the credential root ${root}"
+gh_real=$(type -P gh) || refuse "gh not found on PATH"
+# The account is the credential root's login alone: no token or host of the caller's environment reaches gh.
+unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN GH_HOST
+GH_CONFIG_DIR=${root_phys}/gh exec "${gh_real}" "$@"

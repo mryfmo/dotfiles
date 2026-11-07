@@ -5655,8 +5655,8 @@ Code only produces the model turns.</p>
 <div class="highlight"><pre><span></span><code>omp -e ~/.local/lib/omp-extensions/pi-claude-bridge --model claude-bridge/claude-haiku-4-5
   -&gt; src/index.ts registers provider claude-bridge (omp rewrites @earendil-works/* imports to its legacy pi shims)
   -&gt; @anthropic-ai/claude-agent-sdk query() spawns node_modules/@anthropic-ai/claude-agent-sdk-&lt;platform&gt;/cli
-  -&gt; the child authenticates by CLAUDE_CODE_OAUTH_TOKEN when set (a seat's shim exports it, under a per-seat
-     CLAUDE_CONFIG_DIR, U190), else with the host's claude.ai login (Keychain); tools: [] and bypassPermissions
+  -&gt; the child authenticates with the claude.ai login of its CLAUDE_CONFIG_DIR (a seat's shim exports the shared
+     seats directory &lt;seats-root&gt;/.state/claude, U318; a plain launch keeps the host's ~/.claude); tools: [] and bypassPermissions
 </code></pre></div>
 <p>The model id after <code>claude-bridge/</code> is the Anthropic catalog id. The seat
 profiles (<code>model_profiles</code> in <code>home/dot_agents/agent-config.yaml</code>) choose the
@@ -5761,34 +5761,41 @@ comes from an extension that <code>omp.extensions</code> does not list.</p>
   <code>Model "claude-bridge/claude-fable-5-1" not found</code>. The seat launcher keeps passing <code>-e</code>.</li>
 </ul>
 <h2 id="operator-login">Operator login<a class="headerlink" href="#operator-login" title="Permanent link">&para;</a></h2>
-<p>The bridge child of a seat runs under its own <code>CLAUDE_CONFIG_DIR</code>,
-<code>&lt;seats-root&gt;/.state/&lt;name&gt;/claude</code>, which <code>hcom-seat</code>'s shim exports (regime-cutover
-U190), so its <code>.claude.json</code>, projects, sessions, backups and plugins land in the
-seat's state slot and never in the operator's <code>~/.claude</code> or <code>~/.claude.json</code>. It logs
-in by <code>CLAUDE_CODE_OAUTH_TOKEN</code> alone: the shim reads it from
-<code>~/.config/claude-code/oauth-token</code> (first line, mode 0600), the seats' current login,
-and a caller's variable is no input (U312). The operator makes that token once with
-<code>claude setup-token</code> on the laptop and stores it in the file by hand, on every seat
-host alike (gate G-27). <code>seat-login-preflight &lt;role&gt;</code> counts only that file; a Keychain
-item or credentials file is reported as <code>host login only</code> and starts no seat, with the
-setup-token instruction. Measured 2026-11-05 (Claude Code 2.1.316): a scratch
-<code>CLAUDE_CONFIG_DIR</code> with the host Keychain item and credentials file present answers
-<code>Not logged in</code>, so the child cannot borrow a host login. The Agent SDK reads the
-variable, except in bare mode, and the bridge never passes <code>--bare</code>: its only extra CLI
-arguments are <code>model</code>, <code>strict-mcp-config</code> and <code>thinking-display</code> (<code>src/index.ts</code>,
-<code>extraArgs</code>).</p>
+<p>The bridge child of every seat runs under one <code>CLAUDE_CONFIG_DIR</code>,
+<code>&lt;seats-root&gt;/.state/claude</code> (<code>~/.local/state/omp-seats/&lt;slug&gt;/.state/claude</code>), which
+<code>hcom-seat</code>'s shim exports (regime-cutover U190, U318), so its <code>.claude.json</code>, projects,
+sessions, backups and plugins land in the seats' shared directory and never in the
+operator's <code>~/.claude</code> or <code>~/.claude.json</code>. It logs in by that directory's own
+claude.ai login: one per host, made once by the operator with the command the
+pre-flight prints, <code>CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth login</code> (after
+<code>BROWSER=regime-open-url</code> on a seat host reached over SSH, where the page shows a code
+to paste at the prompt), stored by Claude Code itself (the Keychain item keyed to the
+directory on macOS, <code>.credentials.json</code> 0600 there on Linux), refreshed by Claude Code
+across the seats that share it, and revoked with <code>CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth
+logout</code>. No token: <code>claude setup-token</code>, its yearly plaintext token and the token file
+are retired (U314 measured them against the documented login routes; U318), the shim
+clears <code>CLAUDE_CODE_OAUTH_TOKEN</code>, and a caller's variable is no input (U312).
+<code>seat-login-preflight &lt;role&gt;</code> judges <code>claude auth status</code> under the directory and
+starts no seat without <code>authMethod</code> <code>claude.ai</code> there; a <code>oauth_token</code> or <code>api_key</code>
+method, or the operator's host login alone, is reported absent with the command.
+Measured 2026-11-05 (Claude Code 2.1.316): a scratch <code>CLAUDE_CONFIG_DIR</code> with the host
+Keychain item and credentials file present answers <code>Not logged in</code>, so the child cannot
+borrow a host login; measured 2026-11-06: the laptop's Keychain held only the default
+directory's item (<code>Claude Code-credentials</code>) and none for a per-seat directory's hashed
+service name (exit 44), consistent with the docs' "keyed to the config directory", so
+the shared directory's login is its own item. The seat's srt settings grant the
+directory for write (the child's refresh and state) and deny its <code>settings.json</code>,
+<code>settings.local.json</code>, <code>rules</code>, <code>hooks</code>,
+<code>plugins</code>, <code>skills</code>, <code>commands</code> and <code>agents</code>, so no seat changes what another seat's
+child would load from it; the child loads none of them anyway (<code>settingSources: []</code>,
+<code>--strict-mcp-config</code>, patch 04).</p>
 <p>A plain <code>claude</code> session, and the plain <code>omp</code> launch above, use the host's claude.ai
 login instead: the Keychain on macOS, <code>~/.claude/.credentials.json</code> (mode 0600) on
 Linux (Claude Code authentication doc, "Credential management"), made by <code>/login</code> in
 the operator's own terminal; no script does this, and without it such a turn ends with
-<code>Not logged in · Please run /login</code>. On a Linux seat host reached over SSH
-(<code>herdr --remote</code>) that login's <code>claude auth login</code> sends its URL to <code>$BROWSER</code>
-(<code>regime-open-url</code> opens it on the laptop); its callback port is random (50903, 50915
-and 50920 on three runs, Claude Code 2.1.309), so the page shows a code to paste at the
-prompt. That is the host's login, not the seat's: the seat route on every host is the
-token file above, which only the seat shim reads. No shell exports it (U312), so a
-login shell's own <code>claude</code> keeps the host login and its claude.ai connectors; whether
-the file stays the seat login is U314's open decision. The steps are in
+<code>Not logged in · Please run /login</code>. That is the host's login, not the seat's: the
+seats' is the shared directory above. No shell exports a token (U312), so a login
+shell's own <code>claude</code> keeps the host login and its claude.ai connectors. The steps are in
 <code>docs/remote-host-logins.md</code>.</p>
 <h2 id="load-check">Load check<a class="headerlink" href="#load-check" title="Permanent link">&para;</a></h2>
 <p><code>omp models</code> never evaluates extension modules, so the only instrument is a

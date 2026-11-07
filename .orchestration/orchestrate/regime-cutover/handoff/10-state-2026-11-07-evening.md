@@ -1,0 +1,28 @@
+# State at 2026-11-07 18:5xZ (coordinator handoff)
+
+## Landed today (each through pr-audit.sh, a sweep row and pr-merge.sh)
+
+| PR | unit | what | rounds |
+| --- | --- | --- | --- |
+| 725 | U364 | the omp-gateway plugin's child environment carries every variable srt injects (the proxy names, the CA trust names); the g6 canary now reaches Anthropic instead of dying on a DNS denial | 1 |
+| 726 | U363 | `build_under_srt` makes and grants pnpm's store operation lock directory; the stage-A superagent install passes inside srt | 1 |
+| 724 | U353 (M-26 stage B) | the Router under srt: every seat row denies the credential root for read and write and hcom-seat makes the root before any render; router-gh reads the active host's token alone and holds every component; router-settings-apply writes the Source settings loopback-only, mode first | 4 (mechanism-change row 12:55:26Z, remove) |
+| 728 | U20 | records sync 48 (sync 47 closed after its audit: the U317 merge row, the m25 bypass step, four P2) | 2 syncs |
+| 729 | U370 | the harness page's third write root, router-gh's header names its token source as the control, committed read-failure tests for router-settings-apply | 1 |
+| 730 | U215 (store move 1 of 5) | `REGIME_STORE_ROOT=<physical HOME>/.local/state/regime-store/<slug>` derived by regime-env, regime-init creates the store there; no binding, a per-component hold | 3 (mechanism-change row 18:05:48Z, remove) |
+
+Every merge was deployed on the laptop by `make deploy-kit`; the pins equal the deployed files.
+
+## Waiting on the operator (three steps, each the operator's alone)
+
+1. **Codex hardware key (PR 720, U343e).** Three audit runs of PR 720 ended on `You're approved for Daybreak Blue, but this response cannot be shown as this session was not authenticated with one of your authorized hardware keys`. The gate is on the content of the auditor's answer (the ACP broker's credential boundary reads as cybersecurity content), not on the session size: audits of 724, 725, 726, 728, 729 and 730 answered in the same hours at larger token counts. Step: authenticate the Codex session with the hardware key, then the coordinator reruns `pr-audit.sh 720`. PR 720 is CI-clean at fd94feae with its sweep row; U344 waits behind it. (decisions 2026-11-07T11:50:20Z)
+2. **Seat login (table row g6, U313 Part B).** The g6 rerun after the U364 deploy reaches Anthropic and gets `HTTP 502: Failed to authenticate: OAuth token revoked`; the shared seats login's token is revoked (`~/.local/state/omp-seats/dotfiles/.state/claude/.credentials.json`, expiresAt 0 at 11:49:46Z). Step: `CLAUDE_CONFIG_DIR=~/.local/state/omp-seats/dotfiles/.state/claude claude auth login` (the command `seat-login-preflight` prints), then the coordinator reruns g6. (decisions 2026-11-07T11:51:16Z)
+3. **The Router's agent account (M-26 stage B, handouts/m25-agent-github-account.md).** Step 1 (the agent GitHub user as a Write collaborator) and the login inside the credential root (`gh auth login --insecure-storage` under `<DSH_HOME>/router-credentials/gh`, docs/engagement-handout.md) are the operator's. Step 2 of the handout was rewritten today: a separate update-only ruleset with one bypass actor, never a bypass actor on `main integration gate`. The sync 48 auditor adds that a user-owned repository cannot name an individual user as a bypass actor (verdicts/U20-66b65fd5.md P2, weight 5): the design of "who may update main" needs a supported form (a role, a team, an app) before step 2 is run.
+
+## Open design and records items
+
+- **The coordinator's main checkout is 47 commits behind origin/main** (the hand fast-forward is struck; U215 to U222 end the class). Until the store moves, run `brief-check.py` and `rounds-check.py` from the chezmoi clone at origin/main (`~/.local/share/chezmoi/scripts/orchestrator`, pulled `--ff-only` first) and keep the `git show origin/main:` overlay for `audit-carry.py` around `pr-audit.sh`. Main's brief-check requires ACCEPTANCE to name a test gate (`python -m unittest`) and a lint gate (`run-on-lint-files.sh`) by word; U343, U343e, U344 and U370 were given the words today; 34 older briefs stay as records. (decisions 2026-11-07T14:37:55Z)
+- **Store move next:** U216 (pr-merge.sh, pr-close.sh: the store root replaces the toplevel anchor) and U219 (checkout-guard.sh, hcom-seat: the guard's new trigger; the new root in both roles' allowRead and the orchestrator's write roots; an HCOM_DIR that overlaps REGIME_STORE_ROOT refused), in either order; then U220 (records-sync.sh on the external directory); then U221 (regime-start, the one-time move). handoff/07-store-move-design.md, with the line numbers refreshed by the U215 scout (regime-env :78-88, :96-105, :143-165; regime-start :448, :501-502).
+- **Records sync 49** carries the rows since sync 48 (U370 and U215 rounds and merges, the ten restating merge rows written 14:48Z, the redaction row). Before it runs: the store holds no redact word (the scratch mask-and-scan of 14:16Z is the check) and no Finder artifact.
+- **Residual rows to fold into a later tests wave:** router-gh's `/usr/bin/stat` producer (U353 round 4), regime-init's copy-then-fail and stat window (U215 round 3), run-host-rows.py's default discovery containment (sync 48 P2, weight 6), the m25 bypass-actor form.
+- **Audit route behaviour worth knowing:** `pr-audit.sh` takes the pull request's head from gh at start; an audit started before a push audits the old head (the 11:46Z slip on PR 724, killed). The round-2 verdict file must be named `<ledger unit>-<head8>.md` (U353, not U353b) and dispositions use the words `fixed` or `residual`, keyed to the ledger's unit.

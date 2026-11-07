@@ -1,0 +1,179 @@
+{
+  "run_id": "dotfiles-run-43",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "e7d86188ac516ef0fb0e9db132356c0fc24aa406",
+    "branch": "docs/harness-third-write-root-router-gh-header-and-settings-writer-read-failure-tests",
+    "parent_of_change": "ff286680d396e41e9987d4e1160b7414067b796d",
+    "base_note": "U370: one commit on origin/main ff286680, where U353 (#724) is merged byte-identical to run-42's head 747995da in scripts/orchestrator, home/dot_local/bin/common and the handout, beside U354 (#722), U355 (#721), U359 (#723), U364 (#725) and U363 (#726). Checked: git diff ff286680..HEAD lists 7 files (the harness page, router-gh and its copy, the pin and its record, two test modules); git diff 747995da..HEAD lists 14. U364's and U359's files are the blobs run-39 swept at a4b09f3e; U354's updater change is run-36's; U363 (pnpm's lock directory as build_under_srt's third write root) had no sweep on this seat and is hunted here. The brief's title and GOAL are U322's template text again (branch fix/dsh-harness-build-under-srt, base 668ba887, 3 paths); its CONTEXT names run-38 'the U370d head 39f75cc8' as the previous run.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U370 against ff286680: the harness page's third write root, router-gh's header on the Keychain, the settings writer's fail-closed read tests; (2) main since run-42: U363's pnpm lock directory in build_under_srt (hunted), U354's srt lookup (run-36's reading, cites re-mapped), U355 and U364 (run-39's restated omp-gateway unit, blobs identical), U359 (CI bound); (3) the carry: run-42's 86 units and eight candidate records re-mapped through 747995da..e7d86188; (4) the brief's U322 hunt list, answered by the carried updater units with U363 added.",
+  "carry_note": "The brief names run-38 as the set to carry. run-42 holds run-38's records (through runs 40 and 41) re-verified at 747995da, whose U353 content is merged byte-identical here, so run-42 is carried, with run-39's omp-gateway unit for the plugin main now holds.",
+  "scope_paths": [
+    "docs/deepseek-harness.md",
+    "scripts/orchestrator/router-gh",
+    "home/dot_local/bin/common/executable_router-gh",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "tests/unit/test_lever_self_check.py",
+    "tests/unit/test_router_settings_apply.py",
+    "scripts/update-agent-assets.sh",
+    "tests/unit/test_update_agent_assets.py",
+    "home/dot_dsh/plugins/omp-gateway/config.mjs",
+    ".github/workflows/test.yaml"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target, any gh call and any read of a credential store. Every check is a source check; the installed pnpm 12.8.1 was looked at (not run) for its lock-directory code, which is compiled into its native binary.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "AI-AND-LLM.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-42",
+      "source_ref": "747995da58c4bc71f7e780c2040fc20a22942a25",
+      "findings": 0,
+      "ledger_units": 86,
+      "use": "The carry: every unit and its eight candidate records, re-mapped through 747995da..e7d86188."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-39",
+      "source_ref": "a4b09f3e1aae64de8cf20b0cea2cb67db1687ff0",
+      "findings": 0,
+      "ledger_units": 81,
+      "use": "The omp-gateway environment unit, restated for U355 and U364, whose blobs main holds unchanged."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-38",
+      "source_ref": "8791100fa9a3ae5606df893490386385ce183339",
+      "findings": 0,
+      "ledger_units": 84,
+      "use": "The brief's named carry set; its records reach this run through runs 40 to 42."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T17:02:29Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: nine candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy): one new from U363 (updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm) and eight carried from run-42. All are proposed needs_validation; none is a finding. U370 itself yields no candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-pnpm-lock-dir",
+      "record": "agents/parent-hunter/scratch/candidate-lock-dir-shared.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": null,
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/keychain/model-gh-resolves-the-operators-login",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#router-row-keychain-and-operator-gh-config",
+      "record": "agents/parent-hunter/scratch/candidate-router-keychain.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-42",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/router-credential-root/read-deny-follows-the-launching-callers-home",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#cred_root_omp-deny-row-home",
+      "record": "agents/parent-hunter/scratch/candidate-cred-root-home.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-42",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/credential-root/agent-token-readable-by-the-router-model",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#credential-root-read-by-the-router-model",
+      "record": "agents/parent-hunter/scratch/candidate-agent-token-readable.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-42",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-42",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-42",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/settings-file-in-session-write-root",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-settings-file",
+      "record": "agents/parent-hunter/scratch/candidate-settings-in-write-root.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-42",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/session-lockfile-names-the-build-hosts",
+      "ledger_unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "record": "agents/parent-hunter/scratch/candidate-lockfile-hosts.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-42",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-42",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (9), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the delegation tool is denied by policy on this seat (refused in run-38 and run-39); every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted the omp-gateway unit carried from run-39, the build unit with U363's third write root, and one new unit for the lock directory's sharing with the host's pnpm; U370 adds no unit"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 9,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T17:08:48Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "run_id": "dotfiles-sweep-3-run-41",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "15c6be1e0878f7c8ba43ad8a887612d2adb580b4",
+    "branch": "(detached; the brief names fix/dsh-harness-build-under-srt)",
+    "base": "2b7412c702a0237189d1069eaf4522b73a2b7d1f",
+    "previous_swept_head": "a081d8ba6c9ed377c40414967269c16ed9af59b9",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U215, U215b and U215c change at the head (2b7412c7..15c6be1e, 9 files: scripts/orchestrator/regime-env, scripts/orchestrator/regime-init, their copies under home/dot_local/bin/common, the two pins, scripts/orchestrator/README.md, tests/unit/test_regime_env.py, tests/unit/test_regime_init.py), with U215c's delta (a081d8ba..15c6be1e) read against run-40's lead and hcom-seat's role table for both write and read; plus the run-40 records carried on the same code; every other path is carried out_of_scope",
+  "scope_note": "The brief's sha matches the head, but its GOAL and hunt are the U374 text (build_under_srt against 668ba887), which is main's code; the head is U215c on U215b and U215 on main 2b7412c7, which is hunted. The brief carries run-41, this run's own directory; this seat's latest run, run-40, is carried. Run-40 missed the read side of U215b's default root; this run records it.",
+  "scope_paths": [
+    "scripts/orchestrator/regime-env",
+    "scripts/orchestrator/regime-init",
+    "home/dot_local/bin/common/executable_regime-env",
+    "home/dot_local/bin/common/executable_regime-init",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_regime_env.py",
+    "tests/unit/test_regime_init.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, grep, shasum over the four lever files and its own node ledger builder; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-40",
+      "source_ref": "a081d8ba6c9ed377c40414967269c16ed9af59b9",
+      "findings": 0,
+      "unvalidated_candidates": 13,
+      "ledger_units": 127,
+      "use": "Base ledger on the same main; its eight U215 units re-checked at U215c (its binding lead closed) and one unit added for the read side of the new root."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T18:24:26Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and thirteen leads (one on U215c) could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json.",
+  "resolved_since_prior": [
+    {"fingerprint": "regime-store/store-root-binding:pointer-inside-every-worker-write-root", "how": "the root is the fixed derivation <physical HOME>/.local/state/regime-store/<slug> (regime-env:133-162); no binding is read or written; a planted store-root file chooses nothing (tests/unit/test_regime_init.py:166-187)"}
+  ],
+  "unvalidated_candidates": [
+    {"fingerprint": "regime-store/store-root:dsh-and-router-roles-can-read-the-live-store", "where": "scripts/orchestrator/regime-env:145; scripts/orchestrator/hcom-seat:2273-2294, :2396-2398", "proposed_verdict": "confirmed", "proposed_severity": "low (unverified; latent until U221 moves the live store)", "new": true},
+    {"fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off", "where": "home/dot_dsh/profiles/router/cordis.patch.yml:57-71, :152-166; scripts/orchestrator/hcom-seat:2458-2460", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link", "where": "scripts/orchestrator/hcom-seat (dsh_home_hold, seat_write_roots)", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable", "where": "scripts/orchestrator/hcom-seat (seat_settings_render deny_read)", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "hcom-seat/router:local-binding-every-interface", "where": "scripts/orchestrator/hcom-seat:437", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file", "where": "scripts/update-agent-assets.sh:2473-2478", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check", "where": "scripts/update-agent-assets.sh:1914-1935", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation", "where": "scripts/orchestrator/hcom-seat (the claude_config row)", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded", "where": "the dsh wrapper line of scripts/update-agent-assets.sh", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "records-sync/redaction/account-identity-residue-in-published-row", "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509", "proposed_verdict": "confirmed", "proposed_severity": "low (unverified)"},
+    {"fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands", "proposed_verdict": "rejected", "proposed_reason": "the token is unset at start and before the seat environment"},
+    {"fingerprint": "dsh-profile:web-search-routes-to-the-official-api", "proposed_verdict": "rejected", "proposed_reason": "both base-bundle web rows disabled by id"},
+    {"fingerprint": "dsh-profile:thak-runs-without-command-sandbox", "proposed_verdict": "rejected", "proposed_reason": "the thak profile runs no shell tool"}
+  ],
+  "leads_on_other_branches": [
+    "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox (U343, run-35)",
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-35)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-35)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder in agents/parent-hunter/scratch/)"
+  },
+  "critic_passes": [
+    {"pass": "post-wave", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "asked whether any role loses a deny it had when the records move (yes: the dsh and router roles; a question run-40 did not ask) and whether any closed README row claims more than the code holds (no)"},
+    {"pass": "final-clean", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; no planned unit remains"}
+  ],
+  "candidate_count": 13,
+  "findings_count": 0,
+  "ledger_units": 128,
+  "ledger_counts": {"covered": 57, "candidate": 13, "out_of_scope": 58},
+  "shared_files_written": ["run-metadata.json", "architecture.md", "coverage-ledger.json", "findings.json", "REPORT.md", "FINDINGS-DETAIL.md", "NEEDS-VALIDATION.md"],
+  "finished_at": "2026-11-07T18:27:55Z"
+}

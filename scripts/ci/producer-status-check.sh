@@ -44,11 +44,14 @@
 #      grammar, by line, whatever they would do when run (a name no function defines is a plain command; a function that
 #      cleans up before it exits is not a refusal function: the cleanup goes in a trap, or the call carries an allow
 #      comment naming the cleanup line); (iii) a block or subshell whose statements are that grammar (`{ echo no >&2;
-#      exit 1; }`), with `return <1-255>` as the one terminator instead when the `||` list sits inside a function body
-#      of the file (a sourced helper returns where a lever exits: regime-env's `|| { echo … >&2; return 1; }` blocks;
-#      a `return` at the top level of a script is a bash error, so it ends nothing there and stays a finding; U216b),
-#      so a bare `exit` or `return`, a `return` outside every function body, a call of a refusal function or a `$?`
-#      inside one is a finding; (iv) a bare plain assignment (`=`, not `+=`) of exactly `$?` (`status=$?`;
+#      exit 1; }`), with `return <1-255>` as the one terminator instead when the branch is a brace block and the `||`
+#      list sits inside a function body of the file (a sourced helper returns where a lever exits: regime-env's `|| {
+#      echo … >&2; return 1; }` blocks; a `return` at the top level of a script is a bash error, so it ends nothing
+#      there and stays a finding; U216b), never when the branch is a subshell, whose `return` ends the subshell alone
+#      while the function goes on (measured on bash 3.2: `f() { x=$(false) || ( echo no >&2; return 1 ); echo on; };
+#      if f; then echo ok; fi` prints `on` and `ok`; U216c), so a bare `exit` or `return`, a `return` outside every
+#      function body or inside a subshell, a call of a refusal function or a `$?` inside one is a finding; (iv) a
+#      bare plain assignment (`=`, not `+=`) of exactly `$?` (`status=$?`;
 #      `status+=$?` adds the status to the value, 25
 #      and 6 making 256, and is a finding naming the append). A branch statement run in the background (`exit 2 &`) or
 #      negated (`! exit 1`, `! (exit 1)`) handles nothing.
@@ -68,9 +71,11 @@
 #      beside this script (`git ls-files`, `git config -f`, `git config --file`, `find`, `ls`) must capture its
 #      stderr to a file, and a later statement of the same list must test `[[ ! -s <that file> ]]` in a shape whose
 #      failure stops the script: the last statement of an `if` condition, or the left side of a `||` whose branch is
-#      one of the forms of rule a; a bare `[[ ! -s <file> ]]` statement is accepted only at the top level of a file
-#      whose prologue (rule c) runs `set -euo pipefail` before it, where `set -e` ends the script on its failure, and
-#      anywhere else (a function body, a block, a file with no prologue before it) is not a test. The producer
+#      one of the forms of rule a, judged in the same function context as a tested read's branch (inside a function
+#      body a brace block ending in `return <1-255>` closes the producer, a subshell ending in `return` does not;
+#      U216c); a bare `[[ ! -s <file> ]]` statement is accepted only at the top level of a file whose prologue (rule
+#      c) runs `set -euo pipefail` before it, where `set -e` ends the script on its failure, and anywhere else (a
+#      function body, a block, a file with no prologue before it) is not a test. The producer
 #      statement, the test statement and every statement on the path of each to the top level must be in the
 #      foreground and not negated, with no process substitution on the path: `git ls-files > l 2> e &` lets the next
 #      statement test `e` before the listing has finished, `! git ls-files > l 2> e` reads its failure as success, `{
@@ -1283,8 +1288,9 @@ def function_body(stmt):
 
 def inside_function(stack):
     """Whether a statement's path to the top level (stack, innermost first) passes through a function definition: a
-    `return` there returns from that function, so it is the terminator of a block or subshell branch (U216b, form
-    iii); at the top level of a script it is a bash error and ends nothing."""
+    `return` there returns from that function, so it is the terminator of a brace block branch (U216b, form iii; a
+    subshell's `return` ends the subshell alone, U216c); at the top level of a script it is a bash error and ends
+    nothing. Rule a's `||` branch and rule b's `[[ ! -s ]]` branch are judged by the same answer."""
     return any(function_body(node) is not None for node in stack if isinstance(node, dict) and "Cmd" in node)
 
 
@@ -1476,19 +1482,21 @@ def sends_stdout_to_stderr(redirect):
     return text is not None and text.isascii() and text.isdigit() and int(text, 10) == STDERR
 
 
-def refusal_break(stmts, defined, terminators=TERMINATORS[:1]):
+def refusal_break(stmts, defined, terminators=TERMINATORS[:1], enclosed_subshell=False):
     """What breaks the refusal grammar in the statements of a function body or of a block or subshell branch, as
     (what, line), else None. The grammar: zero or more plain commands whose known first word is `echo` or `printf`
     (not a name a function of this file takes, at any depth) with a redirect that sends fd 1 to fd 2, then exactly one
     plain command whose known first word is one of terminators (not such a name either) with one argument whose known
     text is a decimal from 1 to 255, every statement in the foreground and not negated, no command substitution and
     no `$?` anywhere. The terminators are `exit` alone for a refusal function's body (form ii: its `return` returns
-    from the refusal function, not from the caller) and for a block or subshell at the top level of the file, and
-    `exit` or `return` for a block or subshell inside a function body (form iii, U216b: a sourced helper returns where
-    a lever exits; a `return` at the top level of a script is a bash error, so it ends nothing there). The body is
-    matched, never analysed: the first statement that is anything else (a `return` where `exit` alone ends the
-    grammar, a declaration, an `if`, an assignment, a call, a terminator before the last statement, an `echo` without
-    `>&2`, an `echo` where the terminator must be) is named, whatever it would do when run."""
+    from the refusal function, not from the caller), for a block or subshell at the top level of the file, and for a
+    subshell inside a function body (enclosed_subshell: its `return` ends the subshell alone and the function goes on,
+    which the finding says; U216c), and `exit` or `return` for a brace block inside a function body (form iii, U216b:
+    a sourced helper returns where a lever exits; a `return` at the top level of a script is a bash error, so it ends
+    nothing there). The body is matched, never analysed: the first statement that is anything else (a `return` where
+    `exit` alone ends the grammar, a declaration, an `if`, an assignment, a call, a terminator before the last
+    statement, an `echo` without `>&2`, an `echo` where the terminator must be) is named, whatever it would do when
+    run."""
     for index, stmt in enumerate(stmts):
         line = stmt["Pos"]["Line"]
         flag = flagged_path((stmt,))
@@ -1517,6 +1525,8 @@ def refusal_break(stmts, defined, terminators=TERMINATORS[:1]):
             if not any(sends_stdout_to_stderr(redirect) for redirect in stmt.get("Redirs") or []):
                 return f"an `{text}` that does not send fd 1 to fd 2 (`>&2`)", line
         elif text not in terminators:
+            if enclosed_subshell and text == TERMINATORS[1]:
+                return f"the command `{text}`, which ends the subshell alone (the function around it goes on)", line
             return f"the command `{text}`", line
         elif not last:
             return f"{article(text)} `{text}` before the last statement", line
@@ -1544,17 +1554,18 @@ def grammar_break(noun, broken):
     return f"{noun} breaks the refusal grammar ({GRAMMAR}) {where}"
 
 
-def branch_shape(stmt, tested, functions, defined, terminators, enclosed=False):
+def branch_shape(stmt, tested, functions, defined, terminators, enclosed):
     """None when the `||` branch (stmt) handles the status of the tested statement, else the name of its shape. The
     branches that handle it: (i) a plain command whose known first word is one of terminators (`exit`, `return`; a
     function of that name anywhere in the file takes the name away) with no argument, one known decimal from 1 to 255
     or one bare `$?` (terminator_shape); (ii) a plain command whose known first word is one of REFUSAL_NAMES and names a
     function this file defines once, at top level, unflagged and before the tested statement (refusal_function), whose
     body is the refusal grammar (refusal_break; a name no function has is a plain command); (iii) a block or subshell
-    whose statements are that grammar, ending in `exit <1-255>`, or in `return <1-255>` when the tested statement lies
-    inside a function body (enclosed, inside_function: U216b); (iv) a bare `=` assignment of exactly `$?` (`+=` adds
-    the status to the value). A statement run in the background or negated handles nothing (the script goes on, or the
-    failure reads as success)."""
+    whose statements are that grammar, ending in `exit <1-255>`, or in `return <1-255>` when the branch is a brace
+    block and the tested statement lies inside a function body (enclosed, inside_function: U216b; a subshell's
+    `return` ends the subshell alone, U216c); (iv) a bare `=` assignment of exactly `$?` (`+=` adds the status to the
+    value). A statement run in the background or negated handles nothing (the script goes on, or the failure reads as
+    success). Every caller passes enclosed: rule a's `||` list and rule b's `[[ ! -s ]]` test read the same context."""
     flag = flagged_path((stmt,))
     if flag is not None:
         return BRANCH_FLAGS[flag[0]]
@@ -1585,10 +1596,14 @@ def branch_shape(stmt, tested, functions, defined, terminators, enclosed=False):
             return None
         return f"the command `{text}`"
     if kind in ("Block", "Subshell"):
-        broken = refusal_break(body_statements(stmt), defined, TERMINATORS if enclosed else TERMINATORS[:1])
+        # Only a brace block's `return` returns from the function around the `||` list; a subshell's ends the
+        # subshell alone and the function goes on (U216c), so the second terminator is a Block's.
+        subshell = kind == "Subshell"
+        ends = TERMINATORS if enclosed and not subshell else TERMINATORS[:1]
+        broken = refusal_break(body_statements(stmt), defined, ends, enclosed and subshell)
         if broken is None:
             return None
-        return grammar_break("a block that" if kind == "Block" else "a subshell that", broken)
+        return grammar_break("a subshell that" if subshell else "a block that", broken)
     if kind == "BinaryCmd":
         op = cmd.get("Op")
         return LIST_SHAPES.get(op, f"a `{op}` list")
@@ -2077,12 +2092,13 @@ class Walk:
         """Whether a later statement of the producer's list tests `[[ ! -s <target> ]]` in a shape whose failure stops
         the script: None when the statement holds no such test, "" when it closes the producer, else why it does not,
         naming the test's line. The shapes: the last statement of an `if` condition; the left side of a `||` whose
-        branch is one rule a accepts (branch_shape); a bare statement at the top level of a file whose prologue runs
-        `set -euo pipefail` before it, where `set -e` ends the script on its failure (inside a function body, a block
-        or an `if`, or in a file with no such prologue, nothing reads that failure). The test and every statement on
-        its path to the top level must be in the foreground and not negated (flagged_path): `! [[ ! -s err ]] || exit
-        1` reads a non-empty file as clean, `[[ ! -s err ]] &` ends only the job. The leftmost statement of an `&&`
-        list or a pipeline is a test in neither shape."""
+        branch is one rule a accepts (branch_shape, judged in the list's own function context, outer: a brace block
+        ending in `return <1-255>` closes the producer inside a function body, U216c); a bare statement at the top
+        level of a file whose prologue runs `set -euo pipefail` before it, where `set -e` ends the script on its
+        failure (inside a function body, a block or an `if`, or in a file with no such prologue, nothing reads that
+        failure). The test and every statement on its path to the top level must be in the foreground and not negated
+        (flagged_path): `! [[ ! -s err ]] || exit 1` reads a non-empty file as clean, `[[ ! -s err ]] &` ends only the
+        job. The leftmost statement of an `&&` list or a pipeline is a test in neither shape."""
         cmd = command_of(stmt)
         kind = cmd.get("Type") if isinstance(cmd, dict) else None
         why = None
@@ -2090,7 +2106,7 @@ class Walk:
             path = (cond[-1], stmt, *outer)
         elif kind == "BinaryCmd" and cmd.get("Op") == "||" and self.tests_empty(cmd["X"], target):
             path = (cmd["X"], stmt, *outer)
-            shape = branch_shape(cmd["Y"], stmt, self.functions, self.defined, self.terminators)
+            shape = branch_shape(cmd["Y"], stmt, self.functions, self.defined, self.terminators, inside_function(outer))
             if shape is not None:
                 why = f"is the left side of a `||` whose branch is {shape} and does not end the script"
         elif kind == "TestClause" and self.tests_empty(stmt, target):

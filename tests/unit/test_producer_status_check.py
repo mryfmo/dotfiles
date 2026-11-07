@@ -2427,18 +2427,19 @@ class ProducerStatusCheckTest(unittest.TestCase):
         self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
 
     def test_a_block_ending_in_return_is_the_grammar_inside_a_function_body_only(self) -> None:
-        """U216b (round 2 of U216): a sourced helper returns where a lever exits, so a `||` branch that is a block or
-        subshell ending in `return <1-255>` handles the status when the branch sits inside a function body of the
-        file (`regime-env`'s `|| { echo … >&2; return 1; }` blocks); the same block at the top level is a finding as
-        before (`return` outside a function is a bash error, so it ends nothing there), and inside the function
-        `return 0`, `return "$code"`, a bare `return`, `return $?`, `return 256`, two arguments and a `return` before
-        the last statement stay findings naming the shape. A refusal function's own body (form ii) still ends in
-        `exit`: its `return` returns from the refusal function, not from the caller. The grammar a finding names
-        (GRAMMAR) says both terminators and the condition on the second."""
+        """U216b (round 2 of U216): a sourced helper returns where a lever exits, so a `||` branch that is a brace
+        block ending in `return <1-255>` handles the status when the branch sits inside a function body of the file
+        (`regime-env`'s `|| { echo … >&2; return 1; }` blocks); the same block at the top level is a finding as
+        before (`return` outside a function is a bash error, so it ends nothing there), a subshell's `return` ends
+        the subshell alone (U216c, the next test), and inside the function `return 0`, `return "$code"`, a bare
+        `return`, `return $?`, `return 256`, two arguments and a `return` before the last statement stay findings
+        naming the shape. A refusal function's own body (form ii) still ends in `exit`: its `return` returns from the
+        refusal function, not from the caller. The grammar a finding names (GRAMMAR) says both terminators and the
+        condition on the second."""
         body = (
             "f() {\n"  # 3
             "    x=$(a) || { echo no >&2; return 1; }\n"  # 4: accepted
-            "    x=$(a) || (echo no >&2; return 255)\n"  # 5: accepted
+            "    x=$(a) || (echo no >&2; return 255)\n"  # 5: a subshell, whose `return` ends the subshell alone (U216c)
             "    x=$(a) || { printf '%s\\n' no 1>&2; return 2; }\n"  # 6: accepted
             "    x=$(a) || { echo no >&2; return 0; }\n"  # 7
             '    x=$(a) || { echo no >&2; return "$code"; }\n'  # 8
@@ -2467,7 +2468,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "    x=$(a) || return 1\n"  # 31: accepted, form i as before
             "}\n"  # 32
         )
-        expected = [(line, "substitution") for line in (7, 8, 9, 10, 11, 12, 13, 18, 19, 30)]
+        expected = [(line, "substitution") for line in (5, 7, 8, 9, 10, 11, 12, 13, 18, 19, 30)]
         result = self.assert_findings(body, expected)
         grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body"
         for line, shape in (
@@ -2489,6 +2490,85 @@ class ProducerStatusCheckTest(unittest.TestCase):
         self.assertIn(
             f":30: substitution: the `||` branch is a call of `refuse`, whose body breaks the refusal grammar ({grammar}) "
             "at line 27 with the command `return` and does not end the read",
+            result.stdout,
+        )
+        self.assertIn(
+            f":5: substitution: the `||` branch is a subshell that breaks the refusal grammar ({grammar}) at line 5 "
+            "with the command `return`, which ends the subshell alone (the function around it goes on) and does not "
+            "end the read",
+            result.stdout,
+        )
+
+    def test_a_subshell_ending_in_return_inside_a_function_is_a_finding_naming_the_subshell(self) -> None:
+        """U216c (round 3 of U216): bash's `return` inside a subshell ends the subshell alone and the function goes on
+        (measured below: the function prints CONTINUED and its caller reads success), so the second terminator of
+        form iii is a brace block's. Inside a function a subshell branch ending in `return <1-255>` is a finding
+        naming the subshell and that its `return` ends it alone; the same branch with braces passes (the round-2
+        case, kept); a subshell ending in `exit <1-255>` passes as before; at the top level the subshell's `return`
+        is a finding as before (a bash error there)."""
+        body = (
+            "f() {\n"  # 3
+            "    x=$(a) || ( echo no >&2; return 1 )\n"  # 4: the subshell's `return` ends the subshell alone
+            "    x=$(a) || { echo no >&2; return 1; }\n"  # 5: accepted, the round-2 case
+            "    x=$(a) || ( echo no >&2; exit 1 )\n"  # 6: accepted, form iii as before
+            "}\n"  # 7
+            "x=$(a) || ( echo no >&2; return 1 )\n"  # 8: the top level
+        )
+        result = self.assert_findings(body, [(4, "substitution"), (8, "substitution")])
+        grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body"
+        self.assertIn(
+            f":4: substitution: the `||` branch is a subshell that breaks the refusal grammar ({grammar}) at line 4 "
+            "with the command `return`, which ends the subshell alone (the function around it goes on) and does not "
+            "end the read",
+            result.stdout,
+        )
+        self.assertIn(
+            f":8: substitution: the `||` branch is a subshell that breaks the refusal grammar ({grammar}) at line 8 "
+            "with the command `return` and does not end the read",
+            result.stdout,
+        )
+        # The rule's reason, measured on the bash that runs the levers: the subshell's function goes on and its
+        # caller reads success; the brace block's returns the failure.
+        for branch, printed in (
+            ("( echo no >&2; return 1 )", "CONTINUED\nACCEPTED\n"),
+            ("{ echo no >&2; return 1; }", "REFUSED\n"),
+        ):
+            with self.subTest(branch=branch):
+                program = (
+                    f"f() {{ x=$(false) || {branch}; echo CONTINUED; }}; "
+                    "if f; then echo ACCEPTED; else echo REFUSED; fi"
+                )
+                measured = subprocess.run(["bash", "-c", program], capture_output=True, text=True, check=False)
+                self.assertEqual((0, printed, "no\n"), (measured.returncode, measured.stdout, measured.stderr))
+
+    def test_rule_b_reads_the_function_context_so_a_block_ending_in_return_closes_a_producer_in_a_function(
+        self,
+    ) -> None:
+        """U216c: rule b judges the `||` branch of a `[[ ! -s <file> ]]` test by rule a's forms in the same function
+        context: inside a function body a brace block ending in `return <1-255>` closes the producer (the shape
+        `regime-env` would use), a subshell ending in `return` does not (its `return` ends the subshell alone), and
+        at the top level the block is a finding as before (a `return` there is a bash error)."""
+        body = (
+            "f() {\n"  # 3
+            "    git ls-files > l 2> err\n"  # 4: accepted, closed by the block at 5
+            "    [[ ! -s err ]] || { echo failed >&2; return 1; }\n"  # 5
+            "    git ls-files > l 2> err2\n"  # 6: the subshell's `return` ends the subshell alone
+            "    [[ ! -s err2 ]] || ( echo failed >&2; return 1 )\n"  # 7
+            "}\n"  # 8
+            "git ls-files > l 2> err3\n"  # 9: the top level
+            "[[ ! -s err3 ]] || { echo failed >&2; return 1; }\n"  # 10
+        )
+        result = self.assert_findings(body, [(6, "producer"), (9, "producer")])
+        grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body"
+        self.assertIn(
+            f"; the `[[ ! -s ]]` test at line 7 is the left side of a `||` whose branch is a subshell that breaks the "
+            f"refusal grammar ({grammar}) at line 7 with the command `return`, which ends the subshell alone (the "
+            "function around it goes on) and does not end the script",
+            result.stdout,
+        )
+        self.assertIn(
+            f"; the `[[ ! -s ]]` test at line 10 is the left side of a `||` whose branch is a block that breaks the "
+            f"refusal grammar ({grammar}) at line 10 with the command `return` and does not end the script",
             result.stdout,
         )
 

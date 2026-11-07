@@ -875,7 +875,7 @@ claude:
   # held directory descriptor and nothing else.
   levers:
     sha256:
-      hcom-seat: e40fabe55071dec5bce80033cb8ebbaabbb25876ebd897070a3346f98d90b12e
+      hcom-seat: 940afff24d7a96734ec783b9e9d0b99b71985dead9d1bc63aa66665be9899b29
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -898,7 +898,7 @@ claude:
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
-      profile-config-place.py: 1a4525666395ebd152a03f187af1dbb88faecd36d89df6c67fd4fe50f096a6ca
+      profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the

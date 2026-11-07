@@ -138,6 +138,23 @@ def placed_overlay(extension):
     return DSH_OVERLAY.format(extension=yaml_quoted(extension))
 
 
+def helper_hash_hook(action):
+    """A BASH_ENV text wrapping the lever's hash readers (`sha256sum`, `shasum`): the bytes hashed go through a
+    temporary under `U310_HASH_TMP`, and when they are the helper's (`cmp` against `U310_HELPER_PATH`) `action` runs
+    after the digest is read; the lever's and regime-env's self-checks hash other bytes and pass untouched. Keyed on
+    the bytes, not on the call's position, so one hook fits 384cd256 (the helper's path hashed second) and this head
+    (the lever's copy hashed right before its run, after regime-env's self-check)."""
+    return (
+        "hash_read() { local real tmp status=0;"
+        ' tmp=$(/usr/bin/mktemp "${U310_HASH_TMP}/hash.XXXXXX") || return 7; /bin/cat > "${tmp}" || return 7;'
+        ' if real=$(type -P sha256sum); then "${real}" < "${tmp}" || status=$?;'
+        ' else real=$(type -P shasum) && "${real}" -a 256 < "${tmp}" || status=$?; fi;'
+        f' if /usr/bin/cmp -s "${{tmp}}" "${{U310_HELPER_PATH}}"; then {action}; fi;'
+        ' /bin/rm -f -- "${tmp}"; return "${status}"; }\n'
+        'sha256sum() { hash_read "$@"; }\nshasum() { hash_read "$@"; }\n'
+    )
+
+
 class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     # The lever under test; a driver may run the round-4 probes against an earlier head's lever extracted beside its
     # own regime-env and manifest (the EARLIER_HEADS form), where each probe must fail (U310d ACCEPTANCE 2).
@@ -1637,8 +1654,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def test_each_placement_producers_failure_refuses_naming_it_and_leaves_no_slot_or_temporary(self):
         """U310e (the round-4 verdict's P2 at hcom-seat:249, standing order 21): the four producers the round-4 head
         added to the placement, each injected to fail: the `sed` read of the helper's pin (a status 7 for the helper's
-        pattern alone, the lever's own self-check untouched), the hash read of the helper (status 7 on the second hash,
-        the self-check's being the first), the `mkdir` of `agent/` (the profile directory made unwritable right before
+        pattern alone, the lever's own self-check untouched), the hash read of the helper (status 7 on the hash whose
+        bytes are the helper's, helper_hash_hook; the lever's and regime-env's self-checks hash other bytes and pass),
+        the `mkdir` of `agent/` (the profile directory made unwritable right before
         it, by a DEBUG trap) and the `umask` set of that subshell (status 7, armed by the same trap). Each: exit 2,
         nothing on stdout, the refusal naming the manifest, the helper or `agent/`, no `agent/` made, no slot behind,
         no dsh."""
@@ -1648,15 +1666,11 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         helper = test_hcom_seat.SEAT.parent / "profile-config-place.py"
         hooks = Path(self.temp.name) / "hooks"
         hooks.mkdir()
-        seen = hooks / "hash-seen"
+        helper_copy = test_hcom_seat.SEAT.parent / "profile-config-place.py"
         arm = 'case ${BASH_COMMAND} in *"/bin/mkdir \\"\\${agent}\\""*) %s ;; esac'
         hook_texts = {
             "sed": 'sed() { if [[ $* == *profile-config-place* ]]; then return 7; fi; command sed "$@"; }\n',
-            "hash": (
-                'hash_read() { if [[ -e ${U310_HASH_SEEN} ]]; then return 7; fi; : > "${U310_HASH_SEEN}";'
-                ' local real; if real=$(type -P sha256sum); then "${real}"; else real=$(type -P shasum) && "${real}" -a 256; fi; }\n'
-                'sha256sum() { hash_read "$@"; }\nshasum() { hash_read "$@"; }\n'
-            ),
+            "hash": helper_hash_hook("status=7"),
             "mkdir": "set -T\ntrap '" + arm % '/bin/chmod 0500 "${U310_PROFILE}"' + "' DEBUG\n",
             "umask": (
                 "set -T\n"
@@ -1675,10 +1689,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             with self.subTest(case=label):
                 hook = hooks / f"{name}.bash"
                 hook.write_text(hook_texts[name])
-                seen.unlink(missing_ok=True)
                 try:
-                    run = self.launch("--", "--version", BASH_ENV=str(hook), U310_HASH_SEEN=str(seen),
-                                      U310_PROFILE=str(profile))  # fmt: skip
+                    run = self.launch("--", "--version", BASH_ENV=str(hook), U310_HASH_TMP=str(hooks),
+                                      U310_HELPER_PATH=str(helper_copy), U310_PROFILE=str(profile))  # fmt: skip
                 finally:
                     if profile.is_dir():
                         profile.chmod(0o700)
@@ -1693,13 +1706,14 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 shutil.rmtree(home / ".omp", ignore_errors=True)
         self.assertEqual(self.dsh_calls(), [])
 
-    def test_an_extension_path_holding_a_comment_marker_a_quote_and_a_trailing_space_is_placed_whole(self):
+    def test_an_extension_path_holding_a_quote_and_a_trailing_space_is_placed_whole(self):
         """U310e (the round-4 verdict's P2 at hcom-seat:1117): the canonical extension path was written into the
         rendered YAML unquoted, so an allow-list entry resolving to a path with ` # ` placed a config whose extension
         was the part before the marker and the bridge route was lost while the launch returned 0. Each entry is now
-        a single-quoted scalar with a `'` doubled: the bridge resolved through a link to a directory named with ` # `,
-        `'` and a trailing space lands whole, and PyYAML reads it back equal to the canonical path."""
-        real = Path(self.temp.name).resolve() / "bridge # it's canonical "
+        a single-quoted scalar with a `'` doubled: the bridge resolved through a link to a directory named with `'`
+        and a trailing space lands whole, and PyYAML reads it back equal to the canonical path (a ` #` is refused by
+        name since U310f, the control-character test below)."""
+        real = Path(self.temp.name).resolve() / "bridge it's canonical "
         self.bridge.rename(real)
         self.bridge.symlink_to(real)
         run = self.launch("--", "--version")
@@ -1709,6 +1723,159 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertIn("  - '" + str(real).replace("'", "''") + "'\n", text)
         self.assertEqual(yaml.safe_load(text)["extensions"], [str(real)])
         self.assertEqual(len(self.dsh_calls()), 1)
+
+    def scratch_tree(self):
+        """A copy of the lever under test laid out as the checkout is (its helper, regime-env and seat-login-preflight
+        beside it, the manifest two levels up), so a test may rewrite the helper's entry without touching the tree it
+        runs from; the pins hold, since the bytes are the same."""
+        tree = Path(self.temp.name).resolve() / "tree"
+        (tree / "scripts/orchestrator").mkdir(parents=True)
+        (tree / "home/dot_agents").mkdir(parents=True)
+        lever_dir = Path(self.lever).resolve().parent
+        for name in ("hcom-seat", "regime-env", "seat-login-preflight", "profile-config-place.py"):
+            shutil.copy2(lever_dir / name, tree / "scripts/orchestrator" / name)
+        shutil.copy2(lever_dir.parent.parent / "home/dot_agents/agent-config.yaml", tree / "home/dot_agents")
+        return tree
+
+    def helper_copy_directories(self):
+        """The entries of the lever's own `~/.local/state/hcom-seat` beside `tools`: the helper copy's per-launch
+        directory while it exists (U310f), nothing once the launch has run or refused."""
+        state = self.home / ".local/state/hcom-seat"
+        return sorted(p.name for p in state.iterdir() if p.name != "tools") if state.is_dir() else []
+
+    def test_a_helper_that_is_a_link_or_open_to_its_group_beside_the_lever_is_refused_before_it_is_read(self):
+        """U310f (the round-5 verdict's P1 at hcom-seat:1273): at 384cd256 the lever hashed the helper's path and then
+        executed the path, so a link at it whose target was replaced after the hash ran other Python. The path beside
+        the lever is now held to the self-check's rules before anything reads it: a link there refuses by name even
+        when its target holds the pinned bytes (the digest alone would pass), and so does a helper open to its group
+        or to others; nothing is placed, no copy directory and no slot remains, no dsh starts, in a dry run too."""
+        tree = self.scratch_tree()
+        helper = tree / "scripts/orchestrator/profile-config-place.py"
+        elsewhere = tree / "elsewhere"
+        elsewhere.mkdir()
+        target = elsewhere / "profile-config-place.py"
+        helper.rename(target)
+        helper.symlink_to(target)
+        self.lever = tree / "scripts/orchestrator/hcom-seat"
+        linked = (
+            f"hcom-seat: profile-config-place.py beside this script is a symbolic link: {helper}; the helper runs from"
+            " the lever's own directory only"
+        )
+        for args in (["--dry-run"], []):
+            with self.subTest(case="a link at the helper's path", args=args):
+                run = self.launch(*args, "--", "--version")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(linked, run.stderr)
+                self.assertFalse(self.profile_config.exists(), "nothing is placed")
+                self.assertEqual(self.helper_copy_directories(), [], "no copy directory remains")
+                self.assertEqual(self.slots(), ([], []))
+        helper.unlink()
+        target.rename(helper)
+        helper.chmod(0o664)
+        with self.subTest(case="a helper open to its group"):
+            run = self.launch("--", "--version")
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertIn(
+                "hcom-seat: profile-config-place.py beside this script is writable by its group or by others"
+                f" (mode '664'): {helper}; the helper runs from the lever's own directory only",
+                run.stderr,
+            )
+            self.assertFalse(self.profile_config.exists())
+            self.assertEqual(self.helper_copy_directories(), [])
+            self.assertEqual(self.slots(), ([], []))
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_the_helper_runs_from_the_levers_own_copy_so_a_rewrite_after_the_hash_runs_nothing(self):
+        """U310f (the round-5 verdict's P1 at hcom-seat:1273, the hash-then-run window): the hash read is wrapped (the
+        BASH_ENV form of the producer injections) so that right after the helper's digest is read, the helper's path
+        beside the lever is replaced by a stand-in that writes a marker and prints `placed`. At 384cd256 the lever ran
+        the path and the stand-in ran: the marker appeared, no config was placed and the launch returned 0. Now the
+        path is read once, by the lever's copy in its own per-launch directory, the copy is what is hashed and what
+        runs: the config lands from the pinned bytes, the marker never appears, the copy's directory is gone after
+        the launch, and the rewrite of the path is measured to have happened (after the hash)."""
+        tree = self.scratch_tree()
+        helper = tree / "scripts/orchestrator/profile-config-place.py"
+        self.lever = tree / "scripts/orchestrator/hcom-seat"
+        scratch = Path(self.temp.name).resolve()
+        marker = scratch / "ran-the-swapped-helper"
+        swap_in = scratch / "swap-in.py"
+        swap_text = f'open({str(marker)!r}, "w").write("ran")\nprint("placed")\n'
+        swap_in.write_text(swap_text)
+        hook = scratch / "swap-after-hash.bash"
+        hook.write_text(helper_hash_hook('/bin/mv -f -- "${U310_SWAP_IN}" "${U310_HELPER_PATH}"'))
+        run = self.launch("--", "--version", BASH_ENV=str(hook), U310_HASH_TMP=str(scratch),
+                          U310_HELPER_PATH=str(helper), U310_SWAP_IN=str(swap_in))  # fmt: skip
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        self.assertEqual(
+            helper.read_text(), swap_text, "the path was rewritten right after the helper's digest was read"
+        )
+        self.assertFalse(marker.exists(), "the rewritten path never ran; the lever ran its own hashed copy")
+        self.assertEqual(self.profile_config.read_text(), placed_overlay(self.bridge))
+        self.assertIn(f"{self.profile_config} is absent; the launch places it from", run.stderr)
+        self.assertEqual(self.helper_copy_directories(), [], "the copy's directory is removed once the helper ran")
+        self.assertEqual(len(self.dsh_calls()), 1)
+        self.assertEqual(self.slots(), ([], []))
+
+    def test_an_extension_path_holding_a_control_character_or_a_comment_marker_is_refused_before_rendering(self):
+        """U310f (the round-5 verdict's P2 at hcom-seat:1121): inside a single-quoted YAML scalar a line break folds
+        into a space, so at 384cd256 an allow-list entry resolving to a directory named with a newline placed a config
+        whose extension was another path while the launch returned 0. A canonical extension path holding a control
+        character (a newline, a tab), a `#` after white space, or beginning with `-` is now refused by name before
+        anything is rendered or made (nothing under `~/.omp` or `~/.local/state/hcom-seat`, no slot, no dsh), in a dry
+        run too. A canonical path never begins with `-` (it is `pwd -P`), so that shape is held on the check itself,
+        extracted from the lever's text with `refuse`."""
+        root = Path(self.temp.name).resolve()
+        current = self.bridge
+        cases = (
+            ("a newline", "bridge\ncanonical", "holds a control character"),
+            ("a tab", "bridge\tcanonical", "holds a control character"),
+            ("a comment marker after white space", "bridge # canonical", "holds a '#' after white space"),
+        )
+        for label, dirname, reason in cases:
+            real = root / dirname
+            current.rename(real)
+            current = real
+            if self.bridge.is_symlink():
+                self.bridge.unlink()
+            self.bridge.symlink_to(real)
+            for args in (["--dry-run"], []):
+                with self.subTest(case=label, args=args):
+                    run = self.launch(*args, "--", "--version")
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(
+                        f"hcom-seat: the canonical extension path {reason} and is not rendered into the profile"
+                        f" config: '{real}'",
+                        run.stderr,
+                    )
+                    self.assertFalse((self.home / ".omp").exists(), "nothing is made before the refusal")
+                    self.assertFalse((self.home / ".local/state/hcom-seat").exists())
+                    self.assertEqual(self.slots(), ([], []))
+        text = Path(self.lever).read_text()
+        self.assertIn("rendered_path_check() {", text, "the lever carries the check")
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("refuse", "rendered_path_check")
+        )
+        program = functions + "\nrendered_path_check 'the canonical extension path' \"$@\"\n"
+        for label, path, expected in (
+            ("a leading '-'", "-x/pi-claude-bridge", 2),
+            ("a plain path", "/x/pi-claude-bridge", 0),
+            ("a quote and a trailing space", "/x/bri'dge ", 0),
+            ("a '#' without white space before it", "/x/bridge#1", 0),
+        ):
+            with self.subTest(case=label):
+                run = subprocess.run(["/bin/bash", "-c", program, "_", path], env=self.env, capture_output=True,
+                                     text=True, check=False)  # fmt: skip
+                self.assertEqual(run.returncode, expected, run.stderr)
+                if expected:
+                    self.assertEqual(
+                        run.stderr,
+                        "hcom-seat: the canonical extension path begins with '-' and is not rendered into the"
+                        f" profile config: '{path}'\n",
+                    )
+                else:
+                    self.assertEqual(run.stderr, "")
+        self.assertEqual(self.dsh_calls(), [])
 
 
 if __name__ == "__main__":

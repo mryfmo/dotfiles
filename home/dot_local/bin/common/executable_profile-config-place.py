@@ -30,8 +30,11 @@ swapped between a reading and the act that follows it. The steps, in order:
   during the read-back was reported as `placed`) is read once through the directory descriptor: it must be a regular
   file of `uid` holding the rendering (two launches at once that land the same bytes, the role's normal case) and must
   still be the inode at the name on one more open; anything else refuses, so the launch never reports `placed` while
-  the name holds other bytes. `verify-kept` is the same identity check after a compare that found the rendering, so
-  a replacement during that read is never reported as `kept`.
+  the name holds another inode's bytes. `verify-kept` is the same identity check after a compare that found the
+  rendering, so a replacement of the entry during that read is never reported as `kept`. What no read-back closes
+  (round-5 verdict P2 at :197): a process of the directory's owner, the role's own user (`fstat-agent` admits no
+  other writer), may rewrite `config.yml` in place, during a read or at any moment after placement; the kit treats
+  that writer as the role itself, and the U310 body carries it as a residual row, not as a guarantee.
 - On any refusal after the create and before the rename, `unlink-temporary` removes the temporary through the
   descriptor; its own failure is reported in the same line, naming the path that remains.
 
@@ -191,7 +194,8 @@ def settled(dfd: int, agent_dir: str, uid: int, rendered: bytes, identity: "tupl
     """The name `config.yml` holds the inode `identity` (the written temporary's after the rename, or the compared
     config's), read through the held directory descriptor; another inode there is read once and must hold the
     rendering and still stand at the name after that read (a concurrent launch of the same bytes); anything else
-    refuses, so no replacement during a read is reported as placed or kept."""
+    refuses, so no replacement of the entry during a read is reported as placed or kept (an owner's rewrite in place
+    is the residual the module docstring names)."""
     target = f"{agent_dir}/{CONFIG}"
     for attempt in (0, 1):
         if identity_at(dfd, agent_dir, step, uid) == identity:

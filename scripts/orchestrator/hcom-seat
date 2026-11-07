@@ -120,11 +120,14 @@
 #   gateway child `omp auth-gateway stdio` reads for its model providers, every `extensions` entry rewritten to its
 #   canonical `claude.levers.extensions` path as the omp roles' `-e` list is; a config already equal is left alone, a
 #   different one replaced and the launch says so, and a linked `agent/` or `config.yml` is refused before anything
-#   is made (profile_config_check, a reading that creates nothing). The write is one run of the pinned helper
-#   `profile-config-place.py` beside this file on one held descriptor of `agent/` (profile_config_place, regime-cutover
-#   U310d: the compare, the exclusive create at a random name, the write, the rename and the read-back all through
-#   `dir_fd`; this lever checks no path in `agent/` and then acts on it), after the per-launch slots; a dry run runs
-#   it with `--dry-run` after settings_judge and writes nothing. The per-launch sandbox and
+#   is made (profile_config_check, a reading that creates nothing; a canonical path holding a control character, a
+#   leading `-` or a `#` after white space is refused by name before it is rendered, rendered_path_check, U310f).
+#   The write is one run of the pinned helper `profile-config-place.py` on one held descriptor of `agent/`
+#   (profile_config_place, regime-cutover U310d: the compare, the exclusive create at a random name, the write, the
+#   rename and the read-back all through `dir_fd`; this lever checks no path in `agent/` and then acts on it), after
+#   the per-launch slots; the helper runs from the lever's own copy, made once this launch in a directory of its own
+#   and hashed there against the manifest pin, so the path beside this file is read once (helper_copy_make, U310f);
+#   a dry run runs it with `--dry-run` after settings_judge and writes nothing. The per-launch sandbox and
 #   state slot are removed when dsh exits, by a refusal after they were made (refuse), and by the trap a hangup,
 # @arg $1 string Role: orchestrator, worker or dsh.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
@@ -230,10 +233,13 @@ usage='usage: hcom-seat <orchestrator|worker> [--name <name>] [--seats-root <dir
 # seat_sandbox_write); a refusal then removes them first (slots_remove, the one cleanup the normal exit and the trap
 # run), so no refusal after the slots exist leaves one behind (regime-cutover U310c). The flag is cleared before the
 # removal: slots_remove refuses through this function when a slot cannot be read. The flag is read with a default
-# because the tests run this function extracted from the lever's text, without the assignment below.
+# because the tests run this function extracted from the lever's text, without the assignment below. The helper
+# copy's directory (helper_slot, regime-cutover U310f) goes the same way: a refusal after the copy exists removes it.
 slots_made=0
+helper_slot=''
 refuse() {
     echo "hcom-seat: $*" >&2
+    if [[ -n ${helper_slot:-} ]]; then helper_copy_remove; fi
     if ((${slots_made:-0})); then
         slots_made=0
         slots_remove || :
@@ -241,24 +247,94 @@ refuse() {
     exit 2
 }
 
-# @description Refuse unless the file `$1`'s sha256 equals its `claude.levers.sha256.<name>` pin in the manifest the
-#   self-check read (regime-cutover U310d): the profile config helper beside this lever is run by it, so it is held to
-#   its pin the way this file is held to its own (lever_self_check), with the same readers; an unreadable file, a
-#   missing pin or a differing digest refuses naming it.
-# @arg $1 string The file's path; its name is the pin's key.
+# @description Hold the profile config helper `$1` beside this file to the rules lever_self_check applies to this
+#   file, before anything reads it (regime-cutover U310f): it sits in LEVER_DIR, the physical directory of this file
+#   (`pwd -P`, so no link above it), and is itself no link (`-L` refused first), a regular file of this user whose
+#   mode grants no group or other write (`stat`, read with its status). The round-5 audit of U310 located the helper
+#   by path, hashed that path and then executed the path; a link at it whose target was replaced after the hash ran
+#   other Python. Nothing here reads the file's bytes: the one read is the copy (helper_copy_make), made right before
+#   the helper's one run.
+# @arg $1 string The helper's name beside this file; its name is the pin's key.
+# @set profile_config_helper The helper's path beside this file, named in refusals.
+helper_path_check() {
+    local helper_name=$1 path=${LEVER_DIR}/$1 mode
+    profile_config_helper=${path}
+    [[ ! -L ${path} ]] || refuse "${helper_name} beside this script is a symbolic link: ${path}; the helper runs from the lever's own directory only"
+    [[ -r ${path} ]] || refuse "${helper_name} unreadable beside this script: ${path}"
+    [[ -f ${path} ]] || refuse "${helper_name} beside this script is not a regular file: ${path}"
+    [[ -O ${path} ]] || refuse "${helper_name} beside this script is not this user's own file: ${path}"
+    mode=$(/usr/bin/stat "${mode_args[@]}" -- "${path}") || refuse "cannot read the mode of ${path}"
+    [[ ${mode} =~ ^[0-7]+[0145][0145]$ ]] ||
+        refuse "${helper_name} beside this script is writable by its group or by others (mode '${mode}'): ${path}; the helper runs from the lever's own directory only"
+}
+
+# @description Read the profile config helper (helper_path_check) once, into the lever's own copy (regime-cutover
+#   U310f): a regular file this lever creates now, 0600, in a directory it makes now with `mkdir` (no `-p`: an entry
+#   of any kind at the name fails it and refuses), 0700, under its own `~/.local/state/hcom-seat` (0700, this user's,
+#   proved before), a place no seat and no other user writes. What is hashed (helper_pin_check) and run
+#   (profile_config_place) is this copy; the path beside this file is never read again. It runs right before the
+#   helper's one run, after settings_judge has accepted the boundary (profile_config_hold), so nothing is made before
+#   the judge beyond the private tool directory; the copy's directory is removed by helper_copy_remove once the
+#   helper has run, by a refusal and by the signal trap.
+# @set helper_slot The per-launch directory holding the copy.
+# @set helper_copy The copy that is hashed and run.
+helper_copy_make() {
+    local path=${profile_config_helper} err
+    helper_slot=${tools_dir%/*}/profile-config-place.${name}
+    if ! err=$( (umask 077 && /bin/mkdir "${helper_slot}") 2>&1); then
+        local failed=${helper_slot}
+        helper_slot=''
+        refuse "cannot create the helper copy directory ${failed}: ${err:-the umask set or the mkdir failed with no message}"
+    fi
+    helper_copy=${helper_slot}/${path##*/}
+    if ! err=$( (umask 077 && /bin/cat -- "${path}" > "${helper_copy}") 2>&1); then
+        refuse "cannot copy ${path} into ${helper_slot}: ${err:-the umask set or the copy failed with no message}"
+    fi
+}
+
+# @description Remove the helper copy's directory (helper_copy_make) when one exists; a removal that fails is named,
+#   and the function returns 0 either way, so the status a launch returns is dsh's or the refusal's. Idempotent: the
+#   variable is cleared first, so a refusal inside a removal cannot recurse into it.
+helper_copy_remove() {
+    local slot=${helper_slot:-}
+    [[ -n ${slot} ]] || return 0
+    helper_slot=''
+    /bin/rm -rf -- "${slot}" || echo "hcom-seat: the helper copy directory ${slot} remains after its removal; remove it by hand" >&2
+}
+
+# @description Refuse unless the file `$1`'s sha256 equals the `claude.levers.sha256.<name>` pin of `$2`'s name in the
+#   manifest the self-check read (regime-cutover U310d): the profile config helper is run by this lever, so it is
+#   held to its pin the way this file is held to its own (lever_self_check), with the same readers; an unreadable
+#   file, a missing pin or a differing digest refuses naming it. `$1` is the lever's own copy (helper_copy_make) and
+#   `$2` the path beside this file the refusal names; the digest is the copy's, the file that runs (U310f).
+# @arg $1 string The file hashed, the copy.
+# @arg $2 string The helper's path beside this file; its name is the pin's key.
 helper_pin_check() {
-    local file=$1 name=${1##*/} pin digest
-    [[ -r ${file} ]] || refuse "${name} unreadable beside this script: ${file}"
-    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || refuse "cannot read ${LEVER_MANIFEST}"
-    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || refuse "no single sha256 pin for ${name} in ${LEVER_MANIFEST}"
+    # No local named `name`: a refusal here runs slots_remove, which reads the seat's per-launch `name`, and a local of
+    # that name in this dynamic scope would hide it (the state slot was left behind that way during round 6).
+    local file=$1 named=$2 key=${2##*/} pin digest
+    [[ -r ${file} ]] || refuse "the copy ${file} of ${key} is unreadable"
+    pin=$(sed -n -E "s/^      ${key//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || refuse "cannot read ${LEVER_MANIFEST}"
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || refuse "no single sha256 pin for ${key} in ${LEVER_MANIFEST}"
     if command -v sha256sum > /dev/null; then
         digest=$(sha256sum < "${file}") || digest=''
     else
         digest=$(shasum -a 256 < "${file}") || digest=''
     fi
     digest=${digest%% *}
-    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash ${file}"
-    [[ ${digest} == "${pin}" ]] || refuse "sha256 ${digest} of ${file} differs from the pin in ${LEVER_MANIFEST}; the helper is not the pinned one"
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash ${named} (its copy ${file})"
+    [[ ${digest} == "${pin}" ]] || refuse "sha256 ${digest} of ${named} differs from the pin in ${LEVER_MANIFEST}; the helper is not the pinned one (the digest is of the lever's copy ${file})"
+}
+
+# @description Hold the profile config helper for its one run (regime-cutover U310f): the copy (helper_copy_make),
+#   its digest against the manifest pin (helper_pin_check), and the argv that runs it, the pinned python3 over the
+#   copy. Called once per run, by profile_config_compare in a dry run and by profile_config_write in a launch, after
+#   settings_judge and before `agent/` is made, so a pin that does not match refuses before any act on the profile.
+# @set profile_config_cmd The argv that runs the copy.
+profile_config_hold() {
+    helper_copy_make
+    helper_pin_check "${helper_copy}" "${profile_config_helper}"
+    profile_config_cmd=("${profile_config_python[@]}" -I -S "${helper_copy}")
 }
 
 # @description Print the UTC stamp `YYYYMMDD-HHMMSS` of a dsh launch's seat name, from `/bin/date` read status first
@@ -872,8 +948,8 @@ if [[ ${os} == Linux && ! -x /usr/bin/jq ]]; then
     refuse 'the system jq /usr/bin/jq is absent; it reads the seat sandbox settings on Linux (apt install jq)'
 fi
 case ${os} in
-Darwin) stat_args=(-L -f '%d:%i') lstat_args=(-f '%d:%i') size_args=(-L -f '%z') ;;
-Linux) stat_args=(-L -c '%d:%i') lstat_args=(-c '%d:%i') size_args=(-L -c '%s') ;;
+Darwin) stat_args=(-L -f '%d:%i') lstat_args=(-f '%d:%i') size_args=(-L -f '%z') mode_args=(-L -f '%Lp') ;;
+Linux) stat_args=(-L -c '%d:%i') lstat_args=(-c '%d:%i') size_args=(-L -c '%s') mode_args=(-L -c '%a') ;;
 *) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
 # srt 0.0.81 keeps its own TMPDIR writable whatever the policy says (SANDBOX_OWN_WRITE_PATHS in
@@ -1016,7 +1092,8 @@ present_under_home() {
     done
     path_present=1
 }
-# @description Run the profile config helper `profile-config-place.py` beside this file once over the dsh profile's
+# @description Run the profile config helper `profile-config-place.py` (the lever's own copy, helper_copy_make) once
+#   over the dsh profile's
 #   `agent/` directory `$1` and read its status (regime-cutover U310d): the one writer of the row. Three audit rounds
 #   of U310 found one class, symlink-write, in this lever's own write: each round checked a path in `agent/` (a
 #   directory the role's own sandboxed process writes too) and then acted on it, and the entry was swapped between
@@ -1034,6 +1111,8 @@ present_under_home() {
 profile_config_place() {
     local agent=$1 mode=$2 target=$1/config.yml output status=0
     output=$("${profile_config_cmd[@]}" ${mode:+"${mode}"} "${agent}" "${UID}" <<< "${profile_config_text}" 2>&1) || status=$?
+    # The one run is over: the copy's directory goes now, whatever the status says below.
+    helper_copy_remove
     case ${status} in
     0)
         case ${output} in
@@ -1115,6 +1194,7 @@ profile_config_check() {
     ((${#listed_exts[@]})) ||
         refuse "the profile config overlay ${profile_config} names no extension; the gateway child needs the bridge route"
     extensions_canonical "${listed_exts[@]}"
+    rendered_path_check 'the canonical extension path' "${checked[@]}"
     profile_config_text='' list=0
     while IFS= read -r line; do
         if ((list)) && [[ ${line} == '  - '* ]]; then
@@ -1138,6 +1218,23 @@ profile_config_check() {
     fi
     profile_config_action=compare
 }
+# @description Refuse (exit 2) a path this lever would render into the profile config when it holds a control
+#   character (a newline among them: inside a single-quoted YAML scalar a line break folds into a space, so the child
+#   would read another path; regime-cutover U310f, the round-5 verdict's P2 at :1121), begins with `-`, or holds a
+#   `#` after white space, each named before anything is rendered. The scalars stay single-quoted with a `'` doubled
+#   (U310e); this check refuses the shapes the quoting is not asked to carry. Every path value the lever renders is
+#   a canonical extension path (`pwd -P` of an allow-list entry); the other values come from the overlay unchanged.
+# @arg $1 string What the paths are, for the refusal.
+# @arg $@ string The paths.
+rendered_path_check() {
+    local what=$1 path
+    shift
+    for path in "$@"; do
+        [[ ${path} != *[[:cntrl:]]* ]] || refuse "${what} holds a control character and is not rendered into the profile config: '${path}'"        # lint-comparisons: allow a content test
+        [[ ${path} != -* ]] || refuse "${what} begins with '-' and is not rendered into the profile config: '${path}'"                             # lint-comparisons: allow a shape test
+        [[ ${path} != *[[:space:]]'#'* ]] || refuse "${what} holds a '#' after white space and is not rendered into the profile config: '${path}'" # lint-comparisons: allow a content test
+    done
+}
 # @description The dry run's reading of a present profile config (regime-cutover U310d): the helper runs with
 #   `--dry-run` after settings_judge has accepted the profile boundary and prints the decision a launch would take,
 #   writing nothing (round 2 wrote a temporary file here, so a linked profile root took it into another profile:
@@ -1148,11 +1245,15 @@ profile_config_check() {
 profile_config_compare() {
     local profile agent
     ((dry_run)) || return 0
-    [[ ${profile_config_action} == compare ]] || return 0
-    profile=$(physical_path "${HOME}/.omp/profiles/${role}") || refuse "cannot resolve the profile directory ${HOME}/.omp/profiles/${role}"
-    agent=${profile}/agent
-    profile_config_place "${agent}" --dry-run
-    profile_config_report "${agent}/config.yml"
+    # The pin is read in every dry run, a present config or not; the copy goes before the launch line is printed.
+    profile_config_hold
+    if [[ ${profile_config_action} == compare ]]; then
+        profile=$(physical_path "${HOME}/.omp/profiles/${role}") || refuse "cannot resolve the profile directory ${HOME}/.omp/profiles/${role}"
+        agent=${profile}/agent
+        profile_config_place "${agent}" --dry-run
+        profile_config_report "${agent}/config.yml"
+    fi
+    helper_copy_remove
 }
 # @description Place the dsh role's profile config (regime-cutover U310, rounds U310b to U310d), after
 #   seat_sandbox_write made the profile directory: `agent/` is made 0700 when absent (two launches at once, the
@@ -1164,6 +1265,7 @@ profile_config_compare() {
 #   descriptor; any other failure refuses naming it).
 profile_config_write() {
     local profile agent err
+    profile_config_hold
     profile=$(physical_path "${HOME}/.omp/profiles/${role}") || refuse "cannot resolve the profile directory ${HOME}/.omp/profiles/${role}"
     agent=${profile}/agent
     if ! err=$( (umask 077 && /bin/mkdir "${agent}") 2>&1); then
@@ -1260,18 +1362,19 @@ done
 git_path=$(find_on_path git) || refuse 'git not found in the private tool directory'
 pin_exec git "${git_path}"
 git_cmd=("${pinned[@]}")
-# The dsh role's profile config helper (regime-cutover U310d): `profile-config-place.py` beside this file, run by the
-# python3 resolved above (required for this role, pinned like git: its physical file and interpreter chain checked
-# against the protected set) as `python3 -I -S <file>`. The helper is pinned in the manifest like this lever
-# (`claude.levers.sha256`, refreshed by scripts/generate-agent-configs.py) and its digest is read against the pin
-# before anything runs it (helper_pin_check), so a rewritten copy beside a pinned lever places nothing.
-profile_config_cmd=() profile_config_helper=''
+# The dsh role's profile config helper (regime-cutover U310d, U310f): `profile-config-place.py` beside this file, run
+# by the python3 resolved above (required for this role, pinned like git: its physical file and interpreter chain
+# checked against the protected set) as `python3 -I -S <copy>`. The helper is pinned in the manifest like this lever
+# (`claude.levers.sha256`, refreshed by scripts/generate-agent-configs.py). The path beside this file is held to the
+# self-check's rules here (helper_path_check) and read once, right before the helper's one run, by the copy this
+# lever makes in a directory of its own (profile_config_hold: helper_copy_make, then helper_pin_check over the copy);
+# the copy is what runs, so a rewrite of the path after the hash, or a link at it, places nothing and runs nothing.
+profile_config_cmd=() profile_config_python=() profile_config_helper='' helper_copy=''
 if [[ ${role_launch} == foreground ]]; then
     python_path=$(find_on_path python3) || refuse "python3 not found (mise which, then the caller's PATH); the dsh role runs its profile config helper with it"
     pin_exec python3 "${python_path}"
-    profile_config_helper=${LEVER_DIR}/profile-config-place.py
-    helper_pin_check "${profile_config_helper}"
-    profile_config_cmd=("${pinned[@]}" -I -S "${profile_config_helper}")
+    profile_config_python=("${pinned[@]}")
+    helper_path_check profile-config-place.py
 fi
 # Inside the sandbox the seat works with its tools (gh, uv, linters) from the caller's absolute PATH entries after
 # these; every process there is contained, and nothing outside the sandbox runs from that list.
@@ -2700,6 +2803,7 @@ slots_remove() {
 foreground_signal() {
     local removed=0
     trap - HUP INT TERM
+    helper_copy_remove
     slots_remove || removed=$?
     ((removed == 0)) || {
         echo "hcom-seat: ended by SIG$1; the launch exits 2 because a per-launch slot remains" >&2

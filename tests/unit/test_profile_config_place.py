@@ -299,7 +299,8 @@ class ProfileConfigPlaceTest(unittest.TestCase):
     def test_each_producers_failure_refuses_naming_its_step_and_leaves_no_temporary(self):
         """Every `os` call of the write path raises in turn (an EIO, EACCES, EROFS, ENOSPC or EXDEV the file system
         would raise); each refusal names its step, the path and the errno, the config is never replaced and no
-        temporary remains."""
+        temporary remains. The `lseek` of the read-back (U310f, the round-5 verdict's P2 at :284) comes after the
+        rename: the file has landed, the refusal names `verify-placed`, and the run is never reported as placed."""
         real = {name: getattr(os, name) for name in ("open", "fstat", "read", "write", "fsync", "rename")}
 
         def failing_open(path, flags, mode=0o777, *, dir_fd=None):
@@ -371,6 +372,17 @@ class ProfileConfigPlaceTest(unittest.TestCase):
             self.assertEqual(len(remaining), 1, "the temporary the unlink could not remove stands")
             self.assertIn(f"{self.agent}/{remaining[0]} remains", result[2])
             self.assertEqual(self.config.read_bytes(), STALE)
+        with self.subTest(step="verify-placed (lseek)"):
+            for name in self.entries():
+                if name != "config.yml":
+                    (self.agent / name).unlink()  # the temporary the unlink case above left on purpose
+            self.config.write_bytes(STALE)
+            with mock.patch.object(self.module.os, "lseek", raising(errno.EIO, "Input/output error")):
+                result = self.run_helper()
+            self.assert_refused(result, "verify-placed", f"{self.config}: cannot rewind the written file:", "(EIO)")
+            self.assertNotIn("remains", result[2])
+            self.assertEqual(self.entries(), ["config.yml"], "no temporary remains; the rename had landed")
+            self.assertEqual(self.config.read_bytes(), RENDERED, "the rename landed; the read-back could not run")
 
     def test_a_writer_that_swaps_the_entry_around_the_rename_ends_in_a_refusal_never_in_other_bytes(self):
         """The round-3 residual, closed by the read-back: a process owning `agent/` that swaps the temporary's entry

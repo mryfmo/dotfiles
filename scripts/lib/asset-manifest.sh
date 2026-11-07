@@ -147,19 +147,27 @@ function manifest_record() {
 #   not leave a permanent doctor failure. A step exists when its name, before any `:` identity
 #   suffix, is a function defined in the calling shell. An absent manifest is left absent; a manifest
 #   path that is a link or no regular file is refused naming it (a directory or a dangling link there
-#   is not a manifest, and pruning must not read through a link). The retired set is one jq decision
+#   is not a manifest, and pruning must not read through a link). An existing `~/.agents` that cannot
+#   be searched is refused naming it before any presence test: `-e` on a path under it is false for
+#   want of permission, not for want of a file, and a failed read is never an absence (verdicts/U283b:
+#   mode 000 made pruning return 0 and keep a retired record). The retired set is one jq decision
 #   over the manifest and the shell's function list, each read through a status-checked command
 #   substitution: no here-string, whose failed temporary file would run no loop and keep every record
 #   while the function returned 0 (verdicts/U283).
 # @stdout Prints one line per pruned step.
-# @stderr One line naming the manifest path when it is a link or no regular file.
-# @exitcode 1 The manifest path is refused, or the manifest cannot be read or rewritten.
+# @stderr One line naming the directory when `~/.agents` cannot be searched; one naming the manifest
+#   path when it is a link or no regular file.
+# @exitcode 1 The directory or the manifest path is refused, or the manifest cannot be read or rewritten.
 #
 function _manifest_prune_retired() {
     local manifest_path temporary_path functions retired_json
 
     [ -n "${HOME:-}" ] || return 1
     manifest_path="${HOME}/.agents/.installed-manifest.json"
+    if [ -d "${HOME}/.agents" ] && [ ! -x "${HOME}/.agents" ]; then
+        printf 'ERROR: %s cannot be searched; refusing to prune the installed asset manifest.\n' "${HOME}/.agents" >&2
+        return 1
+    fi
     if [ -L "${manifest_path}" ] || { [ -e "${manifest_path}" ] && [ ! -f "${manifest_path}" ]; }; then
         printf 'ERROR: %s is a link or no regular file; refusing to prune the installed asset manifest.\n' "${manifest_path}" >&2
         return 1

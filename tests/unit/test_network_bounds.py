@@ -290,10 +290,6 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
         "curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\",
     ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
     (
-        "install/common/aws_cli.sh",
-        'staged_version="$(curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\',
-    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
-    (
         "install/common/mise.sh",
         'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/${artifact}" \\',
     ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),

@@ -4954,7 +4954,11 @@ class SingleStepModeTest(unittest.TestCase):
             self.assertIn("1 plugin(s) (Claude Code or Codex) could not be checked or kept at their pin", result.stderr)
             self.assert_marked_failed(home, "1.2.3")
 
-    def test_update_compactiondb_alone_fails_when_the_manifest_record_fails(self):
+    def test_update_compactiondb_alone_fails_and_syncs_nothing_when_its_failure_mark_cannot_be_written(self):
+        # verdicts/U283b (P3 :4949): the PR 701 threat table cited this test for a failed mark write while its
+        # successful rsync never reached mark_sync_failed. The mark is now the step's first write: a manifest that
+        # cannot take it (here a corrupt one) counts, ends the run non-zero and starts no sync, so the payload and the
+        # record still agree.
         with tempfile.TemporaryDirectory() as directory:
             home, source, bin_dir = self.fixture(directory, rsync=self.REAL_RSYNC)
             manifest_path = home / ".agents/.installed-manifest.json"
@@ -4962,8 +4966,93 @@ class SingleStepModeTest(unittest.TestCase):
             result = self.run_updater(["update_compactiondb"], home, source, bin_dir)
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn("ERROR: failed to record asset manifest step update_compactiondb", result.stderr)
+            self.assertIn("marking update_compactiondb failed in the installed asset manifest failed", result.stderr)
             self.assertIn("1 plugin(s) (Claude Code or Codex) could not be checked or kept at their pin", result.stderr)
             self.assertEqual("not json\n", manifest_path.read_text(), "the manifest as it was")
+            self.assertEqual([], self.calls(home), "no rsync without a mark")
+            self.assertFalse((home / ".agents/compactiondb").exists(), "nothing synced")
+
+    def unwritable_after(self, bin_dir: Path, body: str) -> None:
+        """An rsync stub that runs BODY (a command that returns, no exec), then takes the write bit off ~/.agents the
+        way a failed mark write finds it (verdicts/U283b probe: mode 0555 after a failed partial sync)."""
+        self.rsync_stub(bin_dir, f'{body}\nstatus=$?\nchmod 0555 "$HOME/.agents"\nexit "$status"')
+
+    def run_updater_restoring(self, home: Path, source: Path, bin_dir: Path):
+        """run_updater for a run that leaves ~/.agents mode 0555: the mode is put back before the scratch directory
+        is removed, whatever the run did."""
+        try:
+            return self.run_updater(["update_compactiondb"], home, source, bin_dir)
+        finally:
+            (home / ".agents").chmod(0o755)
+
+    @unittest.skipIf(os.geteuid() == 0, "root writes into a mode 0555 directory")
+    def test_an_unwritable_failure_mark_after_a_partial_sync_still_fails_the_run_and_the_doctor_names_the_step(self):
+        # verdicts/U283b (P2 :2812): with ~/.agents mode 0555 after a failed partial sync, the mark's atomic replace
+        # failed, the older readable record stayed and the doctor reported nothing over a missing payload. The mark
+        # written before the sync is the record every later failure leaves, the failure of its own rewrite included.
+        with tempfile.TemporaryDirectory() as directory:
+            home, source, bin_dir = self.fixture(directory, rsync=self.REAL_RSYNC)
+            first = self.run_updater(["update_compactiondb"], home, source, bin_dir)
+            self.assertEqual(0, first.returncode, first.stdout + first.stderr)
+            self.assertEqual([], self.doctor_findings(home))
+
+            (source / "vendor/compactiondb/CHANGELOG.md").write_text("## 1.2.4\n\n- next entry\n")
+            (source / "vendor/compactiondb/README.md").write_text("next payload\n")
+            self.unwritable_after(bin_dir, 'printf "half" > "$HOME/.agents/compactiondb/README.md"; (exit 23)')
+            partial = self.run_updater_restoring(home, source, bin_dir)
+            self.assertEqual(1, partial.returncode, partial.stdout + partial.stderr)
+            self.assertIn(
+                f"syncing the CompactionDB tree to {home}/.agents/compactiondb (rsync exit 23) failed", partial.stderr
+            )
+            self.assertIn("ERROR: failed to record asset manifest step update_compactiondb", partial.stderr)
+            self.assertIn("marking update_compactiondb failed in the installed asset manifest failed", partial.stderr)
+            self.assertIn(
+                "2 plugin(s) (Claude Code or Codex) could not be checked or kept at their pin", partial.stderr
+            )
+            self.assertEqual("half", (home / ".agents/compactiondb/README.md").read_text(), "the partial payload")
+            self.assert_marked_failed(home, "1.2.4")
+            self.assertEqual(
+                ["the sync began and no completed sync has been recorded since"],
+                self.manifest(home)["steps"]["update_compactiondb"]["commands"],
+                "the mark written before the sync, the later rewrite having failed",
+            )
+
+    @unittest.skipIf(os.geteuid() == 0, "root writes into a mode 0555 directory")
+    def test_a_completed_sync_whose_record_cannot_be_written_keeps_the_mark_the_doctor_names(self):
+        # The same unwritable directory after a sync that completed: the last write fails, the mark stands and the
+        # doctor names the step until a run records a completed sync (the repair re-runs the step).
+        with tempfile.TemporaryDirectory() as directory:
+            home, source, bin_dir = self.fixture(directory, rsync=self.REAL_RSYNC)
+            self.unwritable_after(bin_dir, f'"{shutil.which("rsync")}" "$@"')
+            result = self.run_updater_restoring(home, source, bin_dir)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("recording update_compactiondb in the installed asset manifest failed", result.stderr)
+            self.assertIn("1 plugin(s) (Claude Code or Codex) could not be checked or kept at their pin", result.stderr)
+            self.assertEqual("fixture payload\n", (home / ".agents/compactiondb/README.md").read_text())
+            self.assert_marked_failed(home, "1.2.3")
+
+    @unittest.skipIf(os.geteuid() == 0, "root writes into a mode 0555 directory")
+    def test_a_sync_does_not_start_when_the_manifest_directory_cannot_take_its_mark(self):
+        # ~/.agents mode 0555 before the run (the verdict's probe as written): the mark cannot be written, so the
+        # run fails, rsync never runs with --delete over the payload, and the older record and its payload still agree.
+        with tempfile.TemporaryDirectory() as directory:
+            home, source, bin_dir = self.fixture(directory, rsync=self.REAL_RSYNC)
+            first = self.run_updater(["update_compactiondb"], home, source, bin_dir)
+            self.assertEqual(0, first.returncode, first.stdout + first.stderr)
+            record = self.manifest(home)
+            (home / "calls").unlink()
+
+            (source / "vendor/compactiondb/CHANGELOG.md").write_text("## 1.2.4\n\n- next entry\n")
+            self.rsync_stub(bin_dir, 'printf "half" > "$HOME/.agents/compactiondb/README.md"; exit 23')
+            (home / ".agents").chmod(0o555)
+            result = self.run_updater_restoring(home, source, bin_dir)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("marking update_compactiondb failed in the installed asset manifest failed", result.stderr)
+            self.assertIn("1 plugin(s) (Claude Code or Codex) could not be checked or kept at their pin", result.stderr)
+            self.assertEqual([], self.calls(home), "no rsync without a mark")
+            self.assertEqual("fixture payload\n", (home / ".agents/compactiondb/README.md").read_text())
+            self.assertEqual(record, self.manifest(home), "the completed sync's record, which its payload matches")
+            self.assertEqual([], self.doctor_findings(home))
 
     def test_prune_retired_manifest_steps_alone_fails_on_a_corrupt_manifest_and_prunes_a_retired_record(self):
         with tempfile.TemporaryDirectory() as directory:

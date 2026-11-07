@@ -3143,27 +3143,36 @@ PY
 #   of the step whose one path, under the destination, no sync ever writes, so make doctor shows the step with a
 #   missing path and its repair runs the step again; the record of an earlier completed sync goes with it
 #   (verdicts/U283: a failed partial sync kept the older record, the recorded directory existed, and the doctor
-#   reported nothing while the payload was missing). A mark that cannot be written is counted too: the manifest is
-#   then unreadable or unwritable, which the doctor reports on its own.
+#   reported nothing while the payload was missing). A mark that cannot be written is counted and returned as the
+#   failure it is: the doctor reads the manifest's records, never the directory's mode, so an older record that a
+#   0555 ~/.agents keeps readable would show a present payload over a missing one (verdicts/U283b). The caller
+#   writes the mark before its sync and syncs nothing when the mark was not written.
 # @arg $1 string Step name.
 # @arg $2 string Source version the sync attempted.
 # @arg $3 path The destination.
 # @arg $4 string What failed, kept as the record's command line.
+# @exitcode 1 The mark was not written (counted); the manifest holds what it held.
 #
 function mark_sync_failed() {
-    manifest_record "$1" rsync "$2" "$3/.sync-incomplete" -- "$4" ||
+    manifest_record "$1" rsync "$2" "$3/.sync-incomplete" -- "$4" || {
         record_claude_failure "marking $1 failed in the installed asset manifest"
+        return 1
+    }
 }
 
 #
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 # @description
 #   The version is read first, then the asset root is made and the destination proven (assert_asset_destination),
-#   then rsync runs, then the payload is verified present (the synced CHANGELOG.md names the source's version), and
-#   the record is the last write: a failed rsync or an absent payload is counted and marks the step failed
-#   (mark_sync_failed), so the run, full or single-step, fails at fail_on_pin_failures and make doctor reports the
-#   step until a run syncs the tree (verdicts/U276b: an exit 0 after rsync 77 recorded an installation whose payload
-#   was absent; verdicts/U283: a failed partial sync kept the older record and the doctor reported nothing).
+#   then the failure mark is written, then rsync runs, then the payload is verified present (the synced CHANGELOG.md
+#   names the source's version), and the record is the last write: a failed rsync or an absent payload is counted
+#   and marks the step failed with its cause (mark_sync_failed), so the run, full or single-step, fails at
+#   fail_on_pin_failures and make doctor reports the step until a run syncs the tree (verdicts/U276b: an exit 0
+#   after rsync 77 recorded an installation whose payload was absent; verdicts/U283: a failed partial sync kept the
+#   older record and the doctor reported nothing). The mark before the sync is the record every later failure
+#   leaves behind, the failure of its own rewrite included (verdicts/U283b: ~/.agents mode 0555 after a failed
+#   partial sync kept the older record readable and the doctor named nothing); a mark that cannot be written is
+#   counted and the sync does not start, so the recorded state and the payload still agree.
 # @exitcode 0 Synced and recorded, or a failure counted for the run's end.
 # @exitcode 1 The version could not be read or the destination was refused; nothing synced, nothing recorded.
 #
@@ -3176,16 +3185,19 @@ function update_compactiondb() {
     }
     mkdir -p "${destination%/*}" || return 1
     assert_asset_destination "${destination}" || return 1
+    mark_sync_failed update_compactiondb "${version}" "${destination}" "the sync began and no completed sync has been recorded since" || return 0
     rsync -a --delete --exclude '.claude/contextdb/state/' --exclude '.claude/contextdb/spool/' --exclude '.claude/contextdb/health/' --exclude '.claude/contextdb/contextdb.sqlite3*' "${source_root}" "${destination}/" || {
         synced="rsync exit $?"
         record_claude_failure "syncing the CompactionDB tree to ${destination} (${synced})"
-        mark_sync_failed update_compactiondb "${version}" "${destination}" "${synced}: the sync did not complete"
+        # The cause replaces the mark's text when it can; a failure of this write is counted inside mark_sync_failed
+        # and the mark written before the sync stands, so its status decides nothing more (errexit would end the run).
+        mark_sync_failed update_compactiondb "${version}" "${destination}" "${synced}: the sync did not complete" || :
         return 0
     }
     synced="$(awk '/^## / { print $2; exit }' "${destination}/CHANGELOG.md" 2> /dev/null)" || synced=""
     if [ "${synced}" != "${version}" ]; then
         record_claude_failure "verifying the CompactionDB tree at ${destination} (its CHANGELOG.md names ${synced:-no version}, the source ${version})"
-        mark_sync_failed update_compactiondb "${version}" "${destination}" "rsync exit 0 but ${destination}/CHANGELOG.md names ${synced:-no version}: the payload is not present"
+        mark_sync_failed update_compactiondb "${version}" "${destination}" "rsync exit 0 but ${destination}/CHANGELOG.md names ${synced:-no version}: the payload is not present" || :
         return 0
     fi
     manifest_record "update_compactiondb" rsync "${version}" "${destination}" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${destination}/" ||

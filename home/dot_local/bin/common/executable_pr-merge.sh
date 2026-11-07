@@ -71,8 +71,19 @@
 #   lever reads no local git objects or refs; it decides from `gh` reads and the store alone, and git only names the
 #   checkout (`rev-parse --show-toplevel`, `--absolute-git-dir`, `--git-common-dir`). CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
 #   the head (and whose second read must still report base `main`: `--match-head-commit` pins only the head): at least
-#   one check, every bucket `pass` or `skipping`, and `gh` exiting 0; a pending, failed or
-#   cancelled check is a refusal. The one write is `gh pr merge <pr> --squash --match-head-commit <head>`, so GitHub
+#   one check, every bucket `pass` or `skipping`, every name of REQUIRED_CHECKS listed with bucket `pass`, and `gh`
+#   exiting 0; a pending, failed or cancelled check is a refusal naming it, and a required check that is not listed, or
+#   is listed with any bucket but `pass` (`skipping` satisfies only a check that is not required), is a refusal naming
+#   it apart from the red ones (`CI has no result for: ...`). REQUIRED_CHECKS (regime-cutover U330) is the eight
+#   required status contexts of the main ruleset `main integration gate` (24397953), copied as GitHub names them
+#   (measured 2026-11-07T03:34Z, decisions row 2026-11-07T03:35:00Z): a constant in the lever and not a read of the
+#   rulesets API at merge time, because that read would be one more `gh` call in the merge window and a ruleset the
+#   operator edits is not the program's record of what a merge needs; `tests.unit.test_pr_merge` holds the array equal
+#   to the contexts recorded from that measurement, so a drift between the lever and the ruleset fails CI, not a merge.
+#   Before U330 the gate asked only that every listed check be green, so PR 708's head 792604f9, which conflicted with
+#   main and got none of its `pull_request` workflows (GitHub runs them on the merge ref), would have merged on
+#   `regime`, GitGuardian and CodeRabbit alone with no test leg run (decisions row 2026-11-07T01:45:00Z). The one
+#   write is `gh pr merge <pr> --squash --match-head-commit <head>`, so GitHub
 #   refuses the merge if the head moved after these reads; it never passes `--admin`, `--auto` or
 #   `--delete-branch`. After the merge, or after a merge error, `gh pr view <pr> --json
 #   state,mergeCommit,baseRefName,headRefOid` decides: `MERGED` into `main` at the audited head prints the receipt (the
@@ -116,7 +127,8 @@
 #   checkout, a `carried` row whose evidence names no `carried <earlier> <head> <sha256>` for this head or whose
 #   earlier head has no `correct` row, no verdict file for the audited head, a P2 or P3 finding of weight 10 or more
 #   without its `residual` disposition row, a malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path
-#   that is a symlink or outside the checkout, or CI that is not green on the head.
+#   that is a symlink or outside the checkout, CI that is not green on the head, or CI that lists no passing result
+#   for a check of REQUIRED_CHECKS (U330).
 # @example
 #   ~/.local/bin/common/pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover
 set -euo pipefail
@@ -204,6 +216,27 @@ dispositions_header=$'ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\tref
 units_header=$'id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote'
 # The body's program marker, the grammar regime-ci.py and pr-body-edit.sh read; the unit names the verdict file.
 program_unit_re='^Program-Unit: ([a-z0-9][a-z0-9_-]{0,63})/(U[0-9]+)$'
+# The checks a merge needs, by name (regime-cutover U330): the required status contexts of the main ruleset `main
+# integration gate` (`gh api repos/mryfmo/dotfiles/rulesets/24397953`, the `required_status_checks` rule), the exact
+# strings GitHub lists them under (`<job> (<matrix values>)` for a matrix job), measured 2026-11-07T03:34Z (decisions
+# row 2026-11-07T03:35:00Z). A constant, not a rulesets API read per merge: the list is the program's record of what a
+# merge needs, a ruleset the operator edits is not, and the read would be one more `gh` call in the merge window.
+# tests.unit.test_pr_merge holds this array equal to the contexts recorded from that measurement, so a drift between
+# the lever and the ruleset fails CI, not a merge; a change to the ruleset is a change here and in that test. Every
+# name must be listed by `gh pr checks` with bucket `pass`: a pull request that conflicts with main gets none of its
+# `pull_request` workflows (GitHub runs them on the merge ref), and before U330 its three passing checks (`regime`, a
+# `pull_request_target` workflow; GitGuardian; CodeRabbit, skipping) satisfied the gate with no test leg run (PR 708
+# at 792604f9, decisions row 2026-11-07T01:45:00Z).
+REQUIRED_CHECKS=(
+    'public-bootstrap (macos-15, client)'
+    'public-bootstrap (ubuntu-24.04, client)'
+    'public-bootstrap (ubuntu-24.04, server)'
+    'regime'
+    'test (macos-15, client)'
+    'test (ubuntu-24.04, client)'
+    'test (ubuntu-24.04, server)'
+    'validate'
+)
 # A finding's weight is its frequency times its severity, each 1 to 10 as pr-audit.sh's schema bounds them. A P0 or
 # P1 line at or above this threshold blocks a merge under a `correct` row; a line of any priority under it is filed,
 # reported in the verdict with the code left as it is, and needs no dispositions.tsv row (regime-cutover U125). The
@@ -776,6 +809,26 @@ while IFS=$'\t' read -r bucket name; do
     esac
 done <<< "${checks}"
 [[ -z ${red} ]] || refuse "CI is not green on the head ${head}: ${red}"
+# The named checks (U330): every REQUIRED_CHECKS name must be listed with bucket `pass`. The listing is scanned once
+# per required name and the name compared whole (a check whose name only starts with a required one is no result for
+# it); a name listed twice is `pass` only when every line of it is, so `skipping` beside `pass` is no result either.
+# An absent required name is named bare, one listed with another bucket with that bucket, so the refusal tells a
+# workflow that never ran from a job that skipped. Every listed check is `pass` or `skipping` here (the red check
+# above), so a required check that is not `pass` is `skipping`.
+missing=''
+for required in "${REQUIRED_CHECKS[@]}"; do
+    found=''
+    while IFS=$'\t' read -r bucket name; do
+        [[ ${name} == "${required}" ]] || continue
+        case ${bucket} in
+        pass) [[ -n ${found} ]] || found=pass ;;
+        *) found=${bucket} ;;
+        esac
+    done <<< "${checks}"
+    [[ ${found} == pass ]] || missing+="${missing:+, }${required}${found:+=${found}}"
+done
+[[ -z ${missing} ]] ||
+    refuse "CI has no result for: ${missing}; every check of REQUIRED_CHECKS (the main ruleset's required contexts) must pass on the head ${head}, and a pull request whose pull_request workflows never ran (a conflict with main) lists none of them"
 ((status == 0)) || fail "gh pr checks ${pr} exited ${status} although every listed check passed"
 
 merge_status=0

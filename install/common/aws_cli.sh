@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
 # @file install/common/aws_cli.sh
-# @brief Install the current AWS CLI from AWS's official distribution, verified with AWS's GPG signature.
+# @brief Install the AWS CLI release that AWS's v2/version.txt names, verified with AWS's GPG signature.
 # @description
-#   On Linux the archive is verified and installed. On macOS AWS's install.sh is verified, then run under the
-#   XDG roots; it downloads the pkg and checks its Apple Developer team id before Apple's installer runs.
+#   One read of https://awscli.amazonaws.com/v2/version.txt names the release; every download, the skip check
+#   and the postcondition derive from that version. On Linux the versioned archive and its .sig, which AWS
+#   never rewrites, are verified and installed; the unversioned "latest" pair is not used, because AWS
+#   overwrites its two objects minutes apart and a run between the uploads pairs one release's archive with
+#   another's signature. On macOS AWS's install.sh is verified, then run under the XDG roots with that
+#   version; it downloads the pkg and checks its Apple Developer team id before Apple's installer runs.
 
 set -Eeuo pipefail
 
@@ -17,14 +21,28 @@ readonly AWS_CLI_FINGERPRINT="FB5DB77FD5C118B80511ADA8A6310ACC4672475C"
 readonly AWS_CLI_KEY_PATH="${AWS_CLI_KEY_PATH:-${HOME}/.local/share/aws-cli-keys/aws-cli-public-key.asc}"
 readonly AWS_CLI_INSTALL_DIR="${HOME}/.local/share/aws-cli"
 readonly AWS_CLI_BIN_DIR="${HOME}/.local/bin"
-# The ETag of the archive the last verified install came from; a changed ETag means a new release.
-readonly AWS_CLI_ETAG_FILE="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/aws-cli-archive.etag"
 
 #
-# @description Print the URL of AWS's current release: the archive for the current supported architecture
-#   on Linux, whose .sig is checked against the pinned key, and on macOS v2/version.txt, the release marker
-#   that v2/install.sh installs, whose ETag main reads.
-# @stdout The official x86_64 or aarch64 archive URL, or the macOS v2/version.txt URL.
+# @description Print the release version AWS's v2/version.txt names, for example 2.39.6, trimmed.
+# @exitcode 1 version.txt could not be read, or what it holds is not a <major>.<minor>.<patch> version.
+#
+function aws_cli_release_version() {
+    local version
+    version="$(curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 https://awscli.amazonaws.com/v2/version.txt)" || return
+    version="${version//[[:space:]]/}"
+    if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        printf 'AWS CLI release check failed: version.txt names "%s", not a <major>.<minor>.<patch> version.\n' "${version}" >&2
+        return 1
+    fi
+    printf '%s\n' "${version}"
+}
+
+#
+# @description Print the URL of the installer for one AWS CLI release: on Linux the versioned archive for the
+#   current supported architecture, an object AWS never rewrites, whose .sig is checked against the pinned
+#   key; on macOS v2/install.sh, which installs the version it is given.
+# @arg $1 string The release version, for example 2.39.6.
+# @stdout The official x86_64 or aarch64 versioned archive URL, or the macOS v2/install.sh URL.
 #
 function aws_cli_url() {
     local architecture kernel
@@ -33,15 +51,14 @@ function aws_cli_url() {
         printf 'uname -s failed; no AWS CLI archive was chosen.\n' >&2
         return 1
     }
-    # macOS installs through v2/install.sh, which installs the release v2/version.txt names.
     if [ "${kernel}" = Darwin ]; then
-        printf 'https://awscli.amazonaws.com/v2/version.txt\n'
+        printf 'https://awscli.amazonaws.com/v2/install.sh\n'
         return
     fi
     architecture="$(uname -m)"
     case "${architecture}" in
     x86_64 | aarch64)
-        printf 'https://awscli.amazonaws.com/awscli-exe-linux-%s.zip\n' "${architecture}"
+        printf 'https://awscli.amazonaws.com/awscli-exe-linux-%s-%s.zip\n' "${architecture}" "$1"
         ;;
     *)
         printf 'Unsupported AWS CLI architecture: %s\n' "${architecture}" >&2
@@ -91,8 +108,11 @@ function verify_aws_cli_install() {
 }
 
 #
-# @description Verify and install the current AWS CLI without modifying a working install on verification failure.
-#   On macOS the verified file is install.sh, and version.txt names the release the postcondition expects.
+# @description Verify and install one AWS CLI release without modifying a working install on verification
+#   failure. On Linux the archive is the versioned one aws_cli_url names, and the CLI it stages must report
+#   that version before the upstream installer runs. On macOS the verified file is install.sh, run with
+#   --version so it installs that release, and the postcondition expects it.
+# @arg $1 string The release version, for example 2.39.6.
 # @exitcode 3 A download failed, so nothing was installed.
 #
 function install_aws_cli() (
@@ -108,6 +128,7 @@ function install_aws_cli() (
     local validity
     local temporary_dir
     local staged_version
+    local dist_version
     local same_version_dir
     local active_version
     local kernel
@@ -117,12 +138,9 @@ function install_aws_cli() (
         printf 'uname -s failed; the AWS CLI was not installed.\n' >&2
         return 1
     }
-    if [ "${kernel}" = Darwin ]; then
-        macos=1
-        archive_url="https://awscli.amazonaws.com/v2/install.sh"
-    else
-        archive_url="$(aws_cli_url)" || return
-    fi
+    staged_version="$1"
+    [ "${kernel}" != Darwin ] || macos=1
+    archive_url="$(aws_cli_url "${staged_version}")" || return
     temporary_dir="$(mktemp -d)" || return
     trap 'rm -rf "${temporary_dir}"' EXIT
 
@@ -137,12 +155,6 @@ function install_aws_cli() (
         "${archive_url}" --output "${archive_path}" || return 3
     curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
         "${archive_url}.sig" --output "${signature_path}" || return 3
-    if [ -n "${macos}" ]; then
-        # install.sh installs the release version.txt names, so the postcondition expects that one.
-        staged_version="$(curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
-            https://awscli.amazonaws.com/v2/version.txt)" || return 3
-        staged_version="${staged_version//[[:space:]]/}"
-    fi
 
     mkdir -m 700 "${inspection_home}" || return
     key_data="$(gpg --homedir "${inspection_home}" --batch --with-colons --import-options show-only --import "${AWS_CLI_KEY_PATH}")" || return
@@ -160,13 +172,20 @@ function install_aws_cli() (
 
     if [ -n "${macos}" ]; then
         mkdir -p "${AWS_CLI_BIN_DIR}" "$(dirname "${AWS_CLI_INSTALL_DIR}")" || return
-        XDG_DATA_HOME="$(dirname "${AWS_CLI_INSTALL_DIR}")" XDG_BIN_HOME="${AWS_CLI_BIN_DIR}" bash "${archive_path}" || return
+        XDG_DATA_HOME="$(dirname "${AWS_CLI_INSTALL_DIR}")" XDG_BIN_HOME="${AWS_CLI_BIN_DIR}" \
+            bash "${archive_path}" --version "${staged_version}" || return
         verify_aws_cli_install "${staged_version}"
         return
     fi
     unzip -q "${archive_path}" -d "${temporary_dir}" || return
-    staged_version="$(verify_aws_cli_version "${temporary_dir}/aws/dist/aws" "AWS CLI staged artifact verification failed")" || return
-    staged_version="${staged_version#aws-cli/}"
+    # The archive is the one the release version named, so the CLI it holds must be that release.
+    dist_version="$(verify_aws_cli_version "${temporary_dir}/aws/dist/aws" "AWS CLI staged artifact verification failed")" || return
+    dist_version="${dist_version#aws-cli/}"
+    if [ "${dist_version}" != "${staged_version}" ]; then
+        printf 'AWS CLI staged artifact verification failed: the archive holds aws-cli/%s, not the release aws-cli/%s.\n' \
+            "${dist_version}" "${staged_version}" >&2
+        return 1
+    fi
     # The upstream installer's --update skips a version directory that already exists, so a broken
     # install of the same version, or an interrupted update that left it beside an older active CLI,
     # would never be repaired. Remove that directory first, after the signature and the staged CLI
@@ -188,49 +207,32 @@ function install_aws_cli() (
 )
 
 #
-# @description Print the ETag AWS serves for the current archive.
-#
-function aws_cli_archive_etag() {
-    local url
-    url="$(aws_cli_url)" || return
-    curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
-        --head "${url}" |
-        awk 'tolower($1) == "etag:" { etag = $2 } END { sub(/\r$/, "", etag); if (etag == "") exit 1; print etag }'
-}
-
-#
-# @description Install or update the AWS CLI. Runs on every chezmoi apply and skips when the
-#   archive's ETag still matches the one recorded after the last verified install and that
-#   AWS CLI still runs.
+# @description Install or update the AWS CLI. Runs on every chezmoi apply: reads the release version
+#   v2/version.txt names once, skips when the installed AWS CLI already runs as that release, and
+#   otherwise installs that release. The skip check and the postcondition are the same predicate, so no
+#   state file is kept.
 #
 function main() {
-    local etag recorded status=0
-    if ! etag="$(aws_cli_archive_etag)"; then
+    local version status=0
+    if ! version="$(aws_cli_release_version)"; then
         # Only a CLI that still runs stays; a broken one fails the offline apply instead of passing.
         verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" > /dev/null 2>&1 || {
-            printf 'Could not reach the AWS CLI archive, and no working AWS CLI is installed.\n' >&2
+            printf 'Could not read the AWS CLI release version, and no working AWS CLI is installed.\n' >&2
             return 1
         }
-        printf 'warning: could not reach the AWS CLI archive; the installed AWS CLI stays.\n' >&2
+        printf 'warning: could not read the AWS CLI release version; the installed AWS CLI stays.\n' >&2
         return 0
     fi
-    # The recorded ETag counts only for an AWS CLI that still runs; a broken one is reinstalled. No
-    # readable record is no match: the verified install runs again and records it.
-    recorded="$(cat "${AWS_CLI_ETAG_FILE}" 2> /dev/null)" || recorded=""
-    if [ "${recorded}" = "${etag}" ] &&
-        verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" > /dev/null 2>&1; then
-        return 0
-    fi
-    install_aws_cli || status=$?
-    # A failed download keeps a working AWS CLI (its ETag stays unrecorded, so the next apply retries);
+    # An AWS CLI that runs as the release needs nothing; a broken or older one is (re)installed.
+    verify_aws_cli_install "${version}" > /dev/null 2>&1 && return 0
+    install_aws_cli "${version}" || status=$?
+    # A failed download keeps a working AWS CLI (the next apply compares it with version.txt again);
     # a failed signature or postcondition never does.
     if [ "${status}" -eq 3 ] && verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" > /dev/null 2>&1; then
         printf 'warning: could not download the AWS CLI archive; the installed AWS CLI stays.\n' >&2
         return 0
     fi
-    [ "${status}" -eq 0 ] || return "${status}"
-    mkdir -p "$(dirname "${AWS_CLI_ETAG_FILE}")" && printf '%s\n' "${etag}" > "${AWS_CLI_ETAG_FILE}" ||
-        printf 'warning: could not record the AWS CLI archive ETag; the next apply reinstalls it.\n' >&2
+    return "${status}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

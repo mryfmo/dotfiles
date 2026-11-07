@@ -82,13 +82,22 @@
 #   sandbox on stderr, and creates and starts nothing but the private tool links. Otherwise hcom's own
 #   exit status is returned (`hcom omp --help`:
 #   0 ready, 1 launch failed, 2 still launching or blocked on user attention).
+#   The seat login (regime-cutover U318, U314 alternative A): every seat's bridge child and the dsh role's gateway
+#   child run with `CLAUDE_CONFIG_DIR=<seats-root>/.state/claude`, one directory per seats root holding one
+#   interactive claude.ai login that Claude Code itself stores and refreshes (the Keychain item keyed to that
+#   directory on macOS, `.credentials.json` 0600 there otherwise). The directory is the role table's `claude_config`
+#   row for every role: this lever makes it 0700 when absent (a link refuses, own_slots_check), the shim exports it,
+#   seat-login-preflight judges `claude auth status` under it, and the settings grant it for write and deny its
+#   `settings.json`, `settings.local.json`, `rules`, `hooks`, `plugins`, `skills`, `commands` and `agents` to every
+#   seat, so no seat changes what another seat's child, or the operator's login command, would load from it. No token
+#   file and no CLAUDE_CODE_OAUTH_TOKEN: the shim clears the name, and no seat reads the operator's `~/.claude`.
 #   The dsh role (regime-cutover U272, after the four audits of the standalone launcher of PR 687): the DeepSeek
 #   harness control host is contained the same way, by this lever, as a role whose differences from the worker are
 #   rows of the role table (the `case ${role}` after the options, seat_write_roots, the read grants in
 #   seat_sandbox_write, the command the shim execs, the launch at the end) and nothing else. Its rows: no pane and no
 #   hcom bus (the launch runs the shim `<sandbox>/bin/dsh` in the foreground, waits and returns dsh's status); a
-#   per-launch seat name `<name>-<utc stamp>-<pid>`, so the sandbox, its settings file, the state slot and the bridge
-#   child's CLAUDE_CONFIG_DIR are per launch and two launches at once share no file; the cwd
+#   per-launch seat name `<name>-<utc stamp>-<pid>`, so the sandbox, its settings file and the state slot are per
+#   launch and two launches at once share no file (the Claude Code directory is the shared one, as for every role); the cwd
 #   `<seats-root>/.state/<name>/cwd`, a scratch directory this lever makes (no worktree); the write roots DSH_HOME,
 #   that slot, the role's own omp profile `~/.omp/profiles/dsh` (the login child `omp auth-gateway stdio` lives there,
 #   selected by OMP_PROFILE, and writes its agent.db at start) and `~/.omp/run`, with no git common directory and no
@@ -103,17 +112,18 @@
 #   the own profile exempt from their structural denies by a tag that names each one row by its position in its list,
 #   never a spelling, so a DSH_HOME at or inside an exempted row's path is judged like any row), a hit refused before anything is made; DSH_HOME in the protected set
 #   before any tool is resolved; the command `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt
-#   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME, OMP_PROFILE
-#   and a caller's CLAUDE_CODE_OAUTH_TOKEN before the shim adds its own exports. No rules file, `--config` overlay,
-#   `-e` list or login preflight is read for it. Its profile config row (regime-cutover U310): the rendered overlay
-#   `~/.agents/omp/profiles/dsh.yml` (the generator's, like the seat overlays) is placed as the profile's own
-#   `~/.omp/profiles/dsh/agent/config.yml`, the file the gateway child `omp auth-gateway stdio` reads for its model
-#   providers, every `extensions` entry rewritten to its canonical `claude.levers.extensions` path as the omp roles'
-#   `-e` list is; a config already equal is left alone, a different one replaced and the launch says so, and a linked
-#   `agent/` or `config.yml` is refused before anything is made (profile_config_check; the compare that writes a
-#   temporary file waits for settings_judge, profile_config_compare; the write holds its exclusive descriptor,
-#   profile_config_tmp). The per-launch sandbox and state slot are removed when dsh exits, by a refusal after they
-#   were made (refuse), and by the trap a hangup, interrupt or termination runs before this process ends by that signal.
+#   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME, OMP_PROFILE and
+#   CLAUDE_CONFIG_DIR before the shim adds its own exports (regime-cutover U312: a caller's CLAUDE_CODE_OAUTH_TOKEN
+#   is no input for any role). No rules file, `--config` overlay, `-e` list or login preflight is read for it. Its
+#   profile config row (regime-cutover U310): the rendered overlay `~/.agents/omp/profiles/dsh.yml` (the generator's,
+#   like the seat overlays) is placed as the profile's own `~/.omp/profiles/dsh/agent/config.yml`, the file the
+#   gateway child `omp auth-gateway stdio` reads for its model providers, every `extensions` entry rewritten to its
+#   canonical `claude.levers.extensions` path as the omp roles' `-e` list is; a config already equal is left alone, a
+#   different one replaced and the launch says so, and a linked `agent/` or `config.yml` is refused before anything
+#   is made (profile_config_check; the compare that writes a temporary file waits for settings_judge,
+#   profile_config_compare; the write holds its exclusive descriptor, profile_config_tmp). The per-launch sandbox and
+#   state slot are removed when dsh exits, by a refusal after they were made (refuse), and by the trap a hangup,
+#   interrupt or termination runs before this process ends by that signal.
 # @arg $1 string Role: orchestrator, worker or dsh.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
@@ -138,6 +148,10 @@ set -euo pipefail
 caller_path=${PATH:-}
 system_path=/usr/bin:/bin:/usr/sbin:/sbin
 PATH=${system_path}
+# A caller's CLAUDE_CODE_OAUTH_TOKEN is no input to any child of this launcher (regime-cutover U312, U318; Codex P2 on
+# PR 712): the seats' login is the shared Claude Code directory, so the name goes before the first child process (the
+# preflight, srt's version read, hcom, herdr, the shim's canary), not only inside the shim.
+unset CLAUDE_CODE_OAUTH_TOKEN
 # Git is steered by no inherited environment (regime-cutover U85): every `GIT_*` variable the caller exported
 # (GIT_DIR, GIT_COMMON_DIR, GIT_WORK_TREE, GIT_CONFIG_* and the rest) is removed before the first git command, so host
 # git, and the seat, find the repository from the working directory alone. hcom-seat takes no input that way.
@@ -298,6 +312,8 @@ dsh)
 *) refuse "unknown role '${role}'; expected orchestrator, worker or dsh" ;;
 esac
 [[ ${name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "name '${name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
+# `<seats-root>/.state/claude` is the shared Claude Code directory (U318), so no seat's state slot may take that name.
+[[ ${name} != claude ]] || refuse "the seat name 'claude' is taken by the shared Claude Code directory <seats-root>/.state/claude; choose another --name"
 # A seat never launches a seat (regime-cutover U85): a launch is the operator's or the coordinator's step from a
 # terminal outside every seat (gate G7). hcom marks the seat's environment and the shim marks its own; the
 # filesystem probe after the seats root is known catches a seat that unset them.
@@ -1212,11 +1228,11 @@ if [[ -n ${mise_real} ]]; then
     mise_cmd=("${pinned[@]}")
 fi
 required_tools=(git hcom herdr omp srt)
-# claude, regime-open-url and its python3 serve seat-login-preflight's interactive login handoff (U37); jq reads the
-# openai-siwc registration there (macOS 14 ships no /usr/bin/jq, so a mise or Homebrew jq is resolved and checked
-# like every tool). hcom-seat itself never runs it: the settings are read by plutil or /usr/bin/jq. security (macOS)
-# is the preflight's one Keychain reader, resolved like every tool, so the preflight's login check has one seam.
-optional_tools=(node bun claude python3 regime-open-url jq security)
+# claude is seat-login-preflight's login reader (`claude auth status` under the shared Claude Code directory, U318),
+# regime-open-url and its python3 serve its interactive login handoff (U37), and jq reads the openai-siwc registration
+# and the auth status there (macOS 14 ships no /usr/bin/jq, so a mise or Homebrew jq is resolved and checked like every
+# tool). hcom-seat itself never runs them: the settings are read by plutil or /usr/bin/jq.
+optional_tools=(node bun claude python3 regime-open-url jq)
 case ${OSTYPE} in
 linux*) required_tools+=(bwrap socat rg) ;;
 esac
@@ -1490,6 +1506,10 @@ common=${git_paths[2]}
     refuse "git resolves the checkout ${repo}, git directory ${git_paths[1]} and common directory ${common}, not ${top}, ${gitdir} and ${early_common} found before it ran"
 seats_root=${seats_root:-${REGIME_SEATS_ROOT:-}}
 [[ -n ${seats_root} ]] || refuse 'no seats root: pass --seats-root or run inside a checkout'
+# The role table's `claude_config` row (regime-cutover U318): the shared Claude Code directory of every role, the
+# bridge child's and the dsh gateway child's `CLAUDE_CONFIG_DIR`, holding the one claude.ai login of this seats root.
+# Spelled here; own_slots_check reads it by lstat before anything resolves it, and seat_write_roots renders it physical.
+claude_config=${seats_root%/}/.state/claude
 # The role table's directory row: the orchestrator sits in the launch checkout, a worker in its worktree, the dsh role
 # in a scratch directory inside its per-launch state slot, which seat_sandbox_write makes.
 case ${role} in
@@ -1735,11 +1755,13 @@ fi
 #   writable without a listing (`srt_tmp_roots`: `/tmp/claude`, and `/private/tmp/claude` on macOS; `~/.npm/_logs`).
 #   The role table's write-root row (U272): the omp roles write the repository's git common directory, the program's
 #   hcom store and their own omp profile; the dsh role writes DSH_HOME and its own omp profile, where its login child
-#   lives, and no git or hcom path. The operator's Claude Code state (`CLAUDE_CONFIG_DIR`, `~/.claude`,
-#   `~/.claude.json`) is no root of any seat (regime-cutover U190): the bridge child keeps its own under
-#   `<seats-root>/.state/<name>/claude`, inside the state slot listed here, which the shim exports as the seat's
-#   `CLAUDE_CONFIG_DIR`. Being no root is not enough: srt 0.0.81 grants `~/.claude/debug` of the real HOME on its
-#   own, so seat_sandbox_write denies that state explicitly (operator_claude_paths, regime-cutover U190b).
+#   lives, and no git or hcom path. Row 2 of every role is the shared Claude Code directory `<seats-root>/.state/claude`
+#   (the `claude_config` row, regime-cutover U318), which the shim exports as the seat's `CLAUDE_CONFIG_DIR`: the
+#   child's login, `.claude.json`, state and sessions live there, and seat_settings_render denies its settings, rules,
+#   hooks, plugins, skills, commands and agents under this grant (srt keeps a deeper deny under an allow). The
+#   operator's Claude Code state (a caller's `CLAUDE_CONFIG_DIR`, `~/.claude`, `~/.claude.json`) is no root of any
+#   seat (regime-cutover U190). Being no root is not enough: srt 0.0.81 grants `~/.claude/debug` of the real HOME on
+#   its own, so seat_sandbox_write denies that state explicitly (operator_claude_paths, regime-cutover U190b).
 # @arg $1 string The role.
 # @arg $2 string The seat name.
 # @arg $3 string The seat directory (the worktree, the checkout for the orchestrator, the scratch cwd for dsh).
@@ -1751,14 +1773,16 @@ seat_write_roots() {
     dsh) extra=("${dsh_home}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;
     *) extra=("${common}" "${HCOM_DIR}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;
     esac
-    # The seat's own slots come first (seat_overlap_check relies on it): its directory, then its state directory.
-    for path in "$3" "${seats_root%/}/.state/$2" "${extra[@]}" "${srt_tmp_roots[@]}" "${HOME}/.npm/_logs"; do
+    # The seat's own slots come first, then the shared Claude Code directory (seat_overlap_check and the dsh judge's
+    # tags rely on the positions): its directory, its state directory, the shared directory.
+    for path in "$3" "${seats_root%/}/.state/$2" "${claude_config}" "${extra[@]}" "${srt_tmp_roots[@]}" "${HOME}/.npm/_logs"; do
         physical_path "${path}" || return 1
     done
 }
 
 # @description Refuse (exit 2) unless a seat's own slots under the seats root are what the overlap check's exemption
-#   takes them for (regime-cutover U85): `<seats-root>/.state`, `<seats-root>/.state/<name>` and, for a worker,
+#   takes them for (regime-cutover U85): `<seats-root>/.state`, `<seats-root>/.state/<name>`, the shared Claude Code
+#   directory `<seats-root>/.state/claude` (U318) and, for a worker,
 #   `<seats-root>/<name>` are each no symbolic link, a directory when they exist, and, when they exist, their physical
 #   parent has the identity of the physical seats root (resp. `.state`) and their physical basename is the name they
 #   are spelled with. A `.state/<name> -> ..` or `<name> -> /` would otherwise resolve the slot to a wider root that
@@ -1768,7 +1792,7 @@ seat_write_roots() {
 # @arg $1 string The role.
 # @arg $2 string The seat name.
 own_slots_check() {
-    local slot parent real seats_phys slots=("${seats_root}/.state" "${seats_root}/.state/$2")
+    local slot parent real seats_phys slots=("${seats_root}/.state" "${seats_root}/.state/$2" "${claude_config}")
     [[ $1 == orchestrator ]] || slots+=("${seats_root}/$2")
     seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
     for slot in "${slots[@]}"; do
@@ -1784,6 +1808,12 @@ own_slots_check() {
 }
 own_slots_check "${role}" "${name}"
 own_slots_check orchestrator orchestrator
+# The shared directory in physical form, for the shim's export, the dsh role's environment and the deny rows under it
+# (own_slots_check has just proved it is no link and sits in `.state`); seat_write_roots renders the same path.
+claude_config_real=$(physical_path "${claude_config}") || refuse "cannot resolve the shared Claude Code directory ${claude_config}"
+# The physical seats root goes to the preflight, so the login it judges and the directory the shim exports are one
+# spelling (the macOS Keychain item is keyed to the directory's path).
+seats_root_real=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
 
 # The exact roots (regime-cutover U85): this seat's `allowWrite` list, from the same function that writes the
 # settings, so the check and the sandbox cannot drift, and the other role's; the derived seats root and hcom store;
@@ -1945,8 +1975,9 @@ dsh_deny_paths() {
 #   inputs or of denied places can lack a member. Every directory is resolved by physical_path, present or
 #   absent, so the lists are the same before and after the slots are made. The settings name what the seat may
 #   write (its directory, the repository's git common directory, the program's hcom store, its own omp profile and
-#   the omp session leases, and its own state slot, which holds the bridge child's Claude Code state (the
-#   `CLAUDE_CONFIG_DIR` the shim exports, regime-cutover U190) and a per-seat cache root; the same for both omp roles,
+#   the omp session leases, its own state slot (a per-seat cache root) and the shared Claude Code directory
+#   `<seats-root>/.state/claude` (the `CLAUDE_CONFIG_DIR` the shim exports, regime-cutover U318: one login per seats
+#   root, stored and refreshed by Claude Code itself); the same for both omp roles,
 #   so no seat writes the seats root or reaches the herdr socket, and none can start a seat), what it may not change
 #   inside those roots (git config and hooks, the hcom store's launch scripts and configuration, agent configuration
 #   that runs outside the seat and the package the checkout's Claude Code hooks import), what it may not write or
@@ -1961,9 +1992,10 @@ dsh_deny_paths() {
 # @set deny_read The denyRead paths.
 # @set allow_read The allowRead paths.
 # @set row_tags The structural tags, each naming one row by list and position (tag_row): `slot` for the seat's own
-#   slots (its directory and state slot), the seats-root denies they re-open and the project-file denies under its
-#   directory; `profile` for its own omp profile and the profiles deny it re-opens. The grant tags are the dsh
-#   role's, whose judge reads them; the deny tags are rendered for every role and change no list.
+#   slots (its directory and state slot) and the shared Claude Code directory, the seats-root denies they re-open, the
+#   project-file denies under its directory and the configuration denies under the shared directory; `profile` for
+#   its own omp profile and the profiles deny it re-opens. The grant tags are the dsh role's, whose judge reads them;
+#   the deny tags are rendered for every role and change no list.
 seat_settings_render() {
     local root path kind project_files=()
     h=$(physical_path "${HOME}") || refuse "cannot resolve HOME ${HOME}"
@@ -1982,6 +2014,16 @@ seat_settings_render() {
     for path in "${project_files[@]}"; do
         tag_row slot denyWrite ${#deny_write[@]} "${dir_real}/${path}"
         deny_write+=("${dir_real}/${path}")
+    done
+    # The shared Claude Code directory is a write root of every seat (the child's login, `.claude.json`, state and
+    # sessions live there, regime-cutover U318), and these rows under it are what a seat must not change: the
+    # settings, rules, hooks, plugins, skills, commands and agents that another seat's child, or the operator's login
+    # command under that directory, would load (the U190 hole, closed among seats). The bridge child loads none of
+    # them (`settingSources: []`, `--strict-mcp-config`); the rows hold whatever a child loads. Tagged like the
+    # project-file rows: the grant at write row 2 contains them by construction.
+    for path in settings.json settings.local.json rules hooks plugins skills commands agents; do
+        tag_row slot denyWrite ${#deny_write[@]} "${claude_config_real}/${path}"
+        deny_write+=("${claude_config_real}/${path}")
     done
     for path in "${project_files[@]}"; do deny_write+=("${checkout}/${path}"); done
     # The git state host git reads for any worktree of this repository (regime-cutover U85): a seat that could write
@@ -2029,36 +2071,39 @@ seat_settings_render() {
     deny_read+=("${operator_claude[@]}")
     # The role table's read-grant row (U272c): denyRead is broad and every allowRead entry re-opens a path under it,
     # so the list is the role's own. The omp roles re-open their directory, the repository's git directory (the
-    # worktree's objects and refs), the hcom store, their omp profile, their state slot and the coordinator's records
-    # under the main checkout (briefs, verdict files), read by absolute path; the main checkout itself is unreadable
-    # to a worker wherever it lives, and the orchestrator also reads the worker clones of its own program, which it
-    # reviews. The dsh role has no worktree, no bus and no store: it re-opens its scratch cwd and state slot,
-    # DSH_HOME, its own omp profile, the skills it loads and the pinned tool directory on its PATH, and no git, hcom
-    # or record path.
+    # worktree's objects and refs), the hcom store, their omp profile, their state slot, the shared Claude Code
+    # directory (U318) and the coordinator's records under the main checkout (briefs, verdict files), read by absolute
+    # path; the main checkout itself is unreadable to a worker wherever it lives, and the orchestrator also reads the
+    # worker clones of its own program, which it reviews. The dsh role has no worktree, no bus and no store: it
+    # re-opens its scratch cwd and state slot, the shared Claude Code directory, DSH_HOME, its own omp profile, the
+    # skills it loads and the pinned tool directory on its PATH, and no git, hcom or record path.
     case ${role} in
     orchestrator)
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
-            "${checkout}/.orchestration/orchestrate" "${seats_real}")
+            "${claude_config_real}" "${checkout}/.orchestration/orchestrate" "${seats_real}")
         ;;
     worker)
         deny_read+=("${checkout}")
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
-            "${checkout}/.orchestration/orchestrate")
+            "${claude_config_real}" "${checkout}/.orchestration/orchestrate")
         ;;
     dsh)
         # The deny row (U272d): the role's own denies for read and for write, after the worker's.
         deny_read+=("${checkout}" ${dsh_deny[@]+"${dsh_deny[@]}"})
         deny_write+=(${dsh_deny[@]+"${dsh_deny[@]}"})
-        allow_read=("${dir_real}" "${sandbox_state}" "${dsh_home}" "${h}/.omp/profiles/${role}" "${h}/.agents/skills"
-            "${tools_dir}")
+        allow_read=("${dir_real}" "${sandbox_state}" "${claude_config_real}" "${dsh_home}" "${h}/.omp/profiles/${role}"
+            "${h}/.agents/skills" "${tools_dir}")
         # The judge's exempted grants, each one row by its position (tag_row, regime-cutover U272g): the own cwd and
-        # state slot, rows 0 and 1 of both grant lists (seat_write_roots puts them first), and the own omp profile,
-        # row 3 of both. DSH_HOME (row 2) and `~/.omp/run` (write row 4) carry no tag whatever they are spelled, so a
-        # DSH_HOME at or inside the profiles directory, or a `~/.omp/run` linked there, is judged like any row.
+        # state slot, rows 0 and 1 of both grant lists, the shared Claude Code directory, row 2 of both (seat_write_roots
+        # puts the three first; the directory sits under the seats-root denies and over its configuration denies, U318),
+        # and the own omp profile, row 4 of both. DSH_HOME (row 3) and `~/.omp/run` (write row 5) carry no tag whatever
+        # they are spelled, so a DSH_HOME at or inside the profiles directory, or a `~/.omp/run` linked there, is judged
+        # like any row.
         for kind in allowRead allowWrite; do
             tag_row slot "${kind}" 0 "${dir_real}"
             tag_row slot "${kind}" 1 "${sandbox_state}"
-            tag_row profile "${kind}" 3 "${h}/.omp/profiles/${role}"
+            tag_row slot "${kind}" 2 "${claude_config_real}"
+            tag_row profile "${kind}" 4 "${h}/.omp/profiles/${role}"
         done
         ;;
     esac
@@ -2220,9 +2265,11 @@ seat_overlap_check() {
         for ((i = 0; i < ${#protected[@]}; i++)); do
             ((! own[i])) || continue
             # Its own slots under the seats root sit there by construction, as siblings of `.sandbox`: the state
-            # directory of every seat, and a worker's directory (the orchestrator's is the launch checkout, checked).
+            # directory of every seat, and a worker's directory (the orchestrator's is the launch checkout, checked);
+            # so does the shared Claude Code directory, root 2 of every role, inside `.state` (U318).
             # own_slots_check has proved, before this runs, that they are what they claim (no link, right parent).
             if [[ (${k} == 1 || (${k} == 0 && ${own_role} != orchestrator)) && (${i} == 1 || ${i} == 2) ]]; then continue; fi
+            if [[ ${k} == 2 && ${i} == 1 ]]; then continue; fi
             p=${protected[i]}
             j=$((nroots + i))
             if within_ix "${k}" "${j}"; then
@@ -2373,7 +2420,7 @@ seat_sandbox_write() {
     # and each is checked again to be a real directory.
     (umask 077 && mkdir -p "${seats_root}" "${HOME}/.omp/profiles/${role}" "${HOME}/.omp/run") ||
         refuse "cannot create the seats root ${seats_root} or omp's state directories"
-    for path in "${seats_root}/.state" "${seats_root}/.state/${name}" "${seats_root}/.state/${name}/claude" \
+    for path in "${seats_root}/.state" "${claude_config}" "${seats_root}/.state/${name}" \
         ${scratch_dir:+"${scratch_dir}"} "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do
         if [[ ! -e ${path} && ! -L ${path} ]]; then
             # Two launches at once (the dsh role's normal case) may both find a shared parent absent; the loser of
@@ -2426,8 +2473,8 @@ seat_sandbox_write() {
         printf -v srt_q '%q ' "${srt_cmd[@]}"
         printf -v cmd_q '%q ' "${seat_cmd[@]}"
         echo "srt_cmd=(${srt_q}) cmd=(${cmd_q}) tool=${shim_tool}"
-        printf 'settings=%q canary=%q state=%q push_url=%q sandbox=%q\n' "${settings}" "${sandbox_real}/canary" \
-            "${sandbox_state}" "${push_url}" "${sandbox_real}"
+        printf 'settings=%q canary=%q state=%q claude_config=%q push_url=%q sandbox=%q\n' "${settings}" \
+            "${sandbox_real}/canary" "${sandbox_state}" "${claude_config_real}" "${push_url}" "${sandbox_real}"
         printf 'debug_canary=%q\n' "${h}/.claude/debug/hcom-seat-canary"
         # Outside the sandbox the shim and srt look up only in the private tool directory and the system directories;
         # inside it omp gets the seat's working PATH, applied by /usr/bin/env under srt.
@@ -2457,22 +2504,12 @@ if [[ ${probe} != 'write-denied read-denied ssh-denied debug-denied' || -e ${can
     exit 2
 fi
 export UV_CACHE_DIR=${state}/uv-cache
-# The bridge child's Claude Code state (`.claude.json`, projects, sessions, plugins) lives in the seat's own slot,
-# never in the operator's ~/.claude or ~/.claude.json (regime-cutover U190); under that directory the child reads
-# neither the Keychain nor the operator's credentials file, so it logs in by the token alone, exported here from the
-# operator's token file (the preflight's spelling) because a herdr pane's shell need not be a login shell that
-# exports it. The first line goes from a checked producer into the variable and nowhere else: never printed, never
-# written; a failed read refuses, since the preflight counted that file as the seat's login.
-export CLAUDE_CONFIG_DIR=${state}/claude
-token_file=${HOME}/.config/claude-code/oauth-token
-if [[ -z ${CLAUDE_CODE_OAUTH_TOKEN:-} && -f ${token_file} && -s ${token_file} ]]; then
-    token=$(/usr/bin/head -n 1 -- "${token_file}") || {
-        echo "hcom-seat shim: cannot read the token file ${token_file}; ${tool} not started" >&2
-        exit 2
-    }
-    if [[ -n ${token} ]]; then export CLAUDE_CODE_OAUTH_TOKEN=${token}; fi
-    unset token
-fi
+# The child's Claude Code login and state (`.claude.json`, projects, sessions, plugins) live in the seats root's shared
+# directory, never in the operator's ~/.claude or ~/.claude.json (regime-cutover U190, U318): under that directory the
+# child reads the one claude.ai login the operator made there and refreshes it itself. No token rides: a caller's
+# CLAUDE_CODE_OAUTH_TOKEN is no input (regime-cutover U312), so the name is cleared.
+export CLAUDE_CONFIG_DIR=${claude_config}
+unset CLAUDE_CODE_OAUTH_TOKEN
 # omp's Bedrock discovery stats ~/.aws/{credentials,config} unless these name the files, and an EPERM from the read
 # deny ends omp at start (measured, omp 18.11.3 and 18.12.6); /dev/null reads as no AWS profile.
 export AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null
@@ -2514,8 +2551,8 @@ seat_wrapper_write() {
 
 # The role table's launch row: the hcom launch line for the omp roles; for the dsh role the shim run in the foreground
 # under `/usr/bin/env -i` with the listed names (U272: nothing of the caller's environment reaches the shim, srt or
-# dsh; the shim sets PATH and its own exports). A caller's CLAUDE_CODE_OAUTH_TOKEN is added at the launch alone, so
-# the dry run never prints it.
+# dsh; the shim sets PATH and its own exports; the shared Claude Code directory rides in the list and as the shim's
+# export alike, U318).
 case ${role_launch} in
 hcom)
     argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr --go -- --profile "${role}" --config "${policy}" --config "${profile}" --append-system-prompt "${rules}")
@@ -2525,7 +2562,7 @@ hcom)
     argv+=(--hcom-team "${HCOM_TEAM}")
     ;;
 foreground)
-    seat_env=("HOME=${HOME}" "PATH=${PATH}" "DSH_HOME=${dsh_home}" "OMP_PROFILE=${role}")
+    seat_env=("HOME=${HOME}" "PATH=${PATH}" "DSH_HOME=${dsh_home}" "OMP_PROFILE=${role}" "CLAUDE_CONFIG_DIR=${claude_config_real}")
     # Only a name the caller exported rides (`inherited`, the start-up list): bash gives TERM a value of its own when
     # the caller had none, and a `TERM=dumb` of bash's making would reach dsh as the terminal's.
     for var in USER LANG TERM; do
@@ -2575,10 +2612,11 @@ if ((dry_run)); then
     echo "hcom-seat: sandbox ${sandbox} (srt ${srt_cmd[*]}, omp ${omp_cmd[*]}, hcom ${hcom_cmd[*]}, herdr ${herdr_cmd[*]})" >&2
     exit 0
 fi
-# U37: a remote seat host needs this host's own login first (seat-login-preflight beside this file). The dsh role has
-# no overlay for it; the shim exports the token file into its sandbox as for every role.
+# U37: a seat host needs this host's own login first (seat-login-preflight beside this file), judged under the shared
+# Claude Code directory of this seats root, which the preflight derives from REGIME_SEATS_ROOT (U318). The dsh role
+# has no overlay for it; the shim exports the same directory into its sandbox as for every role.
 if [[ ${role_launch} == hcom ]]; then
-    /bin/bash "${BASH_SOURCE[0]%/*}/seat-login-preflight" "${role}" || exit $?
+    REGIME_SEATS_ROOT=${seats_root_real} /bin/bash "${BASH_SOURCE[0]%/*}/seat-login-preflight" "${role}" || exit $?
 fi
 if [[ ${role_launch} == foreground ]]; then
     # The scratch cwd is made by seat_sandbox_write inside the per-launch slot, proved absent above.
@@ -2705,7 +2743,6 @@ foreground)
     # dsh runs in the scratch cwd (M-21: a cwd inside a read-denied path dies on `uv_cwd EPERM`); the subshell is
     # replaced by the shim, so nothing waits twice.
     (cd "${dir}" && exec /usr/bin/env -i "${seat_env[@]}" \
-        ${CLAUDE_CODE_OAUTH_TOKEN:+"CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}"} \
         "${sandbox}/bin/${shim_tool}" ${dsh_args[@]+"${dsh_args[@]}"}) || status=$?
     trap - HUP INT TERM
     # A slot that remains is a refusal whatever dsh returned: the caller must not read a leftover slot as success.

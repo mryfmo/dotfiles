@@ -13,9 +13,10 @@ fi
 
 # The chezmoi script includes scripts/lib/ci-runner.sh before this file, so the rendered run_once already defines
 # is_ci_runner; a direct run (a test, an operator's shell) sources it from the tree. The helper's directory is a
-# parameter expansion, never a command substitution: the snap-unavailable test runs this file with an empty PATH,
-# and a producer's status would be lost in the source line (standing order 21, regime-cutover U297c). A helper that
-# cannot be read or sourced refuses here, naming its path: the snap decision below must never run without it.
+# parameter expansion, never a command substitution: the Ubuntu client's snap-unavailable test runs its installer
+# with an empty PATH, and a producer's status would be lost in the source line (standing order 21, regime-cutover
+# U297c, U301). A helper that cannot be read or sourced refuses here, naming its path: no is_ci_runner decision below
+# may run without it. One block in the five installers, pinned by tests/unit/test_ci_runner.py; copy it whole.
 if ! declare -F is_ci_runner > /dev/null; then
     case ${BASH_SOURCE[0]} in
     */*) ci_runner_helper="${BASH_SOURCE[0]%/*}/../../../scripts/lib/ci-runner.sh" ;;
@@ -26,7 +27,10 @@ if ! declare -F is_ci_runner > /dev/null; then
         exit 2
     fi
     # shellcheck source=scripts/lib/ci-runner.sh
-    source "${ci_runner_helper}" || exit 2
+    source "${ci_runner_helper}" || {
+        echo "install/ubuntu/client/misc.sh: ci-runner helper failed to source: ${ci_runner_helper}" >&2
+        exit 2
+    }
 fi
 
 readonly PACKAGES=(

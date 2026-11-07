@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import test_hcom_seat  # noqa: E402  # the fixture, as a module attribute so its tests are not collected twice
 
 SYSTEM_PATH = test_hcom_seat.SYSTEM_PATH
-FAKE_OAUTH_VALUE = test_hcom_seat.FAKE_OAUTH_VALUE
+SHARED_CLAUDE_DENIES = test_hcom_seat.SHARED_CLAUDE_DENIES
 # Built at runtime like FAKE_OAUTH_VALUE, and named without the word the secret scan's `generic-token` rule keys on.
 CALLER_OAUTH_VALUE = "caller-" + "value-u272"
 # bash itself exports these into every child; the role's list is everything else.
@@ -180,12 +180,13 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         return [(proc.returncode, out, err) for proc, (out, err) in zip(procs, results)]
 
     def slots(self):
-        """The per-launch sandbox and state slots that exist now, as (sandbox names, state names)."""
+        """The per-launch sandbox and state slots that exist now, as (sandbox names, state names); the shared Claude
+        Code directory `.state/claude` (U318) outlives every launch and is no slot."""
         sandbox = Path(self.seats, ".sandbox")
         state = Path(self.seats, ".state")
         return (
             sorted(p.name for p in sandbox.iterdir()) if sandbox.exists() else [],
-            sorted(p.name for p in state.iterdir()) if state.exists() else [],
+            sorted(p.name for p in state.iterdir() if p.name != "claude") if state.exists() else [],
         )
 
     def test_the_dsh_settings_are_the_workers_but_the_named_rows(self):
@@ -207,22 +208,26 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         clone, cwd = str(Path(self.seats, "worker")), str(Path(self.seats, ".state", name, "cwd"))
         state_w, state_d = str(Path(self.seats, ".state/worker")), str(Path(self.seats, ".state", name))
         common, store = str((self.repo / ".git").resolve()), str(self.store.resolve())
-        # allowWrite: the worker's first five rows are the clone, its state, the common directory, the store and its
-        # profile; the dsh role's are the cwd, its state, DSH_HOME and its profile; the rest is the same list.
+        # allowWrite: the worker's first six rows are the clone, its state, the shared Claude Code directory (U318),
+        # the common directory, the store and its profile; the dsh role's are the cwd, its state, the shared
+        # directory, DSH_HOME and its profile; the rest is the same list.
+        shared = str(Path(self.seats, ".state/claude"))
         write_w, write_d = worker["filesystem"]["allowWrite"], dsh["filesystem"]["allowWrite"]
-        self.assertEqual(write_w[:5], [clone, state_w, common, store, str(home / ".omp/profiles/worker")])
-        self.assertEqual(write_d[:4], [cwd, state_d, str(self.dsh_home), str(home / ".omp/profiles/dsh")])
-        self.assertEqual(write_d[4:], write_w[5:])
+        self.assertEqual(write_w[:6], [clone, state_w, shared, common, store, str(home / ".omp/profiles/worker")])
+        self.assertEqual(write_d[:5], [cwd, state_d, shared, str(self.dsh_home), str(home / ".omp/profiles/dsh")])
+        self.assertEqual(write_d[5:], write_w[6:])
         self.assertIn(str(home / ".omp/run"), write_d)
         self.assertNotIn(common, write_d)
         self.assertNotIn(store, write_d)
         # allowRead (U272c): the role's own grants, in the row's order; none of the worker's rows but the substituted
-        # cwd, state slot and profile (the git directory, the store and the checkout's records are the worker's alone).
+        # cwd, state slot and profile and the shared directory (the git directory, the store and the checkout's
+        # records are the worker's alone).
         read_w, read_d = worker["filesystem"]["allowRead"], dsh["filesystem"]["allowRead"]
         self.assertEqual(read_w[:3], [clone, common, store])
+        self.assertIn(shared, read_w)
         self.assertEqual(
             read_d,
-            [cwd, state_d, str(self.dsh_home), str(home / ".omp/profiles/dsh"), str(home / ".agents/skills"),
+            [cwd, state_d, shared, str(self.dsh_home), str(home / ".omp/profiles/dsh"), str(home / ".agents/skills"),
              str(self.tools)],
         )  # fmt: skip
         # denyWrite: the project files under the seat directory move with it; the worker's `.git` file has no dsh
@@ -273,11 +278,24 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             self.assertNotIn(str(checkout), (entry, *(str(p) for p in Path(entry).parents)), entry)
         self.assertEqual(self.slots(), (["worker"], ["worker"]))
 
+    def without_shared_claude_rows(self, settings):
+        """This head's rendered settings with exactly the U318 rows removed: the shared Claude Code directory, once in
+        allowRead and once in allowWrite, and its eight configuration denies in denyWrite; each is present once."""
+        shared = str(Path(self.seats, ".state/claude"))
+        text = settings
+        for row in (shared, shared, *(f"{shared}/{name}" for name in SHARED_CLAUDE_DENIES)):
+            needle = json.dumps(row).encode() + b","
+            self.assertIn(needle, text, row)
+            text = text.replace(needle, b"", 1)
+        self.assertNotIn(shared.encode(), text)
+        return text
+
     def test_the_omp_roles_settings_are_byte_identical_to_the_earlier_heads(self):
         """No round's row changes an omp role's settings: the worker's and the orchestrator's `srt-settings.json`
         rendered by this head equal, byte for byte, the ones each earlier head (EARLIER_HEADS) renders on the same
-        scratch host. An earlier lever runs from its own tree (git archive of its `scripts/orchestrator` and manifest,
-        so its self-check reads its own pin); a checkout without that commit skips it."""
+        scratch host, once exactly the U318 rows are taken out (without_shared_claude_rows). An earlier lever runs from
+        its own tree (git archive of its `scripts/orchestrator` and manifest, so its self-check reads its own pin); a
+        checkout without that commit skips it."""
         for head in EARLIER_HEADS:
             probe = subprocess.run(
                 ["git", "-C", str(test_hcom_seat.ROOT), "cat-file", "-e", f"{head}^{{commit}}"],
@@ -307,11 +325,12 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     self.assertEqual(run.returncode, 0, f"{label} {head[:8]} {role}: {run.stderr}")
                     rendered[label] = Path(self.seats, ".sandbox", role, "srt-settings.json").read_bytes()
                 with self.subTest(head=head[:8], role=role):
-                    self.assertEqual(rendered["earlier head"], rendered["this head"])
+                    self.assertEqual(rendered["earlier head"], self.without_shared_claude_rows(rendered["this head"]))
                     self.assertIn(b'"allowRead":[', rendered["this head"])
 
     def test_two_launches_at_once_share_no_settings_file_and_each_slot_goes_with_its_dsh(self):
-        """U251d P1 `:704`: every launch has its own sandbox, settings file, state slot and CLAUDE_CONFIG_DIR."""
+        """U251d P1 `:704`: every launch has its own sandbox, settings file and state slot; the Claude Code directory is
+        the seats root's shared one (U318)."""
         procs = self.held_launch("--", "--version", count=2)
         sandboxes, states = self.slots()
         self.assertEqual(len(sandboxes), 2, sandboxes)
@@ -320,11 +339,13 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             self.assertTrue(Path(self.seats, ".sandbox", name, "srt-settings.json").is_file(), name)
             self.assertTrue(Path(self.seats, ".sandbox", name, "bin/dsh").is_file(), name)
             self.assertTrue(Path(self.seats, ".state", name, "cwd").is_dir(), name)
-            self.assertTrue(Path(self.seats, ".state", name, "claude").is_dir(), name)
+            self.assertFalse(Path(self.seats, ".state", name, "claude").exists(), name)
             self.assertEqual(stat.S_IMODE(os.lstat(Path(self.seats, ".state", name)).st_mode), 0o700)
         records = self.dsh_calls()
         self.assertEqual(sorted(Path(record["env"]["HCOM_SEAT_SANDBOX"]).name for record in records), sandboxes)
-        self.assertEqual(len({record["env"]["CLAUDE_CONFIG_DIR"] for record in records}), 2)
+        shared = str(Path(self.seats, ".state/claude"))
+        self.assertEqual({record["env"]["CLAUDE_CONFIG_DIR"] for record in records}, {shared})
+        self.assertTrue(Path(shared).is_dir() and not Path(shared).is_symlink())
         self.assertEqual(len({record["cwd"] for record in records}), 2)
         launches = [call for call in self.calls_of("srt") if call["argv"][2:4] == ["--", "/usr/bin/env"]]
         self.assertEqual(len({launch["argv"][1] for launch in launches}), 2, "two settings files")
@@ -339,8 +360,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
 
     def test_the_environment_reaching_dsh_is_the_listed_names_and_the_shims_exports(self):
         """U251d P1 `:146` and U251b P2 `:325`: nothing of the caller's environment reaches the shim, srt or dsh but
-        the listed names; the shim's own exports (the bridge child's CLAUDE_CONFIG_DIR, the token, the AWS file
-        names, the signing rows) ride as for every role; the caller's token wins over the token file."""
+        the listed names and the shared Claude Code directory; the shim's own exports (that directory again, the AWS
+        file names, the signing rows) ride as for every role; U312, U318: a caller's token is no input and none rides."""
         caller = {
             "SECRET_OF_THE_CALLER": "never", "NODE_OPTIONS": "--require /tmp/evil.js", "USER": "u272",
             "LANG": "C.UTF-8", "TERM": "xterm", "HCOM_TEAM": "repo",
@@ -351,7 +372,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         env = dsh["env"]
         expected = {
             "HOME", "PATH", "DSH_HOME", "OMP_PROFILE", "USER", "LANG", "TERM", "UV_CACHE_DIR", "CLAUDE_CONFIG_DIR",
-            "CLAUDE_CODE_OAUTH_TOKEN", "AWS_SHARED_CREDENTIALS_FILE", "AWS_CONFIG_FILE", "GIT_CONFIG_COUNT",
+            "AWS_SHARED_CREDENTIALS_FILE", "AWS_CONFIG_FILE", "GIT_CONFIG_COUNT",
             "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0", "GIT_CONFIG_KEY_1", "GIT_CONFIG_VALUE_1", "HCOM_SEAT_SANDBOX",
         }  # fmt: skip
         self.assertEqual(set(env) - BASH_OWN_NAMES - interpreter_own_names(), expected)
@@ -359,10 +380,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             {env["USER"], env["LANG"], env["TERM"], env["OMP_PROFILE"], env["DSH_HOME"]},
             {"u272", "C.UTF-8", "xterm", "dsh", str(self.dsh_home)},
         )
-        self.assertEqual(env["CLAUDE_CODE_OAUTH_TOKEN"], FAKE_OAUTH_VALUE, "the token file, exported by the shim")
         self.assertTrue(env["PATH"].startswith(f"{self.tools}:/usr/bin:/bin:/usr/sbin:/sbin:"), env["PATH"])
-        self.assertRegex(env["CLAUDE_CONFIG_DIR"], rf"^{re.escape(self.seats)}/\.state/dsh-\d{{8}}-\d{{6}}-\d+/claude$")
-        self.assertEqual(Path(dsh["cwd"]).resolve(), Path(env["CLAUDE_CONFIG_DIR"]).parent / "cwd")
+        self.assertEqual(env["CLAUDE_CONFIG_DIR"], str(Path(self.seats, ".state/claude")))
+        self.assertRegex(dsh["cwd"], rf"^{re.escape(self.seats)}/\.state/dsh-\d{{8}}-\d{{6}}-\d+/cwd$")
         self.assertEqual((env["AWS_SHARED_CREDENTIALS_FILE"], env["AWS_CONFIG_FILE"]), ("/dev/null", "/dev/null"))
         self.assertEqual(dsh["argv"], ["--profile", "thak", "--version"])
         # The canary and the launch srt saw the same reduced names (the version probe runs under the lever's own).
@@ -372,12 +392,12 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             self.assertNotIn("SECRET_OF_THE_CALLER", call["env"])
             self.assertNotIn("NODE_OPTIONS", call["env"])
             self.assertNotIn("HCOM_TEAM", call["env"])
-        self.assertNotIn(FAKE_OAUTH_VALUE, run.stdout + run.stderr)
-        # A caller's token wins over the token file; no name is passed empty.
+        # U312, U318: a caller's token is no input and no token rides for any role: the name never reaches dsh.
         run = self.launch("--", "--version", CLAUDE_CODE_OAUTH_TOKEN=CALLER_OAUTH_VALUE, USER=None)
         self.assertEqual(run.returncode, 0, run.stderr)
         env = self.dsh_calls()[-1]["env"]
-        self.assertEqual(env["CLAUDE_CODE_OAUTH_TOKEN"], CALLER_OAUTH_VALUE)
+        self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN", env)
+        self.assertNotIn(CALLER_OAUTH_VALUE, env.values())
         self.assertNotIn("USER", env)
         self.assertNotIn(CALLER_OAUTH_VALUE, run.stdout + run.stderr)
 
@@ -479,12 +499,12 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         line = shlex.split(run.stdout)
         self.assertEqual(line[:2], ["/usr/bin/env", "-i"])
         self.assertEqual(
-            line[2:7],
+            line[2:8],
             [f"HOME={self.home}", f"PATH={self.tools}:/usr/bin:/bin:/usr/sbin:/sbin", f"DSH_HOME={self.dsh_home}",
-             "OMP_PROFILE=dsh", "USER=u272"],
+             "OMP_PROFILE=dsh", f"CLAUDE_CONFIG_DIR={Path(self.seats, '.state/claude')}", "USER=u272"],
         )  # fmt: skip
-        self.assertRegex(line[7], rf"^{re.escape(self.seats)}/\.sandbox/dsh-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
-        self.assertEqual(line[8:], ["--version"])
+        self.assertRegex(line[8], rf"^{re.escape(self.seats)}/\.sandbox/dsh-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
+        self.assertEqual(line[9:], ["--version"])
         self.assertNotIn(CALLER_OAUTH_VALUE, run.stdout + run.stderr)
         self.assertEqual(len(self.calls_of("srt")), before + 1, "the dry run reads the srt version and starts nothing")
         self.assertEqual(len(self.dsh_calls()), 1)
@@ -798,17 +818,20 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         profile, profiles = str(home / ".omp/profiles/dsh"), str(home / ".omp/profiles")
         deny_read = rendered["denyRead"]
         deny_write = [row for row in rendered["denyWrite"] if "*" not in row]
+        shared = str(seats / ".state/claude")
         for kind in ("allowRead", "allowWrite"):
-            self.assertEqual([rendered[kind][i] for i in (0, 1, 3)], [cwd, slot, profile], kind)
+            self.assertEqual([rendered[kind][i] for i in (0, 1, 2, 4)], [cwd, slot, shared, profile], kind)
         tags = [(tag, kind, ix, path) for kind in ("allowRead", "allowWrite")
-                for tag, ix, path in (("slot", 0, cwd), ("slot", 1, slot), ("profile", 3, profile))]  # fmt: skip
+                for tag, ix, path in (("slot", 0, cwd), ("slot", 1, slot), ("slot", 2, shared), ("profile", 4, profile))]  # fmt: skip
         tags += [("slot", "denyWrite", ix, row) for ix, row in enumerate(deny_write) if row.startswith(cwd + "/")]
+        # The eight configuration denies under the shared directory (U318), tagged like the project-file rows.
+        tags += [("slot", "denyWrite", ix, row) for ix, row in enumerate(deny_write) if row.startswith(shared + "/")]
         tags += [
             ("slot", "denyRead", deny_read.index(row), row)
             for row in (str(home / ".local/state/omp-seats"), str(seats))
         ]
         tags += [("profile", "denyRead", deny_read.index(profiles), profiles)]
-        self.assertEqual(len(tags), 6 + 8 + 2 + 1, tags)
+        self.assertEqual(len(tags), 8 + 8 + 8 + 2 + 1, tags)
         text = test_hcom_seat.SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_each", "ancestors_of")
         names += ("identity_table", "ascii_lower", "within_ix", "tag_row", "row_tag", "settings_judge")
@@ -852,10 +875,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     self.assertIn(
                         named.removeprefix("deny=").split(", a row of its ")[0].split(" (")[0], related, hit.stdout
                     )
-        # The own profile's spelling at DSH_HOME's position (allowRead row 2): the tag names row 3 alone, so the row
+        # The own profile's spelling at DSH_HOME's position (allowRead row 3): the tag names row 4 alone, so the row
         # hits the profiles deny like any other, where round 5's spelling-keyed tag exempted it.
         same = judge(
-            [*rendered["allowRead"][:2], profile, *rendered["allowRead"][3:]],
+            [*rendered["allowRead"][:3], profile, *rendered["allowRead"][4:]],
             rendered["allowWrite"],
             deny_read,
             deny_write,
@@ -949,7 +972,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         ((status, out, err),) = self.release(procs)
         self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
         for kind in ("allowRead", "allowWrite"):
-            self.assertEqual(rendered[kind][3], str(profiles / "dsh"), kind)
+            self.assertEqual(rendered[kind][4], str(profiles / "dsh"), kind)
             self.assertNotIn(str(profiles), rendered[kind], kind)
         self.assertIn(str(profiles), rendered["denyRead"])
         self.assertTrue(run_root.is_dir() and not run_root.is_symlink())

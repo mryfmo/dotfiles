@@ -106,21 +106,31 @@ click is the laptop's. The design and the threat table are in
    start and each decision to `~/.local/state/hcom/url-opener.log`.
 3. On the Ubuntu host, in your own terminal, run
    `seat-login-preflight <profile>` for each seat profile (orchestrator,
-   worker, audit) that `make doctor` reports absent. The ChatGPT sign-in completes through the forwarded callback. The
-   Claude sign-in shows a code in the laptop tab; paste it at the terminal
-   prompt. If that flow fails, run `claude setup-token` on the laptop and store
-   the token in `~/.config/claude-code/oauth-token` (mode 0600) on the Ubuntu
-   host; `~/.zshenv` (every zsh) and `~/.profile` export it as
-   `CLAUDE_CODE_OAUTH_TOKEN`, and the managed Claude settings withhold both the
-   variable and the file from sandboxed commands.
+   worker, audit) that `make doctor` reports absent. The ChatGPT sign-in completes through the forwarded callback. For
+   Claude the pre-flight prints the one command to run there,
+   `BROWSER=regime-open-url CLAUDE_CONFIG_DIR=<seats-root>/.state/claude claude auth login`:
+   the sign-in shows a code in the laptop tab; paste it at the terminal prompt.
+   That directory, `~/.local/state/omp-seats/<slug>/.state/claude`, is the
+   seats' shared Claude Code directory on every host, the laptop included
+   (U318): one claude.ai login per host, made once with that command (without
+   the `BROWSER` prefix on the laptop), stored and refreshed by Claude Code
+   itself, and revoked with `CLAUDE_CONFIG_DIR=<dir> claude auth logout`. Every
+   seat's child runs under it; no token file, no yearly copy. The operator's
+   own Claude Code keeps the host login (the Keychain on macOS, its credentials
+   file on Linux) and its claude.ai connectors; no shell exports a token
+   (U312), and the managed Claude settings still withhold the retired token
+   variable and file from sandboxed commands as defence in depth.
 4. `make doctor` on the Ubuntu host lists each seat profile under "Seat logins"
-   from presence and mtimes only.
+   from presence and mtimes only; the Claude line names the shared directory
+   and the login's method (`claude.ai`).
 5. `hcom-seat <role>` there runs the same pre-flight before it starts a seat.
    It also checks that the seat can use the login: a ChatGPT login stored in
-   the profile's `agent.db`, and `CLAUDE_CODE_OAUTH_TOKEN` in the shell when
-   the token file is the only Claude login (open a new login shell after
-   writing it). A seat never runs a login: without one, it refuses and names
-   the command.
+   the profile's `agent.db`, and for Claude a `claude.ai` login under the shared
+   directory (`claude auth status` under it). A `CLAUDE_CODE_OAUTH_TOKEN` in the
+   shell, the operator's own `~/.claude` and a token or API-key login under the
+   directory are no input, so a host without that login starts no seat, by
+   design. A seat never runs a login: without one, it refuses and prints the
+   command.
 
 ### Private credentials and keys
 
@@ -715,9 +725,10 @@ subprocess:
   Linux the Claude login is the denied
   `~/.claude/.credentials.json` and the `gh` token is the denied hosts file.
 - `sandbox.credentials.envVars` removes `CLAUDE_CODE_OAUTH_TOKEN` from the
-  environment of sandboxed commands. `~/.zshenv` exports it to every zsh on a
-  host with the token file (docs/remote-host-logins.md); a sandboxed zsh cannot
-  read the file back.
+  environment of sandboxed commands, as defence in depth: no shell exports it
+  (U312) and no seat reads a token at all since U318 (the seats log in by the
+  shared directory, docs/remote-host-logins.md); the retired token file stays
+  denied for the same reason.
 - `sandbox.filesystem.denyRead` denies `~/**/.env`, `~/**/.env.*` and the same
   pair under `/tmp` (and `/private/tmp` on macOS), which covers checkouts
   outside `$HOME` such as the audit worktrees and Claude's own
@@ -1227,7 +1238,7 @@ so a fresh bootstrap never installs a mise that `mise self-update` would refuse.
 | Crit              | pinned (below); the reviewed sha256 per platform, then the release's `checksums.txt`                                                                                                                                                                                                        |
 | Zed               | the GitHub release attestation, through `gh release verify-asset`; without an authenticated `gh`, Zed is not installed and the notice says `run make gh-auth, then make update` (`run_after_05-client-install-zed` runs on every apply)                                                     |
 | sheldon           | `cargo install --locked`, checked against the crates.io index; cargo offers no age choice, so it takes the newest crate                                                                                                                                                                     |
-| AWS CLI           | AWS's GPG signature, checked with the pinned key fingerprint; the unversioned archive is AWS's current release, with no age choice                                                                                                                                                          |
+| AWS CLI           | the release `v2/version.txt` names, installed from the versioned archive and `.sig` that version names (Linux) or through `install.sh --version` (macOS); AWS's GPG signature, checked with the pinned key fingerprint; no age choice                                                       |
 
 Nothing a bootstrap installs runs before a verification independent of its
 release page has passed. A fresh machine has no `gh` login yet, and a fresh

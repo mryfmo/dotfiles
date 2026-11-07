@@ -90,6 +90,7 @@ CHECK = ROOT / "scripts/ci/producer-status-check.sh"
 TABLE = ROOT / "scripts/ci/status-blind-producers.tsv"
 LIB = ROOT / "scripts/orchestrator/read-lib.sh"
 GIT_LIB = ROOT / "scripts/orchestrator/git-isolated.sh"
+REGIME_ENV = ROOT / "scripts/orchestrator/regime-env"
 LEVERS = tuple(
     ROOT / "scripts/orchestrator" / name
     for name in ("records-sync.sh", "pr-audit.sh", "pr-merge.sh", "pr-threads-check.sh", "pr-body-edit.sh")
@@ -506,18 +507,18 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (11, "a pipeline"),
             (
                 12,
-                "a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 12 with the command `true`",
+                "a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 12 with the command `true`",
             ),
             (
                 13,
-                "a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 13 with the command `true`",
+                "a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 13 with the command `true`",
             ),
             (14, "the command `echo`"),
             (15, "an assignment of something other than `$?`"),
             (19, "the command `undefined_refuse`"),
             (
                 20,
-                "a call of `fail`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 8 with an assignment",
+                "a call of `fail`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 8 with an assignment",
             ),
         ):
             self.assertIn(f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout)
@@ -556,15 +557,15 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (6, "`exit 0`, which turns the failed read into success"),
             (
                 7,
-                "a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 7 with `exit 0`, which turns the failed read into success",
+                "a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 7 with `exit 0`, which turns the failed read into success",
             ),
             (
                 8,
-                "a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 8 with `exit 0`, which turns the failed read into success",
+                "a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 8 with `exit 0`, which turns the failed read into success",
             ),
             (
                 9,
-                "a call of `refuse`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 4 with `exit 0`, which turns the failed read into success",
+                "a call of `refuse`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 4 with `exit 0`, which turns the failed read into success",
             ),
             (11, "`return 0`, which turns the failed read into success"),
             (13, "an `exit` whose argument has no known text"),
@@ -622,19 +623,19 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (6, "the tested read runs as a coprocess (`coproc`), whose status is read before the read ends"),
             (
                 11,
-                "the `||` branch is a call of `refuse`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 9 with the command `return`",
+                "the `||` branch is a call of `refuse`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 9 with the command `return`",
             ),
             (
                 12,
-                f"the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 12 with {bare}",
+                f"the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 12 with {bare}",
             ),
             (
                 20,
-                f"the `||` branch is a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 20 with {bare}",
+                f"the `||` branch is a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 20 with {bare}",
             ),
             (
                 21,
-                f"the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 21 with {bare}",
+                f"the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 21 with {bare}",
             ),
             (
                 25,
@@ -644,19 +645,19 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (27, background),
             (
                 28,
-                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 28 with an assignment",
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 28 with an assignment",
             ),
             (
                 29,
-                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 29 with an assignment",
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 29 with an assignment",
             ),
             (
                 30,
-                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 30 with an `echo` that does not send fd 1 to fd 2 (`>&2`)",
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 30 with an `echo` that does not send fd 1 to fd 2 (`>&2`)",
             ),
             (
                 31,
-                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 31 with a command run in the "
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 31 with a command run in the "
                 "background (`&`), which lets the script go on",
             ),
         ):
@@ -674,7 +675,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 "x=$(false) || { '{y}'; exit; }\n",
                 3,
                 "substitution",
-                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 3 with the command `{y}` and "
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 3 with the command `{y}` and "
                 "does not end the read",
             ),
             (
@@ -682,7 +683,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 "x=$(false) || refuse\n",  # 7
                 7,
                 "substitution",
-                "the `||` branch is a call of `refuse`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 4 with the command "
+                "the `||` branch is a call of `refuse`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 4 with the command "
                 "`{y}` and does not end the read",
             ),
             (
@@ -738,11 +739,11 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (5, f"{background} started at line 5"),
             (
                 8,
-                f"the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 8 with {negated_branch}",
+                f"the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 8 with {negated_branch}",
             ),
             (
                 9,
-                f"the `||` branch is a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 9 with {negated_branch}",
+                f"the `||` branch is a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 9 with {negated_branch}",
             ),
             (10, f"the `||` branch is {negated_branch}"),
             (11, "the tested read sits in a statement negated (`!`) at line 11, so a failure that ends that statement"),
@@ -755,7 +756,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ),
             (
                 17,
-                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 17 with a command run in the "
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body) at line 17 with a command run in the "
                 "background (`&`), which lets the script go on",
             ),
             (18, f"{background} started at line 18"),
@@ -1238,7 +1239,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 "a block that breaks the refusal grammar (GRAMMAR) at line LINE with a command run in the background (`&`)",
             ),
         ]
-        grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`"
+        grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body"
         first = 3 + preamble.count("\n")
         expected = [(first + index, "substitution") for index, (_, shape) in enumerate(cases) if shape]
         expected += [
@@ -1410,7 +1411,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             self.assertIn(f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout)
         self.assertIn(":28: substitution: a command substitution here loses its status", result.stdout)
         # The round-11 definition rule and the body grammar still judge the two allowed names, one script each.
-        grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`"
+        grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body"
         for name, body, line, shape in (
             (
                 "after the read",
@@ -2145,6 +2146,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("pr-merge.sh", accepted.replace("bucket name", "bucket names"), [(3, "binding")]),
             ("pr-audit.sh", accepted, [(3, "binding")]),
             ("read-lib.sh", "f() {\n    LEVER_DIR=${dir}\n}\n", []),
+            ("regime-env", "f() {\n    LEVER_DIR=${dir}\n}\n", []),  # the third library (U216b)
             ("read-lib.sh", "f() {\n    LEVER_DIR=${dir2}\n}\n", [(4, "binding")]),
             ("other.sh", "f() {\n    LEVER_DIR=${dir}\n}\n", [(4, "binding")]),
             ("read-lib.sh", "f() { LEVER_DIR=${dir}; }\n", [(3, "binding")]),  # the `;` is part of the statement's text
@@ -2423,6 +2425,111 @@ class ProducerStatusCheckTest(unittest.TestCase):
         """The enforced set: zero findings over read-lib.sh, git-isolated.sh and the five levers, nothing printed."""
         result = self.run_check(LIB, GIT_LIB, *LEVERS)
         self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
+
+    def test_a_block_ending_in_return_is_the_grammar_inside_a_function_body_only(self) -> None:
+        """U216b (round 2 of U216): a sourced helper returns where a lever exits, so a `||` branch that is a block or
+        subshell ending in `return <1-255>` handles the status when the branch sits inside a function body of the
+        file (`regime-env`'s `|| { echo … >&2; return 1; }` blocks); the same block at the top level is a finding as
+        before (`return` outside a function is a bash error, so it ends nothing there), and inside the function
+        `return 0`, `return "$code"`, a bare `return`, `return $?`, `return 256`, two arguments and a `return` before
+        the last statement stay findings naming the shape. A refusal function's own body (form ii) still ends in
+        `exit`: its `return` returns from the refusal function, not from the caller. The grammar a finding names
+        (GRAMMAR) says both terminators and the condition on the second."""
+        body = (
+            "f() {\n"  # 3
+            "    x=$(a) || { echo no >&2; return 1; }\n"  # 4: accepted
+            "    x=$(a) || (echo no >&2; return 255)\n"  # 5: accepted
+            "    x=$(a) || { printf '%s\\n' no 1>&2; return 2; }\n"  # 6: accepted
+            "    x=$(a) || { echo no >&2; return 0; }\n"  # 7
+            '    x=$(a) || { echo no >&2; return "$code"; }\n'  # 8
+            "    x=$(a) || { echo no >&2; return; }\n"  # 9
+            "    x=$(a) || { echo no >&2; return $?; }\n"  # 10
+            "    x=$(a) || { echo no >&2; return 1; exit 1; }\n"  # 11
+            "    x=$(a) || { echo no >&2; return 256; }\n"  # 12
+            "    x=$(a) || { echo no >&2; return 1 2; }\n"  # 13
+            "    if true; then\n"  # 14
+            "        x=$(a) || { echo no >&2; return 3; }\n"  # 15: accepted, a clause inside the function
+            "    fi\n"  # 16
+            "}\n"  # 17
+            "x=$(a) || { echo no >&2; return 1; }\n"  # 18: the top level
+            "{ x=$(a) || { echo no >&2; return 1; }; }\n"  # 19: a block at the top level is not a function body
+            "if true; then\n"  # 20
+            "    g() {\n"  # 21
+            "        x=$(a) || { echo no >&2; return 2; }\n"  # 22: accepted, a function defined inside an `if`
+            "    }\n"  # 23
+            "fi\n"  # 24
+            "refuse() {\n"  # 25
+            "    echo no >&2\n"  # 26
+            "    return 1\n"  # 27
+            "}\n"  # 28
+            "h() {\n"  # 29
+            "    x=$(a) || refuse\n"  # 30: form ii, whose body must end in `exit`
+            "    x=$(a) || return 1\n"  # 31: accepted, form i as before
+            "}\n"  # 32
+        )
+        expected = [(line, "substitution") for line in (7, 8, 9, 10, 11, 12, 13, 18, 19, 30)]
+        result = self.assert_findings(body, expected)
+        grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a function body"
+        for line, shape in (
+            (7, "`return 0`, which turns the failed read into success"),
+            (8, "a `return` whose argument has no known text"),
+            (9, "a bare `return`, whose status is the statement's before it"),
+            (10, "`return $?`, whose status is the statement's before it"),
+            (11, "a `return` before the last statement"),
+            (12, "`return 256`, which turns the failed read into success"),
+            (13, "a `return` with 2 arguments"),
+            (18, "the command `return`"),
+            (19, "the command `return`"),
+        ):
+            self.assertIn(
+                f":{line}: substitution: the `||` branch is a block that breaks the refusal grammar ({grammar}) at line "
+                f"{line} with {shape} and does not end the read",
+                result.stdout,
+            )
+        self.assertIn(
+            f":30: substitution: the `||` branch is a call of `refuse`, whose body breaks the refusal grammar ({grammar}) "
+            "at line 27 with the command `return` and does not end the read",
+            result.stdout,
+        )
+
+    def test_the_sourced_regime_env_is_the_third_library_rule_f_accepts(self) -> None:
+        """U216b: `. "${LEVER_DIR}/regime-env"` (pr-merge.sh since U216, pr-close.sh, hcom-seat, hcom-dispatch,
+        regime-init) is the third accepted `source` shape beside the two libraries; any other file, a suffix on the
+        name or an operator in the expansion is still a file this walk has not read."""
+        body = (
+            '. "${LEVER_DIR}/regime-env"\n'  # 3: accepted
+            'source "${LEVER_DIR}/regime-env"\n'  # 4: accepted
+            '. "$LEVER_DIR/regime-env"\n'  # 5: accepted
+            '. "${LEVER_DIR}/other.sh"\n'  # 6: not a library
+            '. "${LEVER_DIR}/regime-env.sh"\n'  # 7: not the library's name
+            '. "${LEVER_DIR:-.}/regime-env"\n'  # 8: not the bare expansion
+            ". regime-env\n"  # 9: not under LEVER_DIR
+        )
+        result = self.assert_findings(body, [(line, "shadow") for line in (6, 7, 8, 9)])
+        self.assertIn(
+            ":6: shadow: `.` reads a file with no known text, which may define or rebind one of", result.stdout
+        )
+        self.assertIn(
+            ":9: shadow: `.` reads a file this walk has not read, which may define or rebind one of", result.stdout
+        )
+
+    def test_regime_env_is_linted_with_the_enforced_set_and_its_remaining_findings_are_named(self) -> None:
+        """U216b: the lint over the three libraries and the five levers together, the command of the unit's
+        ACCEPTANCE. `regime-env` is the third library (pr-merge.sh sources it since U216), so it is linted here too;
+        its `|| { echo … >&2; return 1; }` blocks (lines 141, 203 and 220, inside `regime_store_root` and
+        `regime_env`) pass by the second terminator, and `pr-merge.sh`'s `. "${LEVER_DIR}/regime-env"` passes rule f.
+        The helper itself is outside this unit's write scope, so the findings the lint still has on it are pinned
+        here by line and rule, nothing else: no `set -euo pipefail` at its top level (rule c, line 1; the two other
+        libraries carry one), and three `|| name=''` branches of its self-check (lines 41, 60, 62; read-lib.sh's
+        same lines carry an allow comment). A change to the helper that clears them moves it into
+        test_the_library_and_the_five_levers_are_clean and deletes this pin."""
+        result = self.run_check(LIB, GIT_LIB, REGIME_ENV, *LEVERS)
+        self.assertEqual("", result.stderr)
+        self.assertEqual(1, result.returncode, result.stdout)
+        residual = [(1, "prologue"), (41, "substitution"), (60, "substitution"), (62, "substitution")]
+        self.assertEqual(residual, findings(result), result.stdout)
+        for line in result.stdout.splitlines():
+            self.assertTrue(line.startswith(f"{REGIME_ENV}:"), line)
 
 
 if __name__ == "__main__":

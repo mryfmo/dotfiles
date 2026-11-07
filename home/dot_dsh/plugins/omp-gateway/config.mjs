@@ -6,10 +6,14 @@
  * (measured 2026-11-06: without it the login answers 502). `OMP_PROFILE` rides when the launcher sets it, so the
  * child lives in the profile the launcher names (the hcom-seat dsh role: `~/.omp/profiles/dsh`, U272) instead of the
  * default `~/.omp/agent`, which that role denies (U306, the g6 failure `SQLITE_AUTH: authorization denied`).
+ * `CLAUDE_CONFIG_DIR` rides for the same reason: hcom-seat hands the dsh role the shared seat login
+ * `<seats-root>/.state/claude` under that name and denies the operator's `~/.claude` (U318), so without it the
+ * bridge's Claude child looks for a login it cannot read and never answers (U355, the g6 failure `request aborted`).
+ * The name carries a path, never a token.
  */
 export const DEFAULT_ENV_NAMES = Object.freeze([
   'HOME', 'PATH', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'TERM', 'TMPDIR',
-  'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_STATE_HOME', 'OMP_PROFILE',
+  'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_STATE_HOME', 'OMP_PROFILE', 'CLAUDE_CONFIG_DIR',
 ])
 
 export const DEFAULT_CONFIG = Object.freeze({

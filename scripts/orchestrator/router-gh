@@ -8,9 +8,9 @@
 #   wrapper is signed in to, and the Executor calls it as `gh`. This file is that wrapper for the kit. The login lives in
 #   `<DSH_HOME>/router-credentials/gh/hosts.yml`: the credential root is the one directory the router role of `hcom-seat`
 #   reads beyond the dsh row's grants (allowRead row 7, held like the state root and made 0700 by the launch), every
-#   other role denies it for read, and no role writes it (the login inside it is the operator's step,
-#   docs/engagement-handout.md: `gh auth login --insecure-storage` under that `GH_CONFIG_DIR`, because the Keychain is
-#   not readable under srt). `DSH_HOME` is the one `hcom-seat` exports into the Router (its held physical form); unset,
+#   other role denies it for read, and no role writes it (the login is the operator's step, docs/engagement-handout.md:
+#   `gh auth login --insecure-storage` under that `GH_CONFIG_DIR`; the Keychain stays reachable under srt, and the file-only
+#   token source below keeps gh off it). `DSH_HOME` is the one `hcom-seat` exports into the Router (its held physical form); unset,
 #   `~/.dsh` as the kit's default. The root, its `gh/` and the `hosts.yml` inside are held as one chain, each component
 #   by its own test before anything is read (U353c, the shape of seat-login-preflight's claude_config_validate): no
 #   link, the two directories this user's, the root read physically (`pwd -P`) and `gh/` resolving inside it, the leaf

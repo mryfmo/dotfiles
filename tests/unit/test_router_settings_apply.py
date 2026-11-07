@@ -857,21 +857,36 @@ class RouterSettingsApplyTest(unittest.TestCase):
                 self.assertNotIn(HOSTS_OAUTH_VALUE, run.stderr, "no refusal prints the value")
                 self.assertFalse(record.exists(), "gh did not run")
 
-    def test_the_handout_attributes_the_keychain_boundary_to_router_ghs_token_path_not_to_srt(self):
+    def test_the_handout_and_the_wrapper_header_attribute_the_keychain_boundary_to_router_ghs_token_path_not_to_srt(
+        self,
+    ):
         """U353d (verdict U353-318f268d P2 `docs/engagement-handout.md:53`): srt's macOS baseline allows
         `com.apple.securityd.xpc`, so the Keychain stays reachable to the Router's processes and the sentence that
         attributed the boundary to srt was false. The handout's Router section names the control that keeps gh off the
         Keychain, router-gh's file-only token path (`GH_TOKEN` from `hosts.yml`, which gh reads before any stored
-        credential), names srt's deny rows as the omp seats' boundary, and carries the old sentence nowhere."""
+        credential), names srt's deny rows as the omp seats' boundary, and carries the old sentence nowhere. U370: the
+        wrapper's own header (`scripts/orchestrator/router-gh:11-13`, the U353d deviation) and its installed copy say
+        the same: the login is a file under the root, the Keychain stays reachable under srt, and the control is this
+        wrapper's file-only token source, `GH_TOKEN`; neither says the Keychain is not readable under srt."""
         text = (ROOT / "docs/engagement-handout.md").read_text()
         heading = "## The Router's agent account"
         section = text.split(heading, 1)[1].split("\n## ", 1)[0]
-        for stale in ("the Keychain is not readable under srt", "Keychain is not readable", "Keychain unreadable"):
+        stale_forms = ("the Keychain is not readable under srt", "Keychain is not readable", "Keychain unreadable")
+        for stale in stale_forms:
             self.assertNotIn(stale, text, "the boundary is not attributed to srt")
         self.assertIn("file-only token path", section)
         self.assertIn("com.apple.securityd.xpc", section)
         self.assertIn("`GH_TOKEN`", section)
         self.assertIn("srt's deny rows are the omp seats' boundary", section)
+        for wrapper in (WRAPPER, INSTALLED_WRAPPER):
+            with self.subTest(wrapper=str(wrapper.relative_to(ROOT))):
+                header = wrapper.read_text().split("\nset -u\n", 1)[0]
+                prose = " ".join(line.lstrip("# ") for line in header.splitlines())  # one line per comment line
+                for stale in (*stale_forms, "not readable under srt"):
+                    self.assertNotIn(stale, prose, "the header does not attribute the boundary to srt")
+                self.assertIn("file-only token source", prose)
+                self.assertIn("Keychain stays reachable under srt", prose)
+                self.assertIn("`GH_TOKEN`", prose)
 
     def test_the_installed_copies_are_the_checkout_bytes_the_pins_are_current_and_an_altered_copy_refuses(self):
         # The lever and the wrapper are pinned like every lever (claude.levers.sha256): the chezmoi copy holds the same

@@ -2665,7 +2665,7 @@ function dsh_superagent_srt_run() {
         return 1
     }
     "${DSH_SUPERAGENT_SRT}" --settings "${settings}" -- /usr/bin/env -i "HOME=${HOME}" "PATH=${DSH_SUPERAGENT_PATH}" \
-        "TMPDIR=${DSH_SUPERAGENT_STORE}/tmp" "XDG_CACHE_HOME=${DSH_SUPERAGENT_STORE}/xdg-cache" \
+        "TMPDIR=${DSH_SUPERAGENT_STORE}/tmpdir" "XDG_CACHE_HOME=${DSH_SUPERAGENT_STORE}/xdg-cache" \
         "XDG_CONFIG_HOME=${DSH_SUPERAGENT_STORE}/xdg-config" "XDG_DATA_HOME=${DSH_SUPERAGENT_STORE}/xdg-data" \
         "XDG_STATE_HOME=${DSH_SUPERAGENT_STORE}/xdg-state" "npm_config_store_dir=${DSH_SUPERAGENT_STORE}" \
         npm_config_manage_package_manager_versions=false "PNPM=${DSH_SUPERAGENT_PNPM}" \
@@ -2794,7 +2794,7 @@ function update_dsh_superagent() (
     # trap runs on macOS bash, and a failing cleanup must not become the step's status.
     trap 'rm -rf ${download_dir:+"${download_dir}"} ${tree:+"${tree}"} ${settings:+"${settings}"} ${profile_settings:+"${profile_settings}"} || :' EXIT
     # srt on Linux grants writes only to paths that exist, so the store and its scratch directory are made first.
-    mkdir -p "${DSH_HOME}/plugins" "${DSH_SUPERAGENT_STORE}/tmp" || {
+    mkdir -p "${DSH_HOME}/plugins" "${DSH_SUPERAGENT_STORE}/tmpdir" || {
         printf 'update_dsh_superagent: the plugin directory %s or the pnpm store %s could not be made; nothing installed, nothing recorded.\n' "${DSH_HOME}/plugins" "${DSH_SUPERAGENT_STORE}" >&2
         return 1
     }

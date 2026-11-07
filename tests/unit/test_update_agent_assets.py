@@ -6531,7 +6531,7 @@ class DshSuperagentTest(unittest.TestCase):
             self.assert_settings_shape(build, home, [tree, str(store)])
             self.assert_settings_shape(profile, home, [f"{dsh_home}/profiles/router", str(store)])
             environment = (
-                f"/usr/bin/env -i HOME={home} PATH={tools}:{tools}:/usr/bin:/bin TMPDIR={store}/tmp"
+                f"/usr/bin/env -i HOME={home} PATH={tools}:{tools}:/usr/bin:/bin TMPDIR={store}/tmpdir"
                 f" XDG_CACHE_HOME={store}/xdg-cache XDG_CONFIG_HOME={store}/xdg-config XDG_DATA_HOME={store}/xdg-data"
                 f" XDG_STATE_HOME={store}/xdg-state npm_config_store_dir={store}"
                 f" npm_config_manage_package_manager_versions=false PNPM={tools}/pnpm /bin/sh -c"

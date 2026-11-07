@@ -37,11 +37,21 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes  # noqa: E402
 from scratch_git import git_init, quiet_git_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/ci"))
 import shfmt_json_contract as contract  # noqa: E402
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
 
 ROOTS = ("scripts", "home", "install")
 SHELL = re.compile(r"#!.*\b(sh|bash|zsh)\b")

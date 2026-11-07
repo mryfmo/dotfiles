@@ -435,7 +435,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "d709828c7e8c0d84db1e15c56d3de393ddc6662caea83af1d5f5c942f065e468"
+      "sha256": "46c885e3f48c2cbff3a3bb1a3e0d09dabd26c0982f78a2812409f7a7e556e5cf"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
@@ -499,6 +499,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_profile-config-place.py",
+      "target": ".local/bin/common/profile-config-place.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "7ff081cb8a83d5a5d465910c60cf9fcf91480059c3ae3aa616973f08c2547a45"
     },
     {
       "source": "home/dot_local/bin/common/executable_read-lib.sh",
@@ -740,6 +747,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "pr-update-branch.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "profile-config-place.py"
     },
     {
       "source": "home/dot_local/bin/common",

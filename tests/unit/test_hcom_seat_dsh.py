@@ -8,6 +8,7 @@ under `/usr/bin/env -i`, so the fake srt here takes its instructions from a file
 environment, and the fake dsh records what reached it into a file the test names. Nothing real starts.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -125,6 +126,10 @@ DSH_OVERLAY = textwrap.dedent(
 
 
 class HcomSeatDshTest(test_hcom_seat.SeatFixture):
+    # The lever under test; a driver may run the round-4 probes against an earlier head's lever extracted beside its
+    # own regime-env and manifest (the EARLIER_HEADS form), where each probe must fail (U310d ACCEPTANCE 2).
+    lever = test_hcom_seat.SEAT
+
     def setUp(self):
         super().setUp()
         (self.bindir / "srt").write_text(FAKE_SRT)
@@ -142,7 +147,11 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         return self.calls_of("dsh")
 
     def launch(self, *args, **overrides):
-        return self.seat("dsh", "--seats-root", self.seats, "--home", str(self.dsh_home), *args, **overrides)
+        env = {**self.env, **{key: value for key, value in overrides.items() if value is not None}}
+        for key in (key for key, value in overrides.items() if value is None):
+            env.pop(key, None)
+        argv = [str(self.lever), "dsh", "--seats-root", self.seats, "--home", str(self.dsh_home), *args]
+        return subprocess.run(argv, cwd=self.repo, env=env, capture_output=True, text=True, check=False)
 
     def held_launch(self, *args, count=1, new_session=False, **overrides):
         """Start `count` launches whose dsh waits for `release`, and return them once every dsh has recorded itself,
@@ -948,7 +957,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         )  # fmt: skip
         for label, dsh_home, option, message in cases:
             with self.subTest(case=label):
-                if dsh_home == self.dsh_home:
+                if dsh_home == self.dsh_home:  # lint-comparisons: allow picks the fixture's own object, no path compare
                     run_root.symlink_to(profiles)
                 trace.write_text("")
                 run = self.seat("dsh", "--seats-root", self.seats, "--home", str(dsh_home), *([option] if option else []),
@@ -1016,8 +1025,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         the profile's own `~/.omp/profiles/dsh/agent/config.yml` before the launch (the file the gateway child reads for
         its providers), its extension entry rewritten to the canonical allow-list path when the overlay spells it
         through a link; a config that differs is replaced and the launch says so; an equal one is left alone (the
-        DEBUG-trap recorder shows no write to it and its inode and mtime stand); a dry run prints the decision and
-        makes nothing."""
+        DEBUG-trap recorder shows the one helper run after the write step began and nothing of the earlier rounds'
+        bash write, and its inode and mtime stand); a dry run prints the decision and makes nothing (U310d)."""
         overlay = self.profiles / "dsh.yml"
         link = self.home / "link-to-bridge"
         link.symlink_to(self.bridge)
@@ -1053,14 +1062,16 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
         self.assertIn(f"{self.profile_config} equals {overlay}; the launch leaves it", run.stderr)
         commands = trace.read_text().split("\0")[:-1]
-        self.assertIn("profile_config_write", commands, "the write step ran and decided to leave the file")
+        self.assertIn("profile_config_write", commands, "the write step ran and the helper decided to leave the file")
         write_at = commands.index("profile_config_write")
         judge_at = commands.index("settings_judge")
-        opened = [i for i, c in enumerate(commands) if c.startswith("profile_config_tmp ")]
-        self.assertTrue(opened, "the compare's temporary file is opened")
-        self.assertTrue(all(judge_at < i < write_at for i in opened), "the temporary follows the judge (U310c)")
-        made = ("profile_config_tmp", "/bin/mv -f", '/bin/mkdir "${agent}"', "${tmp_name}", "exec 9>")
-        self.assertEqual([c for c in commands[write_at:] if any(word in c for word in made)], [])
+        helper_runs = [i for i, c in enumerate(commands) if "profile_config_cmd[@]" in c]
+        self.assertTrue(helper_runs, "the helper ran")
+        self.assertTrue(all(judge_at < write_at < i for i in helper_runs), "the one helper run is the write (U310d)")
+        gone = ("profile_config_tmp", "${tmp_name}", "exec 9>", "noclobber", "cmp -s")
+        self.assertEqual([c for c in commands if any(word in c for word in gone)], [], "no bash write remains")
+        shell_renames = ("/bin/mv -f",)
+        self.assertEqual([c for c in commands[write_at:] if any(w in c for w in shell_renames)], [], "no shell rename")
         self.assertEqual(sorted(p.name for p in self.profile_config.parent.iterdir()), ["config.yml"])
         after = self.profile_config.stat()
         self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
@@ -1189,17 +1200,15 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual(len(self.dsh_calls()), 2)
         self.assertEqual(self.slots(), ([], []))
 
-    def test_a_failed_compare_an_unsearchable_directory_or_a_failed_temporary_refuses_naming_it(self):
-        """U310b (the round-1 P2s and the auditor's probes): every read the placement decides on fails closed by name.
-        A `cmp` that exits 2 without output (a shell function the recorder's BASH_ENV channel defines, since the
-        lever's PATH is the system directories and a caller's shim never reaches it: the state a sandboxed or broken
-        /usr/bin/cmp leaves) refuses rather than keeping an equal config; a config dsh left unreadable refuses the same
-        way; an `agent/` that cannot be searched (mode 000, a linked config hidden inside) and a profile directory
-        that cannot be searched refuse naming the directory instead of reading as absent, in a dry run too; an overlay
-        that cannot be read refuses naming it; an `agent/` the launcher cannot write (mode 500) refuses at the
-        exclusive open naming it, at the compare and at the write. No temporary file remains, the config is never
-        replaced by a refused launch, nothing reaches the link's target, no dsh starts and (U310c, the round-2 P2 at
-        :2601) no per-launch slot remains after a refusal at the write."""
+    def test_an_unreadable_config_an_unsearchable_directory_or_a_read_only_agent_refuses_naming_it(self):
+        """U310b (the round-1 P2s and the auditor's probes), U310d: every read the placement decides on fails closed by
+        name. A config dsh left unreadable refuses through the helper's open of it, whose line names the step and the
+        errno, in a dry run too; an `agent/` that cannot be searched (mode 000, a linked config hidden inside) and a
+        profile directory that cannot be searched refuse naming the directory instead of reading as absent, in a dry
+        run too; an overlay that cannot be read refuses naming it; an `agent/` the launcher cannot write (mode 500)
+        refuses at the helper's exclusive create naming it, with a stale config and with none. No temporary file
+        remains, the config is never replaced by a refused launch, nothing reaches the link's target, no dsh starts and
+        (U310c, the round-2 P2 at :2601) no per-launch slot remains after a refusal at the write."""
         home = self.home.resolve()
         overlay = self.profiles / "dsh.yml"
         elsewhere = Path(self.temp.name).resolve() / "elsewhere"
@@ -1208,19 +1217,14 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         agent = profile / "agent"
         expected = DSH_OVERLAY.format(extension=self.bridge)
         stale = "modelRoles:\n  default: stale/model\n"
-        cmp_shim = Path(self.temp.name) / "cmp-exits-2.bash"
-        cmp_shim.write_text("cmp() { return 2; }\n")
-        cannot_compare = (
-            f"cannot compare the profile config {self.profile_config} with the rendered overlay (cmp exited 2)"
-        )
-        no_temporary = f"cannot create a temporary file in {agent} (the exclusive open of {agent}/.config.yml."
-
-        def equal_config():
-            agent.mkdir(parents=True)
-            self.profile_config.write_text(expected)
+        refused = f"the dsh profile config {self.profile_config} was not placed: profile-config-place: refused at"
+        cannot_read = f"{refused} open-config: {self.profile_config}: cannot open it: Permission denied (EACCES)"
+        no_temporary = f"{refused} create-temporary: {agent}/.config.yml."
+        cannot_create = f"cannot create a temporary file in {agent}: Permission denied (EACCES)"
 
         def unreadable_config():
-            equal_config()
+            agent.mkdir(parents=True)
+            self.profile_config.write_text(expected)
             self.profile_config.chmod(0)
 
         def unsearchable_agent():
@@ -1251,30 +1255,29 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             shutil.rmtree(profile, ignore_errors=True)
 
         cases = (
-            ("cmp exits 2 silently", equal_config, [], str(cmp_shim), cannot_compare, expected),
-            ("cmp exits 2 silently, dry run", equal_config, ["--dry-run"], str(cmp_shim), cannot_compare, expected),
-            ("the config cannot be read", unreadable_config, [], None, cannot_compare, expected),
-            ("agent cannot be searched", unsearchable_agent, [], None,
+            ("the config cannot be read", unreadable_config, [], cannot_read, expected),
+            ("the config cannot be read, dry run", unreadable_config, ["--dry-run"], cannot_read, expected),
+            ("agent cannot be searched", unsearchable_agent, [],
              f"cannot search {agent}; the dsh profile config below it cannot be read", None),
-            ("agent cannot be searched, dry run", unsearchable_agent, ["--dry-run"], None,
+            ("agent cannot be searched, dry run", unsearchable_agent, ["--dry-run"],
              f"cannot search {agent}; the dsh profile config below it cannot be read", None),
-            ("the profile directory cannot be searched", unsearchable_profile, ["--dry-run"], None,
+            ("the profile directory cannot be searched", unsearchable_profile, ["--dry-run"],
              f"cannot search {profile}; the dsh profile config below it cannot be read", None),
-            ("the overlay cannot be read", lambda: overlay.chmod(0), [], None,
+            ("the overlay cannot be read", lambda: overlay.chmod(0), [],
              f"cannot read the profile config overlay {overlay}", None),
-            ("agent is read-only at the compare", read_only_agent_with_stale_config, [], None, no_temporary, stale),
-            ("agent is read-only at the compare, dry run", read_only_agent_with_stale_config, ["--dry-run"], None,
-             no_temporary, stale),
-            ("agent is read-only at the write", read_only_agent_without_config, [], None, no_temporary, None),
+            ("agent is read-only, a stale config", read_only_agent_with_stale_config, [], no_temporary, stale),
+            ("agent is read-only, no config", read_only_agent_without_config, [], no_temporary, None),
         )  # fmt: skip
-        for label, arrange, args, bash_env, message, config_after in cases:
+        for label, arrange, args, message, config_after in cases:
             with self.subTest(case=label):
                 unlock()
                 overlay.write_text(DSH_OVERLAY.format(extension=self.bridge))
                 arrange()
-                run = self.launch(*args, "--", "--version", BASH_ENV=bash_env)
+                run = self.launch(*args, "--", "--version")
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
+                if message == no_temporary:
+                    self.assertIn(cannot_create, run.stderr)
                 self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), [], "nothing reaches the link's target")
                 self.assertEqual(self.slots(), ([], []), "a refusal after the slots are made removes them")
                 overlay.chmod(0o644)
@@ -1292,65 +1295,85 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     self.assertEqual(self.profile_config.read_text(), config_after, "a refused launch replaces nothing")
         self.assertEqual(self.dsh_calls(), [])
 
-    def test_a_temporary_swapped_after_its_open_is_refused_and_the_victim_keeps_its_bytes(self):
-        """U310c (the round-2 P1 at :982, the auditor's deterministic swap): round 2 reopened the `mktemp` file by path
-        for the write, so a process owning `agent/` that swapped the path for a link between `mktemp` and the
-        redirection had the linked host file overwritten before the identity check. The write now goes through the
-        descriptor the exclusive open returned and the path is never reopened: a DEBUG trap (the recorder's BASH_ENV
-        channel) that swaps the path for a link to a victim file, or for another regular file, right before the write
-        leaves the victim byte-identical (bytes, inode, mtime), the launch refuses (exit 2) naming the swap, the
-        swapped entry is removed, the config is not replaced, no slot remains and no dsh starts; at the compare, at
-        the write and in a dry run alike."""
+    def test_a_dry_run_reads_a_present_config_through_the_helper_and_writes_nothing(self):
+        """U310d: the dry run's compare of a present config is the helper's `--dry-run` after settings_judge, a read
+        through the held descriptor: a stale config inside an `agent/` the launcher cannot write prints the decision
+        (rounds 2 and 3 needed a temporary file here and refused) and nothing is made or written; an equal one prints
+        `equals`. The recorder shows the helper after the judge and no write step."""
+        overlay = self.profiles / "dsh.yml"
+        agent = self.profile_config.parent
+        agent.mkdir(parents=True)
+        self.addCleanup(agent.chmod, 0o700)
+        stale = "modelRoles:\n  default: stale/model\n"
+        hook = Path(self.temp.name) / "trace-hook.bash"
+        hook.write_text('set -T\ntrap \'builtin printf "%s\\0" "$BASH_COMMAND" >> "$U272_TRACE"\' DEBUG\n')
+        trace = Path(self.temp.name) / "trace"
+        for config, line in ((stale, "differs from"), (DSH_OVERLAY.format(extension=self.bridge), "equals")):
+            with self.subTest(config=line):
+                agent.chmod(0o700)
+                self.profile_config.write_text(config)
+                before = self.profile_config.stat()
+                agent.chmod(0o500)
+                trace.write_text("")
+                run = self.launch("--dry-run", "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace))
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn(f"hcom-seat: the dsh profile config {self.profile_config} {line} {overlay}", run.stderr)
+                after = self.profile_config.stat()
+                self.assertEqual(self.profile_config.read_text(), config, "a dry run writes nothing")
+                self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
+                self.assertEqual(sorted(p.name for p in agent.iterdir()), ["config.yml"], "no temporary file")
+                commands = trace.read_text().split("\0")[:-1]
+                judge_at = commands.index("settings_judge")
+                helper_runs = [i for i, c in enumerate(commands) if "profile_config_cmd[@]" in c]
+                self.assertTrue(helper_runs and all(i > judge_at for i in helper_runs), "the helper follows the judge")
+                self.assertIn("profile_config_compare", commands)
+                self.assertNotIn("profile_config_write", commands)
+                self.assertFalse(Path(self.seats).exists(), "a dry run makes no slot")
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_no_shell_step_runs_between_the_temporarys_creation_and_its_rename(self):
+        """U310c's deterministic swap (the round-2 P1 at :982) adapted to the mechanism that ends the class (U310d): the
+        temporary exists only inside the helper's one run, so a DEBUG trap that lists `agent/` before every shell
+        command and swaps any `.config.yml.*` entry it finds for a link to a victim file never finds one; the config
+        lands (placed, then replaced) with the victim's bytes, inode and mtime untouched, and the lever's text holds
+        nothing of the round-3 write (`exec 9>`, `noclobber`, `tmp_refuse`, the `umask` read, `cmp`)."""
         home = self.home.resolve()
         agent = home / ".omp/profiles/dsh/agent"
+        agent.mkdir(parents=True)
         elsewhere = Path(self.temp.name).resolve() / "elsewhere"
         elsewhere.mkdir()
         victim = elsewhere / "config.yml"
         victim_text = "modelRoles:\n  default: operator/default\n# the host file the swapped link points at\n"
-        stale = "modelRoles:\n  default: stale/model\n"
-        to_link = Path(self.temp.name) / "swap-to-link.bash"
-        to_link.write_text(
+        victim.write_text(victim_text)
+        before = victim.stat()
+        seen = Path(self.temp.name) / "swaps-seen"
+        seen.write_text("")
+        hook = Path(self.temp.name) / "swap-any-temporary.bash"
+        hook.write_text(
             "set -T\n"
-            "trap 'if [[ ${BASH_COMMAND} == printf*profile_config_text* ]]; then"
-            ' /bin/rm -f -- "${tmp_file}" && /bin/ln -s "${U310_VICTIM}" "${tmp_file}"; fi\' DEBUG\n'
+            'trap \'for e in "${U310_AGENT}"/.config.yml.*; do [[ -e ${e} || -L ${e} ]] || continue;'
+            ' /bin/rm -f -- "${e}" && /bin/ln -s "${U310_VICTIM}" "${e}" && echo "hook: swapped ${e}" >> "${U310_SEEN}";'
+            " done' DEBUG\n"
         )
-        to_file = Path(self.temp.name) / "swap-to-file.bash"
-        to_file.write_text(
-            "set -T\n"
-            "trap 'if [[ ${BASH_COMMAND} == printf*profile_config_text* ]]; then"
-            ' /bin/rm -f -- "${tmp_file}" && printf "attacker\\n" > "${tmp_file}"; fi\' DEBUG\n'
-        )
-        swapped = "is not a regular file after the write (swapped under the launch)"
-        changed = "is not the file this launch created (its identity changed)"
-        cases = (
-            ("a link at the write", None, [], str(to_link), swapped),
-            ("a link at the compare", stale, [], str(to_link), swapped),
-            ("a link at the compare, dry run", stale, ["--dry-run"], str(to_link), swapped),
-            ("another file at the write", None, [], str(to_file), changed),
-            ("another file at the compare", stale, [], str(to_file), changed),
-        )  # fmt: skip
-        for label, config, args, bash_env, message in cases:
-            with self.subTest(case=label):
-                shutil.rmtree(agent, ignore_errors=True)
-                agent.mkdir(parents=True)
+        expected = DSH_OVERLAY.format(extension=self.bridge)
+        for config in (None, "modelRoles:\n  default: stale/model\n"):
+            with self.subTest(config="absent" if config is None else "stale"):
                 if config is not None:
                     self.profile_config.write_text(config)
-                victim.write_text(victim_text)
-                before = victim.stat()
-                run = self.launch(*args, "--", "--version", BASH_ENV=bash_env, U310_VICTIM=str(victim))
-                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-                self.assertIn(f"{agent}/.config.yml.", run.stderr)
-                self.assertIn(message, run.stderr)
+                run = self.launch("--", "--version", BASH_ENV=str(hook), U310_AGENT=str(agent),
+                                  U310_VICTIM=str(victim), U310_SEEN=str(seen))  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+                self.assertEqual(seen.read_text(), "", "no shell command ran while a temporary existed")
+                self.assertEqual(self.profile_config.read_text(), expected)
+                self.assertEqual(sorted(p.name for p in agent.iterdir()), ["config.yml"])
                 after = victim.stat()
-                self.assertEqual(victim.read_text(), victim_text, "the victim keeps its bytes")
+                self.assertEqual(victim.read_text(), victim_text)
                 self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
-                self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), ["config.yml"])
-                remaining = sorted(p.name for p in agent.iterdir())
-                self.assertEqual(remaining, [] if config is None else ["config.yml"], "the swapped entry is removed")
-                if config is not None:
-                    self.assertEqual(self.profile_config.read_text(), config, "a refused launch replaces nothing")
-                self.assertEqual(self.slots(), ([], []), "no per-launch slot remains after the refusal")
-        self.assertEqual(self.dsh_calls(), [])
+                self.assertEqual(self.slots(), ([], []))
+        self.assertEqual(len(self.dsh_calls()), 2)
+        text = test_hcom_seat.SEAT.read_text()
+        for word in ("exec 9>", "noclobber", "tmp_refuse", "mask=$(umask)", "cmp -s", "profile_config_tmp", "tmp_name"):
+            self.assertNotIn(word, text, "the round-3 bash write is gone, not kept beside the helper")
 
     def test_a_linked_profile_root_dry_run_writes_nothing_in_the_linked_profile(self):
         """U310c (the round-2 P2 at :1102): round 2 made the comparison temporary before settings_judge validated the
@@ -1379,7 +1402,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 )
                 commands = trace.read_text().split("\0")[:-1]
                 self.assertIn("settings_judge", commands)
-                self.assertEqual([c for c in commands if "profile_config_tmp" in c or "exec 9>" in c], [])
+                self.assertEqual([c for c in commands if "profile_config_cmd[@]" in c], [], "no helper run")
                 self.assertEqual(sorted(p.name for p in other.iterdir()), ["config.yml"], "nothing written there")
                 after = other.stat()
                 self.assertEqual(before.st_mtime_ns, after.st_mtime_ns, "the linked profile's agent/ is untouched")
@@ -1387,64 +1410,195 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertFalse(Path(self.seats).exists())
         self.assertEqual(self.dsh_calls(), [])
 
-    def test_a_failed_identity_read_write_or_installation_refuses_by_name_and_leaves_no_temporary(self):
-        """U310c (the round-2 P2 at :981): every safety decision of the held-descriptor write has its failure injected
-        through the recorder's BASH_ENV channel (the lever's PATH is the system directories, so a function of the
-        tool's absolute name is the one way a caller makes it fail): the identity read of the descriptor and of the
-        path (`/usr/bin/stat` failing for them alone), the write (the descriptor re-pointed at a read-only open right
-        before the write, so `printf` fails as on a full or read-only target), the installation (`/bin/mv` failing for
-        the config alone). Each refuses (exit 2) naming the file, leaves no temporary file, replaces nothing, removes
-        the per-launch slots when they were made and starts no dsh."""
-        home = self.home.resolve()
-        agent = home / ".omp/profiles/dsh/agent"
+    def test_the_helpers_refusal_and_status_reach_the_launcher_and_no_slot_remains(self):
+        """U310d: the helper's exit 2 and its stderr line (the step, the path, the errno) become the launcher's refusal;
+        a helper run that exits with another status (the producer failing: 7, silent and with output) or prints no
+        decision word refuses naming it (standing order 21); a helper whose digest differs from its pin, or none beside
+        the lever, refuses naming it. The failing runs are pinned stand-in helpers beside a copy of the lever (the
+        fixture's fake tools run under `python3` and the lever refuses a script in an interpreter's place, so the
+        producer is varied, not the interpreter). Each case: exit 2, nothing on stdout, no slot, no temporary, no
+        replacement, no dsh."""
+        agent = self.profile_config.parent
         stale = "modelRoles:\n  default: stale/model\n"
-        fd_stat = Path(self.temp.name) / "stat-fails-on-fd.bash"
-        fd_stat.write_text(
-            '/usr/bin/stat() { local a; for a in "$@"; do [[ $a == /dev/fd/9 ]] && return 1; done;'
-            ' command /usr/bin/stat "$@"; }\n'
-        )
-        path_stat = Path(self.temp.name) / "stat-fails-on-path.bash"
-        path_stat.write_text(
-            '/usr/bin/stat() { local a; for a in "$@"; do [[ $a == */.config.yml.* ]] && return 1; done;'
-            ' command /usr/bin/stat "$@"; }\n'
-        )
-        no_write = Path(self.temp.name) / "descriptor-read-only.bash"
-        no_write.write_text(
-            "set -T\ntrap 'if [[ ${BASH_COMMAND} == printf*profile_config_text* ]]; then exec 9< /dev/null; fi' DEBUG\n"
-        )
-        no_mv = Path(self.temp.name) / "mv-fails.bash"
-        no_mv.write_text('/bin/mv() { [[ $* != *config.yml* ]] || return 1; command /bin/mv "$@"; }\n')
-        prefix = f"{agent}/.config.yml."
+        helper_name = "profile-config-place.py"
+        tree = Path(self.temp.name).resolve() / "tree"
+        (tree / "scripts/orchestrator").mkdir(parents=True)
+        (tree / "home/dot_agents").mkdir(parents=True)
+        for name in ("hcom-seat", "regime-env", "seat-login-preflight"):
+            shutil.copy2(test_hcom_seat.ROOT / "scripts/orchestrator" / name, tree / "scripts/orchestrator" / name)
+        manifest = (test_hcom_seat.ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        pin_line = next(line for line in manifest.splitlines() if line.startswith(f"      {helper_name}: "))
+        tree_lever = tree / "scripts/orchestrator/hcom-seat"
+        tree_helper = tree / "scripts/orchestrator" / helper_name
+        tree_manifest = f"{tree}/scripts/orchestrator/../../home/dot_agents/agent-config.yaml"
+
+        def tree_with(helper_text, pin=None):
+            """The scratch tree's helper is `helper_text` (None: no helper) pinned to its own digest, or to `pin`."""
+
+            def arrange():
+                tree_helper.unlink(missing_ok=True)
+                if helper_text is not None:
+                    tree_helper.write_text(helper_text)
+                    tree_helper.chmod(0o755)
+                digest = pin or hashlib.sha256(tree_helper.read_bytes()).hexdigest()
+                (tree / "home/dot_agents/agent-config.yaml").write_text(
+                    manifest.replace(pin_line, f"      {helper_name}: {digest}")
+                )
+                self.lever = tree_lever
+
+            return arrange
+
+        real_helper = (test_hcom_seat.ROOT / "scripts/orchestrator" / helper_name).read_text()
+        helper = f"the profile config helper {helper_name}"
+        not_placed = f"the dsh profile config {self.profile_config} was not placed: profile-config-place: refused at"
+        pin_differs = f" of {tree_helper} differs from the pin in {tree_manifest}; the helper is not the pinned one"
         cases = (
-            ("the descriptor's identity at the write", None, str(fd_stat), f"cannot read the identity of {prefix}",
-             "(its descriptor)"),
-            ("the descriptor's identity at the compare", stale, str(fd_stat), f"cannot read the identity of {prefix}",
-             "(its descriptor)"),
-            ("the path's identity at the write", None, str(path_stat), f"cannot read the identity of {prefix}", ""),
-            ("the path's identity at the compare", stale, str(path_stat), f"cannot read the identity of {prefix}", ""),
-            ("the write at the write", None, str(no_write), f"cannot write {prefix}", ""),
-            ("the write at the compare", stale, str(no_write), f"cannot write {prefix}", ""),
-            ("the installation", None, str(no_mv), f"cannot install {self.profile_config}", ""),
+            ("the helper refuses (agent is read-only)", lambda: agent.chmod(0o500), None,
+             f"{not_placed} create-temporary: ", "(EACCES)"),
+            ("the helper exits 7 silently", tree_with("import sys\nsys.exit(7)\n"), stale,
+             f"{helper} exited 7 for {self.profile_config}: no output", ""),
+            ("the helper exits 7 with output", tree_with('import sys\nprint("boom", file=sys.stderr)\nsys.exit(7)\n'),
+             None, f"{helper} exited 7 for {self.profile_config}: boom", ""),
+            ("the helper prints no decision", tree_with('print("bogus")\n'), stale,
+             f"{helper} printed no decision for {self.profile_config}: 'bogus'", ""),
+            ("the helper's digest differs from its pin", tree_with(real_helper, pin="0" * 64), None,
+             pin_differs, "hcom-seat: sha256 "),
+            ("no helper beside the lever", tree_with(None, pin="0" * 64), stale,
+             f"hcom-seat: {helper_name} unreadable beside this script: {tree_helper}", ""),
         )  # fmt: skip
-        for label, config, bash_env, message, detail in cases:
+        for label, arrange, config, message, detail in cases:
             with self.subTest(case=label):
+                self.lever = test_hcom_seat.SEAT
+                if agent.is_dir():
+                    agent.chmod(0o700)
                 shutil.rmtree(agent, ignore_errors=True)
                 agent.mkdir(parents=True)
                 if config is not None:
                     self.profile_config.write_text(config)
-                run = self.launch("--", "--version", BASH_ENV=bash_env)
+                arrange()
+                run = self.launch("--", "--version")
+                agent.chmod(0o700)
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
                 if detail:
                     self.assertIn(detail, run.stderr)
-                else:
-                    self.assertNotIn("(its descriptor)", run.stderr)
                 remaining = sorted(p.name for p in agent.iterdir())
                 self.assertEqual(remaining, [] if config is None else ["config.yml"], "no temporary file remains")
                 if config is not None:
                     self.assertEqual(self.profile_config.read_text(), config, "a refused launch replaces nothing")
                 self.assertEqual(self.slots(), ([], []), "no per-launch slot remains after the refusal")
         self.assertEqual(self.dsh_calls(), [])
+
+    def destination_swap_hook(self, extra=""):
+        """The round-3 verdict's probe as a BASH_ENV DEBUG trap: right before the write command (the helper run here;
+        `mv` of the held temporary at 792604f9) `config.yml` becomes a link to another profile's `agent/`."""
+        hook = Path(self.temp.name) / "swap-destination.bash"
+        hook.write_text(
+            "set -T\n"
+            "trap 'if [[ ${BASH_COMMAND} == *profile_config_cmd* || ${BASH_COMMAND} == */bin/mv\\ -f*config.yml* ]];"
+            ' then if [[ ! -L ${U310_TARGET} ]]; then /bin/rm -f -- "${U310_TARGET}" &&'
+            ' /bin/ln -s "${U310_OTHER}" "${U310_TARGET}" &&'
+            ' echo "hook: swapped ${U310_TARGET} for a link to ${U310_OTHER}" >&2; fi;'
+            f" {extra} fi' DEBUG\n"
+        )
+        return hook
+
+    def test_a_destination_swapped_to_a_directory_link_before_the_write_is_refused_and_the_other_profile_untouched(
+        self,
+    ):
+        """The round-3 verdict's P1 (`verdicts/U310c-792604f9.md`, hcom-seat:1057) as a test: a writer in `agent/`
+        swaps `config.yml` for a link to another profile's `agent/` after the launcher's reading of it and before the
+        act, and at 792604f9 the unsandboxed `mv` moved the config into `orchestrator/agent` and the launch returned 0.
+        Now the helper's `O_NOFOLLOW` open of `config.yml` through its held descriptor refuses naming the link, the
+        other profile keeps its one entry and its bytes, no temporary exists anywhere, no slot remains and no dsh
+        starts; with no config and with a stale one."""
+        home = self.home.resolve()
+        agent = home / ".omp/profiles/dsh/agent"
+        other = home / ".omp/profiles/orchestrator/agent"
+        other.mkdir(parents=True)
+        other_text = "modelRoles:\n  default: orchestrator/own\n"
+        (other / "config.yml").write_text(other_text)
+        hook = self.destination_swap_hook()
+        for config in (None, "modelRoles:\n  default: stale/model\n"):
+            with self.subTest(config="absent" if config is None else "stale"):
+                shutil.rmtree(agent, ignore_errors=True)
+                agent.mkdir(parents=True)
+                if config is not None:
+                    self.profile_config.write_text(config)
+                run = self.launch("--", "--version", BASH_ENV=str(hook), U310_TARGET=str(self.profile_config),
+                                  U310_OTHER=str(other))  # fmt: skip
+                self.assertIn("hook: swapped", run.stderr, "the swap happened before the act")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(
+                    f"the dsh profile config {self.profile_config} was not placed: profile-config-place: refused at"
+                    f" open-config: {self.profile_config}: is a symbolic link; the dsh role writes its profile config"
+                    " inside its profile only",
+                    run.stderr,
+                )
+                self.assertEqual(
+                    sorted(p.name for p in other.iterdir()), ["config.yml"], "the other profile is untouched"
+                )
+                self.assertEqual((other / "config.yml").read_text(), other_text)
+                self.assertTrue(self.profile_config.is_symlink(), "the planted link stands, unfollowed")
+                self.assertEqual(sorted(p.name for p in agent.iterdir()), ["config.yml"], "no temporary remains")
+                self.assertEqual(self.slots(), ([], []), "no per-launch slot remains after the refusal")
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_a_source_and_destination_swap_places_nothing_of_the_attackers_in_the_other_profile(self):
+        """The round-3 verdict's second full-fixture probe: at 792604f9 the temporary's path was the shell's `tmp_file`,
+        so a trap swapped it for a file of attacker-chosen bytes and `config.yml` for a directory link right before
+        `mv`, and the launch placed those bytes in `orchestrator/agent` and returned 0. Now the temporary's name never
+        reaches the shell (the trap finds no `tmp_file` and no `.config.yml.*` entry to swap), attacker files planted
+        at every guessable name stand unused, the destination swap refuses as before, and no file under the other
+        profile holds the attacker's bytes."""
+        home = self.home.resolve()
+        agent = home / ".omp/profiles/dsh/agent"
+        agent.mkdir(parents=True)
+        other = home / ".omp/profiles/orchestrator/agent"
+        other.mkdir(parents=True)
+        (other / "config.yml").write_text("modelRoles:\n  default: orchestrator/own\n")
+        attacker = "modelRoles:\n  default: attacker/model\n"
+        planted = sorted([".config.yml.tmp", ".config.yml.0000000000000000", f"config.yml.tmp.{os.getpid()}"])
+        for name in planted:
+            (agent / name).write_text(attacker)
+        hook = self.destination_swap_hook(
+            'if [[ -n ${tmp_file:-} ]]; then /bin/rm -f -- "${tmp_file}" && printf "%s\\n" "${U310_ATTACK}" > "${tmp_file}"'
+            ' && echo "hook: swapped the temporary ${tmp_file}" >&2; fi;'
+            ' for e in "${U310_AGENT}"/.config.yml.*; do [[ -L ${e} || -f ${e} ]] || continue;'
+            " if [[ ${e} == *.0000000000000000 || ${e} == *.tmp ]]; then continue; fi;"
+            ' /bin/rm -f -- "${e}" && printf "%s\\n" "${U310_ATTACK}" > "${e}" && echo "hook: swapped the temporary ${e}" >&2; done;'
+        )
+        run = self.launch("--", "--version", BASH_ENV=str(hook), U310_TARGET=str(self.profile_config),
+                          U310_OTHER=str(other), U310_AGENT=str(agent), U310_ATTACK=attacker)  # fmt: skip
+        self.assertIn("hook: swapped", run.stderr, "the destination swap happened before the act")
+        self.assertNotIn("hook: swapped the temporary", run.stderr, "no temporary was ever visible to the shell")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"refused at open-config: {self.profile_config}: is a symbolic link", run.stderr)
+        self.assertEqual(sorted(p.name for p in other.iterdir()), ["config.yml"], "nothing landed in the other profile")
+        self.assertNotIn("attacker", (other / "config.yml").read_text())
+        self.assertEqual(sorted(p.name for p in agent.iterdir() if p.name != "config.yml"), planted)
+        self.assertEqual(self.slots(), ([], []))
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_a_failed_umask_read_ends_no_launch_and_leaves_no_slot(self):
+        """The round-3 verdict's third probe (P2 hcom-seat:1007): a `umask` whose read fails (status 7 with no argument,
+        the set left working) ended the launch at 792604f9 with exit 7 through errexit and both per-launch slots
+        behind. The write reads no mask any more (the helper creates its file 0600 through `O_CREAT` and `fchmod`):
+        the launch places the config 0600 and ends with dsh's status, no slot behind; with a stale config too."""
+        hook = Path(self.temp.name) / "umask-read-fails.bash"
+        hook.write_text('umask() { if (($# == 0)); then return 7; fi; builtin umask "$@"; }\n')
+        expected = DSH_OVERLAY.format(extension=self.bridge)
+        for config in (None, "modelRoles:\n  default: stale/model\n"):
+            with self.subTest(config="absent" if config is None else "stale"):
+                if config is not None:
+                    self.profile_config.write_text(config)
+                run = self.launch("--", "--version", BASH_ENV=str(hook))
+                self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+                self.assertEqual(self.profile_config.read_text(), expected)
+                self.assertEqual(stat.S_IMODE(self.profile_config.stat().st_mode), 0o600)
+                self.assertEqual(sorted(p.name for p in self.profile_config.parent.iterdir()), ["config.yml"])
+                self.assertEqual(self.slots(), ([], []), "no per-launch slot remains")
+        self.assertEqual(len(self.dsh_calls()), 2)
 
 
 if __name__ == "__main__":

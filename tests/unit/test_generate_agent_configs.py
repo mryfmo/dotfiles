@@ -256,6 +256,7 @@ LEVERS = (
     "pr-thread-resolve.sh",
     "pr-threads-check.sh",
     "pr-update-branch.sh",
+    "profile-config-place.py",
     "read-lib.sh",
     "records-sync.sh",
     "regime-env",

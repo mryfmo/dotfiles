@@ -55,9 +55,14 @@ signal. Before the launch the lever places the kit's rendered overlay
 `~/.agents/omp/profiles/dsh.yml` (the bridge route as `modelRoles.default`,
 the bridge extension, the seat providers off) as the profile's own
 `~/.omp/profiles/dsh/agent/config.yml`, the file the gateway child reads for
-its providers, with the extension entry at its canonical allow-list path,
-leaving an equal file alone, replacing a different one and refusing a linked
-`agent/` or `config.yml` (U310). The dsh
+its providers, with the extension entry at its canonical allow-list path; the
+write is one run of the pinned helper `profile-config-place.py` beside the
+lever, every step on one held descriptor of `agent/` (`dir_fd`, `O_NOFOLLOW`:
+the compare, an exclusive create at a random name, the write, the rename, a
+read-back), so an equal file is left alone, a different one replaced, and a
+linked `agent/` or `config.yml`, a directory at `config.yml`, an entry at the
+temporary's name or a failed step refuses with exit 2 naming the step (U310,
+U310d; `tests/unit/test_profile_config_place.py`). The dsh
 runtime is never executed outside srt. Two launches at once share no settings
 file. The role's rows and the hazard-by-hazard account of the four verdicts
 are in `scripts/orchestrator/README.md` ("The dsh role") and the tests in

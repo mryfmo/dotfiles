@@ -868,9 +868,14 @@ claude:
   # brief-check.py is the orchestrator seat's brief gate (U104): the same install
   # and self-check, run from the checkout before the first TASK of a unit and
   # allowed by the orchestrator policy alone; it reads one brief and writes nothing.
+  # profile-config-place.py is hcom-seat's helper for the dsh role's profile config
+  # write (U310d): installed and pinned the same way, run by hcom-seat alone as
+  # `python3 -I -S` after hcom-seat has read its digest against this pin, never by
+  # a policy rule; it writes one file inside the role's own profile through one
+  # held directory descriptor and nothing else.
   levers:
     sha256:
-      hcom-seat: d709828c7e8c0d84db1e15c56d3de393ddc6662caea83af1d5f5c942f065e468
+      hcom-seat: 46c885e3f48c2cbff3a3bb1a3e0d09dabd26c0982f78a2812409f7a7e556e5cf
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -893,6 +898,7 @@ claude:
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
+      profile-config-place.py: 7ff081cb8a83d5a5d465910c60cf9fcf91480059c3ae3aa616973f08c2547a45
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the

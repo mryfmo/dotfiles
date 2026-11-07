@@ -20,10 +20,16 @@
 #   bytes both ways until either side closes. The socket and its directory are removed when the listener ends, and
 #   by the trap a hangup, interrupt or termination runs before this process ends by that signal.
 #   The header. The first line of a connection is `ACP-SEAT v1 cwd=<path> name=<name>`: the cwd a clean absolute
-#   path (clean_path) whose physical form is a directory strictly under the Router's scratch cwd by physical prefix,
-#   the name in the seat-name grammar `^[a-z0-9][a-z0-9_-]{0,63}$` (never `claude`, the shared Claude Code
+#   path (clean_path) naming a directory whose physical form is strictly under the Router's scratch cwd by physical
+#   prefix, the name in the seat-name grammar `^[a-z0-9][a-z0-9_-]{0,63}$` (never `claude`, the shared Claude Code
 #   directory's name), nothing after the fourth field. Anything else is refused with one line
-#   `acp-broker: refused: <reason>` on the connection and the connection closed, nothing made.
+#   `acp-broker: refused: <reason>` on the connection and the connection closed, nothing made. The task directory is
+#   held once (regime-cutover U343c, the form of hcom-seat's state_root_hold): this connection's process enters it by
+#   `cd -P` and reads its physical path by `pwd -P` (both statuses read), so the canary, the settings rows and
+#   `omp acp` all run in the one directory validated, whatever the Router puts at the name afterwards; immediately
+#   before each srt run that opens the settings the name is compared against the held directory by (device, inode)
+#   (task_hold_check), and a name that no longer reads, or reads another directory (an ancestor swapped for a link),
+#   refuses by name with no omp started.
 #   The worker's settings. The dsh row's shape, rendered per connection into the slot
 #   `<seats-root>/.sandbox/acp-<name>-<utc stamp>-<pid>/settings.json` (the slot 0700, made by this connection, its
 #   identity held until the launch). The deny table is the Router's own, read from the settings `hcom-seat` rendered
@@ -42,6 +48,15 @@
 #   `allowUnixSockets` empty, the domain list `hcom-seat`'s. This copy of the dsh row's shape is interim: U344
 #   extracts one writer for both levers, and tests/unit/test_acp_broker.py holds the two renderings together
 #   until then.
+#   The judgement (regime-cutover U343c; hcom-seat's settings_judge, U272f and U272g). Before anything is made, every
+#   grant row is judged against every deny row, by identity for what exists and by the absent components below one
+#   shared ancestor otherwise (identity_table, within_ix: one stat for every row); a grant that is, contains or lies
+#   inside a deny refuses naming both rows, unless the pair is structural and the grant lies where the role spells
+#   it: the task cwd and the shared Claude Code directory under the seats-root denies (the seats root and
+#   `~/.local/state/omp-seats`) and over the project-file and configuration denies rendered inside them, and
+#   `~/.omp/profiles/dsh` under `~/.omp/profiles`. A profile that is a link elsewhere is not where the role spells
+#   it, so it is judged like any row and refused (the round-1 finding: a dsh profile linked into the orchestrator
+#   profile was granted that profile).
 #   The canary (R-44). Before omp starts, the four-word probe of the `hcom-seat` shim runs under the worker's settings
 #   by the physical srt argv: a write into the slot, a read of the settings file, a listing of `~/.ssh` and a write
 #   under the operator's `~/.claude/debug` must all fail inside (`write-denied read-denied ssh-denied
@@ -53,7 +68,7 @@
 #   that order.
 #   The launch. `/usr/bin/env -i HOME PATH OMP_PROFILE=dsh CLAUDE_CONFIG_DIR AWS_SHARED_CREDENTIALS_FILE=/dev/null
 #   AWS_CONFIG_FILE=/dev/null HCOM_SEAT_SANDBOX=<slot> [USER LANG when this process has them] <srt> --settings
-#   <slot>/settings.json -- /usr/bin/env PATH=<seat path> <omp> acp --profile dsh`, in the task cwd, its stdin and
+#   <slot>/settings.json -- /usr/bin/env PATH=<seat path> <omp> acp --profile dsh`, in the held task directory, its stdin and
 #   stdout the connection; nothing else of this process's environment reaches srt or omp, and `CLAUDE_CODE_OAUTH_TOKEN`
 #   is unset before the first child (U312). `HCOM_SEAT_SANDBOX` makes `hcom-seat` and this lever refuse inside the
 #   worker. The outer PATH is the private tool directory and the system directories; inside, omp gets that list
@@ -70,11 +85,12 @@
 #   entry runs anything: the first statement sets PATH to the system directories.
 #   Refusals. A launch inside a seat (`HCOM_LAUNCHED`, `HCOM_PROCESS_ID` or `HCOM_SEAT_SANDBOX` set), an unclean or
 #   unresolvable path, a Router state slot or settings file that is absent, a link or another user's, a scratch cwd
-#   outside the Router's state slot, a template row that is no clean path, a tool that cannot be pinned, a second
-#   broker on the slot, and every failed producer (mkdir, a physical resolution, the template read, the settings
-#   write, the canary, srt's version read, the log append) is exit 2 with the reason on stderr; in a connection the
-#   same line goes to the client first. Every producer's status is read (standing order 21); a failed read is never
-#   an absence.
+#   outside the Router's state slot, a template row that is no clean path, a grant that overlaps a deny, a task
+#   directory whose name no longer reads the held directory, a tool that cannot be pinned, a second broker on the
+#   slot, and every failed producer (mkdir, a physical resolution, the template read, the identity reads, the
+#   settings write, the canary, srt's version read, the log append) is exit 2 with the reason on stderr; in a
+#   connection the same line goes to the client first. Every producer's status is read (standing order 21); a failed
+#   read is never an absence.
 # @arg $1 string The seats root `hcom-seat` runs the Router in (its `--seats-root`).
 # @arg $2 string The Router's per-launch seat name (`router-<utc stamp>-<pid>`), whose state slot and settings exist.
 # @arg $3 string The Router's scratch cwd, `<seats-root>/.state/<router seat>/cwd`; every task cwd lies strictly under it.
@@ -380,6 +396,241 @@ ensure_own_dir() {
     require_own_dir "$1" "$2"
 }
 
+# @description Set `ancestors` to the path `$1` and every directory above it, up to `/` (the walk of `hcom-seat`).
+# @arg $1 string An absolute path.
+# @set ancestors The paths, `$1` first.
+ancestors_of() {
+    local p=$1 n=0
+    [[ ${p} == /* && ${p} != *[[:cntrl:]]* ]] || # lint-comparisons: allow an absolute-path and content test
+        refuse "'${p}' is not an absolute path free of control characters"
+    ancestors=()
+    while :; do
+        ancestors+=("${p}")
+        [[ ${p} != / ]] || return 0 # lint-comparisons: allow the walk ends at the root, no path compare
+        n=$((n + 1))
+        ((n <= 4096)) || refuse "the path ${1} has more than 4096 components"
+        p=${p%/*}
+        [[ -n ${p} ]] || p=/
+    done
+}
+
+# @description Set the variable named `$2` to `$1` with A-Z made a-z (regime-cutover U95), by builtins only (a case
+#   table, no `tr` and no locale; bash 3.2 has no `${x,,}`), so no producer's output is read back.
+# @arg $1 string ASCII text.
+# @arg $2 string The name of the variable to set.
+# @exitcode 1 The variable cannot be set.
+ascii_lower() {
+    # The locals carry a prefix, so the caller's variable `$2` is never one of them (printf -v sets the nearest).
+    local LC_ALL=C al_text=$1 al_out='' al_c al_before al_upper=ABCDEFGHIJKLMNOPQRSTUVWXYZ
+    local al_lower=abcdefghijklmnopqrstuvwxyz
+    [[ $2 != al_* && $2 != LC_ALL ]] || return 1
+    while [[ -n ${al_text} ]]; do
+        al_c=${al_text:0:1}
+        al_text=${al_text:1}
+        case ${al_c} in
+        [ABCDEFGHIJKLMNOPQRSTUVWXYZ])
+            al_before=${al_upper%%"${al_c}"*}
+            al_c=${al_lower:${#al_before}:1}
+            ;;
+        esac
+        al_out+=${al_c}
+    done
+    printf -v "$2" '%s' "${al_out}"
+}
+
+# @description Set `lines` to the lines of the text `$1`, by builtins alone: bash 3.2 (the `/bin/bash` the relay runs
+#   each connection under) backs a here-string with a temporary file, so `read <<<` over a producer's output would
+#   fail under a file size limit before the settings write does and name the wrong producer; no file is involved here.
+# @arg $1 string Text; a trailing newline ends the last line and opens no empty one.
+# @set lines The lines, in order; empty text gives none.
+split_lines() {
+    local text=$1
+    lines=()
+    while [[ -n ${text} ]]; do
+        case ${text} in
+        *$'\n'*) lines+=("${text%%$'\n'*}") text=${text#*$'\n'} ;;
+        *) lines+=("${text}") text='' ;;
+        esac
+    done
+}
+
+# @description Fill the identity table for the physical paths `$@` (regime-cutover U95, the table of `hcom-seat`),
+#   which every containment decision of the judgement reads: per path, whether it exists, the (device, inode)
+#   identities of its deepest existing ancestor (the path itself when it exists) and of every directory above it, and
+#   the absent remainder below that ancestor, ASCII case-folded by ascii_lower (builtins only). One `/usr/bin/stat`
+#   (through xargs, order kept) serves every path. Fail-closed per record: every input must be a clean path; every
+#   identity line must be `<dev>:<ino>`, and their number exactly what the ancestor walks asked for; every folded
+#   remainder must have its input's length and the grammar `(/<lower-case component>)*/`; each table must hold one
+#   entry per input.
+# @set tbl_exists 1 or 0 per path.
+# @set tbl_first The identity of the deepest existing ancestor per path.
+# @set tbl_chain `\n<id>\n<id>…\n` per path: that ancestor's identity first, then each directory above it.
+# @set tbl_rest The absent remainder per path, case-folded, ending in `/` (`/` when the path exists).
+identity_table() {
+    local p d rest ids line folded chain='' i=0 k=0 all=() counts=()
+    tbl_exists=() tbl_first=() tbl_chain=() tbl_rest=()
+    for p in "$@"; do
+        require_clean_path 'a settings row' "${p}"
+        # Absolute, so each step shortens it and the walk ends at `/`, which exists.
+        d=${p} rest=''
+        while [[ ! -e ${d} && ! -L ${d} ]]; do
+            rest=/${d##*/}${rest}
+            d=${d%/*}
+            [[ -n ${d} ]] || d=/
+        done
+        if [[ -e ${p} ]]; then tbl_exists+=(1); else tbl_exists+=(0); fi
+        ancestors_of "${d}"
+        all+=("${ancestors[@]}")
+        counts+=("${#ancestors[@]}")
+        rest=${rest}/
+        ascii_lower "${rest}" folded || refuse "cannot fold the absent part of ${p}"
+        [[ ${#folded} == "${#rest}" && ${folded} =~ ^(/[a-z0-9._@+-]+)*/$ ]] ||
+            refuse "cannot fold the absent part of ${p} ('${folded}')"
+        tbl_rest+=("${folded}")
+    done
+    (($#)) || return 0
+    ids=$(printf '%s\0' "${all[@]}" | /usr/bin/xargs -0 /usr/bin/stat "${stat_args[@]}" --) ||
+        refuse "cannot read the identity of a settings row or a directory above it"
+    split_lines "${ids}"
+    for line in ${lines[@]+"${lines[@]}"}; do
+        [[ ${line} =~ ^[0-9]+:[0-9]+$ ]] || refuse "cannot read the identity of a settings row ('${line}')"
+        ((i < ${#counts[@]})) || refuse 'more identities than settings rows were read'
+        if ((k == 0)); then tbl_first+=("${line}"); fi
+        chain+=${line}$'\n'
+        k=$((k + 1))
+        if ((k == counts[i])); then
+            tbl_chain+=($'\n'"${chain}")
+            chain='' k=0 i=$((i + 1))
+        fi
+    done
+    ((i == $# && k == 0)) || refuse "cannot read the identity of every settings row (${i} of $#)"
+    ((${#tbl_exists[@]} == $# && ${#tbl_first[@]} == $# && ${#tbl_chain[@]} == $# && ${#tbl_rest[@]} == $#)) ||
+        refuse 'the identity table does not hold one entry per settings row'
+}
+
+# @description Decide from the identity table whether path `$2` is path `$1` or lies under it (regime-cutover U85,
+#   U95), by identity for everything that exists, so a case alias on a case-insensitive volume is the path it aliases.
+#   When `$1` exists: yes iff `$1`'s identity is in `$2`'s chain (`$2`'s deepest existing ancestor or a directory
+#   above it). When `$1` does not exist, an existing `$2` cannot lie under it (no). When neither exists, `$2` can lie
+#   under `$1` only if both have the same deepest existing ancestor; below it nothing exists, so no link or alias can
+#   intervene, and the absent remainders decide: yes iff `$1`'s is `$2`'s or a prefix of it on a component boundary
+#   (`a/b` is no prefix of `a/bc`), compared ASCII case-folded, since on a case-insensitive volume two spellings that
+#   differ by case become one directory once made. No process runs.
+# @arg $1 int The table index of the outer path.
+# @arg $2 int The table index of the inner path.
+# @exitcode 0 `$2` is `$1` or lies under it.
+# @exitcode 1 It does not.
+within_ix() {
+    if ((tbl_exists[$1])); then
+        [[ ${tbl_chain[$2]} == *$'\n'"${tbl_first[$1]}"$'\n'* ]] # lint-comparisons: allow compares (device, inode) identities, not paths
+        return
+    fi
+    ((! tbl_exists[$2])) || return 1
+    [[ ${tbl_first[$1]} == "${tbl_first[$2]}" ]] || return 1 # lint-comparisons: allow compares (device, inode) identities, not paths
+    [[ ${tbl_rest[$2]} == "${tbl_rest[$1]}"* ]]              # lint-comparisons: allow absent components below one ancestor of the same identity, compared on component boundaries
+}
+
+# @description Set `phys_list` to the physical form of each absolute path `$@`, in order (regime-cutover U95), or
+#   refuse (exit 2), in one subshell for all of them, present or absent (physical_path). Fail-closed per record: the
+#   subshell writes exactly one record per path, the physical path or `fail`, and fails when a record cannot be
+#   written; each record is checked against the clean-path grammar and assigned to its own index. Anything else, a
+#   record too many or too few, or an index left without its result refuses.
+# @arg $@ string Absolute paths.
+# @set phys_list The physical paths, one per input.
+physical_each() {
+    local out line i=0 args=("$@")
+    phys_list=()
+    (($#)) || return 0
+    out=$(for p in "$@"; do
+        physical_path "${p}" || printf 'fail\n' || exit 1
+    done) || refuse 'cannot resolve the settings rows (the resolving subshell failed)'
+    split_lines "${out}"
+    for line in ${lines[@]+"${lines[@]}"}; do
+        ((i < $#)) || refuse 'cannot resolve the settings rows (more records than rows)'
+        [[ ${line} != fail ]] || refuse "cannot resolve the settings row ${args[i]}"
+        clean_path "${line}" || refuse "the settings row ${args[i]} resolves to '${line}', not a clean absolute path"
+        phys_list[i]=${line}
+        i=$((i + 1))
+    done
+    ((i == $# && ${#phys_list[@]} == $#)) || refuse "cannot resolve every settings row (${#phys_list[@]} of $#)"
+}
+
+# @description Judge the worker's grants against its denies (regime-cutover U343c; the settings_judge of `hcom-seat`,
+#   U272f and U272g, whose rows the worker's are): every row of `allow_read` and `allow_write` against every row of
+#   `deny_read` and `deny_write` (the macOS write patterns are not rows), and nothing else is the boundary. Every row
+#   is resolved to its physical form first (physical_each: a link at the end of a row hides its ancestry from the
+#   identity table), the table is filled once (identity_table), and a grant that is, contains or lies inside a deny
+#   (within_ix either way) is a hit unless the pair is structural: both rows carry the same tag and the grant lies
+#   where the role spells it (its physical path is the path in `allow_read_spelled` or `allow_write_spelled`). The
+#   tags are the dsh row's, assigned by construction since this lever reads the deny table instead of rendering it:
+#   the grants carry `slot` for the task cwd and the shared Claude Code directory and `profile` for the omp profile
+#   (`allow_read_tags`, `allow_write_tags`); a denyRead row carries `slot` when it has the identity of the seats root
+#   or of `~/.local/state/omp-seats` and `profile` when it has the identity of `~/.omp/profiles` (the three
+#   references resolved and tabled with the rows); a denyWrite row carries `slot` when it lies strictly inside a
+#   slot-tagged grant (the project-file rows under the task cwd, the configuration rows under the shared directory).
+#   A profile that is a link elsewhere is spelled `~/.omp/profiles/dsh` and resolves elsewhere, so its tag exempts
+#   nothing and it is judged like any row. The read grants go first, so the first hit names the row as the role
+#   spells it.
+# @set judge_grant The first grant that hits: `<kind> row <spelled path>` and, when it differs, its physical path in
+#   parentheses; empty when every grant is clear.
+# @set judge_deny The deny it hits: `<path>[ (<physical>)], a row of its <kind> list`; empty when clear.
+# @exitcode 0 Every grant keeps clear of every deny it is not structurally paired with.
+# @exitcode 1 A pair overlaps; `judge_grant` and `judge_deny` name it.
+settings_judge() {
+    local i j k n m rows=() kinds=() spelled=() tags=() refs=() ref_tags=(slot slot profile)
+    for ((i = 0; i < ${#allow_read[@]}; i++)); do
+        rows+=("${allow_read[i]}") kinds+=(allowRead) spelled+=("${allow_read_spelled[i]}") tags+=("${allow_read_tags[i]}")
+    done
+    for ((i = 0; i < ${#allow_write[@]}; i++)); do
+        rows+=("${allow_write[i]}") kinds+=(allowWrite) spelled+=("${allow_write_spelled[i]}") tags+=("${allow_write_tags[i]}")
+    done
+    n=${#rows[@]}
+    for ((i = 0; i < ${#deny_read[@]}; i++)); do
+        rows+=("${deny_read[i]}") kinds+=(denyRead) spelled+=("${deny_read[i]}") tags+=('')
+    done
+    for ((i = 0; i < ${#deny_write[@]}; i++)); do
+        [[ ${deny_write[i]} != *\** ]] || continue # lint-comparisons: allow a pattern test on one row, no path compare
+        rows+=("${deny_write[i]}") kinds+=(denyWrite) spelled+=("${deny_write[i]}") tags+=('')
+    done
+    m=$((${#rows[@]} - n))
+    judge_grant='' judge_deny=''
+    ((n && m)) || return 0
+    # The structural references take the table positions after the rows: the seats root, the default seats parent
+    # and the profiles directory, each tagged as hcom-seat tags the deny row it renders there.
+    refs=("${seats_real}" "${h}/.local/state/omp-seats" "${h}/.omp/profiles")
+    physical_each "${rows[@]}" "${refs[@]}"
+    identity_table "${phys_list[@]}"
+    for ((j = n; j < n + m; j++)); do
+        case ${kinds[j]} in
+        denyRead)
+            for ((k = 0; k < ${#refs[@]}; k++)); do
+                i=$((n + m + k))
+                if within_ix "${i}" "${j}" && within_ix "${j}" "${i}"; then tags[j]=${ref_tags[k]}; fi
+            done
+            ;;
+        *)
+            for ((i = 0; i < n; i++)); do
+                [[ ${tags[i]} == slot ]] || continue # lint-comparisons: allow a tag word, no path compare
+                if within_ix "${i}" "${j}" && ! within_ix "${j}" "${i}"; then tags[j]=slot; fi
+            done
+            ;;
+        esac
+    done
+    for ((i = 0; i < n; i++)); do
+        for ((j = n; j < n + m; j++)); do
+            within_ix "${j}" "${i}" || within_ix "${i}" "${j}" || continue
+            if [[ -n ${tags[i]} && ${tags[i]} == "${tags[j]}" && ${phys_list[i]} == "${spelled[i]}" ]]; then continue; fi # lint-comparisons: allow two tag words, and one row's spelled and physical forms from the same physical producers; the overlap was decided by identity above
+            judge_grant="${kinds[i]} row ${spelled[i]}"
+            judge_deny=${rows[j]}
+            # The same row in two spellings when the spelled one goes through a link; the reader needs both.
+            [[ ${phys_list[i]} == "${spelled[i]}" ]] || judge_grant+=" (${phys_list[i]})" # lint-comparisons: allow one row's spelled and physical forms, both from physical producers, no decision rests on it
+            [[ ${phys_list[j]} == "${rows[j]}" ]] || judge_deny+=" (${phys_list[j]})"     # lint-comparisons: allow one row's rendered and physical forms, both from physical producers, no decision rests on it
+            judge_deny+=", a row of its ${kinds[j]} list"
+            return 1
+        done
+    done
+}
+
 # Every input path is clean before anything is resolved, created or run.
 require_clean_path HOME "${HOME}"
 require_clean_path 'the seats root' "${seats_root}"
@@ -389,15 +640,19 @@ require_clean_path "the Router's scratch cwd" "${scratch}"
 
 os=$(/usr/bin/uname -s) || refuse 'cannot read the operating system name (uname -s)'
 case ${os} in
-Darwin) lstat_args=(-f '%d:%i') srt_tmp_roots=(/tmp/claude /private/tmp/claude) ;;
+Darwin) lstat_args=(-f '%d:%i') stat_args=(-L -f '%d:%i') ;;
 Linux)
-    lstat_args=(-c '%d:%i') srt_tmp_roots=(/tmp/claude)
-    # srt on Linux binds only what exists (hcom-seat srt_tmp_roots_for); /private exists on macOS alone.
-    if [[ -e /private/tmp/claude ]]; then srt_tmp_roots+=(/private/tmp/claude); fi
+    lstat_args=(-c '%d:%i') stat_args=(-L -c '%d:%i')
     [[ -x /usr/bin/jq ]] || refuse 'the system jq /usr/bin/jq is absent; it reads the Router settings on Linux (apt install jq)'
     ;;
 *) refuse "no worker sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
+# srt 0.0.81 keeps its own TMPDIR writable whatever the policy says (SANDBOX_OWN_WRITE_PATHS, sandbox-utils.js:499-508
+# lists both on every OS); /private exists on macOS alone, and on Linux srt binds only what exists (hcom-seat
+# srt_tmp_roots_for), so the second root stays there only when it exists. Each word is spelled once, as the
+# portability guard's rows for this file admit it (tests/unit/test_sandbox_portability.py ALLOWED_TMP).
+srt_tmp_roots=(/tmp/claude /private/tmp/claude)
+if [[ ${os} != Darwin && ! -e ${srt_tmp_roots[1]} ]]; then srt_tmp_roots=("${srt_tmp_roots[0]}"); fi
 
 h=$(physical_clean "${HOME}") || unresolved HOME "${HOME}"
 seats_real=$(physical_clean "${seats_root}") || unresolved 'the seats root' "${seats_root}"
@@ -708,12 +963,18 @@ require_clean_path 'the header cwd' "${cwd}"
 [[ ${name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "the header name '${name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
 [[ ${name} != claude ]] || refuse "the seat name 'claude' is taken by the shared Claude Code directory <seats-root>/.state/claude; choose another name"
 [[ -d ${cwd} ]] || refuse "the header cwd ${cwd} is not a directory"
-cwd_real=$(physical_clean "${cwd}") || unresolved 'the header cwd' "${cwd}"
-[[ -d ${cwd_real} ]] || refuse "the header cwd ${cwd} resolves to ${cwd_real}, which is not a directory"
+# The task directory is held now (regime-cutover U343c, the form of hcom-seat's state_root_hold): this process enters
+# it by `cd -P`, so its working directory is the one directory validated below whatever the Router later puts at the
+# name, and `pwd -P` is its physical form, read once. The canary, the settings rows and omp consume this directory;
+# task_hold_check compares the name against it by identity before each srt run, and nothing resolves the name again.
+cd -P -- "${cwd}" || refuse "cannot enter the header cwd ${cwd}"
+cwd_real=$(pwd -P) || refuse "cannot read the physical path of the header cwd ${cwd}"
+clean_path "${cwd_real}" || unresolved 'the header cwd' "${cwd}"
 # Strictly under the Router's scratch cwd, both physical: a cwd that is the scratch cwd itself, or a link out of it,
 # is refused, so the worker's write root is one task directory the Router made.
-[[ ${cwd_real}/ == "${scratch_real}"/?* ]] || # lint-comparisons: allow both operands physical (physical_path); the trailing slash makes the prefix a whole component
+[[ ${cwd_real}/ == "${scratch_real}"/?* ]] || # lint-comparisons: allow both operands physical (cd -P, physical_path); the trailing slash makes the prefix a whole component
     refuse "the header cwd ${cwd} resolves to ${cwd_real}, not a directory strictly under the Router's scratch cwd ${scratch_real}"
+task_id=$(/usr/bin/stat "${lstat_args[@]}" -- .) || refuse "cannot read the identity of the task cwd ${cwd_real}"
 stamp=$(utc_stamp slot) || refuse 'cannot read the time (/bin/date failed or answered outside the shape)'
 slot_name=acp-${name}-${stamp}-$$
 [[ ${slot_name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "the per-connection slot name '${slot_name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$; choose a shorter name"
@@ -722,8 +983,9 @@ log_dir=${seats_real}/.state/${name}
 log=${log_dir}/acp-launch.log
 
 # The worker's settings: the deny table from the Router's settings, the project-file rows re-rooted under the task
-# cwd and the credential root added; the grants the role's own (the file header). Every row physical, every list
-# rendered before anything is made.
+# cwd and the credential root added; the grants the role's own (the file header), each with the path the role spells
+# and its structural tag for the judgement (settings_judge). Every row physical, every list rendered and judged before
+# anything is made.
 deny_read=("${template_deny_read[@]}")
 deny_read+=("${h}/.local/state/dsh-router/credentials")
 deny_write=()
@@ -733,20 +995,31 @@ for row in ${template_deny_write[@]+"${template_deny_write[@]}"}; do
     fi
     deny_write+=("${row}")
 done
-profile_real=$(physical_clean "${h}/.omp/profiles/dsh") || unresolved "the worker's omp profile" "${h}/.omp/profiles/dsh"
+profile_spelled=${h}/.omp/profiles/dsh
+profile_real=$(physical_clean "${profile_spelled}") || unresolved "the worker's omp profile" "${profile_spelled}"
 run_real=$(physical_clean "${h}/.omp/run") || unresolved "omp's run directory" "${h}/.omp/run"
 skills_real=$(physical_clean "${h}/.agents/skills") || unresolved 'the skills directory' "${h}/.agents/skills"
 tools_row=$(physical_clean "${tools_dir}") || unresolved 'the private tool directory' "${tools_dir}"
 allow_read=("${cwd_real}" "${claude_real}" "${profile_real}" "${skills_real}" "${tools_row}")
+allow_read_spelled=("${cwd_real}" "${claude_real}" "${profile_spelled}" "${h}/.agents/skills" "${tools_dir}")
+allow_read_tags=(slot slot profile '' '')
 allow_write=("${cwd_real}" "${claude_real}" "${profile_real}" "${run_real}")
+allow_write_spelled=("${cwd_real}" "${claude_real}" "${profile_spelled}" "${h}/.omp/run")
+allow_write_tags=(slot slot profile '')
 for row in "${srt_tmp_roots[@]}" "${h}/.npm/_logs"; do
     row_real=$(physical_clean "${row}") || unresolved "srt's own write path" "${row}"
     allow_write+=("${row_real}")
+    allow_write_spelled+=("${row}")
+    allow_write_tags+=('')
 done
 check_rows 'a worker read deny' 0 "${deny_read[@]}"
 check_rows 'a worker write deny' 1 ${deny_write[@]+"${deny_write[@]}"}
 check_rows 'a worker read root' 0 "${allow_read[@]}"
 check_rows 'a worker write root' 0 "${allow_write[@]}"
+# The judgement (hcom-seat's refusal row, U272e): every grant against every deny, before the slot, the settings file
+# or anything else of this connection exists.
+settings_judge ||
+    refuse "the worker's ${judge_grant} is, contains or lies inside ${judge_deny}; the launch is refused before anything is made"
 deny_read_json=$(json_list "${deny_read[@]}")
 deny_write_json=$(json_list ${deny_write[@]+"${deny_write[@]}"})
 allow_read_json=$(json_list "${allow_read[@]}")
@@ -779,6 +1052,20 @@ log_line() {
     ensure_own_dir "the worker's state slot" "${log_dir}"
     [[ ! -L ${log} ]] || refuse "the launch log ${log} is a symbolic link"
     printf '%s acp-broker: %s\n' "${when}" "$*" >> "${log}" || refuse "cannot append to the launch log ${log}"
+}
+
+# @description Refuse (exit 2) unless the name of the task cwd still reads the held directory (regime-cutover U343c):
+#   the (device, inode) of `cwd_real` by name, read now, must be `task_id`, the identity of this process's working
+#   directory read when the directory was validated. Run immediately before each srt run that opens the settings,
+#   whose `allowWrite` row srt resolves by name: a Router that swapped an ancestor for a link after the validation
+#   would otherwise alias the task into another directory (the auditor's `~/.aws`). A name that no longer reads, or
+#   reads another identity, refuses by name; omp is not started.
+task_hold_check() {
+    local now
+    now=$(/usr/bin/stat "${lstat_args[@]}" -- "${cwd_real}") ||
+        refuse "the task cwd ${cwd_real} cannot be read by its name (it or a directory above it was replaced since it was validated); omp acp not started"
+    [[ ${now} == "${task_id}" ]] || # lint-comparisons: allow compares (device, inode) identities, not paths
+        refuse "the task cwd ${cwd_real} is no longer the directory validated for this launch (identity ${task_id} to ${now}: it or a directory above it was replaced); omp acp not started"
 }
 
 # @description The connection's signal trap: a hangup, interrupt or termination ends the worker, logs its exit,
@@ -825,6 +1112,7 @@ fi
 # connection's bytes stay for omp. `true`, not `:`: a failed redirection on a special builtin ends a POSIX shell.
 /bin/rm -f -- "${slot}/canary" || refuse "cannot clear ${slot}/canary"
 debug_canary=${h}/.claude/debug/acp-broker-canary-$$
+task_hold_check
 # shellcheck disable=SC2016 # the probe is /bin/sh's text; its $1..$4 are the four paths passed after it
 probe=$(/usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /bin/sh -c 'if true 2> /dev/null > "$1"; then w=write-open; else w=write-denied; fi
 if cat "$2" > /dev/null 2>&1; then r=read-open; else r=read-denied; fi
@@ -840,6 +1128,7 @@ if [[ ${probe} != 'write-denied read-denied ssh-denied debug-denied' || -e ${slo
     refuse "the sandbox does not hold (canary: ${probe}); omp acp not started"
 fi
 log_line "canary ${probe}"
+task_hold_check
 # omp's version under the same settings, by the checked argv, status first: a failed or shapeless read refuses.
 version=$(/usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${omp_cmd[@]}" --version < /dev/null) ||
     refuse "cannot read the omp version (${omp_cmd[*]} --version failed under ${srt_cmd[*]}); omp acp not started"
@@ -854,8 +1143,9 @@ slot_now=$(/usr/bin/stat "${lstat_args[@]}" -- "${slot}") || refuse "cannot read
 log_line "omp acp start omp ${version} cwd ${cwd_real}"
 # omp runs as a child, not an exec, so the exit line and the trailer can be written and the slot removed; the explicit
 # `<&0` keeps the connection as its stdin (a background command gets /dev/null otherwise), and its stdout is the
-# connection. The cwd is the task directory (M-21: a cwd inside a read-denied path dies on `uv_cwd EPERM`).
-cd "${cwd_real}" || refuse "cannot enter the task cwd ${cwd_real}"
+# connection. The cwd is the held task directory this process entered at the validation (M-21: a cwd inside a
+# read-denied path dies on `uv_cwd EPERM`), its name checked once more now.
+task_hold_check
 /usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${omp_cmd[@]}" acp --profile dsh <&0 &
 child=$!
 wait_child "${child}"

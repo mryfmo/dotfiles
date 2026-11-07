@@ -43,7 +43,9 @@ DOMAINS = ["github.com", "api.github.com", "uploads.github.com", "codeload.githu
            "auth.openai.com", "api.openai.com"]  # fmt: skip
 
 # The fake srt: records argv, environment names and cwd; `--version` answers 0.0.81; the canary (`/bin/sh -c <script>
-# canary <write> <read> <ssh> <debug>`) prints `canary-answer` when that file exists beside the calls, writes the canary
+# canary <write> <read> <ssh> <debug>`) first performs the swap `swap-ancestor` describes when that file exists beside
+# the calls (the Router replacing a task ancestor while the canary runs, U343c: `ancestor` renamed to `moved`, then a
+# link to `link` put at the name when one is given), prints `canary-answer` when that file exists, writes the canary
 # file first when `canary-write` exists (a sandbox that lets the write probe succeed), exits 3 when `srt-fail` exists
 # (a canary that did not run), else runs the script with the four paths swapped for ones under a directory that does
 # not exist, so the probes fail as the sandbox makes them fail; any other command is executed.
@@ -60,6 +62,12 @@ FAKE_SRT = textwrap.dedent(
         sys.exit(0)
     command = argv[argv.index("--") + 1 :]
     if command[:2] == ["/bin/sh", "-c"]:
+        swap = os.path.join(conf["calls"], "swap-ancestor")
+        if os.path.exists(swap):
+            plan = json.load(open(swap))
+            os.rename(plan["ancestor"], plan["moved"])
+            if plan["link"]:
+                os.symlink(plan["link"], plan["ancestor"])
         if os.path.exists(os.path.join(conf["calls"], "srt-fail")):
             sys.exit(3)
         if os.path.exists(os.path.join(conf["calls"], "canary-write")):
@@ -836,6 +844,114 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         )
         self.assertTrue(rendered["worker"].endswith(b"}\n"))
         self.assertEqual(self.acp_slots(), [])
+
+    def test_a_dsh_profile_linked_into_the_orchestrator_profile_is_refused_before_any_settings_file_is_written(self):
+        """U343c (verdict U343b-cae04852 P1 `:740`): the worker's grants were written without hcom-seat's overlap
+        judgement, so `~/.omp/profiles/dsh` linked to `~/.omp/profiles/orchestrator` was granted read and write on
+        that protected profile and the four canary probes did not see it. Every grant row is now judged against every
+        deny row by identity (`settings_judge`, the judge of `hcom-seat`, with its tags): the link refuses with one
+        line naming the grant row, its physical path and the deny it lies inside, before the slot and its settings
+        file exist (`.sandbox` is read-only for the connection, so a slot mkdir would have refused by its own name)
+        and before any srt runs; a link to `~/.aws` refuses the same way; a real profile directory goes through."""
+        name, cwd = self.make_router()
+        task = cwd / "task"
+        task.mkdir()
+        home = self.home_real
+        (home / ".aws").mkdir()
+        (home / ".omp/profiles/orchestrator").mkdir(parents=True)
+        profile = home / ".omp/profiles/dsh"
+        proc, sock = self.start_broker(name, cwd)
+        sandbox = self.seats_path / ".sandbox"
+        cases = (
+            ("a link to another profile", home / ".omp/profiles/orchestrator",
+             (f"allowRead row {profile} ({home / '.omp/profiles/orchestrator'}) is, contains or lies inside"
+              f" {home / '.omp/profiles'}, a row of its denyRead list")),
+            ("a link to ~/.aws", home / ".aws",
+             f"allowRead row {profile} ({home / '.aws'}) is, contains or lies inside {home / '.aws'}, a row of its denyRead list"),
+        )  # fmt: skip
+        sandbox.chmod(0o500)
+        try:
+            for label, target, message in cases:
+                with self.subTest(case=label):
+                    if profile.is_symlink():
+                        profile.unlink()
+                    profile.symlink_to(target)
+                    data = self.recv_all(self.connect(sock, task, "w1")).decode()
+                    self.assertEqual(data.count("\n"), 1, data)
+                    self.assertIn(f"acp-broker: refused: the worker's {message}", data)
+                    self.assertIn("; the launch is refused before anything is made", data)
+        finally:
+            sandbox.chmod(0o700)
+        self.assertEqual(self.calls_of("srt"), [], "no canary: the judge refused first")
+        self.assertEqual(self.calls_of("omp"), [])
+        self.assertEqual(self.acp_slots(), [])
+        self.assertEqual(self.state_names(), ["claude", name], "no state slot and no log for a refused launch")
+        self.assertTrue(profile.is_symlink(), "the launch neither removed nor replaced the link")
+        self.assertEqual(sorted(p.name for p in (home / ".aws").iterdir()), [])
+        self.assertEqual(sorted(p.name for p in (home / ".omp/profiles/orchestrator").iterdir()), [])
+        profile.unlink()
+        line = b'{"jsonrpc":"2.0","id":1,"method":"ping"}\n'
+        self.assertEqual(self.exchange(sock, task, "w1", line), line + b"omp acp exit 0\n")
+        self.assertTrue(profile.is_dir() and not profile.is_symlink())
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_a_task_ancestor_swapped_for_a_link_after_the_canary_is_refused_and_no_omp_starts(self):
+        """U343c (verdict U343b-cae04852 P1 `:858`): the task path was validated and the canary run, then the launch
+        re-read the path by name, so the Router could replace an ancestor with a link between the two and alias the
+        task into a denied root (`~/.aws`). The handler now enters the task directory once (`cd -P`, `pwd -P`) and
+        holds it as its working directory, which the canary, the settings rows and omp consume, and before each srt
+        run that opens the settings the name is compared against the held directory by identity. A fake srt that
+        swaps the task's parent for a link to `~/.aws` while it runs the canary: one refusal line naming the task
+        cwd, no omp run at all (not the version read either), the slot removed, the log holding the canary line
+        alone; the parent renamed away (nothing at the name) refuses the same way; through the client the exit is 2
+        with nothing on stdout; without a swap the same task goes through, omp in the held directory."""
+        name, cwd = self.make_router()
+        sub = cwd / "sub"
+        task = sub / "task"
+        task.mkdir(parents=True)
+        home = self.home_real
+        (home / ".aws/task").mkdir(parents=True)
+        proc, sock = self.start_broker(name, cwd)
+        swap = self.calls / "swap-ancestor"
+        moved = cwd / "sub-moved"
+        cases = (("the parent replaced by a link to ~/.aws", str(home / ".aws")), ("the parent renamed away", None))
+        for label, link in cases:
+            with self.subTest(case=label):
+                swap.write_text(json.dumps({"ancestor": str(sub), "moved": str(moved), "link": link}))
+                try:
+                    data = self.recv_all(self.connect(sock, task, "w1")).decode()
+                finally:
+                    swap.unlink()
+                self.assertEqual(data.count("\n"), 1, data)
+                self.assertIn(f"acp-broker: refused: the task cwd {task} ", data)
+                self.assertIn("omp acp not started", data)
+                if link:
+                    self.assertTrue(sub.is_symlink(), "the fake swapped the parent for a link")
+                    sub.unlink()
+                else:
+                    self.assertFalse(sub.exists() or sub.is_symlink(), "the fake renamed the parent away")
+                moved.rename(sub)
+                self.assertEqual(self.calls_of("omp"), [], "no omp run, not even the version read")
+                self.assertEqual(self.acp_slots(), [])
+        self.assertEqual(len(self.calls_of("srt")), 2, "one canary per connection, nothing after it")
+        self.assertEqual(len(self.log_lines("w1")), 2, "the canary line of each connection, no start line")
+        self.assertEqual(sorted(p.name for p in (home / ".aws/task").iterdir()), [])
+        with self.subTest(case="through the client"):
+            swap.write_text(json.dumps({"ancestor": str(sub), "moved": str(moved), "link": str(home / ".aws")}))
+            try:
+                run = self.client(sock, task, "w1", b'{"jsonrpc":"2.0","id":1,"method":"ping"}\n')
+            finally:
+                swap.unlink()
+            self.assertEqual((run.returncode, run.stdout), (2, b""), run.stderr)
+            self.assertIn(f"acp-broker: refused: the task cwd {task} ".encode(), run.stderr)
+            sub.unlink()
+            moved.rename(sub)
+            self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
+            self.assertEqual(self.calls_of("omp"), [])
+        line = b'{"jsonrpc":"2.0","id":1,"method":"ping"}\n'
+        self.assertEqual(self.exchange(sock, task, "w1", line), line + b"omp acp exit 0\n")
+        self.assertEqual(self.calls_of("omp")[-1]["cwd"], str(task))
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
 
 if __name__ == "__main__":

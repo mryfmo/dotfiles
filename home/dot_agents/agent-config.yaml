@@ -888,7 +888,7 @@ claude:
       pr-audit.sh: af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
-      acp-broker: 12c064ab2fe5b1f29c652a08c426cbeff5180bfb1978e5daca5e166793588105
+      acp-broker: cd58bce6a2923422bf97c152f74a4ace49f851758d4dfa8bdbfe8db536a968d3
       acp-relay.py: f4c3a2779e332936cbfb44f151f9b4f8cd759c526e030c5fbda5d1be03c3e055
       acp-seat: 9fe73e7b148d24b7c27f575a5f62ee37c1b2dd41084d723009642b9a90fdd47f
     # The only extension directories `hcom-seat` passes with `-e`, by default or

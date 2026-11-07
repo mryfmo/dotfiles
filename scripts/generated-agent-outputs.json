@@ -394,7 +394,7 @@
       "target": ".local/bin/common/acp-broker",
       "kind": "file",
       "executable": true,
-      "sha256": "12c064ab2fe5b1f29c652a08c426cbeff5180bfb1978e5daca5e166793588105"
+      "sha256": "cd58bce6a2923422bf97c152f74a4ace49f851758d4dfa8bdbfe8db536a968d3"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-relay.py",

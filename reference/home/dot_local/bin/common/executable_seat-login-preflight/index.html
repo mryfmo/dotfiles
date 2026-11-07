@@ -5524,6 +5524,7 @@
 <li><code>peer_name</code></li>
 <li><code>profile_line</code></li>
 <li><code>route_of</code></li>
+<li><code>seats_root_normalise</code></li>
 <li><code>siwc_state</code></li>
 <li><code>stamp</code></li>
 </ul>
@@ -5568,24 +5569,28 @@
 <span class="c1">#   `BROWSER=regime-open-url` in an SSH session, where the page shows a code to paste at the prompt,</span>
 <span class="c1">#   docs/remote-host-logins.md), shell-quoted so a seats root with a space pastes whole, which Claude Code stores under</span>
 <span class="c1">#   that directory and refreshes itself. Both modes hold the seats root, its `.state` and `claude` to real directories</span>
-<span class="c1">#   of this user (a link, a file or another user's directory refuses, exit 2, naming the component), and the profile</span>
-<span class="c1">#   mode makes the chain 0700 first when absent, as hcom-seat does at a launch, so the login lands in a directory this</span>
-<span class="c1">#   kit made. The consent click is the human step. Anywhere else (a seat, a script) it prints the command and</span>
-<span class="c1">#   refuses, since a login is the operator's step (standing order 4).</span>
+<span class="c1">#   of this user (a link, a file or another user's directory refuses, exit 2, naming the component), on one normalised</span>
+<span class="c1">#   spelling of the root (no empty, `.` or `..` component, no trailing slash; regime-cutover U318c: `&lt;link&gt;//` made</span>
+<span class="c1">#   `-L` follow the link) and only under a parent this user can search (a component that cannot be judged refuses</span>
+<span class="c1">#   naming it, never reads as absent); the profile mode makes the chain 0700 first when absent, as hcom-seat does at a</span>
+<span class="c1">#   launch, so the login lands in a directory this kit made. The consent click is the human step. Anywhere else (a</span>
+<span class="c1">#   seat, a script) it prints the command and refuses, since a login is the operator's step (standing order 4).</span>
 <span class="c1"># @arg $1 string `--check`, or the profile.</span>
 <span class="c1"># @arg $@ string With `--check`: profile names (default: every deployed overlay).</span>
 <span class="c1"># @env SSH_CONNECTION Set by sshd: this host is remote to the operator's terminal.</span>
 <span class="c1"># @env DISPLAY With WAYLAND_DISPLAY: a Linux host with neither has no local browser, so it counts as remote.</span>
 <span class="c1"># @env HCOM_LAUNCHED Set by hcom inside a seat: never run a login there.</span>
 <span class="c1"># @env REGIME_SEATS_ROOT The seats root whose `.state/claude` is the shared Claude Code directory (hcom-seat passes its</span>
-<span class="c1">#   resolved one); unset, `~/.local/state/omp-seats/&lt;slug&gt;` of the checkout this runs in (regime-env's slug).</span>
+<span class="c1">#   resolved one), an absolute path judged on its normalised spelling; unset, `~/.local/state/omp-seats/&lt;slug&gt;` of the</span>
+<span class="c1">#   checkout this runs in (regime-env's slug).</span>
 <span class="c1"># @stdout With `--check`: one line per profile.</span>
 <span class="c1"># @stderr The profile mode's report and refusals.</span>
 <span class="c1"># @exitcode 0 Checked, or the profile's route is usable (or the host is local and the route is openai-siwc).</span>
 <span class="c1"># @exitcode 1 A record or producer is unreadable, or a login ran and the route is still not usable.</span>
 <span class="c1"># @exitcode 2 A usage error, a component of the shared Claude Code directory path that is a link, a file or another</span>
-<span class="c1">#   user's directory, a failed read of the operator's login command, or a seat without a login outside the operator's</span>
-<span class="c1">#   terminal (a remote host, or any host on the claude-bridge route, whose login is the operator's printed command).</span>
+<span class="c1">#   user's directory or that cannot be judged (a parent this user cannot search), a failed read of the operator's login</span>
+<span class="c1">#   command, or a seat without a login outside the operator's terminal (a remote host, or any host on the claude-bridge</span>
+<span class="c1">#   route, whose login is the operator's printed command).</span>
 <span class="c1"># @example</span>
 <span class="c1">#   seat-login-preflight --check</span>
 <span class="c1">#   seat-login-preflight audit</span>
@@ -5785,15 +5790,46 @@ siwc_state<span class="o">()</span><span class="w"> </span><span class="o">{</sp
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'registered (host %s, client %s), agent.db mtime %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">host</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">client</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mtime</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
+<span class="c1"># @description Set `claude_seats_root` to the one spelling of the absolute path `$1` (regime-cutover U318c): every</span>
+<span class="c1">#   run of `/` is one `/`, a `.` component is dropped, a `..` component takes the component before it (none at the</span>
+<span class="c1">#   root), and no `/` ends it (a bare `/` stays `/`). Lexical, by parameter expansion alone: `realpath` or `pwd -P`</span>
+<span class="c1">#   would follow the link the component tests must catch, and `${root%/}` stripped one slash, so `&lt;link&gt;//` kept a</span>
+<span class="c1">#   trailing slash that made `-L` follow the link.</span>
+<span class="c1"># @arg $1 string An absolute path.</span>
+<span class="c1"># @set claude_seats_root The normalised spelling.</span>
+seats_root_normalise<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">rest</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span>part<span class="w"> </span>n
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">parts</span><span class="o">=()</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">rest</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">part</span><span class="o">=</span><span class="si">${</span><span class="nv">rest</span><span class="p">%%/*</span><span class="si">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">rest</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*/*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="nv">rest</span><span class="o">=</span><span class="si">${</span><span class="nv">rest</span><span class="p">#*/</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="nv">rest</span><span class="o">=</span><span class="s1">''</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span><span class="w"> </span><span class="c1"># lint-comparisons: allow a split of one path into its components, no path compare</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">part</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span><span class="s1">''</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>.<span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">        </span>..<span class="o">)</span>
+<span class="w">            </span><span class="nv">n</span><span class="o">=</span><span class="si">${#</span><span class="nv">parts</span><span class="p">[@]</span><span class="si">}</span>
+<span class="w">            </span><span class="o">((</span><span class="nv">n</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">unset</span><span class="w"> </span><span class="s2">"parts[n - 1]"</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>*<span class="o">)</span><span class="w"> </span><span class="nv">parts</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">part</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="nv">claude_seats_root</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">parts</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">parts</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">claude_seats_root</span><span class="o">+=</span>/<span class="si">${</span><span class="nv">part</span><span class="si">}</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">claude_seats_root</span><span class="o">=</span>/
+<span class="o">}</span>
+
 <span class="c1"># @description Set `claude_config` to the shared Claude Code directory of this host's seats root,</span>
 <span class="c1">#   `&lt;seats-root&gt;/.state/claude` (regime-cutover U318, hcom-seat's `claude_config` row), and `claude_seats_root` to</span>
-<span class="c1">#   that root: `REGIME_SEATS_ROOT` when set (hcom-seat passes its resolved one), else `~/.local/state/omp-seats/&lt;slug&gt;`</span>
-<span class="c1">#   of the checkout this runs in (regime-env's toplevel and slug readers; the store binding is hcom-seat's concern),</span>
-<span class="c1">#   with HOME in `pwd -P` form so the directory has one spelling. A failure sets `claude_config_error` and returns 2.</span>
+<span class="c1">#   that root: `REGIME_SEATS_ROOT` when set (hcom-seat passes its resolved one; it must be absolute), else</span>
+<span class="c1">#   `~/.local/state/omp-seats/&lt;slug&gt;` of the checkout this runs in (regime-env's toplevel and slug readers; the store</span>
+<span class="c1">#   binding is hcom-seat's concern), with HOME in `pwd -P` form. Either form is normalised to one spelling</span>
+<span class="c1">#   (seats_root_normalise) before any test reads it, so every component test and every printed path use that spelling.</span>
+<span class="c1">#   A failure sets `claude_config_error` and returns 2.</span>
 <span class="c1"># @set claude_config The directory.</span>
-<span class="c1"># @set claude_seats_root The seats root.</span>
+<span class="c1"># @set claude_seats_root The seats root, normalised.</span>
 <span class="c1"># @set claude_config_error The reason, when none can be derived.</span>
-<span class="c1"># @exitcode 2 No seats root can be derived.</span>
+<span class="c1"># @exitcode 2 No seats root can be derived, or REGIME_SEATS_ROOT is not an absolute path.</span>
 claude_config_dir<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">root</span><span class="o">=</span><span class="si">${</span><span class="nv">REGIME_SEATS_ROOT</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span>top<span class="w"> </span>slug<span class="w"> </span>home
 <span class="w">    </span><span class="nv">claude_config</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_seats_root</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_config_error</span><span class="o">=</span><span class="s1">''</span>
@@ -5812,8 +5848,12 @@ claude_config_dir<span class="o">()</span><span class="w"> </span><span class="o
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="nv">root</span><span class="o">=</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span>/.local/state/omp-seats/<span class="si">${</span><span class="nv">slug</span><span class="si">}</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nv">claude_seats_root</span><span class="o">=</span><span class="si">${</span><span class="nv">root</span><span class="p">%/</span><span class="si">}</span>
-<span class="w">    </span><span class="nv">claude_config</span><span class="o">=</span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="si">}</span>/.state/claude
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>/*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow an absolute-path test on one path, no path compare</span>
+<span class="w">        </span><span class="nv">claude_config_error</span><span class="o">=</span><span class="s2">"no seats root: REGIME_SEATS_ROOT </span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2"> is not an absolute path"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>seats_root_normalise<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">claude_config</span><span class="o">=</span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="p">%/</span><span class="si">}</span>/.state/claude
 <span class="o">}</span>
 
 <span class="c1"># @description Print the operator's one Claude step: `CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth login`, after</span>
@@ -5839,19 +5879,40 @@ claude_login_refuse<span class="o">()</span><span class="w"> </span><span class=
 <span class="o">}</span>
 
 <span class="c1"># @description Hold the shared Claude Code directory path to its three components, the seats root, its `.state` and</span>
-<span class="c1">#   `claude` (claude_config_dir), each absent or a directory of this user that is no symbolic link; both modes call it</span>
-<span class="c1">#   before anything reads or makes the directory, and it writes nothing. A link, a file or another user's directory</span>
-<span class="c1">#   refuses naming the component, since a login under it would land outside what this kit made (regime-cutover U318b:</span>
-<span class="c1">#   `--check` judged the leaf alone, so a linked `.state` reached another directory and a file there read as absent).</span>
-<span class="c1"># @exitcode 2 A component is a symbolic link, not a directory, or a directory of another user (the command dies).</span>
+<span class="c1">#   `claude` (claude_config_dir, on the normalised spelling), each absent or a directory of this user that is no</span>
+<span class="c1">#   symbolic link; both modes call it before anything reads or makes the directory, and it writes nothing. A file test</span>
+<span class="c1">#   (`-L`, `-e`, `-d`, `-O`) answers false both for "not so" and for "could not look", so a component is judged only</span>
+<span class="c1">#   under a parent this user can search: the nearest ancestor this user can see is found first (`-e` true needs its</span>
+<span class="c1">#   own parent searchable; `/` is always seen), a directory there that this user cannot search refuses naming the</span>
+<span class="c1">#   component and the directory (regime-cutover U318c: an owned root of mode 000 hid a linked `.state`, which read as</span>
+<span class="c1">#   absent), and an absent entry under a searchable directory is absent, as is everything below a file or a dangling</span>
+<span class="c1">#   link (the profile mode's mkdir names that). A link, a file or another user's directory refuses naming the</span>
+<span class="c1">#   component, since a login under it would land outside what this kit made (regime-cutover U318b: `--check` judged the</span>
+<span class="c1">#   leaf alone, so a linked `.state` reached another directory and a file there read as absent).</span>
+<span class="c1"># @exitcode 2 A component is a symbolic link, not a directory, a directory of another user, or cannot be judged (the</span>
+<span class="c1">#   command dies).</span>
 claude_config_validate<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>path<span class="w"> </span>kind
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="si">}</span><span class="s2">/.state"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_config</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>path<span class="w"> </span>seen<span class="w"> </span>above<span class="w"> </span>kind
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.state"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_config</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">seen</span><span class="o">=</span><span class="si">${</span><span class="nv">path</span><span class="p">%/*</span><span class="si">}</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">seen</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">seen</span><span class="o">=</span>/
+<span class="w">        </span><span class="nv">above</span><span class="o">=</span><span class="m">0</span>
+<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">seen</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">seen</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">((</span><span class="si">${#</span><span class="nv">seen</span><span class="si">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">            </span><span class="nv">seen</span><span class="o">=</span><span class="si">${</span><span class="nv">seen</span><span class="p">%/*</span><span class="si">}</span>
+<span class="w">            </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">seen</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">seen</span><span class="o">=</span>/
+<span class="w">            </span><span class="nv">above</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="k">done</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">seen</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">seen</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span>die<span class="w"> </span><span class="s2">"refused: cannot read the shared Claude Code directory path component </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2"> (permission denied: </span><span class="si">${</span><span class="nv">seen</span><span class="si">}</span><span class="s2"> is not searchable by this user); fix its mode before a seat starts"</span>
+<span class="w">        </span><span class="o">((</span><span class="nv">above</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nv">kind</span><span class="o">=</span><span class="s1">'a symbolic link'</span>
-<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nv">kind</span><span class="o">=</span><span class="s1">'not a directory'</span>
-<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>-O<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-O<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nv">kind</span><span class="o">=</span><span class="s1">'a directory of another user'</span>
 <span class="w">        </span><span class="k">else</span>
 <span class="w">            </span><span class="k">continue</span>

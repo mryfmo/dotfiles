@@ -675,6 +675,124 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
             self.assertFalse((other / ".state").exists())
         self.assertEqual(self.calls_text() + self.bun_calls_text(), "", "no claude call ran")
 
+    def test_a_linked_root_spelled_with_trailing_or_dot_components_refuses_naming_the_link(self) -> None:
+        """U318c (verdict U318b-ad9b9456, P2 at :320): `REGIME_SEATS_ROOT=<link>//` kept a trailing slash (`${root%/}`
+        strips one), and a trailing slash makes `-L` follow the link, so `--check` exited 0 and the profile mode made
+        `.state/claude` through it. The root is normalised to one spelling before any test (no empty, `.` or `..`
+        component, no trailing slash) by parameter expansion alone, never `realpath`, so every spelling of the link
+        refuses (exit 2) naming the link in both modes, and nothing is made through it."""
+        elsewhere = self.temp / "elsewhere"
+        elsewhere.mkdir()
+        link = self.temp / "link"
+        link.symlink_to(elsewhere)
+        spellings = (f"{link}//", f"{link}/./", f"{link}/.", f"{link}///./", f"{link}/x/..", f"{link}/./x/../")
+        for spelling in spellings:
+            for args, extra in ((("--check", "orchestrator"), {}), (("orchestrator",), {"DISPLAY": ":0"})):
+                with self.subTest(spelling=spelling, args=args):
+                    result = self.run_lever(*args, REGIME_SEATS_ROOT=spelling, **extra)
+                    self.assert_component_refused(result, link, "a symbolic link")
+                    self.assertEqual(result.stdout, "")
+        self.assertTrue(link.is_symlink(), "the link is kept")
+        self.assertEqual(sorted(path.name for path in elsewhere.iterdir()), [], "nothing made through the link")
+        self.assertEqual(sorted(path.name for path in self.temp.iterdir()), ["bin", "elsewhere", "home", "link"])
+        self.assertEqual(self.calls_text() + self.bun_calls_text(), "", "no claude call ran")
+
+    @unittest.skipIf(os.geteuid() == 0, "root searches a mode-000 directory, so nothing is unknown to it")
+    def test_a_root_this_user_cannot_search_refuses_naming_the_component_never_absent(self) -> None:
+        """U318c (verdict U318b-ad9b9456, P2 at :327): a file predicate that could not run was read as absence, so an
+        owned root of mode 000 hid a linked `.state`: `--check` printed `absent` with exit 0 and the profile mode failed
+        at `mkdir` with exit 1. Each component is now judged only under a parent this user can search (a test such as
+        `-L` or `-e` answers false both for "not so" and for "could not look"): a root this user cannot search refuses
+        (exit 2) naming `.state` and the root, a parent of the root it cannot search refuses naming the root, in both
+        modes; the link is kept, nothing is made and no call runs."""
+        remote = {"SSH_CONNECTION": "100.64.0.2 50000 100.64.0.3 22"}
+        elsewhere = self.temp / "elsewhere"
+        elsewhere.mkdir()
+        self.seats.mkdir()
+        state = self.seats / ".state"
+        state.symlink_to(elsewhere)
+        locked = self.temp / "locked"
+        locked.mkdir()
+        inner = locked / "seats"
+
+        def refusal(component: Path, parent: Path) -> str:
+            return (
+                f"seat-login-preflight: refused: cannot read the shared Claude Code directory path component"
+                f" {component} (permission denied: {parent} is not searchable by this user); fix its mode before a"
+                " seat starts\n"
+            )
+
+        self.seats.chmod(0)
+        locked.chmod(0)
+        try:
+            for args, extra in (
+                (("--check", "orchestrator"), {}),
+                (("orchestrator",), {"DISPLAY": ":0"}),
+                (("worker",), remote),
+            ):
+                with self.subTest(args=args, root="mode 000"):
+                    result = self.run_lever(*args, **extra)
+                    self.assertEqual(
+                        (result.returncode, result.stdout, result.stderr), (2, "", refusal(state, self.seats))
+                    )
+                with self.subTest(args=args, root="under a mode-000 parent"):
+                    result = self.run_lever(*args, REGIME_SEATS_ROOT=str(inner), **extra)
+                    self.assertEqual((result.returncode, result.stdout, result.stderr), (2, "", refusal(inner, locked)))
+            # The SIWC line before the Claude route still prints; the refusal is the lever's exit.
+            every = self.run_lever("--check")
+            self.assertEqual((every.returncode, every.stderr), (2, refusal(state, self.seats)))
+            self.assertRegex(every.stdout, r"^audit openai-siwc: absent \(no .*\)\n$")
+        finally:
+            self.seats.chmod(0o700)
+            locked.chmod(0o700)
+        self.assertTrue(state.is_symlink(), "the link is kept")
+        self.assertEqual(sorted(path.name for path in elsewhere.iterdir()), [], "nothing made through the link")
+        self.assertEqual(sorted(path.name for path in locked.iterdir()), [], "nothing made under the locked parent")
+        self.assertEqual(self.calls_text() + self.bun_calls_text(), "", "no claude call ran")
+
+    def test_a_plain_root_keeps_one_spelling_whatever_its_trailing_or_dot_components(self) -> None:
+        """U318c: the normalisation changes nothing for a plain root. `<root>//`, `<root>/./` and `<root>/x/..` are the
+        root: `--check` prints the one spelling (round 2 printed `<root>//.state/claude` for the first), the profile
+        mode makes the chain 0700 at the root and prints the command with the one spelling, and the one status call
+        runs under it. A relative root is no seats root (unreadable, never a directory relative to the cwd)."""
+        for spelling in (
+            f"{self.seats}//",
+            f"{self.seats}/./",
+            f"{self.seats}/x/..",
+            f"{self.seats}///.",
+            f"{self.seats}/",
+        ):
+            with self.subTest(spelling=spelling):
+                check = self.run_lever("--check", "orchestrator", REGIME_SEATS_ROOT=spelling)
+                self.assertEqual(
+                    (check.returncode, check.stdout), (0, f"orchestrator claude-bridge: absent (no {self.shared})\n")
+                )
+        self.assertFalse(self.seats.exists(), "--check makes nothing")
+        gate = self.run_lever(
+            "orchestrator", DISPLAY=":0", FAKE_CLAUDE_AUTH_STATUS="1", REGIME_SEATS_ROOT=f"{self.seats}//"
+        )
+        self.assertEqual(gate.returncode, 2, gate.stderr)
+        self.assertIn(
+            f"orchestrator claude-bridge: absent (not logged in under {self.shared}); log in once:"
+            f" CLAUDE_CONFIG_DIR={self.shared} claude auth login;",
+            gate.stderr,
+        )
+        for path in (self.seats, self.seats / ".state", self.shared):
+            self.assertTrue(path.is_dir() and not path.is_symlink(), path)
+            self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
+        self.assertEqual(sorted(path.name for path in self.seats.iterdir()), [".state"])
+        self.assertEqual(
+            self.calls_text(), f"claude auth status CLAUDE_CONFIG_DIR={self.shared} BROWSER=unset token=unset\n"
+        )
+        relative = self.run_lever("--check", "orchestrator", REGIME_SEATS_ROOT="seats")
+        self.assertEqual(
+            (relative.returncode, relative.stdout),
+            (
+                1,
+                "orchestrator claude-bridge: unreadable (no seats root: REGIME_SEATS_ROOT seats is not an absolute path)\n",
+            ),
+        )
+
     def test_a_seats_root_with_a_space_a_quote_and_a_dollar_prints_a_command_whose_eval_sets_the_exact_directory(
         self,
     ) -> None:

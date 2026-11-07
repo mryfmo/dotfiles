@@ -57,6 +57,29 @@ file. The role's rows and the hazard-by-hazard account of the four verdicts
 are in `scripts/orchestrator/README.md` ("The dsh role") and the tests in
 `tests/unit/test_hcom_seat_dsh.py`.
 
+The router role (regime-cutover U321). The dsh-superagent Router runs under
+the same lever as `hcom-seat router [--profile router] [--home <DSH_HOME>] --
+<dsh args>`, one more row of the role table: the dsh row's containment (the
+per-launch slot, the write roots, the deny row, the four-probe canary,
+`OMP_PROFILE=dsh` and the shared omp profile, the environment list, the slot
+removal) with three cells of its own. The DSH profile is `router` and the only
+one the role accepts; `--profile router` or none, any other refused by name,
+exit 2, before any tool is resolved. The srt settings carry
+`allowLocalBinding: true` for this role alone, because U317b measured
+(2026-11-07T00:12Z, the prototype at pin 8c32a9dc) that the Runtime does not
+start without the `dsh-host-webserver` plugin, so the Router needs its
+loopback listener; srt 0.0.81 has no loopback-only form, so the grant is bind
+and inbound on every interface, and what the listener answers is bounded by
+the upstream Management API's host check (the hosts `127.0.0.1:<port>` and
+`localhost:<port>` alone, and only with the `x-orchestrator-request` header,
+upstream `docs/006-deployment.md`); the port is the profile's, the role grants
+binding and no port. The Router's state root `<DSH_HOME>/router-state`, where
+U317b renders `stateDir`, is a write root of its own (allowWrite row 6, after
+`~/.omp/run`, inside `DSH_HOME`), judged like any untagged row. The router
+settings differ from the dsh settings in exactly those two values, the dsh
+and omp roles' settings do not change by a byte, and
+`tests/unit/test_hcom_seat_dsh.py` asserts both.
+
 The install itself is contained the same way (regime-cutover U322). On a host
 whose operator opted in (`DSH_HOME` exported and equal to `~/.dsh`), `make
 update` runs `update_deepseek_harness` in `scripts/update-agent-assets.sh`: it

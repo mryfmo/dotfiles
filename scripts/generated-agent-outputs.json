@@ -429,7 +429,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "77d2b6743c8f90393c565fc93c69fa8265c9de321c8c3f5c4547f0118c4ac80d"
+      "sha256": "d344e6e1f4ddc7db76863192e8304e9a5c32b3755b0cb65b3597440309dbb792"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
@@ -464,7 +464,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "5e235e90d6ee5b00a1014750744b07da48d7962e64abffc5b2f0a0fb56fd9772"
+      "sha256": "f9063f3bcd4f84cb1007cfb919d757e5aa20db5358a9cfb1cd91a46ab4cade9b"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -541,7 +541,7 @@
       "target": ".local/bin/common/seat-login-preflight",
       "kind": "file",
       "executable": true,
-      "sha256": "dd0d59cb0bcd9fe98e56440e187208c902b4b3ae81342f1a9ce833439fe96f6b"
+      "sha256": "7d12ffb08da39735f6c368ddb9ab4ed10084d755a1f57470edc64d1d78e4ae61"
     },
     {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",

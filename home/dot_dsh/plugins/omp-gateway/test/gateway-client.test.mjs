@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline'
 import { PassThrough } from 'node:stream'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { DEFAULT_ENV_NAMES } from '../config.mjs'
+import { DEFAULT_ENV_NAMES, resolveConfig } from '../config.mjs'
 import { GatewayClient, GatewayError, pickEnv } from '../gateway-client.mjs'
 
 const stub = fileURLToPath(new URL('../stub-gateway.mjs', import.meta.url))
@@ -263,11 +263,11 @@ const RECORDER = [
   '})',
 ].join('\n')
 
-async function recordedChildEnv(t, source) {
+async function recordedChildEnv(t, source, names = DEFAULT_ENV_NAMES) {
   const client = new GatewayClient({
     command: process.execPath,
     args: ['--input-type=module', '-e', RECORDER],
-    env: pickEnv(DEFAULT_ENV_NAMES, source),
+    env: pickEnv(names, source),
     readyTimeoutMs: 5000,
   })
   t.after(() => client.close())
@@ -280,4 +280,13 @@ test('the child carries OMP_PROFILE when the plugin has it and not when it is un
   const launcher = { HOME: '/Users/operator', PATH: process.env.PATH, USER: 'operator', NOT_A_ROW: 'x' }
   assert.deepEqual(await recordedChildEnv(t, { ...launcher, OMP_PROFILE: 'dsh' }), ['HOME', 'OMP_PROFILE', 'PATH', 'USER'])
   assert.deepEqual(await recordedChildEnv(t, launcher), ['HOME', 'PATH', 'USER'])
+})
+
+test('the child carries CLAUDE_CONFIG_DIR when the launcher exported it and not when config.env omits it', async t => {
+  // hcom-seat hands the dsh role CLAUDE_CONFIG_DIR=<seats-root>/.state/claude (U318) and denies ~/.claude; the bridge's
+  // Claude child finds the seat login only through this name (U355, row g6). A config.env row that omits it still wins.
+  const launcher = { HOME: '/Users/operator', PATH: process.env.PATH, USER: 'operator', CLAUDE_CONFIG_DIR: '/scratch/login', NOT_A_ROW: 'x' }
+  assert.deepEqual(await recordedChildEnv(t, launcher), ['CLAUDE_CONFIG_DIR', 'HOME', 'PATH', 'USER'])
+  const narrowed = resolveConfig({ env: ['HOME', 'PATH', 'USER'] })
+  assert.deepEqual(await recordedChildEnv(t, launcher, narrowed.env), ['HOME', 'PATH', 'USER'])
 })

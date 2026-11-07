@@ -1032,8 +1032,11 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         commands = trace.read_text().split("\0")[:-1]
         self.assertIn("profile_config_write", commands, "the write step ran and decided to leave the file")
         write_at = commands.index("profile_config_write")
-        self.assertTrue(any(c.startswith("/usr/bin/mktemp ") for c in commands[:write_at]), "the compare's temporary")
-        made = ("/usr/bin/mktemp", "profile_config_tmp", "/bin/mv -f", '/bin/mkdir "${agent}"', "${tmp_file}")
+        judge_at = commands.index("settings_judge")
+        opened = [i for i, c in enumerate(commands) if c.startswith("profile_config_tmp ")]
+        self.assertTrue(opened, "the compare's temporary file is opened")
+        self.assertTrue(all(judge_at < i < write_at for i in opened), "the temporary follows the judge (U310c)")
+        made = ("profile_config_tmp", "/bin/mv -f", '/bin/mkdir "${agent}"', "${tmp_name}", "exec 9>")
         self.assertEqual([c for c in commands[write_at:] if any(word in c for word in made)], [])
         self.assertEqual(sorted(p.name for p in self.profile_config.parent.iterdir()), ["config.yml"])
         after = self.profile_config.stat()
@@ -1170,9 +1173,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         /usr/bin/cmp leaves) refuses rather than keeping an equal config; a config dsh left unreadable refuses the same
         way; an `agent/` that cannot be searched (mode 000, a linked config hidden inside) and a profile directory
         that cannot be searched refuse naming the directory instead of reading as absent, in a dry run too; an overlay
-        that cannot be read refuses naming it; an `agent/` the launcher cannot write (mode 500) refuses at mktemp
-        naming it, at the compare and at the write. No temporary file remains, the config is never replaced by a
-        refused launch, nothing reaches the link's target and no dsh starts."""
+        that cannot be read refuses naming it; an `agent/` the launcher cannot write (mode 500) refuses at the
+        exclusive open naming it, at the compare and at the write. No temporary file remains, the config is never
+        replaced by a refused launch, nothing reaches the link's target, no dsh starts and (U310c, the round-2 P2 at
+        :2601) no per-launch slot remains after a refusal at the write."""
         home = self.home.resolve()
         overlay = self.profiles / "dsh.yml"
         elsewhere = Path(self.temp.name).resolve() / "elsewhere"
@@ -1186,7 +1190,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         cannot_compare = (
             f"cannot compare the profile config {self.profile_config} with the rendered overlay (cmp exited 2)"
         )
-        no_temporary = f"cannot make a temporary file in {agent} (mktemp failed)"
+        no_temporary = f"cannot create a temporary file in {agent} (the exclusive open of {agent}/.config.yml."
 
         def equal_config():
             agent.mkdir(parents=True)
@@ -1249,6 +1253,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
                 self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), [], "nothing reaches the link's target")
+                self.assertEqual(self.slots(), ([], []), "a refusal after the slots are made removes them")
                 overlay.chmod(0o644)
                 for directory in (profile, agent):
                     if directory.is_dir() and not directory.is_symlink():
@@ -1262,6 +1267,160 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 else:
                     self.profile_config.chmod(0o600)
                     self.assertEqual(self.profile_config.read_text(), config_after, "a refused launch replaces nothing")
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_a_temporary_swapped_after_its_open_is_refused_and_the_victim_keeps_its_bytes(self):
+        """U310c (the round-2 P1 at :982, the auditor's deterministic swap): round 2 reopened the `mktemp` file by path
+        for the write, so a process owning `agent/` that swapped the path for a link between `mktemp` and the
+        redirection had the linked host file overwritten before the identity check. The write now goes through the
+        descriptor the exclusive open returned and the path is never reopened: a DEBUG trap (the recorder's BASH_ENV
+        channel) that swaps the path for a link to a victim file, or for another regular file, right before the write
+        leaves the victim byte-identical (bytes, inode, mtime), the launch refuses (exit 2) naming the swap, the
+        swapped entry is removed, the config is not replaced, no slot remains and no dsh starts; at the compare, at
+        the write and in a dry run alike."""
+        home = self.home.resolve()
+        agent = home / ".omp/profiles/dsh/agent"
+        elsewhere = Path(self.temp.name).resolve() / "elsewhere"
+        elsewhere.mkdir()
+        victim = elsewhere / "config.yml"
+        victim_text = "modelRoles:\n  default: operator/default\n# the host file the swapped link points at\n"
+        stale = "modelRoles:\n  default: stale/model\n"
+        to_link = Path(self.temp.name) / "swap-to-link.bash"
+        to_link.write_text(
+            "set -T\n"
+            "trap 'if [[ ${BASH_COMMAND} == printf*profile_config_text* ]]; then"
+            ' /bin/rm -f -- "${tmp_file}" && /bin/ln -s "${U310_VICTIM}" "${tmp_file}"; fi\' DEBUG\n'
+        )
+        to_file = Path(self.temp.name) / "swap-to-file.bash"
+        to_file.write_text(
+            "set -T\n"
+            "trap 'if [[ ${BASH_COMMAND} == printf*profile_config_text* ]]; then"
+            ' /bin/rm -f -- "${tmp_file}" && printf "attacker\\n" > "${tmp_file}"; fi\' DEBUG\n'
+        )
+        swapped = "is not a regular file after the write (swapped under the launch)"
+        changed = "is not the file this launch created (its identity changed)"
+        cases = (
+            ("a link at the write", None, [], str(to_link), swapped),
+            ("a link at the compare", stale, [], str(to_link), swapped),
+            ("a link at the compare, dry run", stale, ["--dry-run"], str(to_link), swapped),
+            ("another file at the write", None, [], str(to_file), changed),
+            ("another file at the compare", stale, [], str(to_file), changed),
+        )  # fmt: skip
+        for label, config, args, bash_env, message in cases:
+            with self.subTest(case=label):
+                shutil.rmtree(agent, ignore_errors=True)
+                agent.mkdir(parents=True)
+                if config is not None:
+                    self.profile_config.write_text(config)
+                victim.write_text(victim_text)
+                before = victim.stat()
+                run = self.launch(*args, "--", "--version", BASH_ENV=bash_env, U310_VICTIM=str(victim))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"{agent}/.config.yml.", run.stderr)
+                self.assertIn(message, run.stderr)
+                after = victim.stat()
+                self.assertEqual(victim.read_text(), victim_text, "the victim keeps its bytes")
+                self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
+                self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), ["config.yml"])
+                remaining = sorted(p.name for p in agent.iterdir())
+                self.assertEqual(remaining, [] if config is None else ["config.yml"], "the swapped entry is removed")
+                if config is not None:
+                    self.assertEqual(self.profile_config.read_text(), config, "a refused launch replaces nothing")
+                self.assertEqual(self.slots(), ([], []), "no per-launch slot remains after the refusal")
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_a_linked_profile_root_dry_run_writes_nothing_in_the_linked_profile(self):
+        """U310c (the round-2 P2 at :1102): round 2 made the comparison temporary before settings_judge validated the
+        profile boundary, so with `profiles/dsh` linked to `profiles/orchestrator` a dry run wrote inside
+        `orchestrator/agent` before refusing. The compare now follows the judge: the dry run and the real launch
+        refuse (exit 2) by the judge's row, the orchestrator profile's `agent/` keeps its entries and its mtime, the
+        recorder shows no temporary file opened and no slot is made."""
+        home = self.home.resolve()
+        other = home / ".omp/profiles/orchestrator/agent"
+        other.mkdir(parents=True)
+        (other / "config.yml").write_text("modelRoles:\n  default: orchestrator/own\n")
+        (home / ".omp/profiles/dsh").symlink_to(home / ".omp/profiles/orchestrator")
+        hook = Path(self.temp.name) / "trace-hook.bash"
+        hook.write_text('set -T\ntrap \'builtin printf "%s\\0" "$BASH_COMMAND" >> "$U272_TRACE"\' DEBUG\n')
+        trace = Path(self.temp.name) / "trace"
+        before = other.stat()
+        for args in (["--dry-run"], []):
+            with self.subTest(args=args):
+                trace.write_text("")
+                run = self.launch(*args, "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(
+                    f"allowRead row {home / '.omp/profiles/dsh'} ({home / '.omp/profiles/orchestrator'}) is, contains"
+                    f" or lies inside {home / '.omp/profiles'}, a row of its denyRead list",
+                    run.stderr,
+                )
+                commands = trace.read_text().split("\0")[:-1]
+                self.assertIn("settings_judge", commands)
+                self.assertEqual([c for c in commands if "profile_config_tmp" in c or "exec 9>" in c], [])
+                self.assertEqual(sorted(p.name for p in other.iterdir()), ["config.yml"], "nothing written there")
+                after = other.stat()
+                self.assertEqual(before.st_mtime_ns, after.st_mtime_ns, "the linked profile's agent/ is untouched")
+                self.assertEqual((other / "config.yml").read_text(), "modelRoles:\n  default: orchestrator/own\n")
+                self.assertFalse(Path(self.seats).exists())
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_a_failed_identity_read_write_or_installation_refuses_by_name_and_leaves_no_temporary(self):
+        """U310c (the round-2 P2 at :981): every safety decision of the held-descriptor write has its failure injected
+        through the recorder's BASH_ENV channel (the lever's PATH is the system directories, so a function of the
+        tool's absolute name is the one way a caller makes it fail): the identity read of the descriptor and of the
+        path (`/usr/bin/stat` failing for them alone), the write (the descriptor re-pointed at a read-only open right
+        before the write, so `printf` fails as on a full or read-only target), the installation (`/bin/mv` failing for
+        the config alone). Each refuses (exit 2) naming the file, leaves no temporary file, replaces nothing, removes
+        the per-launch slots when they were made and starts no dsh."""
+        home = self.home.resolve()
+        agent = home / ".omp/profiles/dsh/agent"
+        stale = "modelRoles:\n  default: stale/model\n"
+        fd_stat = Path(self.temp.name) / "stat-fails-on-fd.bash"
+        fd_stat.write_text(
+            '/usr/bin/stat() { local a; for a in "$@"; do [[ $a == /dev/fd/9 ]] && return 1; done;'
+            ' command /usr/bin/stat "$@"; }\n'
+        )
+        path_stat = Path(self.temp.name) / "stat-fails-on-path.bash"
+        path_stat.write_text(
+            '/usr/bin/stat() { local a; for a in "$@"; do [[ $a == */.config.yml.* ]] && return 1; done;'
+            ' command /usr/bin/stat "$@"; }\n'
+        )
+        no_write = Path(self.temp.name) / "descriptor-read-only.bash"
+        no_write.write_text(
+            "set -T\ntrap 'if [[ ${BASH_COMMAND} == printf*profile_config_text* ]]; then exec 9< /dev/null; fi' DEBUG\n"
+        )
+        no_mv = Path(self.temp.name) / "mv-fails.bash"
+        no_mv.write_text('/bin/mv() { [[ $* != *config.yml* ]] || return 1; command /bin/mv "$@"; }\n')
+        prefix = f"{agent}/.config.yml."
+        cases = (
+            ("the descriptor's identity at the write", None, str(fd_stat), f"cannot read the identity of {prefix}",
+             "(its descriptor)"),
+            ("the descriptor's identity at the compare", stale, str(fd_stat), f"cannot read the identity of {prefix}",
+             "(its descriptor)"),
+            ("the path's identity at the write", None, str(path_stat), f"cannot read the identity of {prefix}", ""),
+            ("the path's identity at the compare", stale, str(path_stat), f"cannot read the identity of {prefix}", ""),
+            ("the write at the write", None, str(no_write), f"cannot write {prefix}", ""),
+            ("the write at the compare", stale, str(no_write), f"cannot write {prefix}", ""),
+            ("the installation", None, str(no_mv), f"cannot install {self.profile_config}", ""),
+        )  # fmt: skip
+        for label, config, bash_env, message, detail in cases:
+            with self.subTest(case=label):
+                shutil.rmtree(agent, ignore_errors=True)
+                agent.mkdir(parents=True)
+                if config is not None:
+                    self.profile_config.write_text(config)
+                run = self.launch("--", "--version", BASH_ENV=bash_env)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+                if detail:
+                    self.assertIn(detail, run.stderr)
+                else:
+                    self.assertNotIn("(its descriptor)", run.stderr)
+                remaining = sorted(p.name for p in agent.iterdir())
+                self.assertEqual(remaining, [] if config is None else ["config.yml"], "no temporary file remains")
+                if config is not None:
+                    self.assertEqual(self.profile_config.read_text(), config, "a refused launch replaces nothing")
+                self.assertEqual(self.slots(), ([], []), "no per-launch slot remains after the refusal")
         self.assertEqual(self.dsh_calls(), [])
 
 

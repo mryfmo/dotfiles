@@ -110,9 +110,10 @@
 #   `~/.omp/profiles/dsh/agent/config.yml`, the file the gateway child `omp auth-gateway stdio` reads for its model
 #   providers, every `extensions` entry rewritten to its canonical `claude.levers.extensions` path as the omp roles'
 #   `-e` list is; a config already equal is left alone, a different one replaced and the launch says so, and a linked
-#   `agent/` or `config.yml` is refused before anything is made (profile_config_check, profile_config_write). The
-#   per-launch sandbox and state slot are removed when dsh exits,
-#   and by the trap a hangup, interrupt or termination runs before this process ends by that signal.
+#   `agent/` or `config.yml` is refused before anything is made (profile_config_check; the compare that writes a
+#   temporary file waits for settings_judge, profile_config_compare; the write holds its exclusive descriptor,
+#   profile_config_tmp). The per-launch sandbox and state slot are removed when dsh exits, by a refusal after they
+#   were made (refuse), and by the trap a hangup, interrupt or termination runs before this process ends by that signal.
 # @arg $1 string Role: orchestrator, worker or dsh.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
@@ -209,8 +210,18 @@ lever_self_check() {
 lever_self_check
 
 usage='usage: hcom-seat <orchestrator|worker> [--name <name>] [--seats-root <dir>] [--ext <dir>]... [--dry-run] | hcom-seat dsh [--name <name>] [--seats-root <dir>] [--profile <name>] [--home <DSH_HOME>] [--dry-run] [-- <dsh args>]'
+# `slots_made` is 1 from the moment the dsh role's per-launch slots may exist (set where the trap is installed, before
+# seat_sandbox_write); a refusal then removes them first (slots_remove, the one cleanup the normal exit and the trap
+# run), so no refusal after the slots exist leaves one behind (regime-cutover U310c). The flag is cleared before the
+# removal: slots_remove refuses through this function when a slot cannot be read. The flag is read with a default
+# because the tests run this function extracted from the lever's text, without the assignment below.
+slots_made=0
 refuse() {
     echo "hcom-seat: $*" >&2
+    if ((${slots_made:-0})); then
+        slots_made=0
+        slots_remove || :
+    fi
     exit 2
 }
 
@@ -822,8 +833,8 @@ if [[ ${os} == Linux && ! -x /usr/bin/jq ]]; then
     refuse 'the system jq /usr/bin/jq is absent; it reads the seat sandbox settings on Linux (apt install jq)'
 fi
 case ${os} in
-Darwin) stat_args=(-L -f '%d:%i') lstat_args=(-f '%d:%i') size_args=(-L -f '%z') ;;
-Linux) stat_args=(-L -c '%d:%i') lstat_args=(-c '%d:%i') size_args=(-L -c '%s') ;;
+Darwin) stat_args=(-L -f '%d:%i') lstat_args=(-f '%d:%i') size_args=(-L -f '%z') inode_args=(-L -f '%i') inode_lstat_args=(-f '%i') ;;
+Linux) stat_args=(-L -c '%d:%i') lstat_args=(-c '%d:%i') size_args=(-L -c '%s') inode_args=(-L -c '%i') inode_lstat_args=(-c '%i') ;;
 *) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
 # srt 0.0.81 keeps its own TMPDIR writable whatever the policy says (SANDBOX_OWN_WRITE_PATHS in
@@ -967,28 +978,99 @@ present_under_home() {
     path_present=1
 }
 # @description Write the rendered profile config into a temporary file of this launch's own inside `$1`, the dsh
-#   profile's `agent/` (regime-cutover U310b; the kit's rule for a write into a directory the role writes too: a name
-#   no other process can predict, opened O_EXCL, then a rename). `mktemp` makes the file 0600 under a random name, so
-#   a file or link planted at any name in the directory is never opened; the path is held to a regular file that is
-#   no link before and after the write and to the (device, inode) `mktemp` made, and the write's own status is read.
-#   Every refusal removes the file first (tmp_refuse).
-# @arg $1 string The `agent/` directory, a real directory.
-# @set tmp_file The temporary file, holding the rendering.
+#   profile's `agent/`, and run the step `$2` on it while the file's descriptor is held (regime-cutover U310c; the
+#   kit's rule for a write into a directory the role writes too). Round 2 reopened the `mktemp` file by path for the
+#   write, and a process that owns `agent/` can swap that path for a link between the two (verdict U310-8f393491 P1);
+#   this launch never reopens a path it did not just create. The directory is entered first (a cwd is a reference to
+#   the directory itself, so a later swap of the `agent` entry moves nothing of this launch), the file is created by
+#   one exclusive open under `noclobber` (an entry already at the name, a link included, fails the open and is never
+#   opened) whose descriptor 9 is held, the descriptor is read as a regular file before anything is written through
+#   it (bash opens a link to a device or a pipe at the name without exclusion), the rendering goes to the
+#   descriptor, and the step reads or renames the path only once it is held to a regular non-link file with the
+#   descriptor's inode (tmp_held). The name is no secret: the exclusive open is the guard, so a planted entry at any
+#   name makes a refusal, never a write. Every refusal closes the descriptor and removes the path (tmp_refuse, `rm`
+#   follows no link); the descriptor is closed and the caller's directory re-entered at the end.
+# @arg $1 string The `agent/` directory, a real directory the caller checked.
+# @arg $2 string The step (profile_config_compare_step or profile_config_install_step), run inside `agent/`.
+# @set tmp_name The temporary file's name inside `agent/`.
+# @set tmp_file Its path, for messages.
+# @set tmp_inode The inode of the file the exclusive open created, read through its descriptor.
 profile_config_tmp() {
-    local made written
-    tmp_file=$(/usr/bin/mktemp "$1/.config.yml.XXXXXX") || refuse "cannot make a temporary file in $1 (mktemp failed)"
-    [[ -f ${tmp_file} && ! -L ${tmp_file} ]] || tmp_refuse "${tmp_file} is not a regular file after mktemp made it"
-    made=$(/usr/bin/stat "${lstat_args[@]}" -- "${tmp_file}") || tmp_refuse "cannot read the identity of ${tmp_file}"
-    printf '%s\n' "${profile_config_text}" > "${tmp_file}" || tmp_refuse "cannot write ${tmp_file}"
-    [[ -f ${tmp_file} && ! -L ${tmp_file} ]] || tmp_refuse "${tmp_file} is not a regular file after the write"
-    written=$(/usr/bin/stat "${lstat_args[@]}" -- "${tmp_file}") || tmp_refuse "cannot read the identity of ${tmp_file}"
-    [[ ${written} == "${made}" ]] || tmp_refuse "${tmp_file} is not the file mktemp made (its identity changed)" # lint-comparisons: allow compares (device, inode) identities, not paths
+    local agent=$1 step=$2 back=${PWD} dir_id dir_now mask
+    dir_id=$(/usr/bin/stat "${lstat_args[@]}" -- "${agent}") || refuse "cannot read the identity of ${agent}"
+    cd -- "${agent}" || refuse "cannot enter ${agent}"
+    dir_now=$(/usr/bin/stat "${lstat_args[@]}" -- .) || refuse "cannot read the identity of ${agent}"
+    [[ ${dir_now} == "${dir_id}" ]] || refuse "${agent} changed under the launch (its identity differs); the dsh role writes its profile config inside its profile only" # lint-comparisons: allow compares (device, inode) identities, not paths
+    tmp_name=.config.yml.$$.${RANDOM}${RANDOM}
+    tmp_file=${agent}/${tmp_name}
+    # The file is the role's config in the making: 0600 like the `mktemp` file of round 2, by the mask the open sees.
+    mask=$(umask)
+    umask 077
+    set -o noclobber
+    exec 9> "./${tmp_name}" || {
+        set +o noclobber
+        umask "${mask}"
+        refuse "cannot create a temporary file in ${agent} (the exclusive open of ${tmp_file} failed: the name exists or the directory cannot be written)"
+    }
+    set +o noclobber
+    umask "${mask}"
+    [[ -f /dev/fd/9 ]] || tmp_refuse "${tmp_file} is not a regular file after its exclusive open"
+    tmp_inode=$(/usr/bin/stat "${inode_args[@]}" -- /dev/fd/9) || tmp_refuse "cannot read the identity of ${tmp_file} (its descriptor)"
+    printf '%s\n' "${profile_config_text}" >&9 || tmp_refuse "cannot write ${tmp_file}"
+    tmp_held
+    "${step}"
+    exec 9>&-
+    cd -- "${back}" || refuse "cannot return to ${back}"
 }
-# @description Remove the temporary file profile_config_tmp made (`rm` follows no link) and refuse with `$*`.
+# @description Hold the temporary file's path to the file this launch created: a regular file that is no link, with
+#   the held descriptor's inode. A swap of the path after the open (a link to a host file, another file) refuses here,
+#   and nothing was written through the path.
+tmp_held() {
+    local now
+    [[ -f ./${tmp_name} && ! -L ./${tmp_name} ]] || tmp_refuse "${tmp_file} is not a regular file after the write (swapped under the launch)"
+    now=$(/usr/bin/stat "${inode_lstat_args[@]}" -- "./${tmp_name}") || tmp_refuse "cannot read the identity of ${tmp_file}"
+    [[ ${now} == "${tmp_inode}" ]] || tmp_refuse "${tmp_file} is not the file this launch created (its identity changed)" # lint-comparisons: allow compares inode identities, not paths
+}
+# @description Close the held descriptor, remove the temporary file's path (`rm` follows no link; a swapped entry goes,
+#   its target untouched) and refuse with `$*`. Runs inside `agent/`.
 # @arg $@ string The refusal.
 tmp_refuse() {
-    /bin/rm -f -- "${tmp_file}" || :
+    exec 9>&-
+    /bin/rm -f -- "./${tmp_name}" || :
     refuse "$@"
+}
+# @description The compare step of profile_config_tmp: `cmp` reads `config.yml` and the held temporary file, two
+#   regular files, and its status is the caller's decision (0 equal, 1 different, anything else a failed compare);
+#   the temporary file is removed.
+# @set compare_status The `cmp` status.
+profile_config_compare_step() {
+    compare_status=0
+    cmp -s ./config.yml "./${tmp_name}" || compare_status=$?
+    /bin/rm -f -- "./${tmp_name}" || tmp_refuse "cannot remove the temporary file ${tmp_file}"
+}
+# @description The install step of profile_config_tmp: the held file lands as `config.yml` by one rename. `mv` follows
+#   a link or a directory at the target (it moves the file into a directory), so both are refused again here, after
+#   the check that refused them before anything was made.
+profile_config_install_step() {
+    local target=${tmp_file%/*}/config.yml
+    [[ ! -L ./config.yml && ! -d ./config.yml ]] || tmp_refuse "${target} is a symbolic link or a directory; the dsh role writes its profile config inside its profile only"
+    /bin/mv -f -- "./${tmp_name}" ./config.yml || tmp_refuse "cannot install ${target}"
+}
+# @description Read the placement target: every existence read goes through present_under_home, and an `agent/` or
+#   `config.yml` that is a symbolic link or not a plain directory or file refuses, since a write would follow it out
+#   of the profile (the profile root itself is judged by settings_judge).
+# @arg $1 string The `agent/` directory.
+# @arg $2 string The config path inside it.
+# @set path_present 1 when the config exists, 0 when it or `agent/` is absent.
+profile_config_target_check() {
+    present_under_home "$1"
+    ((path_present)) || return 0
+    [[ ! -L $1 ]] || refuse "$1 is a symbolic link; the dsh role writes its profile config inside its profile only"
+    [[ -d $1 ]] || refuse "$1 is not a directory"
+    present_under_home "$2"
+    ((path_present)) || return 0
+    [[ ! -L $2 ]] || refuse "$2 is a symbolic link; the dsh role writes its profile config inside its profile only"
+    [[ -f $2 ]] || refuse "$2 is not a regular file"
 }
 # @description The dsh role's profile config row (regime-cutover U310, round 2 U310b): render what the role's own omp
 #   profile must hold and decide what the launch does about it, before anything is made (the private tool directory
@@ -999,17 +1081,16 @@ tmp_refuse() {
 #   2026-11-06T19:22Z: without it, `HTTP 404: No available model matches "claude-bridge/claude-opus-5-5"`). The file
 #   is the rendered overlay `profile_config` (the generator's, like the seat overlays), each `extensions` entry
 #   replaced by its canonical allow-list path (extensions_canonical, the rule the omp roles' `-e` list follows); an
-#   overlay naming no extension refuses, as does a failed read. Every existence read of the target
-#   `~/.omp/profiles/<role>/agent/config.yml` goes through present_under_home, so a directory this user cannot search
-#   refuses by name instead of reading as absent; an `agent/` or `config.yml` that is a symbolic link refuses, since
-#   a write would follow it out of the profile (the profile root itself is judged by settings_judge). A present file
-#   is compared whole by `cmp` with the rendering in a temporary file of this launch's own (profile_config_tmp, the
-#   write's status read): two regular files, no process substitution; `cmp`'s status is read (equal, different, or a
-#   failed compare, which refuses) and the temporary file is removed. The decision is printed, in a dry run too.
+#   overlay naming no extension refuses, as does a failed read. The target `~/.omp/profiles/<role>/agent/config.yml`
+#   is read by profile_config_target_check (every existence read through present_under_home, a link or an irregular
+#   entry refused); an absent one is placed. A present one is compared after settings_judge has accepted the
+#   profile boundary (profile_config_compare), since the compare writes a temporary file inside `agent/` (round 2
+#   compared before the judge, so a linked profile root took the file into another profile: verdict U310-8f393491
+#   P2). The decision is printed, in a dry run too.
 # @set profile_config_text The config to place, without its final newline.
-# @set profile_config_action `place`, `replace` or `keep`.
+# @set profile_config_action `place`, or `compare` until profile_config_compare makes it `replace` or `keep`.
 profile_config_check() {
-    local text line list=0 i=0 status=0 agent target
+    local text line list=0 i=0 agent target
     local -a listed_exts=()
     [[ -f ${profile_config} && ! -L ${profile_config} ]] ||
         refuse "profile config overlay absent or a symbolic link: ${profile_config}"
@@ -1041,23 +1122,28 @@ profile_config_check() {
     profile_config_text=${profile_config_text%$'\n'}
     agent=${HOME}/.omp/profiles/${role}/agent
     target=${agent}/config.yml
-    present_under_home "${agent}"
-    if ((path_present)); then
-        [[ ! -L ${agent} ]] || refuse "${agent} is a symbolic link; the dsh role writes its profile config inside its profile only"
-        [[ -d ${agent} ]] || refuse "${agent} is not a directory"
-        present_under_home "${target}"
-    fi
+    profile_config_target_check "${agent}" "${target}"
     if ((! path_present)); then
         profile_config_action=place
         echo "hcom-seat: the dsh profile config ${target} is absent; the launch places it from ${profile_config}" >&2
         return 0
     fi
-    [[ ! -L ${target} ]] || refuse "${target} is a symbolic link; the dsh role writes its profile config inside its profile only"
-    [[ -f ${target} ]] || refuse "${target} is not a regular file"
-    profile_config_tmp "${agent}"
-    cmp -s "${target}" "${tmp_file}" || status=$?
-    /bin/rm -f -- "${tmp_file}" || refuse "cannot remove the temporary file ${tmp_file}"
-    case ${status} in
+    profile_config_action=compare
+}
+# @description Compare the present profile config with the rendering, after settings_judge and before any directory
+#   of the launch is made: the rendering goes into a temporary file of this launch's own (profile_config_tmp, its
+#   descriptor held), `cmp` compares two regular files and its status alone decides (equal, different, or a failed
+#   compare, which refuses), and the temporary file is removed. The target is read again first: this launch's
+#   decision is about the file as it is now.
+# @set profile_config_action `replace` or `keep`.
+profile_config_compare() {
+    local agent=${HOME}/.omp/profiles/${role}/agent target
+    target=${agent}/config.yml
+    [[ ${profile_config_action} == compare ]] || return 0
+    profile_config_target_check "${agent}" "${target}"
+    ((path_present)) || refuse "${target} went absent between the check and the compare; the launch is refused"
+    profile_config_tmp "${agent}" profile_config_compare_step
+    case ${compare_status} in
     0)
         profile_config_action=keep
         echo "hcom-seat: the dsh profile config ${target} equals ${profile_config}; the launch leaves it" >&2
@@ -1066,14 +1152,15 @@ profile_config_check() {
         profile_config_action=replace
         echo "hcom-seat: the dsh profile config ${target} differs from ${profile_config}; the launch replaces it" >&2
         ;;
-    *) refuse "cannot compare the profile config ${target} with the rendered overlay (cmp exited ${status})" ;;
+    *) refuse "cannot compare the profile config ${target} with the rendered overlay (cmp exited ${compare_status})" ;;
     esac
 }
-# @description Place the dsh role's profile config as profile_config_check decided (regime-cutover U310, round 2
-#   U310b), after seat_sandbox_write made the profile directory: `agent/` is made 0700 when absent, every existence
-#   read goes through present_under_home and the links are refused again at the write, and the file lands by a
-#   rename of the temporary file profile_config_tmp made (a name no other process can predict, opened O_EXCL, held to
-#   its inode), so no planted name is ever opened and the gateway child never reads a partial config. Two launches at
+# @description Place the dsh role's profile config as profile_config_compare decided (regime-cutover U310, round 2
+#   U310b, round 3 U310c), after seat_sandbox_write made the profile directory: `agent/` is made 0700 when absent,
+#   every existence read goes through present_under_home and the links are refused again at the write, and the file
+#   lands by a rename of the held temporary file (profile_config_tmp with the install step: one exclusive open, the
+#   write through its descriptor, the path held to that descriptor's inode before the rename), so no planted name is
+#   ever opened, no path is reopened for a write, and the gateway child never reads a partial config. Two launches at
 #   once (the role's normal case) may both find `agent/` absent and both place the same bytes: the loser of the mkdir
 #   race takes the directory the winner made, held to a real directory, and each renames its own file. Nothing is
 #   written when the action is `keep`.
@@ -1093,12 +1180,12 @@ profile_config_write() {
         [[ ! -L ${target} ]] || refuse "${target} is a symbolic link; the dsh role writes its profile config inside its profile only"
         [[ -f ${target} ]] || refuse "${target} is not a regular file"
     fi
-    profile_config_tmp "${agent}"
-    /bin/mv -f -- "${tmp_file}" "${target}" || tmp_refuse "cannot install ${target}"
+    profile_config_tmp "${agent}" profile_config_install_step
 }
-# The profile config row is decided here, after the complete protected set and before the first directory of the
+# The profile config row is read here, after the complete protected set and before the first directory of the
 # launch is made (the private tool directory next), so a bad overlay or a linked, unsearchable or irregular target
-# refuses on a fresh HOME with nothing created, in a dry run too.
+# refuses on a fresh HOME with nothing created, in a dry run too. The compare of a present config, the one step of
+# the row that writes a temporary file, runs after settings_judge (profile_config_compare below).
 if [[ ${role_launch} == foreground ]]; then profile_config_check; fi
 tools_dir=${HOME}/.local/state/hcom-seat/tools
 /bin/mkdir -p "${tools_dir}" || refuse "cannot create the private tool directory ${tools_dir}"
@@ -2176,6 +2263,9 @@ if [[ ${role_launch} == foreground ]]; then
     seat_settings_render
     settings_judge ||
         refuse "the dsh role's ${judge_grant} is, contains or lies inside ${judge_deny}; the launch is refused before anything is made"
+    # The profile config compare writes a temporary file inside the profile, so it follows the judge's acceptance of
+    # the profile boundary and precedes the per-launch slots (regime-cutover U310c).
+    profile_config_compare
 fi
 roots=("${seat_write[@]}" "${seats_root}" "${HCOM_DIR}" "${common}")
 while IFS= read -r root; do roots+=("${root}"); done <<< "${other_roots}"
@@ -2595,6 +2685,9 @@ if [[ ${role_launch} == foreground ]]; then
     # on purpose: the handler needs the signal's name.
     # shellcheck disable=SC2064
     for sig in HUP INT TERM; do trap "foreground_signal ${sig}" "${sig}"; done
+    # From here a refusal removes the slots too (refuse): the write of the profile config and the sandbox write itself
+    # refuse after a slot may exist.
+    slots_made=1
 fi
 if [[ ${role_launch} == hcom ]]; then seat_settings_render; fi
 seat_sandbox_write

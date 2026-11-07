@@ -1,0 +1,107 @@
+{
+  "run_id": "dotfiles-run-23",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "0059848ee276acdb64fec66f35b91e1c4f9f9a49",
+    "branch": "fix/aws-cli-versioned-release",
+    "parent_of_change": "2b2415f6c",
+    "base_note": "U311, two commits (c0768a42 the failing test, 0059848e the fix) on origin/main 2b2415f6; a sibling of run-22's head 8f393491 (U310b) and run-21's 858f053b (U283d), not a descendant of either.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) the head's own change, U311 (2b2415f6..0059848e: install/common/aws_cli.sh reads v2/version.txt once and installs that release from its versioned archive and .sig, macOS install.sh --version; the ETag state and HEAD probe removed; tests reshaped), hunted in three new units; (2) run-22's 64 units carried and re-checked at this head with every cited line re-mapped through the 8f393491..0059848e diff; run-22's four U310 units are not_applicable here (U310 is absent), its two U283d units stay not_applicable.",
+  "carry_note": "The brief's CHANGE names run-22's records as the set to carry and its TRUST line names run-20's; run-22 carries all of run-20 (re-checked at U310b), so carrying run-22 carries run-20 too.",
+  "scope_paths": [
+    "install/common/aws_cli.sh",
+    "tests/unit/test_aws_cli_acquisition.py",
+    "tests/unit/test_network_bounds.py",
+    "home/.chezmoiremove",
+    "home/.chezmoiscripts/ubuntu/run_after_04-install-aws-cli.sh.tmpl",
+    "home/.chezmoiscripts/macos/run_after_04-install-aws-cli.sh.tmpl",
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "scripts/update-agent-assets.sh",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the lever's blob and sha256 at this head were computed from git.",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md",
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-22",
+      "source_ref": "8f393491e93da77e2b7a89c010ed219d7f157923",
+      "findings": 0,
+      "ledger_units": 64,
+      "use": "The set to carry: 58 units re-mapped to this head (the lever units back to the 2b2415f6 lever run-19 read, the U227b and U306 units, the carried candidate, 42 out of scope); its four U310 units, the U310 candidate dsh-seat/profile-config-write/tmp-path-link-followed-outside-srt among them, are not_applicable (U310 is absent; the candidate stays open on the U310 branch); its two U283d units stay not_applicable."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T00:35:17Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: the carried candidate dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt has no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused), so it stays an unvalidated ledger candidate and is not a finding.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh",
+      "record": "agents/parent-hunter/scratch/candidate-pnpm.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-22",
+      "on_default_branch": true
+    }
+  ],
+  "not_carried_candidates": [
+    {
+      "fingerprint": "dsh-seat/profile-config-write/tmp-path-link-followed-outside-srt",
+      "reason": "U310's source is absent at this head; the candidate remains open on feat/dsh-role-profile-route (run-22)."
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (1), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work beyond the three U311 units (the version gate, the signature and staged binary, main's skip and fallbacks); every carried unit re-mapped; the U310 units not_applicable"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 1,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T00:40:05Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

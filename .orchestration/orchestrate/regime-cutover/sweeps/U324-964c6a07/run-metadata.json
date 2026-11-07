@@ -1,0 +1,133 @@
+{
+  "run_id": "dotfiles-sweep-3-run-20",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "964c6a07251605957a8802360e40ab67f9c1e259",
+    "branch": "fix/macos-installers-ci-runner-helper",
+    "base": "2b2415f6cae8b5d1db8d65a560f7cfb9e48e5ab6",
+    "round_1_head": "182ac48059b7045c85bb88e3afe9f6bd618c05af",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U301 change at round 2 (2b2415f6..964c6a07: install/macos/common/{brew,dependencies,docker,misc}.sh, install/ubuntu/client/misc.sh, tests/unit/test_ci_runner.py; round 2 alone, 182ac480..964c6a07, is one assertion and one docstring line in the test), the chezmoi scripts that include the installers and scripts/lib/ci-runner.sh as context, plus five carried leads re-checked at this head; every other path is carried out_of_scope",
+  "scope_note": "The brief's CHANGE and TRUST name run-17 as the set to carry; its CONTEXT names run-18 (this unit's round 1) and run-19 (this seat's latest run). Run-18's ledger is the base, and it already carries run-17's records and leads; run-19's units are added (its U312 units out of scope here, its new lead re-checked).",
+  "scope_paths": [
+    "install/macos/common/brew.sh",
+    "install/macos/common/dependencies.sh",
+    "install/macos/common/docker.sh",
+    "install/macos/common/misc.sh",
+    "install/ubuntu/client/misc.sh",
+    "tests/unit/test_ci_runner.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule). The parent ran git and grep and its own remap and ledger scripts; every ledger check is a source check. Run-18's parent probe of bash's BASH_SOURCE semantics is carried as context.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-18",
+      "source_ref": "182ac48059b7045c85bb88e3afe9f6bd618c05af",
+      "findings": 0,
+      "unvalidated_candidates": 4,
+      "ledger_units": 60,
+      "use": "Base ledger (this unit's round 1; it carries run-17's). The installers are byte-identical at this head; the ten covered units are re-checked with tests/unit/test_ci_runner.py lines after :369 re-mapped by one."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-19",
+      "source_ref": "a17c972e53de066178c82444416c7066ee424bd7",
+      "findings": 0,
+      "unvalidated_candidates": 5,
+      "ledger_units": 68,
+      "use": "Carried. Its seven U312 units are out_of_scope (U312 is on another branch); its new lead hcom-seat/shim:seat-token-inherited-by-seat-tool-commands is re-checked against this head's base shim (hcom-seat:2207-2213, :2229, :2444)."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-17",
+      "source_ref": "10a8ea3d53f99f56ba0f3c544e5477c624c64f1a",
+      "findings": 0,
+      "unvalidated_candidates": 4,
+      "ledger_units": 52,
+      "use": "Carried through run-18 (the brief's named set); its four leads keep their fingerprints and their original hcom-seat lines at this head."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T00:30:51Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and five carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. The U301 change produced no candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "where": "scripts/orchestrator/hcom-seat:2213, :2229 (the base shim at this head)",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "a direct ~/.dsh/bin/dsh run outside the U272 role (scripts/update-agent-assets.sh:2174)",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id (home/dot_dsh/profiles/thak/cordis.patch.yml:9-12)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "bash-sandbox disabled (home/dot_dsh/profiles/thak/cordis.patch.yml:13-14)"
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no missing unit: round 2 changes one test assertion and opens no surface; run-18's units and its generate-docs.sh variant are carried"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 5,
+  "findings_count": 0,
+  "ledger_units": 68,
+  "ledger_counts": {
+    "covered": 10,
+    "candidate": 5,
+    "out_of_scope": 53
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-07T00:33:47Z"
+}

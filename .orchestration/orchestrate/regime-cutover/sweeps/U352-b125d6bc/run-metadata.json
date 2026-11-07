@@ -1,0 +1,167 @@
+{
+  "run_id": "dotfiles-sweep-3-run-31",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "b125d6bc087f0213b13a874138d86c4dd1aa94ac",
+    "branch": "feat/dsh-role-profile-route",
+    "base": "49f3c33c3fe0322474a671a598765aa2f1397259",
+    "round_5_head": "384cd256025b8d1645efce4e7d4ed91f88c0ecf9",
+    "round_6_head": "b2ba1204df3ef74a7c860f46e74e861e06bb8198",
+    "merge_commit": "34c1450ba57e847608969b29890c7f11d8deba5b",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U310 change against its merge base origin/main 49f3c33c (14 files: hcom-seat's dsh-role profile config row and its copy, profile-config-place.py and its copy, the generator, the dsh.yml template, the manifest pins, four test modules, two docs), with round 6 (384cd256..b2ba1204) and the merge resolution (34c1450b) hunted fresh; the run-30 records re-checked at this head; every other path is carried out_of_scope",
+  "scope_note": "The brief's title names U310h correctly; its GOAL repeats U322's description and its CONTEXT names run-30 as the U310d head 39f75cc8 (run-30 was U343b cae04852). git diff --name-only 668ba887 HEAD lists 26 paths, not 3. This seat last swept U310 at round 5 (run-26); those three units are carried with their lines moved from 384cd256. U343 is not on this branch, so run-30's six U343 units are out of scope here.",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "scripts/orchestrator/profile-config-place.py",
+    "home/dot_local/bin/common/executable_profile-config-place.py",
+    "scripts/generate-agent-configs.py",
+    "home/dot_agents/omp/profiles/dsh.yml.tmpl",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "tests/unit/test_profile_config_place.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, cmp, shasum, grep and its own node scripts (ledger builder, line map) over the tree; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-30",
+      "source_ref": "cae0485292c8033fd92d8666291ba7d0cee32d04",
+      "findings": 0,
+      "unvalidated_candidates": 13,
+      "ledger_units": 108,
+      "use": "Base ledger (the brief's set). The updater and seat-login-preflight equal main; main's hcom-seat lines moved through git diff -U0 49f3c33c HEAD; U343's six units out of scope (another branch); the relink, age-identity and local-binding checks rewritten for this branch."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-26",
+      "source_ref": "384cd256025b8d1645efce4e7d4ed91f88c0ecf9",
+      "findings": 0,
+      "unvalidated_candidates": 9,
+      "ledger_units": 88,
+      "use": "This seat's last sweep of U310 (round 5): its three U310 units (the helper, the lever's overlay check, the generator) carried with their lines moved through git diff -U0 384cd256 HEAD; the one reference inside a round-6 hunk re-read by hand."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T07:54:15Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and eleven carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. U310's round 6 and the merge produced no new candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "where": "scripts/orchestrator/hcom-seat:746-750, :1989-2013, :1377, :1395",
+      "proposed_verdict": "needs_validation",
+      "note": "on this branch U310's placement follows a relinked profile root too"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/orchestrator/hcom-seat:2285-2286; scripts/update-agent-assets.sh:1950-1953",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:422, :2694",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2438-2443",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1908-1929",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:1731, :2006-2008",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "scripts/update-agent-assets.sh:2466",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the token is unset at hcom-seat:180 and :2757"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the thak profile runs no shell tool"
+    }
+  ],
+  "leads_on_other_branches": [
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-30)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-30)",
+    "U317's four leads (run-29)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "asked whether a swap after the helper check runs other code (no: the copy is hashed), whether the router role writes a profile the judge did not judge (no: the key is omp_profile), and whether a relinked profile root reaches the placement (yes: the carried relink lead)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 11,
+  "findings_count": 0,
+  "ledger_units": 113,
+  "ledger_counts": {
+    "covered": 38,
+    "candidate": 11,
+    "out_of_scope": 64
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-07T07:59:43Z"
+}

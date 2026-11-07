@@ -1,0 +1,149 @@
+{
+  "run_id": "dotfiles-run-39",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "a4b09f3e1aae64de8cf20b0cea2cb67db1687ff0",
+    "branch": "fix/omp-gateway-env-carries-srt-proxy-names",
+    "parent_of_change": "dba018035b869a03eea073b4b98b8d921d3bc479",
+    "base_note": "U364: one commit on origin/main dba01803, which carries U359 (#723), U355 (#721) and U354 (#722) on 6ad1be23. Checked: git diff dba01803..HEAD lists three files (home/dot_dsh/plugins/omp-gateway/config.mjs and two plugin tests); git diff 1d65d150..HEAD (run-36's head) lists five (those three, .github/workflows/test.yaml and tests/unit/test_apt_mirror.py). The brief's title calls the head 'U364's merge head' and its GOAL and hunt list are U322's text again; its CONTEXT calls run-38 'the U364d head 39f75cc8' (run-38 swept U353 at 8791100f, a branch not in this head).",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U364 (and U355, merged since run-36) against main: the omp-gateway plugin's child environment boundary, DEFAULT_ENV_NAMES with CLAUDE_CONFIG_DIR and SRT_INJECTED_ENV_NAMES, restated in its unit; U359's CI bound read as no security surface; (2) the carry: run-36's units re-mapped through 1d65d150..a4b09f3e (no carried cite moved). run-38's U353 units and its agent-token candidate are on the U353 branch, not in this head, and are not carried.",
+  "carry_note": "The brief names run-38 (U353's branch). This head is main dba01803 plus U364; main is run-36's head 1d65d150 (U354 on 6ad1be23) plus U359 and U355, so run-36's units are this head's carry set. run-38's U353 content is not in this head.",
+  "scope_paths": [
+    "home/dot_dsh/plugins/omp-gateway/config.mjs",
+    "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs",
+    "home/dot_dsh/plugins/omp-gateway/index.mjs",
+    "home/dot_dsh/plugins/omp-gateway/test/gateway-client.test.mjs",
+    "home/dot_dsh/plugins/omp-gateway/test/use-cases.test.mjs",
+    ".github/workflows/test.yaml",
+    "tests/unit/test_apt_mirror.py",
+    "scripts/orchestrator/hcom-seat",
+    "scripts/update-agent-assets.sh"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-36",
+      "source_ref": "1d65d150854228e96c5ed4139ec4be02163782d0",
+      "findings": 0,
+      "ledger_units": 81,
+      "use": "The carry: every unit and its five candidate records at this head's tree."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-38",
+      "source_ref": "8791100fa9a3ae5606df893490386385ce183339",
+      "findings": 0,
+      "ledger_units": 84,
+      "use": "The brief's carry set; its U353 units and candidate are on a branch not in this head and are not carried."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T11:16:47Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: five carried candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused): router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound, dsh-seat/profile-root-relink/write-grant-follows-session-made-link, updater/build_under_srt/settings-file-in-session-write-root, updater/build_under_srt/session-lockfile-names-the-build-hosts and seats/shared-claude-config-dir/cross-seat-session-files, all proposed needs_validation, all on origin/main, none a finding. U364 yields no candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-36",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-36",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/settings-file-in-session-write-root",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-settings-file",
+      "record": "agents/parent-hunter/scratch/candidate-settings-in-write-root.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-36",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/session-lockfile-names-the-build-hosts",
+      "ledger_unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "record": "agents/parent-hunter/scratch/candidate-lockfile-hosts.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-36",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-36",
+      "on_default_branch": true
+    }
+  ],
+  "off_head_candidates": [
+    {
+      "fingerprint": "router-seat/credential-root/agent-token-readable-by-the-router-model",
+      "state": "on the U353 branch (run-38), not in this head",
+      "ledger_unit": "none here"
+    },
+    {
+      "fingerprint": "acp-broker/launch-log/append-follows-router-written-entry",
+      "state": "on the U343 branch (run-35), not in this head",
+      "ledger_unit": "none here"
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (5), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted the omp-gateway environment unit restated for U355 and U364; U359's CI bound has no security surface; no new unit"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 5,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T11:19:12Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

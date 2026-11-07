@@ -1,0 +1,136 @@
+{
+  "run_id": "dotfiles-run-30",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "d625a7f695ba6817831e3473f69b7c67b498ecaa",
+    "branch": "feat/hcom-seat-router-role",
+    "parent_of_change": "247d890d753fea2f1ae2bb4b96e3a6f537d88036",
+    "base_note": "U321d: four U321 commits (fec87e14, 7dfaa839, b80a4794, d625a7f6) on origin/main 247d890d, which is main before U318b (#716, origin/main 668ba887). Checked: git diff 247d890d..HEAD lists eight files (the brief says 6), and git log 247d890d..origin/main lists U318b alone. The brief's GOAL paragraph is U318's text (the shared Claude Code directory, '14 files'); its title, branch, CONTEXT and REPORT name U321d, which this run hunted.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U321 to U321d (247d890d..d625a7f6, 8 files: hcom-seat's router row with its fixed profile, held physical DSH_HOME, held state root and allowLocalBinding cell, its copy and pin, docs/deepseek-harness.md, the orchestrator README, test_hcom_seat.py and test_hcom_seat_dsh.py) in two new units; (2) run-29's records carried, re-mapped through 95887598..d625a7f6, the preflight unit restated for the pre-U318b preflight this head holds; (3) the brief's U318 hunt list (the shared directory's grant, the auth status parse, the printed command, the 0700 creation and link refusal, the retired token file) answered at this head.",
+  "carry_note": "The brief names run-29 as the set to carry, and sweep-3's run-24 (this unit's round-3 head b80a4794) as the unit's prior findings. sweep-3's state is read-denied to this seat by srt (ls: Operation not permitted), so run-24's records were not read; its RESULT on the bus (U335) reported 0 findings validated. Run-29's units were re-mapped by a zero-context diff map, with 14 lever lines inside U321's hunks and two pin lines placed by reading the head.",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "docs/deepseek-harness.md",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_hcom_seat.py",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/seat-login-preflight",
+    "home/dot_local/bin/common/executable_regime-url-opener",
+    "install/common/aws_cli.sh",
+    "scripts/lib/asset-manifest.sh",
+    "scripts/update-agent-assets.sh",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check. srt 0.0.81's installed profile generator and path normaliser, and dsh v0.2.1-rc.5's launcher and webserver under DSH_HOME, were read as source and not run. The lever's sha256 was computed with shasum on the blob.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-29",
+      "source_ref": "95887598e57b2d51a876fde8da72517791e6ce15",
+      "findings": 0,
+      "ledger_units": 73,
+      "use": "The set to carry: every unit re-mapped to this head; the preflight unit restated for the pre-U318b file; the U330 and U310 units still not_applicable; its three candidate records re-mapped into this run's scratch."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-24",
+      "source_ref": "b80a4794",
+      "findings": 0,
+      "ledger_units": null,
+      "use": "Named by the brief as this unit's prior findings; read-denied to this seat, so only its bus RESULT (0 findings validated) is known."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T05:09:15Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: four candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused): the new router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound, and the carried dsh-seat/profile-root-relink/write-grant-follows-session-made-link, seats/shared-claude-config-dir/cross-seat-session-files and dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt, all proposed needs_validation, none a finding.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": null,
+      "on_default_branch": false
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-29",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-29",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh",
+      "record": "agents/parent-hunter/scratch/candidate-pnpm.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-29",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (4), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted one split: the router row's file handling (covered) apart from its local-binding grant (candidate); the shared directory's grant stays the carried U318 candidate"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 4,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T05:20:48Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

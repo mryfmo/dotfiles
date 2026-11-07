@@ -1,0 +1,140 @@
+{
+  "run_id": "dotfiles-sweep-3-run-23",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "7dfaa839428a264ade463e9ecba0e70a6da31556",
+    "branch": "feat/hcom-seat-router-role",
+    "base": "247d890d753fea2f1ae2bb4b96e3a6f537d88036",
+    "round_1_head": "fec87e14df7d15258380be8f2f3da4ee4be01b95",
+    "diff_base": "2b2415f6cae8b5d1db8d65a560f7cfb9e48e5ab6",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: git diff 2b2415f6..7dfaa839 (32 paths); round 2 alone, fec87e14..7dfaa839, is 6 files: scripts/orchestrator/hcom-seat (state_root_hold, the passthrough selector refusal, the state_root cell) and its deployed copy, the two pins, one README sentence and tests/unit/test_hcom_seat_dsh.py; the installed dsh launcher source (apps/cli/src/args.ts, profile-boot.ts) read as context; plus eight carried leads; every other path is carried out_of_scope",
+  "scope_note": "The brief's GOAL repeats U318's text and names the head U312's; the head is U321b's (commit subject regime-cutover U321b). The diff has 32 paths, not 16. Run-22 is carried, as CHANGE says (its CONTEXT names run-20, superseded).",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_hcom_seat_dsh.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, cmp, shasum and grep over the tree, and read the installed dsh launcher source (~/.dsh/dsh/current/apps/cli/src) without running it; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-22",
+      "source_ref": "fec87e14df7d15258380be8f2f3da4ee4be01b95",
+      "findings": 0,
+      "unvalidated_candidates": 8,
+      "ledger_units": 77,
+      "use": "Base ledger (the brief's set). Every hcom-seat line re-mapped through U321b (e.g. :1870 to :1914, :2223 to :2277); the state-root lead narrowed (static case closed by state_root_hold); the router role row updated; the other leads keep their proposals."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T02:13:20Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and nine leads (one new, eight carried) could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "hcom-seat/router:passthrough-launcher-flags-recompose-the-profile",
+      "where": "scripts/orchestrator/hcom-seat:322-328, :332; installed dsh apps/cli/src/args.ts:169-170",
+      "proposed_verdict": "needs_validation",
+      "note": "new; --from-default-profile and --patch reach the router launch unrefused and recompose the profile under the router grants"
+    },
+    {
+      "fingerprint": "hcom-seat/router:state-root-resolved-through-a-seat-writable-link",
+      "where": "scripts/orchestrator/hcom-seat:1563, :2246",
+      "proposed_verdict": "needs_validation",
+      "note": "static case closed by state_root_hold (:1612-1636) and the re-check (:2239-2248); narrowed to the window before srt starts"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:298, :2277",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:1573, :1844-1847, :1903, :1908, :1914",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "no token variable exists (hcom-seat:163, :2339-2340, :2393)"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "a direct ~/.dsh/bin/dsh run outside the U272 role (scripts/update-agent-assets.sh:2174)",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id (home/dot_dsh/profiles/thak/cordis.patch.yml:9-12)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "bash-sandbox disabled (home/dot_dsh/profiles/thak/cordis.patch.yml:13-14)"
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 1,
+      "reassign_ids": 0,
+      "result": "accepted one unit: the dsh launcher flags beyond --profile that the passthrough still reaches; hunted in the same parent pass, now the candidate hcom-seat/router:passthrough-launcher-flags-recompose-the-profile"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 9,
+  "findings_count": 0,
+  "ledger_units": 78,
+  "ledger_counts": {
+    "covered": 23,
+    "candidate": 9,
+    "out_of_scope": 46
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-07T02:17:47Z"
+}

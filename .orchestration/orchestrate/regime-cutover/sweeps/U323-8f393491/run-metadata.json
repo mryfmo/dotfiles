@@ -1,0 +1,118 @@
+{
+  "run_id": "dotfiles-run-22",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "8f393491e93da77e2b7a89c010ed219d7f157923",
+    "branch": "feat/dsh-role-profile-route",
+    "parent_of_change": "2b2415f6c",
+    "base_note": "U310b (round 2) on U310 e92b4970 (run-20's head) on origin/main 2b2415f6.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U310 and its round 2, U310b (2b2415f6..8f393491; round 2 alone e92b4970..8f393491: the mktemp temporary with link and inode checks, present_under_home, the two-file cmp, the check before any directory is made), hunted in run-20's four U310 units, each re-checked at round 2; (2) run-20's other 58 units carried and re-checked at this head with every cited line re-mapped through the e92b4970..8f393491 diff; run-21's two U283d units not_applicable (a sibling branch).",
+  "carry_note": "The brief's step 3 names the run-19 records; its CONTEXT names run-20, which swept this unit's round-1 head and itself carries all of run-19, as the set to carry. run-20 is carried, so every run-19 record is carried through it.",
+  "scope_paths": [
+    "docs/deepseek-harness.md",
+    "home/dot_agents/agent-config.yaml",
+    "home/dot_agents/omp/profiles/dsh.yml.tmpl",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "scripts/generate-agent-configs.py",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/hcom-seat",
+    "tests/unit/test_generate_agent_configs.py",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "tests/unit/test_omp_review_security_roles_removed.py",
+    "scripts/update-agent-assets.sh",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Source checks throughout; one parent-side local harness (the auditor's own scripts in agents/parent-hunter/scratch: race-harness.sh re-typing hcom-seat:977-992 and :1096-1097 against a scratch fixture, race-driver.sh running a polling stand-in for a concurrent session; 700 bounded runs), inside this seat's srt 0.0.81 containment with no network.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-20",
+      "source_ref": "e92b49705837d28dc315dd23a5a7aa00f8a607e2",
+      "findings": 0,
+      "ledger_units": 62,
+      "use": "The set to carry: all 62 units; the four U310 units re-checked at round 2 (its candidate revalidated under the same fingerprint), the other 58 re-mapped."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-21",
+      "source_ref": "858f053bc781019e5abc870ca3fa9cc495acd77f",
+      "findings": 0,
+      "ledger_units": 64,
+      "use": "This seat's previous run, a sibling branch (U283d): its two U283d units are not_applicable here; its other units are run-20's, carried from run-20 directly."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T00:13:07Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: two candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused). dsh-seat/profile-config-write/tmp-path-link-followed-outside-srt (revalidated at U310b: the planted route is closed, a race route remains; proposed confirmed, medium) and the carried dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt stay unvalidated ledger candidates and are not findings.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "dsh-seat/profile-config-write/tmp-path-link-followed-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile_config_write-temporary-file",
+      "record": "agents/parent-hunter/scratch/candidate-tmp-link.json",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "medium",
+      "on_this_branch_only": true
+    },
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh",
+      "record": "agents/parent-hunter/scratch/candidate-pnpm.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-20",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (2), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work: round 2's new functions (present_under_home, profile_config_tmp, tmp_refuse) belong to the existing write and check units; every carried unit re-mapped"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 2,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T00:21:48Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "run_id": "dotfiles-sweep-3-run-18",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "182ac48059b7045c85bb88e3afe9f6bd618c05af",
+    "branch": "fix/macos-installers-ci-runner-helper",
+    "base": "2b2415f6c",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U301 change (2b2415f6..182ac480: install/macos/common/{brew,dependencies,docker,misc}.sh, install/ubuntu/client/misc.sh, tests/unit/test_ci_runner.py), the chezmoi scripts that include those installers and scripts/lib/ci-runner.sh as the guard's context, plus the four leads carried from run-17 re-checked at this head; every other path is carried out_of_scope",
+  "scope_paths": [
+    "install/macos/common/brew.sh",
+    "install/macos/common/dependencies.sh",
+    "install/macos/common/docker.sh",
+    "install/macos/common/misc.sh",
+    "install/ubuntu/client/misc.sh",
+    "tests/unit/test_ci_runner.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule: no build, test or execution of the target's code). Every ledger check is a source check. One parent-written probe of bash's own BASH_SOURCE[0] semantics (no target code; env -i, ulimit -t 10, /bin/bash 3.2.57, the host's only bash) ran in agents/parent-hunter/scratch/ as context, not as decisive evidence.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-17",
+      "source_ref": "10a8ea3d53f99f56ba0f3c544e5477c624c64f1a",
+      "findings": 0,
+      "unvalidated_candidates": 4,
+      "ledger_units": 52,
+      "use": "Carried. Records sync 46 (10a8ea3d) landed on main as fcabea87 with an identical store tree, and no later commit touches .orchestration, so run-17's five covered units are out_of_scope same-source. The four leads' sources are byte-identical since 25427b91 (git diff --stat 25427b91 HEAD over their paths is empty); they keep their fingerprints and lines and stay unvalidated candidates. The three install/ubuntu/client units (run-15) re-open because U301 changes their source."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T23:33:51Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat in this run (\"Tool \\\"task\\\" is blocked by user policy\"; \"Tool \\\"eval\\\" is blocked by user policy\"), so reconnaissance, the hunter wave and both critics ran in the parent, and the four carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. The U301 change produced no candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "proposed_verdict": "needs_validation",
+      "where": "a direct ~/.dsh/bin/dsh run outside the U272 role (scripts/update-agent-assets.sh:2174; home/dot_dsh/profiles/thak/cordis.patch.yml:13-14)",
+      "note": "narrowed: closed under the hcom-seat dsh role"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "U227f on main disables both base-bundle web rows by id (home/dot_dsh/profiles/thak/cordis.patch.yml:9-12)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "bash-sandbox is disabled, so no shell tool activates (home/dot_dsh/profiles/thak/cordis.patch.yml:13-14)"
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; the first reconnaissance launch was refused by policy, and every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 1,
+      "reassign_ids": 0,
+      "result": "accepted one unit outside the diff: scripts/generate-docs.sh:12-13 still sources scripts/lib/ci-runner.sh through $(dirname \"${BASH_SOURCE[0]}\"), the form U301 removed; recorded out_of_scope in this scoped run"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 4,
+  "findings_count": 0,
+  "ledger_units": 60,
+  "ledger_counts": {
+    "covered": 10,
+    "candidate": 4,
+    "out_of_scope": 46
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-06T23:43:31Z"
+}

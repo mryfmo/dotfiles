@@ -1,0 +1,16 @@
+security-audit sweep d625a7f695ba6817831e3473f69b7c67b498ecaa: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U321 to U321d (the router role: fixed profile, held physical DSH_HOME, held state root <DSH_HOME>/router-state, allowLocalBinding): the file handling holds (one resolution of the home, the state root refused as a link, a non-directory, another user's or outside the home, made 0700 by mkdir without -p after the deny judgement and never in a dry run, a later link swap kept at its spelling by srt's out-of-tree rule on macOS); pin d344e6e1... equals the lever's sha256
+new unvalidated candidate (not a finding; the Phase 3 verifier launch was refused by policy):
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:303	srt 0.0.81 renders the router's allowLocalBinding on macOS as bind and inbound on *:* and outbound to every loopback port; the session can reach the kit's URL opener on 127.0.0.1:1456 and any listener it binds is open to every interface; the lever and docs name only bind and inbound and a header check as the bound
+unvalidated candidates carried from run-29, all on origin/main (not findings):
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1641	(the router row shares the dsh omp profile)
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:1655
+  dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt	scripts/update-agent-assets.sh:2151
+hardening (new): dsh's --patch and --from-default-profile still run another composition under the router's grants (caller-only); the state-root swap on Linux's bwrap backend is unread; this branch lacks U318b, so its preflight prints the login command unquoted and --check judges the leaf alone (operator input only; a merge of main closes both)
+brief's U318 list at this head: the status parse is strict (one document, bounded authMethod); the printed command is unquoted until U318b; the 0700 chain and the link refusal hold in the lever; no path reads the retired token file
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: U321 (origin/main 247d890d..d625a7f6, 8 files) in two new units; run-29's records carried and re-mapped through 95887598..d625a7f6 (the preflight unit restated for the pre-U318b file); profile standard, source-only, srt 0.0.81 and dsh v0.2.1-rc.5 read as installed; ledger 75 units: 24 covered, 4 candidate, 5 not_applicable, 42 out_of_scope
+brief notes: the GOAL paragraph is U318's text; the diff is 8 paths, not 6; sweep-3's run-24 (the unit's prior findings) is read-denied to this seat, and its bus RESULT reported 0 findings
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: linemap.cjs, build-ledger.cjs, candidate-router-local-binding.json, candidate-profile-root-relink.json, candidate-shared-claude-dir.json, candidate-pnpm.json in agents/parent-hunter/scratch/)
+wall time: 693s (2026-11-07T05:09:15Z to 2026-11-07T05:20:48Z)

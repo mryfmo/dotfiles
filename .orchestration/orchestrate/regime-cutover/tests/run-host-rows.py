@@ -25,8 +25,19 @@ has the header `id run cwd verdict why`:
 
 `--replay FILE` re-judges from the raw results of an earlier run (written to `--raw-out`, default
 /tmp/u288/raw.json) without running any command, so a hand judgement can be added after the outputs are read.
-Prints one summary line per table: OK, NG, pending counts over the selected rows. Exit 0 when every table was
-written; exit 2 on a malformed table, a missing worktree or an unreadable notes file.
+Without `TABLE.tsv` arguments the runner takes every `*.tsv` under `--tables` whose header is the ten-column form
+`id use_case source kind host command expected observed verdict ts`; a table with another header is skipped with one
+printed line naming the file and its header. A table named on the command line must lie under `--tables` and carry
+that header, or the run is refused. Prints one summary line per table: OK, NG, pending counts over the selected
+rows. Exit 0 when every table was written; exit 2 on a malformed or refused table, a missing worktree or an
+unreadable notes file.
+
+Threat: this runner executes the `command` cell of a selected row (or the notes file's `run` cell) through
+`bash -lc` on the operator's host, with the inherited environment and no sandbox. The rows are the coordinator's
+records under the store (`.orchestration/orchestrate/regime-cutover/tests`) on the operator's host: the coordinator
+writes and reviews them before a run, and the runner never runs on a pull-request head (no CI step and no published
+consumer invokes it). A table outside the store, or one whose header is not the ten-column form, is refused, so a
+file dropped beside the tables or named on the command line from elsewhere cannot feed it commands.
 """
 
 from __future__ import annotations
@@ -70,6 +81,12 @@ def read_table(path: Path) -> list[list[str]]:
         if len(row) != len(HEADER):
             raise ValueError(f"{path}:{number}: {len(row)} cells, not {len(HEADER)}")
     return rows
+
+
+def read_header(path: Path) -> list[str]:
+    """The first line's cells, for the discovery filter; the table itself is read by read_table."""
+    with path.open(encoding="utf-8", newline="") as handle:
+        return handle.readline().rstrip("\n").split("\t")
 
 
 def write_table(path: Path, rows: list[list[str]]) -> None:
@@ -184,7 +201,25 @@ def main(argv: list[str]) -> int:
     raw_all: dict[str, dict[str, object]] = {}
     if args.replay:
         raw_all = json.loads(args.replay.read_text(encoding="utf-8"))
-    table_paths = args.tables_files or sorted(args.tables.glob("*.tsv"))
+    store = args.tables.resolve()
+    table_paths: list[Path] = []
+    if args.tables_files:
+        for path in args.tables_files:
+            if store not in path.resolve().parents:
+                print(f"{path}: outside the tables directory {args.tables}; refused", file=sys.stderr)
+                return 2
+            table_paths.append(path)
+    else:
+        for path in sorted(args.tables.glob("*.tsv")):
+            try:
+                header = read_header(path)
+            except OSError as exc:
+                print(exc, file=sys.stderr)
+                return 2
+            if header != HEADER:
+                print(f"{path.name}: skipped, its header is {' '.join(header)}, not the ten-column form")
+                continue
+            table_paths.append(path)
     tables: dict[Path, list[list[str]]] = {}
     for path in table_paths:
         try:

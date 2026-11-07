@@ -105,10 +105,13 @@ outside srt, so no variable of the caller reaches the build, and srt's own
 injected variables (`SANDBOX_RUNTIME`, the `HTTP_PROXY` pair its sandbox
 routes every connection through, its `TMPDIR`) reach the command untouched
 (regime-cutover U322b). The settings file is created 0600 beside the tree and
-removed after the run; its `allowWrite` is the build directory and
-`~/.dsh/.pnpm-store` alone, its `denyWrite` the paths srt 0.0.81 would
-otherwise grant on its own (`/tmp/claude`, `/private/tmp/claude`,
-`~/.npm/_logs`), while the tools' caches and logs are pointed under the store
+removed after the run; its `allowWrite` is the build directory,
+`~/.dsh/.pnpm-store` and pnpm's store operation lock directory
+`<physical /tmp>/pnpm-store-operation-locks-<uid>` (0700, this user's, made
+before the run, a planted entry refused by name; regime-cutover U363), its
+`denyWrite` the paths srt 0.0.81 would otherwise grant on its own
+(`/tmp/claude`, `/private/tmp/claude`, `~/.npm/_logs`), while the tools'
+caches and logs are pointed under the store
 (`CLAUDE_CODE_TMPDIR`, the XDG directories, pnpm's `store-dir`, `cache-dir`
 and `state-dir`, npm's `cache` and `logs-dir`); its `denyRead` is the
 credential and state list the dsh seat role denies (`~/.ssh`, `~/.gnupg`,

@@ -890,7 +890,7 @@ claude:
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       acp-broker: 12c064ab2fe5b1f29c652a08c426cbeff5180bfb1978e5daca5e166793588105
       acp-relay.py: f4c3a2779e332936cbfb44f151f9b4f8cd759c526e030c5fbda5d1be03c3e055
-      acp-seat: c91f94a1d6d0833699fd3454aced491e8a65ec9c39d7266eea5547050a744f6d
+      acp-seat: 9fe73e7b148d24b7c27f575a5f62ee37c1b2dd41084d723009642b9a90fdd47f
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

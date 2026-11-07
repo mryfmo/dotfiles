@@ -408,7 +408,7 @@
       "target": ".local/bin/common/acp-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "c91f94a1d6d0833699fd3454aced491e8a65ec9c39d7266eea5547050a744f6d"
+      "sha256": "9fe73e7b148d24b7c27f575a5f62ee37c1b2dd41084d723009642b9a90fdd47f"
     },
     {
       "source": "home/dot_local/bin/common/executable_brief-check.py",

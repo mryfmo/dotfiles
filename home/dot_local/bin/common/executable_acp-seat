@@ -133,8 +133,8 @@ def parse_options(argv):
 def clean_field(value):
     """An absolute path the header can carry: no whitespace, no control character, so it stays one field."""
     return (
-        value.startswith("/") and not re.search(r"[\s\x00-\x1f\x7f]", value)
-    )  # lint-comparisons: allow an absolute-path and content test on one header field, no path compare; the broker judges the path physically
+        value.startswith("/") and not re.search(r"[\s\x00-\x1f\x7f]", value)  # lint-comparisons: allow an absolute-path and content test on one header field, no path compare; the broker judges the path physically
+    )
 
 
 def pump_stdin(sock):

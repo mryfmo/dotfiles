@@ -385,7 +385,7 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
     ),
     (
         "scripts/update-agent-assets.sh",
-        'manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "DSH_CLIENT_COMMIT_HASH=${DSH_COMMIT} pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "ln -s ${plugin_target} <link tmp>" "os.replace <link tmp> ${profile_modules_real}/dsh-omp-gateway (resolves to ${plugin_real})" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"',
+        'manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "srt --settings <tree>.srt.json -- pnpm install --frozen-lockfile (writes: <tree>, ${DSH_HOME}/.pnpm-store)" "srt --settings <tree>.srt.json -- DSH_CLIENT_COMMIT_HASH=${DSH_COMMIT} pnpm run build" "srt --settings <tree>.profile.srt.json -- pnpm install in ${DSH_HOME}/profiles/thak (writes: that directory, ${DSH_HOME}/.pnpm-store)" "ln -s ${plugin_target} <link tmp>" "os.replace <link tmp> ${profile_modules_real}/dsh-omp-gateway (resolves to ${plugin_real})" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"',
     ): Exempt(
         "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
     ),

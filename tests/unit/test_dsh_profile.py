@@ -452,7 +452,7 @@ class DshRouterProfileTest(unittest.TestCase):
         # docs/deepseek-harness.md names the one launch (hcom-seat under srt) and the build's containment, never the
         # archive's tmux launcher or an uncontained pnpm.
         docs = (ROOT / "docs/deepseek-harness.md").read_text()
-        self.assertIn("`hcom-seat dsh --profile router -- --no-open` starts the Router under srt", docs)
+        self.assertIn("`hcom-seat router -- --no-open` starts the Router under srt", docs)
         self.assertIn("`srt --settings` invocation whose writes are the new tree and", docs)
         self.assertIn("`$DSH_HOME/.pnpm-store`", docs)
         self.assertIn("`stateDir` at `$DSH_HOME/router-state`", docs)

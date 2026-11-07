@@ -2570,25 +2570,11 @@ readonly DSH_SUPERAGENT_ARCHIVE_URL="https://codeload.github.com/${DSH_SUPERAGEN
 readonly DSH_SUPERAGENT_REGISTRY_HOST="registry.npmjs.org"
 
 #
-# @description Refuse a path srt's settings cannot carry as itself (regime-cutover U317b, hcom-seat's clean_path): every
-#   component of [A-Za-z0-9._@+-], none `.` or `..`, no trailing slash. srt 0.0.81 turns a settings path into a
-#   Seatbelt regex or a glob, so a quote, a space or a `*` would grant more than the path; the JSON below is written by
-#   the shell from such paths and no JSON tool runs.
-# @arg $1 string The path.
-# @exitcode 1 The path is not clean; the line names it.
-#
-function dsh_superagent_clean_path() {
-    if [[ ! $1 =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || [[ /$1/ == */./* ]] || [[ /$1/ == */../* ]]; then # lint-comparisons: allow a component test on one path, no path compare
-        printf 'update_dsh_superagent: %s is not a clean absolute path (components of [A-Za-z0-9._@+-], none . or .., no trailing slash), which the srt settings need; nothing installed, nothing recorded.\n' "$1" >&2
-        return 1
-    fi
-}
-
-#
-# @description Resolve one tool the dsh-superagent step runs by `mise which` (the kit's pins in home/dot_mise/config.toml:
-#   sandbox-runtime, pnpm, node), with the status read: a failed answer, a relative one or one that is not an executable
-#   file refuses the step (standing order 21). MISE_EXEC_AUTO_INSTALL=false keeps mise from installing anything the step
-#   asks after (verdicts/U276b).
+# @description Resolve one build tool the dsh-superagent step runs by `mise which` (the kit's pins in
+#   home/dot_mise/config.toml: pnpm, node), with the status read: a failed answer, a relative one or one that is not an
+#   executable file refuses the step (standing order 21). MISE_EXEC_AUTO_INSTALL=false keeps mise from installing
+#   anything the step asks after (verdicts/U276b). srt is not read here but from PATH (`type -P`, the producer
+#   `build_under_srt` reads for its runs), so the step checks the one binary the runs use (regime-cutover U317d).
 # @arg $1 string The tool.
 # @stdout The tool's absolute path.
 # @exitcode 1 No usable answer; the line names the tool.
@@ -2614,68 +2600,9 @@ function dsh_superagent_tool() {
 }
 
 #
-# @description Print the srt settings of one dsh-superagent pnpm run (regime-cutover U317b): writes allowed under the
-#   given roots alone; reads denied under the credential roots the dsh role denies (hcom-seat seat_settings_lists:
-#   ~/.ssh, ~/.gnupg, ~/.aws, ~/.netrc, ~/.docker, ~/.kube, ~/.config/gcloud, ~/.codex, ~/.omp/agent); network to the
-#   registry host alone; no local binding, no unix socket, no pty. Every path is clean (dsh_superagent_clean_path), so
-#   the JSON needs no escaping.
-# @arg $@ path The write roots.
-# @stdout The settings JSON, one line.
-# @exitcode 1 A path is not clean.
-#
-function dsh_superagent_srt_settings() {
-    local path write='' deny_json='' sep=''
-    for path in "$@"; do
-        dsh_superagent_clean_path "${path}" || return 1
-        write+="${sep}\"${path}\""
-        sep=,
-    done
-    sep=''
-    for path in .ssh .gnupg .aws .netrc .docker .kube .config/gcloud .codex .omp/agent; do
-        dsh_superagent_clean_path "${HOME}/${path}" || return 1
-        deny_json+="${sep}\"${HOME}/${path}\""
-        sep=,
-    done
-    printf '{"network":{"allowedDomains":["%s"],"deniedDomains":[],"allowUnixSockets":[],"allowMachLookup":["com.apple.trustd.agent"],"allowLocalBinding":false},"filesystem":{"denyRead":[%s],"allowRead":[],"allowWrite":[%s],"denyWrite":[]},"allowPty":false}\n' "${DSH_SUPERAGENT_REGISTRY_HOST}" "${deny_json}" "${write}"
-}
-
-#
-# @description Run pnpm for the dsh-superagent step inside srt (regime-cutover U317b): one `srt --settings <file>` whose
-#   settings (dsh_superagent_srt_settings) grant writes under the given roots alone, running `/bin/sh -c` of the given
-#   text in the working directory with the environment reduced by `/usr/bin/env -i` to HOME, a PATH of the mise node
-#   and pnpm directories and the system directories, a TMPDIR and the XDG directories under the pnpm store, the store
-#   itself (npm_config_store_dir) and pnpm's package-manager self-install off (npm_config_manage_package_manager_versions),
-#   so every write of the upstream build lands under the roots or fails with srt's EPERM and fails the run.
-# @arg $1 path The settings file to write (removed by the caller).
-# @arg $2 path The working directory.
-# @arg $3 string The shell text run inside; `"$PNPM"` is pnpm.
-# @arg $@ path The write roots after it.
-# @env DSH_SUPERAGENT_SRT The srt path (dsh_superagent_tool).
-# @env DSH_SUPERAGENT_PNPM The pnpm path.
-# @env DSH_SUPERAGENT_PATH The PATH inside.
-# @env DSH_SUPERAGENT_STORE The pnpm store, a write root the caller lists.
-# @exitcode 1 The settings could not be written, or the text inside failed (srt's own status included).
-#
-function dsh_superagent_srt_run() {
-    local settings="$1" workdir="$2" script="$3" json
-    shift 3
-    json="$(dsh_superagent_srt_settings "$@")" || return 1
-    printf '%s\n' "${json}" > "${settings}" || {
-        printf 'update_dsh_superagent: the srt settings %s could not be written; nothing installed, nothing recorded.\n' "${settings}" >&2
-        return 1
-    }
-    "${DSH_SUPERAGENT_SRT}" --settings "${settings}" -- /usr/bin/env -i "HOME=${HOME}" "PATH=${DSH_SUPERAGENT_PATH}" \
-        "TMPDIR=${DSH_SUPERAGENT_STORE}/tmpdir" "XDG_CACHE_HOME=${DSH_SUPERAGENT_STORE}/xdg-cache" \
-        "XDG_CONFIG_HOME=${DSH_SUPERAGENT_STORE}/xdg-config" "XDG_DATA_HOME=${DSH_SUPERAGENT_STORE}/xdg-data" \
-        "XDG_STATE_HOME=${DSH_SUPERAGENT_STORE}/xdg-state" "npm_config_store_dir=${DSH_SUPERAGENT_STORE}" \
-        npm_config_manage_package_manager_versions=false "PNPM=${DSH_SUPERAGENT_PNPM}" \
-        /bin/sh -c "cd \"\$1\" && ${script}" sh "${workdir}"
-}
-
-#
 # @description Install the pinned dsh-superagent bundle (assets.dsh-superagent) under $DSH_HOME/plugins/dsh-superagent
 #   on a host whose operator opted in, and install the rendered router profile's plugins, which link it; nothing
-#   starts it (the Router is started by `hcom-seat dsh --profile router` under srt).
+#   starts it (the Router is started by `hcom-seat router` under srt, the router role of U321).
 # @description
 #   The opt-in is update_deepseek_harness's: DSH_HOME exported, absolute and a directory whose identity (-ef) is
 #   ~/.dsh's, where the kit renders the router profile. The step is the harness step's shape: GitHub's archive of the
@@ -2683,16 +2610,21 @@ function dsh_superagent_srt_run() {
 #   unpacked; every member of the archive lies under its one top-level member, which must name the pinned commit (the
 #   git-commit form of "the archive version equals the pin"; verdicts/U317 P2 :2403 read the first member alone); the
 #   tree is unpacked under a name of its own ($DSH_HOME/plugins/dsh-superagent.XXXXXX) and built there inside srt
-#   (verdicts/U317 P1 :2421: the upstream build scripts ran uncontained): one `srt --settings <tree>.srt-settings.json`
-#   over `pnpm install --frozen-lockfile && pnpm build`, the settings granting writes under the tree and the pnpm store
-#   $DSH_HOME/.pnpm-store alone, denying the credential roots the dsh role denies and admitting the registry host alone
-#   (dsh_superagent_srt_run); srt, pnpm and node are the kit's mise pins, resolved with their status before any
-#   download, and an absent one refuses the step; the download directory goes; the previous tree, when there is one,
-#   is renamed aside and the new tree renamed into place (one rename publishes it, and a failed publication puts the
-#   previous tree back); the router profile's plugins are installed by a second srt run whose writes are the profile
-#   directory and the store (its package.json links the tree by a relative link: dependency, so the link follows the
-#   directory name); the step is recorded; and only then does the previous tree go. Every input is one row of a table,
-#   checked before any download:
+#   through build_under_srt, the updater's one sandbox builder (regime-cutover U317d, after verdicts/U317c: the step's
+#   own settings builder omitted credential roots, left srt's implicit write grants open and put `env -i` inside srt,
+#   where it dropped the proxy srt injects; verdicts/U317 P1 :2421 had the upstream build scripts run uncontained): the
+#   archive's lockfile is held to the registry host (a `tarball:` row naming another host refuses the step naming it),
+#   the canary (the U272 form) proves one write beside the tree is denied inside before any upstream code runs, then
+#   `pnpm install --frozen-lockfile` and `pnpm build` each run as one `build_under_srt` call whose writes are the tree
+#   and the pnpm store $DSH_HOME/.pnpm-store, whose reads deny the dsh role's credential rows and the checkout, and
+#   whose network is the registry host alone; srt is read from PATH and pnpm and node from the kit's mise pins, with
+#   their status, before any download, and an absent one refuses the step; the download directory goes; the previous
+#   tree, when there is one, is renamed aside and the new tree renamed into place (one rename publishes it, and a
+#   failed publication puts the previous tree back); the router profile's plugins are installed by one more
+#   `build_under_srt` run whose writes are the profile directory and the store (its package.json links the tree by a
+#   relative link: dependency, so the link follows the directory name), after its own canary, its lockfile held to the
+#   registry the same way when pnpm has written one; the step is recorded; and only then does the previous tree go.
+#   Every input is one row of a table, checked before any download:
 #   DSH_HOME: exported, absolute, a directory -ef ~/.dsh (elsewhere is a WARN with exit 0; unset or absent is a skip),
 #   with a physical path (pwd -P) that can be read.
 #   DSH_SUPERAGENT_COMMIT: 40 lowercase hex; DSH_SUPERAGENT_SHA256: 64 lowercase hex (the rendered constants).
@@ -2704,21 +2636,64 @@ function dsh_superagent_srt_run() {
 #   ~/.agents/.installed-manifest.json: absent, or a regular file that is not a symlink; the step's recorded
 #   source_version equal to the pin with the tree in place is the already-installed exit (the profile install is
 #   run again, under srt, only when the profile's node_modules holds no dsh-superagent entry).
-#   Every producer the step reads (pwd -P, mise which, shasum, tar's member list, jq, the three mktemp) refuses the
-#   step on a failed answer (standing order 21); a download that fails is one WARN line, nothing installed, nothing
-#   recorded.
+#   Every producer the step reads (pwd -P, type -P, mise which, shasum, tar's member list, jq, grep on the lockfiles,
+#   the three mktemp) refuses the step on a failed answer (standing order 21); a download that fails is one WARN line,
+#   nothing installed, nothing recorded.
 # @exitcode 0 Installed, already installed, no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh or the router
 #   profile absent (a WARN), or the download failed (a WARN; nothing installed or recorded).
 # @exitcode 1 A constant malformed, a producer read, a shape check, a tool absent, the digest check, the archive member
-#   check, the unpack, the build, the publication, the profile install or the record failed; the line printed names
-#   the state left.
+#   check, the unpack, a lockfile host, the canary, the install, the build, the publication, the profile install or
+#   the record failed; the line printed names the state left.
 #
 function update_dsh_superagent() (
-    local download_dir="" tarball actual tree="" settings="" profile_settings="" members member top previous="" recorded install_dir row
-    local dsh_home_real physical srt_bin pnpm_bin node_bin
+    local download_dir="" tarball actual tree="" settings="" profile_settings="" canary="" members member top previous="" recorded install_dir row
+    local dsh_home_real physical
     install_dir="${DSH_HOME:-}/plugins/dsh-superagent"
     dsh_superagent_record() {
         manifest_record "update_dsh_superagent" installer "${DSH_SUPERAGENT_COMMIT}" "${install_dir}" -- "curl -fsSL ${DSH_SUPERAGENT_ARCHIVE_URL}" "shasum -a 256 <archive>" "tar tzf <archive> (every member under the one root ${DSH_SUPERAGENT_REPOSITORY##*/}-${DSH_SUPERAGENT_COMMIT})" "mktemp -d ${install_dir}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "srt --settings <tree>.srt-settings.json -- pnpm install --frozen-lockfile && pnpm build (writes: <tree>, ${DSH_HOME}/.pnpm-store)" "mv <tree> ${install_dir}" "srt --settings <settings> -- pnpm install in ${DSH_HOME}/profiles/router (writes: that directory, ${DSH_HOME}/.pnpm-store)"
+    }
+    # The sandbox canary (the U272 form, as update_deepseek_harness runs it): one write beside the tree, at
+    # ${canary}, outside both write roots of the run, must be denied inside, and the word the probe prints is read
+    # whole. A canary that does not run (srt absent or refusing its settings) and a write that lands are each
+    # refused, and a file the write made is removed here, outside. `true`, not `:`: a failed redirection on a special
+    # builtin ends a POSIX shell. The arguments are the directory the run may write, the settings path and the state
+    # a refusal leaves.
+    dsh_superagent_canary() {
+        local probe
+        # shellcheck disable=SC2016 # the text runs inside srt's /bin/sh, where $1 is the canary path
+        probe="$(build_under_srt "$1" "$2" -- /bin/sh -c 'if true 2> /dev/null > "$1"; then echo write-open; else echo write-denied; fi' canary "${canary}")" || {
+            rm -f "${canary}" || :
+            printf 'update_dsh_superagent: the sandbox canary did not run under srt; %s\n' "$3" >&2
+            return 1
+        }
+        if [ "${probe}" != write-denied ] || [ -e "${canary}" ]; then
+            rm -f "${canary}" || :
+            printf 'update_dsh_superagent: the sandbox does not hold (canary: %s); %s\n' "${probe}" "$3" >&2
+            return 1
+        fi
+    }
+    # The lockfile hosts: pnpm fetches a `tarball:` row from the host it names, and the build's network is the registry
+    # (DSH_SUPERAGENT_REGISTRY_HOST) alone, so a lockfile naming another host refuses the step naming it; a host is
+    # admitted by a pin review, never by a lockfile the archive carries. grep's status is read three ways (the harness
+    # step's dsh_lockfile_hosts): rows (0), no row (1), a lockfile it could not read (any other, the refusal). The
+    # second argument names the state a refusal leaves.
+    dsh_superagent_lockfile_hosts() {
+        local rows="" row host status=0
+        rows="$(grep -o 'tarball: https\{0,1\}://[A-Za-z0-9.-]*' "$1")" || status=$?
+        case ${status} in
+        0 | 1) ;;
+        *)
+            printf 'update_dsh_superagent: the lockfile %s could not be read; %s\n' "$1" "$2" >&2
+            return 1
+            ;;
+        esac
+        while IFS= read -r row; do
+            host="${row##*://}"
+            [ -n "${host}" ] || continue
+            [ "${host}" != "${DSH_SUPERAGENT_REGISTRY_HOST}" ] || continue
+            printf 'update_dsh_superagent: the lockfile %s names the tarball host %s beyond the registry %s the build may reach; a host is admitted by a pin review, not by a lockfile; %s\n' "$1" "${host}" "${DSH_SUPERAGENT_REGISTRY_HOST}" "$2" >&2
+            return 1
+        done <<< "${rows}"
     }
     case ${DSH_SUPERAGENT_COMMIT:-} in
     [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
@@ -2784,27 +2759,35 @@ function update_dsh_superagent() (
         }
     fi
     # The containment and the build tools, before any download: the upstream code runs only inside srt, so no srt is
-    # no build (the kit pins @anthropic-ai/sandbox-runtime, pnpm and node in mise).
-    srt_bin="$(dsh_superagent_tool srt)" || return 1
-    pnpm_bin="$(dsh_superagent_tool pnpm)" || return 1
-    node_bin="$(dsh_superagent_tool node)" || return 1
-    DSH_SUPERAGENT_SRT="${srt_bin}" DSH_SUPERAGENT_PNPM="${pnpm_bin}" DSH_SUPERAGENT_STORE="${DSH_HOME}/.pnpm-store"
-    DSH_SUPERAGENT_PATH="${pnpm_bin%/*}:${node_bin%/*}:/usr/bin:/bin"
+    # no build. srt is read as `build_under_srt` reads it (`type -P`: the kit pins npm:@anthropic-ai/sandbox-runtime
+    # in mise, so PATH holds it under mise), pnpm and node by the kit's mise pins; `build_under_srt` reads all three
+    # for each run.
+    type -P srt > /dev/null || {
+        printf 'update_dsh_superagent: srt is absent from PATH (the kit pins npm:@anthropic-ai/sandbox-runtime 0.0.81 in home/dot_mise/config.toml; run mise install and rerun make update); nothing installed, nothing recorded.\n' >&2
+        return 1
+    }
+    dsh_superagent_tool pnpm > /dev/null || return 1
+    dsh_superagent_tool node > /dev/null || return 1
     # ${name:+"${name}"} and `|| :` as in update_deepseek_harness: the subshell's locals may be unwound before the EXIT
     # trap runs on macOS bash, and a failing cleanup must not become the step's status.
-    trap 'rm -rf ${download_dir:+"${download_dir}"} ${tree:+"${tree}"} ${settings:+"${settings}"} ${profile_settings:+"${profile_settings}"} || :' EXIT
-    # srt on Linux grants writes only to paths that exist, so the store and its scratch directory are made first.
-    mkdir -p "${DSH_HOME}/plugins" "${DSH_SUPERAGENT_STORE}/tmpdir" || {
-        printf 'update_dsh_superagent: the plugin directory %s or the pnpm store %s could not be made; nothing installed, nothing recorded.\n' "${DSH_HOME}/plugins" "${DSH_SUPERAGENT_STORE}" >&2
+    trap 'rm -rf ${download_dir:+"${download_dir}"} ${tree:+"${tree}"} ${settings:+"${settings}"} ${profile_settings:+"${profile_settings}"} ${canary:+"${canary}"} || :' EXIT
+    # The plugin directory, so the tree's mktemp and the canary have a parent; the pnpm store and its scratch directory
+    # are build_under_srt's, made before each run.
+    mkdir -p "${DSH_HOME}/plugins" || {
+        printf 'update_dsh_superagent: the plugin directory %s could not be made; nothing installed, nothing recorded.\n' "${DSH_HOME}/plugins" >&2
         return 1
     }
     profile_settings="${install_dir}.profile.srt-settings.json"
+    canary="${install_dir}.canary"
     if [ "${recorded}" = "${DSH_SUPERAGENT_COMMIT}" ] && [ -f "${install_dir}/package.json" ]; then
         printf 'dsh-superagent %s is already installed at %s.\n' "${DSH_SUPERAGENT_COMMIT}" "${install_dir}"
         if [ ! -e "${DSH_HOME}/profiles/router/node_modules/dsh-superagent" ]; then
-            # shellcheck disable=SC2016 # the text runs inside srt, where $PNPM is the environment the run sets
-            dsh_superagent_srt_run "${profile_settings}" "${DSH_HOME}/profiles/router" '"$PNPM" install' "${DSH_HOME}/profiles/router" "${DSH_SUPERAGENT_STORE}" || {
-                printf 'update_dsh_superagent: the router profile install failed; the installed tree and the record are untouched.\n' >&2
+            if [ -e "${DSH_HOME}/profiles/router/pnpm-lock.yaml" ]; then
+                dsh_superagent_lockfile_hosts "${DSH_HOME}/profiles/router/pnpm-lock.yaml" "the installed tree and the record are untouched." || return 1
+            fi
+            dsh_superagent_canary "${DSH_HOME}/profiles/router" "${profile_settings}" "the installed tree and the record are untouched." || return 1
+            build_under_srt "${DSH_HOME}/profiles/router" "${profile_settings}" "${DSH_SUPERAGENT_REGISTRY_HOST}" -- pnpm install || {
+                printf 'update_dsh_superagent: the router profile install failed inside srt (a write outside %s and %s is refused there); the installed tree and the record are untouched.\n' "${DSH_HOME}/profiles/router" "${DSH_HOME}/.pnpm-store" >&2
                 return 1
             }
         fi
@@ -2860,14 +2843,30 @@ function update_dsh_superagent() (
     }
     settings="${tree}.srt-settings.json"
     tar xzf "${tarball}" -C "${tree}" --strip-components=1 || return 1
-    # The upstream build runs inside srt alone (verdicts/U317 P1 :2421): one invocation over both pnpm steps, writes
-    # under the new tree and the pnpm store, reads denied under the credential roots, network to the registry host.
-    # shellcheck disable=SC2016 # the text runs inside srt, where $PNPM is the environment the run sets
-    dsh_superagent_srt_run "${settings}" "${tree}" '"$PNPM" install --frozen-lockfile && "$PNPM" build' "${tree}" "${DSH_SUPERAGENT_STORE}" || {
-        printf 'update_dsh_superagent: the build failed inside srt (a write outside the new tree and %s is refused there); the new tree is removed; nothing installed, nothing recorded; the previous install, when there is one, is unchanged.\n' "${DSH_SUPERAGENT_STORE}" >&2
+    # The frozen install reads the lockfile: a tree without one is no tree this step builds, and one naming a host
+    # beyond the registry is refused before anything runs. The profile's lockfile, when pnpm has written one (the kit
+    # renders none), is read now as well, before the tree is published, so a refusal leaves the previous install as it
+    # was.
+    if [ ! -f "${tree}/pnpm-lock.yaml" ]; then
+        printf 'update_dsh_superagent: the archive holds no pnpm-lock.yaml, which the frozen install reads; the new tree is removed; nothing installed, nothing recorded.\n' >&2
+        return 1
+    fi
+    dsh_superagent_lockfile_hosts "${tree}/pnpm-lock.yaml" "the new tree is removed; nothing installed, nothing recorded." || return 1
+    if [ -e "${DSH_HOME}/profiles/router/pnpm-lock.yaml" ]; then
+        dsh_superagent_lockfile_hosts "${DSH_HOME}/profiles/router/pnpm-lock.yaml" "the new tree is removed; nothing installed, nothing recorded." || return 1
+    fi
+    dsh_superagent_canary "${tree}" "${settings}" "the new tree is removed; nothing installed, nothing recorded; the previous install, when there is one, is unchanged." || return 1
+    # The upstream install and build scripts run inside srt alone (verdicts/U317 P1 :2421), each one build_under_srt
+    # run: writes under the new tree and the pnpm store, reads denied under the credential roots and the checkout, the
+    # registry host alone, the command handed over as given.
+    build_under_srt "${tree}" "${settings}" "${DSH_SUPERAGENT_REGISTRY_HOST}" -- pnpm install --frozen-lockfile || {
+        printf 'update_dsh_superagent: the install of the tree failed inside srt (a write outside the new tree and %s is refused there); the new tree is removed; nothing installed, nothing recorded; the previous install, when there is one, is unchanged.\n' "${DSH_HOME}/.pnpm-store" >&2
         return 1
     }
-    rm -f "${settings}" || :
+    build_under_srt "${tree}" "${settings}" "${DSH_SUPERAGENT_REGISTRY_HOST}" -- pnpm build || {
+        printf 'update_dsh_superagent: the build failed inside srt (a write outside the new tree and %s is refused there); the new tree is removed; nothing installed, nothing recorded; the previous install, when there is one, is unchanged.\n' "${DSH_HOME}/.pnpm-store" >&2
+        return 1
+    }
     settings=""
     rm -rf "${download_dir}" || printf 'WARN: update_dsh_superagent: the download directory %s could not be removed; it holds only the verified archive and the next make update makes a new one.\n' "${download_dir}" >&2
     download_dir=""
@@ -2887,8 +2886,7 @@ function update_dsh_superagent() (
         return 1
     }
     tree=""
-    # shellcheck disable=SC2016 # the text runs inside srt, where $PNPM is the environment the run sets
-    dsh_superagent_srt_run "${profile_settings}" "${DSH_HOME}/profiles/router" '"$PNPM" install' "${DSH_HOME}/profiles/router" "${DSH_SUPERAGENT_STORE}" || {
+    build_under_srt "${DSH_HOME}/profiles/router" "${profile_settings}" "${DSH_SUPERAGENT_REGISTRY_HOST}" -- pnpm install || {
         printf 'update_dsh_superagent: the router profile install failed inside srt; the new tree is at %s but nothing is recorded, so the next make update installs again%s.\n' "${install_dir}" "${previous:+; the previous tree is kept at ${previous}}" >&2
         return 1
     }

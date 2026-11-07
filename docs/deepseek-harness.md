@@ -138,7 +138,7 @@ sandbox rows disabled. The GitHub Source row
 `accept_mode: observe`, the M-18 ladder row) is data for the Management API
 save; in observe mode the allowed list is empty, so a positive assessment is an
 ignore Decision marked would-accept and nothing is accepted.
-`hcom-seat dsh --profile router -- --no-open` starts the Router under srt, and
+`hcom-seat router -- --no-open` starts the Router under srt, and
 `intake-observe.py <orchestrator.sqlite> <decisions.tsv>` appends the
 would-accept Decisions as rows, reading the store read-only, creating the table
 with the `decisions.tsv` header when it is absent, and refusing to run when its

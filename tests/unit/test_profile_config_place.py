@@ -34,8 +34,8 @@ VICTIM = b"modelRoles:\n  default: operator/default\n# the host file a planted l
 FIXED_NAME = ".config.yml." + "0" * 16
 
 
-def load_helper():
-    spec = importlib.util.spec_from_file_location("profile_config_place", HELPER)
+def load_helper(path=HELPER):
+    spec = importlib.util.spec_from_file_location("profile_config_place", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -43,8 +43,12 @@ def load_helper():
 
 
 class ProfileConfigPlaceTest(unittest.TestCase):
+    # The helper under test; a driver may point it at an earlier head's file, where the round-5 replacement probe must
+    # fail (U310e ACCEPTANCE 3, the `earlier_lever` form of tests/unit/test_hcom_seat_dsh.py).
+    helper = HELPER
+
     def setUp(self):
-        self.module = load_helper()
+        self.module = load_helper(self.helper)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
@@ -404,6 +408,67 @@ class ProfileConfigPlaceTest(unittest.TestCase):
         with mock.patch.object(self.module.os, "rename", rename_then_same_bytes):
             self.assertEqual(self.run_helper(), (0, "placed\n", ""), "a concurrent launch of the same bytes passes")
         self.assertEqual(self.config.read_bytes(), RENDERED)
+
+    def test_a_replacement_during_the_read_back_or_the_compare_is_refused_never_reported_as_placed_or_kept(self):
+        """The round-4 verdict's P2 (`verdicts/U310d-28457a6a.md`, profile-config-place.py:225): at 28457a6a the
+        read-back validated the inode it had opened, so a writer that replaced `config.yml` during `os.read` was
+        reported as `placed` or `kept` while the name held its bytes. Now the read-back runs on the written descriptor
+        and the name's identity is read after it: a replacement with other bytes during any read refuses at
+        `verify-placed` or `verify-kept` and the attacker's bytes are never reported as the config; one replacement
+        with the same bytes (a concurrent launch) passes; a writer that keeps replacing the entry, even with the same
+        bytes, refuses."""
+        attacker = b"modelRoles:\n  default: attacker/model\n"
+        real_read = os.read
+
+        def replacing(data, times):
+            count = [0]
+
+            def read(fd, size):
+                if count[0] < times:
+                    count[0] += 1
+                    self.config.unlink(missing_ok=True)
+                    self.config.write_bytes(data)
+                return real_read(fd, size)
+
+            return read
+
+        cases = (
+            ("other bytes during the read-back", None, (), attacker, 99, "verify-placed",
+             "does not hold the rendered config after the rename"),
+            ("other bytes once during the read-back", None, (), attacker, 1, "verify-placed",
+             "does not hold the rendered config after the rename"),
+            ("other bytes during the compare", RENDERED, (), attacker, 99, "verify-kept",
+             "does not hold the rendered config after the rename"),
+            ("other bytes once during the compare", RENDERED, (), attacker, 1, "verify-kept",
+             "does not hold the rendered config after the rename"),
+            ("other bytes during a dry run's compare", RENDERED, ("--dry-run",), attacker, 1, "verify-kept",
+             "does not hold the rendered config after the rename"),
+            ("the same bytes on every read", None, (), RENDERED, 99, "verify-placed",
+             "config.yml replaced during placement (another inode at the name on every read)"),
+        )  # fmt: skip
+        for label, before, args, data, times, step, reason in cases:
+            with self.subTest(case=label):
+                self.config.unlink(missing_ok=True)
+                if before is not None:
+                    self.config.write_bytes(before)
+                with mock.patch.object(self.module.os, "read", replacing(data, times)):
+                    result = self.run_helper(*args)
+                self.assert_refused(result, step, f"{self.config}: {reason}")
+                self.assertEqual(self.entries(), ["config.yml"], "no temporary remains")
+                self.assertEqual(self.config.read_bytes(), data, "the name holds the writer's bytes, never reported")
+        for label, before, args, word in (
+            ("one concurrent placement of the same bytes", None, (), "placed"),
+            ("one concurrent placement of the same bytes at the compare", RENDERED, (), "kept"),
+            ("one concurrent placement of the same bytes in a dry run", RENDERED, ("--dry-run",), "kept"),
+        ):
+            with self.subTest(case=label):
+                self.config.unlink(missing_ok=True)
+                if before is not None:
+                    self.config.write_bytes(before)
+                with mock.patch.object(self.module.os, "read", replacing(RENDERED, 1)):
+                    self.assertEqual(self.run_helper(*args), (0, f"{word}\n", ""))
+                self.assertEqual(self.config.read_bytes(), RENDERED)
+                self.assertEqual(self.entries(), ["config.yml"])
 
     def test_usage_errors_exit_1_with_the_usage_line(self):
         for argv in ([], [str(self.agent)], [str(self.agent), "uid"], ["agent", "1"], ["--x", str(self.agent), "1"],

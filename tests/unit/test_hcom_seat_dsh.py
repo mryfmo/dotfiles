@@ -24,6 +24,8 @@ import time
 import unittest
 from pathlib import Path
 
+import yaml
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import test_hcom_seat  # noqa: E402  # the fixture, as a module attribute so its tests are not collected twice
 
@@ -123,6 +125,17 @@ DSH_OVERLAY = textwrap.dedent(
       checkUpdate: false
     """
 )
+
+
+def yaml_quoted(path):
+    """A single-quoted YAML scalar of `path`, the form the lever writes each extension entry in (a `'` doubled), so a
+    path holding ` # `, a quote or a trailing space is read whole (U310e)."""
+    return "'" + str(path).replace("'", "''") + "'"
+
+
+def placed_overlay(extension):
+    """The config the lever places from DSH_OVERLAY: the extension entry at `extension`, quoted."""
+    return DSH_OVERLAY.format(extension=yaml_quoted(extension))
 
 
 class HcomSeatDshTest(test_hcom_seat.SeatFixture):
@@ -1031,7 +1044,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         link = self.home / "link-to-bridge"
         link.symlink_to(self.bridge)
         overlay.write_text(DSH_OVERLAY.format(extension=link))
-        expected = DSH_OVERLAY.format(extension=self.bridge)
+        expected = placed_overlay(self.bridge)
         run = self.launch("--dry-run", "--", "--version")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(
@@ -1166,7 +1179,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             f'exec {shlex.quote(str(test_hcom_seat.SEAT))} "$@"\n'
         )
         wrapper.chmod(0o755)
-        expected = DSH_OVERLAY.format(extension=self.bridge)
+        expected = placed_overlay(self.bridge)
 
         def planted():
             self.assertEqual(default_config.read_text(), "modelRoles:\n  default: operator/default\n")
@@ -1215,7 +1228,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         elsewhere.mkdir()
         profile = home / ".omp/profiles/dsh"
         agent = profile / "agent"
-        expected = DSH_OVERLAY.format(extension=self.bridge)
+        expected = placed_overlay(self.bridge)
         stale = "modelRoles:\n  default: stale/model\n"
         refused = f"the dsh profile config {self.profile_config} was not placed: profile-config-place: refused at"
         cannot_read = f"{refused} open-config: {self.profile_config}: cannot open it: Permission denied (EACCES)"
@@ -1308,7 +1321,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         hook = Path(self.temp.name) / "trace-hook.bash"
         hook.write_text('set -T\ntrap \'builtin printf "%s\\0" "$BASH_COMMAND" >> "$U272_TRACE"\' DEBUG\n')
         trace = Path(self.temp.name) / "trace"
-        for config, line in ((stale, "differs from"), (DSH_OVERLAY.format(extension=self.bridge), "equals")):
+        for config, line in ((stale, "differs from"), (placed_overlay(self.bridge), "equals")):
             with self.subTest(config=line):
                 agent.chmod(0o700)
                 self.profile_config.write_text(config)
@@ -1355,7 +1368,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             ' /bin/rm -f -- "${e}" && /bin/ln -s "${U310_VICTIM}" "${e}" && echo "hook: swapped ${e}" >> "${U310_SEEN}";'
             " done' DEBUG\n"
         )
-        expected = DSH_OVERLAY.format(extension=self.bridge)
+        expected = placed_overlay(self.bridge)
         for config in (None, "modelRoles:\n  default: stale/model\n"):
             with self.subTest(config="absent" if config is None else "stale"):
                 if config is not None:
@@ -1587,7 +1600,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         the launch places the config 0600 and ends with dsh's status, no slot behind; with a stale config too."""
         hook = Path(self.temp.name) / "umask-read-fails.bash"
         hook.write_text('umask() { if (($# == 0)); then return 7; fi; builtin umask "$@"; }\n')
-        expected = DSH_OVERLAY.format(extension=self.bridge)
+        expected = placed_overlay(self.bridge)
         for config in (None, "modelRoles:\n  default: stale/model\n"):
             with self.subTest(config="absent" if config is None else "stale"):
                 if config is not None:
@@ -1599,6 +1612,103 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertEqual(sorted(p.name for p in self.profile_config.parent.iterdir()), ["config.yml"])
                 self.assertEqual(self.slots(), ([], []), "no per-launch slot remains")
         self.assertEqual(len(self.dsh_calls()), 2)
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads a mode-000 file; the case needs an unreadable overlay")
+    def test_an_unreadable_overlay_refuses_naming_it_on_linux_as_on_macos(self):
+        """U310e: the CI failure of 28457a6a (run 42334203943, both Ubuntu legs): the overlay read was `$(< file)`,
+        which bash 5.2 runs without a fork, so its failed redirection ended the launch by errexit with exit 1 and
+        `line 1101: ...: Permission denied` before the `|| refuse` handler ran; macOS's bash 3.2 forks and the handler
+        ran. The read is now `/bin/cat` with its status read: on both, exit 2 with the refusal naming the overlay, no
+        bash error line, nothing created under HOME, no slot, no dsh; in a dry run too."""
+        overlay = self.profiles / "dsh.yml"
+        overlay.chmod(0)
+        self.addCleanup(overlay.chmod, 0o644)
+        for args in (["--dry-run"], []):
+            with self.subTest(args=args):
+                run = self.launch(*args, "--", "--version")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"hcom-seat: cannot read the profile config overlay {overlay}", run.stderr)
+                self.assertNotIn(f"{self.lever}: line ", run.stderr, "no unhandled producer")
+                self.assertFalse((self.home / ".omp").exists(), "nothing is made before the refusal")
+                self.assertFalse((self.home / ".local/state/hcom-seat").exists())
+                self.assertEqual(self.slots(), ([], []))
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_each_placement_producers_failure_refuses_naming_it_and_leaves_no_slot_or_temporary(self):
+        """U310e (the round-4 verdict's P2 at hcom-seat:249, standing order 21): the four producers the round-4 head
+        added to the placement, each injected to fail: the `sed` read of the helper's pin (a status 7 for the helper's
+        pattern alone, the lever's own self-check untouched), the hash read of the helper (status 7 on the second hash,
+        the self-check's being the first), the `mkdir` of `agent/` (the profile directory made unwritable right before
+        it, by a DEBUG trap) and the `umask` set of that subshell (status 7, armed by the same trap). Each: exit 2,
+        nothing on stdout, the refusal naming the manifest, the helper or `agent/`, no `agent/` made, no slot behind,
+        no dsh."""
+        home = self.home.resolve()
+        profile = home / ".omp/profiles/dsh"
+        agent = profile / "agent"
+        helper = test_hcom_seat.SEAT.parent / "profile-config-place.py"
+        hooks = Path(self.temp.name) / "hooks"
+        hooks.mkdir()
+        seen = hooks / "hash-seen"
+        arm = 'case ${BASH_COMMAND} in *"/bin/mkdir \\"\\${agent}\\""*) %s ;; esac'
+        hook_texts = {
+            "sed": 'sed() { if [[ $* == *profile-config-place* ]]; then return 7; fi; command sed "$@"; }\n',
+            "hash": (
+                'hash_read() { if [[ -e ${U310_HASH_SEEN} ]]; then return 7; fi; : > "${U310_HASH_SEEN}";'
+                ' local real; if real=$(type -P sha256sum); then "${real}"; else real=$(type -P shasum) && "${real}" -a 256; fi; }\n'
+                'sha256sum() { hash_read "$@"; }\nshasum() { hash_read "$@"; }\n'
+            ),
+            "mkdir": "set -T\ntrap '" + arm % '/bin/chmod 0500 "${U310_PROFILE}"' + "' DEBUG\n",
+            "umask": (
+                "set -T\n"
+                'umask() { if (($#)) && [[ -n ${U310_UMASK_FAILS:-} ]]; then return 7; fi; builtin umask "$@"; }\n'
+                "trap '" + arm % "U310_UMASK_FAILS=1" + "' DEBUG\n"
+            ),
+        }
+        cases = (
+            ("the pin's sed read fails", "sed", "hcom-seat: cannot read ", "home/dot_agents/agent-config.yaml"),
+            ("the helper's hash read fails", "hash", f"hcom-seat: cannot hash {helper}", ""),
+            ("the mkdir of agent/ fails", "mkdir", f"hcom-seat: cannot create {agent}: ", "Permission denied"),
+            ("the umask set fails", "umask",
+             f"hcom-seat: cannot create {agent}: the umask set or the mkdir failed with no message", ""),
+        )  # fmt: skip
+        for label, name, message, detail in cases:
+            with self.subTest(case=label):
+                hook = hooks / f"{name}.bash"
+                hook.write_text(hook_texts[name])
+                seen.unlink(missing_ok=True)
+                try:
+                    run = self.launch("--", "--version", BASH_ENV=str(hook), U310_HASH_SEEN=str(seen),
+                                      U310_PROFILE=str(profile))  # fmt: skip
+                finally:
+                    if profile.is_dir():
+                        profile.chmod(0o700)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+                if detail:
+                    self.assertIn(detail, run.stderr)
+                self.assertFalse(agent.exists(), "no agent/ is made by a refused launch")
+                self.assertEqual(self.slots(), ([], []), "no per-launch slot remains after the refusal")
+                if name in ("mkdir", "umask"):
+                    self.assertTrue(profile.is_dir(), "the refusal came after the profile directory was made")
+                shutil.rmtree(home / ".omp", ignore_errors=True)
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_an_extension_path_holding_a_comment_marker_a_quote_and_a_trailing_space_is_placed_whole(self):
+        """U310e (the round-4 verdict's P2 at hcom-seat:1117): the canonical extension path was written into the
+        rendered YAML unquoted, so an allow-list entry resolving to a path with ` # ` placed a config whose extension
+        was the part before the marker and the bridge route was lost while the launch returned 0. Each entry is now
+        a single-quoted scalar with a `'` doubled: the bridge resolved through a link to a directory named with ` # `,
+        `'` and a trailing space lands whole, and PyYAML reads it back equal to the canonical path."""
+        real = Path(self.temp.name).resolve() / "bridge # it's canonical "
+        self.bridge.rename(real)
+        self.bridge.symlink_to(real)
+        run = self.launch("--", "--version")
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        text = self.profile_config.read_text()
+        self.assertEqual(text, placed_overlay(real))
+        self.assertIn("  - '" + str(real).replace("'", "''") + "'\n", text)
+        self.assertEqual(yaml.safe_load(text)["extensions"], [str(real)])
+        self.assertEqual(len(self.dsh_calls()), 1)
 
 
 if __name__ == "__main__":

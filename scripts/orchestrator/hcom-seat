@@ -1084,8 +1084,12 @@ profile_config_target_check() {
 #   overlay and no `-e` list, so the kit's bridge route reaches it through that file alone (item g6,
 #   2026-11-06T19:22Z: without it, `HTTP 404: No available model matches "claude-bridge/claude-opus-5-5"`). The file
 #   is the rendered overlay `profile_config` (the generator's, like the seat overlays), each `extensions` entry
-#   replaced by its canonical allow-list path (extensions_canonical, the rule the omp roles' `-e` list follows); an
-#   overlay naming no extension refuses, as does a failed read. The target `~/.omp/profiles/<role>/agent/config.yml`
+#   replaced by its canonical allow-list path (extensions_canonical, the rule the omp roles' `-e` list follows),
+#   written as a single-quoted YAML scalar with a `'` doubled, so a path holding ` # `, a quote or a trailing space
+#   is read whole by the child (regime-cutover U310e); an overlay naming no extension refuses, as does a failed read
+#   (the read is `/bin/cat` with its status read: bash 5.2 runs `$(< file)` without a fork, so its failed redirection
+#   ended the launch by errexit on Linux before the handler ran, exit 1 with no refusal; U310e). The target
+#   `~/.omp/profiles/<role>/agent/config.yml`
 #   is read by profile_config_target_check (every existence read through present_under_home, a link or an irregular
 #   entry refused); an absent one is placed. A present one is compared by the helper on its held descriptor: in a
 #   dry run after settings_judge has accepted the profile boundary (profile_config_compare, nothing written), in a
@@ -1094,11 +1098,11 @@ profile_config_target_check() {
 # @set profile_config_text The config to place, without its final newline.
 # @set profile_config_action `place` (the target is absent), or `compare` (present: the helper decides at the write).
 profile_config_check() {
-    local text line list=0 i=0 agent target
+    local text line list=0 i=0 agent target q="'"
     local -a listed_exts=()
     [[ -f ${profile_config} && ! -L ${profile_config} ]] ||
         refuse "profile config overlay absent or a symbolic link: ${profile_config}"
-    text=$(< "${profile_config}") || refuse "cannot read the profile config overlay ${profile_config}"
+    text=$(/bin/cat -- "${profile_config}") || refuse "cannot read the profile config overlay ${profile_config}"
     while IFS= read -r line; do
         if ((list)) && [[ ${line} == '  - '* ]]; then
             listed_exts+=("${line#  - }")
@@ -1114,7 +1118,7 @@ profile_config_check() {
     profile_config_text='' list=0
     while IFS= read -r line; do
         if ((list)) && [[ ${line} == '  - '* ]]; then
-            line="  - ${checked[i]}"
+            line="  - '${checked[i]//${q}/${q}${q}}'"
             i=$((i + 1))
         elif [[ ${line} == 'extensions:' ]]; then
             list=1
@@ -1165,7 +1169,7 @@ profile_config_write() {
     if ! err=$( (umask 077 && /bin/mkdir "${agent}") 2>&1); then
         case ${err} in
         *'File exists'*) ;;
-        *) refuse "cannot create ${agent}: ${err}" ;;
+        *) refuse "cannot create ${agent}: ${err:-the umask set or the mkdir failed with no message}" ;;
         esac
     fi
     profile_config_place "${agent}" ''
@@ -1173,8 +1177,8 @@ profile_config_write() {
 }
 # The profile config row is read here, after the complete protected set and before the first directory of the
 # launch is made (the private tool directory next), so a bad overlay or a linked, unsearchable or irregular target
-# refuses on a fresh HOME with nothing created, in a dry run too. The compare of a present config, the one step of
-# the row that writes a temporary file, runs after settings_judge (profile_config_compare below).
+# refuses on a fresh HOME with nothing created, in a dry run too. The compare of a present config, the helper's
+# read-only `--dry-run` run (nothing written), runs after settings_judge (profile_config_compare below).
 if [[ ${role_launch} == foreground ]]; then profile_config_check; fi
 tools_dir=${HOME}/.local/state/hcom-seat/tools
 /bin/mkdir -p "${tools_dir}" || refuse "cannot create the private tool directory ${tools_dir}"

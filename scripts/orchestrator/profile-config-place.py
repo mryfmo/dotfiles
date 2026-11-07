@@ -15,19 +15,25 @@ swapped between a reading and the act that follows it. The steps, in order:
   group or other write.
 - `open-config`: `config.yml` is opened through the descriptor with `O_NOFOLLOW | O_NONBLOCK` (ENOENT is absence; a link
   is ELOOP and refuses); `fstat-config`: a regular file of `uid` (a directory or a FIFO refuses); `read-config`: its
-  bytes. Equal to the rendering: `kept`, nothing written. With `--dry-run` the run stops here: `absent` or `differs`.
+  bytes. Equal to the rendering: `verify-kept`, then `kept`, nothing written. With `--dry-run` the run stops here:
+  `absent` or `differs`.
 - `create-temporary`: `.config.yml.<16 hex>` (`secrets.token_hex`) is created through the descriptor with
-  `O_CREAT | O_EXCL | O_NOFOLLOW`, mode 0600, so a regular file, a link (dangling too), a FIFO or a directory planted
-  at the name is EEXIST and refuses without the name being opened and without blocking; `fstat-temporary`: the new
-  descriptor is a regular file of `uid` with one link; `fchmod-temporary` 0600; `write-temporary`; `fsync-temporary`.
+  `O_CREAT | O_EXCL | O_NOFOLLOW` (read-write, so the read-back below runs on this same descriptor), mode 0600, so a
+  regular file, a link (dangling too), a FIFO or a directory planted at the name is EEXIST and refuses without the name
+  being opened and without blocking; `fstat-temporary`: the new descriptor is a regular file of `uid` with one link, and
+  its identity (device, inode) is kept; `fchmod-temporary` 0600; `write-temporary`; `fsync-temporary`.
 - `rename`: `os.rename(tmp, "config.yml", src_dir_fd, dst_dir_fd)`: one atomic step; a link at the destination is
   replaced as an entry (its target untouched), a directory there is EISDIR and refuses.
-- `verify-placed`: `config.yml` is read back through the descriptor and must hold the rendering, so a writer inside
-  `agent/` that swapped the temporary's entry between the write and the rename, or `config.yml` right after it, ends
-  the launch in a refusal and never in a placed config of other bytes (two launches at once that land the same bytes
-  both pass, the role's normal case).
-- On any refusal after the create, `unlink-temporary` removes the temporary through the descriptor; its own failure is
-  reported in the same line, naming the path that remains.
+- `verify-placed`: the written descriptor is read back from its start and must hold the rendering; then `config.yml`
+  is opened again through the held directory descriptor (`O_NOFOLLOW`) and the identity of that open must be the
+  written descriptor's. Another inode at the name (round-4 verdict P2 at :225: a writer that replaced `config.yml`
+  during the read-back was reported as `placed`) is read once through the directory descriptor: it must be a regular
+  file of `uid` holding the rendering (two launches at once that land the same bytes, the role's normal case) and must
+  still be the inode at the name on one more open; anything else refuses, so the launch never reports `placed` while
+  the name holds other bytes. `verify-kept` is the same identity check after a compare that found the rendering, so
+  a replacement during that read is never reported as `kept`.
+- On any refusal after the create and before the rename, `unlink-temporary` removes the temporary through the
+  descriptor; its own failure is reported in the same line, naming the path that remains.
 
 Exit 0 with one word on stdout: `placed`, `replaced` or `kept` (`absent`, `differs` or `kept` with `--dry-run`). Exit 2
 refused, one line on stderr naming the step, the path and the errno. Exit 1 a usage error. The file imports `errno`,
@@ -51,8 +57,9 @@ INSIDE = "the dsh role writes its profile config inside its profile only"
 # The read-only opens: no link followed at the last component, and no blocking on a FIFO planted at the name.
 READ_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
 DIRECTORY_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
-# The exclusive create: an entry of any kind at the name is EEXIST before anything is opened.
-CREATE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
+# The exclusive create: an entry of any kind at the name is EEXIST before anything is opened. Read-write, so the
+# read-back after the rename runs on this descriptor, the one that wrote the bytes.
+CREATE_FLAGS = os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
 CHUNK = 65536
 
 
@@ -127,8 +134,9 @@ def open_agent(agent_dir: str, uid: int) -> int:
     return dfd
 
 
-def read_config(dfd: int, agent_dir: str, uid: int) -> "bytes | None":
-    """The bytes of `config.yml` read through the held descriptor, None when the entry is absent (ENOENT alone)."""
+def open_config(dfd: int, agent_dir: str, uid: int) -> "tuple[int, tuple[int, int]] | None":
+    """`config.yml` opened through the held descriptor with its identity (device, inode), None when the entry is
+    absent (ENOENT alone); a link, an irregular entry or another uid's file refuses."""
     path = f"{agent_dir}/{CONFIG}"
     try:
         cfd = os.open(CONFIG, READ_FLAGS, dir_fd=dfd)
@@ -147,13 +155,62 @@ def read_config(dfd: int, agent_dir: str, uid: int) -> "bytes | None":
             raise Refusal("fstat-config", path, f"is not a regular file; {INSIDE}")
         if info.st_uid != uid:
             raise Refusal("fstat-config", path, f"is owned by uid {info.st_uid}, not {uid}")
-        return read_all(cfd, "read-config", path)
+    except Refusal:
+        close_quietly(cfd)
+        raise
+    return cfd, (info.st_dev, info.st_ino)
+
+
+def read_config(dfd: int, agent_dir: str, uid: int) -> "tuple[bytes | None, tuple[int, int] | None]":
+    """The bytes of `config.yml` read through the held descriptor and the identity of the file they were read from,
+    (None, None) when the entry is absent."""
+    opened = open_config(dfd, agent_dir, uid)
+    if opened is None:
+        return None, None
+    cfd, identity = opened
+    try:
+        return read_all(cfd, "read-config", f"{agent_dir}/{CONFIG}"), identity
     finally:
         close_quietly(cfd)
 
 
-def create_temporary(dfd: int, agent_dir: str, uid: int) -> "tuple[str, int]":
-    """A fresh 0600 regular file of `uid` at a random name inside the held directory, created exclusively."""
+def identity_at(dfd: int, agent_dir: str, step: str, uid: int) -> "tuple[int, int]":
+    """The identity of the entry `config.yml` names now, through one more open on the held descriptor; an absent
+    entry refuses, since the name held the config a moment ago."""
+    opened = open_config(dfd, agent_dir, uid)
+    if opened is None:
+        raise Refusal(
+            step, f"{agent_dir}/{CONFIG}", "is absent after it held the rendered config (replaced during placement)"
+        )
+    cfd, identity = opened
+    close_quietly(cfd)
+    return identity
+
+
+def settled(dfd: int, agent_dir: str, uid: int, rendered: bytes, identity: "tuple[int, int]", step: str) -> None:
+    """The name `config.yml` holds the inode `identity` (the written temporary's after the rename, or the compared
+    config's), read through the held directory descriptor; another inode there is read once and must hold the
+    rendering and still stand at the name after that read (a concurrent launch of the same bytes); anything else
+    refuses, so no replacement during a read is reported as placed or kept."""
+    target = f"{agent_dir}/{CONFIG}"
+    for attempt in (0, 1):
+        if identity_at(dfd, agent_dir, step, uid) == identity:
+            return
+        if attempt:
+            break
+        current, identity = read_config(dfd, agent_dir, uid)
+        if current != rendered:
+            raise Refusal(
+                step,
+                target,
+                "does not hold the rendered config after the rename (a writer inside the directory replaced it)",
+            )
+    raise Refusal(step, target, "config.yml replaced during placement (another inode at the name on every read)")
+
+
+def create_temporary(dfd: int, agent_dir: str, uid: int) -> "tuple[str, int, tuple[int, int]]":
+    """A fresh 0600 regular file of `uid` at a random name inside the held directory, created exclusively, with the
+    identity (device, inode) of the descriptor."""
     name = TEMPORARY_PREFIX + secrets.token_hex(8)
     path = f"{agent_dir}/{name}"
     try:
@@ -180,7 +237,7 @@ def create_temporary(dfd: int, agent_dir: str, uid: int) -> "tuple[str, int]":
     except Refusal as refusal:
         close_quietly(tfd)
         raise unlink_temporary(dfd, name, path, refusal) from None
-    return name, tfd
+    return name, tfd, (info.st_dev, info.st_ino)
 
 
 def unlink_temporary(dfd: int, name: str, path: str, refusal: Refusal) -> Refusal:
@@ -198,12 +255,13 @@ def place(agent_dir: str, uid: int, rendered: bytes, dry_run: bool) -> str:
     """Place `rendered` as `config.yml` inside `agent_dir`, or raise Refusal; the decision word for stdout."""
     dfd = open_agent(agent_dir, uid)
     try:
-        current = read_config(dfd, agent_dir, uid)
-        if current == rendered:
+        current, identity = read_config(dfd, agent_dir, uid)
+        if current == rendered and identity is not None:
+            settled(dfd, agent_dir, uid, rendered, identity, "verify-kept")
             return "kept"
         if dry_run:
             return "absent" if current is None else "differs"
-        name, tfd = create_temporary(dfd, agent_dir, uid)
+        name, tfd, written = create_temporary(dfd, agent_dir, uid)
         path = f"{agent_dir}/{name}"
         target = f"{agent_dir}/{CONFIG}"
         try:
@@ -221,14 +279,20 @@ def place(agent_dir: str, uid: int, rendered: bytes, dry_run: bool) -> str:
         except Refusal as refusal:
             close_quietly(tfd)
             raise unlink_temporary(dfd, name, path, refusal) from None
-        close_quietly(tfd)
-        placed = read_config(dfd, agent_dir, uid)
-        if placed != rendered:
-            raise Refusal(
-                "verify-placed",
-                target,
-                "does not hold the rendered config after the rename (a writer inside the directory raced the placement)",
-            )
+        try:
+            try:
+                os.lseek(tfd, 0, os.SEEK_SET)
+            except OSError as error:
+                raise Refusal("verify-placed", target, f"cannot rewind the written file: {errno_text(error)}") from None
+            if read_all(tfd, "verify-placed", target) != rendered:
+                raise Refusal(
+                    "verify-placed",
+                    target,
+                    "does not hold the rendered config after the rename (a writer inside the directory replaced it)",
+                )
+        finally:
+            close_quietly(tfd)
+        settled(dfd, agent_dir, uid, rendered, written, "verify-placed")
         return "placed" if current is None else "replaced"
     finally:
         close_quietly(dfd)

@@ -3081,7 +3081,7 @@ exit 0
             seen = self.settings_seen(home)
             self.assertEqual(1, len(seen), seen)
             store = (dsh_home / ".pnpm-store").resolve()
-            self.assertTrue((store / "tmp").is_dir(), "the store and its TMPDIR are made before the run")
+            self.assertTrue((store / "tmpdir").is_dir(), "the store and its TMPDIR are made before the run")
             self.assertEqual([str(build.resolve()), str(store)], seen[0]["filesystem"]["allowWrite"])
             self.assertEqual(self.expected_deny_write(home), seen[0]["filesystem"]["denyWrite"])
             self.assertEqual([], seen[0]["filesystem"]["allowRead"])
@@ -3265,14 +3265,16 @@ exit 0
             self.assertEqual(str(home), srt_env["HOME"])
             self.assertEqual(f"{home}/bin:{home}/bin:/usr/bin:/bin", srt_env["PATH"])
             self.assertEqual(str(dsh_home), srt_env["DSH_HOME"])
-            self.assertEqual(f"{store}/tmp", srt_env["CLAUDE_CODE_TMPDIR"])
+            self.assertEqual(f"{store}/tmpdir", srt_env["CLAUDE_CODE_TMPDIR"])
             for name in ("AWS_PROFILE", "GH_TOKEN", "HTTP_PROXY", "CALLS"):
                 self.assertNotIn(name, srt_env, f"{name} of the caller never reaches srt")
             child = dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
             self.assertEqual("http://localhost:3128", child["HTTP_PROXY"], "the proxy srt injected, not the caller's")
             self.assertEqual("http://localhost:3128", child["HTTPS_PROXY"])
             self.assertEqual("1", child["SANDBOX_RUNTIME"])
-            self.assertEqual(f"{store}/tmp", child["TMPDIR"], "srt hands its child the TMPDIR CLAUDE_CODE_TMPDIR names")
+            self.assertEqual(
+                f"{store}/tmpdir", child["TMPDIR"], "srt hands its child the TMPDIR CLAUDE_CODE_TMPDIR names"
+            )
             for name in self.SRT_VARIABLES:
                 self.assertEqual(srt_env[name], child[name], name)
             for name in ("AWS_PROFILE", "GH_TOKEN"):
@@ -3303,8 +3305,10 @@ exit 0
                 [str(build.resolve()), store], seen["filesystem"]["allowWrite"], "the two roots, as before"
             )
             [srt_env] = self.srt_environments(home)
-            self.assertEqual(f"{store}/tmp", srt_env["TMPDIR"])
-            self.assertEqual(f"{store}/tmp", srt_env["CLAUDE_CODE_TMPDIR"], "what srt 0.0.81 hands its child as TMPDIR")
+            self.assertEqual(f"{store}/tmpdir", srt_env["TMPDIR"])
+            self.assertEqual(
+                f"{store}/tmpdir", srt_env["CLAUDE_CODE_TMPDIR"], "what srt 0.0.81 hands its child as TMPDIR"
+            )
             self.assertEqual(store, srt_env["npm_config_store_dir"])
             self.assertEqual(f"{store}/cache", srt_env["npm_config_cache_dir"])
             self.assertEqual(f"{store}/state", srt_env["npm_config_state_dir"])
@@ -3312,7 +3316,7 @@ exit 0
             self.assertEqual(f"{store}/npm-cache/_logs", srt_env["npm_config_logs_dir"])
             for name in ("XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME"):
                 self.assertTrue(srt_env[name].startswith(f"{store}/xdg-"), (name, srt_env[name]))
-            self.assertTrue((Path(store) / "tmp").is_dir(), "the TMPDIR inside the store exists before the run")
+            self.assertTrue((Path(store) / "tmpdir").is_dir(), "the TMPDIR inside the store exists before the run")
             # Every variable that names a place for a tool's files names one under the store.
             for name in self.SRT_VARIABLES - {"HOME", "PATH", "DSH_HOME", "npm_config_manage_package_manager_versions"}:
                 self.assertTrue(srt_env[name].startswith(store), (name, srt_env[name]))
@@ -3433,7 +3437,7 @@ exit 0
             build = dsh_home / "dsh/build"
             build.mkdir(parents=True)
             settings = dsh_home / "dsh/build.srt.json"
-            prelude = 'mkdir() { case "$*" in *"/.pnpm-store/tmp") return 1 ;; esac; command mkdir "$@"; }'
+            prelude = 'mkdir() { case "$*" in *"/.pnpm-store/tmpdir") return 1 ;; esac; command mkdir "$@"; }'
             result = self.run_build_under_srt(
                 home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
             )

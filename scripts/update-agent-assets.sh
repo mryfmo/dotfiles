@@ -1808,7 +1808,7 @@ function dsh_prune_older() {
 #   The environment is sanitised outside srt and completed inside (U322b): `/usr/bin/env -i` starts srt from HOME, a
 #   PATH of the mise pnpm and node directories and the system directories, DSH_HOME, and the variables that point every
 #   cache and log of the tools inside the two write roots (TMPDIR and CLAUDE_CODE_TMPDIR, which srt 0.0.81 reads as the
-#   TMPDIR it hands its child, at <store>/tmp; the XDG directories, pnpm's cache-dir and state-dir, npm's cache and
+#   TMPDIR it hands its child, at <store>/tmpdir; the XDG directories, pnpm's cache-dir and state-dir, npm's cache and
 #   logs-dir under the store; the store itself as npm_config_store_dir; pnpm's self-install off). srt 0.0.81 runs its
 #   child from its own environment plus what it injects (SANDBOX_RUNTIME, TMPDIR, HTTP_PROXY, HTTPS_PROXY and their
 #   lower-case forms, NO_PROXY), and its sandbox reaches the network through that proxy alone, so nothing between srt
@@ -1881,10 +1881,12 @@ function build_under_srt() {
         printf 'build_under_srt: the physical path of HOME %s could not be read; nothing run.\n' "${HOME}" >&2
         return 1
     }
-    # /tmp is resolved for the deny of srt's own temporary root below: `/tmp/claude` and, where /tmp is a link (macOS:
-    # /private/tmp), the spelling the kernel sees; `~/.npm/_logs` takes HOME's physical path.
-    tmp_real="$(cd /tmp && pwd -P)" || {
-        printf 'build_under_srt: the physical path of /tmp could not be read, which the deny of srt'\''s own /tmp/claude needs; nothing run.\n' >&2
+    # srt 0.0.81's own temporary root is the one `/tmp` word of this file (test_sandbox_portability's ALLOWED_TMP names
+    # it); its parent is resolved for the deny below, so that where /tmp is a link (macOS: /private/tmp) the spelling
+    # the kernel sees is denied as well. `~/.npm/_logs` takes HOME's physical path.
+    deny_write=(/tmp/claude)
+    tmp_real="$(cd "${deny_write[0]%/*}" && pwd -P)" || {
+        printf 'build_under_srt: the physical path of %s could not be read, which the deny of srt'\''s own %s needs; nothing run.\n' "${deny_write[0]%/*}" "${deny_write[0]}" >&2
         return 1
     }
     if [ -L "${dir}" ] || [ ! -d "${dir}" ] || [ ! -O "${dir}" ]; then
@@ -1901,7 +1903,7 @@ function build_under_srt() {
         printf 'build_under_srt: %s is a symlink or not a directory; the step writes the pnpm store only in a directory of its own there (move it aside and rerun make update); nothing run.\n' "${store}" >&2
         return 1
     fi
-    mkdir -p "${store}/tmp" || {
+    mkdir -p "${store}/tmpdir" || {
         printf 'build_under_srt: the pnpm store %s could not be made; nothing run.\n' "${store}" >&2
         return 1
     }
@@ -1935,11 +1937,9 @@ function build_under_srt() {
     deny+=("${source_real}" "${common_real}")
     # srt 0.0.81's implicit write grants, closed by name (hcom-seat's form for the operator's Claude Code state, U190b):
     # its own TMPDIR root in both spellings where they differ, and npm's log directory under the home.
-    deny_write=(/tmp/claude)
-    case ${tmp_real} in # lint-comparisons: allow the spelling test says whether /tmp has a second, physical spelling
-    /tmp) ;;
-    *) deny_write+=("${tmp_real}/claude") ;;
-    esac
+    if [ "${tmp_real}" != "${deny_write[0]%/*}" ]; then # lint-comparisons: allow a spelling test, pwd -P of /tmp against its logical name
+        deny_write+=("${tmp_real}/claude")
+    fi
     deny_write+=("${home_real}/.npm/_logs")
     for path in "${dir_real}" "${store_real}" "${deny[@]}" "${deny_write[@]}"; do
         if [[ ! ${path} =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || [[ /${path}/ == */./* ]] || [[ /${path}/ == */../* ]]; then # lint-comparisons: allow a component test on one path, no path compare
@@ -1968,7 +1968,7 @@ function build_under_srt() {
     # env -i stands outside srt (verdicts/U322 P1 :1941): srt starts from these variables alone and its child gets them
     # plus what srt injects; the command after -- is handed over as given.
     (cd "${dir_real}" && exec /usr/bin/env -i "HOME=${HOME}" "PATH=${pnpm_bin%/*}:${node_bin%/*}:/usr/bin:/bin" \
-        "DSH_HOME=${DSH_HOME}" "TMPDIR=${store_real}/tmp" "CLAUDE_CODE_TMPDIR=${store_real}/tmp" \
+        "DSH_HOME=${DSH_HOME}" "TMPDIR=${store_real}/tmpdir" "CLAUDE_CODE_TMPDIR=${store_real}/tmpdir" \
         "XDG_CACHE_HOME=${store_real}/xdg-cache" "XDG_CONFIG_HOME=${store_real}/xdg-config" \
         "XDG_DATA_HOME=${store_real}/xdg-data" "XDG_STATE_HOME=${store_real}/xdg-state" \
         "npm_config_store_dir=${store_real}" "npm_config_cache_dir=${store_real}/cache" \

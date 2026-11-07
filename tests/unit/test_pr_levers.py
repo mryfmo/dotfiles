@@ -2739,6 +2739,22 @@ class RecordsSyncTest(PrLeverTestCase):
             },
         )
 
+    def derived_store(self, program="prog"):
+        """The derived program store `${REGIME_STORE_ROOT}/<program>` (regime-cutover U220, store move 4 of 5): the
+        root is regime-env's fixed derivation `<physical HOME>/.local/state/regime-store/<slug>` (U215), here the
+        fixture's HOME and the slug `repo` of the fixture checkout `<root>/repo`."""
+        return self.root / "home/.local/state/regime-store/repo" / program
+
+    def move_store_to_derived(self):
+        """The fixture's store files move to the derived directory, and the checkout subtree is rebuilt from
+        origin/main's copies (the published, masked form the subtree holds after U221), so a change the sync carries
+        can only have come from the derived directory."""
+        derived = self.derived_store()
+        derived.parent.mkdir(parents=True)
+        shutil.move(str(self.records), str(derived))
+        self.git("checkout", "-q", "origin/main", "--", ".orchestration/orchestrate/prog")
+        return derived
+
     def test_the_records_reach_a_records_branch_and_a_pull_request(self):
         self.github()
         with (self.records / "units.tsv").open("a") as units:
@@ -3550,6 +3566,207 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assert_refused(run, "holds a control character")
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])
+
+    def test_the_derived_store_directory_is_listed_when_it_exists_and_the_checkout_subtree_is_not_carried(self):
+        """U220 (handoff/07-store-move-design.md, store move 4 of 5): when `${REGIME_STORE_ROOT}/prog` exists as a
+        directory of this user it is the store: its files are listed from the directory itself, compared with
+        origin/main at the published prefix `.orchestration/orchestrate/prog/`, masked and scanned, and its changes and
+        deletions reach the branch; the stderr line says `derived`. The checkout subtree holds origin/main's published
+        copies after U221 and an edit there is not a record: a stray file and an edited units.tsv under
+        `<repo>/.orchestration/orchestrate/prog/` reach no copy, and nothing is written there."""
+        derived = self.move_store_to_derived()
+        self.github()
+        with (derived / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        (derived / "notes.md").write_text(f"token {planted}\n")
+        (derived / "briefs").mkdir()
+        (derived / "briefs/B1.md").write_text("brief\n")
+        (derived / "decisions.tsv").unlink()  # deleted from the store, still held by origin/main
+        (self.records / "stray.md").write_text("an edit in the checkout subtree, not a record\n")
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U9\tthe checkout subtree's own edit\n")
+        run = self.run_lever("records-sync.sh", "--unit", "U20")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"records-sync.sh: store: derived {derived}\n", run.stderr)
+        self.assertEqual(
+            run.stdout, "synced branch=records/sync-7 files=4 pr=https://github.com/acme/widgets/pull/600\n"
+        )
+        prog = ".orchestration/orchestrate/prog"
+        self.assertEqual(
+            self.branch_changes(),
+            [f"A\t{prog}/briefs/B1.md", f"D\t{prog}/decisions.tsv", f"A\t{prog}/notes.md", f"M\t{prog}/units.tsv"],
+        )
+        files = self.git("ls-tree", "-r", "--name-only", "records/sync-7", cwd=self.origin).splitlines()
+        self.assertNotIn(f"{prog}/stray.md", files, "the checkout subtree's stray file is not carried")
+        self.assertEqual(
+            self.git("show", f"records/sync-7:{prog}/units.tsv", cwd=self.origin) + "\n",
+            (derived / "units.tsv").read_text(),
+            "the branch holds the derived store's units.tsv, not the checkout subtree's",
+        )
+        self.assertNotIn(planted, self.git("show", f"records/sync-7:{prog}/notes.md", cwd=self.origin), "masked")
+        self.assertIn(planted, (derived / "notes.md").read_text(), "the store's file is never changed")
+        self.assertEqual(
+            sorted(entry.name for entry in self.records.iterdir()),
+            ["decisions.tsv", "stray.md", "units.tsv"],
+            "nothing is written in the checkout subtree",
+        )
+        message = self.git("log", "-1", "--format=%B", "records/sync-7", cwd=self.origin)
+        self.assertIn("from the program store (derived form)", message)
+        self.assertEqual(self.git("worktree", "list", "--porcelain").count("worktree "), 1)
+
+    def test_the_checkout_subtree_stands_as_the_pre_move_form_while_the_derived_directory_is_absent(self):
+        """U220: with no `${REGIME_STORE_ROOT}/prog` directory the checkout subtree is the store as before U220, listed
+        by `git ls-files`, the stderr line names the pre-move form and the unit that removes it (U221), and nothing is
+        made under HOME; another program's derived store changes nothing for `--program prog`."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        run = self.run_lever("records-sync.sh", "--unit", "U20")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"records-sync.sh: store: checkout {self.records} (pre-move form, removed by U221)\n", run.stderr)
+        self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
+        self.assertFalse((self.root / "home/.local").exists(), "the lever makes nothing under HOME")
+        message = self.git("log", "-1", "--format=%B", "records/sync-7", cwd=self.origin)
+        self.assertIn("from the program store (checkout form)", message)
+        self.git("push", "-q", "origin", "--delete", "records/sync-7")
+        self.derived_store("other-program").mkdir(parents=True)
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U3\tseats\n")
+        run = self.run_lever("records-sync.sh", "--program", "prog")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"records-sync.sh: store: checkout {self.records} (pre-move form, removed by U221)\n", run.stderr)
+        self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
+        self.assertFalse(self.derived_store().exists())
+
+    def test_in_the_derived_form_a_link_a_control_character_a_dot_name_and_redact_words_are_handled_by_name(self):
+        """U220: the derived directory is listed by a walk, not by git, so its own holds stand where git's did: a
+        symbolic link at the store or at any component below it, and a path with a control character, refuse before
+        any copy (nothing is created, no `gh` call); a file at the store's place is refused by name; a name beginning
+        with `.` refuses by name (the checkout form's ignore rules skip such a file today, and a Finder artifact is not
+        a record); `redact-words.txt` at the store's top is read for the scan and never copied, deleted or published."""
+        derived = self.move_store_to_derived()
+        self.github()
+        with (derived / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        outside = self.root / "outside"
+        outside.mkdir()
+        (outside / "note.md").write_text("outside the store\n")
+        cases = {
+            "a link to a file below the store": (
+                "link.md",
+                lambda p: p.symlink_to(outside / "note.md"),
+                "is a symlink",
+            ),
+            "a link to a directory below the store": ("linked", lambda p: p.symlink_to(outside), "is a symlink"),
+            "a dangling link": ("gone.md", lambda p: p.symlink_to(self.root / "nowhere"), "is a symlink"),
+            "a control character in a name": (
+                "x\nnotes.md",
+                lambda p: p.write_text("x\n"),
+                "holds a control character",
+            ),
+            "a name beginning with a dot": (".DS_Store", lambda p: p.write_text("Bud1\n"), "begins with '.'"),
+            "a dot directory below the store": (
+                ".git/HEAD",
+                lambda p: p.write_text("ref: refs/heads/main\n"),
+                "begins with '.'",
+            ),
+        }
+        for case, (name, plant, message) in cases.items():
+            with self.subTest(case):
+                path = derived / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                plant(path)
+                run = self.run_lever("records-sync.sh")
+                self.assert_refused(run, message)
+                self.assertNotIn("outside the store", run.stdout + run.stderr)
+                self.assert_nothing_left()
+                self.assertEqual(self.gh_calls(), [])
+                path.unlink()
+        shutil.rmtree(derived / ".git")
+        # a symbolic link at the store's own place, whichever way the program is named, and a file there
+        real = self.root / "elsewhere"
+        shutil.move(str(derived), str(real))
+        derived.symlink_to(real)
+        for args in ((), ("--program", "prog")):
+            with self.subTest(args=args):
+                run = self.run_lever("records-sync.sh", *args)
+                self.assert_refused(run, f"{derived} is a symlink")
+                self.assert_nothing_left()
+                self.assertEqual(self.gh_calls(), [])
+        derived.unlink()
+        derived.write_text("not a store\n")
+        self.assert_refused(self.run_lever("records-sync.sh", "--program", "prog"), f"{derived} exists but")
+        self.assert_nothing_left()
+        derived.unlink()
+        shutil.move(str(real), str(derived))
+        # redact-words.txt under the derived store: read for the scan, never published
+        (derived / "redact-words.txt").write_text("# host and user names\nmbp-kana\n\noperator1\n")
+        (derived / "notes.md").write_text("the run went from MBP-Kana fine\n")
+        run = self.run_lever("records-sync.sh")
+        self.assert_refused(run, "identifier scan")
+        self.assertNotIn("mbp-kana", run.stderr.lower(), "no output line quotes a word")
+        self.assert_nothing_left()
+        (derived / "notes.md").write_text("clean notes\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"records-sync.sh: store: derived {derived}\n", run.stderr)
+        self.assertEqual(
+            self.branch_changes(),
+            ["A\t.orchestration/orchestrate/prog/notes.md", "M\t.orchestration/orchestrate/prog/units.tsv"],
+        )
+        files = self.git("ls-tree", "-r", "--name-only", "records/sync-7", cwd=self.origin).splitlines()
+        self.assertNotIn(".orchestration/orchestrate/prog/redact-words.txt", files, "the words file is never published")
+
+    def test_the_existing_refusals_hold_in_the_derived_form_too(self):
+        """U220 (d): the refusals before the listing stand in the derived form as in the checkout form (a linked
+        worktree, an origin URL that is not https, an unset identity: nothing is created, no `gh` call), and so do the
+        ones after it: the masker's output is never shown and the identifier scan refuses what the masking left, each
+        after the store line named the derived form."""
+        derived = self.move_store_to_derived()
+        self.github()
+        with (derived / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        linked = self.root / "linked"
+        self.git("worktree", "add", "-q", "--detach", str(linked))
+        self.assert_refused(self.run_lever("records-sync.sh", cwd=linked), "linked worktree")
+        self.git("worktree", "remove", "--force", str(linked))
+        self.git("remote", "set-url", "origin", "git@github.com:acme/widgets.git")
+        self.assert_refused(self.run_lever("records-sync.sh"), "needs an https origin URL")
+        self.git("remote", "set-url", "origin", self.url)
+        gitconfig = Path(self.env["GIT_CONFIG_GLOBAL"])
+        saved = gitconfig.read_text()
+        gitconfig.write_text("[init]\n\tdefaultBranch = main\n")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config user.name is unset")
+        gitconfig.write_text(saved)
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
+        # the masker's output is never shown: on a key collision it names the path and both keys, into the scratch directory
+        (derived / "redact-words.txt").write_text("operator1\n")
+        first, second = ("ghp_" + letter * 36 for letter in "AB")
+        (derived / "notes.json").write_text(json.dumps({f"operator1 {first}": 1, f"operator1 {second}": 2}))
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn(f"records-sync.sh: store: derived {derived}\n", run.stderr)
+        self.assertIn("masking the copies failed (exit 1); its output is withheld", run.stderr)
+        for secret in ("operator1", first, second):
+            self.assertNotIn(secret, run.stdout + run.stderr)
+        self.assert_nothing_left()
+        (derived / "notes.json").unlink()
+        # the identifier scan refuses what the masking left (a redact word, in a text and in a file name), naming
+        # neither the path nor the word
+        for name, text in (("notes.md", "the run went from operator1's seat\n"), ("notes-operator1.md", "clean\n")):
+            with self.subTest(name):
+                (derived / name).write_text(text)
+                run = self.run_lever("records-sync.sh")
+                self.assert_refused(run, "identifier scan")
+                self.assertIn(f"records-sync.sh: store: derived {derived}\n", run.stderr)
+                self.assertNotIn(
+                    "operator1", run.stdout + run.stderr, "no output line quotes the word, in a path either"
+                )
+                self.assert_nothing_left()
+                self.assertEqual(self.gh_calls(), [])
+                (derived / name).unlink()
 
 
 if __name__ == "__main__":

@@ -5613,7 +5613,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_regime-env">home/dot_local/bin/common/executable_regime-env<a class="headerlink" href="#homedot_localbincommonexecutable_regime-env" title="Permanent link">&para;</a></h1>
-<p>Regime-cutover U33. Sourced by <code>hcom-seat</code>, <code>hcom-dispatch</code>, <code>bus-history.sh</code> and <code>regime-init</code> from the directory they run from (<code>LEVER_DIR</code>), never run on its own. It checks its own sha256 against its <code>claude.levers.sha256.regime-env</code> pin first, like every lever, so a rewritten helper stops the caller. Defaults, an explicit environment always winning: <code>HCOM_TEAM=&lt;slug&gt;</code>, <code>HCOM_DIR=~/.local/state/hcom/&lt;slug&gt;</code>, seats root <code>~/.local/state/omp-seats/&lt;slug&gt;</code>, where <code>&lt;slug&gt;</code> is the checkout's basename lower-cased with every character outside <code>[a-z0-9_-]</code> replaced by <code>-</code>, at most 40 characters. A derived store's <code>origin</code> file, written by <code>regime-init</code>, must name this checkout, so two checkouts with one basename cannot share a store unnoticed.</p>
+<p>Regime-cutover U33. Sourced by <code>hcom-seat</code>, <code>hcom-dispatch</code>, <code>bus-history.sh</code> and <code>regime-init</code> from the directory they run from (<code>LEVER_DIR</code>), never run on its own. It checks its own sha256 against its <code>claude.levers.sha256.regime-env</code> pin first, like every lever, so a rewritten helper stops the caller. Defaults, an explicit environment always winning: <code>HCOM_TEAM=&lt;slug&gt;</code>, <code>HCOM_DIR=~/.local/state/hcom/&lt;slug&gt;</code>, seats root <code>~/.local/state/omp-seats/&lt;slug&gt;</code>, where <code>&lt;slug&gt;</code> is the checkout's basename lower-cased with every character outside <code>[a-z0-9_-]</code> replaced by <code>-</code>, at most 40 characters. A derived store's <code>origin</code> file, written by <code>regime-init</code>, must name this checkout, so two checkouts with one basename cannot share a store unnoticed. The program stores live under one store root per repository slug, the fixed derivation <code>&lt;physical HOME&gt;/.local/state/regime-store/&lt;slug&gt;</code> (regime_store_root), one directory per program (<code>&lt;store root&gt;/&lt;program&gt;</code>, created by <code>regime-init</code>), outside every checkout and outside the hcom store, which hcom-seat grants to every seat for the bus (U215, U215b, U215c, handoff/07-store-move-design.md). No binding file, option or environment value chooses the root, so nothing a seat writes enters it; <code>REGIME_STORE_ROOT</code> is exported as the derived path, or empty where there is no slug (outside a checkout, with an explicit <code>HCOM_DIR</code>).</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_regime-env</code></li>
@@ -5625,12 +5625,13 @@
 <li><code>lever_self_check</code></li>
 <li><code>regime_env</code></li>
 <li><code>regime_slug</code></li>
+<li><code>regime_store_root</code></li>
 <li><code>regime_toplevel</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 <span class="c1"># @file regime-env</span>
-<span class="c1"># @brief The per-repository regime derivation the levers source: repository slug, hcom store, team, seat root.</span>
+<span class="c1"># @brief The per-repository regime derivation the levers source: repository slug, hcom store, store root, team, seat root.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Regime-cutover U33. Sourced by `hcom-seat`, `hcom-dispatch`, `bus-history.sh` and `regime-init` from the</span>
 <span class="c1">#   directory they run from (`LEVER_DIR`), never run on its own. It checks its own sha256 against its</span>
@@ -5639,7 +5640,12 @@
 <span class="c1">#   seats root `~/.local/state/omp-seats/&lt;slug&gt;`, where `&lt;slug&gt;` is the checkout's basename lower-cased with</span>
 <span class="c1">#   every character outside `[a-z0-9_-]` replaced by `-`, at most 40 characters. A derived store's `origin`</span>
 <span class="c1">#   file, written by `regime-init`, must name this checkout, so two checkouts with one basename cannot share a</span>
-<span class="c1">#   store unnoticed.</span>
+<span class="c1">#   store unnoticed. The program stores live under one store root per repository slug, the fixed derivation</span>
+<span class="c1">#   `&lt;physical HOME&gt;/.local/state/regime-store/&lt;slug&gt;` (regime_store_root), one directory per program</span>
+<span class="c1">#   (`&lt;store root&gt;/&lt;program&gt;`, created by `regime-init`), outside every checkout and outside the hcom store, which</span>
+<span class="c1">#   hcom-seat grants to every seat for the bus (U215, U215b, U215c, handoff/07-store-move-design.md). No binding</span>
+<span class="c1">#   file, option or environment value chooses the root, so nothing a seat writes enters it; `REGIME_STORE_ROOT` is</span>
+<span class="c1">#   exported as the derived path, or empty where there is no slug (outside a checkout, with an explicit `HCOM_DIR`).</span>
 <span class="c1"># @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):</span>
 <span class="c1">#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot</span>
 <span class="c1">#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the</span>
@@ -5734,12 +5740,67 @@ regime_slug<span class="o">()</span><span class="w"> </span><span class="o">{</s
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">slug</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
+<span class="c1"># @description Derive the store root the program stores lie under (U215c, the mechanism-change row of</span>
+<span class="c1">#   2026-11-07T18:05:48Z, form remove; handoff/07-store-move-design.md): `&lt;physical HOME&gt;/.local/state/regime-store/&lt;slug&gt;`,</span>
+<span class="c1">#   one root per repository slug, from HOME resolved physically (`cd` and `pwd -P`, the status read) and from the slug</span>
+<span class="c1">#   this helper derives for the hcom store, and from nothing else. Round 1 derived it under the hcom store, which</span>
+<span class="c1">#   hcom-seat grants to every seat for the bus (verdict U215-11a32ed6 P1); round 2 bound it in a file there, which a</span>
+<span class="c1">#   seat could rewrite, and held the binding by a textual HOME prefix, which `HOME/../x` and a linked ancestor passed</span>
+<span class="c1">#   (verdict U215-a081d8ba P1 `:127` and `:147`). No binding file, option or environment value chooses the root now,</span>
+<span class="c1">#   and `REGIME_STORE_ROOT` is never read from the environment, so nothing can point a lever at another root. Every</span>
+<span class="c1">#   component from `.local` down is held by its own test under a parent this user can search (the shape of</span>
+<span class="c1">#   seat-login-preflight's claude_config_validate): a symbolic link, a file or another user's directory refuses by</span>
+<span class="c1">#   name; a directory this user cannot search refuses naming it, since a file test below it answers false for "could</span>
+<span class="c1">#   not look" as for "not so" (verdict U215-a081d8ba P2 `:135`; the failed-read rule, standing order 21); an absent</span>
+<span class="c1">#   component ends the walk, everything below it being absent (`regime-init` makes `regime-store`, `&lt;slug&gt;` and</span>
+<span class="c1">#   `&lt;program&gt;` 0700). Nothing is written. Without a slug the root is empty: it is a repository's. A refusal prints</span>
+<span class="c1">#   its reason prefixed with the caller's name and returns 1; each caller maps that to its own refusal status.</span>
+<span class="c1"># @arg $1 string The caller's name, for messages.</span>
+<span class="c1"># @arg $2 string The repository slug, or empty.</span>
+<span class="c1"># @set REGIME_STORE_ROOT The derived root; empty without a slug.</span>
+<span class="c1"># @exitcode 0 Derived, or no slug.</span>
+<span class="c1"># @exitcode 1 HOME is empty or cannot be resolved; a component is a symbolic link, not a directory, another user's</span>
+<span class="c1">#   directory, or a directory this user cannot search.</span>
+regime_store_root<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">who</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span><span class="nv">slug</span><span class="o">=</span><span class="nv">$2</span><span class="w"> </span>home<span class="w"> </span>root<span class="w"> </span>part
+<span class="w">    </span><span class="nv">REGIME_STORE_ROOT</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">slug</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">who</span><span class="si">}</span><span class="s2">: refused: HOME is empty, so no store root can be derived under it"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">who</span><span class="si">}</span><span class="s2">: refused: cannot resolve HOME </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2"> physically, so no store root can be derived under it"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">root</span><span class="o">=</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span>/.local/state/regime-store/<span class="si">${</span><span class="nv">slug</span><span class="si">}</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local/state"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local/state/regime-store"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">part</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">who</span><span class="si">}</span><span class="s2">: refused: the store root component </span><span class="si">${</span><span class="nv">part</span><span class="si">}</span><span class="s2"> is a symlink; the store root </span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2"> is a chain of plain directories of this user"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">part</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">break</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">part</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-O<span class="w"> </span><span class="si">${</span><span class="nv">part</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">who</span><span class="si">}</span><span class="s2">: refused: the store root component </span><span class="si">${</span><span class="nv">part</span><span class="si">}</span><span class="s2"> is not a real directory of this user"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">part</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">who</span><span class="si">}</span><span class="s2">: refused: cannot search the store root component </span><span class="si">${</span><span class="nv">part</span><span class="si">}</span><span class="s2"> (permission denied), so nothing below it can be judged"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="nv">REGIME_STORE_ROOT</span><span class="o">=</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span>
+<span class="o">}</span>
+
 <span class="c1"># @description Derive the regime environment of the checkout the working directory is in; an explicit value</span>
 <span class="c1">#   always wins. A derived store is bound to its checkout by its `origin` file, which only `regime-init` writes:</span>
 <span class="c1">#   every other caller requires it to exist and name this toplevel, so a second checkout with the same slug</span>
 <span class="c1">#   cannot open or create the store. No part of a derived store path may be a symlink (`~/.local/state/hcom`,</span>
-<span class="c1">#   the store, `origin`), so nothing reads or writes through one. A refusal prints its reason prefixed with the</span>
-<span class="c1">#   caller's name and returns 1.</span>
+<span class="c1">#   the store, `origin`), so nothing reads or writes through one. The store root is the fixed derivation of</span>
+<span class="c1">#   regime_store_root from the physical HOME and the slug (U215c), held component by component before the hcom</span>
+<span class="c1">#   store is looked at, for a derived and for an explicit `HCOM_DIR` alike. A refusal prints its reason prefixed</span>
+<span class="c1">#   with the caller's name and returns 1; each caller maps that to its own refusal status (regime-init exit 2;</span>
+<span class="c1">#   hcom-dispatch and bus-history.sh exit 1).</span>
 <span class="c1"># @arg $1 string The caller's name, for messages.</span>
 <span class="c1"># @option --unbound-ok The caller is `regime-init`: a derived store without its `origin` file is allowed.</span>
 <span class="c1"># @set REGIME_TOPLEVEL The physical toplevel, empty when HCOM_DIR is explicit and the cwd is outside a checkout.</span>
@@ -5747,16 +5808,23 @@ regime_slug<span class="o">()</span><span class="w"> </span><span class="o">{</s
 <span class="c1"># @set REGIME_ORIGIN The derived store's origin file, empty when HCOM_DIR is explicit.</span>
 <span class="c1"># @set HCOM_TEAM `&lt;slug&gt;` unless set (exported).</span>
 <span class="c1"># @set HCOM_DIR `~/.local/state/hcom/&lt;slug&gt;` unless set (exported).</span>
+<span class="c1"># @set REGIME_STORE_ROOT `&lt;physical HOME&gt;/.local/state/regime-store/&lt;slug&gt;` (exported), the root the program stores lie</span>
+<span class="c1">#   under; empty where there is no slug (outside a checkout, with an explicit HCOM_DIR); never read from the</span>
+<span class="c1">#   environment, so nothing can point a lever at another root.</span>
 <span class="c1"># @set REGIME_SEATS_ROOT `~/.local/state/omp-seats/&lt;slug&gt;` unless set.</span>
-<span class="c1"># @exitcode 1 Outside a checkout with HCOM_DIR unset; an unusable slug; a symlink in the derived store path; a</span>
-<span class="c1">#   derived store without `origin` (unless --unbound-ok), or whose `origin` is unreadable or names another toplevel.</span>
+<span class="c1"># @exitcode 1 Outside a checkout with HCOM_DIR unset; an unusable slug; HOME empty or unresolvable; a store root</span>
+<span class="c1">#   component that is a symlink, not a directory, another user's or unsearchable; a symlink in the derived store</span>
+<span class="c1">#   path; a derived store without `origin` (unless --unbound-ok), or whose `origin` is unreadable or names another</span>
+<span class="c1">#   toplevel.</span>
 regime_env<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">who</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span><span class="nv">unbound_ok</span><span class="o">=</span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span>recorded<span class="w"> </span>part
-<span class="w">    </span><span class="nv">REGIME_TOPLEVEL</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">REGIME_SLUG</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">REGIME_ORIGIN</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">REGIME_SEATS_ROOT</span><span class="o">=</span><span class="si">${</span><span class="nv">REGIME_SEATS_ROOT</span><span class="k">:-</span><span class="si">}</span>
+<span class="w">    </span><span class="nv">REGIME_TOPLEVEL</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">REGIME_SLUG</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">REGIME_ORIGIN</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">REGIME_STORE_ROOT</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="nv">REGIME_SEATS_ROOT</span><span class="o">=</span><span class="si">${</span><span class="nv">REGIME_SEATS_ROOT</span><span class="k">:-</span><span class="si">}</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">REGIME_TOPLEVEL</span><span class="o">=</span><span class="k">$(</span>regime_toplevel<span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">REGIME_TOPLEVEL</span><span class="o">=</span><span class="s1">''</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">HCOM_DIR</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">export</span><span class="w"> </span>HCOM_DIR
+<span class="w">            </span><span class="c1"># No slug, so no store root: the root is a repository's, never the explicit store's.</span>
+<span class="w">            </span><span class="nb">export</span><span class="w"> </span>HCOM_DIR<span class="w"> </span>REGIME_STORE_ROOT
 <span class="w">            </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">HCOM_TEAM</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">export</span><span class="w"> </span>HCOM_TEAM
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">        </span><span class="k">fi</span>
@@ -5767,6 +5835,7 @@ regime_env<span class="o">()</span><span class="w"> </span><span class="o">{</sp
 <span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">who</span><span class="si">}</span><span class="s2">: cannot derive a repository slug from </span><span class="si">${</span><span class="nv">REGIME_TOPLEVEL</span><span class="si">}</span><span class="s2"> (it must start with [a-z0-9])"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="o">}</span>
+<span class="w">    </span>regime_store_root<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">who</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">REGIME_SLUG</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>:<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HCOM_TEAM</span><span class="p">:=</span><span class="si">${</span><span class="nv">REGIME_SLUG</span><span class="si">}}</span><span class="s2">"</span>
 <span class="w">    </span>:<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">REGIME_SEATS_ROOT</span><span class="p">:=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.local/state/omp-seats/</span><span class="si">${</span><span class="nv">REGIME_SLUG</span><span class="si">}}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">HCOM_DIR</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -5792,7 +5861,7 @@ regime_env<span class="o">()</span><span class="w"> </span><span class="o">{</sp
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nb">export</span><span class="w"> </span>HCOM_DIR<span class="w"> </span>HCOM_TEAM
+<span class="w">    </span><span class="nb">export</span><span class="w"> </span>HCOM_DIR<span class="w"> </span>HCOM_TEAM<span class="w"> </span>REGIME_STORE_ROOT
 <span class="o">}</span>
 </code></pre></div>
 

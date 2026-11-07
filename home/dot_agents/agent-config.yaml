@@ -883,7 +883,7 @@ claude:
   # pinned the same way.
   levers:
     sha256:
-      hcom-seat: 25a70af4f3cfe3ae7b2c4cbde1351927b26cf6f9da75d3528fa0515d9c87dad8
+      hcom-seat: 9fcba2a90da5a9aed63a2d6b59e59632a22fcc816acd2a2d148b04e1a673475c
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -909,8 +909,8 @@ claude:
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f
-      router-settings-apply: b3ad07189ae706b66644048ab93674c6872fc5451be2907c50f1238f5ae8b8ad
-      router-gh: 9f423a81b4ecb09df923e1af784db5ce5421072159d583376517feb37172e506
+      router-settings-apply: 377279c02c876cc32c774aac229d9d4bf670b2c0e54f9fb33b256f5697302db7
+      router-gh: b05855f1492b4bcf6009b87ffccdd89e3de06b42e65ae756a6be437468b6a9db
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

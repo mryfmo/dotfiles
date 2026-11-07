@@ -295,6 +295,19 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertNotIn(b"router-credentials", text)
         return text
 
+    def omp_credential_root(self):
+        """The credential root the omp roles deny (U353b): the kit's root under the fixture's HOME, no DSH_HOME set."""
+        return f"{self.home.resolve()}/.dsh/router-credentials"
+
+    def without_omp_credential_row(self, settings):
+        """This head's rendered omp settings (bytes) with exactly the U353b row removed: the Router's credential root
+        under `~/.dsh`, once in denyRead, after another row; nothing else names it."""
+        needle = b"," + json.dumps(self.omp_credential_root()).encode()
+        self.assertEqual(settings.count(needle), 1, settings)
+        text = settings.replace(needle, b"")
+        self.assertNotIn(b"router-credentials", text)
+        return text
+
     def earlier_lever(self, head):
         """The `hcom-seat` of the earlier `head`, unpacked with its manifest into the scratch (git archive of its
         `scripts/orchestrator` and manifest, so its self-check reads its own pin and it sources its own regime-env); a
@@ -322,8 +335,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def test_the_dsh_settings_are_the_workers_but_the_named_rows(self):
         """The role table's rows are the only difference: the cwd and state slot for the worktree, DSH_HOME and the
         role's own omp profile for the git common directory, the hcom store and the worker profile, the role's own
-        read grants, and the deny of the Router's credential root `<DSH_HOME>/router-credentials` (U353); the rest of
-        the read denies, the network and everything else are the worker's."""
+        read grants, and the deny of the Router's credential root `<DSH_HOME>/router-credentials` (U353; the worker's
+        own row of it lies under `~/.dsh`, U353b); the rest of the read denies, the network and everything else are
+        the worker's."""
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
         worker = self.settings_of("worker")
@@ -375,7 +389,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             [entry[len(cwd) :] for entry in dsh["filesystem"]["denyWrite"] if entry.startswith(cwd + "/")],
             [entry[len(clone) :] for entry in worker["filesystem"]["denyWrite"] if entry.startswith(clone + "/") and entry != clone + "/.git"],
         )  # fmt: skip
-        self.assertEqual(dsh["filesystem"]["denyRead"], worker["filesystem"]["denyRead"] + [cred] + row)
+        worker_deny_read = [e for e in worker["filesystem"]["denyRead"] if e != self.omp_credential_root()]
+        self.assertEqual(dsh["filesystem"]["denyRead"], worker_deny_read + [cred] + row)
         self.assertEqual(dsh["network"], worker["network"])
         self.assertEqual({k: v for k, v in dsh.items() if k not in ("filesystem", "network")},
                          {k: v for k, v in worker.items() if k not in ("filesystem", "network")})  # fmt: skip
@@ -425,9 +440,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def test_the_omp_roles_settings_are_byte_identical_to_the_earlier_heads(self):
         """No round's row changes an omp role's settings: the worker's and the orchestrator's `srt-settings.json`
         rendered by this head equal, byte for byte, the ones each earlier head (EARLIER_HEADS) renders on the same
-        scratch host, once exactly the U318 rows are taken out (without_shared_claude_rows). An earlier lever runs from
-        its own tree (git archive of its `scripts/orchestrator` and manifest, so its self-check reads its own pin); a
-        checkout without that commit skips it."""
+        scratch host, once exactly the U318 rows (without_shared_claude_rows) and the U353b credential-root deny
+        (without_omp_credential_row) are taken out. An earlier lever runs from its own tree (git archive of its
+        `scripts/orchestrator` and manifest, so its self-check reads its own pin); a checkout without that commit skips
+        it."""
         for head in EARLIER_HEADS:
             old_seat = self.earlier_lever(head)
             for role in ("worker", "orchestrator"):
@@ -440,7 +456,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     self.assertEqual(run.returncode, 0, f"{label} {head[:8]} {role}: {run.stderr}")
                     rendered[label] = Path(self.seats, ".sandbox", role, "srt-settings.json").read_bytes()
                 with self.subTest(head=head[:8], role=role):
-                    self.assertEqual(rendered["earlier head"], self.without_shared_claude_rows(rendered["this head"]))
+                    this_head = self.without_omp_credential_row(self.without_shared_claude_rows(rendered["this head"]))
+                    self.assertEqual(rendered["earlier head"], this_head)
                     self.assertIn(b'"allowRead":[', rendered["this head"])
 
     def test_two_launches_at_once_share_no_settings_file_and_each_slot_goes_with_its_dsh(self):
@@ -1147,8 +1164,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         the agent account's gh login (`router-gh` sets `GH_CONFIG_DIR` under it), is one more cell of the router row,
         held like the state root (cred_root_hold). The router settings carry it as allowRead row 7, after the tool
         directory, and as a denyWrite row (no role writes it); the dsh settings deny it for read and for write and
-        grant nothing at or under it; neither role grants a write there and no omp role's settings name it. A launch
-        of the router role makes the absent root 0700 after the judgement; the dsh role's launch makes nothing there."""
+        grant nothing at or under it; neither role grants a write there, and the omp roles deny the kit's root under
+        `~/.dsh` for read (U353b) and name it nowhere else. A launch of the router role makes the absent root 0700 after
+        the judgement; the dsh role's launch makes nothing there."""
         cred = self.dsh_home / "router-credentials"
         rendered = {}
         for role in ("dsh", "router"):
@@ -1180,7 +1198,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         for role in ("worker", "orchestrator"):
             run = self.seat(role, "--seats-root", self.seats)
             self.assertEqual(run.returncode, 0, run.stderr)
-            self.assertNotIn("router-credentials", json.dumps(self.settings_of(role)), role)
+            omp = self.settings_of(role)["filesystem"]
+            self.assertEqual(omp["denyRead"].count(self.omp_credential_root()), 1, role)
+            self.assertEqual(json.dumps(omp).count("router-credentials"), 1, role)
 
     def test_a_credential_root_that_is_a_link_or_a_file_refuses_both_rows_before_anything_is_made(self):
         """U353: the credential root is held like the state root (U321b to U321d): a link at `<DSH_HOME>/router-credentials`

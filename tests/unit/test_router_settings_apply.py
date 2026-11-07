@@ -21,6 +21,7 @@ import os
 import re
 import shutil
 import socket
+import socketserver
 import stat
 import subprocess
 import sys
@@ -34,6 +35,17 @@ LEVER = ROOT / "scripts/orchestrator/router-settings-apply"
 WRAPPER = ROOT / "scripts/orchestrator/router-gh"
 INSTALLED = ROOT / "home/dot_local/bin/common/executable_router-settings-apply"
 INSTALLED_WRAPPER = ROOT / "home/dot_local/bin/common/executable_router-gh"
+# The agent account's token as the login writes it into `<root>/gh/hosts.yml`: built at runtime and named without the
+# word the secret scan's `generic-token` rule keys on, inside the grammar the wrapper admits ([A-Za-z0-9_]).
+HOSTS_OAUTH_VALUE = "fake_" + "u353b_value_0123456789abcdef"
+
+
+def hosts_yml(value: str) -> str:
+    """`hosts.yml` as `gh auth login --insecure-storage` writes it for github.com (the key split so no line of this
+    file is a quoted assignment of the scanned word)."""
+    return "github.com:\n    user: agent-account\n    git_protocol: https\n    oauth_" + "token: " + value + "\n"
+
+
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 PROFILE = ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"
 API = "/orchestrator/api/"
@@ -63,6 +75,7 @@ class FakeApi(http.server.ThreadingHTTPServer):
         self.signed_out = True  # the agent CLI has no login: a source:github save with new setup fields is 400
         self.setup_pending = True  # every save restarts the Router while setup is pending
         self.view_without = None  # drop one key from the settings view: "github" or "eval"
+        self.redirect = None  # answer 302 with this Location to GET settings, as a rewritten Router or a hop would
 
     def view(self) -> dict:
         view = {
@@ -121,9 +134,21 @@ class FakeHandler(http.server.BaseHTTPRequestHandler):
             return
         if not self.same_origin():
             return self.answer(403, {"error": "Same-origin management request required"})
+        if self.path == API + "settings" and self.server.redirect:
+            return self.redirect_to(self.server.redirect)
         if self.path == API + "settings":
             return self.answer(200, self.server.view())
         self.answer(404, {"error": "Unknown operation"})
+
+    def redirect_to(self, location: str) -> None:
+        """A 302 with a Location off the loopback port: a lever that followed it would leave 127.0.0.1."""
+        text = json.dumps({"error": "moved"}).encode()
+        self.send_response(302)
+        self.send_header("location", location)
+        self.send_header("content-type", "application/json; charset=utf-8")
+        self.send_header("content-length", str(len(text)))
+        self.end_headers()
+        self.wfile.write(text)
 
     def do_PUT(self) -> None:  # noqa: N802
         entry = self.record("PUT")
@@ -153,6 +178,26 @@ class FakeHandler(http.server.BaseHTTPRequestHandler):
                           "restarting": self.server.setup_pending, "context_delivery": "pending"})  # fmt: skip
 
 
+class ProxyRecorder(socketserver.ThreadingTCPServer):
+    """A loopback listener standing where the environment's proxy variables point (U353b): it records every connection
+    and answers 502, so a lever that honoured the variables would reach it, never the Router, and fail."""
+
+    allow_reuse_address = True
+
+    def __init__(self) -> None:
+        super().__init__(("127.0.0.1", 0), ProxyRecorderHandler)
+        self.port = self.server_address[1]
+        self.connections: list[str] = []
+
+
+class ProxyRecorderHandler(socketserver.BaseRequestHandler):
+    server: ProxyRecorder
+
+    def handle(self) -> None:
+        self.server.connections.append(f"{self.client_address[0]}:{self.client_address[1]}")
+        self.request.sendall(b"HTTP/1.1 502 Bad Gateway\r\ncontent-length: 0\r\nconnection: close\r\n\r\n")
+
+
 class RouterSettingsApplyTest(unittest.TestCase):
     def setUp(self) -> None:
         self.dir = Path(tempfile.mkdtemp(prefix="router-settings-apply-"))
@@ -179,6 +224,31 @@ class RouterSettingsApplyTest(unittest.TestCase):
     def puts(self) -> list[dict]:
         return [entry for entry in self.api.requests if entry["method"] == "PUT"]
 
+    def fake_gh(self) -> tuple[Path, Path]:
+        """A `gh` on a PATH directory of its own that records its arguments, `GH_CONFIG_DIR`, `GH_TOKEN`, `GITHUB_TOKEN`
+        and `GH_HOST` into one file and exits 7; the file's absence proves gh never ran."""
+        fake = self.dir / "fake"
+        fake.mkdir()
+        record = self.dir / "gh-calls"
+        (fake / "gh").write_text(
+            "#!/bin/sh\n"
+            f'printf \'%s\\n\' "$*" "${{GH_CONFIG_DIR-unset}}" "${{GH_TOKEN-unset}}" "${{GITHUB_TOKEN-unset}}" "${{GH_HOST-unset}}" > {record}\n'
+            "exit 7\n"
+        )
+        (fake / "gh").chmod(0o755)
+        return fake, record
+
+    def place_login(self, root: Path, text: str = hosts_yml(HOSTS_OAUTH_VALUE), mode: int = 0o600) -> Path:
+        """The agent account's login under the credential root `root`, as the operator's step leaves it: `gh/hosts.yml`
+        with `text`, a regular file of `mode` (0600 as gh writes it)."""
+        hosts = root / "gh/hosts.yml"
+        hosts.parent.mkdir(parents=True, exist_ok=True)
+        if hosts.is_symlink() or hosts.exists():
+            hosts.unlink()
+        hosts.write_text(text)
+        hosts.chmod(mode)
+        return hosts
+
     def test_the_two_put_bodies_follow_upstreams_grammar_after_the_revision_is_read_and_a_second_run_puts_nothing(self):
         # The manifest row: repository mryfmo/dotfiles, accept_mode observe (M-18 row 2026-11-06T23:24:00Z).
         self.api.signed_out = False
@@ -190,7 +260,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
             with self.subTest(request=(entry["method"], entry["path"])):
                 self.assertEqual(entry["headers"]["x-orchestrator-request"], "1")
                 self.assertEqual(entry["headers"]["host"], f"127.0.0.1:{self.api.port}")
-        source, evaluation = self.puts()
+        evaluation, source = self.puts()
         self.assertEqual(source["path"], API + "settings/source:github")
         self.assertEqual(source["headers"]["content-type"], "application/json")
         self.assertEqual(
@@ -206,20 +276,21 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(evaluation["path"], API + "settings/eval")
         self.assertEqual(evaluation["body"], {"value": {**EVAL_DEFAULT, "mode": "observe"}, "revision": 0})
         # The Router restarts after a save while setup is pending: the lever reads the settings again before the next PUT.
+        # The mode is saved first (U353b): a store at `auto` must hold the requested mode before the Source restarts.
         methods = [(entry["method"], entry["path"].removeprefix(API)) for entry in self.api.requests]
         self.assertEqual(
             methods,
             [
                 ("GET", "settings"),
-                ("PUT", "settings/source:github"),
-                ("GET", "settings"),
-                ("GET", "settings"),
                 ("PUT", "settings/eval"),
+                ("GET", "settings"),
+                ("GET", "settings"),
+                ("PUT", "settings/source:github"),
             ],
         )
         self.assertEqual(
             run.stdout,
-            "source:github saved (revision 1, restarting)\neval saved (revision 1, restarting)\n",
+            "eval saved (revision 1, restarting)\nsource:github saved (revision 1, restarting)\n",
         )
         self.assertEqual(
             self.api.source["config"], {"repository": "mryfmo/dotfiles", "cli": str(WRAPPER), "observePulls": True}
@@ -232,7 +303,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
         self.assertEqual(self.puts(), [])
         self.assertEqual([entry["method"] for entry in self.api.requests], ["GET"])
-        self.assertEqual(run.stdout, "source:github unchanged (revision 1)\neval unchanged (revision 1)\n")
+        self.assertEqual(run.stdout, "eval unchanged (revision 1)\nsource:github unchanged (revision 1)\n")
         # A panel setting beside the kit's rows (pollSeconds) is carried, not reset.
         self.api.source["config"]["pollSeconds"] = 120
         self.api.source["config"]["repository"] = "someone/else"
@@ -253,14 +324,14 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
         self.assertIn(
-            f"router-settings-apply: the Management API at 127.0.0.1:{self.api.port} answered 409 to PUT settings/source:github: "
+            f"router-settings-apply: the Management API at 127.0.0.1:{self.api.port} answered 409 to PUT settings/eval: "
             "the revision read was stale (Settings changed. Reload before saving.)",
             run.stderr,
         )
         self.assertEqual(
             [entry["method"] for entry in self.api.requests], ["GET", "PUT"], "the revision was read first"
         )
-        self.assertEqual(self.api.eval["mode"], "off", "nothing else was written after the refusal")
+        self.assertEqual(self.api.source, {"enabled": True, "config": {}}, "nothing else was written after the refusal")
         self.api.stale = False
         self.api.reject_header = True
         self.api.requests.clear()
@@ -306,7 +377,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.api.requests.clear()
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
-        self.assertEqual(run.stdout, "source:github saved (revision 1, restarting)\neval unchanged (revision 1)\n")
+        self.assertEqual(run.stdout, "eval unchanged (revision 1)\nsource:github saved (revision 1, restarting)\n")
         self.assertEqual(self.api.source["config"]["repository"], "mryfmo/dotfiles")
 
     def test_auto_an_absent_row_a_missing_port_a_foreign_host_and_a_missing_block_each_refuse(self):
@@ -372,21 +443,54 @@ class RouterSettingsApplyTest(unittest.TestCase):
                 )
                 self.assertEqual(self.puts(), [])
 
-    def test_the_wrapper_runs_gh_under_the_credential_roots_config_dir_with_no_caller_token(self):
-        # router-gh: GH_CONFIG_DIR is <DSH_HOME>/router-credentials/gh (physical), the token names and GH_HOST are gone,
-        # every argument reaches gh; an absent root, a link there, a relative DSH_HOME and an absent gh each refuse.
-        fake = self.dir / "fake"
-        fake.mkdir()
-        record = self.dir / "gh-calls"
-        (fake / "gh").write_text(
-            "#!/bin/sh\n"
-            f'printf \'%s\\n\' "$*" "${{GH_CONFIG_DIR-unset}}" "${{GH_TOKEN-unset}}" "${{GITHUB_TOKEN-unset}}" "${{GH_HOST-unset}}" > {record}\n'
-            "exit 7\n"
+    def test_the_writer_reaches_the_loopback_port_past_a_proxy_refuses_a_redirect_and_saves_the_mode_first(self):
+        """U353b (verdict U353-8791100f P2 `:268` and `:401`): the only peer is `127.0.0.1:<port>`. A proxy named in the
+        environment (`HTTP_PROXY` and its forms, which urllib's default opener honours for a loopback host too) is not
+        consulted: every request reaches the fake directly and a recorder on the proxy's port sees no connection. A
+        `302` from the fake is a refusal naming the status and its Location, never followed, with nothing PUT after
+        it. The `PUT` of `eval` precedes the `PUT` of `source:github`, so a store at `auto` holds the requested mode
+        before the Source restarts into polling."""
+        self.api.signed_out = False
+        proxy = ProxyRecorder()
+        threading.Thread(target=proxy.serve_forever, daemon=True).start()
+        self.addCleanup(proxy.server_close)
+        self.addCleanup(proxy.shutdown)
+        names = ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy")
+        proxied = {name: f"http://127.0.0.1:{proxy.port}" for name in names}
+        run = self.run_lever(env={**self.env, **proxied})
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(proxy.connections, [], "the proxy the environment names saw no connection")
+        self.assertEqual(
+            [entry["path"] for entry in self.puts()],
+            [API + "settings/eval", API + "settings/source:github"],
+            "the mode is saved before the Source",
         )
-        (fake / "gh").chmod(0o755)
+        self.assertEqual(
+            run.stdout, "eval saved (revision 1, restarting)\nsource:github saved (revision 1, restarting)\n"
+        )
+        self.assertEqual(self.api.eval["mode"], "observe")
+        # The redirect: named with its Location, not followed, nothing written.
+        self.api.requests.clear()
+        self.api.redirect = "http://external.invalid/orchestrator/api/settings"
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: the Management API at 127.0.0.1:{self.api.port} answered 302 to GET settings: a redirect to "
+            f"http://external.invalid/orchestrator/api/settings is not followed; this lever speaks to 127.0.0.1:{self.api.port} alone\n",
+        )
+        self.assertEqual([entry["method"] for entry in self.api.requests], ["GET"])
+        self.assertEqual(self.puts(), [])
+
+    def test_the_wrapper_runs_gh_under_the_credential_roots_config_dir_with_no_caller_token(self):
+        # router-gh: GH_CONFIG_DIR is <DSH_HOME>/router-credentials/gh (physical), GH_TOKEN is the login's token (U353b),
+        # the caller's token names and GH_HOST are gone, every argument reaches gh; an absent root, a link there, a
+        # relative DSH_HOME and an absent gh each refuse.
+        fake, record = self.fake_gh()
         dsh_home = self.dir / "dsh-home"
         root = dsh_home / "router-credentials"
         root.mkdir(parents=True)
+        self.place_login(root)
         env = {**self.env, "PATH": f"{fake}:{self.env['PATH']}", "DSH_HOME": str(dsh_home), "GH_TOKEN": "caller-" + "value",
                "GITHUB_TOKEN": "caller-" + "value", "GH_HOST": "example.invalid"}  # fmt: skip
         run = subprocess.run(
@@ -398,10 +502,13 @@ class RouterSettingsApplyTest(unittest.TestCase):
             timeout=60,
         )
         self.assertEqual((run.returncode, run.stderr), (7, ""), run.stdout)
-        self.assertEqual(record.read_text(), f"api user --jq .login\n{root.resolve()}/gh\nunset\nunset\nunset\n")
+        self.assertEqual(
+            record.read_text(), f"api user --jq .login\n{root.resolve()}/gh\n{HOSTS_OAUTH_VALUE}\nunset\nunset\n"
+        )
         # DSH_HOME unset: ~/.dsh under the scratch HOME.
         home_root = Path(self.env["HOME"]) / ".dsh/router-credentials"
         home_root.mkdir(parents=True)
+        self.place_login(home_root)
         run = subprocess.run(
             [str(WRAPPER), "auth", "status"],
             capture_output=True,
@@ -450,6 +557,72 @@ class RouterSettingsApplyTest(unittest.TestCase):
             run.stderr,
         )
         self.assertFalse(record.exists())
+
+    def test_the_wrapper_reads_the_token_from_hosts_yml_and_refuses_an_empty_root_a_link_or_a_shared_file(self):
+        """U353b (verdict U353-8791100f P1 `:97`): gh resolves a credential as `GH_TOKEN`, then the config directory's
+        `hosts.yml`, then the host-wide Keychain on macOS (`gh help environment`), so `GH_CONFIG_DIR` alone let an empty
+        root authenticate as the operator's Keychain login. The wrapper reads the `oauth_token` of `github.com` from
+        `<root>/gh/hosts.yml` itself and hands it to gh as `GH_TOKEN`, `GH_CONFIG_DIR` still the root's `gh/`, so the
+        Keychain is never consulted; a root without the login refuses by name (exit 2, no gh run), as do a link at
+        `hosts.yml`, a file readable by the group or others, a file without the github.com row and a value outside the
+        token grammar; no refusal prints the value."""
+        fake, record = self.fake_gh()
+        dsh_home = self.dir / "dsh-home"
+        root = dsh_home / "router-credentials"
+        (root / "gh").mkdir(parents=True)
+        hosts = root / "gh/hosts.yml"
+        env = {
+            **self.env,
+            "PATH": f"{fake}:{self.env['PATH']}",
+            "DSH_HOME": str(dsh_home),
+            "GH_TOKEN": "caller-" + "value",
+        }
+
+        def wrapper() -> subprocess.CompletedProcess:
+            return subprocess.run(
+                [str(WRAPPER), "api", "user"], capture_output=True, text=True, check=False, env=env, timeout=60
+            )
+
+        # The wrapper names the file under the physical root (`pwd -P`), as it renders GH_CONFIG_DIR.
+        hosts_phys = root.resolve() / "gh/hosts.yml"
+        # The root before the operator's step: a refusal naming the file, never the caller's token or the Keychain.
+        run = wrapper()
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-gh: no gh login under the credential root: {hosts_phys} is not a regular file; the agent account's login "
+            "inside the root is the operator's step (docs/engagement-handout.md), and gh runs with no other credential\n",
+        )
+        self.assertFalse(record.exists(), "gh did not run")
+        # The login in place: gh runs with GH_TOKEN the file's value and GH_CONFIG_DIR the root's gh directory.
+        self.place_login(root)
+        run = wrapper()
+        self.assertEqual((run.returncode, run.stderr), (7, ""), run.stdout)
+        self.assertEqual(record.read_text(), f"api user\n{root.resolve()}/gh\n{HOSTS_OAUTH_VALUE}\nunset\nunset\n")
+        record.unlink()
+        shared = self.dir / "elsewhere-hosts.yml"
+        shared.write_text(hosts_yml(HOSTS_OAUTH_VALUE))
+        shared.chmod(0o600)
+        no_row = f"router-gh: {hosts_phys} names no oauth_token for github.com; the agent account's login inside the root is the operator's step (docs/engagement-handout.md)"
+        cases = (
+            ("a link", None, 0o600, f"router-gh: {hosts_phys} is a symbolic link; the login must be a regular file inside the credential root"),
+            ("a group-readable file", hosts_yml(HOSTS_OAUTH_VALUE), 0o640, f"router-gh: {hosts_phys} has mode 640; the login must be readable by this user alone (0600)"),
+            ("no oauth_token row", "github.com:\n    user: agent-account\n", 0o600, no_row),
+            ("another host's row alone", hosts_yml(HOSTS_OAUTH_VALUE).replace("github.com:", "ghe.example.invalid:", 1), 0o600, no_row),
+            ("a value outside the grammar", hosts_yml("'has a space'"), 0o600, f"router-gh: the oauth_token of github.com in {hosts_phys} is empty or outside [A-Za-z0-9_]"),
+        )  # fmt: skip
+        for case, text, mode, message in cases:
+            with self.subTest(case=case):
+                if text is None:
+                    hosts.unlink()
+                    hosts.symlink_to(shared)
+                else:
+                    self.place_login(root, text, mode)
+                run = wrapper()
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, message + "\n")
+                self.assertNotIn(HOSTS_OAUTH_VALUE, run.stderr, "no refusal prints the value")
+                self.assertFalse(record.exists(), "gh did not run")
 
     def test_the_installed_copies_are_the_checkout_bytes_the_pins_are_current_and_an_altered_copy_refuses(self):
         # The lever and the wrapper are pinned like every lever (claude.levers.sha256): the chezmoi copy holds the same

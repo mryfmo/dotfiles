@@ -2799,6 +2799,40 @@ class HcomSeatTest(SeatFixture):
         self.assertIn(f"hcom-seat: sandbox {self.seats}/.sandbox/worker", run.stderr)
         self.assertFalse(Path(self.seats).exists())
 
+    def test_the_omp_roles_deny_the_routers_credential_root_for_read(self):
+        """U353b (verdict U353-8791100f P1 `:430`): srt allows reads by default, so the worker and the orchestrator
+        settings carry the Router's credential root `<DSH_HOME>/router-credentials` in denyRead, once, with no grant at
+        or under it. The omp roles hold no DSH_HOME: the row is the kit's root under the caller's DSH_HOME, else
+        `~/.dsh`, in its physical form (a root no launch has made yet resolves through its nearest existing ancestor,
+        a linked home through its target); a DSH_HOME that cannot be resolved refuses the launch. The router row alone
+        reads it (tests/unit/test_hcom_seat_dsh.py), and no omp launch makes anything under `~/.dsh`."""
+        home = self.home.resolve()
+        default_root = str(home / ".dsh/router-credentials")
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                run = self.seat(role, "--seats-root", self.seats)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                fs = self.settings_of(role)["filesystem"]
+                self.assertEqual(fs["denyRead"].count(default_root), 1, fs["denyRead"])
+                for key in ("allowRead", "allowWrite"):
+                    under = [row for row in fs[key] if row == default_root or row.startswith(default_root + "/")]
+                    self.assertEqual(under, [], key)
+        other_home = Path(self.temp.name).resolve() / "other-dsh-home"
+        other_home.mkdir()
+        linked = Path(self.temp.name).resolve() / "linked-dsh-home"
+        linked.symlink_to(other_home)
+        for spelled in (other_home, linked):
+            with self.subTest(dsh_home=str(spelled)):
+                run = self.seat("worker", "--seats-root", self.seats, DSH_HOME=str(spelled))
+                self.assertEqual(run.returncode, 0, run.stderr)
+                deny_read = self.settings_of("worker")["filesystem"]["denyRead"]
+                self.assertEqual(deny_read.count(str(other_home / "router-credentials")), 1, deny_read)
+                self.assertNotIn(default_root, deny_read)
+        run = self.seat("worker", "--seats-root", self.seats, DSH_HOME="relative/dsh")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("cannot resolve the Router's credential root relative/dsh/router-credentials", run.stderr)
+        self.assertFalse((home / ".dsh").exists(), "no omp launch makes anything under ~/.dsh")
+
 
 if __name__ == "__main__":
     unittest.main()

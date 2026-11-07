@@ -29,18 +29,24 @@ as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the Router 
   answers `restarting: true` while setup is pending or a setup field changed (`src/app/settings.ts:176`), and the API is
   unavailable for a moment; before the next PUT this lever polls `GET settings` until it answers again, for at most
   `--wait` seconds (default 60).
+- `eval` is saved before `source:github` (regime-cutover U353b, verdict U353-8791100f P2 `:401`): a store whose mode is
+  `auto` would otherwise poll under `auto` from the Source's restart until the mode is written, so the safe mode is in
+  place before the Source is enabled or its setup fields change.
 - Saving `source:github` runs the Router's account probe first (`src/app/settings.ts:167`, `src/app/setup.ts:61-66`,
   `src/deployment.ts:87-105`: `<cli> api user`, then `repos/<name>` for push); without the agent account's login in the
   credential root the Router answers 400 with `setup.code` `agentCliSignedOut` and saves nothing. This lever names that
-  refusal, still saves `eval`, and exits 2: the token is the operator's step (docs/engagement-handout.md), after which the
-  coordinator runs this lever again.
+  refusal, with `eval` already saved, and exits 2: the token is the operator's step (docs/engagement-handout.md), after
+  which the coordinator runs this lever again.
 
 Output: one line per block on stdout, `<block> saved (revision <n>[, restarting])` or `<block> unchanged (revision <n>)`.
 Exit 0 when both blocks hold the kit's values. Every refusal is one line on stderr, `router-settings-apply: <reason>`, and
 exit 2: a manifest or profile that cannot be read or lacks its row, `auto`, a wrapper that is no executable file, a port
 that answers nothing (`unreachable`, naming `127.0.0.1:<port>`), a 403 (naming the header), a 409 (naming the revision), a
-400 with `setup` (naming the code and its text), any other status, or a settings view without the `github` Source or the
-`eval` block. Nothing is written to any file; the only network peer is `127.0.0.1:<port>`.
+400 with `setup` (naming the code and its text), a 3xx (naming its Location; never followed), any other status, or a
+settings view without the `github` Source or the `eval` block. Nothing is written to any file; the only network peer is
+`127.0.0.1:<port>`: the opener is built by hand (U353b, verdict P2 `:268`) with an empty proxy table, so a proxy named in
+the environment or the system settings is not consulted, and without a redirect handler, so a 3xx is a refusal and no
+request leaves the loopback port.
 
 Before anything else the file hashes itself against its `claude.levers.sha256.router-settings-apply` pin in the manifest
 beside it (the deployed `~/.agents/agent-config.yaml` for the copy under the physical `~/.local/bin/common`, else the
@@ -163,9 +169,10 @@ def manifest_levers(lines: list[str], manifest: str) -> tuple[tuple[str, str], .
     return tuple(pins)
 
 
-def manifest_scalars(lines: list[str], path: tuple[str, ...]) -> dict[str, str] | None:
-    """The `<key>: <value>` scalars directly under the mapping at `path` (top-level key first), read by the indentation
-    walk of manifest_levers; a value's surrounding quotes are removed. None when the manifest has no such mapping."""
+def manifest_scalars(lines: list[str], mapping: tuple[str, ...]) -> dict[str, str] | None:
+    """The `<key>: <value>` scalars directly under the mapping named by the key tuple `mapping` (top-level key first),
+    read by the indentation walk of manifest_levers; a value's surrounding quotes are removed. None when the manifest
+    has no such mapping."""
     found: dict[str, str] = {}
     keys: list[tuple[int, str]] = []
     block = None
@@ -192,7 +199,7 @@ def manifest_scalars(lines: list[str], path: tuple[str, ...]) -> dict[str, str] 
         match = MAPPING_KEY.match(text)
         if match and (keys or indent == 0):
             keys.append((indent, match.group(1)))
-            if tuple(key for _, key in keys) == path:
+            if tuple(key for _, key in keys) == mapping:
                 block = indent
     return found if block is not None else None
 
@@ -246,6 +253,23 @@ def wrapper_path(directory: str) -> str:
     return path
 
 
+def loopback_opener() -> urllib.request.OpenerDirector:
+    """An opener that speaks to the loopback port alone (regime-cutover U353b): urllib's default opener honours the
+    environment's and the system's proxy settings for a loopback host too and follows a redirect wherever it points,
+    so it is built by hand here: an empty proxy table, the http handler, and the error processor that turns every
+    status outside 2xx into an HTTPError (a 3xx included, no redirect handler being present); no https, file or ftp
+    handler, so nothing but `http://127.0.0.1:<port>` can be opened through it."""
+    opener = urllib.request.OpenerDirector()
+    for handler in (
+        urllib.request.ProxyHandler({}),
+        urllib.request.HTTPHandler(),
+        urllib.request.HTTPDefaultErrorHandler(),
+        urllib.request.HTTPErrorProcessor(),
+    ):
+        opener.add_handler(handler)
+    return opener
+
+
 class Api:
     """The Management API at one loopback port: GET and PUT with the header, each answer read whole as JSON."""
 
@@ -253,6 +277,7 @@ class Api:
         self.port = port
         self.wait = wait
         self.base = f"http://{HOST}:{port}{API}"
+        self.opener = loopback_opener()
 
     def where(self) -> str:
         return f"the Management API at {HOST}:{self.port}"
@@ -265,12 +290,12 @@ class Api:
         request = urllib.request.Request(self.base + route, data=data, method=method, headers=headers)
         label = f"{method} {route}"
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310  # the loopback host alone
+            with self.opener.open(request, timeout=30) as response:  # the loopback host alone, no proxy, no redirect
                 text = response.read().decode("utf-8", "replace")
                 status = response.status
         except urllib.error.HTTPError as error:
             text = error.read().decode("utf-8", "replace")
-            raise Refusal(self.describe(label, error.code, text)) from None
+            raise Refusal(self.describe(label, error.code, text, error.headers.get("location"))) from None
         except (urllib.error.URLError, OSError) as error:
             reason = getattr(error, "reason", error)
             raise Refusal(f"{self.where()} is unreachable for {label}: {reason}") from None
@@ -282,13 +307,19 @@ class Api:
             raise Refusal(f"{self.where()} answered {status} to {label} with no JSON object")
         return answer
 
-    def describe(self, label: str, code: int, text: str) -> str:
-        """One refusal for a status outside 200: the 403 names the header, the 409 the revision, the 400 its setup code."""
+    def describe(self, label: str, code: int, text: str, location: str | None = None) -> str:
+        """One refusal for a status outside 2xx: the 403 names the header, the 409 the revision, the 400 its setup code,
+        a 3xx its Location (never followed: the lever speaks to the loopback port alone)."""
         try:
             answer = json.loads(text)
         except json.JSONDecodeError:
             answer = {}
         error = answer.get("error", text.strip()) if isinstance(answer, dict) else text.strip()
+        if 300 <= code < 400:
+            return (
+                f"{self.where()} answered {code} to {label}: a redirect to {location or 'no Location'} is not followed; "
+                f"this lever speaks to {HOST}:{self.port} alone"
+            )
         if code == 403:
             return f"{self.where()} answered 403 to {label}: the {HEADER} header or the Host was not accepted ({error})"
         if code == 409:
@@ -396,20 +427,18 @@ def main(argv: list[str]) -> int:
         cli = wrapper_path(directory)
         api = Api(port, args.wait)
         (source, source_revision), (evaluation, eval_revision) = block_views(api.settings(), api.where())
+        # The mode first (U353b): the Source restarts into polling under whatever mode the store holds.
+        restarting = apply_block(api, EVAL_BLOCK, evaluation, desired_eval(evaluation, mode), eval_revision)
+        if restarting:
+            api.settings_after_restart()
+            (source, source_revision), (_, _) = block_views(api.settings(), api.where())
         refusals: list[str] = []
         try:
-            restarting = apply_block(
-                api, SOURCE_BLOCK, source, desired_source(source, repository, cli), source_revision
-            )
+            apply_block(api, SOURCE_BLOCK, source, desired_source(source, repository, cli), source_revision)
         except Refusal as refusal:
             if " answered 400 " not in str(refusal):
                 raise
             refusals.append(str(refusal))
-            restarting = False
-        if restarting:
-            api.settings_after_restart()
-            (_, _), (evaluation, eval_revision) = block_views(api.settings(), api.where())
-        apply_block(api, EVAL_BLOCK, evaluation, desired_eval(evaluation, mode), eval_revision)
     except Refusal as refusal:
         print(f"{LEVER}: {refusal}", file=sys.stderr)
         return 2

@@ -147,13 +147,14 @@
 #   absent, it is made 0700 after the home has passed the deny judgement, in a real launch alone (a dry run makes
 #   nothing and says what a launch would make, U321d). The Router's credential root `<DSH_HOME>/router-credentials`
 #   (regime-cutover U353, M-26 stage B): the one directory the role reads beyond the dsh row's grants, allowRead row 7,
-#   where the operator places the agent account's gh login (`router-gh` sets `GH_CONFIG_DIR` under it); held like the
-#   state root (cred_root_hold, from the held physical DSH_HOME, no link, a directory of this user, inside the home;
-#   made 0700 by a real launch after the judgement, cred_root_make), denied for write by both foreground rows and for
-#   read by the dsh row (the role table's `cred_root_grant` cell: `read` for the router row, `deny` for the dsh row),
-#   so no role writes it and only the Router reads it. The omp profile, OMP_PROFILE and every other row are the dsh
-#   role's, so the role's rendered settings differ from the dsh role's in exactly the binding value, that one write
-#   root and the credential root's grant, and no other role's settings change by a byte.
+#   where the operator places the agent account's gh login (`router-gh` reads the token from its `gh/hosts.yml`); held
+#   like the state root (cred_root_hold, from the held physical DSH_HOME, no link, a directory of this user, inside the
+#   home; made 0700 by a real launch after the judgement, cred_root_make), denied for write by both foreground rows and
+#   for read by the dsh row (the role table's `cred_root_grant` cell: `read` for the router row, `deny` for the dsh row)
+#   and by the omp roles (U353b: one denyRead row of the kit's root under the caller's DSH_HOME, else `~/.dsh`, since
+#   srt allows reads by default), so no role writes it and only the Router reads it. The omp profile, OMP_PROFILE and
+#   every other row are the dsh role's, so the role's rendered settings differ from the dsh role's in exactly the
+#   binding value, that one write root and the credential root's grant.
 # @arg $1 string Role: orchestrator, worker, dsh or router.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
@@ -421,7 +422,8 @@ gate=${HOME}/.agents/omp/hooks
 # `cred_root_grant` (the Router's credential root `<DSH_HOME>/router-credentials`, `cred_root`, regime-cutover U353:
 # `read` for the router row, whose allowRead gains it as its last row, `deny` for the dsh row, whose denyRead gains it;
 # both rows deny writing it, both hold it once by cred_root_hold beside the state root, and the router row alone makes
-# it, by cred_root_make after the judgement; empty for the omp roles, which have no DSH_HOME).
+# it, by cred_root_make after the judgement; empty for the omp roles, which have no DSH_HOME and deny the kit's root
+# under `${DSH_HOME:-~/.dsh}` for read instead, U353b, `cred_root_omp` in seat_settings_render).
 # The profile config row (U310): the omp roles' overlays ride the launch flags (`--config`, omp_inputs_check), so
 # their row is `none`; the foreground roles' overlay, the one of their omp profile (`omp_profile`), is placed as that
 # profile's own `agent/config.yml` (profile_config_check; the write is the helper's, profile_config_place).
@@ -859,7 +861,7 @@ cred_root_make() {
     [[ -d ${cred_root_phys} && ! -L ${cred_root_phys} && -O ${cred_root_phys} ]] ||
         refuse "the ${role} role's credential root ${cred_root_phys} is not a real directory of this user"
 }
-dsh_home_phys='' state_root_phys='' state_root_absent=0 cred_root_phys='' cred_root_absent=0
+dsh_home_phys='' state_root_phys='' state_root_absent=0 cred_root_phys='' cred_root_absent=0 cred_root_omp=''
 if [[ ${role_launch} == foreground ]]; then dsh_home_hold; fi
 if [[ -n ${state_root} ]]; then state_root_hold; fi
 if [[ -n ${cred_root_grant} ]]; then cred_root_hold; fi
@@ -2371,13 +2373,24 @@ seat_settings_render() {
     # worker clones of its own program, which it reviews. The dsh role has no worktree, no bus and no store: it
     # re-opens its scratch cwd and state slot, the shared Claude Code directory, DSH_HOME, its own omp profile, the
     # skills it loads and the pinned tool directory on its PATH, and no git, hcom or record path.
+    # The omp roles' row of the Router's credential root (regime-cutover U353b, verdict U353-8791100f P1 `:430`): srt
+    # allows reads by default, and the U353 head denied the root to the dsh row alone, so a worker or orchestrator seat
+    # read `router-credentials/gh/hosts.yml` once the login was there. The omp roles hold no DSH_HOME; their row is the
+    # kit's root under the home router-gh resolves (the caller's DSH_HOME, else `~/.dsh`), in its physical form (a root
+    # no launch has made yet resolves through its nearest existing ancestor), one denyRead row before the read grants;
+    # a home that cannot be resolved refuses the launch. The foreground rows deny or grant the held root instead.
+    if [[ ${role_launch} == hcom ]]; then
+        cred_root_omp=$(physical_path "${DSH_HOME:-${h}/.dsh}/${cred_root}") ||
+            refuse "cannot resolve the Router's credential root ${DSH_HOME:-${h}/.dsh}/${cred_root} for the ${role} role's deny row"
+    fi
     case ${role} in
     orchestrator)
+        deny_read+=("${cred_root_omp}")
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
             "${claude_config_real}" "${checkout}/.orchestration/orchestrate" "${seats_real}")
         ;;
     worker)
-        deny_read+=("${checkout}")
+        deny_read+=("${checkout}" "${cred_root_omp}")
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
             "${claude_config_real}" "${checkout}/.orchestration/orchestrate")
         ;;

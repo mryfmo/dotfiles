@@ -7421,9 +7421,12 @@
 <span class="c1">#   caller names and nothing else (no wildcard, no local binding, no nested user namespace, no pty). The form is</span>
 <span class="c1">#   update_dsh_superagent's build on PR 711 (U317b), whose next round adopts this function.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Every producer is read with its status (standing order 21): `type -P srt` (the kit pins</span>
-<span class="c1">#   npm:@anthropic-ai/sandbox-runtime in home/dot_mise/config.toml; it is on PATH under mise), `mise which pnpm` and</span>
-<span class="c1">#   `mise which node` under MISE_EXEC_AUTO_INSTALL=false (nothing is installed on the step's behalf, verdicts/U276b),</span>
+<span class="c1">#   Every producer is read with its status (standing order 21): `mise which srt`, `mise which pnpm` and</span>
+<span class="c1">#   `mise which node` under MISE_EXEC_AUTO_INSTALL=false (the kit pins npm:@anthropic-ai/sandbox-runtime, pnpm and</span>
+<span class="c1">#   node in home/dot_mise/config.toml; nothing is installed on the step's behalf, verdicts/U276b; srt is never read</span>
+<span class="c1">#   from PATH, where main puts the mise shims first: the shim, started by the `env -i` below with XDG_STATE_HOME</span>
+<span class="c1">#   inside the store, finds no trust store there and exits 1 with `mise ERROR Config files ... are not trusted`,</span>
+<span class="c1">#   regime-cutover U354),</span>
 <span class="c1">#   pwd -P of HOME, of /tmp, of /private/tmp where it is a directory, of the directory and of the store,</span>
 <span class="c1">#   resolve_dotfiles_source_dir and `git rev-parse --git-common-dir` for the checkout's git directories, and srt's own</span>
 <span class="c1">#   exit. The settings file is created here</span>
@@ -7484,15 +7487,12 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
-<span class="w">    </span><span class="c1"># The containment first: no srt is no run. The kit pins it; the refusal names the pin.</span>
-<span class="w">    </span><span class="nv">srt</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">type</span><span class="w"> </span>-P<span class="w"> </span>srt<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'build_under_srt: srt is absent from PATH (the kit pins npm:@anthropic-ai/sandbox-runtime 0.0.81 in home/dot_mise/config.toml; run mise install and rerun make update); nothing run.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="c1"># The containment first: no srt is no run. The kit pins it; the refusal names the pin. Read through mise like</span>
+<span class="w">    </span><span class="c1"># pnpm and node below, never `type -P`: on a host PATH that resolves to the mise shim, not the binary (U354).</span>
+<span class="w">    </span><span class="nv">srt</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nv">MISE_EXEC_AUTO_INSTALL</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span>mise<span class="w"> </span>which<span class="w"> </span>srt<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'build_under_srt: srt is absent (mise which srt failed; the kit pins npm:@anthropic-ai/sandbox-runtime 0.0.81 in home/dot_mise/config.toml, so run mise install and rerun make update); nothing run.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="o">}</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">srt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">srt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'build_under_srt: %s (srt on PATH) is not an executable file; nothing run.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">srt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nv">pnpm_bin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nv">MISE_EXEC_AUTO_INSTALL</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span>mise<span class="w"> </span>which<span class="w"> </span>pnpm<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'build_under_srt: pnpm is absent (mise which pnpm failed; the kit pins it in home/dot_mise/config.toml, so run mise install and rerun make update); nothing run.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
@@ -7501,7 +7501,7 @@
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'build_under_srt: node is absent (mise which node failed; the kit pins it in home/dot_mise/config.toml, so run mise install and rerun make update); nothing run.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="o">}</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_bin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">node_bin</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">srt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_bin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">node_bin</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="c1"># lint-comparisons: allow the case reads the spelling (absolute or not), the file tests below read the entry</span>
 <span class="w">        </span>/*<span class="o">)</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">        </span>*<span class="o">)</span>
@@ -8205,10 +8205,11 @@
 
 <span class="c1">#</span>
 <span class="c1"># @description Resolve one build tool the dsh-superagent step runs by `mise which` (the kit's pins in</span>
-<span class="c1">#   home/dot_mise/config.toml: pnpm, node), with the status read: a failed answer, a relative one or one that is not an</span>
-<span class="c1">#   executable file refuses the step (standing order 21). MISE_EXEC_AUTO_INSTALL=false keeps mise from installing</span>
-<span class="c1">#   anything the step asks after (verdicts/U276b). srt is not read here but from PATH (`type -P`, the producer</span>
-<span class="c1">#   `build_under_srt` reads for its runs), so the step checks the one binary the runs use (regime-cutover U317d).</span>
+<span class="c1">#   home/dot_mise/config.toml: srt, pnpm, node), with the status read: a failed answer, a relative one or one that is</span>
+<span class="c1">#   not an executable file refuses the step (standing order 21). MISE_EXEC_AUTO_INSTALL=false keeps mise from</span>
+<span class="c1">#   installing anything the step asks after (verdicts/U276b). srt is read here too, as `build_under_srt` reads it for</span>
+<span class="c1">#   its runs (regime-cutover U354: never from PATH, where the updater's main puts the mise shims first and the shim</span>
+<span class="c1">#   fails under the sanitised environment), so the step checks the one binary the runs use (regime-cutover U317d).</span>
 <span class="c1"># @arg $1 string The tool.</span>
 <span class="c1"># @stdout The tool's absolute path.</span>
 <span class="c1"># @exitcode 1 No usable answer; the line names the tool.</span>
@@ -8251,10 +8252,10 @@
 <span class="c1">#   the canary (the U272 form) proves one write beside the tree is denied inside before any upstream code runs, then</span>
 <span class="c1">#   `pnpm install --frozen-lockfile` and `pnpm build` each run as one `build_under_srt` call whose writes are the tree</span>
 <span class="c1">#   and the pnpm store $DSH_HOME/.pnpm-store, whose reads deny the dsh role's credential rows and the checkout, and</span>
-<span class="c1">#   whose network is the registry host alone; srt is read from PATH and pnpm and node from the kit's mise pins, with</span>
-<span class="c1">#   their status, before any download, and an absent one refuses the step; the download directory goes; the previous</span>
-<span class="c1">#   tree, when there is one, is renamed aside and the new tree renamed into place (one rename publishes it, and a</span>
-<span class="c1">#   failed publication puts the previous tree back); the router profile's plugins are installed by one more</span>
+<span class="c1">#   whose network is the registry host alone; srt, pnpm and node are read from the kit's mise pins (`mise which`,</span>
+<span class="c1">#   with their status; U354) before any download, and an absent one refuses the step; the download directory goes;</span>
+<span class="c1">#   the previous tree, when there is one, is renamed aside and the new tree renamed into place (one rename publishes</span>
+<span class="c1">#   it, and a failed publication puts the previous tree back); the router profile's plugins are installed by one more</span>
 <span class="c1">#   `build_under_srt` run whose writes are the profile directory and the store (its package.json links the tree by a</span>
 <span class="c1">#   relative link: dependency, so the link follows the directory name), after its own canary, its lockfile held to the</span>
 <span class="c1">#   registry the same way when pnpm has written one; the step is recorded; and only then does the previous tree go.</span>
@@ -8270,7 +8271,7 @@
 <span class="c1">#   ~/.agents/.installed-manifest.json: absent, or a regular file that is not a symlink; the step's recorded</span>
 <span class="c1">#   source_version equal to the pin with the tree in place is the already-installed exit (the profile install is</span>
 <span class="c1">#   run again, under srt, only when the profile's node_modules holds no dsh-superagent entry).</span>
-<span class="c1">#   Every producer the step reads (pwd -P, type -P, mise which, shasum, tar's member list, jq, grep on the lockfiles,</span>
+<span class="c1">#   Every producer the step reads (pwd -P, mise which, shasum, tar's member list, jq, grep on the lockfiles,</span>
 <span class="c1">#   the three mktemp) refuses the step on a failed answer (standing order 21); a download that fails is one WARN line,</span>
 <span class="c1">#   nothing installed, nothing recorded.</span>
 <span class="c1"># @exitcode 0 Installed, already installed, no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh or the router</span>
@@ -8393,13 +8394,10 @@
 <span class="w">        </span><span class="o">}</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="c1"># The containment and the build tools, before any download: the upstream code runs only inside srt, so no srt is</span>
-<span class="w">    </span><span class="c1"># no build. srt is read as `build_under_srt` reads it (`type -P`: the kit pins npm:@anthropic-ai/sandbox-runtime</span>
-<span class="w">    </span><span class="c1"># in mise, so PATH holds it under mise), pnpm and node by the kit's mise pins; `build_under_srt` reads all three</span>
-<span class="w">    </span><span class="c1"># for each run.</span>
-<span class="w">    </span><span class="nb">type</span><span class="w"> </span>-P<span class="w"> </span>srt<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'update_dsh_superagent: srt is absent from PATH (the kit pins npm:@anthropic-ai/sandbox-runtime 0.0.81 in home/dot_mise/config.toml; run mise install and rerun make update); nothing installed, nothing recorded.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="c1"># no build. srt is read as `build_under_srt` reads it (`mise which srt`: the kit pins</span>
+<span class="w">    </span><span class="c1"># npm:@anthropic-ai/sandbox-runtime in mise; the mise shim main puts first on PATH is never the answer, U354),</span>
+<span class="w">    </span><span class="c1"># pnpm and node by the kit's mise pins; `build_under_srt` reads all three for each run.</span>
+<span class="w">    </span>dsh_superagent_tool<span class="w"> </span>srt<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>dsh_superagent_tool<span class="w"> </span>pnpm<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>dsh_superagent_tool<span class="w"> </span>node<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="c1"># ${name:+"${name}"} and `|| :` as in update_deepseek_harness: the subshell's locals may be unwound before the EXIT</span>

@@ -1,10 +1,12 @@
-"""Exercise scripts/orchestrator/regime-init in a scratch repository (regime-cutover U33).
+"""Exercise scripts/orchestrator/regime-init in a scratch repository (regime-cutover U33; U215: the store outside it).
 
-The checkout copy runs with HOME in a scratch directory, so the store origin lands under that HOME, and the
-templates come from the checkout's home/dot_agents/regime (the directory beside the manifest its self-check reads).
+The checkout copy runs with HOME in a scratch directory, so the store origin and the program store
+(`~/.local/state/hcom/<slug>/store/<program>`, U215) land under that HOME and nothing under the scratch checkout, and
+the templates come from the checkout's home/dot_agents/regime (the directory beside the manifest its self-check reads).
 """
 
 import os
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -54,7 +56,9 @@ class RegimeInitTest(unittest.TestCase):
         self.env = {"PATH": os.environ["PATH"], "HOME": str(self.home), **GIT_IDENTITY}
         git_init(self.repo, env=self.env)
         subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "init"], cwd=self.repo, env=self.env, check=True)
-        self.store = self.repo / ".orchestration/orchestrate/pilot"
+        # U215: the program store lies under the derived hcom store's `store` root, never under the checkout.
+        self.store_root = self.home / ".local/state/hcom/kit-pilot/store"
+        self.store = self.store_root / "pilot"
         self.origin = self.home / ".local/state/hcom/kit-pilot/origin"
 
     def init(self, *args, cwd=None, env=None):
@@ -71,9 +75,22 @@ class RegimeInitTest(unittest.TestCase):
     def rows(self, stdout):
         return {line.split("\t")[1]: line.split("\t")[0] for line in stdout.splitlines() if "\t" in line}
 
+    def assert_private_directory_of_this_user(self, path):
+        """`path` is a real directory (no symlink), mode 0700, owned by this user (U215: the shape of hcom-seat's
+        state_root_make)."""
+        status = os.lstat(path)
+        self.assertTrue(stat.S_ISDIR(status.st_mode), f"{path} is not a directory")
+        self.assertEqual(stat.S_IMODE(status.st_mode), 0o700, path)
+        self.assertEqual(status.st_uid, os.getuid(), path)
+
     def test_the_first_run_creates_the_store_and_the_origin_and_the_second_changes_nothing(self):
         run = self.init("pilot")
         self.assertEqual(run.returncode, 0, run.stderr)
+        # U215: the store root and the program store are made under ~/.local/state/hcom/<slug>, each 0700 and this
+        # user's, and the checkout gets no `.orchestration` directory.
+        self.assert_private_directory_of_this_user(self.store_root)
+        self.assert_private_directory_of_this_user(self.store)
+        self.assertFalse((self.repo / ".orchestration").exists(), "nothing is created under the checkout")
         for name in STORE_FILES:
             with self.subTest(file=name):
                 self.assertEqual((self.store / name).read_bytes(), (TEMPLATES / name).read_bytes())
@@ -87,13 +104,16 @@ class RegimeInitTest(unittest.TestCase):
         self.assertEqual(again.returncode, 0, again.stderr)
         self.assertEqual(set(self.rows(again.stdout).values()), {"unchanged", "checkout-guard: unchanged"})
         self.assertIn("nothing changed", again.stdout)
+        self.assertFalse((self.repo / ".orchestration").exists())
 
-    def test_the_first_run_installs_the_checkout_guard_and_a_commit_is_then_refused(self):
+    def test_the_first_run_installs_the_checkout_guard_and_a_commit_passes_until_u219_moves_its_trigger(self):
         """regime-init runs `checkout-guard.sh install` on the checkout it prepares (U129): the first run writes the
-        `reference-transaction` hook (a `checkout-guard: installed` row), a commit in the checkout is then refused
-        with the worker-tree route since the store now exists (this scratch repository has no `origin`, so no commit
-        is one origin holds), and the second run finds the lever's own hook (`unchanged`) and reports nothing
-        changed; a round-1 `pre-commit` the lever recognises is removed and counts as a change."""
+        `reference-transaction` hook (a `checkout-guard: installed` row), and the second run finds the lever's own hook
+        (`unchanged`) and reports nothing changed; a round-1 `pre-commit` the lever recognises is removed and counts
+        as a change. U215: the hook's trigger is still the checkout's `.orchestration/orchestrate/*/units.tsv`
+        (checkout-guard.sh, U219's lever), which this lever no longer creates, so a commit in the prepared checkout
+        passes until U219 moves the trigger (handoff/07-store-move-design.md, the checkout-guard row); the pass is
+        pinned here so that unit's change turns this line."""
         hook = self.repo / ".git/hooks/reference-transaction"
         run = self.init("pilot")
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -104,10 +124,9 @@ class RegimeInitTest(unittest.TestCase):
         commit = subprocess.run(
             ["git", "commit", "-q", "-m", "work"], cwd=self.repo, env=self.env, capture_output=True, text=True
         )
-        self.assertNotEqual(commit.returncode, 0, commit.stderr)
-        self.assertIn(
-            "checkout-guard: this checkout is the coordinator's; commits belong in a worker tree", commit.stderr
-        )
+        self.assertEqual(commit.returncode, 0, commit.stderr)
+        self.assertNotIn("checkout-guard:", commit.stderr, "inert until U219 moves the trigger to the new store")
+        self.assertFalse((self.repo / ".orchestration").exists())
         again = self.init("pilot")
         self.assertEqual(again.returncode, 0, again.stderr)
         self.assertEqual(self.rows(again.stdout)[str(hook)], "checkout-guard: unchanged")
@@ -216,16 +235,19 @@ class RegimeInitTest(unittest.TestCase):
         run = self.init("pilot")
         self.assertEqual(run.returncode, 2, run.stdout)
         self.assertIn("belongs to /elsewhere/kit-pilot", run.stderr)
-        self.assertFalse((self.repo / ".orchestration").exists(), "a collision writes nothing")
+        self.assertFalse(self.store_root.exists(), "a collision writes nothing")
+        self.assertFalse((self.repo / ".orchestration").exists())
         self.origin.unlink()
 
+        # U215: the checkout's `.orchestration` is no longer a path regime-init writes, so a symlink there is no
+        # refusal of this lever (the store's own components are, below); the directory stays untouched.
         target = self.root / "elsewhere"
         target.mkdir()
         (self.repo / ".orchestration").symlink_to(target)
         run = self.init("pilot")
-        self.assertEqual(run.returncode, 2, run.stdout)
-        self.assertIn("is a symlink", run.stderr)
-        self.assertEqual(list(target.iterdir()), [], "nothing written through the symlink")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(list(target.iterdir()), [], "nothing written under the checkout's link")
+        self.assertTrue((self.store / "units.tsv").is_file(), "the store is made under HOME")
 
     def test_a_symlinked_store_or_origin_refuses_before_anything_is_written(self):
         """A symlinked derived store, or a dangling origin symlink, writes neither the binding nor the store files
@@ -245,13 +267,54 @@ class RegimeInitTest(unittest.TestCase):
         self.assertEqual(run.returncode, 2, run.stdout)
         self.assertIn("is a symlink", run.stderr)
         self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through either symlink")
-        self.assertFalse((self.repo / ".orchestration").exists(), "no store file before the binding is safe")
+        self.assertFalse(self.store_root.exists(), "no store file before the binding is safe")
+        self.assertFalse((self.repo / ".orchestration").exists())
         explicit = self.root / "explicit-store"
         explicit.symlink_to(elsewhere)
         run = self.init("pilot", env={**self.env, "HCOM_DIR": str(explicit)})
         self.assertEqual(run.returncode, 2, run.stdout)
         self.assertIn("is a symlink", run.stderr)
+        self.assertEqual(list(elsewhere.iterdir()), [])
         self.assertFalse((self.repo / ".orchestration").exists())
+
+    def test_a_planted_entry_at_the_store_root_or_the_program_store_refuses_before_anything_is_written(self):
+        """U215: the store root `~/.local/state/hcom/<slug>/store` and the program store under it are each made (0700)
+        or found as a real directory of this user; a symbolic link planted at either, or a file at either, is refused
+        by name (exit 2) before the templates, the origin or the hook are written, the shape of hcom-seat's
+        state_root_make."""
+        elsewhere = self.root / "elsewhere"
+        elsewhere.mkdir()
+        hcom_store = self.home / ".local/state/hcom/kit-pilot"
+        hcom_store.mkdir(parents=True)
+        hook = self.repo / ".git/hooks/reference-transaction"
+        for label, plant, planted in (
+            ("a link at store", lambda: self.store_root.symlink_to(elsewhere), self.store_root),
+            ("a link at store/pilot", lambda: (self.store_root.mkdir(), self.store.symlink_to(elsewhere)), self.store),
+            ("a file at store", lambda: self.store_root.write_text(""), self.store_root),
+            ("a file at store/pilot", lambda: (self.store_root.mkdir(), self.store.write_text("")), self.store),
+        ):
+            with self.subTest(label):
+                plant()
+                run = self.init("pilot")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertTrue(run.stderr.startswith("regime-init: "), run.stderr)
+                self.assertIn(str(planted), run.stderr, "the refusal names the planted component")
+                self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through a link")
+                self.assertFalse(self.origin.exists(), "the origin is written after the store")
+                self.assertFalse(hook.exists(), "the guard is installed after the store")
+                self.assertFalse((self.repo / ".orchestration").exists())
+            # The planted entry is cleared outside the subTest, so a failing assertion still leaves the next case
+            # its clean start (shutil.rmtree would follow nothing here: each entry is a link, a file or an empty dir).
+            if self.store.is_symlink() or self.store.is_file():
+                self.store.unlink()
+            if self.store_root.is_symlink() or self.store_root.is_file():
+                self.store_root.unlink()
+            elif self.store_root.is_dir():
+                self.store_root.rmdir()
+        run = self.init("pilot")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assert_private_directory_of_this_user(self.store_root)
+        self.assert_private_directory_of_this_user(self.store)
 
     def test_a_failing_comparison_or_agents_read_refuses_instead_of_writing(self):
         """cmp and grep exit 2 on a read error; neither is read as "differs" or "no section" (preferences 21)."""

@@ -127,6 +127,29 @@ class RegimeEnvTest(unittest.TestCase):
                 self.clear(state / "hcom")
         self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through a symlink")
 
+    def test_the_store_root_is_derived_beside_the_hcom_store_and_a_symlink_there_is_refused(self):
+        """U215 (handoff/07-store-move-design.md): `REGIME_STORE_ROOT=${HCOM_DIR}/store` is exported beside HCOM_DIR,
+        so every lever that sources the helper reads the one root the program stores live under, outside every
+        checkout; it is held to the no-symlink rule of the store and `origin`, and the refusal names the component.
+        The refusal is the function's return 1, which every caller turns into its exit 2 (regime-init's is asserted in
+        test_regime_init)."""
+        self.bind()
+        store_root = self.home / ".local/state/hcom/kit-pilot/store"
+        run = self.bash('regime_env test; printf "%s\\n" "$(printenv REGIME_STORE_ROOT)"')
+        self.assertEqual((run.returncode, run.stdout.strip()), (0, str(store_root)), run.stderr)
+        run = self.bash('regime_env test --unbound-ok; printf "%s\\n" "$(printenv REGIME_STORE_ROOT)"')
+        self.assertEqual((run.returncode, run.stdout.strip()), (0, str(store_root)), "for regime-init too")
+        self.assertFalse(store_root.exists(), "the helper derives the root and makes nothing")
+        elsewhere = self.root / "elsewhere"
+        elsewhere.mkdir()
+        store_root.symlink_to(elsewhere)
+        for args in ("test", "test --unbound-ok"):
+            with self.subTest(args=args):
+                run = self.bash(f"regime_env {args}")
+                self.assertEqual(run.returncode, 1, run.stderr)
+                self.assertIn(f"{store_root} is a symlink", run.stderr)
+        self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through the symlink")
+
     def test_defaults_derive_from_the_main_checkout_and_explicit_values_win(self):
         self.bind()
         run = self.bash(f"regime_env test; {PROBE}")

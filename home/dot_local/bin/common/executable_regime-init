@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # @file regime-init
-# @brief Prepare a repository on this host for the hcom regime: the program store, the store origin, the AGENTS.md audit section.
+# @brief Prepare a repository on this host for the hcom regime: the program store under `~/.local/state/hcom/<slug>/store/`, the store origin, the AGENTS.md audit section.
 # @description
 #   Regime-cutover U33, a coordinator lever pre-authorized by `Bash(~/.local/bin/common/regime-init *)`. Run it
 #   in the git checkout of the repository. It derives the repository slug, hcom store and team through the
-#   sourced regime-env helper, then creates `<toplevel>/.orchestration/orchestrate/<program>/` with the
+#   sourced regime-env helper, then creates the program store `~/.local/state/hcom/<slug>/store/<program>/` (U215: the
+#   store root `REGIME_STORE_ROOT` regime-env derives beside the hcom store, outside every checkout, the root and the
+#   program directory each made 0700 as a real directory of this user; handoff/07-store-move-design.md) with the
 #   templates from `~/.agents/regime/` (preferences.md, units.tsv, ledger.tsv, decisions.tsv, gates.md),
 #   writes `~/.local/state/hcom/<slug>/origin` with the toplevel, installs the checkout guard (U129: `checkout-guard.sh
 #   install <toplevel>`, the `reference-transaction` hook that refuses, while a store exists, every move of a local
@@ -15,7 +17,7 @@
 #   guard's own hook (`unchanged`), and says that nothing changed. It never writes through a symlink, and it refuses
 #   outside a git checkout, when the derived store's origin names another checkout with the same slug, and when the
 #   guard refuses (a linked worktree, a foreign hook at its path).
-# @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`), the store directory under .orchestration/orchestrate.
+# @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`), the store directory under the store root `~/.local/state/hcom/<slug>/store`.
 # @option --force Replace store files that differ from their template.
 # @option --write-agents Append the audit section to AGENTS.md when it has no `## Audit` heading.
 # @stdout One row per file (`created`, `unchanged`, `kept`, `replaced`, `appended`; `checkout-guard: installed`, `unchanged` or `removed` per hook), the section when not written, the next commands.
@@ -81,7 +83,7 @@ lever_self_check() {
 }
 lever_self_check
 
-usage='usage: regime-init <program> [--force] [--write-agents]'
+usage=$'usage: regime-init <program> [--force] [--write-agents]\n  the program store is made at ~/.local/state/hcom/<slug>/store/<program> (REGIME_STORE_ROOT of regime-env, U215)'
 refuse() {
     echo "regime-init: $*" >&2
     exit 2
@@ -111,13 +113,18 @@ inherited=''
 regime_env regime-init --unbound-ok || exit 2
 templates=${LEVER_MANIFEST%/*}/regime
 [[ -d ${templates} ]] || refuse "templates absent: ${templates}"
-store=${checkout}/.orchestration/orchestrate/${program}
+# U215: the program store lies under the store root regime-env derives beside the hcom store (`${HCOM_DIR}/store`),
+# outside every checkout; the checkout is named here for AGENTS.md, the guard's hook and the origin's content alone.
+[[ -n ${REGIME_STORE_ROOT:-} ]] || refuse "regime-env derived no store root for ${HCOM_DIR}"
+store_root=${REGIME_STORE_ROOT}
+store=${store_root}/${program}
 origin=${REGIME_ORIGIN:-${HCOM_DIR}/origin}
 # Checked before anything is written: an explicit HCOM_DIR gets the same no-symlink rule as a derived one.
 [[ ! -L ${HCOM_DIR} && ! -L ${origin} ]] || refuse "refused: ${HCOM_DIR} or ${origin} is a symlink"
 
-# Nothing is written through a symlink: the store, each file and AGENTS.md are refused when one stands there.
-for path in "${checkout}/.orchestration" "${checkout}/.orchestration/orchestrate" "${store}" "${checkout}/AGENTS.md"; do
+# Nothing is written through a symlink: the store root, the program store, each file and AGENTS.md are refused when
+# one stands there (the two store components are held again, as real directories of this user, when they are made).
+for path in "${store_root}" "${store}" "${checkout}/AGENTS.md"; do
     [[ ! -L ${path} ]] || refuse "refused: ${path} is a symlink"
 done
 
@@ -149,7 +156,30 @@ place() {
     fi
 }
 
-mkdir -p "${store}" || refuse "cannot create ${store}"
+# @description Make one component of the program store, the store root and then the program directory under it, each
+#   by its own `mkdir` under `umask 077` (no `-p` across both, so neither is made through an entry planted above it),
+#   the shape of hcom-seat's state_root_make: present or made, the path is a real directory of this user (no symlink,
+#   a directory, owned by this user), else refused by name before anything is written; mkdir takes no existing entry,
+#   so a link planted between the check and the mkdir fails it instead of being followed.
+# @arg $1 path The directory.
+# @arg $2 string What it is, for the refusal.
+store_dir_make() {
+    local path=$1 what=$2
+    [[ ! -L ${path} ]] || refuse "refused: ${what} ${path} is a symlink"
+    if [[ ! -e ${path} ]]; then
+        (umask 077 && mkdir "${path}") || refuse "cannot create ${what} ${path}"
+    fi
+    [[ -d ${path} && ! -L ${path} && -O ${path} ]] || refuse "refused: ${what} ${path} is not a real directory of this user"
+}
+
+# The hcom store holds the store root and the origin. hcom makes it itself at the first seat launch, so a first run
+# here finds it absent (on a fresh host its parents too) and makes it; present, it must be a real directory of this user.
+if [[ ! -e ${HCOM_DIR} ]]; then
+    mkdir -p "${HCOM_DIR}" || refuse "cannot create ${HCOM_DIR}"
+fi
+[[ -d ${HCOM_DIR} && ! -L ${HCOM_DIR} && -O ${HCOM_DIR} ]] || refuse "refused: the hcom store ${HCOM_DIR} is not a real directory of this user"
+store_dir_make "${store_root}" 'the store root'
+store_dir_make "${store}" 'the program store'
 for file in preferences.md units.tsv ledger.tsv decisions.tsv gates.md; do
     place "${file}"
 done
@@ -158,16 +188,16 @@ done
 if [[ -e ${origin} ]]; then
     printf 'unchanged\t%s\n' "${origin}"
 else
-    mkdir -p "${HCOM_DIR}" || refuse "cannot create ${HCOM_DIR}"
     printf '%s\n' "${REGIME_TOPLEVEL}" > "${origin}" || refuse "cannot write ${origin}"
     printf 'created\t%s\n' "${origin}"
     changed=1
 fi
 
-# The checkout refuses commits once a store exists (U129): checkout-guard.sh writes its reference-transaction hook
-# into the checkout's common hooks directory, or finds its own there and prints `unchanged`, and removes a round-1
-# `pre-commit` or `post-checkout` that is still there (`removed`); its refusals (a linked worktree, a foreign hook) are
-# this run's, after the store rows and before the AGENTS section.
+# The checkout guard (U129): checkout-guard.sh writes its reference-transaction hook into the checkout's common hooks
+# directory, or finds its own there and prints `unchanged`, and removes a round-1 `pre-commit` or `post-checkout` that
+# is still there (`removed`); its refusals (a linked worktree, a foreign hook) are this run's, after the store rows and
+# before the AGENTS section. Its trigger is still a store under the checkout, which this lever no longer creates
+# (U215), so the hook is installed and inert until U219 moves the trigger (handoff/07-store-move-design.md).
 [[ -x ${LEVER_DIR}/checkout-guard.sh ]] || refuse "checkout-guard.sh absent beside this script: ${LEVER_DIR}/checkout-guard.sh"
 guard_rows=$("${LEVER_DIR}/checkout-guard.sh" install "${checkout}") || refuse "checkout-guard.sh install ${checkout} failed; the store is in place, the hook is not"
 printf '%s\n' "${guard_rows}"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file regime-env
-# @brief The per-repository regime derivation the levers source: repository slug, hcom store, team, seat root.
+# @brief The per-repository regime derivation the levers source: repository slug, hcom store, store root, team, seat root.
 # @description
 #   Regime-cutover U33. Sourced by `hcom-seat`, `hcom-dispatch`, `bus-history.sh` and `regime-init` from the
 #   directory they run from (`LEVER_DIR`), never run on its own. It checks its own sha256 against its
@@ -9,7 +9,8 @@
 #   seats root `~/.local/state/omp-seats/<slug>`, where `<slug>` is the checkout's basename lower-cased with
 #   every character outside `[a-z0-9_-]` replaced by `-`, at most 40 characters. A derived store's `origin`
 #   file, written by `regime-init`, must name this checkout, so two checkouts with one basename cannot share a
-#   store unnoticed.
+#   store unnoticed. The program stores live under `REGIME_STORE_ROOT=${HCOM_DIR}/store`, one directory per program
+#   (`<store root>/<program>`, created by `regime-init`), outside every checkout (U215, handoff/07-store-move-design.md).
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
 #   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
 #   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
@@ -108,8 +109,8 @@ regime_slug() {
 #   always wins. A derived store is bound to its checkout by its `origin` file, which only `regime-init` writes:
 #   every other caller requires it to exist and name this toplevel, so a second checkout with the same slug
 #   cannot open or create the store. No part of a derived store path may be a symlink (`~/.local/state/hcom`,
-#   the store, `origin`), so nothing reads or writes through one. A refusal prints its reason prefixed with the
-#   caller's name and returns 1.
+#   the store, `origin`, the store root `store`), so nothing reads or writes through one. A refusal prints its
+#   reason prefixed with the caller's name and returns 1.
 # @arg $1 string The caller's name, for messages.
 # @option --unbound-ok The caller is `regime-init`: a derived store without its `origin` file is allowed.
 # @set REGIME_TOPLEVEL The physical toplevel, empty when HCOM_DIR is explicit and the cwd is outside a checkout.
@@ -117,16 +118,19 @@ regime_slug() {
 # @set REGIME_ORIGIN The derived store's origin file, empty when HCOM_DIR is explicit.
 # @set HCOM_TEAM `<slug>` unless set (exported).
 # @set HCOM_DIR `~/.local/state/hcom/<slug>` unless set (exported).
+# @set REGIME_STORE_ROOT `${HCOM_DIR}/store` (exported), the root the program stores lie under, derived or
+#   explicit HCOM_DIR alike; never read from the environment, so nothing can point a lever at another root (U215).
 # @set REGIME_SEATS_ROOT `~/.local/state/omp-seats/<slug>` unless set.
 # @exitcode 1 Outside a checkout with HCOM_DIR unset; an unusable slug; a symlink in the derived store path; a
 #   derived store without `origin` (unless --unbound-ok), or whose `origin` is unreadable or names another toplevel.
 regime_env() {
     local who=$1 unbound_ok=${2:-} recorded part
-    REGIME_TOPLEVEL='' REGIME_SLUG='' REGIME_ORIGIN='' REGIME_SEATS_ROOT=${REGIME_SEATS_ROOT:-}
+    REGIME_TOPLEVEL='' REGIME_SLUG='' REGIME_ORIGIN='' REGIME_STORE_ROOT='' REGIME_SEATS_ROOT=${REGIME_SEATS_ROOT:-}
     if ! REGIME_TOPLEVEL=$(regime_toplevel); then
         REGIME_TOPLEVEL=''
         if [[ -n ${HCOM_DIR:-} ]]; then
-            export HCOM_DIR
+            REGIME_STORE_ROOT=${HCOM_DIR}/store
+            export HCOM_DIR REGIME_STORE_ROOT
             [[ -z ${HCOM_TEAM:-} ]] || export HCOM_TEAM
             return 0
         fi
@@ -142,7 +146,8 @@ regime_env() {
     if [[ -z ${HCOM_DIR:-} ]]; then
         HCOM_DIR=${HOME}/.local/state/hcom/${REGIME_SLUG}
         REGIME_ORIGIN=${HCOM_DIR}/origin
-        for part in "${HOME}/.local/state/hcom" "${HCOM_DIR}" "${REGIME_ORIGIN}"; do
+        REGIME_STORE_ROOT=${HCOM_DIR}/store
+        for part in "${HOME}/.local/state/hcom" "${HCOM_DIR}" "${REGIME_ORIGIN}" "${REGIME_STORE_ROOT}"; do
             if [[ -L ${part} ]]; then
                 echo "${who}: refused: ${part} is a symlink; a derived hcom store is a plain directory" >&2
                 return 1
@@ -162,5 +167,6 @@ regime_env() {
             return 1
         fi
     fi
-    export HCOM_DIR HCOM_TEAM
+    REGIME_STORE_ROOT=${HCOM_DIR}/store
+    export HCOM_DIR HCOM_TEAM REGIME_STORE_ROOT
 }

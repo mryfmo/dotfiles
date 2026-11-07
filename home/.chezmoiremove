@@ -19,6 +19,7 @@
 .local/bin/server/history.sh
 .local/bin/server/cache.sh
 .config/mise/mise.lock
+.local/state/dotfiles/aws-cli-archive.etag
 .config/claude/rules/agmsg-orchestration.md
 .config/claude/rules/crit-review.md
 .config/claude/rules/pr-integration.md

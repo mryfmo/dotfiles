@@ -37,11 +37,21 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes  # noqa: E402
 from scratch_git import git_init, quiet_git_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/ci"))
 import shfmt_json_contract as contract  # noqa: E402
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
 
 ROOTS = ("scripts", "home", "install")
 SHELL = re.compile(r"#!.*\b(sh|bash|zsh)\b")
@@ -51,12 +61,15 @@ TMP = re.compile(r"/tmp(/|\b)")
 # whatever the policy says and hands the child TMPDIR=/tmp/claude (@anthropic-ai/sandbox-runtime 0.0.81,
 # dist/sandbox/sandbox-utils.js:499-508 `SANDBOX_OWN_WRITE_PATHS`, 687-691 `generateProxyEnvVars`); hcom-seat lists both
 # as srt's implicit write roots so that no seat write root and no tool may overlap them. It writes nothing there.
+# build_under_srt in the asset updater names `/tmp/claude` once (regime-cutover U322b; allowed here by U322c), as the
+# first row of the `denyWrite` it hands srt, and derives the second spelling from it by `pwd -P`; it writes nothing there
+# either.
 SRT_OWN_WRITE_PATHS = "srt's built-in writable directories (sandbox-runtime 0.0.81 sandbox-utils.js:499-508, 687-691)"
 ALLOWED_TMP = {
     (rel, word): SRT_OWN_WRITE_PATHS
     for rel in ("scripts/orchestrator/hcom-seat", "home/dot_local/bin/common/executable_hcom-seat")
     for word in ("/tmp/claude", "/private/tmp/claude")
-}
+} | {("scripts/update-agent-assets.sh", "/tmp/claude"): SRT_OWN_WRITE_PATHS + ", denied for write by build_under_srt"}
 
 ENV_READS = ("os.environ.get", "os.getenv")
 

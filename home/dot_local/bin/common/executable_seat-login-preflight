@@ -11,7 +11,7 @@
 #   `--check [<profile>...]` prints one line per profile (all overlays when none is named) from metadata
 #   only, never a token: SIWC is `registration.json` (host id and issued client id, which carry no token),
 #   held to the extension's record schema (one JSON document), plus the mtime of the profile's `agent.db`; Claude is the
-#   `CLAUDE_CODE_OAUTH_TOKEN` variable or the token file the seat shim exports (`login present`), else the
+#   token file the seat shim reads (`login present`), else the
 #   credentials file or the macOS Keychain item (attributes only), which are `host login only`: the seat's bridge
 #   child runs under its own `CLAUDE_CONFIG_DIR` (hcom-seat's shim, regime-cutover U190) and reads neither. A
 #   record that exists but cannot be read or breaks its schema, and a producer (`uname`, `stat`, `date`,
@@ -25,9 +25,10 @@
 #   active `openai-siwc` login in `agent.db`, counted by the extension's `src/credentials.ts` without reading a
 #   token: the issued client is saved before the token exchange, so a record proves only that a sign-in began.
 #   The Claude route is checked on every host (regime-cutover U190b), local included, since the seat's child logs
-#   in by the token alone wherever it runs: it needs the variable in this environment or a usable token file (a
-#   regular file whose first line, read as the seat shim reads it, is non-empty), which the shim exports into
-#   the seat; a directory, an empty file or an empty first line is `token file unusable` and counts as absent;
+#   in by the token alone wherever it runs: it needs a usable token file (a regular file whose first line, read as the
+#   seat shim reads it, is non-empty), which the shim alone reads into the seat (regime-cutover U312: no shell exports
+#   it, and a variable in this environment is no input); a directory, an empty file or an empty first line is
+#   `token file unusable` and counts as absent;
 #   a credentials file or Keychain item alone is refused as a host login the seat's child never sees,
 #   with the instruction to run `claude setup-token` and store the token in the file (0600). An absent
 #   login is logged in here only in the operator's own terminal (stdin and stdout a TTY, not inside a seat):
@@ -42,7 +43,6 @@
 # @env SSH_CONNECTION Set by sshd: this host is remote to the operator's terminal.
 # @env DISPLAY With WAYLAND_DISPLAY: a Linux host with neither has no local browser, so it counts as remote.
 # @env HCOM_LAUNCHED Set by hcom inside a seat: never run a login there.
-# @env CLAUDE_CODE_OAUTH_TOKEN Claude Code's token; only its presence is tested.
 # @stdout With `--check`: one line per profile.
 # @stderr The profile mode's report and refusals.
 # @exitcode 0 Checked, or the profile's route is usable (or the host is local and the route is openai-siwc).
@@ -231,8 +231,9 @@ siwc_state() {
 
 # @description Print the Claude Code login line of this host. The seat's bridge child runs under its own
 #   `CLAUDE_CONFIG_DIR` (hcom-seat's shim, regime-cutover U190), so it reads neither the operator's credentials file
-#   nor the Keychain item: the variable or a usable token file (the shim exports it) is a login, the two host stores are
-#   `host login only`, in readiness mode with the token-file instruction. The token file counts as the shim reads it
+#   nor the Keychain item: a usable token file (the shim reads it) is a login, the two host stores are `host login
+#   only`, in readiness mode with the token-file instruction; a variable in this environment is no input
+#   (regime-cutover U312). The token file counts as the shim reads it
 #   (regime-cutover U190b): a regular file whose first line, read by `/usr/bin/head -n 1`, is non-empty; the line goes
 #   into a variable to be tested for emptiness and nowhere else. A directory (or a link to one), an empty file or an
 #   empty first line is reported as `token file unusable (<reason>)` beside the host stores and counts as absent. The
@@ -242,10 +243,6 @@ siwc_state() {
 claude_state() {
     local ready=${1:-0} credentials=${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/.credentials.json mode mtime status=0 store=''
     local first reason note=''
-    if [[ -n ${CLAUDE_CODE_OAUTH_TOKEN:-} ]]; then
-        printf 'login present (env token)\n'
-        return 0
-    fi
     if [[ -e ${token_file} || -L ${token_file} ]]; then
         if [[ -d ${token_file} ]]; then
             reason='a directory'

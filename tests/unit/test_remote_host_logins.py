@@ -219,12 +219,14 @@ class OpenerStartTest(unittest.TestCase):
 
 
 class TokenExportTest(unittest.TestCase):
-    """The login shells export CLAUDE_CODE_OAUTH_TOKEN from the operator's token file and from nothing else."""
+    """U312: no shell exports CLAUDE_CODE_OAUTH_TOKEN. The token file is the seats' login, read by the seat shim alone
+    into the seat's child; a zsh or a login shell on a host that holds the file leaves the variable unset, so the
+    operator's interactive Claude Code, its hooks and every other child keep the host's own login."""
 
     PROBE: ClassVar[dict[str, list[str]]] = {
-        "zsh": ["zsh", "-f", "-c", 'source "$1"; print -r -- "${CLAUDE_CODE_OAUTH_TOKEN-unset}|${+__claude_code_oauth}"'],
+        "zsh": ["zsh", "-f", "-c", 'source "$1"; print -r -- "${CLAUDE_CODE_OAUTH_TOKEN-unset}"'],
         "bash": ["bash", "--norc", "--noprofile", "-c",
-                 'mise() { :; }; source "$1"; printf "%s|%s\\n" "${CLAUDE_CODE_OAUTH_TOKEN-unset}" "${__claude_code_oauth+1}"'],
+                 'mise() { :; }; source "$1"; printf "%s\\n" "${CLAUDE_CODE_OAUTH_TOKEN-unset}"'],
     }  # fmt: skip
 
     def run_shell(self, shell: str, rc: Path, home: Path) -> str:
@@ -236,40 +238,26 @@ class TokenExportTest(unittest.TestCase):
         )  # fmt: skip
         return result.stdout.strip()
 
-    def test_the_token_file_feeds_the_variable_and_an_empty_or_absent_file_does_not(self) -> None:
+    def test_no_shell_exports_the_token_file(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            homes = {name: Path(temp) / name for name in ("with", "empty", "without")}
-            for name, content in (("with", "fake-oauth-token-for-test\n"), ("empty", "")):
-                token = homes[name] / ".config/claude-code/oauth-token"
-                token.parent.mkdir(parents=True)
-                token.write_text(content)
-                token.chmod(0o600)
-            homes["without"].mkdir()
+            home = Path(temp)
+            token = home / ".config/claude-code/oauth-token"
+            token.parent.mkdir(parents=True)
+            token.write_text("fake-oauth-token-for-test\n")
+            token.chmod(0o600)
             for shell, rc in (("zsh", ZSHENV), ("bash", PROFILE)):
                 with self.subTest(shell=shell):
-                    self.assertEqual(
-                        self.run_shell(shell, rc, homes["with"]).split("|")[0], "fake-oauth-token-for-test"
-                    )
-                    for name in ("empty", "without"):
-                        self.assertEqual(self.run_shell(shell, rc, homes[name]).split("|")[0], "unset")
-                    # The temporary name never outlives the file read.
-                    self.assertIn(self.run_shell(shell, rc, homes["with"]).split("|")[1], ("0", ""))
+                    self.assertEqual(self.run_shell(shell, rc, home), "unset")
 
-    def test_no_other_source_sets_the_token(self) -> None:
+    def test_no_rc_line_names_the_variable(self) -> None:
         for rc in (ZSHENV, PROFILE):
-            lines = [
-                line.strip()
-                for line in rc.read_text().splitlines()
-                if "CLAUDE_CODE_OAUTH_TOKEN" in line and not line.lstrip().startswith("#")
-            ]
-            # One assignment from the file's temporary, one export of it, and nothing else.
-            self.assertEqual(
-                lines,
-                [
-                    f"CLAUDE_CODE_OAUTH_TOKEN={'${__claude_code_oauth}' if rc == ZSHENV else '$__claude_code_oauth'}",
-                    "export CLAUDE_CODE_OAUTH_TOKEN",
-                ],
-            )
+            with self.subTest(rc=rc.name):
+                lines = [
+                    line.strip()
+                    for line in rc.read_text().splitlines()
+                    if "CLAUDE_CODE_OAUTH_TOKEN" in line and not line.lstrip().startswith("#")
+                ]
+                self.assertEqual(lines, [])
 
 
 @unittest.skipUnless(CHEZMOI, "chezmoi is not installed")
@@ -446,8 +434,9 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         self.assertEqual(lines[1:], ["orchestrator claude-bridge: absent", "worker claude-bridge: absent"])
 
     def test_check_reports_each_claude_route_without_printing_a_token(self) -> None:
+        # U312: a variable in the environment is no input; without the file the route is absent.
         result = self.run_lever("--check", "orchestrator", **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
-        self.assertEqual(result.stdout, "orchestrator claude-bridge: login present (env token)\n")
+        self.assertEqual(result.stdout, "orchestrator claude-bridge: absent\n")
         token = self.home / ".config/claude-code/oauth-token"
         token.parent.mkdir(parents=True)
         token.write_text(FAKE_OAUTH_VALUE + "\n")
@@ -659,15 +648,17 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         for display in ({"DISPLAY": ":0"}, {"WAYLAND_DISPLAY": "wayland-0"}):
             with self.subTest(**display):
                 # With a display the host is local: the SIWC route does nothing there, while the Claude route's rule
-                # holds on every host (U190b): the worker passes on the token variable and refuses without it.
+                # holds on every host (U190b): the worker refuses without a usable token file, and a token variable in
+                # the environment is no input (U312). The usable-file case runs under the real uname
+                # (`test_the_claude_rule_holds_on_a_local_host`): this fake Linux uname would make the preflight stat
+                # the file in the GNU form, which a macOS runner lacks.
                 local = self.run_lever("audit", **display)
                 self.assertEqual((local.returncode, local.stderr), (0, ""))
-                ready = self.run_lever("worker", **display, **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
-                self.assertEqual(ready.returncode, 0, ready.stderr)
-                self.assertIn("worker claude-bridge: login present (env token)", ready.stderr)
-                refused = self.run_lever("worker", **display)
-                self.assertEqual(refused.returncode, 2, refused.stderr)
-                self.assertIn("worker claude-bridge: absent; a login is the operator's step", refused.stderr)
+                for extra in ({}, {TOKEN_VARIABLE: FAKE_OAUTH_VALUE}):
+                    refused = self.run_lever("worker", **display, **extra)
+                    self.assertEqual(refused.returncode, 2, refused.stderr)
+                    self.assertIn("worker claude-bridge: absent; a login is the operator's step", refused.stderr)
+                    self.assertNotIn(FAKE_OAUTH_VALUE, refused.stderr)
 
     def test_a_profile_without_a_login_route_passes_and_an_unreadable_overlay_does_not(self) -> None:
         remote = "100.64.0.2 50000 100.64.0.3 22"
@@ -803,17 +794,18 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         self.assertIn("no openai-siwc login in", output)
         self.assertIn("after the login", output)
 
-    def test_readiness_counts_the_variable_or_the_token_file_and_never_a_host_only_login(self) -> None:
+    def test_readiness_counts_the_token_file_alone_and_never_a_variable_or_a_host_only_login(self) -> None:
         """U190: the seat's bridge child runs under its own CLAUDE_CONFIG_DIR and logs in by the token alone, which
-        the seat shim exports from the token file; a Keychain item or credentials file is a host login it cannot use."""
+        the seat shim exports from the token file; a Keychain item or credentials file is a host login it cannot use.
+        U312: a token variable in the environment is no input either; the file is the one source."""
         remote = "100.64.0.2 50000 100.64.0.3 22"
         advice = (
             "not visible to the seat's bridge child under its own CLAUDE_CONFIG_DIR; run claude setup-token and"
             " store it in ~/.config/claude-code/oauth-token (0600); a login is the operator's step"
         )
-        ready = self.run_lever("orchestrator", SSH_CONNECTION=remote, **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
-        self.assertEqual(ready.returncode, 0, ready.stderr)
-        self.assertIn("orchestrator claude-bridge: login present (env token)", ready.stderr)
+        variable_only = self.run_lever("orchestrator", SSH_CONNECTION=remote, **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
+        self.assertEqual(variable_only.returncode, 2, variable_only.stderr)
+        self.assertIn("orchestrator claude-bridge: absent; a login is the operator's step", variable_only.stderr)
         token = self.home / ".config/claude-code/oauth-token"
         token.parent.mkdir(parents=True)
         token.write_text(FAKE_OAUTH_VALUE + "\n")
@@ -846,7 +838,7 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         self.assertEqual(status, 2, output)
         self.assertIn("run `claude setup-token` on the laptop", output)
         self.assertNotIn("claude auth login", self.calls_text())
-        for text in (ready.stderr, from_file.stderr, host_only.stderr, keychain.stderr, output):
+        for text in (variable_only.stderr, from_file.stderr, host_only.stderr, keychain.stderr, output):
             self.assertNotIn(FAKE_OAUTH_VALUE, text)
 
 

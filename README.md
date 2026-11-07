@@ -110,17 +110,22 @@ click is the laptop's. The design and the threat table are in
    Claude sign-in shows a code in the laptop tab; paste it at the terminal
    prompt. If that flow fails, run `claude setup-token` on the laptop and store
    the token in `~/.config/claude-code/oauth-token` (mode 0600) on the Ubuntu
-   host; `~/.zshenv` (every zsh) and `~/.profile` export it as
-   `CLAUDE_CODE_OAUTH_TOKEN`, and the managed Claude settings withhold both the
-   variable and the file from sandboxed commands.
+   host. That file is the seats' current Claude login on every host, the laptop
+   included (the mechanism itself is under review in U314): only the seat shim
+   of `hcom-seat` reads it, into the seat's child alone. No shell exports it
+   (U312), so the operator's own Claude Code keeps the host login (the Keychain
+   on macOS, its credentials file on Linux) and its claude.ai connectors; the
+   managed Claude settings also withhold the variable and the file from
+   sandboxed commands.
 4. `make doctor` on the Ubuntu host lists each seat profile under "Seat logins"
    from presence and mtimes only.
 5. `hcom-seat <role>` there runs the same pre-flight before it starts a seat.
    It also checks that the seat can use the login: a ChatGPT login stored in
-   the profile's `agent.db`, and `CLAUDE_CODE_OAUTH_TOKEN` in the shell when
-   the token file is the only Claude login (open a new login shell after
-   writing it). A seat never runs a login: without one, it refuses and names
-   the command.
+   the profile's `agent.db`, and for Claude a usable token file (a regular file
+   whose first line is non-empty). A `CLAUDE_CODE_OAUTH_TOKEN` in the shell is
+   no input, and a Keychain item or credentials file alone is refused, so a
+   host without the file starts no seat, by design. A seat never runs a login:
+   without one, it refuses and names the command.
 
 ### Private credentials and keys
 
@@ -715,9 +720,9 @@ subprocess:
   Linux the Claude login is the denied
   `~/.claude/.credentials.json` and the `gh` token is the denied hosts file.
 - `sandbox.credentials.envVars` removes `CLAUDE_CODE_OAUTH_TOKEN` from the
-  environment of sandboxed commands. `~/.zshenv` exports it to every zsh on a
-  host with the token file (docs/remote-host-logins.md); a sandboxed zsh cannot
-  read the file back.
+  environment of sandboxed commands, as defence in depth: no shell exports it
+  (U312), and the seat shim alone reads the token file into a seat's child
+  (docs/remote-host-logins.md); a sandboxed command cannot read the file either.
 - `sandbox.filesystem.denyRead` denies `~/**/.env`, `~/**/.env.*` and the same
   pair under `/tmp` (and `/private/tmp` on macOS), which covers checkouts
   outside `$HOME` such as the audit worktrees and Claude's own

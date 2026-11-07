@@ -251,15 +251,6 @@ refuse() {
     exit 2
 }
 
-# The one settings writer (regime-cutover U344): the path rule every settings row obeys, the fixed deny rows, the
-# structural tags of the grant positions, the domain list and the JSON text every role's settings are written in,
-# sourced before any row is checked or rendered; it holds itself to its own pin, like regime-env, so a rewritten
-# helper stops this launch.
-[[ -r ${LEVER_DIR}/seat-settings-render.sh && ! -L ${LEVER_DIR}/seat-settings-render.sh ]] ||
-    refuse "seat-settings-render.sh unreadable or a link beside this script: ${LEVER_DIR}/seat-settings-render.sh"
-# shellcheck source=scripts/orchestrator/seat-settings-render.sh
-. "${LEVER_DIR}/seat-settings-render.sh"
-
 # @description Print the UTC stamp `YYYYMMDD-HHMMSS` of a dsh launch's seat name, from `/bin/date` read status first
 #   (standing order 21): a failed read, an empty one or one outside the shape refuses (exit 2) and names no slot.
 # @stdout The stamp.
@@ -372,11 +363,24 @@ for marker in HCOM_LAUNCHED HCOM_PROCESS_ID HCOM_SEAT_SANDBOX; do
 done
 
 # The srt release line this script encodes (regime-cutover U141): srt 0.0.81's Seatbelt regex and glob rendering of a
-# settings path (clean_path, seat-settings-render.sh), its writable own TMPDIR (srt_tmp_roots_for), its own-write paths (seat_write_roots),
+# settings path (clean_path), its writable own TMPDIR (srt_tmp_roots_for), its own-write paths (seat_write_roots),
 # its deeper deny under an allow and its `*:*` bind grant (seat_sandbox_write) are what the seat boundary rests on. An
 # installed srt of another major.minor is refused before anything is made (the check after pin_exec srt); a bump is a
 # reviewed edit of this constant and the mise pin (home/dot_mise/config.toml) together, re-reading the five.
 readonly SRT_LINE=0.0
+
+# @description Succeed when `$1` is a clean absolute path that srt cannot read as a pattern: `/` followed by
+#   components of `[A-Za-z0-9._@+-]` only (no glob metacharacter `*?[]{}`, no whitespace, no quote or backslash), none
+#   of them empty, `.` or `..`, and no trailing `/`. srt 0.0.81 turns a settings path into a Seatbelt regex or a glob,
+#   so `/private/tmp/hcom*` would grant its siblings; a clean path names exactly itself. The rule is stated here for
+#   the launch's inputs, checked before any helper is sourced, and again, byte for byte, in seat-settings-render.sh for
+#   every settings row of both levers (regime-cutover U344); the helper's definition replaces this one once sourced.
+# @arg $1 string The path.
+# @exitcode 1 The path is not clean.
+clean_path() {
+    [[ $1 =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || return 1
+    [[ /$1/ != */./* && /$1/ != */../* ]] # lint-comparisons: allow a component test on one path, no path compare
+}
 
 # @description Refuse (exit 2) unless `$2` is a clean absolute path (clean_path).
 # @arg $1 string What the path is, for the refusal.
@@ -1860,6 +1864,15 @@ dsh_deny_paths() {
         require_clean_path "a path the dsh role denies (${dsh_deny_labels[i]})" "${dsh_deny[i]}"
     done
 }
+
+# The one settings writer (regime-cutover U344): the path rule every settings row obeys (clean_row, and clean_path
+# again, byte for byte), the fixed deny rows, the structural tags of the grant positions, the domain list and the JSON
+# text every role's settings are written in, sourced here, after the manifest's own checks and before any row is
+# rendered; it holds itself to its own pin, like regime-env, so a rewritten helper stops this launch.
+[[ -r ${LEVER_DIR}/seat-settings-render.sh && ! -L ${LEVER_DIR}/seat-settings-render.sh ]] ||
+    refuse "seat-settings-render.sh unreadable or a link beside this script: ${LEVER_DIR}/seat-settings-render.sh"
+# shellcheck source=scripts/orchestrator/seat-settings-render.sh
+. "${LEVER_DIR}/seat-settings-render.sh"
 
 # @description Render the seat's settings lists (regime-cutover U272e): `write` (the allowWrite roots, exactly
 #   seat_write_roots' list, so the protected set and the sandbox cannot drift), `deny_write` with the macOS

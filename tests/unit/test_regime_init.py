@@ -1,10 +1,10 @@
-"""Exercise scripts/orchestrator/regime-init in a scratch repository (regime-cutover U33; U215, U215b: the store outside
-it, under a bound root).
+"""Exercise scripts/orchestrator/regime-init in a scratch repository (regime-cutover U33; U215, U215b, U215c: the store
+outside it, under the fixed root).
 
-The checkout copy runs with HOME in a scratch directory, so the store origin, the store-root binding
-(`~/.local/state/hcom/<slug>/store-root`) and the program store (`~/.local/state/regime-store/<slug>/<program>`, the
-default root, U215b) land under that HOME and nothing under the scratch checkout or the hcom store, and the templates
-come from the checkout's home/dot_agents/regime (the directory beside the manifest its self-check reads).
+The checkout copy runs with HOME in a scratch directory, so the store origin (`~/.local/state/hcom/<slug>/origin`) and
+the program store (`<physical HOME>/.local/state/regime-store/<slug>/<program>`, the root regime-env derives from HOME
+and the slug alone, U215c) land under that HOME and nothing under the scratch checkout or the hcom store, and the
+templates come from the checkout's home/dot_agents/regime (the directory beside the manifest its self-check reads).
 """
 
 import os
@@ -59,12 +59,12 @@ class RegimeInitTest(unittest.TestCase):
         self.env = {"PATH": os.environ["PATH"], "HOME": str(self.home), **GIT_IDENTITY}
         git_init(self.repo, env=self.env)
         subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "init"], cwd=self.repo, env=self.env, check=True)
-        # U215b: the program store lies under the root bound in `<HCOM_DIR>/store-root`, by default
-        # `~/.local/state/regime-store/<slug>`, never under the checkout and never under the hcom store (hcom-seat
-        # grants the hcom store to every seat for the bus, verdict U215-11a32ed6 P1).
+        # U215c: the program store lies under `<physical HOME>/.local/state/regime-store/<slug>`, a fixed derivation
+        # of regime-env (no binding, option or environment value chooses it), never under the checkout and never under
+        # the hcom store (hcom-seat grants the hcom store to every seat for the bus, verdict U215-11a32ed6 P1; round
+        # 2's binding inside it could be rewritten by a seat, verdict U215-a081d8ba P1).
         self.hcom_store = self.home / ".local/state/hcom/kit-pilot"
         self.origin = self.hcom_store / "origin"
-        self.binding = self.hcom_store / "store-root"
         self.store_parent = self.home / ".local/state/regime-store"
         self.store_root = self.store_parent / "kit-pilot"
         self.store = self.store_root / "pilot"
@@ -103,18 +103,15 @@ class RegimeInitTest(unittest.TestCase):
     def test_the_first_run_creates_the_store_and_the_origin_and_the_second_changes_nothing(self):
         run = self.init("pilot")
         self.assertEqual(run.returncode, 0, run.stderr)
-        # U215b: `regime-store`, `<slug>` and `<program>` are made under ~/.local/state, each 0700 and this user's; the
-        # binding beside origin holds the root, 0600; the hcom store holds the two bindings and nothing else; the
-        # checkout gets no `.orchestration` directory.
+        # U215c: `regime-store`, `<slug>` and `<program>` are made under ~/.local/state, each 0700 and this user's; the
+        # hcom store holds `origin` and nothing else (no binding); the checkout gets no `.orchestration` directory.
         self.assert_private_directory_of_this_user(self.store_parent)
         self.assert_private_directory_of_this_user(self.store_root)
         self.assert_private_directory_of_this_user(self.store)
-        self.assertEqual(self.binding.read_text(), f"{self.store_root}\n")
-        self.assertEqual(stat.S_IMODE(os.lstat(self.binding).st_mode), 0o600)
-        self.assertEqual(sorted(path.name for path in self.hcom_store.iterdir()), ["origin", "store-root"])
+        self.assertEqual(sorted(path.name for path in self.hcom_store.iterdir()), ["origin"])
         self.assertFalse((self.repo / ".orchestration").exists(), "nothing is created under the checkout")
         self.assertEqual(self.rows(run.stdout)[str(self.store_root)], "created")
-        self.assertEqual(self.rows(run.stdout)[str(self.binding)], "created")
+        self.assertNotIn("store-root", run.stdout + run.stderr, "no binding row")
         for name in STORE_FILES:
             with self.subTest(file=name):
                 self.assertEqual((self.store / name).read_bytes(), (TEMPLATES / name).read_bytes())
@@ -128,18 +125,16 @@ class RegimeInitTest(unittest.TestCase):
         self.assertEqual(again.returncode, 0, again.stderr)
         self.assertEqual(set(self.rows(again.stdout).values()), {"unchanged", "checkout-guard: unchanged"})
         self.assertEqual(self.rows(again.stdout)[str(self.store_root)], "unchanged")
-        self.assertEqual(self.rows(again.stdout)[str(self.binding)], "unchanged")
         self.assertIn("nothing changed", again.stdout)
-        self.assertEqual(self.binding.read_text(), f"{self.store_root}\n")
-        self.assertEqual(sorted(path.name for path in self.hcom_store.iterdir()), ["origin", "store-root"])
+        self.assertEqual(sorted(path.name for path in self.hcom_store.iterdir()), ["origin"])
         self.assertFalse((self.repo / ".orchestration").exists())
 
     def test_a_pre_made_component_whose_mode_is_not_0700_refuses_before_anything_is_written(self):
         """U215b (verdict U215-11a32ed6 P2 `:172`): a `regime-store`, `<slug>` or `<program>` directory found in place
         is held to a real directory of this user whose mode is 0700, read by `/usr/bin/stat`; any other mode (0777,
-        and 0750) is refused by name with exit 2 before the binding, the templates, the origin or the hook are written,
-        and the directory keeps its mode (nothing is chmod-ed into compliance). The parents above the one that fails
-        are 0700, so the refusal names exactly the offending component."""
+        and 0750) is refused by name with exit 2 before the templates, the origin or the hook are written, and the
+        directory keeps its mode (nothing is chmod-ed into compliance). The parents above the one that fails are 0700,
+        so the refusal names exactly the offending component."""
         hook = self.repo / ".git/hooks/reference-transaction"
         for label, path, mode in (
             ("regime-store 0777", self.store_parent, 0o777),
@@ -155,7 +150,7 @@ class RegimeInitTest(unittest.TestCase):
                 self.assertTrue(run.stderr.startswith("regime-init: refused: "), run.stderr)
                 self.assertIn(f"{path} has mode {mode:o}, not 0700", run.stderr)
                 self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), mode, "the directory keeps its mode")
-                self.assertFalse(self.binding.exists(), "the binding is written after the directories are held")
+                self.assertFalse(self.origin.parent.exists(), "nothing under the hcom store before the store is held")
                 self.assertFalse((self.store / "units.tsv").exists(), "no template")
                 self.assertFalse(self.origin.exists(), "the origin is written after the store")
                 self.assertFalse(hook.exists(), "the guard is installed after the store")
@@ -168,32 +163,131 @@ class RegimeInitTest(unittest.TestCase):
         for path in (self.store_parent, self.store_root, self.store):
             self.assert_private_directory_of_this_user(path)
 
-    def test_a_bound_root_under_home_is_honoured_and_one_outside_home_is_refused(self):
-        """U215b: a binding in place before the first run (an operator's choice; U221's move) is honoured when its path
-        lies under HOME: the store is made there, 0700 root and program directory, the default root is not made and
-        the binding row is `unchanged`; a binding naming a path outside HOME is refused by name (regime-env's grammar,
-        exit 2 here) before anything is written there."""
-        chosen = self.home / "records/kit-pilot"
-        (self.home / "records").mkdir()
+    def test_a_planted_store_root_file_in_the_hcom_store_chooses_nothing(self):
+        """U215c (verdict U215-a081d8ba P1 `:127`, the mechanism-change row of 2026-11-07T18:05:48Z, form remove): round
+        2 bound the root in `<HCOM_DIR>/store-root`, a file every seat may write through its hcom store grant, so a
+        worker could point the records back inside its write root. Now nothing in the hcom store chooses the root: a
+        planted `store-root` naming `<HCOM_DIR>/store` is not read (it is unreadable here, so a read would refuse), the
+        store is made under the derived root, nothing appears at `<HCOM_DIR>/store`, and the planted file is left as it
+        was (this lever writes `origin` and nothing else there)."""
         self.hcom_store.mkdir(parents=True)
-        self.binding.write_text(f"{chosen}\n")
+        planted = self.hcom_store / "store-root"
+        planted.write_text(f"{self.hcom_store}/store\n")
+        planted.chmod(0)
         run = self.init("pilot")
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assert_private_directory_of_this_user(chosen)
-        self.assert_private_directory_of_this_user(chosen / "pilot")
+        self.assertEqual(self.rows(run.stdout)[str(self.store_root)], "created")
         for name in STORE_FILES:
-            self.assertEqual((chosen / "pilot" / name).read_bytes(), (TEMPLATES / name).read_bytes())
-        self.assertEqual(self.rows(run.stdout)[str(chosen)], "created")
-        self.assertEqual(self.rows(run.stdout)[str(self.binding)], "unchanged")
-        self.assertEqual(self.binding.read_text(), f"{chosen}\n", "the binding is kept as written")
-        self.assertFalse(self.store_parent.exists(), "the default root is not made")
-        outside = self.root / "outside-root"
-        self.binding.write_text(f"{outside}\n")
+            self.assertEqual((self.store / name).read_bytes(), (TEMPLATES / name).read_bytes())
+        self.assertFalse((self.hcom_store / "store").exists(), "no store under the hcom store")
+        self.assertNotIn(f"{self.hcom_store}/store", run.stdout + run.stderr, "nothing derived from the file")
+        self.assertEqual(sorted(path.name for path in self.hcom_store.iterdir()), ["origin", "store-root"])
+        self.assertEqual(stat.S_IMODE(os.lstat(planted).st_mode), 0, "the planted file is left as it was")
+        planted.chmod(0o600)
+        self.assertEqual(planted.read_text(), f"{self.hcom_store}/store\n")
+
+    def test_a_dangling_link_or_an_unsearchable_parent_at_a_component_refuses_naming_it_and_writes_nothing(self):
+        """U215c (verdict U215-a081d8ba P2 `:199`): the component hold reads producers, `/usr/bin/stat` for the mode and
+        `mkdir` for an absent component, each with its status (standing order 21), and the window between the hold and
+        the mode read (a parent made unsearchable in it) is not reachable from a test; the committed injections are the
+        two failures the hold sees: a dangling symbolic link at `regime-store`, `<slug>` or `<program>`, which `stat`
+        could not follow, is refused by name as a link before anything is read or made, and a parent of mode 000
+        (`regime-store` above `<slug>`, `<slug>` above `<program>`; skipped as root, who searches everything) is refused
+        naming the parent (regime-env's hold: cannot search), never read as an absent child and never passed to the
+        mode read or the mkdir. Each refusal is exit 2 with stdout empty, and nothing is written: no template, no
+        origin, no hook, nothing under the checkout."""
+        hook = self.repo / ".git/hooks/reference-transaction"
+        gone = self.root / "gone"
+        self.store_parent.parent.mkdir(parents=True)
+        cases = [
+            (
+                "a dangling link at regime-store",
+                lambda: self.store_parent.symlink_to(gone),
+                self.store_parent,
+                "is a symlink",
+            ),
+            (
+                "a dangling link at the root",
+                lambda: (self.make_private(self.store_parent), self.store_root.symlink_to(gone)),
+                self.store_root,
+                "is a symlink",
+            ),
+            (
+                "a dangling link at the program store",
+                lambda: (self.make_private(self.store_root), self.store.symlink_to(gone)),
+                self.store,
+                "is a symlink",
+            ),
+        ]
+        if os.geteuid() != 0:
+            cases += [
+                (
+                    "regime-store of mode 000 above the root",
+                    lambda: (self.make_private(self.store_parent), self.store_parent.chmod(0)),
+                    self.store_parent,
+                    "cannot search",
+                ),
+                (
+                    "the root of mode 000 above the program store",
+                    lambda: (self.make_private(self.store_root), self.store_root.chmod(0)),
+                    self.store_root,
+                    "cannot search",
+                ),
+            ]
+        for label, plant, named, reason in cases:
+            with self.subTest(label):
+                plant()
+                run = self.init("pilot")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertTrue(run.stderr.startswith("regime-init: refused: "), run.stderr)
+                self.assertIn(str(named), run.stderr, "the refusal names the component")
+                self.assertIn(reason, run.stderr)
+                self.assertFalse(gone.exists(), "nothing made through the dangling link")
+                self.assertFalse(self.origin.parent.exists(), "nothing under the hcom store")
+                self.assertFalse(hook.exists(), "the guard is installed after the store")
+                self.assertFalse((self.repo / ".orchestration").exists())
+            # Cleared outside the subTest, so a failing assertion still leaves the next case its clean start: the two
+            # upper components get their mode back first, so nothing below a mode-000 directory is looked at through it.
+            for path in (self.store_parent, self.store_root):
+                if path.is_dir() and not path.is_symlink():
+                    path.chmod(0o700)
+            for path in (self.store, self.store_root, self.store_parent):
+                if path.is_symlink():
+                    path.unlink()
+                elif path.is_dir():
+                    path.rmdir()
         run = self.init("pilot")
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn(f"refused: the store-root binding {self.binding}", run.stderr)
-        self.assertFalse(outside.exists(), "nothing made outside HOME")
-        self.assertFalse(self.store_parent.exists())
+        self.assertEqual(run.returncode, 0, run.stderr)
+        for path in (self.store_parent, self.store_root, self.store):
+            self.assert_private_directory_of_this_user(path)
+
+    def test_a_failing_template_copy_refuses_without_a_partial_store(self):
+        """U215c (verdict U215-a081d8ba P2 `:199`): the template copy is a producer read with its status; a `cp` that
+        fails (injected by name, the lever runs the one on PATH) refuses with exit 2 naming the target and leaves no
+        template in the store, no origin and no hook, so a later run finds the three 0700 components and completes the
+        store; with `--force` over a changed file, the failing copy replaces nothing."""
+        hook = self.repo / ".git/hooks/reference-transaction"
+        fake = self.root / "fake"
+        fake.mkdir()
+        (fake / "cp").write_text("#!/bin/sh\nexit 1\n")
+        (fake / "cp").chmod(0o755)
+        env = {**self.env, "PATH": f"{fake}:{self.env['PATH']}"}
+        run = self.init("pilot", env=env)
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn(f"regime-init: cannot write {self.store}/preferences.md", run.stderr)
+        self.assertEqual(self.rows(run.stdout), {str(self.store_root): "created"}, "the root row alone")
+        self.assertEqual(list(self.store.iterdir()), [], "no partial store")
+        self.assertFalse(self.origin.exists(), "the origin is written after the templates")
+        self.assertFalse(hook.exists(), "the guard is installed after the store")
+        run = self.init("pilot")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        for name in STORE_FILES:
+            self.assertEqual((self.store / name).read_bytes(), (TEMPLATES / name).read_bytes())
+        (self.store / "units.tsv").write_text("local edit\n")
+        run = self.init("pilot", "--force", env=env)
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn(f"regime-init: cannot write {self.store}/units.tsv", run.stderr)
+        self.assertEqual((self.store / "units.tsv").read_text(), "local edit\n", "--force replaced nothing")
 
     def test_the_first_run_installs_the_checkout_guard_and_a_commit_passes_until_u219_moves_its_trigger(self):
         """regime-init runs `checkout-guard.sh install` on the checkout it prepares (U129): the first run writes the
@@ -205,8 +299,9 @@ class RegimeInitTest(unittest.TestCase):
         pass is pinned here so that unit's change turns this line. The containment that holds until U219 (verdict
         U215-11a32ed6 P2 `:127`): the live store of this program stays inside the main checkout, untouched by this
         lever, so its `units.tsv` is still there and the installed guard still fires on this program's checkout; no
-        fresh checkout is initialised before U219 lands (the hosts of today carry no `store-root` binding); and a
-        fresh checkout prepared despite that holds only templates, nothing the records boundary protects."""
+        fresh checkout is initialised before U219 lands (no host carries a store under `~/.local/state/regime-store`
+        yet); and a fresh checkout prepared despite that holds only templates, nothing the records boundary
+        protects."""
         hook = self.repo / ".git/hooks/reference-transaction"
         run = self.init("pilot")
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -329,7 +424,7 @@ class RegimeInitTest(unittest.TestCase):
         self.assertEqual(run.returncode, 2, run.stdout)
         self.assertIn("belongs to /elsewhere/kit-pilot", run.stderr)
         self.assertFalse(self.store_root.exists(), "a collision writes nothing")
-        self.assertFalse(self.binding.exists())
+        self.assertEqual(sorted(path.name for path in self.hcom_store.iterdir()), ["origin"], "the hcom store as found")
         self.assertFalse((self.repo / ".orchestration").exists())
         self.origin.unlink()
 
@@ -344,7 +439,7 @@ class RegimeInitTest(unittest.TestCase):
         self.assertTrue((self.store / "units.tsv").is_file(), "the store is made under HOME")
 
     def test_a_symlinked_store_or_origin_refuses_before_anything_is_written(self):
-        """A symlinked derived store, or a dangling origin symlink, writes neither the binding nor the store files
+        """A symlinked derived store, or a dangling origin symlink, writes neither the origin nor the store files
         (Codex 4366521828)."""
         elsewhere = self.root / "elsewhere"
         elsewhere.mkdir()
@@ -361,7 +456,7 @@ class RegimeInitTest(unittest.TestCase):
         self.assertEqual(run.returncode, 2, run.stdout)
         self.assertIn("is a symlink", run.stderr)
         self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through either symlink")
-        self.assertFalse(self.store_root.exists(), "no store file before the binding is safe")
+        self.assertFalse(self.store_root.exists(), "no store file before the hcom store is safe")
         self.assertFalse((self.repo / ".orchestration").exists())
         explicit = self.root / "explicit-store"
         explicit.symlink_to(elsewhere)
@@ -371,15 +466,15 @@ class RegimeInitTest(unittest.TestCase):
         self.assertEqual(list(elsewhere.iterdir()), [])
         self.assertFalse((self.repo / ".orchestration").exists())
 
-    def test_a_planted_entry_at_a_store_component_or_the_binding_refuses_before_anything_is_written(self):
-        """U215, U215b: `regime-store`, the store root `regime-store/<slug>` and the program store under it are each
-        made (0700) or found as a real directory of this user with mode 0700; a symbolic link planted at any of them,
-        or a file at the root or the program store, is refused by name (exit 2) before the binding, the templates, the
-        origin or the hook are written, the shape of hcom-seat's state_root_make; a link planted at the binding itself
-        is regime-env's refusal, exit 2 here, with nothing written."""
+    def test_a_planted_entry_at_a_store_component_refuses_before_anything_is_written(self):
+        """U215, U215b, U215c: `regime-store`, the store root `regime-store/<slug>` and the program store under it are
+        each made (0700) or found as a real directory of this user with mode 0700; a symbolic link planted at any of
+        them, or a file at the root or the program store, is refused by name (exit 2) before the templates, the origin
+        or the hook are written, the shape of hcom-seat's state_root_make (the two upper components by regime-env's
+        hold, the program store by this lever's)."""
         elsewhere = self.root / "elsewhere"
         elsewhere.mkdir()
-        self.hcom_store.mkdir(parents=True)
+        self.store_parent.parent.mkdir(parents=True)
         hook = self.repo / ".git/hooks/reference-transaction"
         for label, plant, planted in (
             ("a link at regime-store", lambda: self.store_parent.symlink_to(elsewhere), self.store_parent),
@@ -403,7 +498,6 @@ class RegimeInitTest(unittest.TestCase):
                 lambda: (self.make_private(self.store_root), self.store.write_text("")),
                 self.store,
             ),
-            ("a link at the binding", lambda: self.binding.symlink_to(elsewhere / "store-root"), self.binding),
         ):
             with self.subTest(label):
                 plant()
@@ -412,13 +506,13 @@ class RegimeInitTest(unittest.TestCase):
                 self.assertTrue(run.stderr.startswith("regime-init: "), run.stderr)
                 self.assertIn(str(planted), run.stderr, "the refusal names the planted component")
                 self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through a link")
-                self.assertFalse(self.binding.is_file(), "the binding is written after the store")
+                self.assertFalse(self.origin.parent.exists(), "nothing under the hcom store before the store is held")
                 self.assertFalse(self.origin.exists(), "the origin is written after the store")
                 self.assertFalse(hook.exists(), "the guard is installed after the store")
                 self.assertFalse((self.repo / ".orchestration").exists())
             # The planted entry is cleared outside the subTest, so a failing assertion still leaves the next case
             # its clean start (nothing follows a link: each entry is a link, a file or an empty 0700 directory).
-            for path in (self.binding, self.store, self.store_root, self.store_parent):
+            for path in (self.store, self.store_root, self.store_parent):
                 if path.is_symlink() or path.is_file():
                     path.unlink()
                 elif path.is_dir():

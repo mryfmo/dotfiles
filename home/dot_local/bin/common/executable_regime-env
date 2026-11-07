@@ -9,12 +9,12 @@
 #   seats root `~/.local/state/omp-seats/<slug>`, where `<slug>` is the checkout's basename lower-cased with
 #   every character outside `[a-z0-9_-]` replaced by `-`, at most 40 characters. A derived store's `origin`
 #   file, written by `regime-init`, must name this checkout, so two checkouts with one basename cannot share a
-#   store unnoticed. The program stores live under a store root bound in `${HCOM_DIR}/store-root`, a file beside
-#   `origin` that only `regime-init` writes, holding one absolute path under this user's home (by default
-#   `~/.local/state/regime-store/<slug>`), one directory per program (`<store root>/<program>`, created by
-#   `regime-init`), outside every checkout and outside the hcom store, which hcom-seat grants to every seat for the
-#   bus (U215, U215b, handoff/07-store-move-design.md). `REGIME_STORE_ROOT` is exported as the bound path, or empty
-#   with no refusal while the binding is absent.
+#   store unnoticed. The program stores live under one store root per repository slug, the fixed derivation
+#   `<physical HOME>/.local/state/regime-store/<slug>` (regime_store_root), one directory per program
+#   (`<store root>/<program>`, created by `regime-init`), outside every checkout and outside the hcom store, which
+#   hcom-seat grants to every seat for the bus (U215, U215b, U215c, handoff/07-store-move-design.md). No binding
+#   file, option or environment value chooses the root, so nothing a seat writes enters it; `REGIME_STORE_ROOT` is
+#   exported as the derived path, or empty where there is no slug (outside a checkout, with an explicit `HCOM_DIR`).
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
 #   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
 #   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
@@ -109,57 +109,67 @@ regime_slug() {
     printf '%s\n' "${slug}"
 }
 
-# @description Read the store-root binding of the hcom store in effect (U215b, handoff/07-store-move-design.md, the
-#   decisions row of 2026-11-07T17:34:12Z): `${HCOM_DIR}/store-root`, written by `regime-init` beside `origin`, holds
-#   one absolute path under this user's home, no trailing slash, no control character, the root the program stores
-#   lie under (`<store root>/<program>`). The root is bound, never derived from `HCOM_DIR`: hcom-seat grants the hcom
-#   store to every seat for the bus, so a store inside it would lie inside a worker's write root (verdict
-#   U215-11a32ed6 P1). Present, the binding is a regular file of this user and no link, its content is read with the
-#   producer's status (standing order 21) and held to that grammar, and `REGIME_STORE_ROOT` is set to it; absent,
-#   `REGIME_STORE_ROOT` is empty and nothing is refused (the hosts of today, until U221 binds them). Nothing here
-#   reads `REGIME_STORE_ROOT` from the environment, so nothing can point a lever at another root. A refusal prints
+# @description Derive the store root the program stores lie under (U215c, the mechanism-change row of
+#   2026-11-07T18:05:48Z, form remove; handoff/07-store-move-design.md): `<physical HOME>/.local/state/regime-store/<slug>`,
+#   one root per repository slug, from HOME resolved physically (`cd` and `pwd -P`, the status read) and from the slug
+#   this helper derives for the hcom store, and from nothing else. Round 1 derived it under the hcom store, which
+#   hcom-seat grants to every seat for the bus (verdict U215-11a32ed6 P1); round 2 bound it in a file there, which a
+#   seat could rewrite, and held the binding by a textual HOME prefix, which `HOME/../x` and a linked ancestor passed
+#   (verdict U215-a081d8ba P1 `:127` and `:147`). No binding file, option or environment value chooses the root now,
+#   and `REGIME_STORE_ROOT` is never read from the environment, so nothing can point a lever at another root. Every
+#   component from `.local` down is held by its own test under a parent this user can search (the shape of
+#   seat-login-preflight's claude_config_validate): a symbolic link, a file or another user's directory refuses by
+#   name; a directory this user cannot search refuses naming it, since a file test below it answers false for "could
+#   not look" as for "not so" (verdict U215-a081d8ba P2 `:135`; the failed-read rule, standing order 21); an absent
+#   component ends the walk, everything below it being absent (`regime-init` makes `regime-store`, `<slug>` and
+#   `<program>` 0700). Nothing is written. Without a slug the root is empty: it is a repository's. A refusal prints
 #   its reason prefixed with the caller's name and returns 1; each caller maps that to its own refusal status.
 # @arg $1 string The caller's name, for messages.
-# @set REGIME_STORE_BINDING `${HCOM_DIR}/store-root`.
-# @set REGIME_STORE_ROOT The bound root, or empty when the binding is absent.
-# @exitcode 0 The binding is absent, or present and inside the grammar.
-# @exitcode 1 The binding is a symlink, not a regular file of this user, unreadable, or outside the grammar.
+# @arg $2 string The repository slug, or empty.
+# @set REGIME_STORE_ROOT The derived root; empty without a slug.
+# @exitcode 0 Derived, or no slug.
+# @exitcode 1 HOME is empty or cannot be resolved; a component is a symbolic link, not a directory, another user's
+#   directory, or a directory this user cannot search.
 regime_store_root() {
-    local who=$1 recorded shown
-    REGIME_STORE_BINDING=${HCOM_DIR}/store-root
+    local who=$1 slug=$2 home root part
     REGIME_STORE_ROOT=''
-    if [[ -L ${REGIME_STORE_BINDING} ]]; then
-        echo "${who}: refused: ${REGIME_STORE_BINDING} is a symlink; the store-root binding is a plain file" >&2
-        return 1
-    fi
-    [[ -e ${REGIME_STORE_BINDING} ]] || return 0
-    [[ -f ${REGIME_STORE_BINDING} && -O ${REGIME_STORE_BINDING} ]] || {
-        echo "${who}: refused: the store-root binding ${REGIME_STORE_BINDING} is not a regular file of this user" >&2
+    [[ -n ${slug} ]] || return 0
+    [[ -n ${HOME:-} ]] || {
+        echo "${who}: refused: HOME is empty, so no store root can be derived under it" >&2
         return 1
     }
-    recorded=$(cat "${REGIME_STORE_BINDING}") || {
-        echo "${who}: cannot read ${REGIME_STORE_BINDING}" >&2
+    home=$(cd "${HOME}" && pwd -P) || {
+        echo "${who}: refused: cannot resolve HOME ${HOME} physically, so no store root can be derived under it" >&2
         return 1
     }
-    # The grammar, held on the spelled text (nothing is resolved: the binding is the one statement of the root, and
-    # regime-init writes it from the same spelled HOME): absolute, no trailing slash, no control character (a second
-    # line is one), and under HOME by whole components (the trailing slash on both sides), never HOME itself.
-    if [[ ${HOME} != /* || ${recorded} != /* || ${recorded} == */ || ${recorded} == *[[:cntrl:]]* || ${recorded}/ != "${HOME%/}"/?*/ ]]; then # lint-comparisons: allow the binding's spelled grammar, held unresolved on purpose
-        shown=${recorded//[[:cntrl:]]/?}
-        echo "${who}: refused: the store-root binding ${REGIME_STORE_BINDING} holds '${shown}', not one absolute path under ${HOME} without a trailing slash or control character" >&2
-        return 1
-    fi
-    REGIME_STORE_ROOT=${recorded}
+    root=${home}/.local/state/regime-store/${slug}
+    for part in "${home}/.local" "${home}/.local/state" "${home}/.local/state/regime-store" "${root}"; do
+        if [[ -L ${part} ]]; then
+            echo "${who}: refused: the store root component ${part} is a symlink; the store root ${root} is a chain of plain directories of this user" >&2
+            return 1
+        fi
+        [[ -e ${part} ]] || break
+        [[ -d ${part} && -O ${part} ]] || {
+            echo "${who}: refused: the store root component ${part} is not a real directory of this user" >&2
+            return 1
+        }
+        [[ -x ${part} ]] || {
+            echo "${who}: refused: cannot search the store root component ${part} (permission denied), so nothing below it can be judged" >&2
+            return 1
+        }
+    done
+    REGIME_STORE_ROOT=${root}
 }
 
 # @description Derive the regime environment of the checkout the working directory is in; an explicit value
 #   always wins. A derived store is bound to its checkout by its `origin` file, which only `regime-init` writes:
 #   every other caller requires it to exist and name this toplevel, so a second checkout with the same slug
 #   cannot open or create the store. No part of a derived store path may be a symlink (`~/.local/state/hcom`,
-#   the store, `origin`; the `store-root` binding by regime_store_root, for an explicit store too), so nothing reads
-#   or writes through one. The store root is read from the `store-root` binding of the store in effect, derived or
-#   explicit (regime_store_root, U215b). A refusal prints its reason prefixed with the caller's name and returns 1;
-#   each caller maps that to its own refusal status (regime-init exit 2; hcom-dispatch and bus-history.sh exit 1).
+#   the store, `origin`), so nothing reads or writes through one. The store root is the fixed derivation of
+#   regime_store_root from the physical HOME and the slug (U215c), held component by component before the hcom
+#   store is looked at, for a derived and for an explicit `HCOM_DIR` alike. A refusal prints its reason prefixed
+#   with the caller's name and returns 1; each caller maps that to its own refusal status (regime-init exit 2;
+#   hcom-dispatch and bus-history.sh exit 1).
 # @arg $1 string The caller's name, for messages.
 # @option --unbound-ok The caller is `regime-init`: a derived store without its `origin` file is allowed.
 # @set REGIME_TOPLEVEL The physical toplevel, empty when HCOM_DIR is explicit and the cwd is outside a checkout.
@@ -167,21 +177,22 @@ regime_store_root() {
 # @set REGIME_ORIGIN The derived store's origin file, empty when HCOM_DIR is explicit.
 # @set HCOM_TEAM `<slug>` unless set (exported).
 # @set HCOM_DIR `~/.local/state/hcom/<slug>` unless set (exported).
-# @set REGIME_STORE_BINDING `${HCOM_DIR}/store-root`, the binding regime-init writes (U215b).
-# @set REGIME_STORE_ROOT The root the program stores lie under, the binding's one line (exported), or empty with no
-#   refusal while the binding is absent; never read from the environment, so nothing can point a lever at another root.
+# @set REGIME_STORE_ROOT `<physical HOME>/.local/state/regime-store/<slug>` (exported), the root the program stores lie
+#   under; empty where there is no slug (outside a checkout, with an explicit HCOM_DIR); never read from the
+#   environment, so nothing can point a lever at another root.
 # @set REGIME_SEATS_ROOT `~/.local/state/omp-seats/<slug>` unless set.
-# @exitcode 1 Outside a checkout with HCOM_DIR unset; an unusable slug; a symlink in the derived store path; a
-#   derived store without `origin` (unless --unbound-ok), or whose `origin` is unreadable or names another toplevel;
-#   a `store-root` binding that is a symlink, not a regular file of this user, unreadable or outside its grammar.
+# @exitcode 1 Outside a checkout with HCOM_DIR unset; an unusable slug; HOME empty or unresolvable; a store root
+#   component that is a symlink, not a directory, another user's or unsearchable; a symlink in the derived store
+#   path; a derived store without `origin` (unless --unbound-ok), or whose `origin` is unreadable or names another
+#   toplevel.
 regime_env() {
     local who=$1 unbound_ok=${2:-} recorded part
-    REGIME_TOPLEVEL='' REGIME_SLUG='' REGIME_ORIGIN='' REGIME_STORE_BINDING='' REGIME_STORE_ROOT=''
+    REGIME_TOPLEVEL='' REGIME_SLUG='' REGIME_ORIGIN='' REGIME_STORE_ROOT=''
     REGIME_SEATS_ROOT=${REGIME_SEATS_ROOT:-}
     if ! REGIME_TOPLEVEL=$(regime_toplevel); then
         REGIME_TOPLEVEL=''
         if [[ -n ${HCOM_DIR:-} ]]; then
-            regime_store_root "${who}" || return 1
+            # No slug, so no store root: the root is a repository's, never the explicit store's.
             export HCOM_DIR REGIME_STORE_ROOT
             [[ -z ${HCOM_TEAM:-} ]] || export HCOM_TEAM
             return 0
@@ -193,6 +204,7 @@ regime_env() {
         echo "${who}: cannot derive a repository slug from ${REGIME_TOPLEVEL} (it must start with [a-z0-9])" >&2
         return 1
     }
+    regime_store_root "${who}" "${REGIME_SLUG}" || return 1
     : "${HCOM_TEAM:=${REGIME_SLUG}}"
     : "${REGIME_SEATS_ROOT:=${HOME}/.local/state/omp-seats/${REGIME_SLUG}}"
     if [[ -z ${HCOM_DIR:-} ]]; then
@@ -218,6 +230,5 @@ regime_env() {
             return 1
         fi
     fi
-    regime_store_root "${who}" || return 1
     export HCOM_DIR HCOM_TEAM REGIME_STORE_ROOT
 }

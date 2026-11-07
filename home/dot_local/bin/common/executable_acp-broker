@@ -45,9 +45,10 @@
 #   `~/.npm/_logs`), every one physical; `allowRead` the task cwd, the shared Claude Code directory, that profile,
 #   `~/.agents/skills` and the private tool directory `~/.local/state/hcom-seat/tools`. No DSH_HOME and no state
 #   slot: the worker is omp, not dsh, and the launch log is this lever's to write. `allowLocalBinding` false,
-#   `allowUnixSockets` empty, the domain list `hcom-seat`'s. This copy of the dsh row's shape is interim: U344
-#   extracts one writer for both levers, and tests/unit/test_acp_broker.py holds the two renderings together
-#   until then.
+#   `allowUnixSockets` empty, the domain list `hcom-seat`'s. The settings text is the one writer's: both levers source
+#   `seat-settings-render.sh` (regime-cutover U344: the path rule every row obeys, the fixed deny rows, the grant
+#   tags, the domain list and the JSON text), so the worker's file is the dsh row's file with the worker's rows,
+#   byte for byte (tests/unit/test_acp_broker.py `test_one_settings_writer_renders_the_worker_and_the_dsh_row_byte_for_byte`).
 #   The judgement (regime-cutover U343c; hcom-seat's settings_judge, U272f and U272g). Before anything is made, every
 #   grant row is judged against every deny row, by identity for what exists and by the absent components below one
 #   shared ancestor otherwise (identity_table, within_ix: one stat for every row); a grant that is, contains or lies
@@ -172,6 +173,15 @@ lever_self_check() {
 }
 lever_self_check
 
+# The one settings writer (regime-cutover U344), sourced from the directory this lever runs from before any row is
+# checked or rendered; it holds itself to its own pin, like regime-env, so a rewritten helper stops the broker.
+[[ -r ${LEVER_DIR}/seat-settings-render.sh && ! -L ${LEVER_DIR}/seat-settings-render.sh ]] || {
+    echo "acp-broker: refused: seat-settings-render.sh unreadable or a link beside this script: ${LEVER_DIR}/seat-settings-render.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/seat-settings-render.sh
+. "${LEVER_DIR}/seat-settings-render.sh"
+
 usage='usage: acp-broker [--connection] <seats-root> <router-seat-name> <router-scratch-cwd>'
 connection=0
 slot=''
@@ -262,15 +272,7 @@ for marker in HCOM_LAUNCHED HCOM_PROCESS_ID HCOM_SEAT_SANDBOX; do
     [[ -z ${!marker:-} ]] || refuse "refused inside a seat (${marker} is set): the broker runs outside every seat, started by hcom-seat beside the Router"
 done
 
-# @description Succeed when `$1` is a clean absolute path that srt cannot read as a pattern: `/` followed by
-#   components of `[A-Za-z0-9._@+-]` only, none of them empty, `.` or `..`, and no trailing `/` (the rule of
-#   `hcom-seat`; srt 0.0.81 turns a settings path into a Seatbelt regex or a glob).
-# @arg $1 string The path.
-# @exitcode 1 The path is not clean.
-clean_path() {
-    [[ $1 =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || return 1
-    [[ /$1/ != */./* && /$1/ != */../* ]] # lint-comparisons: allow a component test on one path, no path compare
-}
+# The path rule every settings row obeys, clean_path and clean_row, is the one writer's (seat-settings-render.sh).
 
 # @description Refuse (exit 2) unless `$2` is a clean absolute path (clean_path).
 # @arg $1 string What the path is, for the refusal.
@@ -278,18 +280,6 @@ clean_path() {
 require_clean_path() {
     clean_path "$2" ||
         refuse "$1 '$2' is not a clean absolute path: every component must be [A-Za-z0-9._@+-] and neither '.' nor '..', with no trailing '/'"
-}
-
-# @description Succeed when `$1` is a row the settings may carry: a clean path, or (for `denyWrite`, `$2` = 1) one of
-#   the macOS worktree patterns `hcom-seat` renders, a clean prefix and the fixed `worktrees/*/<file>` suffix.
-# @arg $1 string The row.
-# @arg $2 int 1 when the pattern form is allowed.
-# @exitcode 1 The row is neither.
-clean_row() {
-    clean_path "$1" && return 0
-    (($2)) || return 1
-    [[ $1 =~ ^(/[A-Za-z0-9._@+-]+)+/worktrees/\*/(config\.worktree|info|commondir|gitdir)$ ]] || return 1
-    [[ /${1%/worktrees/*}/ != */./* && /${1%/worktrees/*}/ != */../* ]] # lint-comparisons: allow a component test on one pattern's clean prefix, no path compare
 }
 
 # @description Refuse (exit 2) unless every row `$@` is one the settings may carry (clean_row); run in the main
@@ -303,18 +293,6 @@ check_rows() {
     for row in "$@"; do
         clean_row "${row}" "${patterns}" || refuse "${what} '${row}' is not a clean absolute path"
     done
-}
-
-# @description Print a JSON array of the rows `$@`, each already checked (check_rows), so no JSON escaping is needed
-#   and no settings tool runs.
-# @arg $@ string The rows.
-json_list() {
-    local row out='' sep=''
-    for row in "$@"; do
-        out+=${sep}\"${row}\"
-        sep=,
-    done
-    printf '[%s]' "${out}"
 }
 
 # @description Print the physical form of the absolute path `$1`: every symlink followed (at most 40 hops in all) and
@@ -976,8 +954,11 @@ clean_path "${cwd_real}" || unresolved 'the header cwd' "${cwd}"
     refuse "the header cwd ${cwd} resolves to ${cwd_real}, not a directory strictly under the Router's scratch cwd ${scratch_real}"
 task_id=$(/usr/bin/stat "${lstat_args[@]}" -- .) || refuse "cannot read the identity of the task cwd ${cwd_real}"
 stamp=$(utc_stamp slot) || refuse 'cannot read the time (/bin/date failed or answered outside the shape)'
+# The slot name is derived from three checked parts (the name in the seat-name grammar, the stamp in its shape, this
+# pid), so it is held to that derived shape and to no length cap (verdict U343b-cae04852 P2 `:719`, closed by U344):
+# a 64-character worker name the header grammar admits is served, as hcom-seat's `<name>-<stamp>-<pid>` is.
 slot_name=acp-${name}-${stamp}-$$
-[[ ${slot_name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "the per-connection slot name '${slot_name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$; choose a shorter name"
+[[ ${slot_name} =~ ^acp-[a-z0-9][a-z0-9_-]{0,63}-[0-9]{8}-[0-9]{6}-[0-9]+$ ]] || refuse "the per-connection slot name '${slot_name}' is outside its derived shape acp-<name>-<utc stamp>-<pid>"
 slot=${seats_real}/.sandbox/${slot_name}
 log_dir=${seats_real}/.state/${name}
 log=${log_dir}/acp-launch.log
@@ -1002,10 +983,12 @@ skills_real=$(physical_clean "${h}/.agents/skills") || unresolved 'the skills di
 tools_row=$(physical_clean "${tools_dir}") || unresolved 'the private tool directory' "${tools_dir}"
 allow_read=("${cwd_real}" "${claude_real}" "${profile_real}" "${skills_real}" "${tools_row}")
 allow_read_spelled=("${cwd_real}" "${claude_real}" "${profile_spelled}" "${h}/.agents/skills" "${tools_dir}")
-allow_read_tags=(slot slot profile '' '')
+# The tags are the dsh row's grant positions 0, 2 and 4 (the own cwd, the shared Claude Code directory, the own omp
+# profile), as the one writer states them (SEAT_SETTINGS_GRANT_TAGS, seat-settings-render.sh); the rows after carry none.
+allow_read_tags=("${SEAT_SETTINGS_GRANT_TAGS[0]}" "${SEAT_SETTINGS_GRANT_TAGS[2]}" "${SEAT_SETTINGS_GRANT_TAGS[4]}" '' '')
 allow_write=("${cwd_real}" "${claude_real}" "${profile_real}" "${run_real}")
 allow_write_spelled=("${cwd_real}" "${claude_real}" "${profile_spelled}" "${h}/.omp/run")
-allow_write_tags=(slot slot profile '')
+allow_write_tags=("${SEAT_SETTINGS_GRANT_TAGS[0]}" "${SEAT_SETTINGS_GRANT_TAGS[2]}" "${SEAT_SETTINGS_GRANT_TAGS[4]}" '')
 for row in "${srt_tmp_roots[@]}" "${h}/.npm/_logs"; do
     row_real=$(physical_clean "${row}") || unresolved "srt's own write path" "${row}"
     allow_write+=("${row_real}")
@@ -1020,18 +1003,15 @@ check_rows 'a worker write root' 0 "${allow_write[@]}"
 # or anything else of this connection exists.
 settings_judge ||
     refuse "the worker's ${judge_grant} is, contains or lies inside ${judge_deny}; the launch is refused before anything is made"
-deny_read_json=$(json_list "${deny_read[@]}")
-deny_write_json=$(json_list ${deny_write[@]+"${deny_write[@]}"})
-allow_read_json=$(json_list "${allow_read[@]}")
-allow_write_json=$(json_list "${allow_write[@]}")
-domains='"github.com","api.github.com","uploads.github.com","codeload.github.com","objects.githubusercontent.com"'
-domains+=',"raw.githubusercontent.com","release-assets.githubusercontent.com","pypi.org","files.pythonhosted.org"'
-domains+=',"api.anthropic.com","claude.ai","platform.claude.com","console.anthropic.com"'
-domains+=',"chatgpt.com","auth.openai.com","api.openai.com"'
-json="{\"network\":{\"allowedDomains\":[${domains}],\"deniedDomains\":[],\"allowUnixSockets\":[]"
-json+=",\"allowMachLookup\":[\"com.apple.trustd.agent\"],\"allowLocalBinding\":false}"
-json+=",\"filesystem\":{\"denyRead\":${deny_read_json},\"allowRead\":${allow_read_json}"
-json+=",\"allowWrite\":${allow_write_json},\"denyWrite\":${deny_write_json}},\"allowPty\":true${linux_tools}}"
+# The four lists and the file's text through the one writer (seat-settings-render.sh, U344), each producer's status
+# read (verdict U343b-cae04852 P2 `:750`, closed by U344): a writer that fails refuses by name with no slot made.
+deny_read_json=$(seat_settings_rows_json 0 "${deny_read[@]}") || refuse "the worker's denyRead list could not be rendered (seat_settings_rows_json failed)"
+deny_write_json=$(seat_settings_rows_json 1 ${deny_write[@]+"${deny_write[@]}"}) || refuse "the worker's denyWrite list could not be rendered (seat_settings_rows_json failed)"
+allow_read_json=$(seat_settings_rows_json 0 "${allow_read[@]}") || refuse "the worker's allowRead list could not be rendered (seat_settings_rows_json failed)"
+allow_write_json=$(seat_settings_rows_json 0 "${allow_write[@]}") || refuse "the worker's allowWrite list could not be rendered (seat_settings_rows_json failed)"
+seat_settings_json false '[]' "${deny_read_json}" "${allow_read_json}" "${allow_write_json}" "${deny_write_json}" "${linux_tools}" ||
+    refuse 'cannot render the worker settings text (seat_settings_json failed)'
+json=${settings_json}
 
 # The worker's environment, built and never inherited (hcom-seat's dsh launch): HOME, the outer PATH, the profile,
 # the shared Claude Code directory, the AWS file names omp's Bedrock discovery stats (an EPERM there ends omp), the

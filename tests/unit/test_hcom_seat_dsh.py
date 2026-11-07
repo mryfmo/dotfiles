@@ -13,8 +13,9 @@ import json
 import os
 import re
 import shlex
-import signal
 import shutil
+import signal
+import socket
 import stat
 import subprocess
 import sys
@@ -94,6 +95,8 @@ FAKE_SRT = textwrap.dedent(
     os.execvp(command[0], command)
     """
 )
+# The fake dsh records its argv, cwd and environment, and whether the broker socket of its own state slot
+# (`<seats-root>/.state/<name>/broker/sock`, the parent of its scratch cwd; U344) exists when it starts.
 FAKE_DSH = textwrap.dedent(
     """\
     #!/usr/bin/env python3
@@ -101,7 +104,8 @@ FAKE_DSH = textwrap.dedent(
     calls = {calls!r}
     with open(os.path.join(calls, "dsh"), "a") as record:
         record.write(json.dumps({{"argv": sys.argv[1:], "argv0": sys.argv[0], "cwd": os.getcwd(),
-                                 "env": dict(os.environ)}}) + "\\n")
+                                 "env": dict(os.environ),
+                                 "broker_sock": os.path.exists(os.path.join(os.path.dirname(os.getcwd()), "broker", "sock"))}}) + "\\n")
     if os.path.exists(os.path.join(calls, "leave-locked")):
         os.makedirs("locked/inner")
         open("locked/inner/file", "w").close()
@@ -545,8 +549,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         dsh, router = rendered["dsh"], rendered["router"]
         home = self.home.resolve()
         state_root = f"{self.dsh_home}/router-state"
+        broker_dir = f"{self.seats}/.state/<launch>/broker"
         expected = copy.deepcopy(dsh)
         expected["network"]["allowLocalBinding"] = True
+        expected["network"]["allowUnixSockets"] = [broker_dir]
         expected["filesystem"]["allowWrite"].insert(6, state_root)
         self.assertEqual(router, expected)
         self.assertIs(dsh["network"]["allowLocalBinding"], False)
@@ -556,7 +562,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             [str(self.dsh_home), str(home / ".omp/profiles/dsh"), str(home / ".omp/run"), state_root],
         )
         self.assertNotIn(state_root, router["filesystem"]["allowRead"], "DSH_HOME, read row 3, already reads it")
-        # The flattened diff, the inserted row taken out, is the one binding value and nothing else.
+        # The flattened diff, the inserted row taken out, is the binding value and the broker directory (U344) and
+        # nothing else.
         trimmed = copy.deepcopy(router)
         del trimmed["filesystem"]["allowWrite"][6]
         flat_dsh, flat_router = flatten(dsh), flatten(trimmed)
@@ -565,12 +572,123 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             for key in sorted(set(flat_dsh) | set(flat_router))
             if flat_dsh.get(key) != flat_router.get(key)
         }
-        self.assertEqual(diff, {"/network/allowLocalBinding": (False, True)})
+        self.assertEqual(
+            diff, {"/network/allowLocalBinding": (False, True), "/network/allowUnixSockets/0": (None, broker_dir)}
+        )
         dsh_call, router_call = self.dsh_calls()
         self.assertEqual(dsh_call["argv"], ["--version"])
         self.assertEqual(router_call["argv"], ["--profile", "router", "--version"])
         self.assertEqual((dsh_call["env"]["OMP_PROFILE"], router_call["env"]["OMP_PROFILE"]), ("dsh", "dsh"))
         self.assertEqual((dsh_call["env"]["DSH_HOME"], router_call["env"]["DSH_HOME"]), (str(self.dsh_home),) * 2)
+
+    def broker_answer(self, sock, header):
+        """What the broker listening on `sock` answers one connection that sends `header` and closes: connected by name
+        from the socket's directory, as the client does (the scratch path exceeds the 104-byte cap)."""
+        conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        conn.settimeout(60)
+        here = os.getcwd()
+        os.chdir(sock.parent)
+        try:
+            conn.connect(sock.name)
+        finally:
+            os.chdir(here)
+        conn.sendall(header.encode())
+        conn.shutdown(socket.SHUT_WR)
+        data = bytearray()
+        while chunk := conn.recv(1 << 16):
+            data += chunk
+        conn.close()
+        return bytes(data)
+
+    def test_the_router_settings_open_the_broker_directory_alone_and_the_other_roles_open_no_socket(self):
+        """U344 (M-24 part 2, test a): `network.allowUnixSockets` names exactly `<seats-root>/.state/<router seat>/
+        broker`, the directory the broker's socket lives in (U342 measured that srt opens the sockets under that
+        directory and nothing else), for the router row alone; the dsh row and the omp roles keep `[]`. A router dry
+        run prints the broker start a launch would make, the lever beside hcom-seat with the seats root, the seat
+        name and the scratch cwd, and makes nothing; a dsh dry run prints no such line."""
+        rendered = {}
+        for role in ("dsh", "router"):
+            procs = self.held_launch("--", "--version", role=role)
+            (name,) = self.slots()[0]
+            rendered[role] = (name, self.settings_of(name)["network"]["allowUnixSockets"])
+            ((status, out, err),) = self.release(procs)
+            self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        router_name, router_sockets = rendered["router"]
+        self.assertEqual(router_sockets, [f"{self.seats}/.state/{router_name}/broker"])
+        self.assertEqual(rendered["dsh"][1], [])
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.settings_of("worker")["network"]["allowUnixSockets"], [])
+        broker = test_hcom_seat.SEAT.parent / "acp-broker"
+        for role, count in (("router", 1), ("dsh", 0)):
+            with self.subTest(role=role):
+                before = self.slots()
+                run = self.seat(
+                    role, "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run", "--", "--version"
+                )
+                self.assertEqual(run.returncode, 0, run.stderr)
+                lines = [line for line in run.stderr.splitlines() if "starts the ACP broker" in line]
+                self.assertEqual(len(lines), count, run.stderr)
+                if count:
+                    self.assertRegex(
+                        lines[0],
+                        rf"^hcom-seat: a launch starts the ACP broker {re.escape(str(broker))} {re.escape(self.seats)} "
+                        rf"(router-\d{{8}}-\d{{6}}-\d+) {re.escape(self.seats)}/\.state/\1/cwd beside dsh and stops it when dsh exits$",
+                    )
+                self.assertEqual(self.slots(), before, "the dry run makes no slot")
+                self.assertFalse(list(Path(self.seats, ".state").glob("*/broker")), "the dry run starts no broker")
+
+    def test_a_router_launch_starts_the_broker_before_dsh_and_stops_it_when_dsh_exits_or_on_a_termination(self):
+        """U344 (M-24 part 2, test b): the router row starts `acp-broker`, the lever beside hcom-seat held to its pin,
+        after the settings are written and before the shim, so dsh finds `<seats-root>/.state/<name>/broker/sock`
+        at its start and a live broker answers on it (a bad header is one refusal line). When dsh exits the launch
+        stops the broker and reads its status: the socket, its directory and every process of the launch are gone
+        before the launch returns dsh's status. A SIGTERM to the launch's process group does the same through the
+        trap, the launch ending by the signal. The dsh row starts no broker and its dsh finds no socket."""
+        for sig in (None, signal.SIGTERM):
+            with self.subTest(signal=sig.name if sig else "dsh exits"):
+                (proc,) = self.held_launch("--", "--version", role="router", new_session=True)
+                (name,) = self.slots()[0]
+                sock = Path(self.seats, ".state", name, "broker/sock")
+                self.assertTrue(sock.is_socket(), f"the broker listens before dsh starts: {self.slots()}")
+                dsh_call = self.dsh_calls()[-1]
+                self.assertEqual(dsh_call["argv"], ["--profile", "router", "--version"])
+                self.assertTrue(dsh_call["broker_sock"], "dsh found the broker socket at its start")
+                answer = self.broker_answer(sock, "ACP-SEAT v0 cwd=/x name=w1\n")
+                self.assertRegex(
+                    answer,
+                    rb"^acp-broker: refused: the header 'ACP-SEAT v0 cwd=/x name=w1' does not begin 'ACP-SEAT v1'\n$",
+                )
+                self.assertTrue(sock.is_socket(), "the refusal leaves the listener up")
+                if sig is None:
+                    ((status, out, err),) = self.release([proc])
+                    self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+                else:
+                    os.killpg(proc.pid, sig)
+                    out, err = proc.communicate(timeout=60)
+                    (self.calls / "hold").unlink()
+                    self.assertEqual((proc.returncode, out), (-sig, ""), err)
+                self.assertFalse(sock.exists(), err)
+                self.assertFalse(sock.parent.exists(), err)
+                self.assertEqual(self.slots(), ([], []), err)
+                self.assertIn(f"acp-broker: listening on {sock}", err)
+                # No process of the launch outlives it: the broker, its relay and every handler were in its group.
+                deadline = time.monotonic() + 60
+                while True:
+                    try:
+                        os.killpg(proc.pid, 0)
+                    except ProcessLookupError:
+                        break
+                    if time.monotonic() > deadline:
+                        self.fail("a process of the launch (the broker or its relay) outlived it")
+                    time.sleep(0.05)
+        (proc,) = self.held_launch("--", "--version")
+        (name,) = self.slots()[0]
+        self.assertFalse(Path(self.seats, ".state", name, "broker").exists(), "the dsh row starts no broker")
+        self.assertFalse(self.dsh_calls()[-1]["broker_sock"])
+        ((status, out, err),) = self.release([proc])
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        self.assertNotIn("acp-broker", err)
 
     def test_the_router_role_runs_the_router_profile_alone(self):
         """U321: the router role's grants exist for the Router, so the role accepts the DSH profile `router` alone

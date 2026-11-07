@@ -736,14 +736,15 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             refused("cannot write the worker settings")
             self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
-    def test_the_worker_settings_are_the_dsh_row_but_the_named_rows(self):
-        """The byte-identical compare (U343 ACCEPTANCE 6): the Router's settings come from a real held `hcom-seat
-        router` launch on the fixture, the dsh row's from a real held `hcom-seat dsh` launch, and the worker's from
-        a broker connection against that Router. The worker's deny lists are the Router's byte for byte (the
-        project-file rows re-rooted under the task cwd, the credential root appended to denyRead) and, the per-launch
-        names and the cwd normalised, the dsh row's; the grant lists are the dsh row's minus its state slot (row 1)
-        and DSH_HOME (row 3) with the task cwd as row 0; the network block is the dsh row's (no binding, no socket);
-        everything else is byte-identical."""
+    def test_one_settings_writer_renders_the_worker_and_the_dsh_row_byte_for_byte(self):
+        """The shared-writer compare (U343 ACCEPTANCE 6 made byte-exact by U344, test c): the Router's settings come
+        from a real held `hcom-seat router` launch on the fixture, which starts the broker itself (U344), the dsh row's
+        from a real held `hcom-seat dsh` launch, and the worker's from a connection to that launch's broker. Both
+        levers source `seat-settings-render.sh`, so the worker's file is, byte for byte, the dsh row's file with the
+        worker's rows in the role's positions: the deny lists the Router's (the project-file rows re-rooted under the
+        task cwd, the credential root appended to denyRead), the grant lists the dsh row's minus its state slot (row 1)
+        and DSH_HOME (row 3) with the task cwd as row 0, the network block the dsh row's (no binding, no socket), and
+        the shape canonical compact JSON so the two files re-serialise to themselves."""
         dsh_home = Path(self.temp.name).resolve() / "dsh-home"
         (dsh_home / "bin").mkdir(parents=True)
         (dsh_home / "bin/dsh").write_text(test_hcom_seat_dsh.FAKE_DSH.format(calls=str(self.calls)))
@@ -765,11 +766,13 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             (seat_name,) = [p.name for p in (self.seats_path / ".sandbox").iterdir() if p.name.startswith(role + "-")]
             settings_path = self.seats_path / ".sandbox" / seat_name / "srt-settings.json"
             if role == "router":
-                # The broker against the live Router slot: one connection held open while the settings are read.
+                # The broker the launch started, on the socket the Router's settings open: one connection held open
+                # while the worker's settings are read.
                 scratch = self.seats_path / ".state" / seat_name / "cwd"
                 task = scratch / "task"
                 task.mkdir()
-                proc, sock = self.start_broker(seat_name, scratch)
+                sock = self.seats_path / ".state" / seat_name / "broker/sock"
+                self.assertTrue(sock.is_socket(), f"hcom-seat started the broker before dsh: {self.state_names()}")
                 conn = self.connect(sock, task, "w1")
                 conn.sendall(b'{"jsonrpc":"2.0","id":1,"method":"ping"}\n')
                 self.assertEqual(self.recv_line(conn), b'{"jsonrpc":"2.0","id":1,"method":"ping"}\n')
@@ -777,7 +780,6 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 rendered["worker"] = (self.seats_path / ".sandbox" / slot / "settings.json").read_bytes()
                 conn.shutdown(socket.SHUT_WR)
                 self.assertEqual(self.recv_all(conn), b"omp acp exit 0\n")
-                self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
                 rendered["task"] = str(task)
                 rendered["router_cwd"] = str(scratch)
             rendered[role] = settings_path.read_bytes()
@@ -787,6 +789,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             (self.calls / "hold").unlink()
             (self.calls / "release").unlink()
             self.assertEqual((launch.returncode, out), (0, "0.2.1-rc.5\n"), err)
+            if role == "router":
+                self.assertFalse(sock.parent.exists(), "the launch stopped its broker")
         dsh, router, worker = (json.loads(rendered[k]) for k in ("dsh", "router", "worker"))
         home = self.home_real
         task, router_cwd = rendered["task"], rendered["router_cwd"]
@@ -796,6 +800,12 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         def reroot(row, old, new):
             return new + row[len(old) :] if row.startswith(old + "/") else row
 
+        def canonical(settings):
+            return json.dumps(settings, separators=(",", ":")).encode() + b"\n"
+
+        # The writer renders canonical compact JSON: each file re-serialises to its own bytes.
+        for key in ("dsh", "router", "worker"):
+            self.assertEqual(canonical(json.loads(rendered[key])), rendered[key], key)
         # The deny table: the Router's, byte for byte, but the re-rooted project-file rows and the credential root.
         self.assertEqual(worker["filesystem"]["denyRead"], router["filesystem"]["denyRead"] + [credentials])
         self.assertEqual(
@@ -814,35 +824,33 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         worker_n = normalised(worker, task, rendered["router_name"])
         self.assertEqual(worker_n["filesystem"]["denyRead"], dsh_n["filesystem"]["denyRead"] + [credentials])
         self.assertEqual(worker_n["filesystem"]["denyWrite"], dsh_n["filesystem"]["denyWrite"])
-        self.assertEqual(
-            json.dumps(worker_n["filesystem"]["denyWrite"]).encode(),
-            json.dumps(dsh_n["filesystem"]["denyWrite"]).encode(),
-            "byte-identical deny tables",
-        )
-        # The grants: the dsh row's rows 0, 2, 4.. with the task cwd as row 0 (no state slot, no DSH_HOME).
+        # The whole file, byte for byte: the dsh row's file with the worker's rows in the role's positions (the task
+        # cwd as row 0, no state slot, no DSH_HOME, the credential root last in denyRead) and nothing else changed.
         dsh_read, dsh_write = dsh["filesystem"]["allowRead"], dsh["filesystem"]["allowWrite"]
         self.assertEqual(dsh_read[1], str(self.seats_path / ".state" / rendered["dsh_name"]))
         self.assertEqual(dsh_read[3], str(dsh_home))
-        self.assertEqual(worker["filesystem"]["allowRead"], [task, dsh_read[2], *dsh_read[4:]])
-        self.assertEqual(worker["filesystem"]["allowWrite"], [task, dsh_write[2], *dsh_write[4:]])
+        expected = json.loads(rendered["dsh"])
+        expected["filesystem"]["denyRead"] = dsh_n["filesystem"]["denyRead"] + [credentials]
+        expected["filesystem"]["denyWrite"] = dsh_n["filesystem"]["denyWrite"]
+        expected["filesystem"]["allowRead"] = [task, dsh_read[2], *dsh_read[4:]]
+        expected["filesystem"]["allowWrite"] = [task, dsh_write[2], *dsh_write[4:]]
+        expected_text = (
+            json.dumps(expected, separators=(",", ":"))
+            .replace("<cwd>", task)
+            .replace("<launch>", rendered["router_name"])
+        )
+        self.assertEqual(rendered["worker"], expected_text.encode() + b"\n", "one writer, two renderings")
         self.assertEqual(worker["filesystem"]["allowRead"][1], str(self.seats_path / ".state/claude"))
         self.assertEqual(worker["filesystem"]["allowWrite"][2:4], [f"{home}/.omp/profiles/dsh", f"{home}/.omp/run"])
         self.assertNotIn(str(dsh_home), json.dumps(worker))
         self.assertNotIn(f"{dsh_home}/router-state", worker["filesystem"]["allowWrite"])
-        # The network block and everything else: the dsh row's, byte for byte.
         self.assertEqual(worker["network"], dsh["network"])
         self.assertEqual(worker["network"]["allowLocalBinding"], False)
         self.assertEqual(worker["network"]["allowUnixSockets"], [])
         self.assertEqual(router["network"]["allowLocalBinding"], True)
-        self.assertEqual({k: v for k, v in worker.items() if k not in ("filesystem", "network")},
-                         {k: v for k, v in dsh.items() if k not in ("filesystem", "network")})  # fmt: skip
-        # The file's own bytes: the same key order and the same shape as hcom-seat's, string values aside.
-        shape = re.compile(rb'"[^"]*"')
         self.assertEqual(
-            shape.sub(b'""', rendered["worker"]).replace(b'"",', b"").replace(b'""', b""),
-            shape.sub(b'""', rendered["dsh"]).replace(b'"",', b"").replace(b'""', b""),
+            router["network"]["allowUnixSockets"], [f"{self.seats_path}/.state/{rendered['router_name']}/broker"]
         )
-        self.assertTrue(rendered["worker"].endswith(b"}\n"))
         self.assertEqual(self.acp_slots(), [])
 
     def test_a_dsh_profile_linked_into_the_orchestrator_profile_is_refused_before_any_settings_file_is_written(self):

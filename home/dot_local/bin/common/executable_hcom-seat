@@ -136,6 +136,15 @@
 #   omp profile, OMP_PROFILE and every other row are the dsh role's, so
 #   the role's rendered settings differ from the dsh role's in exactly the binding value and that one write root, and
 #   no other role's settings change by a byte.
+#   The router row's broker (regime-cutover U344, M-24 part 2): the row's `broker` cell starts `acp-broker` beside this
+#   file (a regular file held to its `claude.levers.sha256.acp-broker` pin here before it runs, and to the same pin by
+#   itself; run by path under /bin/bash) after the settings are written and before the shim, waits for its socket
+#   `<seats-root>/.state/<name>/broker/sock`, and renders `network.allowUnixSockets` naming that directory for this
+#   role alone (U342 measured: srt opens the sockets under it and nothing else); when dsh exits, and in the trap, the
+#   broker is stopped by SIGTERM and its exit status read (broker_stop): a status other than a clean end is named and
+#   the launch exits 2, never silent (standing order 21). Every role's settings text comes from the one writer both
+#   levers source, seat-settings-render.sh (pinned and self-checked like regime-env), so the worker's settings the
+#   broker renders and the dsh row's cannot drift (tests/unit/test_acp_broker.py holds them byte for byte).
 # @arg $1 string Role: orchestrator, worker, dsh or router.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
@@ -242,6 +251,15 @@ refuse() {
     exit 2
 }
 
+# The one settings writer (regime-cutover U344): the path rule every settings row obeys, the fixed deny rows, the
+# structural tags of the grant positions, the domain list and the JSON text every role's settings are written in,
+# sourced before any row is checked or rendered; it holds itself to its own pin, like regime-env, so a rewritten
+# helper stops this launch.
+[[ -r ${LEVER_DIR}/seat-settings-render.sh && ! -L ${LEVER_DIR}/seat-settings-render.sh ]] ||
+    refuse "seat-settings-render.sh unreadable or a link beside this script: ${LEVER_DIR}/seat-settings-render.sh"
+# shellcheck source=scripts/orchestrator/seat-settings-render.sh
+. "${LEVER_DIR}/seat-settings-render.sh"
+
 # @description Print the UTC stamp `YYYYMMDD-HHMMSS` of a dsh launch's seat name, from `/bin/date` read status first
 #   (standing order 21): a failed read, an empty one or one outside the shape refuses (exit 2) and names no slot.
 # @stdout The stamp.
@@ -296,11 +314,13 @@ gate=${HOME}/.agents/omp/hooks
 # (a DSH profile the row fixes, the only one the role accepts, in the options and among the verbatim dsh arguments
 # alike; empty when the caller chooses) and `state_root` (the name of a directory under DSH_HOME the row grants as a
 # write root of its own, held once by state_root_hold from the one held physical DSH_HOME before anything of the launch
-# is made and made by state_root_make after the home's deny judgement, U321b to U321d; empty for a row without one).
+# is made and made by state_root_make after the home's deny judgement, U321b to U321d; empty for a row without one) and
+# `broker` (1 for the row that starts `acp-broker` beside its shim and opens the broker's socket directory
+# `<state slot>/broker` in `allowUnixSockets`, the router row alone; 0 for every other row, regime-cutover U344).
 case ${role} in
-orchestrator | worker) role_launch=hcom omp_profile=${role} allow_local_binding=false role_profile='' state_root='' ;;
-dsh) role_launch=foreground omp_profile=dsh allow_local_binding=false role_profile='' state_root='' ;;
-router) role_launch=foreground omp_profile=dsh allow_local_binding=true role_profile=router state_root=router-state ;;
+orchestrator | worker) role_launch=hcom omp_profile=${role} allow_local_binding=false role_profile='' state_root='' broker=0 ;;
+dsh) role_launch=foreground omp_profile=dsh allow_local_binding=false role_profile='' state_root='' broker=0 ;;
+router) role_launch=foreground omp_profile=dsh allow_local_binding=true role_profile=router state_root=router-state broker=1 ;;
 *) refuse "unknown role '${role}'; expected orchestrator, worker, dsh or router" ;;
 esac
 case ${role_launch} in
@@ -352,22 +372,11 @@ for marker in HCOM_LAUNCHED HCOM_PROCESS_ID HCOM_SEAT_SANDBOX; do
 done
 
 # The srt release line this script encodes (regime-cutover U141): srt 0.0.81's Seatbelt regex and glob rendering of a
-# settings path (clean_path below), its writable own TMPDIR (srt_tmp_roots_for), its own-write paths (seat_write_roots),
+# settings path (clean_path, seat-settings-render.sh), its writable own TMPDIR (srt_tmp_roots_for), its own-write paths (seat_write_roots),
 # its deeper deny under an allow and its `*:*` bind grant (seat_sandbox_write) are what the seat boundary rests on. An
 # installed srt of another major.minor is refused before anything is made (the check after pin_exec srt); a bump is a
 # reviewed edit of this constant and the mise pin (home/dot_mise/config.toml) together, re-reading the five.
 readonly SRT_LINE=0.0
-
-# @description Succeed when `$1` is a clean absolute path that srt cannot read as a pattern: `/` followed by
-#   components of `[A-Za-z0-9._@+-]` only (no glob metacharacter `*?[]{}`, no whitespace, no quote or backslash), none
-#   of them empty, `.` or `..`, and no trailing `/`. srt 0.0.81 turns a settings path into a Seatbelt regex or a glob,
-#   so `/private/tmp/hcom*` would grant its siblings; a clean path names exactly itself.
-# @arg $1 string The path.
-# @exitcode 1 The path is not clean.
-clean_path() {
-    [[ $1 =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || return 1
-    [[ /$1/ != */./* && /$1/ != */../* ]] # lint-comparisons: allow a component test on one path, no path compare
-}
 
 # @description Refuse (exit 2) unless `$2` is a clean absolute path (clean_path).
 # @arg $1 string What the path is, for the refusal.
@@ -388,19 +397,20 @@ if [[ -n ${dsh_home} ]]; then
     [[ -d ${dsh_home} ]] || refuse "DSH_HOME is not a directory: ${dsh_home}"
 fi
 
-# @description Print a JSON array of the arguments, each a clean path (clean_path), so no JSON escaping is needed and
-#   no settings tool runs. An argument that is not clean is a refusal.
+# @description Print a JSON array of the rows `$@` through the one writer (seat_settings_rows_json, seat-settings-render.sh),
+#   each a clean path (clean_path) or, for `$2` = 1, a macOS worktree pattern (clean_row), so no JSON escaping is
+#   needed and no settings tool runs. A row that is neither is a refusal naming it; a writer that fails is a refusal.
 # @arg $1 string What the list is, for the refusal.
-# @arg $@ string The paths after it.
+# @arg $2 int 1 when the pattern form is allowed.
+# @arg $@ string The rows after them.
 json_paths() {
-    local what=$1 path out='' sep=''
-    shift
-    for path in "$@"; do
-        require_clean_path "${what}" "${path}"
-        out+=${sep}\"${path}\"
-        sep=,
+    local what=$1 patterns=$2 row
+    shift 2
+    for row in "$@"; do
+        clean_row "${row}" "${patterns}" ||
+            refuse "${what} '${row}' is not a clean absolute path: every component must be [A-Za-z0-9._@+-] and neither '.' nor '..', with no trailing '/'"
     done
-    printf '[%s]' "${out}"
+    seat_settings_rows_json "${patterns}" "$@" || refuse "the ${what} list could not be rendered (seat_settings_rows_json failed)"
 }
 
 # @description Print the `filesystem.allowWrite` entries of the seat settings file `$2`, one per line: by
@@ -1873,7 +1883,8 @@ dsh_deny_paths() {
 #   credentials, the chezmoi sources, `~/Workspace` but its own repository, other omp profiles, other hcom stores,
 #   every seat's sandbox directory, and for a worker the other seats).
 # @set write The allowWrite roots.
-# @set deny_write The denyWrite paths; `deny_write_patterns` the macOS patterns appended to them.
+# @set deny_write The denyWrite paths; `deny_write_patterns` the macOS pattern rows rendered after them.
+# @set unix_sockets The allowUnixSockets directories: the broker's for the router row, none otherwise (U344).
 # @set deny_read The denyRead paths.
 # @set allow_read The allowRead paths.
 # @set row_tags The structural tags, each naming one row by list and position (tag_row): `slot` for the seat's own
@@ -1882,18 +1893,23 @@ dsh_deny_paths() {
 #   its own omp profile and the profiles deny it re-opens. The grant tags are the dsh role's, whose judge reads them;
 #   the deny tags are rendered for every role and change no list.
 seat_settings_render() {
-    local root path kind project_files=()
+    local root path kind i project_files=() spelled=()
     h=$(physical_path "${HOME}") || refuse "cannot resolve HOME ${HOME}"
     dir_real=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"
     common_real=$(physical_path "${common}") || refuse "cannot resolve the git common directory ${common}"
     hcom_real=$(physical_path "${HCOM_DIR}") || refuse "cannot resolve the hcom store ${HCOM_DIR}"
     seats_real=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
     sandbox_state=${seats_real}/.state/${name}
+    # The router row's socket directory (regime-cutover U344): `allowUnixSockets` names `<state slot>/broker`, where
+    # acp-broker listens for this launch, for the row whose `broker` cell is 1, and nothing for every other role (U342
+    # measured: srt opens the sockets under that one directory and no other socket).
+    unix_sockets=()
+    if ((broker)); then unix_sockets=("${sandbox_state}/broker"); fi
     write=("${seat_write[@]}")
     row_tags=() row_tag_kinds=() row_tag_ixs=() row_tag_paths=()
     deny_write=("${seats_real}/.sandbox")
     # The hook shims under .claude/hooks import their code from .claude/contextdb, run by sessions outside the seat.
-    project_files=(.claude/settings.json .claude/settings.local.json .claude/hooks .claude/contextdb .omp .codex .envrc .mcp.json)
+    project_files=("${SEAT_SETTINGS_PROJECT_FILES[@]}")
     # The project-file rows under the seat's own directory are refinements inside its write root (srt keeps the
     # deeper deny), so the slot and the cwd contain them by construction: each is tagged at its position.
     for path in "${project_files[@]}"; do
@@ -1906,7 +1922,7 @@ seat_settings_render() {
     # command under that directory, would load (the U190 hole, closed among seats). The bridge child loads none of
     # them (`settingSources: []`, `--strict-mcp-config`); the rows hold whatever a child loads. Tagged like the
     # project-file rows: the grant at write row 2 contains them by construction.
-    for path in settings.json settings.local.json rules hooks plugins skills commands agents; do
+    for path in "${SEAT_SETTINGS_CLAUDE_ROWS[@]}"; do
         tag_row slot denyWrite ${#deny_write[@]} "${claude_config_real}/${path}"
         deny_write+=("${claude_config_real}/${path}")
     done
@@ -1919,20 +1935,21 @@ seat_settings_render() {
     deny_write+=("${git_state[@]}")
     # A worktree created after this launch gets its files denied on macOS by pattern; on Linux srt takes literal
     # write denies only, and the next launch's git_state_check covers it.
-    # The patterns are the one place a settings entry is not a clean path: a clean prefix and a fixed suffix.
-    deny_write_patterns=''
+    # The patterns are the one place a settings entry is not a clean path: a clean prefix and a fixed suffix, rendered
+    # after the deny rows as rows of their own (clean_row admits the form for denyWrite alone).
+    deny_write_patterns=()
     if [[ ${os} == Darwin ]]; then
         require_clean_path 'the git common directory' "${common_real}"
         for path in config.worktree info commondir gitdir; do
             # srt reads `*` as `[^/]*` (glob-pattern.js:179-180, globToRegex :208-209), so dot-named ids match too.
-            deny_write_patterns+=",\"${common_real}/worktrees/*/${path}\""
+            deny_write_patterns+=("${common_real}/worktrees/*/${path}")
         done
     fi
     for path in config.toml env config.env .tmp/launch scripts integrations shell_env.json; do
         deny_write+=("${hcom_real}/${path}")
     done
-    deny_read=("${h}/.ssh" "${h}/.gnupg" "${h}/.aws" "${h}/.netrc" "${h}/.docker" "${h}/.kube" "${h}/.config/gcloud"
-        "${h}/.codex" "${h}/.omp/agent")
+    deny_read=()
+    for path in "${SEAT_SETTINGS_CREDENTIAL_DENIES[@]}"; do deny_read+=("${h}/${path}"); done
     # The profiles deny: the seat's own omp profile is the one row re-opened under it (the dsh case below tags that
     # row; settings_judge pairs the two tags).
     tag_row profile denyRead ${#deny_read[@]} "${h}/.omp/profiles"
@@ -1978,17 +1995,19 @@ seat_settings_render() {
         deny_write+=(${dsh_deny[@]+"${dsh_deny[@]}"})
         allow_read=("${dir_real}" "${sandbox_state}" "${claude_config_real}" "${dsh_home_phys}" "${h}/.omp/profiles/${omp_profile}"
             "${h}/.agents/skills" "${tools_dir}")
-        # The judge's exempted grants, each one row by its position (tag_row, regime-cutover U272g): the own cwd and
-        # state slot, rows 0 and 1 of both grant lists, the shared Claude Code directory, row 2 of both (seat_write_roots
-        # puts the three first; the directory sits under the seats-root denies and over its configuration denies, U318),
-        # and the own omp profile, row 4 of both. DSH_HOME (row 3), `~/.omp/run` (write row 5) and the router role's
-        # state root (write row 6) carry no tag whatever they are spelled, so a DSH_HOME at or inside the profiles
-        # directory, or a `~/.omp/run` linked there, is judged like any row.
+        # The judge's exempted grants, each one row by its position (tag_row, regime-cutover U272g), the positions and
+        # tags the one writer states (SEAT_SETTINGS_GRANT_TAGS, seat-settings-render.sh): the own cwd and state slot,
+        # rows 0 and 1 of both grant lists, the shared Claude Code directory, row 2 of both (seat_write_roots puts the
+        # three first; the directory sits under the seats-root denies and over its configuration denies, U318), and
+        # the own omp profile, row 4 of both, each tagged at the path the role spells there. DSH_HOME (row 3),
+        # `~/.omp/run` (write row 5) and the router role's state root (write row 6) carry no tag whatever they are
+        # spelled, so a DSH_HOME at or inside the profiles directory, or a `~/.omp/run` linked there, is judged like any row.
+        spelled=("${dir_real}" "${sandbox_state}" "${claude_config_real}" '' "${h}/.omp/profiles/${omp_profile}")
         for kind in allowRead allowWrite; do
-            tag_row slot "${kind}" 0 "${dir_real}"
-            tag_row slot "${kind}" 1 "${sandbox_state}"
-            tag_row slot "${kind}" 2 "${claude_config_real}"
-            tag_row profile "${kind}" 4 "${h}/.omp/profiles/${omp_profile}"
+            for ((i = 0; i < ${#SEAT_SETTINGS_GRANT_TAGS[@]}; i++)); do
+                [[ -n ${SEAT_SETTINGS_GRANT_TAGS[i]} ]] || continue
+                tag_row "${SEAT_SETTINGS_GRANT_TAGS[i]}" "${kind}" "${i}" "${spelled[i]}"
+            done
         done
         ;;
     esac
@@ -2295,7 +2314,7 @@ esac
 # @noargs
 seat_sandbox_write() {
     local sandbox_real path settings shim json origin_url push_url srt_q cmd_q
-    local write_json deny_write_json deny_read_json allow_read_json
+    local write_json deny_write_json deny_read_json allow_read_json unix_sockets_json
     # srt on Linux grants writes only to paths that exist, so omp's own state directories are made first. The seat's
     # slots under the seats root were proved free of links (own_slots_check); they are made one component at a time,
     # and each is checked again to be a real directory.
@@ -2320,26 +2339,23 @@ seat_sandbox_write() {
     done
     sandbox_real=$(cd "${sandbox}" && pwd -P) || refuse "cannot resolve the seat sandbox directory ${sandbox}"
     settings=${sandbox_real}/srt-settings.json
-    write_json=$(json_paths 'a seat write root' "${write[@]}") || exit 2
-    deny_write_json=$(json_paths 'a seat write deny' "${deny_write[@]}") || exit 2
-    deny_write_json=${deny_write_json%]}${deny_write_patterns}]
-    deny_read_json=$(json_paths 'a seat read deny' "${deny_read[@]}") || exit 2
-    allow_read_json=$(json_paths 'a seat read root' "${allow_read[@]}") || exit 2
-    # No unix socket for any seat: the herdr socket would let a seat open a pane outside every sandbox. Local binding
-    # is the role table's `allow_local_binding` cell: false for every role but the router, whose Runtime needs its
-    # loopback listener (U321); srt 0.0.81 grants it as bind and inbound on `*:*` (every interface), and the upstream
-    # host check bounds what that listener answers. The one listener an omp seat runs, the hcom plugin's notify
-    # server, falls back to polling every 5 s when its bind fails (hcom.ts `startNotifyServer`,
-    # `FALLBACK_PENDING_POLL_MS`). The settings are written by the shell from clean paths only (json_paths), so no JSON
-    # tool runs and none is needed on macOS.
-    domains='"github.com","api.github.com","uploads.github.com","codeload.github.com","objects.githubusercontent.com"'
-    domains+=',"raw.githubusercontent.com","release-assets.githubusercontent.com","pypi.org","files.pythonhosted.org"'
-    domains+=',"api.anthropic.com","claude.ai","platform.claude.com","console.anthropic.com"'
-    domains+=',"chatgpt.com","auth.openai.com","api.openai.com"'
-    json="{\"network\":{\"allowedDomains\":[${domains}],\"deniedDomains\":[],\"allowUnixSockets\":[]"
-    json+=",\"allowMachLookup\":[\"com.apple.trustd.agent\"],\"allowLocalBinding\":${allow_local_binding}}"
-    json+=",\"filesystem\":{\"denyRead\":${deny_read_json},\"allowRead\":${allow_read_json}"
-    json+=",\"allowWrite\":${write_json},\"denyWrite\":${deny_write_json}},\"allowPty\":true${linux_tools}}"
+    write_json=$(json_paths 'a seat write root' 0 "${write[@]}") || exit 2
+    deny_write_json=$(json_paths 'a seat write deny' 1 "${deny_write[@]}" ${deny_write_patterns[@]+"${deny_write_patterns[@]}"}) || exit 2
+    deny_read_json=$(json_paths 'a seat read deny' 0 "${deny_read[@]}") || exit 2
+    allow_read_json=$(json_paths 'a seat read root' 0 "${allow_read[@]}") || exit 2
+    unix_sockets_json=$(json_paths 'a seat socket directory' 0 ${unix_sockets[@]+"${unix_sockets[@]}"}) || exit 2
+    # No unix socket for any seat but the router row's broker directory (`unix_sockets`, seat_settings_render, U344):
+    # the herdr socket would let a seat open a pane outside every sandbox. Local binding is the role table's
+    # `allow_local_binding` cell: false for every role but the router, whose Runtime needs its loopback listener
+    # (U321); srt 0.0.81 grants it as bind and inbound on `*:*` (every interface), and the upstream host check bounds
+    # what that listener answers. The one listener an omp seat runs, the hcom plugin's notify server, falls back to
+    # polling every 5 s when its bind fails (hcom.ts `startNotifyServer`, `FALLBACK_PENDING_POLL_MS`). The text is
+    # the one writer's (seat_settings_json, seat-settings-render.sh), built by the shell from clean rows only
+    # (json_paths), so no JSON tool runs and none is needed on macOS.
+    seat_settings_json "${allow_local_binding}" "${unix_sockets_json}" "${deny_read_json}" "${allow_read_json}" \
+        "${write_json}" "${deny_write_json}" "${linux_tools}" ||
+        refuse "cannot render the settings text (allowLocalBinding '${allow_local_binding}' is neither true nor false)"
+    json=${settings_json}
     if ! printf '%s\n' "${json}" > "${settings}.tmp" || ! mv -f "${settings}.tmp" "${settings}"; then
         refuse "cannot write ${settings}"
     fi
@@ -2501,6 +2517,9 @@ if ((dry_run)); then
     echo
     echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-}" >&2
     echo "hcom-seat: sandbox ${sandbox} (srt ${srt_cmd[*]}, omp ${omp_cmd[*]}, hcom ${hcom_cmd[*]}, herdr ${herdr_cmd[*]})" >&2
+    if ((broker)); then
+        echo "hcom-seat: a launch starts the ACP broker ${LEVER_DIR}/acp-broker ${seats_root} ${name} ${dir} beside dsh and stops it when dsh exits" >&2
+    fi
     exit 0
 fi
 # U37: a seat host needs this host's own login first (seat-login-preflight beside this file), judged under the shared
@@ -2589,21 +2608,128 @@ slots_remove() {
         return 1
     }
 }
-# @description The dsh role's signal trap (regime-cutover U272d): a hangup, interrupt or termination removes the slots
-#   and then ends this process by the same signal, its disposition restored, so the caller's status names the
-#   signal. bash runs the trap once the foreground child (the shim, srt, dsh) has ended; a signal to the process
-#   group, a terminal hangup included, ends the child first. The subshell the child runs in resets the trapped
-#   signals to their defaults, so dsh keeps its own disposition. The removal's status is read (regime-cutover U272f):
-#   under `set -e` a failed removal ended the handler before the signal was restored, and the launch exited 1 with
-#   the slot behind; a slot that remains is named (slots_remove) and the exit is 2 whatever the signal, as on the
-#   normal exit, so the caller never reads a leftover slot as the signal's own status.
+# @description Start `acp-broker` beside the Router (regime-cutover U344, M-24 part 2): the lever beside this file, a
+#   regular readable file held to its `claude.levers.sha256.acp-broker` pin here before it runs (it checks the same
+#   pin itself), run by path under /bin/bash with the seats root, this launch's seat name and its scratch cwd, its
+#   stdin /dev/null and its stdout on stderr (its one line, `acp-broker: listening on <sock>`), as a background child
+#   of this launch, so a signal to the process group reaches it too and broker_stop can read its status. The launch
+#   waits for the socket `<seats-root>/.state/<name>/broker/sock` before the shim starts, so dsh finds the broker
+#   listening; a broker that ends first, or does not listen within 60 s, is named with its status and the function
+#   fails (2) with the shim never started (the caller removes the slots as after any dsh exit).
+# @set broker_pid The broker's pid; empty when none runs.
+# @exitcode 0 The broker listens.
+# @exitcode 2 It could not be started or did not listen; named on stderr.
+broker_start() {
+    local lever=${LEVER_DIR}/acp-broker sock=${seats_root}/.state/${name}/broker/sock pin digest n=0
+    [[ -f ${lever} && -r ${lever} && ! -L ${lever} ]] || {
+        echo "hcom-seat: the ACP broker is unreadable, a link or no regular file beside this script: ${lever}; dsh not started" >&2
+        return 2
+    }
+    pin=$(sed -n -E 's/^      acp-broker: ([0-9a-f]{64})$/\1/p' "${LEVER_MANIFEST}") || {
+        echo "hcom-seat: cannot read ${LEVER_MANIFEST}; dsh not started" >&2
+        return 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "hcom-seat: no single sha256 pin for acp-broker in ${LEVER_MANIFEST}; dsh not started" >&2
+        return 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${lever}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${lever}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "hcom-seat: cannot hash ${lever}; dsh not started" >&2
+        return 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "hcom-seat: sha256 ${digest} of ${lever} differs from the pin in ${LEVER_MANIFEST}; dsh not started" >&2
+        return 2
+    }
+    /bin/bash "${lever}" "${seats_root}" "${name}" "${dir}" < /dev/null >&2 &
+    broker_pid=$!
+    while [[ ! -S ${sock} ]]; do
+        if ! kill -0 "${broker_pid}" 2> /dev/null; then
+            broker_wait
+            broker_pid=''
+            echo "hcom-seat: the ACP broker ${lever} exited ${broker_status} before it listened on ${sock}; dsh not started" >&2
+            return 2
+        fi
+        ((n < 600)) || {
+            if kill -TERM "${broker_pid}" 2> /dev/null; then :; fi
+            # The redirect hides bash's own `Terminated` job notice for the child this stop ended, nothing else:
+            # broker_wait runs builtins alone and leaves the status in broker_status.
+            broker_wait 2> /dev/null
+            broker_pid=''
+            echo "hcom-seat: the ACP broker ${lever} did not listen on ${sock} within 60 s (stopped, exit ${broker_status}); dsh not started" >&2
+            return 2
+        }
+        sleep 0.1
+        n=$((n + 1))
+    done
+}
+
+# @description Wait for the broker and set `broker_status` to its exit status, reading `wait` again when a trapped
+#   signal interrupted it (bash returns from `wait` with the signal's status and runs the trap first).
+# @set broker_status The exit status.
+broker_wait() {
+    broker_status=0
+    while :; do
+        # The status is read in the else branch, where `$?` is still `wait`'s own.
+        if wait "${broker_pid}"; then
+            broker_status=0
+        else
+            broker_status=$?
+        fi
+        if kill -0 "${broker_pid}" 2> /dev/null; then continue; fi
+        return 0
+    done
+}
+
+# @description Stop the broker when one runs (the normal end after dsh exited, and the trap): SIGTERM, then its exit
+#   status read (standing order 21). A clean end is 0 (the relay ended on its own with the socket and its directory
+#   removed) or the status of the stop signal (143; 129 and 130 when the process group's hangup or interrupt reached
+#   the broker before this stop, each after its own cleanup); any other status is named with the directory that may
+#   remain and the function fails, so the launch exits 2 and never reads a failed stop as dsh's status.
+# @exitcode 0 No broker ran, or it ended cleanly.
+# @exitcode 1 The broker ended with another status; named on stderr.
+broker_stop() {
+    [[ -n ${broker_pid} ]] || return 0
+    if kill -TERM "${broker_pid}" 2> /dev/null; then :; fi
+    # The redirect hides bash's own `Terminated` job notice for the child this stop ended, nothing else: broker_wait
+    # runs builtins alone and leaves the status in broker_status, read below.
+    broker_wait 2> /dev/null
+    broker_pid=''
+    case ${broker_status} in
+    0 | 129 | 130 | 143) return 0 ;;
+    esac
+    echo "hcom-seat: the ACP broker exited ${broker_status} at its stop; its socket directory ${seats_root}/.state/${name}/broker may remain" >&2
+    return 1
+}
+broker_pid='' broker_status=0
+
+# @description The dsh role's signal trap (regime-cutover U272d): a hangup, interrupt or termination stops the broker
+#   when one runs (broker_stop, U344), removes the slots and then ends this process by the same signal, its
+#   disposition restored, so the caller's status names the signal. bash runs the trap once the foreground child (the
+#   shim, srt, dsh) has ended; a signal to the process group, a terminal hangup included, ends the child first. The
+#   subshell the child runs in resets the trapped signals to their defaults, so dsh keeps its own disposition. The
+#   removal's status is read (regime-cutover U272f): under `set -e` a failed removal ended the handler before the
+#   signal was restored, and the launch exited 1 with the slot behind; a slot that remains is named (slots_remove)
+#   and the exit is 2 whatever the signal, as on the normal exit, so the caller never reads a leftover slot as the
+#   signal's own status; a broker that did not stop cleanly is named the same way (broker_stop).
 # @arg $1 string The signal name.
 foreground_signal() {
-    local removed=0
+    local removed=0 broker_failed=0
     trap - HUP INT TERM
+    broker_stop || broker_failed=1
     slots_remove || removed=$?
     ((removed == 0)) || {
         echo "hcom-seat: ended by SIG$1; the launch exits 2 because a per-launch slot remains" >&2
+        exit 2
+    }
+    ((broker_failed == 0)) || {
+        echo "hcom-seat: ended by SIG$1; the launch exits 2 because the ACP broker did not stop cleanly" >&2
         exit 2
     }
     kill -s "$1" $$
@@ -2627,16 +2753,29 @@ hcom)
 foreground)
     # The shim runs as a child so the per-launch slots can go when dsh exits (slots_remove, the trap's cleanup too).
     status=0
-    # dsh runs in the scratch cwd (M-21: a cwd inside a read-denied path dies on `uv_cwd EPERM`); the subshell is
-    # replaced by the shim, so nothing waits twice.
-    (cd "${dir}" && exec /usr/bin/env -i "${seat_env[@]}" \
-        "${sandbox}/bin/${shim_tool}" ${dsh_args[@]+"${dsh_args[@]}"}) || status=$?
+    # The router row's broker starts after the settings exist and before the shim (broker_start, U344); a broker that
+    # cannot start is named and dsh is not started, the slots removed below as after any dsh exit.
+    if ((broker)); then broker_start || status=$?; fi
+    if ((status == 0)); then
+        # dsh runs in the scratch cwd (M-21: a cwd inside a read-denied path dies on `uv_cwd EPERM`); the subshell is
+        # replaced by the shim, so nothing waits twice.
+        (cd "${dir}" && exec /usr/bin/env -i "${seat_env[@]}" \
+            "${sandbox}/bin/${shim_tool}" ${dsh_args[@]+"${dsh_args[@]}"}) || status=$?
+    fi
     trap - HUP INT TERM
-    # A slot that remains is a refusal whatever dsh returned: the caller must not read a leftover slot as success.
+    # The broker is stopped and its status read before the slots go (its directory lies in the state slot); a stop
+    # that is not clean is a refusal whatever dsh returned, as a slot that remains is: the caller must not read a
+    # leftover slot or a broker left behind as success.
+    broker_failed=0
+    broker_stop || {
+        echo "hcom-seat: dsh exited ${status}; the launch exits 2 because the ACP broker did not stop cleanly" >&2
+        broker_failed=1
+    }
     slots_remove || {
         echo "hcom-seat: dsh exited ${status}; the launch exits 2 because a per-launch slot remains" >&2
         exit 2
     }
+    ((broker_failed == 0)) || exit 2
     exit "${status}"
     ;;
 esac

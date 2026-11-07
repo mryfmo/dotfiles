@@ -394,7 +394,7 @@
       "target": ".local/bin/common/acp-broker",
       "kind": "file",
       "executable": true,
-      "sha256": "cd58bce6a2923422bf97c152f74a4ace49f851758d4dfa8bdbfe8db536a968d3"
+      "sha256": "1f40512b8aabdef8ec909aad56dae6e9a8e307967f6b1bd6438b69a79c95839a"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-relay.py",
@@ -450,7 +450,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "d344e6e1f4ddc7db76863192e8304e9a5c32b3755b0cb65b3597440309dbb792"
+      "sha256": "624057cc187378335a08c2cd62156037cf71cb83438ff1bb253d6924d38cec53"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
@@ -563,6 +563,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "7d12ffb08da39735f6c368ddb9ab4ed10084d755a1f57470edc64d1d78e4ae61"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_seat-settings-render.sh",
+      "target": ".local/bin/common/seat-settings-render.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "5f221c47b8bd68037666ef0f01d301d3cf1e663807c2d8019a07c0614c816f8a"
     },
     {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",
@@ -815,6 +822,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "seat-login-preflight"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "seat-settings-render.sh"
     },
     {
       "source": "home/dot_local/bin/common",

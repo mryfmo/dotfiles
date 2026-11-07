@@ -266,6 +266,7 @@ LEVERS = (
     "regime-start",
     "regime-stop",
     "seat-login-preflight",
+    "seat-settings-render.sh",
     "worker-worktree.sh",
     "worktree-gc.sh",
 )

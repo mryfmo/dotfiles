@@ -722,20 +722,125 @@ class DeepseekHarnessTest(unittest.TestCase):
     URL = f"https://github.com/deepseek-ai/deepseek-harness/archive/refs/tags/{TAG}.tar.gz"
     COMMIT_MATCH = re.search(r'^DSH_COMMIT="([^"]+)"$', INSTALLER_PINS, re.MULTILINE)
     COMMIT = COMMIT_MATCH[1] if COMMIT_MATCH else ""
+    # The commands the step runs inside srt, as the fake srt records them after the environment build_under_srt sets:
+    # the two build steps in the new tree and the profile install (the canary probe is read apart, canary_calls).
     BUILD_CALLS = [
-        "mise exec -- pnpm install --frozen-lockfile",
-        "mise exec -- pnpm run build",
-        "mise exec -- pnpm install",
+        "pnpm install --frozen-lockfile",
+        f"DSH_CLIENT_COMMIT_HASH={COMMIT} pnpm run build",
+        "pnpm install",
     ]
+    # The read denies build_under_srt writes, relative to the physical HOME, before the checkout and its git common
+    # directory (hcom-seat's seat_settings_render rows for every seat, by the same spellings).
+    DENY_ROWS = (
+        ".ssh",
+        ".gnupg",
+        ".aws",
+        ".netrc",
+        ".docker",
+        ".kube",
+        ".config/gcloud",
+        ".config/gh",
+        ".codex",
+        ".omp/agent",
+        ".omp/profiles",
+        ".hcom",
+        ".local/state/hcom",
+        ".local/share/chezmoi",
+        ".local/share/chezmoi-private",
+        ".config/chezmoi",
+        ".config/chezmoi-private",
+        "Workspace",
+        ".local/state/omp-seats",
+        ".claude",
+        ".claude.json",
+    )
+    ENV_PREFIX = " npm_config_manage_package_manager_versions=false "
+    # The fake srt: records its argv, keeps a copy of the settings it was given (the function removes the file after
+    # the run) with their mode, writes the DSH_CLIENT_COMMIT_HASH the build command carries, runs the body a test hands
+    # it (default: nothing), answers the canary probe `write-denied` and exits 0. The command after `--` is in `cmd`
+    # for a body that wants to run it (the canary test does, so the outside write lands).
+    FAKE_SRT = """#!/usr/bin/env bash
+set -u
+printf 'srt %s\\n' "$*" >> "$CALLS"
+cat "$2" >> "$HOME/srt-settings.jsonl"
+ls -ld "$2" >> "$HOME/srt-settings-modes"
+cmd=("$@")
+while [ "${cmd[0]}" != -- ]; do cmd=("${cmd[@]:1}"); done
+cmd=("${cmd[@]:1}")
+case "$*" in
+*" pnpm run build")
+    commit='<unset>'
+    for word in "$@"; do case ${word} in DSH_CLIENT_COMMIT_HASH=*) commit=${word#*=} ;; esac; done
+    printf '%s\\n' "${commit}" > "$HOME/build-commit"
+    ;;
+esac
+@BODY@
+case "$*" in *" /bin/sh -c "*) echo write-denied; exit 0 ;; esac
+exit 0
+"""
+    # A pnpm on PATH outside the fake srt: the step must never run it on the host, so a call is recorded and fails.
+    FAKE_PNPM = '#!/usr/bin/env bash\nprintf \'pnpm %s\\n\' "$*" >> "$HOME/bare-pnpm"\nexit 1\n'
 
-    def archive(self, home: Path, version: str | None = None) -> tuple[Path, str]:
-        """A GitHub tag archive: <repository>-<tag>/{package.json, apps/cli/lib/bin.js, pnpm-lock.yaml}."""
+    def fake_tools(self, home: Path, *, srt: str | None = None, with_srt: bool = True) -> Path:
+        """$HOME/bin holding the fake srt (unless with_srt is False), the fake pnpm and a fake node, the two `mise
+        which` answers; returns the directory."""
+        tools = home / "bin"
+        tools.mkdir(exist_ok=True)
+        if with_srt:
+            (tools / "srt").write_text(self.FAKE_SRT.replace("@BODY@", srt or ""))
+            (tools / "srt").chmod(0o755)
+        (tools / "pnpm").write_text(self.FAKE_PNPM)
+        (tools / "pnpm").chmod(0o755)
+        (tools / "node").write_text("#!/usr/bin/env bash\nexit 0\n")
+        (tools / "node").chmod(0o755)
+        return tools
+
+    def search_path(self, tools: Path, *, with_srt: bool = True) -> str:
+        """PATH with the fake tools first; without srt, every directory holding an srt is dropped as well."""
+        entries = os.environ["PATH"].split(os.pathsep)
+        if not with_srt:
+            entries = [entry for entry in entries if not (Path(entry) / "srt").exists()]
+        return os.pathsep.join([str(tools), *entries])
+
+    def srt_calls(self, home: Path) -> list[str]:
+        return [line for line in self.calls(home) if line.startswith("srt ")]
+
+    def build_calls(self, home: Path) -> list[str]:
+        """The commands the fake srt ran for the step, after the environment build_under_srt sets, the canary aside."""
+        commands = [line.split(self.ENV_PREFIX, 1)[1] for line in self.srt_calls(home)]
+        return [command for command in commands if not command.startswith("/bin/sh -c ")]
+
+    def canary_calls(self, home: Path) -> list[str]:
+        commands = [line.split(self.ENV_PREFIX, 1)[1] for line in self.srt_calls(home)]
+        return [command for command in commands if command.startswith("/bin/sh -c ")]
+
+    def settings_seen(self, home: Path) -> list[dict]:
+        """The settings each fake srt run was given, in order."""
+        path = home / "srt-settings.jsonl"
+        return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+
+    def expected_deny(self, home: Path) -> list[str]:
+        home_real = home.resolve()
+        common = subprocess.run(
+            ["git", "-C", str(ROOT), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        return [f"{home_real}/{row}" for row in self.DENY_ROWS] + [str(ROOT.resolve()), str(Path(common).resolve())]
+
+    def archive(
+        self, home: Path, version: str | None = None, lockfile: str | None = "lockfileVersion: '9.0'\n"
+    ) -> tuple[Path, str]:
+        """A GitHub tag archive: <repository>-<tag>/{package.json, apps/cli/lib/bin.js, pnpm-lock.yaml}; a lockfile
+        of None leaves pnpm-lock.yaml out."""
         version = self.TAG.removeprefix("dsh-v") if version is None else version
         members = {
             "package.json": json.dumps({"name": "deepseek-harness", "version": version}) + "\n",
             "apps/cli/lib/bin.js": "// fixture cli\n",
-            "pnpm-lock.yaml": "lockfileVersion: '9.0'\n",
         }
+        if lockfile is not None:
+            members["pnpm-lock.yaml"] = lockfile
         payload = home / "archive.tgz"
         with tarfile.open(payload, "w:gz") as tar:
             for name, text in members.items():
@@ -777,32 +882,39 @@ class DeepseekHarnessTest(unittest.TestCase):
         dsh_home: Path | None,
         curl: str | None = None,
         mise: str | None = None,
+        srt: str | None = None,
+        with_srt: bool = True,
         shasum: str | None = None,
         jq: str | None = None,
         manifest_record: str | None = None,
         prelude: str | None = None,
         cwd: Path | None = None,
     ):
-        # curl is a shell function that writes $PAYLOAD to its -o path and logs its arguments; mise logs its arguments,
-        # writes the DSH_CLIENT_COMMIT_HASH the build call sees (or <unset>) to $HOME/build-commit, and succeeds unless
-        # a test hands it a body; nothing is downloaded, built or installed through pnpm. shasum and jq are the real
-        # producers unless a test hands one a body (a failure injection over `command shasum` or `command jq`). The
-        # prelude is any shell text placed before the stubs: a test defines pwd, readlink, mktemp, bash, ln or mv there
-        # as functions (failing_call makes one whose n-th call fails), or overrides a sourced pin such as DSH_COMMIT.
+        # curl is a shell function that writes $PAYLOAD to its -o path and logs its arguments; mise logs its arguments
+        # and answers `which pnpm` and `which node` with the fakes under $HOME/bin, and otherwise succeeds unless a
+        # test hands it a body; srt is the fake executable on PATH (FAKE_SRT), handed `srt` as its body, which runs
+        # nothing unless told, so no pnpm runs. shasum and jq are the real producers unless a test hands one a body
+        # (a failure injection over `command shasum` or `command jq`). The prelude is any shell text placed before
+        # the stubs: a test defines pwd, readlink, mktemp, bash, ln, mv or grep there as functions (failing_call makes
+        # one whose n-th call fails), or overrides a sourced pin such as DSH_COMMIT.
         download = curl or 'cp "$PAYLOAD" "${@: -1}"'
         stubs = (
             f"DSH_ARCHIVE_SHA256={digest}; "
             'curl() { echo "curl $*" >> "$CALLS"; ' + download + "; }; "
             'mise() { echo "mise $*" >> "$CALLS"; '
-            'if [ "$*" = "exec -- pnpm run build" ]; then '
-            'printf "%s\\n" "${DSH_CLIENT_COMMIT_HASH-<unset>}" > "$HOME/build-commit"; fi; '
-            + (mise or "return 0")
-            + "; }; "
+            + (mise or ":")
+            + '; case "$1" in which) printf "%s\\n" "$HOME/bin/$2"; return 0 ;; esac; return 0; }; '
             + (f"shasum() {{ {shasum}; }}; " if shasum else "")
             + (f"jq() {{ {jq}; }}; " if jq else "")
             + (f"manifest_record() {{ {manifest_record}; }}; " if manifest_record else "")
         )
-        env = os.environ | {"HOME": str(home), "PAYLOAD": str(payload), "CALLS": str(home / "calls")}
+        tools = self.fake_tools(home, srt=srt, with_srt=with_srt)
+        env = os.environ | {
+            "HOME": str(home),
+            "PAYLOAD": str(payload),
+            "CALLS": str(home / "calls"),
+            "PATH": self.search_path(tools, with_srt=with_srt),
+        }
         if (home / "tmp").is_dir():
             env["TMPDIR"] = str(home / "tmp")
         env.pop("DSH_HOME", None)
@@ -816,7 +928,40 @@ class DeepseekHarnessTest(unittest.TestCase):
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=120,
+            check=False,
+        )
+
+    def run_build_under_srt(
+        self,
+        home: Path,
+        arguments: str,
+        *,
+        dsh_home: Path | None,
+        srt: str | None = None,
+        with_srt: bool = True,
+        prelude: str | None = None,
+    ):
+        """build_under_srt called directly with `arguments` (shell text) under the fakes, DSH_HOME as given."""
+        tools = self.fake_tools(home, srt=srt, with_srt=with_srt)
+        env = os.environ | {
+            "HOME": str(home),
+            "CALLS": str(home / "calls"),
+            "PATH": self.search_path(tools, with_srt=with_srt),
+        }
+        env.pop("DSH_HOME", None)
+        if dsh_home is not None:
+            env["DSH_HOME"] = str(dsh_home)
+        # mise answers `which` with the fakes, as run_step's stub does; a prelude may redefine it.
+        stubs = 'mise() { case "$1" in which) printf "%s\\n" "$HOME/bin/$2"; return 0 ;; esac; return 0; }; '
+        script = 'source "$1"; ' + stubs + (prelude + "\n" if prelude else "") + "build_under_srt " + arguments
+        return subprocess.run(
+            ["bash", "-c", script, "bash", str(UPDATER)],
+            env=env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=120,
             check=False,
         )
 
@@ -940,20 +1085,26 @@ class DeepseekHarnessTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             home, dsh_home = self.opted_in_home(directory)
             payload, digest = self.archive(home)
-            mise = 'printf "%s\\n" "${MISE_EXEC_AUTO_INSTALL-<unset>}" >> "$HOME/auto-install"; return 0'
+            mise = 'printf "%s\\n" "${MISE_EXEC_AUTO_INSTALL-<unset>}" >> "$HOME/auto-install"'
             result = self.run_step(home, payload, digest, dsh_home=dsh_home, mise=mise)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-            self.assertEqual(self.BUILD_CALLS, [call for call in self.calls(home) if call.startswith("mise ")])
-            self.assertEqual(["false"] * len(self.BUILD_CALLS), (home / "auto-install").read_text().splitlines())
+            # U322: mise no longer runs pnpm (srt does, inside); its only calls resolve pnpm and node for the PATH
+            # inside srt, two per srt run (the canary and the three commands), each with auto-install off.
+            mise_calls = [call for call in self.calls(home) if call.startswith("mise ")]
+            self.assertEqual(["mise which pnpm", "mise which node"] * 4, mise_calls)
+            self.assertEqual([], [call for call in mise_calls if call.startswith("mise exec")], "no mise exec at all")
+            self.assertEqual(["false"] * 8, (home / "auto-install").read_text().splitlines())
+            self.assertEqual(self.BUILD_CALLS, self.build_calls(home))
 
     def test_a_failed_build_leaves_no_install_no_wrapper_and_no_record(self):
         with tempfile.TemporaryDirectory() as directory:
             home, dsh_home = self.opted_in_home(directory)
             payload, digest = self.archive(home)
-            failing = 'case "$*" in *"run build"*) return 1 ;; esac; return 0'
-            result = self.run_step(home, payload, digest, dsh_home=dsh_home, mise=failing)
+            failing = 'case "$*" in *" pnpm run build") exit 1 ;; esac'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, srt=failing)
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-            self.assertEqual(self.BUILD_CALLS[:2], [call for call in self.calls(home) if call.startswith("mise ")])
+            self.assertIn("the build failed inside srt (a write outside", result.stderr)
+            self.assertEqual(self.BUILD_CALLS[:2], self.build_calls(home))
             self.assertEqual([], list((dsh_home / "dsh").iterdir()), "the new tree is removed")
             self.assertFalse((dsh_home / "dsh/current").is_symlink(), "no current link")
             self.assertFalse((dsh_home / "bin/dsh").exists(), "no wrapper")
@@ -983,7 +1134,7 @@ class DeepseekHarnessTest(unittest.TestCase):
             calls = self.calls(home)
             self.assertEqual(1, len([call for call in calls if call.startswith("curl ")]))
             self.assertIn(f" {self.URL} -o ", calls[0])
-            self.assertEqual(self.BUILD_CALLS, [call for call in calls if call.startswith("mise ")])
+            self.assertEqual(self.BUILD_CALLS, self.build_calls(home))
             # The tag archive has no .git, so the build reads the commit from DSH_CLIENT_COMMIT_HASH, the rendered pin.
             self.assertEqual(f"{self.COMMIT}\n", (home / "build-commit").read_text())
             # Nothing beside the one tree under dsh/: no staging, previous or failed tree.
@@ -1152,7 +1303,7 @@ class DeepseekHarnessTest(unittest.TestCase):
                 " untouched.",
                 result.stderr,
             )
-            self.assertEqual(self.BUILD_CALLS, [call for call in self.calls(home) if call.startswith("mise ")])
+            self.assertEqual(self.BUILD_CALLS, self.build_calls(home))
             self.assert_previous_install_untouched(dsh_home, install, previous)
             self.assertFalse(self.plugin_link(dsh_home).exists(), "no link")
             self.assertEqual([], list(self.plugin_link(dsh_home).parent.iterdir()), "no temporary beside it")
@@ -1366,8 +1517,12 @@ class DeepseekHarnessTest(unittest.TestCase):
             commands = json.loads((home / ".agents/.installed-manifest.json").read_text())["steps"][
                 "update_deepseek_harness"
             ]["commands"]
-            self.assertIn(f"DSH_CLIENT_COMMIT_HASH={self.COMMIT} pnpm run build", commands)
-            self.assertNotIn("pnpm run build", commands)
+            # U322: the build runs inside srt, so the recorded command is the srt form carrying the variable as a
+            # leading word; no bare pnpm form is recorded.
+            self.assertIn(
+                f"srt --settings <tree>.srt.json -- DSH_CLIENT_COMMIT_HASH={self.COMMIT} pnpm run build", commands
+            )
+            self.assertEqual([], [command for command in commands if command.startswith("pnpm ")])
 
     def assert_commit_refused(self, prelude: str, given: str) -> None:
         """The step with DSH_COMMIT overridden by `prelude` refuses before any download, build or record."""
@@ -1631,14 +1786,15 @@ class DeepseekHarnessTest(unittest.TestCase):
             home, dsh_home = self.opted_in_home(directory)
             payload, digest = self.archive(home)
             install, previous = self.previous_install(dsh_home)
-            failing = 'case "$*" in "exec -- pnpm install") return 1 ;; esac; return 0'
-            result = self.run_step(home, payload, digest, dsh_home=dsh_home, mise=failing)
+            failing = 'case "$*" in *" pnpm install") exit 1 ;; esac'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, srt=failing)
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("the profile install failed inside srt (a write outside", result.stderr)
             self.assertIn(
-                "the profile install failed; nothing recorded; current, the wrapper and the older trees are untouched",
+                "nothing recorded; current, the wrapper and the older trees are untouched",
                 result.stderr,
             )
-            self.assertEqual(self.BUILD_CALLS, [call for call in self.calls(home) if call.startswith("mise ")])
+            self.assertEqual(self.BUILD_CALLS, self.build_calls(home))
             self.assert_previous_install_untouched(dsh_home, install, previous)
             self.assertFalse((install / "apps").exists(), "nothing of the archive's tree is under the prior tree")
             self.assertFalse((dsh_home / "bin/dsh").exists(), "no wrapper")
@@ -1761,10 +1917,11 @@ class DeepseekHarnessTest(unittest.TestCase):
             older.mkdir(parents=True)
             (older / "package.json").write_text(json.dumps({"name": "deepseek-harness", "version": "0.1.0"}) + "\n")
             os.symlink(older, dsh_home / "dsh/current")
-            failing = 'case "$*" in "exec -- pnpm install") return 1 ;; esac; return 0'
-            result = self.run_step(home, payload, digest, dsh_home=dsh_home, mise=failing)
+            failing = 'case "$*" in *" pnpm install") exit 1 ;; esac'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, srt=failing)
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-            self.assertIn("the profile install failed; nothing recorded; current, the wrapper", result.stderr)
+            self.assertIn("the profile install failed inside srt", result.stderr)
+            self.assertIn("nothing recorded; current, the wrapper", result.stderr)
             self.assertEqual(str(older), os.readlink(dsh_home / "dsh/current"))
             self.assertEqual("0.1.0", json.loads((older / "package.json").read_text())["version"])
             self.assertEqual(
@@ -1887,7 +2044,7 @@ class DeepseekHarnessTest(unittest.TestCase):
             result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn(f"the target of {dsh_home}/dsh/current could not be read; install refused", result.stderr)
-            self.assertEqual(self.BUILD_CALLS, [call for call in self.calls(home) if call.startswith("mise ")])
+            self.assertEqual(self.BUILD_CALLS, self.build_calls(home))
             self.assert_previous_install_untouched(dsh_home, install, previous)
             self.assertFalse((home / ".agents").exists(), "nothing recorded")
             self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is removed")
@@ -1918,6 +2075,8 @@ class DeepseekHarnessTest(unittest.TestCase):
         # Round-2 finding (d): the home was interpolated into the wrapper's shell source unescaped. HOME itself holds
         # the sequence here (a directory name holds no slash, so the marker is named from the wrapper's cwd, the
         # scratch directory); a stub mise prints its arguments, so the node path the wrapper hands over is read as text.
+        # U322: such a HOME is no clean path, so a fresh install is refused by build_under_srt before any upstream
+        # code runs (first block); the wrapper is still written on the repair path, which builds nothing (second).
         with tempfile.TemporaryDirectory() as directory:
             marker = Path(directory) / "marker"
             home = Path(directory) / '$(touch "marker")'
@@ -1925,7 +2084,19 @@ class DeepseekHarnessTest(unittest.TestCase):
             home, dsh_home = self.opted_in_home(str(home))
             payload, digest = self.archive(home)
             result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("is not a clean absolute path (components of [A-Za-z0-9._@+-]", result.stderr)
+            self.assertIn(
+                "the sandbox canary did not run under srt; nothing installed, nothing recorded", result.stderr
+            )
+            self.assertEqual([], self.srt_calls(home), "no srt run over an unclean path")
+            self.assertFalse(marker.exists())
+            self.assertEqual([], list((dsh_home / "dsh").iterdir()), "the new tree is removed")
+            tree, _ = self.canonical_install(dsh_home)
+            self.receipt(home, self.TAG)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"DeepSeek harness {self.TAG} is at {tree}; its wrapper is rewritten", result.stdout)
             stub_bin = Path(directory) / "stub-bin"
             stub_bin.mkdir()
             (stub_bin / "mise").write_text("#!/bin/bash\nprintf '%s\\n' \"$@\"\n")
@@ -2092,7 +2263,7 @@ class DeepseekHarnessTest(unittest.TestCase):
             tree = self.installed_tree(dsh_home)
             self.assertIn(f"DeepSeek harness {self.TAG} installed into {tree}.", result.stdout)
             self.assertTrue(os.access(dsh_home / "bin/dsh", os.X_OK), "the wrapper is live")
-            self.assertEqual(self.BUILD_CALLS, [call for call in self.calls(home) if call.startswith("mise ")])
+            self.assertEqual(self.BUILD_CALLS, self.build_calls(home))
             manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
             self.assertEqual(self.TAG, manifest["steps"]["update_deepseek_harness"]["source_version"])
             self.assertEqual(1, len(list((home / "tmp").iterdir())), "the directory the WARN names is left")
@@ -2102,9 +2273,9 @@ class DeepseekHarnessTest(unittest.TestCase):
         ):
             home, dsh_home = self.opted_in_home(directory)
             payload, digest = self.archive(home)
-            # The mise stub lists the temporary directory at the profile install, the first call after the build.
-            listing = 'case "$*" in "exec -- pnpm install") ls -A "$TMPDIR" > "$HOME/listing-at-profile-install" ;; esac; return 0'
-            result = self.run_step(home, payload, digest, dsh_home=dsh_home, mise=listing)
+            # The fake srt lists the temporary directory at the profile install, the first call after the build.
+            listing = 'case "$*" in *" pnpm install") ls -A "$TMPDIR" > "$HOME/listing-at-profile-install" ;; esac'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, srt=listing)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             self.assertEqual("", (home / "listing-at-profile-install").read_text(), "no download directory by then")
             self.assertEqual([], [line for line in result.stderr.splitlines() if line.startswith("WARN")])
@@ -2836,6 +3007,361 @@ class DeepseekHarnessTest(unittest.TestCase):
             self.assertEqual(str(tree), os.readlink(dsh_home / "dsh/current"), "current as it was")
             self.assertEqual(text, (tree / "package.json").read_text(), "the tree as it was")
             self.assertEqual(receipt, (home / ".agents/.installed-manifest.json").read_text(), "the receipt as it was")
+
+    # U322: the build and the profile install run inside srt through build_under_srt.
+
+    def test_build_under_srt_writes_the_settings_with_the_two_write_roots_the_deny_list_and_the_hosts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            build = dsh_home / "dsh/build"
+            build.mkdir(parents=True)
+            settings = dsh_home / "dsh/build.srt.json"
+            result = self.run_build_under_srt(
+                home,
+                f'"{build}" "{settings}" registry.npmjs.org cdn.sheetjs.com -- pnpm run build',
+                dsh_home=dsh_home,
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            seen = self.settings_seen(home)
+            self.assertEqual(1, len(seen), seen)
+            store = (dsh_home / ".pnpm-store").resolve()
+            self.assertTrue((store / "tmp").is_dir(), "the store and its TMPDIR are made before the run")
+            self.assertEqual([str(build.resolve()), str(store)], seen[0]["filesystem"]["allowWrite"])
+            self.assertEqual([], seen[0]["filesystem"]["denyWrite"])
+            self.assertEqual([], seen[0]["filesystem"]["allowRead"])
+            self.assertEqual(self.expected_deny(home), seen[0]["filesystem"]["denyRead"])
+            self.assertEqual(["registry.npmjs.org", "cdn.sheetjs.com"], seen[0]["network"]["allowedDomains"])
+            self.assertIs(False, seen[0]["network"]["allowLocalBinding"])
+            self.assertEqual([], seen[0]["network"]["allowUnixSockets"])
+            self.assertNotIn("allowNestedUserNamespaces", json.dumps(seen[0]))
+            self.assertIs(False, seen[0]["allowPty"])
+            # 0600, made by the function; removed after the run.
+            self.assertTrue((home / "srt-settings-modes").read_text().startswith("-rw-------"))
+            self.assertFalse(settings.exists(), "the settings file is removed after the run")
+            [call] = self.srt_calls(home)
+            self.assertTrue(call.startswith(f"srt --settings {settings} -- /usr/bin/env -i HOME={home} PATH="), call)
+            self.assertIn(f" PATH={home}/bin:{home}/bin:/usr/bin:/bin ", call)
+            self.assertIn(f" npm_config_store_dir={store} ", call)
+            self.assertTrue(call.endswith(f"{self.ENV_PREFIX}pnpm run build"), call)
+            self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host")
+
+    def test_build_under_srt_refuses_an_existing_or_linked_settings_path_and_runs_nothing(self):
+        for case in ("a file", "a symlink", "a dangling symlink"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                build = dsh_home / "dsh/build"
+                build.mkdir(parents=True)
+                settings = dsh_home / "dsh/build.srt.json"
+                if case == "a file":
+                    settings.write_text("{}\n")
+                elif case == "a symlink":
+                    (dsh_home / "other.json").write_text("{}\n")
+                    settings.symlink_to(dsh_home / "other.json")
+                else:
+                    settings.symlink_to(dsh_home / "absent.json")
+                before = os.readlink(settings) if settings.is_symlink() else settings.read_text()
+                result = self.run_build_under_srt(home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(
+                    f"build_under_srt: the settings path {settings} exists; the step runs only under a settings file it"
+                    " made (move it aside and rerun make update); nothing run.",
+                    result.stderr,
+                )
+                self.assertEqual([], self.srt_calls(home), "no srt run")
+                after = os.readlink(settings) if settings.is_symlink() else settings.read_text()
+                self.assertEqual(before, after, "the path as it was")
+
+    def test_build_under_srt_refuses_when_srt_is_absent_from_path_naming_the_pin(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            build = dsh_home / "dsh/build"
+            build.mkdir(parents=True)
+            settings = dsh_home / "dsh/build.srt.json"
+            result = self.run_build_under_srt(
+                home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, with_srt=False
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                "build_under_srt: srt is absent from PATH (the kit pins npm:@anthropic-ai/sandbox-runtime 0.0.81 in"
+                " home/dot_mise/config.toml; run mise install and rerun make update); nothing run.",
+                result.stderr,
+            )
+            self.assertFalse(settings.exists(), "no settings written")
+            self.assertFalse((dsh_home / ".pnpm-store").exists(), "refused before the store is made")
+            self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host")
+
+    def test_build_under_srt_passes_the_command_s_exit_through_and_removes_the_settings(self):
+        for status in (0, 7, 77):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                build = dsh_home / "dsh/build"
+                build.mkdir(parents=True)
+                settings = dsh_home / "dsh/build.srt.json"
+                result = self.run_build_under_srt(
+                    home,
+                    f'"{build}" "{settings}" registry.npmjs.org -- pnpm install --frozen-lockfile',
+                    dsh_home=dsh_home,
+                    srt=f"exit {status}",
+                )
+                self.assertEqual(status, result.returncode, result.stdout + result.stderr)
+                [call] = self.srt_calls(home)
+                self.assertTrue(call.endswith(f"{self.ENV_PREFIX}pnpm install --frozen-lockfile"), call)
+                self.assertFalse(settings.exists(), "the settings file is removed whatever the exit")
+
+    def test_build_under_srt_refuses_a_directory_that_is_a_symlink_a_file_or_absent_and_a_bad_host(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            settings = dsh_home / "dsh/build.srt.json"
+            (dsh_home / "dsh").mkdir()
+            (dsh_home / "dsh/real").mkdir()
+            (dsh_home / "dsh/linked").symlink_to(dsh_home / "dsh/real")
+            (dsh_home / "dsh/file").write_text("x\n")
+            for name in ("linked", "file", "absent"):
+                with self.subTest(directory=name):
+                    result = self.run_build_under_srt(
+                        home, f'"{dsh_home}/dsh/{name}" "{settings}" -- pnpm run build', dsh_home=dsh_home
+                    )
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(
+                        f"build_under_srt: {dsh_home}/dsh/{name} is not a directory of this user, or is a symlink;"
+                        " nothing run.",
+                        result.stderr,
+                    )
+                    self.assertEqual([], self.srt_calls(home))
+            with self.subTest(host="a wildcard"):
+                result = self.run_build_under_srt(
+                    home, f'"{dsh_home}/dsh/real" "{settings}" "*.npmjs.org" -- pnpm run build', dsh_home=dsh_home
+                )
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(
+                    "build_under_srt: *.npmjs.org is not a host name (letters, digits, dots and hyphens; no wildcard);"
+                    " nothing run.",
+                    result.stderr,
+                )
+                self.assertEqual([], self.srt_calls(home))
+                self.assertFalse(settings.exists())
+            with self.subTest(command="none after --"):
+                result = self.run_build_under_srt(home, f'"{dsh_home}/dsh/real" "{settings}" --', dsh_home=dsh_home)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn("build_under_srt: no command after --; nothing run.", result.stderr)
+            with self.subTest(dsh_home="unset"):
+                result = self.run_build_under_srt(
+                    home, f'"{dsh_home}/dsh/real" "{settings}" -- pnpm run build', dsh_home=None
+                )
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(
+                    "build_under_srt: DSH_HOME is unset, so the pnpm store has no place; nothing run.", result.stderr
+                )
+
+    def test_build_under_srt_refuses_when_mise_cannot_resolve_pnpm_or_node(self):
+        for tool in ("pnpm", "node"):
+            with self.subTest(tool=tool), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                build = dsh_home / "dsh/build"
+                build.mkdir(parents=True)
+                settings = dsh_home / "dsh/build.srt.json"
+                prelude = (
+                    'mise() { case "$*" in "which '
+                    + tool
+                    + '") printf "%s\\n" "$HOME/bin/'
+                    + tool
+                    + '"; return 1 ;; esac;'
+                    ' printf "%s\\n" "$HOME/bin/$2"; }'
+                )
+                result = self.run_build_under_srt(
+                    home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+                )
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"build_under_srt: {tool} is absent (mise which {tool} failed;", result.stderr)
+                self.assertEqual([], self.srt_calls(home))
+                self.assertFalse(settings.exists())
+
+    def test_the_canary_refuses_the_install_when_the_fake_srt_lets_the_outside_write_land(self):
+        # The U272 canary form: the probe writes beside the tree, outside both write roots, and must say write-denied.
+        # Here the fake srt runs the command uncontained, so the write lands and the probe says write-open; the step
+        # refuses before any build, removes the file the probe made and the new tree, and records nothing.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            runs = 'case "$*" in *" /bin/sh -c "*) exec "${cmd[@]}" ;; esac'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, srt=runs)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                "update_deepseek_harness: the sandbox does not hold (canary: write-open); nothing installed, nothing"
+                " recorded; the previous install, when there is one, is unchanged.",
+                result.stderr,
+            )
+            self.assertEqual(1, len(self.canary_calls(home)), "the probe ran once")
+            self.assertEqual([], self.build_calls(home), "no build after a failed canary")
+            self.assertEqual(
+                [], list((dsh_home / "dsh").iterdir()), "the new tree, its settings and the canary file are gone"
+            )
+            self.assertFalse((dsh_home / "bin").exists(), "no wrapper")
+            self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+        with self.subTest(case="the canary does not run"), tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            result = self.run_step(
+                home, payload, digest, dsh_home=dsh_home, srt='case "$*" in *" /bin/sh -c "*) exit 3 ;; esac'
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                "update_deepseek_harness: the sandbox canary did not run under srt; nothing installed", result.stderr
+            )
+            self.assertEqual([], self.build_calls(home))
+            self.assertEqual([], list((dsh_home / "dsh").iterdir()))
+
+    def test_the_step_runs_the_canary_the_build_and_the_profile_install_through_srt_and_no_bare_pnpm(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            install = self.installed_tree(dsh_home)
+            store = str((dsh_home / ".pnpm-store").resolve())
+            calls = self.srt_calls(home)
+            self.assertEqual(4, len(calls), calls)
+            # The canary first, under the tree's settings, with no host; then the two builds under the same settings
+            # file with the lockfile's hosts; then the profile install under its own settings.
+            [canary] = self.canary_calls(home)
+            self.assertTrue(canary.startswith('/bin/sh -c if true 2> /dev/null > "$1";'), canary)
+            self.assertTrue(canary.endswith(f" canary {install}.canary"), canary)
+            self.assertEqual(self.BUILD_CALLS, self.build_calls(home))
+            for call in calls[:3]:
+                self.assertTrue(call.startswith(f"srt --settings {install}.srt.json -- "), call)
+            self.assertTrue(calls[3].startswith(f"srt --settings {install}.profile.srt.json -- "), calls[3])
+            seen = self.settings_seen(home)
+            self.assertEqual(4, len(seen))
+            self.assertEqual([], seen[0]["network"]["allowedDomains"], "the canary needs no network")
+            for settings in seen[:3]:
+                self.assertEqual([str(install.resolve()), store], settings["filesystem"]["allowWrite"])
+            for settings in seen[1:]:
+                self.assertEqual(["registry.npmjs.org"], settings["network"]["allowedDomains"])
+            self.assertEqual([str((dsh_home / "profiles/thak").resolve()), store], seen[3]["filesystem"]["allowWrite"])
+            for settings in seen:
+                self.assertEqual(self.expected_deny(home), settings["filesystem"]["denyRead"])
+            self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host, outside srt")
+            self.assertEqual(
+                ["current", install.name],
+                sorted(path.name for path in (dsh_home / "dsh").iterdir()),
+                "no settings or canary left",
+            )
+            commands = json.loads((home / ".agents/.installed-manifest.json").read_text())["steps"][
+                "update_deepseek_harness"
+            ]["commands"]
+            self.assertIn(
+                f"srt --settings <tree>.srt.json -- pnpm install --frozen-lockfile (writes: <tree>, {dsh_home}/.pnpm-store)",
+                commands,
+            )
+            self.assertIn(
+                f"srt --settings <tree>.srt.json -- DSH_CLIENT_COMMIT_HASH={self.COMMIT} pnpm run build", commands
+            )
+            self.assertIn(
+                f"srt --settings <tree>.profile.srt.json -- pnpm install in {dsh_home}/profiles/thak (writes: that"
+                f" directory, {dsh_home}/.pnpm-store)",
+                commands,
+            )
+            self.assertEqual([], [command for command in commands if command.startswith("pnpm ")], "no bare pnpm form")
+
+    def test_the_hosts_of_the_lockfile_s_tarball_rows_join_the_registry_once_each(self):
+        lockfile = (
+            "lockfileVersion: '9.0'\n"
+            "packages:\n"
+            "  xlsx@https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz:\n"
+            "    resolution: {integrity: sha512-x, tarball: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz}\n"
+            "  other@https://cdn.sheetjs.com/other.tgz:\n"
+            "    resolution: {integrity: sha512-y, tarball: https://cdn.sheetjs.com/other.tgz}\n"
+            "  plain@1.0.0:\n"
+            "    resolution: {integrity: sha512-z, tarball: http://mirror.example.net/plain-1.0.0.tgz}\n"
+            "    deprecated: see https://www.npmjs.com/support\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home, lockfile=lockfile)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            seen = self.settings_seen(home)
+            self.assertEqual(4, len(seen))
+            hosts = ["registry.npmjs.org", "cdn.sheetjs.com", "mirror.example.net"]
+            self.assertEqual(hosts, seen[1]["network"]["allowedDomains"], "the tree install")
+            self.assertEqual(hosts, seen[2]["network"]["allowedDomains"], "the build, under the same settings")
+            self.assertEqual(
+                ["registry.npmjs.org"], seen[3]["network"]["allowedDomains"], "the profile has no lockfile"
+            )
+            # A deprecation message's host is no fetch.
+            self.assertNotIn("www.npmjs.com", json.dumps(seen))
+        with self.subTest(case="the profile's own lockfile"), tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            (dsh_home / "profiles/thak/pnpm-lock.yaml").write_text(
+                "lockfileVersion: '9.0'\npackages:\n  a@https://plugins.example.org/a.tgz:\n"
+                "    resolution: {integrity: sha512-a, tarball: https://plugins.example.org/a.tgz}\n"
+            )
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            seen = self.settings_seen(home)
+            self.assertEqual(["registry.npmjs.org"], seen[1]["network"]["allowedDomains"])
+            self.assertEqual(["registry.npmjs.org", "plugins.example.org"], seen[3]["network"]["allowedDomains"])
+
+    def test_a_lockfile_that_cannot_be_read_or_is_absent_refuses_the_install_before_any_build(self):
+        with self.subTest(case="grep fails"), tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            # The producer prints what a healthy read prints (no tarball row) and exits 2, grep's read failure.
+            prelude = 'grep() { case "$*" in *tarball*) return 2 ;; esac; command grep "$@"; }'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("update_deepseek_harness: the lockfile ", result.stderr)
+            self.assertIn("/pnpm-lock.yaml could not be read; install refused.", result.stderr)
+            self.assertEqual([], self.srt_calls(home), "no canary, no build")
+            self.assertEqual([], list((dsh_home / "dsh").iterdir()), "the new tree is removed")
+            self.assertFalse((home / ".agents").exists(), "nothing recorded")
+        with self.subTest(case="no lockfile in the archive"), tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home, lockfile=None)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                "update_deepseek_harness: the archive holds no pnpm-lock.yaml, which the frozen install reads; install"
+                " refused.",
+                result.stderr,
+            )
+            self.assertEqual([], self.srt_calls(home))
+            self.assertEqual([], list((dsh_home / "dsh").iterdir()))
+        with self.subTest(case="the profile's lockfile fails to read"), tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            install, previous = self.previous_install(dsh_home)
+            (dsh_home / "profiles/thak/pnpm-lock.yaml").write_text("lockfileVersion: '9.0'\n")
+            prelude = 'grep() { case "$*" in *tarball*profiles/thak*) return 2 ;; esac; command grep "$@"; }'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"update_deepseek_harness: the lockfile {dsh_home}/profiles/thak/pnpm-lock.yaml could not be read;"
+                " nothing recorded; current, the wrapper and the older trees are untouched.",
+                result.stderr,
+            )
+            self.assertEqual(self.BUILD_CALLS[:2], self.build_calls(home), "the tree was built, the profile not")
+            self.assert_previous_install_untouched(dsh_home, install, previous)
+            self.assertFalse((home / ".agents").exists(), "nothing recorded")
+
+    def test_no_mise_exec_and_no_bare_pnpm_remain_in_the_harness_step(self):
+        # The structural half of ACCEPTANCE 2: between the step's `function update_deepseek_harness() (` and its
+        # closing `)`, no `mise exec -- pnpm`, and every line naming pnpm is a comment, a message (printf), the
+        # record's command list (manifest_record) or a build_under_srt call, so pnpm stands at no command position.
+        text = UPDATER.read_text()
+        start = text.index("function update_deepseek_harness() (")
+        end = text.index("\n)\n", start)
+        body = text[start:end]
+        self.assertNotIn("mise exec -- pnpm", body)
+        pnpm_lines = [line for line in body.splitlines() if re.search(r"(^|[^a-z_-])pnpm ", line)]
+        self.assertEqual(3, len([line for line in pnpm_lines if "build_under_srt " in line]), pnpm_lines)
+        for line in pnpm_lines:
+            stripped = line.strip()
+            self.assertTrue(
+                stripped.startswith(("#", "printf ", "manifest_record ")) or "build_under_srt " in line,
+                line,
+            )
 
 
 class ProducerFailureTest(unittest.TestCase):

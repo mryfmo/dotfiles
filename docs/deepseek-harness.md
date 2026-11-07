@@ -56,3 +56,29 @@ runtime is never executed outside srt. Two launches at once share no settings
 file. The role's rows and the hazard-by-hazard account of the four verdicts
 are in `scripts/orchestrator/README.md` ("The dsh role") and the tests in
 `tests/unit/test_hcom_seat_dsh.py`.
+
+The install itself is contained the same way (regime-cutover U322). On a host
+whose operator opted in (`DSH_HOME` exported and equal to `~/.dsh`), `make
+update` runs `update_deepseek_harness` in `scripts/update-agent-assets.sh`: it
+downloads GitHub's tag archive, checks its sha256 against the manifest pin
+before anything is unpacked, unpacks the tree under `~/.dsh/dsh/<tag>.<suffix>`
+and then runs every piece of upstream code inside srt through one shared
+function, `build_under_srt`: `pnpm install --frozen-lockfile` and `pnpm run
+build` in the new tree, and `pnpm install` in the thak profile. Each run is
+`srt --settings <file> -- /usr/bin/env -i HOME=… PATH=<mise pnpm and node>
+… pnpm …`, under a settings file the step creates 0600 beside the tree and
+removes after the run, whose `allowWrite` is the build directory and
+`~/.dsh/.pnpm-store` alone, whose `denyRead` is the credential and state
+list the dsh seat role denies (`~/.ssh`, `~/.gnupg`, `~/.aws`, `~/.netrc`,
+`~/.docker`, `~/.kube`, `~/.config/gcloud`, `~/.config/gh`, `~/.codex`,
+`~/.omp/agent`, `~/.omp/profiles`, the hcom stores, the chezmoi sources,
+`~/Workspace`, the seats root, the operator's Claude Code state) plus the
+dotfiles checkout and its git common directory, and whose
+`network.allowedDomains` is the default registry plus the host of every
+`tarball:` row of the tree's `pnpm-lock.yaml` (the pinned tag adds
+`cdn.sheetjs.com`), never a wildcard; no local binding, no unix socket, no
+pty. Before the first build the step runs the U272 canary under the same
+settings, one write beside the tree, and refuses the install unless srt
+denies it. `srt` is the kit's mise pin; a host without it gets no build and
+no install. The tests are in `tests/unit/test_update_agent_assets.py`
+(`DeepseekHarnessTest`, the U322 group).

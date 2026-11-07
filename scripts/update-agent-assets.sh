@@ -1780,6 +1780,174 @@ function dsh_prune_older() {
 }
 
 #
+# @description Run one command of the DeepSeek harness step inside srt (regime-cutover U322). The upstream tag's install
+#   and build scripts and the profile's plugin install are the only upstream code `make update` executes, and each
+#   runs under `srt --settings <file>` whose settings this function writes: writes land under the build directory and
+#   the pnpm store or fail with srt's EPERM, reads of the credential roots fail, and the network reaches the hosts the
+#   caller names and nothing else (no wildcard, no local binding, no nested user namespace, no pty). The form is
+#   update_dsh_superagent's build on PR 711 (U317b), whose next round adopts this function.
+# @description
+#   Every producer is read with its status (standing order 21): `type -P srt` (the kit pins
+#   npm:@anthropic-ai/sandbox-runtime in home/dot_mise/config.toml; it is on PATH under mise), `mise which pnpm` and
+#   `mise which node` under MISE_EXEC_AUTO_INSTALL=false (nothing is installed on the step's behalf, verdicts/U276b),
+#   pwd -P of HOME, of the directory and of the store, resolve_dotfiles_source_dir and `git rev-parse
+#   --git-common-dir` for the checkout's git directories, and srt's own exit. The settings file is created here
+#   (umask 077, noclobber) at a path that holds nothing and is not a link, and is removed after the run; a path that
+#   exists is refused, never reused. The read denies are the rows hcom-seat's dsh role denies for every seat
+#   (seat_settings_render, by the same spellings, physical): ~/.ssh, ~/.gnupg, ~/.aws, ~/.netrc, ~/.docker, ~/.kube,
+#   ~/.config/gcloud, ~/.config/gh, ~/.codex, ~/.omp/agent, ~/.omp/profiles, ~/.hcom, ~/.local/state/hcom, the chezmoi
+#   sources, ~/Workspace, ~/.local/state/omp-seats, ~/.claude and ~/.claude.json, then the dotfiles checkout and its git
+#   common directory. Every path in the settings is clean (components of [A-Za-z0-9._@+-], none . or .., no trailing
+#   slash: srt reads a settings path as a pattern) and every host matches [A-Za-z0-9.-]; the JSON is written by the
+#   shell and no JSON tool runs. Inside, `/usr/bin/env -i` reduces the environment to HOME, a PATH of the mise pnpm
+#   and node directories and the system directories, a TMPDIR and the XDG directories under the store, the store
+#   itself (npm_config_store_dir) and pnpm's self-install off (npm_config_manage_package_manager_versions); a leading
+#   NAME=value word of the command reaches the command's environment through env.
+# @arg $1 path The directory the command runs in and may write: a directory of this user that is not a symlink.
+# @arg $2 path The settings file to write: absent and not a link; created 0600 and removed after the run.
+# @arg $@ string The hosts the command may reach (none for a command that needs no network), then `--`, then the
+#   command and its arguments.
+# @env DSH_HOME The opt-in directory; ${DSH_HOME}/.pnpm-store is the second write root, made here when absent.
+# @stdout The command's.
+# @exitcode 1 A producer, a check or the settings write refused before the run; the line names it.
+# @exitcode * The command's exit status under srt, passed through.
+#
+function build_under_srt() {
+    local dir="$1" settings="$2" hosts=() host srt pnpm_bin node_bin home_real dir_real store store_real source_root source_real common common_real path row deny=() write_json='' deny_json='' hosts_json='' json status=0
+    shift 2
+    while [ $# -gt 0 ] && [ "$1" != -- ]; do
+        hosts+=("$1")
+        shift
+    done
+    if [ $# -lt 2 ]; then
+        printf 'build_under_srt: no command after --; nothing run.\n' >&2
+        return 1
+    fi
+    shift
+    if [ -z "${DSH_HOME:-}" ]; then
+        printf 'build_under_srt: DSH_HOME is unset, so the pnpm store has no place; nothing run.\n' >&2
+        return 1
+    fi
+    case ${DSH_HOME} in # lint-comparisons: allow the case reads the spelling (absolute or not); the step compared the identity
+    /*) ;;
+    *)
+        printf 'build_under_srt: DSH_HOME must be an absolute path (%s given); nothing run.\n' "${DSH_HOME}" >&2
+        return 1
+        ;;
+    esac
+    # The containment first: no srt is no run. The kit pins it; the refusal names the pin.
+    srt="$(type -P srt)" || {
+        printf 'build_under_srt: srt is absent from PATH (the kit pins npm:@anthropic-ai/sandbox-runtime 0.0.81 in home/dot_mise/config.toml; run mise install and rerun make update); nothing run.\n' >&2
+        return 1
+    }
+    if [ ! -f "${srt}" ] || [ ! -x "${srt}" ]; then
+        printf 'build_under_srt: %s (srt on PATH) is not an executable file; nothing run.\n' "${srt}" >&2
+        return 1
+    fi
+    pnpm_bin="$(MISE_EXEC_AUTO_INSTALL=false mise which pnpm 2> /dev/null)" || {
+        printf 'build_under_srt: pnpm is absent (mise which pnpm failed; the kit pins it in home/dot_mise/config.toml, so run mise install and rerun make update); nothing run.\n' >&2
+        return 1
+    }
+    node_bin="$(MISE_EXEC_AUTO_INSTALL=false mise which node 2> /dev/null)" || {
+        printf 'build_under_srt: node is absent (mise which node failed; the kit pins it in home/dot_mise/config.toml, so run mise install and rerun make update); nothing run.\n' >&2
+        return 1
+    }
+    for path in "${pnpm_bin}" "${node_bin}"; do
+        case ${path} in # lint-comparisons: allow the case reads the spelling (absolute or not), the file tests below read the entry
+        /*) ;;
+        *)
+            printf 'build_under_srt: mise which answered %s, not an absolute path; nothing run.\n' "${path}" >&2
+            return 1
+            ;;
+        esac
+        if [ ! -f "${path}" ] || [ ! -x "${path}" ]; then
+            printf 'build_under_srt: %s (mise which) is not an executable file; nothing run.\n' "${path}" >&2
+            return 1
+        fi
+    done
+    home_real="$(cd "${HOME}" && pwd -P)" || {
+        printf 'build_under_srt: the physical path of HOME %s could not be read; nothing run.\n' "${HOME}" >&2
+        return 1
+    }
+    if [ -L "${dir}" ] || [ ! -d "${dir}" ] || [ ! -O "${dir}" ]; then
+        printf 'build_under_srt: %s is not a directory of this user, or is a symlink; nothing run.\n' "${dir}" >&2
+        return 1
+    fi
+    dir_real="$(cd "${dir}" && pwd -P)" || {
+        printf 'build_under_srt: the physical path of %s could not be read; nothing run.\n' "${dir}" >&2
+        return 1
+    }
+    # srt on Linux grants writes only to paths that exist, so the store and the TMPDIR inside it are made first.
+    store="${DSH_HOME}/.pnpm-store"
+    if [ -L "${store}" ] || { [ -e "${store}" ] && [ ! -d "${store}" ]; }; then
+        printf 'build_under_srt: %s is a symlink or not a directory; the step writes the pnpm store only in a directory of its own there (move it aside and rerun make update); nothing run.\n' "${store}" >&2
+        return 1
+    fi
+    mkdir -p "${store}/tmp" || {
+        printf 'build_under_srt: the pnpm store %s could not be made; nothing run.\n' "${store}" >&2
+        return 1
+    }
+    store_real="$(cd "${store}" && pwd -P)" || {
+        printf 'build_under_srt: the physical path of %s could not be read; nothing run.\n' "${store}" >&2
+        return 1
+    }
+    source_root="$(resolve_dotfiles_source_dir)" || {
+        printf 'build_under_srt: the dotfiles checkout could not be resolved, so its git directories cannot be denied; nothing run.\n' >&2
+        return 1
+    }
+    source_real="$(cd "${source_root}" && pwd -P)" || {
+        printf 'build_under_srt: the physical path of the dotfiles checkout %s could not be read; nothing run.\n' "${source_root}" >&2
+        return 1
+    }
+    common="$(git -C "${source_real}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" || {
+        printf 'build_under_srt: the git common directory of %s could not be read; nothing run.\n' "${source_real}" >&2
+        return 1
+    }
+    common_real="$(cd "${common}" && pwd -P)" || {
+        printf 'build_under_srt: the physical path of the git common directory %s could not be read; nothing run.\n' "${common}" >&2
+        return 1
+    }
+    if [ -e "${settings}" ] || [ -L "${settings}" ]; then
+        printf 'build_under_srt: the settings path %s exists; the step runs only under a settings file it made (move it aside and rerun make update); nothing run.\n' "${settings}" >&2
+        return 1
+    fi
+    for row in .ssh .gnupg .aws .netrc .docker .kube .config/gcloud .config/gh .codex .omp/agent .omp/profiles .hcom .local/state/hcom .local/share/chezmoi .local/share/chezmoi-private .config/chezmoi .config/chezmoi-private Workspace .local/state/omp-seats .claude .claude.json; do
+        deny+=("${home_real}/${row}")
+    done
+    deny+=("${source_real}" "${common_real}")
+    for path in "${dir_real}" "${store_real}" "${deny[@]}"; do
+        if [[ ! ${path} =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || [[ /${path}/ == */./* ]] || [[ /${path}/ == */../* ]]; then # lint-comparisons: allow a component test on one path, no path compare
+            printf 'build_under_srt: %s is not a clean absolute path (components of [A-Za-z0-9._@+-], none . or .., no trailing slash), which the srt settings need; nothing run.\n' "${path}" >&2
+            return 1
+        fi
+    done
+    for host in ${hosts[@]+"${hosts[@]}"}; do
+        if [[ ! ${host} =~ ^[A-Za-z0-9.-]+$ ]]; then
+            printf 'build_under_srt: %s is not a host name (letters, digits, dots and hyphens; no wildcard); nothing run.\n' "${host}" >&2
+            return 1
+        fi
+        hosts_json+="${hosts_json:+,}\"${host}\""
+    done
+    for path in "${dir_real}" "${store_real}"; do write_json+="${write_json:+,}\"${path}\""; done
+    for path in "${deny[@]}"; do deny_json+="${deny_json:+,}\"${path}\""; done
+    json="{\"network\":{\"allowedDomains\":[${hosts_json}],\"deniedDomains\":[],\"allowUnixSockets\":[],\"allowMachLookup\":[\"com.apple.trustd.agent\"],\"allowLocalBinding\":false}"
+    json+=",\"filesystem\":{\"denyRead\":[${deny_json}],\"allowRead\":[],\"allowWrite\":[${write_json}],\"denyWrite\":[]},\"allowPty\":false}"
+    # noclobber: the file is created by this open or the open fails, so a path that appeared since the check above is
+    # refused too; umask 077 gives it 0600.
+    (umask 077 && set -C && printf '%s\n' "${json}" > "${settings}") || {
+        printf 'build_under_srt: the settings file %s could not be created; nothing run.\n' "${settings}" >&2
+        return 1
+    }
+    (cd "${dir_real}" && exec "${srt}" --settings "${settings}" -- /usr/bin/env -i "HOME=${HOME}" \
+        "PATH=${pnpm_bin%/*}:${node_bin%/*}:/usr/bin:/bin" "TMPDIR=${store_real}/tmp" \
+        "XDG_CACHE_HOME=${store_real}/xdg-cache" "XDG_CONFIG_HOME=${store_real}/xdg-config" \
+        "XDG_DATA_HOME=${store_real}/xdg-data" "XDG_STATE_HOME=${store_real}/xdg-state" \
+        "npm_config_store_dir=${store_real}" npm_config_manage_package_manager_versions=false "$@") || status=$?
+    rm -f "${settings}" || printf 'WARN: build_under_srt: the settings file %s could not be removed; it grants nothing by itself, and the next run refuses it until it is moved aside.\n' "${settings}" >&2
+    return "${status}"
+}
+
+#
 # @description Install the pinned DeepSeek harness (assets.deepseek-harness) under DSH_HOME on a host whose operator
 #   opted in, with a wrapper at $DSH_HOME/bin/dsh, the thak profile's plugins and the dsh-omp-gateway plugin link;
 #   nothing starts it.
@@ -1829,6 +1997,11 @@ function dsh_prune_older() {
 #   cleanup changes the step's exit status. Every producer the step reads (pwd -P, the receipt as exactly one object,
 #   jq, shasum, readlink, mktemp) refuses the step on a failed answer. A download that fails degrades like
 #   update_security_audit_skill: one WARN line, nothing installed, nothing recorded, and make update goes on.
+#   The upstream install and build scripts and the profile's plugin install run inside srt (build_under_srt,
+#   regime-cutover U322): the settings grant writes under the new tree (or the profile) and $DSH_HOME/.pnpm-store
+#   alone, deny reads of the credential roots and admit the hosts the lockfile names (the default registry, and the
+#   host of every `tarball:` row); before the first build a canary (the U272 form) proves one write beside the tree
+#   is denied inside, and a canary that does not run or a write that lands refuses the step.
 # @exitcode 0 Installed, already installed, repaired (the wrapper rewritten for the tree current names, no download),
 #   no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh (a WARN), or the download failed (a WARN; nothing
 #   installed or recorded).
@@ -1837,11 +2010,36 @@ function dsh_prune_older() {
 #   failed; the line printed names the state left.
 #
 function update_deepseek_harness() (
-    local recorded download_dir="" tarball actual tree="" version physical expected target="" leaf="" installed repair="" prior_target="" wrapper_tmp="" wrapper_step="" quote="'" quoted_home row record_status=0 plugin_real="" profile_real="" profile_modules_real="" plugin_target="" link_tmp=""
+    local recorded download_dir="" tarball actual tree="" version physical expected target="" leaf="" installed repair="" prior_target="" wrapper_tmp="" wrapper_step="" quote="'" quoted_home row record_status=0 plugin_real="" profile_real="" profile_modules_real="" plugin_target="" link_tmp="" hosts=() settings="" profile_settings="" canary="" probe=""
     # One record line for the install and for the rewrite on the already-installed exit, so the two cannot drift; it
     # writes the two paths the table's last row names (dsh/current, bin/dsh).
     dsh_record() {
-        manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "DSH_CLIENT_COMMIT_HASH=${DSH_COMMIT} pnpm run build" "pnpm install in ${DSH_HOME}/profiles/thak" "ln -s ${plugin_target} <link tmp>" "os.replace <link tmp> ${profile_modules_real}/dsh-omp-gateway (resolves to ${plugin_real})" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"
+        manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/current" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "mktemp -d ${DSH_HOME}/dsh/${DSH_PIN_TAG}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "srt --settings <tree>.srt.json -- pnpm install --frozen-lockfile (writes: <tree>, ${DSH_HOME}/.pnpm-store)" "srt --settings <tree>.srt.json -- DSH_CLIENT_COMMIT_HASH=${DSH_COMMIT} pnpm run build" "srt --settings <tree>.profile.srt.json -- pnpm install in ${DSH_HOME}/profiles/thak (writes: that directory, ${DSH_HOME}/.pnpm-store)" "ln -s ${plugin_target} <link tmp>" "os.replace <link tmp> ${profile_modules_real}/dsh-omp-gateway (resolves to ${plugin_real})" "ln -sfn <tree> ${DSH_HOME}/dsh/current" "mv <wrapper tmp> ${DSH_HOME}/bin/dsh"
+    }
+    # The hosts a pnpm run may reach are its lockfile's, set in `hosts`: pnpm-lock.yaml resolves registry packages by
+    # bare integrity, so the default registry is named first, and a dependency fetched by URL carries its host in a
+    # `tarball:` row (the pinned tag: cdn.sheetjs.com for xlsx); a host inside a deprecation message is no fetch and
+    # is not read. grep's status is read three ways: rows (0), no row (1), a lockfile it could not read (any other,
+    # the refusal). The second argument names the state a refusal leaves.
+    dsh_lockfile_hosts() {
+        local rows="" row host status=0
+        hosts=(registry.npmjs.org)
+        rows="$(grep -o 'tarball: https\{0,1\}://[A-Za-z0-9.-]*' "$1")" || status=$?
+        case ${status} in
+        0 | 1) ;;
+        *)
+            printf 'update_deepseek_harness: the lockfile %s could not be read; %s\n' "$1" "$2" >&2
+            return 1
+            ;;
+        esac
+        while IFS= read -r row; do
+            host="${row##*://}"
+            [ -n "${host}" ] || continue
+            case " ${hosts[*]} " in # lint-comparisons: allow a membership test over host names, no path compare
+            *" ${host} "*) ;;
+            *) hosts+=("${host}") ;;
+            esac
+        done <<< "${rows}"
     }
     # The link joins two physical paths (pwd -P), so a profiles/ parent that is a symlink elsewhere under DSH_HOME gets
     # a relative target that resolves, and the receipt records what was written. The previous link is replaced by one
@@ -2103,7 +2301,7 @@ function update_deepseek_harness() (
         # return, so a bare name is unbound under set -u and the trap dies before its rm; a name emptied once its path
         # is gone adds no operand. `|| :`: set -e is in force inside the trap, so a cleanup that fails would make its
         # status the step's (a failed download's WARN became exit 77); what the cleanup leaves is the next run's.
-        trap 'rm -rf ${download_dir:+"${download_dir}"} ${tree:+"${tree}"} ${wrapper_tmp:+"${wrapper_tmp}"} || :' EXIT
+        trap 'rm -rf ${download_dir:+"${download_dir}"} ${tree:+"${tree}"} ${wrapper_tmp:+"${wrapper_tmp}"} ${settings:+"${settings}"} ${profile_settings:+"${profile_settings}"} ${canary:+"${canary}"} || :' EXIT
         tarball="${download_dir}/deepseek-harness-${DSH_PIN_TAG}.tar.gz"
         curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${DSH_ARCHIVE_URL}" -o "${tarball}" || {
             printf 'WARN: update_deepseek_harness: the DeepSeek harness archive could not be downloaded (%s); nothing installed, nothing recorded; the existing install is unchanged and the next make update retries.\n' "${DSH_ARCHIVE_URL}" >&2
@@ -2137,9 +2335,41 @@ function update_deepseek_harness() (
             printf 'DeepSeek harness archive version %s is not the pin %s; install refused.\n' "${version}" "${DSH_PIN_TAG#dsh-v}" >&2
             return 1
         fi
-        # MISE_EXEC_AUTO_INSTALL=false (mise's exec_auto_install setting): a Node or pnpm mise has not installed
-        # refuses the build instead of landing in mise's tool trees, which this step never changes (verdicts/U276b).
-        (cd "${tree}" && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm install --frozen-lockfile && DSH_CLIENT_COMMIT_HASH="${DSH_COMMIT}" MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm run build) || return 1
+        # The frozen install needs the lockfile; a tag without one is no tree this step builds.
+        if [ ! -f "${tree}/pnpm-lock.yaml" ]; then
+            printf 'update_deepseek_harness: the archive holds no pnpm-lock.yaml, which the frozen install reads; install refused.\n' >&2
+            return 1
+        fi
+        dsh_lockfile_hosts "${tree}/pnpm-lock.yaml" "install refused." || return 1
+        settings="${tree}.srt.json"
+        profile_settings="${tree}.profile.srt.json"
+        canary="${tree}.canary"
+        # The canary (the U272 form) proves the sandbox holds before any upstream code runs: one write beside the tree,
+        # outside both write roots, must be denied inside, and the word the probe prints is read whole. A canary that
+        # does not run (srt absent or refusing its settings) and a write that lands are each refused, and a file the
+        # write made is removed here, outside. `true`, not `:`: a failed redirection on a special builtin ends a POSIX
+        # shell.
+        # shellcheck disable=SC2016 # the text runs inside srt's /bin/sh, where $1 is the canary path
+        probe="$(build_under_srt "${tree}" "${settings}" -- /bin/sh -c 'if true 2> /dev/null > "$1"; then echo write-open; else echo write-denied; fi' canary "${canary}")" || {
+            rm -f "${canary}" || :
+            printf 'update_deepseek_harness: the sandbox canary did not run under srt; nothing installed, nothing recorded; the previous install, when there is one, is unchanged.\n' >&2
+            return 1
+        }
+        if [ "${probe}" != write-denied ] || [ -e "${canary}" ]; then
+            rm -f "${canary}" || :
+            printf 'update_deepseek_harness: the sandbox does not hold (canary: %s); nothing installed, nothing recorded; the previous install, when there is one, is unchanged.\n' "${probe}" >&2
+            return 1
+        fi
+        # The upstream install and build scripts run inside srt alone (verdicts/U317 P1 :2421, the same class): writes
+        # under the new tree and the store, reads outside the credential roots, the lockfile's hosts.
+        build_under_srt "${tree}" "${settings}" "${hosts[@]}" -- pnpm install --frozen-lockfile || {
+            printf 'update_deepseek_harness: the install of the tree failed inside srt (a write outside %s and %s is refused there; hosts allowed: %s); the new tree is removed; nothing installed, nothing recorded; the previous install, when there is one, is unchanged.\n' "${tree}" "${DSH_HOME}/.pnpm-store" "${hosts[*]}" >&2
+            return 1
+        }
+        build_under_srt "${tree}" "${settings}" "${hosts[@]}" -- "DSH_CLIENT_COMMIT_HASH=${DSH_COMMIT}" pnpm run build || {
+            printf 'update_deepseek_harness: the build failed inside srt (a write outside %s and %s is refused there); the new tree is removed; nothing installed, nothing recorded; the previous install, when there is one, is unchanged.\n' "${tree}" "${DSH_HOME}/.pnpm-store" >&2
+            return 1
+        }
         # The download directory holds only the verified archive, whose tree is now built, so its removal is no read
         # the step decides on: it goes here, before anything the host runs changes, and a removal that fails is a WARN
         # that never changes the step's flow (under set -e a bare failing rm would end the subshell, and a retry of it
@@ -2147,9 +2377,16 @@ function update_deepseek_harness() (
         rm -rf "${download_dir}" || printf 'WARN: update_deepseek_harness: the download directory %s could not be removed; it holds only the verified archive and the next make update makes a new one.\n' "${download_dir}" >&2
         download_dir=""
         # The profile's plugins go in before anything the host runs changes: a failure here needs no undo, since
-        # current, the wrapper and every older tree are still as they were and the trap removes the new tree.
-        (cd "${DSH_HOME}/profiles/thak" && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm install) || {
-            printf 'update_deepseek_harness: the profile install failed; nothing recorded; current, the wrapper and the older trees are untouched.\n' >&2
+        # current, the wrapper and every older tree are still as they were and the trap removes the new tree. The
+        # install runs inside srt with the profile directory and the store as its write roots; its hosts are its own
+        # lockfile's when pnpm has written one (the kit renders none), else the default registry alone.
+        if [ -e "${DSH_HOME}/profiles/thak/pnpm-lock.yaml" ]; then
+            dsh_lockfile_hosts "${DSH_HOME}/profiles/thak/pnpm-lock.yaml" "nothing recorded; current, the wrapper and the older trees are untouched." || return 1
+        else
+            hosts=(registry.npmjs.org)
+        fi
+        build_under_srt "${DSH_HOME}/profiles/thak" "${profile_settings}" "${hosts[@]}" -- pnpm install || {
+            printf 'update_deepseek_harness: the profile install failed inside srt (a write outside %s and %s is refused there); nothing recorded; current, the wrapper and the older trees are untouched.\n' "${DSH_HOME}/profiles/thak" "${DSH_HOME}/.pnpm-store" >&2
             return 1
         }
         dsh_link_plugin "nothing recorded; current, the wrapper and the older trees are untouched." || return 1

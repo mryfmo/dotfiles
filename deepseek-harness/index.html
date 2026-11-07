@@ -5436,6 +5436,28 @@ runtime is never executed outside srt. Two launches at once share no settings
 file. The role's rows and the hazard-by-hazard account of the four verdicts
 are in <code>scripts/orchestrator/README.md</code> ("The dsh role") and the tests in
 <code>tests/unit/test_hcom_seat_dsh.py</code>.</p>
+<p>The router role (regime-cutover U321). The dsh-superagent Router runs under
+the same lever as <code>hcom-seat router [--profile router] [--home &lt;DSH_HOME&gt;] --
+&lt;dsh args&gt;</code>, one more row of the role table: the dsh row's containment (the
+per-launch slot, the write roots, the deny row, the four-probe canary,
+<code>OMP_PROFILE=dsh</code> and the shared omp profile, the environment list, the slot
+removal) with three cells of its own. The DSH profile is <code>router</code> and the only
+one the role accepts; <code>--profile router</code> or none, any other refused by name,
+exit 2, before any tool is resolved. The srt settings carry
+<code>allowLocalBinding: true</code> for this role alone, because U317b measured
+(2026-11-07T00:12Z, the prototype at pin 8c32a9dc) that the Runtime does not
+start without the <code>dsh-host-webserver</code> plugin, so the Router needs its
+loopback listener; srt 0.0.81 has no loopback-only form, so the grant is bind
+and inbound on every interface, and what the listener answers is bounded by
+the upstream Management API's host check (the hosts <code>127.0.0.1:&lt;port&gt;</code> and
+<code>localhost:&lt;port&gt;</code> alone, and only with the <code>x-orchestrator-request</code> header,
+upstream <code>docs/006-deployment.md</code>); the port is the profile's, the role grants
+binding and no port. The Router's state root <code>&lt;DSH_HOME&gt;/router-state</code>, where
+U317b renders <code>stateDir</code>, is a write root of its own (allowWrite row 6, after
+<code>~/.omp/run</code>, inside <code>DSH_HOME</code>), judged like any untagged row. The router
+settings differ from the dsh settings in exactly those two values, the dsh
+and omp roles' settings do not change by a byte, and
+<code>tests/unit/test_hcom_seat_dsh.py</code> asserts both.</p>
 
 
 

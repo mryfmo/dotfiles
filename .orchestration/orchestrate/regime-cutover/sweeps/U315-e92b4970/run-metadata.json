@@ -1,0 +1,109 @@
+{
+  "run_id": "dotfiles-run-20",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "e92b49705837d28dc315dd23a5a7aa00f8a607e2",
+    "branch": "feat/dsh-role-profile-route",
+    "parent_of_change": "2b2415f6c",
+    "base_note": "origin/main 2b2415f6 is U306 merged as #707; its code tree equals run-19's head d4046bdf (only .orchestration records differ).",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) the head's own change, U310 (2b2415f6..e92b4970: the dsh role's profile config row in hcom-seat and its deployed copy, the manifest's omp.gateway_roles, the generator's gateway overlay and the rendered dsh.yml.tmpl, docs and tests), hunted in four new units; (2) run-19's 58 units carried and re-checked at this head, the lever units revalidated at the changed lever with every cited line re-mapped through the 2b2415f6..HEAD diff.",
+  "scope_paths": [
+    "docs/deepseek-harness.md",
+    "home/dot_agents/agent-config.yaml",
+    "home/dot_agents/omp/profiles/dsh.yml.tmpl",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "scripts/generate-agent-configs.py",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/hcom-seat",
+    "tests/unit/test_generate_agent_configs.py",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "scripts/update-agent-assets.sh",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Source checks throughout; one parent-side local harness (the auditor's own scripts in agents/parent-hunter/scratch, re-typing hcom-seat:2103-2105 against a scratch fixture, inside this seat's srt 0.0.81 containment with no network) and one observation of srt 0.0.81 itself (a link created inside the write root).",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-19",
+      "source_ref": "d4046bdf99a10ac1b627ce4f4c972768e681f92e",
+      "findings": 0,
+      "ledger_units": 58,
+      "use": "The set to carry: all 58 units carried (the 8 lever-path units, 7 covered and the candidate, revalidated at the changed lever with lines re-mapped; the 7 U227b units, 3 of them changed-source through the manifest and generator, and the U306 unit re-checked; 42 out of scope); its unvalidated candidate is carried again with blocker 2 answered from srt's own installed source."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T23:33:48Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: two candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted and refused). The new U310 candidate dsh-seat/profile-config-write/tmp-path-link-followed-outside-srt (proposed confirmed, medium) and the carried dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt stay unvalidated ledger candidates and are not findings.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "dsh-seat/profile-config-write/tmp-path-link-followed-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile_config_write-temporary-file",
+      "record": "agents/parent-hunter/scratch/candidate-tmp-link.json",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "medium",
+      "new_in": "U310 (this head; not on origin/main)"
+    },
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh",
+      "record": "agents/parent-hunter/scratch/candidate-pnpm.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-19",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (2), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 launch of two verifiers was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work beyond the four U310 units: the profile config write, the check and dry-run messages, the placed config, the generator render; every carried unit re-mapped"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 2,
+  "findings_count": 0,
+  "finished_at": "2026-11-06T23:49:48Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

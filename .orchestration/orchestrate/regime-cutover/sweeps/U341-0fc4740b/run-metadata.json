@@ -1,0 +1,163 @@
+{
+  "run_id": "dotfiles-sweep-3-run-27",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "0fc4740b1c3522213c50347758b2394d6db5336c",
+    "branch": "fix/dsh-harness-build-under-srt",
+    "base": "668ba887acf39ff740348d922ac0da7724b96459",
+    "round_1_head": "2feb04465799aad00f9b8b7a26806c62abbcc304",
+    "round_2_head": "a2916b376ca311780dcfc707b1fa3494472cbd01",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U322 change against origin/main 668ba887 (5 paths: scripts/update-agent-assets.sh build_under_srt and its callers, docs/deepseek-harness.md, tests/unit/test_update_agent_assets.py, tests/unit/test_network_bounds.py, tests/unit/test_sandbox_portability.py), with rounds 2 and 3 (2feb0446..0fc4740b) hunted fresh; the carried records re-checked at this head; every other path is carried out_of_scope",
+  "scope_note": "The brief names git diff --name-only 668ba887 HEAD as 3 paths; it lists 5 (round 3 adds the two test modules). The brief's carry set is run-26, which swept U310's branch; U310 is not an ancestor of this head, so its units have no source here and run-25 (this unit's round 1 on the same main) is the base ledger, with run-26's two leads that have source here carried.",
+  "scope_paths": [
+    "scripts/update-agent-assets.sh",
+    "docs/deepseek-harness.md",
+    "tests/unit/test_update_agent_assets.py",
+    "tests/unit/test_network_bounds.py",
+    "tests/unit/test_sandbox_portability.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, grep and its own node scripts (ledger builder, line map) over the tree, and read the installed srt 0.0.81 JavaScript (~/.local/share/mise/installs/npm-anthropic-ai-sandbox-runtime/0.0.81) as source; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-25",
+      "source_ref": "2feb04465799aad00f9b8b7a26806c62abbcc304",
+      "findings": 0,
+      "unvalidated_candidates": 9,
+      "ledger_units": 83,
+      "use": "Base ledger: this unit's round 1 on the same main 668ba887. Updater lines re-mapped through the round 2-3 hunks (run-26's linemap.cjs over git diff -U0 2feb0446 HEAD); the four U322 units re-checked fresh."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-26",
+      "source_ref": "384cd256025b8d1645efce4e7d4ed91f88c0ecf9",
+      "findings": 0,
+      "unvalidated_candidates": 9,
+      "ledger_units": 88,
+      "use": "The brief's carry set (U310's branch). Carried: dsh-seat/profile-root-relink/write-grant-follows-session-made-link (re-read on main's hcom-seat) and dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt (closed here by U322). U310's own units have no source on this branch."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T05:26:02Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and ten carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. Rounds 2 and 3 produced no new candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2415-2420, :2056-2075",
+      "proposed_verdict": "needs_validation",
+      "note": "U322 round 1 (run-25); unchanged by rounds 2 and 3"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1892-1899, :1901-1913",
+      "proposed_verdict": "needs_validation",
+      "note": "U322 round 1 (run-25); round 3 renames the store's tmp to tmpdir only"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "where": "scripts/orchestrator/hcom-seat:1513-1522",
+      "proposed_verdict": "needs_validation",
+      "note": "carried from run-26; on this branch a relinked DSH_HOME also carries the updater's write roots"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/update-agent-assets.sh:1934-1937; hcom-seat's seat deny_read",
+      "proposed_verdict": "needs_validation",
+      "note": "both halves hold on this branch"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:1255, :1521",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "a direct ~/.dsh/bin/dsh run outside the U272 role (scripts/update-agent-assets.sh:2443)",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "no token variable exists"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id (home/dot_dsh/profiles/thak/cordis.patch.yml:9-12)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "bash-sandbox disabled (home/dot_dsh/profiles/thak/cordis.patch.yml:13-14)"
+    }
+  ],
+  "closed_on_this_branch": [
+    "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt (the profile install runs inside srt, scripts/update-agent-assets.sh:2420)"
+  ],
+  "leads_on_other_branches": [
+    "U310's leads (run-26)",
+    "hcom-seat/router:state-root-resolved-through-a-seat-writable-link (U321, run-24)",
+    "hcom-seat/router:passthrough-launcher-flags-recompose-the-profile (U321, run-24)",
+    "hcom-seat/router:local-binding-every-interface (U321, run-24)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "asked whether round 2's proxy pass-through widens egress (no: srt's proxy enforces allowedDomains) and whether a seat-relinked DSH_HOME reaches the updater (yes: recorded under the relink lead, no new fingerprint)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 10,
+  "findings_count": 0,
+  "ledger_units": 90,
+  "ledger_counts": {
+    "covered": 30,
+    "candidate": 10,
+    "out_of_scope": 50
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-07T05:33:52Z"
+}

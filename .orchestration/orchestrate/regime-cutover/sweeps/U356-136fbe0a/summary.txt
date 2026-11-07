@@ -1,0 +1,17 @@
+security-audit sweep 136fbe0a0b94d5fb4da2f3c93a308a4041afa85c: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U343 to U343d (acp-broker starts omp workers in sibling srt sandboxes for the Router; acp-seat client, acp-relay.py relay): the launch path holds (pins first, the header judged whole, the task cwd held by identity, the worker's denies the Router's own rendered rows, its grants the dsh row's and judged first, a fresh slot under .sandbox, a one-answer canary, pinned physical argv under env -i); nothing at this head starts the broker or opens its socket (U344)
+new unvalidated candidate (not a finding; the Phase 3 verifier launch was refused by policy):
+  acp-broker/launch-log/append-follows-router-written-entry	scripts/orchestrator/acp-broker:1054	the log is <seats-root>/.state/<header name>/acp-launch.log, the Router's own write root when it names itself, appended with bash >> after an lstat check, so a link swapped in (or a hard link) points the broker's append, made as the operator, at an operator file
+carried unvalidated candidates, on origin/main (not findings):
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:422
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1395	(the broker a third surface on this branch, acp-broker:998-999)
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2399
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2439
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2006
+hardening (new): the broker's socket directory is in the Router's write root (the relay enters, binds and unlinks it by path); the README describes U344's socket wiring as present; the worker settings writer duplicates hcom-seat's dsh row (residual, U344)
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: 6ad1be23..136fbe0a (12 files) in three new units; run-36's units (run-34's set at main 6ad1be23) re-mapped through 1d65d150..136fbe0a with U354's sentences reversed; profile standard, source-only; ledger 84 units: 36 covered, 6 candidate, 42 out_of_scope
+brief notes: the GOAL, branch name and hunt list are U322's text; the title says U343c and the GOAL U343d; the CONTEXT calls run-34 'the U343d head 0fc4740b' (that is U322c; run-34 swept U317d)
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: linemap.cjs, blobs.cjs, cite-sample.cjs, build-ledger.cjs and the six candidate records in agents/parent-hunter/scratch/)
+wall time: 334s (2026-11-07T09:22:25Z to 2026-11-07T09:27:59Z)

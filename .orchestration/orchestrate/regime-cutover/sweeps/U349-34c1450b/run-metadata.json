@@ -1,0 +1,145 @@
+{
+  "run_id": "dotfiles-run-33",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "34c1450ba57e847608969b29890c7f11d8deba5b",
+    "branch": "feat/dsh-role-profile-route",
+    "parent_of_change": "49f3c33c3fe0322474a671a598765aa2f1397259",
+    "base_note": "U310g: a merge of origin/main 49f3c33c (U318b #716, U330 #717, U318c #719, U321 #715, U322 #718) into the U310 branch at b2ba1204 (U310 to U310f), hcom-seat and the dsh test module resolved by hand and the pins regenerated. The merge base with origin/main is 49f3c33c itself. Checked: git diff 49f3c33c..HEAD lists fourteen files. The brief's GOAL paragraph is U322's text and its branch name U322's; its title, head, previous-run and REPORT lines name U310g, which this run hunted, and its CONTEXT names run-32 as the previous run (calling it 'the U310d head 39f75cc8', which is run-31's head). The updater is run-31's blob and the preflight run-29's; the lever (809835b0) and the helper (3b9fc0e4) are new to this seat since run-27 (U310d, 28457a6a); U310e and U310f were swept on sweep-3, whose records this seat cannot read.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U310 against main 49f3c33c (14 files: the dsh and router rows' profile config placement in hcom-seat, the pinned helper profile-config-place.py and its copy, the dsh.yml overlay template, the generator's gateway render, docs, README, pins, four test modules), with U310e and U310f read whole and the merge read for what U321's router row changes about the placement; (2) run-32's records carried and re-mapped through 3a6a22a0..34c1450b; the four U310 units, not applicable since run-28, restated at this head; the relink candidate's U310 write leg restored; the U322 units and the pnpm unit restated for U322 on origin/main.",
+  "carry_note": "The brief names run-32 as the set to carry. Its relink unit carried a sentence citing the lever without its file name at origin/main 668ba887's numbering, unmapped since run-28; it is placed at this head by reading it.",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "scripts/orchestrator/profile-config-place.py",
+    "home/dot_local/bin/common/executable_profile-config-place.py",
+    "home/dot_agents/omp/profiles/dsh.yml.tmpl",
+    "scripts/generate-agent-configs.py",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "docs/deepseek-harness.md",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "tests/unit/test_profile_config_place.py",
+    "tests/unit/test_generate_agent_configs.py",
+    "tests/unit/test_omp_review_security_roles_removed.py",
+    "scripts/update-agent-assets.sh",
+    "scripts/orchestrator/seat-login-preflight",
+    "home/dot_local/bin/common/executable_regime-url-opener"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the lever's and the helper's sha256 were computed with shasum on their blobs.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-32",
+      "source_ref": "3a6a22a09d5be8b1b46002691287e355d883461b",
+      "findings": 0,
+      "ledger_units": 78,
+      "use": "The set to carry: every unit re-mapped to this head, the five candidate records re-mapped."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-27",
+      "source_ref": "28457a6ac5ae2518254ee52066ffcb2d2680f890",
+      "findings": 0,
+      "ledger_units": 72,
+      "use": "This seat's last reading of U310 (U310d): the four U310 units' frames and invariants, and the relink candidate's write leg, restated at this head."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T07:30:36Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: five candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused): dsh-seat/profile-root-relink/write-grant-follows-session-made-link (its U310 write leg back in this head), updater/build_under_srt/settings-file-in-session-write-root, updater/build_under_srt/session-lockfile-names-the-build-hosts, router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound and seats/shared-claude-config-dir/cross-seat-session-files, all proposed needs_validation, all on origin/main, none a finding.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-32",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/settings-file-in-session-write-root",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-settings-file",
+      "record": "agents/parent-hunter/scratch/candidate-settings-in-write-root.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-32",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/session-lockfile-names-the-build-hosts",
+      "ledger_unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "record": "agents/parent-hunter/scratch/candidate-lockfile-hosts.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-32",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-32",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-32",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (5), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted restating the four U310 units from the source rather than diff-mapping run-27's U310d text, and restoring the relink candidate's write leg; no new candidate"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 5,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T07:38:39Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

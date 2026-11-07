@@ -1,0 +1,153 @@
+{
+  "run_id": "dotfiles-sweep-3-run-28",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "85d05d29b2f8f1ad49f972b622037a32b6c29c7f",
+    "branch": "fix/dsh-harness-build-under-srt",
+    "base": "668ba887acf39ff740348d922ac0da7724b96459",
+    "round_3_head": "0fc4740b1c3522213c50347758b2394d6db5336c",
+    "round_4_head": "39f75cc8ec390bf4ed7aecc256dcc373968e82ef",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U322 change against origin/main 668ba887 (5 paths: scripts/update-agent-assets.sh build_under_srt and its callers, docs/deepseek-harness.md, tests/unit/test_update_agent_assets.py, tests/unit/test_network_bounds.py, tests/unit/test_sandbox_portability.py), with rounds 4 and 5 (0fc4740b..85d05d29: the updater and two test modules) hunted fresh; the carried records re-checked at this head; every other path is carried out_of_scope",
+  "scope_note": "The brief names git diff --name-only 668ba887 HEAD as 3 paths; it lists 5. Rounds 4 and 5 alone touch 3.",
+  "scope_paths": [
+    "scripts/update-agent-assets.sh",
+    "docs/deepseek-harness.md",
+    "tests/unit/test_update_agent_assets.py",
+    "tests/unit/test_network_bounds.py",
+    "tests/unit/test_sandbox_portability.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, grep and its own node scripts (ledger builder, line map, reference-context lister) over the tree; srt 0.0.81's installed JavaScript was read as source in run-27 and its findings carried; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-27",
+      "source_ref": "0fc4740b1c3522213c50347758b2394d6db5336c",
+      "findings": 0,
+      "unvalidated_candidates": 10,
+      "ledger_units": 90,
+      "use": "Base ledger (the brief's set; this unit's round 3 on the same main). Updater lines re-mapped through the round 4-5 hunks (run-26's linemap.cjs over git diff -U0 0fc4740b HEAD); bare references that follow a hcom-seat or srt citation moved by a second pass from run-27's text; three units re-checked fresh."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T06:00:13Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and ten carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. Rounds 4 and 5 produced no new candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2438-2443, :2079-2098",
+      "proposed_verdict": "needs_validation",
+      "note": "U322 round 1; unchanged by rounds 2 to 5"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1908-1915, :1917-1929",
+      "proposed_verdict": "needs_validation",
+      "note": "U322 round 1; unchanged by rounds 4 and 5"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "where": "scripts/orchestrator/hcom-seat:1513-1522",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/update-agent-assets.sh:1950-1953; hcom-seat's seat deny_read",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:1255, :1521",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "a direct ~/.dsh/bin/dsh run outside the U272 role (scripts/update-agent-assets.sh:2466)",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "no token variable exists"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id (home/dot_dsh/profiles/thak/cordis.patch.yml:9-12)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "bash-sandbox disabled (home/dot_dsh/profiles/thak/cordis.patch.yml:13-14)"
+    }
+  ],
+  "closed_on_this_branch": [
+    "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt (the profile install runs inside srt, scripts/update-agent-assets.sh:2443)"
+  ],
+  "leads_on_other_branches": [
+    "U310's leads (run-26)",
+    "hcom-seat/router:state-root-resolved-through-a-seat-writable-link (U321, run-24)",
+    "hcom-seat/router:passthrough-launcher-flags-recompose-the-profile (U321, run-24)",
+    "hcom-seat/router:local-binding-every-interface (U321, run-24)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs, reference lister ref-context.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "asked whether the test-shadowable `test` predicate can reach production (no: only the step's own shell could define it) and whether the membership loop can drop a needed spelling (no: it drops exact duplicates only)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 10,
+  "findings_count": 0,
+  "ledger_units": 91,
+  "ledger_counts": {
+    "covered": 31,
+    "candidate": 10,
+    "out_of_scope": 50
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-07T06:05:08Z"
+}

@@ -1,0 +1,139 @@
+{
+  "run_id": "dotfiles-sweep-3-run-24",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "b80a4794cbe5cf62f22ce52e860c1e5513829c46",
+    "branch": "feat/hcom-seat-router-role",
+    "base": "247d890d753fea2f1ae2bb4b96e3a6f537d88036",
+    "round_2_head": "7dfaa839428a264ade463e9ecba0e70a6da31556",
+    "diff_base": "2b2415f6cae8b5d1db8d65a560f7cfb9e48e5ab6",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: git diff 2b2415f6..b80a4794 (32 paths); round 3 alone, 7dfaa839..b80a4794, is 6 files: scripts/orchestrator/hcom-seat (state_root_hold moved before the launch, the state root resolved once and rendered verbatim) and its deployed copy, the two pins, the README's router paragraph and tests/unit/test_hcom_seat_dsh.py; plus nine carried leads; every other path is carried out_of_scope",
+  "scope_note": "The brief's GOAL repeats U318's text and names the head U312's; the head is U321c's (commit subject regime-cutover U321c). The diff has 32 paths, not 16. Run-23 is carried, as CHANGE says (its CONTEXT names run-20, superseded).",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_hcom_seat_dsh.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, cmp, shasum and grep over the tree; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-23",
+      "source_ref": "7dfaa839428a264ade463e9ecba0e70a6da31556",
+      "findings": 0,
+      "unvalidated_candidates": 9,
+      "ledger_units": 78,
+      "use": "Base ledger (the brief's set). Every hcom-seat line re-mapped through U321c (e.g. :1914 to :1932, :2277 to :2292, the hold :1612-1636 to :628-646); the state-root lead re-checked (render-time race closed, post-check window unchanged); the router role row gains the hold-ordering note."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T03:34:01Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and nine carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. U321c produced no new candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "hcom-seat/router:state-root-resolved-through-a-seat-writable-link",
+      "where": "scripts/orchestrator/hcom-seat:1602, :2261",
+      "proposed_verdict": "needs_validation",
+      "note": "render-time race closed by U321c (:628-646, :1606, :1615); the post-check window before srt starts remains, blocked on srt's handling of a write path that has become a link"
+    },
+    {
+      "fingerprint": "hcom-seat/router:passthrough-launcher-flags-recompose-the-profile",
+      "where": "scripts/orchestrator/hcom-seat:324-330, :334; installed dsh apps/cli/src/args.ts:169-170",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:300, :2292",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:1612, :1862-1865, :1921, :1926, :1932",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "no token variable exists (hcom-seat:164, :2354-2355, :2408)"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "a direct ~/.dsh/bin/dsh run outside the U272 role (scripts/update-agent-assets.sh:2174)",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id (home/dot_dsh/profiles/thak/cordis.patch.yml:9-12)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "bash-sandbox disabled (home/dot_dsh/profiles/thak/cordis.patch.yml:13-14)"
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no missing unit: round 3 moves the hold and removes the second resolution; its one new behaviour (the hold writing before DSH_HOME is vetted, in a dry run too) is recorded as hardening on the router role row"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 9,
+  "findings_count": 0,
+  "ledger_units": 78,
+  "ledger_counts": {
+    "covered": 23,
+    "candidate": 9,
+    "out_of_scope": 46
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-07T03:36:40Z"
+}

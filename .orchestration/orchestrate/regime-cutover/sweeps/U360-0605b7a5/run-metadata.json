@@ -1,0 +1,76 @@
+{
+  "run_id": "dotfiles-sweep-3-run-33",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "0605b7a53f12485b82358f4d17c1a5a7fb1a8d8e",
+    "branch": "(detached at the U359 head)",
+    "base": "6ad1be2304d8cdef975136e44e5cde5c86219374",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U359 change against its merge base origin/main 6ad1be23 (2 files: the unit-test step's timeout-minutes in .github/workflows/test.yaml and its budget in tests/unit/test_apt_mirror.py); the run-32 records re-checked at this head; every other path is carried out_of_scope",
+  "scope_note": "The brief does not match the head: its title repeats U310h's description, its GOAL repeats U322's, and its CONTEXT names run-32 as the U359d head 39f75cc8 (run-32 was U355 4063b908). The positioned head is U359, one commit on origin/main 6ad1be23; git diff --name-only 668ba887 HEAD lists 38 paths, not 3. U355 is a sibling commit, not on this head.",
+  "scope_paths": [
+    ".github/workflows/test.yaml",
+    "tests/unit/test_apt_mirror.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git and its own node ledger builder over the tree; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-32",
+      "source_ref": "4063b9085175008a472227285c6ec23ac9ad053c",
+      "findings": 0,
+      "unvalidated_candidates": 12,
+      "ledger_units": 114,
+      "use": "Base ledger (the brief's set): main plus U355 there, main plus U359 here, so every unit carries with its lines except U355's gateway unit, which is out of scope here."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T09:47:08Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and twelve carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. U359 produced no new candidate.",
+  "unvalidated_candidates": [
+    {"fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off", "where": "home/dot_dsh/profiles/router/cordis.patch.yml:150-164, :55-69", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link", "where": "scripts/orchestrator/hcom-seat:746-750, :1989-2013, :1377, :1395", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable", "where": "scripts/orchestrator/hcom-seat:2285-2286", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "hcom-seat/router:local-binding-every-interface", "where": "scripts/orchestrator/hcom-seat:422, :2694", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file", "where": "scripts/update-agent-assets.sh:2438-2443", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check", "where": "scripts/update-agent-assets.sh:1908-1929", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation", "where": "scripts/orchestrator/hcom-seat:1731, :2006-2008", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded", "where": "scripts/update-agent-assets.sh:2466", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "records-sync/redaction/account-identity-residue-in-published-row", "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509", "proposed_verdict": "confirmed", "proposed_severity": "low (unverified)"},
+    {"fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands", "proposed_verdict": "rejected", "proposed_reason": "the token is unset at hcom-seat:180 and :2757"},
+    {"fingerprint": "dsh-profile:web-search-routes-to-the-official-api", "proposed_verdict": "rejected", "proposed_reason": "both base-bundle web rows disabled by id"},
+    {"fingerprint": "dsh-profile:thak-runs-without-command-sandbox", "proposed_verdict": "rejected", "proposed_reason": "the thak profile runs no shell tool"}
+  ],
+  "leads_on_other_branches": [
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-30)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-30)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {"pass": "post-wave", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "asked whether the change touches what runs or with what authority (no: one timeout and its pinned budget)"},
+    {"pass": "final-clean", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; no planned unit remains"}
+  ],
+  "candidate_count": 12,
+  "findings_count": 0,
+  "ledger_units": 115,
+  "ledger_counts": {"covered": 46, "candidate": 12, "out_of_scope": 57},
+  "shared_files_written": ["run-metadata.json", "architecture.md", "coverage-ledger.json", "findings.json", "REPORT.md", "FINDINGS-DETAIL.md", "NEEDS-VALIDATION.md"],
+  "finished_at": "2026-11-07T09:48:35Z"
+}

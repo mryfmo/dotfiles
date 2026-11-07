@@ -1,0 +1,15 @@
+security-audit sweep a4b09f3e1aae64de8cf20b0cea2cb67db1687ff0: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U364 (and U355, merged since run-36): the omp-gateway child's DEFAULT_ENV_NAMES gains CLAUDE_CONFIG_DIR and SRT_INJECTED_ENV_NAMES (home/dot_dsh/plugins/omp-gateway/config.mjs:10-19, :36-40); the values are srt's own (loopback proxy URL with its per-process token, CA path, SSH proxy command) handed to a child in the same sandbox; no candidate. U359 (a CI step bound and its test): no security surface.
+unvalidated candidates carried from run-36, all on origin/main (not findings; the Phase 3 verifier launch was refused by policy):
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:422
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1395
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2399
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2439
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2006
+off this head: router-seat/credential-root/agent-token-readable-by-the-router-model (U353 branch, run-38); acp-broker/launch-log/append-follows-router-written-entry (U343 branch, run-35)
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: dba01803..a4b09f3e (3 files) and 1d65d150..a4b09f3e (5 files); run-36's records carried (no cited file changed since 1d65d150), the omp-gateway environment unit restated; profile standard, source-only; ledger 81 units: 34 covered, 5 candidate, 42 out_of_scope
+brief notes: the title calls the head U364's merge head and the GOAL and hunt list are U322's text; the CONTEXT names run-38 as 'the U364d head 39f75cc8' (run-38 swept U353 at 8791100f, a branch not in this head), so run-36 is the carry set
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: linemap.cjs, cite-sample.cjs, build-ledger.cjs and the five candidate records in agents/parent-hunter/scratch/)
+wall time: 145s (2026-11-07T11:16:47Z to 2026-11-07T11:19:12Z)

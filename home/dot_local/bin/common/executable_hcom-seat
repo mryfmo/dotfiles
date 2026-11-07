@@ -1205,9 +1205,12 @@ srt_tmp_roots_for() {
 }
 srt_tmp_roots_for "${os}"
 root_ids=$'\n' root_id_list=() root_path_list=()
-roots=("${HOME}/.local/state/omp-seats" "${HOME}/.local/state/hcom" "${HOME}/Workspace" "${HOME}/.omp/profiles"
-    "${HOME}/.omp/run" "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}" "${HOME}/.claude" "${HOME}/.claude.json"
-    "${HOME}/.npm/_logs" "${srt_tmp_roots[@]}")
+# The program stores' root parent `~/.local/state/regime-store` is in the set whole, before the slug is known (regime-cutover
+# U219b, verdict U219-ce7e875e P1): the orchestrator writes `<root>/<slug>` (seat_write_roots), so a tool a seat
+# plants under it must be refused here, before anything runs it, like one under `~/.local/state/hcom` or the seats roots.
+roots=("${HOME}/.local/state/omp-seats" "${HOME}/.local/state/hcom" "${HOME}/.local/state/regime-store" "${HOME}/Workspace"
+    "${HOME}/.omp/profiles" "${HOME}/.omp/run" "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}" "${HOME}/.claude"
+    "${HOME}/.claude.json" "${HOME}/.npm/_logs" "${srt_tmp_roots[@]}")
 # The dsh role's DSH_HOME, the held physical home (dsh_home_hold), is protected from here on (U272): a tool `mise which`
 # or the caller's PATH answers under it is refused before anything runs it, as a tool under a seats root is.
 for root in ${HCOM_DIR:+"${HCOM_DIR}"} ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"} ${seats_root:+"${seats_root}"} ${dsh_home_phys:+"${dsh_home_phys}"}; do

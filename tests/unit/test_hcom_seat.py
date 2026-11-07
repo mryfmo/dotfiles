@@ -3002,6 +3002,35 @@ class HcomSeatTest(SeatFixture):
         self.assertIn(str(derived), fs["allowWrite"])
         self.assertIn(str(root), fs["allowRead"])
 
+    def test_an_executable_planted_under_the_store_root_never_runs(self):
+        """U219b (verdict U219-ce7e875e P1 `:2158`): the orchestrator writes `<HOME>/.local/state/regime-store/<slug>`,
+        so the parent `~/.local/state/regime-store` is in the protected set whole, from the lever's start, like
+        `~/.local/state/hcom` and `~/.local/state/omp-seats`: a `git` planted under the root and first on the caller's
+        PATH is refused by name before anything runs it (round 1 granted the root in the settings but not here, and the
+        auditor's planted git ran three times on the host before the late write-root refusal), for both roles, in a
+        launch and in a dry run; the planted file never runs (the record it would write does not exist), no seats
+        root, slot or settings file is made, and hcom is never called."""
+        home = self.home.resolve()
+        root = home / ".local/state/regime-store/repo"
+        planted = root / "bin"
+        marker = self.plant(planted, "git")
+        for role in ("worker", "orchestrator"):
+            for args in ([], ["--dry-run"]):
+                with self.subTest(role=role, args=args):
+                    run = self.seat(role, "--seats-root", self.seats, *args, PATH=f"{planted}:{self.env['PATH']}")
+                    self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(
+                        f"git {planted}/git is or lies under the seat write root {home}/.local/state/regime-store",
+                        run.stderr,
+                    )
+                    self.assertFalse(Path(self.seats).exists(), "no seats root, no slot, no settings file")
+        self.assertEqual(self.calls_of("hcom"), [])
+        # The control: the same root, nothing planted on PATH, launches and grants the root as round 1 did.
+        run = self.seat("orchestrator", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(str(root), self.settings_of("orchestrator")["filesystem"]["allowWrite"])
+
 
 if __name__ == "__main__":
     unittest.main()

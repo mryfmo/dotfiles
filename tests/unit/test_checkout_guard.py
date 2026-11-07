@@ -8,8 +8,10 @@ way a worker's head reaches the coordinator's checkout. Nothing reads the real c
 """
 
 import ast
+import hashlib
 import os
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -34,6 +36,9 @@ ROUTE = (
     "commits belong in a worker tree: ~/.local/bin/common/worker-worktree.sh <unit> <branch> origin/main makes one "
     "under $TMPDIR/dotfiles-wt/<unit> (standing order 29)"
 )
+# The pre-move lever (origin/main 7b570792, U215 merged): the coordinator's live checkout holds the hook it wrote, which
+# this lever's `install` upgrades (U219b). The test renders that lever from `git show`, never from a copied literal.
+BASE = "7b570792"
 REFUSAL = "checkout-guard: this checkout is the coordinator's; " + ROUTE
 FAILED_READ = "the update is refused (standing order 21)"
 ZERO = "0" * 40
@@ -163,15 +168,21 @@ class CheckoutGuardTest(unittest.TestCase):
         self.assertIn(REFUSAL, err)
         self.assertIn("which no refs/remotes/origin/* ref reaches", err)
 
-    def shim(self, pattern, status=128, name="git", nth=None):
+    def shim(self, pattern, status=128, name="git", nth=None, output=None, before=None):
         """The directory whose `NAME` (default `git`) exits STATUS on a call whose arguments hold PATTERN, else runs
         the real NAME from PATH. With NTH, only the NTH such call fails (the calls are counted in the `calls` file
         of the directory, read and written by the shell's builtins so a `cat` shim never runs itself; the caller
-        removes the file between runs)."""
+        removes the file between runs). With OUTPUT, the failing call prints it on stdout first, as a tool that fails
+        after plausible output would (U219b). With BEFORE, a matching call runs that shell command and then the real
+        NAME instead of failing."""
         real = shutil.which(name, path=self.env["PATH"])
         shims = Path(tempfile.mkdtemp(prefix=f"shim-{name}-", dir=self.root))
         failing = f'echo "shim: failing {name} {pattern}" >&2; exit {status}'
-        if nth is None:
+        if output is not None:
+            failing = f"printf '%s\\n' {shlex.quote(output)}; " + failing
+        if before is not None:
+            decision = f"{before} ;;"
+        elif nth is None:
             decision = f"{failing} ;;"
         else:
             decision = (
@@ -187,6 +198,27 @@ class CheckoutGuardTest(unittest.TestCase):
         a PATH shim never reaches a hook; `GIT_EXEC_PATH` names that directory, and the shim there runs the real git
         for everything but PATTERN (the outer command among it)."""
         return {**self.env, "GIT_EXEC_PATH": str(self.shim(pattern))}
+
+    def base_lever(self):
+        """The pre-move lever (BASE) rendered from `git show` into a scratch tree of the checkout's shape, git-isolated.sh
+        of the same commit beside it and a manifest pinning both, so its self-check passes and its `install` writes
+        the hook bytes a checkout upgraded from it holds; never a copied literal (U219b TRUST)."""
+        tree = self.root / "base"
+        levers = tree / "scripts/orchestrator"
+        levers.mkdir(parents=True)
+        (tree / "home/dot_agents").mkdir(parents=True)
+        pins = []
+        for name in ("checkout-guard.sh", "git-isolated.sh"):
+            shown = subprocess.run(
+                ["git", "-C", str(ROOT), "show", f"{BASE}:scripts/orchestrator/{name}"],
+                env=self.env, capture_output=True, check=False, timeout=120,
+            )  # fmt: skip
+            self.assertEqual(shown.returncode, 0, shown.stderr.decode())
+            (levers / name).write_bytes(shown.stdout)
+            pins.append(f"      {name}: {hashlib.sha256(shown.stdout).hexdigest()}\n")
+        (levers / "checkout-guard.sh").chmod(0o755)
+        (tree / "home/dot_agents/agent-config.yaml").write_text("claude:\n  levers:\n    sha256:\n" + "".join(pins))
+        return levers / "checkout-guard.sh"
 
     def test_install_on_a_main_checkout_writes_the_hook_and_a_second_install_is_a_no_op(self):
         """`install` writes `reference-transaction` into the checkout's hooks directory, mode 0755, and reads it back,
@@ -844,6 +876,162 @@ class CheckoutGuardTest(unittest.TestCase):
         self.assertEqual(hook.read_bytes(), (self.hooks / HOOK).read_bytes())
         run = self.install()
         self.assertEqual([("unchanged", str(hook)), ("installed", str(self.marker))], self.rows(run.stdout))
+
+    def test_a_hook_the_pre_move_lever_wrote_is_older_and_install_upgrades_it(self):
+        """U219b (verdict U219-ce7e875e P2 `:774`): the coordinator's live checkout holds the hook the pre-move lever
+        (BASE, 7b570792) wrote and no marker. Against that hook, written by the base lever itself (`git show` into a
+        scratch tree, run as the lever, never a copied literal), this head's `check` reports the hook `older` (exit 1,
+        with or without its execute bit) and the marker `absent`; `install` replaces the hook through the staged write
+        (`upgraded` row, this lever's bytes, 0755) and writes the marker (`installed`), after which `check` exits 0
+        with every row `installed` and a second install prints `unchanged` for each; a hook with bytes of neither
+        version is `differs`, refused as today and never overwritten; the hash tool failing on the hook's read (a PATH
+        stub that prints a plausible digest and exits 7) is a refusal naming the hook for `check` and `install`, never
+        `differs` and nothing written (standing order 21)."""
+        hook = self.hooks / HOOK
+        base = self.base_lever()
+        run = subprocess.run(
+            [str(base), "install", str(self.checkout)],
+            cwd=self.root, env=self.env, capture_output=True, text=True, timeout=120,
+        )  # fmt: skip
+        self.assertEqual((run.returncode, self.rows(run.stdout)), (0, [("installed", str(hook))]), run.stderr)
+        older = hook.read_bytes()
+        self.assertFalse(self.marker.exists(), "the pre-move lever writes no marker")
+        for mode in (0o755, 0o644):
+            hook.chmod(mode)
+            with self.subTest("check", mode=oct(mode)):
+                check = self.run_lever("check", str(self.checkout))
+                self.assertEqual(
+                    (check.returncode, self.rows(check.stdout)),
+                    (1, [("older", str(hook)), ("absent", str(self.marker))]),
+                    check.stderr,
+                )
+        hook.chmod(0o755)
+        # The lever hashes on stdin (no file name is escaped into the output), so the stub fails by count: the third
+        # hash call of a run, after this lever's self-check and git-isolated.sh's, is the hook's digest.
+        tool = "sha256sum" if shutil.which("sha256sum", path=self.env["PATH"]) else "shasum"
+        shims = self.shim("", status=7, name=tool, nth=3, output=f"{'0' * 64}  -")
+        env = {**self.env, "PATH": f"{shims}:{self.env['PATH']}"}
+        state = self.hooks_state()
+        for action in ("check", "install"):
+            with self.subTest(action, producer=tool):
+                (shims / "calls").unlink(missing_ok=True)
+                run = self.run_lever(action, str(self.checkout), env=env)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"shim: failing {tool}", run.stderr)
+                self.assertIn(f"cannot hash {hook}", run.stderr)
+                self.assertEqual((shims / "calls").read_text(), "3\n", "the hook's digest was the call that failed")
+                self.assertEqual(self.hooks_state(), state)
+        run = self.install()
+        self.assertEqual([("upgraded", str(hook)), ("installed", str(self.marker))], self.rows(run.stdout))
+        self.assertNotEqual(hook.read_bytes(), older)
+        self.assertEqual(stat.S_IMODE(hook.stat().st_mode), 0o755)
+        self.assertEqual((self.marker.read_bytes(), stat.S_IMODE(self.marker.stat().st_mode)), (MARKER_TEXT, 0o644))
+        check = self.run_lever("check", str(self.checkout))
+        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, self.installed_rows()), check.stderr)
+        run = self.install()
+        self.assertEqual([("unchanged", str(hook)), ("unchanged", str(self.marker))], self.rows(run.stdout))
+        status, err, before = self.commit()
+        self.assert_refused(status, err)
+        self.assertEqual(self.git("rev-parse", "HEAD"), before)
+        neither = older + b"# neither version\n"
+        hook.write_bytes(neither)
+        check = self.run_lever("check", str(self.checkout))
+        self.assertEqual(
+            (check.returncode, self.rows(check.stdout)), (1, [("differs", str(hook)), ("installed", str(self.marker))])
+        )
+        run = self.run_lever("install", str(self.checkout))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"{hook} exists and is not this lever's hook; it is never overwritten", run.stderr)
+        self.assertEqual(hook.read_bytes(), neither)
+
+    def test_a_failing_producer_of_the_marker_s_write_leaves_no_partial_marker_and_the_hook_as_found(self):
+        """U219b (verdict U219-ce7e875e P2 `:809`, standing order 21): the marker's staged write has the producers the
+        hook's has, each read by its status: `mktemp` (the marker's template, after the scratch directory's call and,
+        the hook being in place, no call for the hook), `cat` (the sixth of a run, after the five scratch copies; it
+        writes into the temporary file, so the plausible output it prints, the marker's own line, is what a refusal
+        must remove), `chmod`, the read-back `cmp` and the `mv`. Each, a PATH stub that prints plausible output and
+        exits 7, makes `install` exit 2 naming the step, prints no marker row (the `mv` comes after the hook's row),
+        leaves no temporary file and no partial marker in the hooks directory and the hook's bytes and mode as found.
+        The control without a stub writes the marker."""
+        hook = self.hooks / HOOK
+        self.install(marker=False)
+        staged = f"{self.hooks}/.{MARKER}."
+        for label, shims, messages, rows in (
+            (
+                "mktemp",
+                self.shim(f".{MARKER}.", status=7, name="mktemp", output=f"{staged}plausible"),
+                (f"cannot make a temporary file in {self.hooks} for the marker",),
+                [],
+            ),
+            (
+                "cat",
+                self.shim("", status=7, name="cat", nth=SCRATCH_WRITES + 1, output=MARKER_TEXT.decode().rstrip("\n")),
+                (f"cannot write {staged}",),
+                [],
+            ),
+            ("chmod", self.shim(f".{MARKER}.", status=7, name="chmod"), (f"cannot make {staged}", " mode 0644"), []),
+            (
+                "cmp",
+                self.shim(f".{MARKER}.", status=7, name="cmp"),
+                (f"cannot compare {staged}", f" with this lever's {MARKER}"),
+                [],
+            ),
+            (
+                "mv",
+                self.shim(f".{MARKER}.", status=7, name="mv"),
+                (f"cannot move {staged}", f" onto {self.marker}"),
+                [("unchanged", str(hook))],
+            ),
+        ):
+            env = {**self.env, "PATH": f"{shims}:{self.env['PATH']}"}
+            state = self.hooks_state()
+            with self.subTest(label):
+                (shims / "calls").unlink(missing_ok=True)
+                run = self.run_lever("install", str(self.checkout), env=env)
+                self.assertEqual(run.returncode, 2, run.stdout)
+                self.assertIn(f"shim: failing {label}", run.stderr)
+                for message in messages:
+                    self.assertIn(message, run.stderr)
+                self.assertEqual(self.rows(run.stdout), rows)
+                self.assertEqual(self.hooks_state(), state, "no partial marker, no temporary file, the hook as found")
+                self.assertFalse(self.marker.exists())
+        run = self.install()
+        self.assertEqual([("unchanged", str(hook)), ("installed", str(self.marker))], self.rows(run.stdout))
+        self.assertEqual(self.marker.read_bytes(), MARKER_TEXT)
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads an unreadable directory")
+    def test_a_marker_read_that_fails_refuses_the_move(self):
+        """U219b (verdict U219-ce7e875e P2 `:809`, standing order 21): the hook's `os.lstat` of the marker failing with
+        anything but "no such file" refuses the transaction naming the marker's path, never passes it. The injection:
+        the hooks directory is made unsearchable (mode 000) while the hook already runs, by the hook's own first git
+        read (a `GIT_EXEC_PATH` shim that sets the mode on `rev-parse --show-toplevel` and then runs the real git),
+        since git runs no hook it cannot reach and python reads no file it cannot open. A commit is refused, marker
+        present or removed, without the route, and the branch stays; the control, the same shim leaving the directory
+        alone, passes a commit without the marker and refuses one with it."""
+        self.install()
+        self.addCleanup(self.hooks.chmod, 0o755)
+        lock = self.shim("rev-parse --show-toplevel", before=f"chmod 000 {shlex.quote(str(self.hooks))}")
+        env = {**self.env, "GIT_EXEC_PATH": str(lock)}
+        for present in (True, False):
+            if not present:
+                self.marker.unlink()
+            with self.subTest(marker=present):
+                before = self.branches()
+                status, err, _ = self.commit(env=env)
+                self.hooks.chmod(0o755)
+                self.assertNotEqual(status, 0, err)
+                self.assertIn(f"cannot read {self.marker}", err)
+                self.assertIn(FAILED_READ, err)
+                self.assertNotIn(REFUSAL, err)
+                self.assertEqual(self.branches(), before)
+        status, err, before = self.commit(env=self.hook_shim("no-such-read"))
+        self.assertEqual(status, 0, err)
+        self.assertNotEqual(self.git("rev-parse", "HEAD"), before)
+        self.git("reset", "-q", "--hard", "origin/main")
+        self.marker.write_bytes(MARKER_TEXT)
+        status, err, before = self.commit(env=self.hook_shim("no-such-read"))
+        self.assert_refused(status, err)
+        self.assertEqual(self.git("rev-parse", "HEAD"), before)
 
     def test_the_isolated_git_of_the_levers_is_unaffected(self):
         """`git -c core.hooksPath=/dev/null commit`, the flag git-isolated.sh carries, runs no hook of the checkout:

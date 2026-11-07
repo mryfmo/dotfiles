@@ -68,7 +68,9 @@
 #   on git 2.56 `pack-refs --all` and `gc`, so the hook reads the ref (`rev-parse --verify -q`) when the old value is
 #   zero; a creation of a ref that does not exist is judged like any move.
 #   `checkout-guard.sh check <checkout>` reports `installed` (byte-equal to the copy here and executable), `absent`,
-#   `differs` or `not-executable` for the hook, `installed` (byte-equal, a regular file), `absent` or `differs` for the
+#   `older` (byte-equal to an earlier hook text this lever wrote: its sha256 is in EARLIER_HOOKS, the pre-move lever
+#   7b570792's first, regime-cutover U219b), `differs` or `not-executable` for the hook, `installed` (byte-equal, a
+#   regular file), `absent` or `differs` for the
 #   marker, and `stale` for a round-1 `pre-commit` or `post-checkout` still
 #   there (byte-equal to round 1's, kept in write_hook for this comparison alone); exit 0 when the hook and the marker are installed
 #   and nothing is stale, else 1; a symlink or a file that is not a regular file at the hook path is a refusal (exit
@@ -88,7 +90,8 @@
 #   `includeIf.onbranch`), since git's configuration is layered and conditional and the caller owns every layer, so
 #   the check cannot hold and round 5 removed it; where git resolves its hooks is the trust boundary below. The hooks
 #   directory, when it exists, must be a directory that can be read (a mode-000 one is a refusal naming it, never
-#   `absent`), and the hook path absent or already this lever's own; a regular file of other content there is
+#   `absent`), and the hook path absent, already this lever's own, or an earlier hook of this lever's (`older`, which
+#   the same staged write replaces, printing `upgraded`); a regular file of other content there is
 #   refused and never overwritten. The write is one rename per file: the hook's bytes go to a temporary file in the hooks
 #   directory (`mktemp` there), its mode is set, it is read back (`cmp -s` against the scratch copy, the execute bit),
 #   the marker's bytes go to a second temporary file the same way (mode 0644, read back), and one `mv` each puts them
@@ -121,9 +124,9 @@
 #   whatever wrote them; `python3` on the hook's PATH is a CPython 3; the worker's identity is not read.
 # @arg $1 string `install` or `check`.
 # @arg $2 string The checkout: a directory inside the main worktree of the repository.
-# @stdout One row per file, `checkout-guard: <state>\t<path>`, the hook's then the marker's: `installed`, `unchanged` or `removed` (install); `installed`, `absent`, `differs`, `not-executable` (the hook alone) or `stale` (check). regime-init matches the `checkout-guard: installed` and `checkout-guard: removed` rows at line start.
+# @stdout One row per file, `checkout-guard: <state>\t<path>`, the hook's then the marker's: `installed`, `upgraded` (the hook alone: an `older` hook replaced), `unchanged` or `removed` (install); `installed`, `absent`, `differs`, `older` and `not-executable` (the hook alone) or `stale` (check). regime-init matches the `checkout-guard: installed` and `checkout-guard: removed` rows at line start.
 # @exitcode 0 Done: the hook and the marker installed and no stale round-1 hook left (install), or both in place with nothing stale (check).
-# @exitcode 1 `check`: the hook or the marker is absent or differs, the hook is not executable, or a round-1 hook is still there.
+# @exitcode 1 `check`: the hook or the marker is absent or differs, the hook is an earlier hook of this lever's (`older`) or is not executable, or a round-1 hook is still there.
 # @exitcode 2 A refusal: usage, not a main checkout, a hooks directory that cannot be read, a symlink or a non-regular file at the hook path or the marker path (`check` too), a regular file of other content at either (`install`), a failed read, a failed write step before the hook's rename (both paths are as they were found and a hooks directory this run made is removed again; a failed rename of the marker, or a failed removal of a round-1 hook, comes after the hook's rename and leaves the hook in place), or the manifest pin differing from this file.
 # @example
 #   ~/.local/bin/common/checkout-guard.sh install ~/Workspace/dotfiles
@@ -191,6 +194,12 @@ lever='checkout-guard.sh'
 usage='usage: checkout-guard.sh install|check <checkout>'
 hook=reference-transaction
 marker=regime-coordinator
+# The sha256 of each earlier `reference-transaction` text this lever wrote, the pre-move lever's (origin/main 7b570792,
+# U215 merged) first: a regular file at the hook path whose bytes hash to one of them is `older` (regime-cutover U219b,
+# verdict U219-ce7e875e P2), which `install` replaces through the same staged write (`upgraded` row) and `check`
+# reports with exit 1; bytes of neither this lever's nor an earlier text stay `differs`, refused and never overwritten.
+# A later hook text appends the digest of the one it replaces here. The digest is read by file_digest, its status read.
+EARLIER_HOOKS=(3792cacd54e3aace38d124facc7388f395da55675cafb55de355be76942e7f0f)
 legacy_hooks=(pre-commit post-checkout)
 
 # @description Print a refusal on stderr and exit 2; nothing was written.
@@ -658,18 +667,37 @@ for name in "${hook}" "${legacy_hooks[@]}" pre-commit.subst "${marker}"; do
     write_hook "${name}" "${scratch}/${name}"
 done
 
+# @description Set `digest` to the sha256 of the file $1, read on stdin by `sha256sum` when there is one, else by
+#   `shasum -a 256` (the self-check's pair; on stdin, so no file name is escaped into the output), its status read: a
+#   tool that fails, or prints no digest, is a failed read and never a digest (standing order 21).
+# @arg $1 string The path.
+# @set digest 64 lowercase hex.
+# @exitcode 1 The tool failed or printed no digest; `digest` is empty.
+file_digest() {
+    local out
+    digest=''
+    if command -v sha256sum > /dev/null; then
+        out=$(sha256sum < "$1") || return 1
+    else
+        out=$(shasum -a 256 < "$1") || return 1
+    fi
+    digest=${out%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]]
+}
+
 # @description Judge the file at $1 against hook $2: `state` is `absent` (nothing there), `own` (a regular file
-#   holding exactly this lever's bytes), `differs` (a regular file of any other content) or, for a file that is not
+#   holding exactly this lever's bytes), `older` (the hook alone: a regular file whose sha256 is in EARLIER_HOOKS, an
+#   earlier hook text this lever wrote, U219b), `differs` (a regular file of any other content) or, for a file that is not
 #   judged, its kind: `a symlink` (whatever it points at: nothing is written through one), `a directory`, `a fifo`,
 #   `a socket`, `a device` or `not a regular file`; `executable` is 1 when a regular file has its owner's execute
 #   bit. The comparison is `cmp -s` against the scratch copy, and for `pre-commit` against both of its forms: 0 equal,
 #   1 different, anything else a failed read and a refusal, never an absence (standing order 21).
 # @arg $1 string The path.
 # @arg $2 string The hook name.
-# @set state `absent`, `own`, `differs` or the kind of a file that is not judged.
+# @set state `absent`, `own`, `older` (the hook alone), `differs` or the kind of a file that is not judged.
 # @set executable 0 or 1.
 hook_state() {
-    local target=$1 name=$2 same form
+    local target=$1 name=$2 same form earlier
     executable=0
     if [[ -L ${target} ]]; then
         state='a symlink'
@@ -708,6 +736,19 @@ hook_state() {
         *) refuse "cannot compare ${target} with this lever's ${form##*/}" ;;
         esac
     done
+    # The hook alone may be an earlier text of this lever's: its digest against EARLIER_HOOKS, the read a refusal when
+    # the hash tool fails (never `differs`, which install refuses as foreign, nor `older`, which it would overwrite).
+    case ${name} in
+    "${hook}") ;;
+    *) return 0 ;;
+    esac
+    file_digest "${target}" || refuse "cannot hash ${target}"
+    for earlier in "${EARLIER_HOOKS[@]}"; do
+        if [[ ${digest} == "${earlier}" ]]; then # lint-comparisons: allow two sha256 digests, no path compare
+            state=older
+            return 0
+        fi
+    done
 }
 
 # The hooks directory is read before anything in it is judged: one that cannot be listed or entered (mode 000) would
@@ -727,7 +768,7 @@ fi
 hook_state "${hooks}/${hook}" "${hook}"
 hook_own=${state} hook_executable=${executable}
 case ${hook_own} in
-absent | own | differs) ;;
+absent | own | older | differs) ;;
 *) refuse "${hooks}/${hook} is ${hook_own}, not this lever's hook; ${action} does not judge it and nothing is written through it (move it away by hand, then rerun)" ;;
 esac
 hook_state "${hooks}/${marker}" "${marker}"
@@ -753,6 +794,10 @@ if [[ ${action} == check ]]; then
         ;;
     absent:*)
         printf 'checkout-guard: absent\t%s\n' "${target}"
+        missing=1
+        ;;
+    older:*)
+        printf 'checkout-guard: older\t%s\n' "${target}"
         missing=1
         ;;
     *)
@@ -786,7 +831,8 @@ if [[ ! -d ${hooks} ]]; then
 fi
 
 # The hook path and the marker path are each written by one rename, the hook's first. Unless the hook is already this
-# lever's own and executable, its bytes go to a temporary file in the hooks directory (`mktemp` there, so the rename
+# lever's own and executable (an `older` hook, an earlier text of this lever's, is replaced the same way and its row
+# is `upgraded`, U219b), its bytes go to a temporary file in the hooks directory (`mktemp` there, so the rename
 # stays on one filesystem; a dotfile git runs as no hook), its mode is set, and it is read back (`cmp -s` against the
 # scratch copy, the execute bit); unless the marker is already this lever's own, its bytes go to a second temporary
 # file the same way (mode 0644, read back; U219). Only then does one `mv` put the hook at its path and one the marker
@@ -804,6 +850,7 @@ if [[ ${hook_own} != own || ${hook_executable} != 1 ]]; then
     hook_state "${staged}" "${hook}"
     [[ ${state} == own && ${executable} == 1 ]] || refuse "${staged} reads back as ${state} (executable: ${executable}) after the write; ${target} is as it was"
     hook_row=installed
+    [[ ${hook_own} != older ]] || hook_row=upgraded
 fi
 if [[ ${marker_own} != own ]]; then
     staged_marker=$(mktemp "${hooks}/.${marker}.XXXXXX") || refuse "cannot make a temporary file in ${hooks} for the marker"

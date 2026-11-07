@@ -5458,6 +5458,39 @@ U317b renders <code>stateDir</code>, is a write root of its own (allowWrite row 
 settings differ from the dsh settings in exactly those two values, the dsh
 and omp roles' settings do not change by a byte, and
 <code>tests/unit/test_hcom_seat_dsh.py</code> asserts both.</p>
+<p>The install itself is contained the same way (regime-cutover U322). On a host
+whose operator opted in (<code>DSH_HOME</code> exported and equal to <code>~/.dsh</code>), <code>make
+update</code> runs <code>update_deepseek_harness</code> in <code>scripts/update-agent-assets.sh</code>: it
+downloads GitHub's tag archive, checks its sha256 against the manifest pin
+before anything is unpacked, unpacks the tree under <code>~/.dsh/dsh/&lt;tag&gt;.&lt;suffix&gt;</code>
+and then runs every piece of upstream code inside srt through one shared
+function, <code>build_under_srt</code>: <code>pnpm install --frozen-lockfile</code> and <code>pnpm run
+build</code> in the new tree, and <code>pnpm install</code> in the thak profile. Each run is
+<code>/usr/bin/env -i HOME=… PATH=&lt;mise pnpm and node&gt; DSH_HOME=… &lt;the cache and
+log variables&gt; srt --settings &lt;file&gt; -- pnpm …</code>: the environment is sanitised
+outside srt, so no variable of the caller reaches the build, and srt's own
+injected variables (<code>SANDBOX_RUNTIME</code>, the <code>HTTP_PROXY</code> pair its sandbox
+routes every connection through, its <code>TMPDIR</code>) reach the command untouched
+(regime-cutover U322b). The settings file is created 0600 beside the tree and
+removed after the run; its <code>allowWrite</code> is the build directory and
+<code>~/.dsh/.pnpm-store</code> alone, its <code>denyWrite</code> the paths srt 0.0.81 would
+otherwise grant on its own (<code>/tmp/claude</code>, <code>/private/tmp/claude</code>,
+<code>~/.npm/_logs</code>), while the tools' caches and logs are pointed under the store
+(<code>CLAUDE_CODE_TMPDIR</code>, the XDG directories, pnpm's <code>store-dir</code>, <code>cache-dir</code>
+and <code>state-dir</code>, npm's <code>cache</code> and <code>logs-dir</code>); its <code>denyRead</code> is the
+credential and state list the dsh seat role denies (<code>~/.ssh</code>, <code>~/.gnupg</code>,
+<code>~/.aws</code>, <code>~/.netrc</code>, <code>~/.docker</code>, <code>~/.kube</code>, <code>~/.config/gcloud</code>,
+<code>~/.config/gh</code>, <code>~/.codex</code>, <code>~/.omp/agent</code>, <code>~/.omp/profiles</code>, the hcom
+stores, the chezmoi sources, <code>~/Workspace</code>, the seats root, the operator's
+Claude Code state) plus the dotfiles checkout and its git common directory,
+and its <code>network.allowedDomains</code> is the default registry plus the host of
+every <code>tarball:</code> row of the tree's <code>pnpm-lock.yaml</code> (the pinned tag adds
+<code>cdn.sheetjs.com</code>), never a wildcard; no local binding, no unix socket, no
+pty. Before the first build the step runs the U272 canary under the same
+settings, one write beside the tree, and refuses the install unless srt
+denies it. <code>srt</code> is the kit's mise pin; a host without it gets no build and
+no install. The tests are in <code>tests/unit/test_update_agent_assets.py</code>
+(<code>DeepseekHarnessTest</code>, the U322 and U322b groups).</p>
 
 
 

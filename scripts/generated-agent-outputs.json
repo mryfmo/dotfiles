@@ -426,7 +426,7 @@
       "target": ".local/bin/common/checkout-guard.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "f87d279dbc65e7f3d0119d05f820222f9903d865087394f2663d86e1058e894c"
+      "sha256": "ab8a244da95dd64cc66e83f754d7582443ef8d86a5f5f7f6974de80fc7566548"
     },
     {
       "source": "home/dot_local/bin/common/executable_git-isolated.sh",
@@ -447,7 +447,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "35836c34162a6072c7126ab087bb8baaab86ea050fb25f0bd9e3dfe6bab1a9ae"
+      "sha256": "ef54896eaaadcce72a616ad8586086c3371acd2e37a108cc931baecae72f5b2e"
     },
     {
       "source": "home/dot_local/bin/common/executable_intake-observe.py",

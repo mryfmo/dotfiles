@@ -312,6 +312,21 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertNotIn(b"router-credentials", text)
         return text
 
+    def store_root(self):
+        """The program store's root regime-env derives for the fixture's checkout (U215c), which the omp roles read and
+        the orchestrator writes (U219)."""
+        return f"{self.home.resolve()}/.local/state/regime-store/repo"
+
+    def without_store_root_rows(self, settings, role):
+        """This head's rendered omp settings (bytes) with exactly the U219 rows removed: the store root once in
+        allowRead for both roles and once in allowWrite for the orchestrator, each after another row; nothing else
+        names it."""
+        needle = b"," + json.dumps(self.store_root()).encode()
+        self.assertEqual(settings.count(needle), 2 if role == "orchestrator" else 1, settings)
+        text = settings.replace(needle, b"")
+        self.assertNotIn(b"regime-store", text)
+        return text
+
     def earlier_lever(self, head):
         """The `hcom-seat` of the earlier `head`, unpacked with its manifest into the scratch (git archive of its
         `scripts/orchestrator` and manifest, so its self-check reads its own pin and it sources its own regime-env); a
@@ -446,10 +461,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def test_the_omp_roles_settings_are_byte_identical_to_the_earlier_heads(self):
         """No round's row changes an omp role's settings: the worker's and the orchestrator's `srt-settings.json`
         rendered by this head equal, byte for byte, the ones each earlier head (EARLIER_HEADS) renders on the same
-        scratch host, once exactly the U318 rows (without_shared_claude_rows) and the credential-root deny pair (U353b,
-        U353d; without_omp_credential_rows) are taken out. An earlier lever runs from its own tree (git archive of its
-        `scripts/orchestrator` and manifest, so its self-check reads its own pin); a checkout without that commit skips
-        it."""
+        scratch host, once exactly the U318 rows (without_shared_claude_rows), the credential-root deny pair (U353b,
+        U353d; without_omp_credential_rows) and the store-root grants (U219; without_store_root_rows) are taken out. An
+        earlier lever runs from its own tree (git archive of its `scripts/orchestrator` and manifest, so its self-check
+        reads its own pin); a checkout without that commit skips it."""
         for head in EARLIER_HEADS:
             old_seat = self.earlier_lever(head)
             for role in ("worker", "orchestrator"):
@@ -462,7 +477,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     self.assertEqual(run.returncode, 0, f"{label} {head[:8]} {role}: {run.stderr}")
                     rendered[label] = Path(self.seats, ".sandbox", role, "srt-settings.json").read_bytes()
                 with self.subTest(head=head[:8], role=role):
-                    this_head = self.without_omp_credential_rows(self.without_shared_claude_rows(rendered["this head"]))
+                    this_head = self.without_store_root_rows(
+                        self.without_omp_credential_rows(self.without_shared_claude_rows(rendered["this head"])), role
+                    )
                     self.assertEqual(rendered["earlier head"], this_head)
                     self.assertIn(b'"allowRead":[', rendered["this head"])
 

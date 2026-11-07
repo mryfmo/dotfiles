@@ -289,35 +289,45 @@ class RegimeInitTest(unittest.TestCase):
         self.assertIn(f"regime-init: cannot write {self.store}/units.tsv", run.stderr)
         self.assertEqual((self.store / "units.tsv").read_text(), "local edit\n", "--force replaced nothing")
 
-    def test_the_first_run_installs_the_checkout_guard_and_a_commit_passes_until_u219_moves_its_trigger(self):
+    def test_the_first_run_installs_the_checkout_guard_and_its_marker_and_a_commit_is_refused(self):
         """regime-init runs `checkout-guard.sh install` on the checkout it prepares (U129): the first run writes the
-        `reference-transaction` hook (a `checkout-guard: installed` row), and the second run finds the lever's own hook
-        (`unchanged`) and reports nothing changed; a round-1 `pre-commit` the lever recognises is removed and counts
-        as a change. U215: the hook's trigger is still the checkout's `.orchestration/orchestrate/*/units.tsv`
-        (checkout-guard.sh, U219's lever), which this lever no longer creates, so a commit in a freshly prepared
-        checkout passes until U219 moves the trigger (handoff/07-store-move-design.md, the checkout-guard row); the
-        pass is pinned here so that unit's change turns this line. The containment that holds until U219 (verdict
-        U215-11a32ed6 P2 `:127`): the live store of this program stays inside the main checkout, untouched by this
-        lever, so its `units.tsv` is still there and the installed guard still fires on this program's checkout; no
-        fresh checkout is initialised before U219 lands (no host carries a store under `~/.local/state/regime-store`
-        yet); and a fresh checkout prepared despite that holds only templates, nothing the records boundary
-        protects."""
+        `reference-transaction` hook and, beside it, the marker `regime-coordinator` (U219: a `checkout-guard:
+        installed` row each), and the second run finds the lever's own hook and marker (`unchanged`) and reports
+        nothing changed; a round-1 `pre-commit` the lever recognises is removed and counts as a change. U215 moved the
+        store out of the checkout, so the hook's store trigger found nothing in a freshly prepared checkout and a commit
+        passed (pinned by this test until U219); U219 made the marker the trigger (handoff/07-store-move-design.md,
+        the checkout-guard row; verdict U215-11a32ed6 P2 `:127`), so a commit in the prepared checkout is refused with
+        the route to a worker tree and the branch stays."""
         hook = self.repo / ".git/hooks/reference-transaction"
+        marker = self.repo / ".git/hooks/regime-coordinator"
         run = self.init("pilot")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(self.rows(run.stdout)[str(hook)], "checkout-guard: installed")
+        self.assertEqual(self.rows(run.stdout)[str(marker)], "checkout-guard: installed")
         self.assertTrue(os.access(hook, os.X_OK))
+        self.assertTrue(marker.is_file() and not marker.is_symlink(), marker)
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, env=self.env, capture_output=True, text=True, check=True
+        ).stdout.strip()
         (self.repo / "work.txt").write_text("work\n")
         subprocess.run(["git", "add", "work.txt"], cwd=self.repo, env=self.env, check=True)
         commit = subprocess.run(
             ["git", "commit", "-q", "-m", "work"], cwd=self.repo, env=self.env, capture_output=True, text=True
         )
-        self.assertEqual(commit.returncode, 0, commit.stderr)
-        self.assertNotIn("checkout-guard:", commit.stderr, "inert until U219 moves the trigger to the new store")
+        self.assertNotEqual(commit.returncode, 0, "the marker makes the guard fire in the prepared checkout (U219)")
+        self.assertIn(
+            "checkout-guard: this checkout is the coordinator's; commits belong in a worker tree", commit.stderr
+        )
+        after = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, env=self.env, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        self.assertEqual(after, head, "no branch moved")
+        subprocess.run(["git", "reset", "-q", "--hard"], cwd=self.repo, env=self.env, check=True)
         self.assertFalse((self.repo / ".orchestration").exists())
         again = self.init("pilot")
         self.assertEqual(again.returncode, 0, again.stderr)
         self.assertEqual(self.rows(again.stdout)[str(hook)], "checkout-guard: unchanged")
+        self.assertEqual(self.rows(again.stdout)[str(marker)], "checkout-guard: unchanged")
         self.assertIn("nothing changed", again.stdout)
         # Round 1's pre-commit, byte for byte: removed on the next run, which is a change.
         lever = (ROOT / "scripts/orchestrator/checkout-guard.sh").read_text()

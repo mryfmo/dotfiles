@@ -43,6 +43,14 @@
 #   from the environment or `--seats-root` when set, else from the checkout through
 #   the sourced regime-env helper (regime-cutover U33: `~/.local/state/hcom/<slug>`,
 #   `<slug>`, `~/.local/state/omp-seats/<slug>`), and are exported to the seat.
+#   The program store's root `REGIME_STORE_ROOT` (`<physical HOME>/.local/state/regime-store/<slug>`, regime-env's
+#   fixed derivation, U215c; regime-cutover U219, store move 3 of 5, handoff/07-store-move-design.md) is held like
+#   every input path (clean, resolved physically once, store_root_hold) and granted in that form to the worker's and
+#   the orchestrator's read list and to the orchestrator's write roots, present or not yet made (regime-init makes it
+#   0700; a seat launched before carries the path it will make); an hcom store `HCOM_DIR` that is, lies inside or
+#   contains it refuses the launch by name before anything is made (store_root_overlap_check, by identity: the hcom
+#   store is every seat's write grant, so the records would lie inside it; verdict U215-15c6be1e P1); the dsh and
+#   router rows carry no grant of it.
 #   The seat's omp runs under OS containment (regime-cutover U85): Anthropic's sandbox-runtime `srt`
 #   (sandbox-exec on macOS, bubblewrap on Linux) with per-seat settings, through an `omp` shim at
 #   `<seats-root>/.sandbox/<name>/bin/omp` that is put first on PATH, so hcom pins it as the pane's tool;
@@ -1792,6 +1800,18 @@ regime_env hcom-seat || exit 2
 for var in HCOM_DIR REGIME_SEATS_ROOT; do
     if [[ -n ${!var:-} ]]; then require_clean_path "${var}" "${!var}"; fi
 done
+# The program store's root (regime-cutover U219): regime-env derived `REGIME_STORE_ROOT` (U215c: from the physical
+# HOME and the slug, never from the environment; empty only outside a checkout, which the toplevel check below refuses
+# for every role). It is held once, here, to the clean-path rule and resolved physically once into `store_root_phys`,
+# which the grants (seat_write_roots, seat_settings_render) and the overlap judgement (store_root_overlap_check) read;
+# nothing resolves it again. It is granted present or absent alike: regime-init makes it 0700, and a seat launched
+# before the program's first regime-init must read what regime-init will make.
+store_root_phys=''
+if [[ -n ${REGIME_STORE_ROOT:-} ]]; then
+    require_clean_path REGIME_STORE_ROOT "${REGIME_STORE_ROOT}"
+    store_root_phys=$(physical_path "${REGIME_STORE_ROOT}") || refuse "cannot resolve the store root ${REGIME_STORE_ROOT}"
+    require_clean_path 'the store root' "${store_root_phys}"
+fi
 command -v hcom > /dev/null || refuse 'hcom not found on PATH'
 [[ ${HCOM_TEAM:-} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "team '${HCOM_TEAM:-}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
 # @description Check the omp roles' inputs and set `exts` to the canonical extension directories: the policy and
@@ -1941,6 +1961,34 @@ within_ix() {
     [[ ${tbl_rest[$2]} == "${tbl_rest[$1]}"* ]]              # lint-comparisons: allow absent components below one ancestor of the same identity, compared on component boundaries
 }
 
+# @description Refuse (exit 2) when the hcom store `HCOM_DIR` is, lies inside or contains the program store's root
+#   (regime-cutover U219; verdict U215-15c6be1e P1 `:127`, held residual on this unit): the hcom store is a write root
+#   of every seat (seat_write_roots) and no rendered deny covers a directory under it, so a root at or under it would
+#   put the records inside a worker's write grant, and a store under the root would put the bus inside the records.
+#   Both paths in their physical form (store_root_hold, physical_path), the decision by identity for what exists and
+#   by the absent components below one shared ancestor otherwise (identity_table, within_ix), before the seats root, a
+#   slot or a settings file is made, in a dry run too. The refusal names both paths and which contains which. Nothing
+#   to judge without a root (outside a checkout, with an explicit HCOM_DIR, where no slug exists).
+store_root_overlap_check() {
+    local hcom_phys spelled why
+    [[ -n ${store_root_phys} ]] || return 0
+    hcom_phys=$(physical_path "${HCOM_DIR}") || refuse "cannot resolve the hcom store ${HCOM_DIR}"
+    spelled=${HCOM_DIR}
+    [[ ${hcom_phys} == "${HCOM_DIR}" ]] || spelled="${HCOM_DIR} (${hcom_phys})" # lint-comparisons: allow one path's spelled and physical forms, for the message alone; the decision is by identity below
+    identity_table "${store_root_phys}" "${hcom_phys}"
+    if within_ix 0 1 && within_ix 1 0; then
+        why=is
+    elif within_ix 0 1; then
+        why='lies inside'
+    elif within_ix 1 0; then
+        why=contains
+    else
+        return 0
+    fi
+    refuse "the hcom store HCOM_DIR ${spelled} ${why} the store root REGIME_STORE_ROOT ${REGIME_STORE_ROOT}; the hcom store is every seat's write grant, so the records would lie inside it (set HCOM_DIR to a directory outside the store root)"
+}
+store_root_overlap_check
+
 # @description Set `phys_list` to the physical form of each absolute path `$@`, in order (regime-cutover U95), or
 #   refuse (exit 2), in one subshell for all of them, present or absent. In that subshell a path's deepest existing entry is found with builtins (physical_path's
 #   walk); it must be a directory, which `cd -P` resolves, and the absent rest is appended, as physical_path does.
@@ -2079,7 +2127,9 @@ fi
 #   carry as `allowWrite` (seat_sandbox_write writes exactly this list), followed by the paths srt 0.0.81 makes
 #   writable without a listing (`srt_tmp_roots`: `/tmp/claude`, and `/private/tmp/claude` on macOS; `~/.npm/_logs`).
 #   The role table's write-root row (U272): the omp roles write the repository's git common directory, the program's
-#   hcom store and their own omp profile; the dsh role writes DSH_HOME and its own omp profile, where its login child
+#   hcom store and their own omp profile, and the orchestrator the program store's root as well (regime-cutover U219:
+#   the held physical `store_root_phys`, after the hcom store, where the records live once U221 has moved them); the
+#   dsh role writes DSH_HOME and its own omp profile, where its login child
 #   lives, and no git or hcom path. Row 2 of every role is the shared Claude Code directory `<seats-root>/.state/claude`
 #   (the `claude_config` row, regime-cutover U318), which the shim exports as the seat's `CLAUDE_CONFIG_DIR`: the
 #   child's login, `.claude.json`, state and sessions live there, and seat_settings_render denies its settings, rules,
@@ -2105,6 +2155,7 @@ seat_write_roots() {
         # dsh role's. It is the value state_root_hold holds (U321c): printed verbatim below, never resolved here.
         held=${state_root_phys}
         ;;
+    orchestrator) extra=("${common}" "${HCOM_DIR}" ${store_root_phys:+"${store_root_phys}"} "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;
     *) extra=("${common}" "${HCOM_DIR}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;
     esac
     # The seat's own slots come first, then the shared Claude Code directory (seat_overlap_check and the dsh judge's
@@ -2414,11 +2465,13 @@ seat_settings_render() {
     # The role table's read-grant row (U272c): denyRead is broad and every allowRead entry re-opens a path under it,
     # so the list is the role's own. The omp roles re-open their directory, the repository's git directory (the
     # worktree's objects and refs), the hcom store, their omp profile, their state slot, the shared Claude Code
-    # directory (U318) and the coordinator's records under the main checkout (briefs, verdict files), read by absolute
-    # path; the main checkout itself is unreadable to a worker wherever it lives, and the orchestrator also reads the
-    # worker clones of its own program, which it reviews. The dsh role has no worktree, no bus and no store: it
-    # re-opens its scratch cwd and state slot, the shared Claude Code directory, DSH_HOME, its own omp profile, the
-    # skills it loads and the pinned tool directory on its PATH, and no git, hcom or record path.
+    # directory (U318), the coordinator's records under the main checkout (briefs, verdict files), read by absolute
+    # path, and the program store's root (regime-cutover U219: the held physical `store_root_phys`, last; where the
+    # records live once U221 has moved them, granted present or not yet made); the main checkout itself is unreadable
+    # to a worker wherever it lives, and the orchestrator also reads the worker clones of its own program, which it
+    # reviews. The dsh role has no worktree, no bus and no store: it re-opens its scratch cwd and state slot, the
+    # shared Claude Code directory, DSH_HOME, its own omp profile, the skills it loads and the pinned tool directory
+    # on its PATH, and no git, hcom, record or store-root path.
     # The omp roles' rows of the Router's credential root (regime-cutover U353b, verdict U353-8791100f P1 `:430`; U353d,
     # verdict U353-318f268d P1 `:2383` and P2 `:2393`): srt allows reads by default, and the U353 head denied the root
     # to the dsh row alone, so a worker or orchestrator seat read `router-credentials/gh/hosts.yml` once the login was
@@ -2431,13 +2484,13 @@ seat_settings_render() {
         deny_read+=("${cred_root_phys}")
         deny_write+=("${cred_root_phys}")
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
-            "${claude_config_real}" "${checkout}/.orchestration/orchestrate" "${seats_real}")
+            "${claude_config_real}" "${checkout}/.orchestration/orchestrate" "${seats_real}" ${store_root_phys:+"${store_root_phys}"})
         ;;
     worker)
         deny_read+=("${checkout}" "${cred_root_phys}")
         deny_write+=("${cred_root_phys}")
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
-            "${claude_config_real}" "${checkout}/.orchestration/orchestrate")
+            "${claude_config_real}" "${checkout}/.orchestration/orchestrate" ${store_root_phys:+"${store_root_phys}"})
         ;;
     dsh | router)
         # The deny row (U272d): the role's own denies for read and for write, after the worker's. The credential root
@@ -2996,7 +3049,7 @@ if [[ ${role_launch} == hcom ]]; then cred_root_make "${dry_run}"; fi
 if ((dry_run)); then
     printf '%q ' "${argv[@]}"
     echo
-    echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-}" >&2
+    echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-} REGIME_STORE_ROOT=${REGIME_STORE_ROOT:-}" >&2
     echo "hcom-seat: sandbox ${sandbox} (srt ${srt_cmd[*]}, omp ${omp_cmd[*]}, hcom ${hcom_cmd[*]}, herdr ${herdr_cmd[*]})" >&2
     exit 0
 fi

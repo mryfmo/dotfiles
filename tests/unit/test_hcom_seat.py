@@ -2911,6 +2911,97 @@ class HcomSeatTest(SeatFixture):
             "no refused launch ran a tool",
         )
 
+    def test_the_store_root_is_read_by_both_roles_and_written_by_the_orchestrator_alone(self):
+        """U219 (store move 3 of 5, handoff/07-store-move-design.md): regime-env derives the program store's root
+        `<physical HOME>/.local/state/regime-store/<slug>` (U215c) and hcom-seat grants it, in its physical form, to
+        the worker's and the orchestrator's `allowRead` and to the orchestrator's `allowWrite` and to no other list:
+        the worker reads the records and writes none, the dsh and router rows carry no grant of it. The root is granted
+        present (0700, regime-init's) or absent alike: a seat launched before the program's first `regime-init` carries
+        the path regime-init will make, and srt reads a settings path as a pattern it need not find. No seat grants the
+        hcom store's `~/.local/state/hcom` tree or `~/.local/state/regime-store` above the root."""
+        home = self.home.resolve()
+        root = home / ".local/state/regime-store/repo"
+        for present in (False, True):
+            if present:
+                root.mkdir(parents=True, mode=0o700)
+            for role in ("worker", "orchestrator"):
+                with self.subTest(role=role, present=present):
+                    run = self.seat(role, "--seats-root", self.seats)
+                    self.assertEqual(run.returncode, 0, run.stderr)
+                    fs = self.settings_of(role)["filesystem"]
+                    self.assertEqual(fs["allowRead"].count(str(root)), 1, fs["allowRead"])
+                    self.assertEqual(
+                        fs["allowWrite"].count(str(root)), 1 if role == "orchestrator" else 0, fs["allowWrite"]
+                    )
+                    for key in ("denyRead", "denyWrite"):
+                        self.assertEqual(
+                            [row for row in fs[key] if row == str(root) or row.startswith(f"{root}/")], [], key
+                        )
+                    for key in ("allowRead", "allowWrite"):
+                        above = [row for row in fs[key] if Path(row) in root.parents]
+                        self.assertEqual(above, [], f"{key} grants a directory above the root")
+                    self.assertEqual(
+                        fs["allowWrite"][2], str(Path(self.seats, ".state/claude")), "row 2 is the shared directory"
+                    )
+            self.assertEqual((root.exists(), present), (present, present), "the launch makes no store root")
+        self.assertEqual(len(self.calls_of("omp")), 4, "every launch reached omp")
+        # The dry run names the derived root beside the pair (the seat inherits it from regime-env's export, U215c;
+        # the fake hcom records HCOM_* names alone, so the export is read here, on stderr).
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"environment HCOM_DIR={self.store} HCOM_TEAM=repo REGIME_STORE_ROOT={root}", run.stderr)
+
+    def test_an_hcom_store_that_is_inside_or_contains_the_store_root_is_refused_by_name(self):
+        """U219 (verdict U215-15c6be1e P1 `:127`, held residual on this unit): the hcom store `HCOM_DIR` is every seat's
+        write grant, so a store root equal to it, inside it or containing it would put the records inside a worker's
+        write root. The launch is refused naming both paths (exit 2, nothing printed on stdout) right after regime-env
+        derives the root, before the seats root, a slot, a settings file or hcom exists, for both roles and in a dry
+        run too; the paths are compared physically (a link spelling the store is seen through), so `HCOM_DIR` through a
+        link into the root is refused as well; a store beside the root, under `~/.local/state/hcom`, passes."""
+        home = self.home.resolve()
+        root = home / ".local/state/regime-store/repo"
+        root.mkdir(parents=True, mode=0o700)
+        linked = home / "store-link"
+        linked.symlink_to(root)
+        fresh_seats = str(Path(self.temp.name).resolve() / "fresh-seats")
+        for label, store, message in (
+            ("equal", root, f"the hcom store HCOM_DIR {root} is the store root REGIME_STORE_ROOT {root}"),
+            (
+                "inside",
+                root / "hcom",
+                f"the hcom store HCOM_DIR {root}/hcom lies inside the store root REGIME_STORE_ROOT {root}",
+            ),
+            (
+                "containing",
+                root.parent,
+                f"the hcom store HCOM_DIR {root.parent} contains the store root REGIME_STORE_ROOT {root}",
+            ),
+            (
+                "through a link",
+                linked,
+                f"the hcom store HCOM_DIR {linked} ({root}) is the store root REGIME_STORE_ROOT {root}",
+            ),
+        ):
+            for role in ("worker", "orchestrator"):
+                for args in ([], ["--dry-run"]):
+                    with self.subTest(label, role=role, args=args):
+                        run = self.seat(role, "--seats-root", fresh_seats, *args, HCOM_DIR=str(store))
+                        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                        self.assertIn(message, run.stderr)
+                        self.assertIn("every seat's write grant", run.stderr)
+                        self.assertFalse(Path(fresh_seats).exists(), "no seats root, no slot, no settings file")
+        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertEqual(sorted(p.name for p in root.iterdir()), [], "nothing made under the root")
+        # The control: the derived store beside the root passes and the settings carry both.
+        derived = home / ".local/state/hcom/repo"
+        derived.mkdir(parents=True)
+        (derived / "origin").write_text(f"{self.repo}\n")
+        run = self.seat("worker", "--seats-root", self.seats, HCOM_DIR=None, HCOM_TEAM=None)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        fs = self.settings_of("worker")["filesystem"]
+        self.assertIn(str(derived), fs["allowWrite"])
+        self.assertIn(str(root), fs["allowRead"])
+
 
 if __name__ == "__main__":
     unittest.main()

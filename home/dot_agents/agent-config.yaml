@@ -858,7 +858,7 @@ claude:
   # allowed by the orchestrator policy alone; it reads one brief and writes nothing.
   levers:
     sha256:
-      hcom-seat: b7a862ec08d042ca27e4027a2567885b4645bb831a28f619513d69b6c882ce0c
+      hcom-seat: 77d2b6743c8f90393c565fc93c69fa8265c9de321c8c3f5c4547f0118c4ac80d
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -867,7 +867,7 @@ claude:
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: c48f38c22638f0004caeb6151a79b1abfc260f055c306ef678a0c303c2dafb3e
       checkout-guard.sh: f87d279dbc65e7f3d0119d05f820222f9903d865087394f2663d86e1058e894c
-      seat-login-preflight: 43da53a26d44d837f7b908fa8407db4d93f79f24d8f53142b0bfa9ac5b1d4b74
+      seat-login-preflight: 9e2d4e2071762f8b4e2726ef8ad0efdfae3ef6390b4b6c8205fdaac28c48c7a4
       regime-start: c7b630d2353020e57c57a01af94fac5f7ed7f503071de9d1a15172eeb057bc6b
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       pr-thread-reply.sh: a87078136ec916af8d3e46cd907b729d00ae8b3a6ea841c05ad77daefed3087c

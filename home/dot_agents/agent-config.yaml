@@ -883,7 +883,7 @@ claude:
   # pinned the same way.
   levers:
     sha256:
-      hcom-seat: 499e3e1c8f74b340465786fd830de5904cfc266feb6742865c5fd6c2e24c3b82
+      hcom-seat: aa6d993c9cc51891a3fdda1eaae605833902e98a4d89fc2ca6e15609aaa06d85
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293

@@ -541,7 +541,7 @@
       "target": ".local/bin/common/seat-login-preflight",
       "kind": "file",
       "executable": true,
-      "sha256": "9e2d4e2071762f8b4e2726ef8ad0efdfae3ef6390b4b6c8205fdaac28c48c7a4"
+      "sha256": "dd0d59cb0bcd9fe98e56440e187208c902b4b3ae81342f1a9ce833439fe96f6b"
     },
     {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",

@@ -2624,7 +2624,7 @@ function dsh_superagent_tool() {
 # @exitcode 1 A path is not clean.
 #
 function dsh_superagent_srt_settings() {
-    local path write='' deny='' sep=''
+    local path write='' deny_json='' sep=''
     for path in "$@"; do
         dsh_superagent_clean_path "${path}" || return 1
         write+="${sep}\"${path}\""
@@ -2633,10 +2633,10 @@ function dsh_superagent_srt_settings() {
     sep=''
     for path in .ssh .gnupg .aws .netrc .docker .kube .config/gcloud .codex .omp/agent; do
         dsh_superagent_clean_path "${HOME}/${path}" || return 1
-        deny+="${sep}\"${HOME}/${path}\""
+        deny_json+="${sep}\"${HOME}/${path}\""
         sep=,
     done
-    printf '{"network":{"allowedDomains":["%s"],"deniedDomains":[],"allowUnixSockets":[],"allowMachLookup":["com.apple.trustd.agent"],"allowLocalBinding":false},"filesystem":{"denyRead":[%s],"allowRead":[],"allowWrite":[%s],"denyWrite":[]},"allowPty":false}\n' "${DSH_SUPERAGENT_REGISTRY_HOST}" "${deny}" "${write}"
+    printf '{"network":{"allowedDomains":["%s"],"deniedDomains":[],"allowUnixSockets":[],"allowMachLookup":["com.apple.trustd.agent"],"allowLocalBinding":false},"filesystem":{"denyRead":[%s],"allowRead":[],"allowWrite":[%s],"denyWrite":[]},"allowPty":false}\n' "${DSH_SUPERAGENT_REGISTRY_HOST}" "${deny_json}" "${write}"
 }
 
 #

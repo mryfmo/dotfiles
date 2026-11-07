@@ -289,14 +289,14 @@ class DshRouterProfileTest(unittest.TestCase):
         self.assertNotIn("dsh-router", self.patch)
         for outside in ("process.env.HOME", ".local/state", ".omp", "/tmp"):
             self.assertNotIn(outside, row, f"the state lies under a path outside DSH_HOME: {outside}")
-        self.assertEqual(
-            'dsh) extra=("${dsh_home}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;',
-            next(
-                line.strip()
-                for line in (ROOT / "scripts/orchestrator/hcom-seat").read_text().splitlines()
-                if line.strip().startswith("dsh) extra=(")
-            ),
-            "the dsh role's write roots beyond its slots: DSH_HOME first",
+        # hcom-seat seat_write_roots since U321 (main): the dsh and router rows share one case; row 3 is the held
+        # physical DSH_HOME, printed before the omp rows, and the Router's state root is a held row of its own.
+        lines = [line.strip() for line in (ROOT / "scripts/orchestrator/hcom-seat").read_text().splitlines()]
+        start = lines.index("dsh | router)", lines.index("seat_write_roots() {"))
+        block = lines[start : lines.index(";;", start)]
+        self.assertIn("home=${dsh_home_phys}", block, "the dsh role's write roots beyond its slots: DSH_HOME first")
+        self.assertIn(
+            "held=${state_root_phys}", block, "the Router's state root <DSH_HOME>/router-state is a write root"
         )
 
     def test_the_package_links_the_bundle_and_the_gateway_over_the_web_profiles_bundles(self) -> None:

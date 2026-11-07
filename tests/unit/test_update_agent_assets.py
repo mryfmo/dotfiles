@@ -6556,7 +6556,9 @@ class DshSuperagentTest(unittest.TestCase):
                 self.assertNotIn(name, inside, "the environment inside is the reduced one")
             self.assertEqual('{"name": "dsh-superagent", "version": "0.1.0"}\n', (install / "package.json").read_text())
             self.assertTrue((install / "src/index.ts").is_file())
-            self.assertTrue((store / "tmp").is_dir(), "the store exists before srt runs (Linux grants existing paths)")
+            self.assertTrue(
+                (store / "tmpdir").is_dir(), "the store exists before srt runs (Linux grants existing paths)"
+            )
             self.assertEqual(
                 ["dsh-superagent", "omp-gateway"],
                 self.plugin_entries(dsh_home),

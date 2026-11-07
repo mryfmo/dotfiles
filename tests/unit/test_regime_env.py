@@ -127,28 +127,76 @@ class RegimeEnvTest(unittest.TestCase):
                 self.clear(state / "hcom")
         self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through a symlink")
 
-    def test_the_store_root_is_derived_beside_the_hcom_store_and_a_symlink_there_is_refused(self):
-        """U215 (handoff/07-store-move-design.md): `REGIME_STORE_ROOT=${HCOM_DIR}/store` is exported beside HCOM_DIR,
-        so every lever that sources the helper reads the one root the program stores live under, outside every
-        checkout; it is held to the no-symlink rule of the store and `origin`, and the refusal names the component.
-        The refusal is the function's return 1, which every caller turns into its exit 2 (regime-init's is asserted in
-        test_regime_init)."""
+    def bind_root(self, content):
+        """Write the store-root binding beside origin (U215b: `<HCOM_DIR>/store-root`, one absolute path)."""
+        binding = self.bind() / "store-root"
+        binding.write_text(content)
+        return binding
+
+    def test_the_store_root_is_the_bound_path_beside_origin_or_empty_without_a_binding(self):
+        """U215b (handoff/07-store-move-design.md; the decisions row of 2026-11-07T17:34:12Z): the program stores lie
+        under a root bound in `<HCOM_DIR>/store-root`, a file beside `origin` that only `regime-init` writes and this
+        helper reads, never under the hcom store itself (hcom-seat grants `HCOM_DIR` to every seat for the bus, so a
+        store there would lie inside a worker's write root; verdict U215-11a32ed6 P1). Bound, `REGIME_STORE_ROOT` is
+        exported equal to the binding's one line, for `--unbound-ok` and for an explicit `HCOM_DIR` too, and the helper
+        makes nothing; absent, it is exported empty and the helper succeeds (the hosts of today, until U221 binds
+        them). A refusal of the binding (the next test) is the function's return 1; each caller maps it to its own
+        refusal status (`regime-init` exit 2, asserted in test_regime_init; `bus-history.sh` and `hcom-dispatch` exit
+        1), so no caller's status is claimed here."""
         self.bind()
-        store_root = self.home / ".local/state/hcom/kit-pilot/store"
-        run = self.bash('regime_env test; printf "%s\\n" "$(printenv REGIME_STORE_ROOT)"')
-        self.assertEqual((run.returncode, run.stdout.strip()), (0, str(store_root)), run.stderr)
-        run = self.bash('regime_env test --unbound-ok; printf "%s\\n" "$(printenv REGIME_STORE_ROOT)"')
-        self.assertEqual((run.returncode, run.stdout.strip()), (0, str(store_root)), "for regime-init too")
-        self.assertFalse(store_root.exists(), "the helper derives the root and makes nothing")
-        elsewhere = self.root / "elsewhere"
-        elsewhere.mkdir()
-        store_root.symlink_to(elsewhere)
+        probe = 'printenv REGIME_STORE_ROOT; printf "exported=%s\\n" "$?"'
+        run = self.bash(f"regime_env test; {probe}")
+        self.assertEqual((run.returncode, run.stdout), (0, "\nexported=0\n"), run.stderr)
+        root = self.home / ".local/state/regime-store/kit-pilot"
+        binding = self.bind_root(f"{root}\n")
         for args in ("test", "test --unbound-ok"):
             with self.subTest(args=args):
-                run = self.bash(f"regime_env {args}")
-                self.assertEqual(run.returncode, 1, run.stderr)
-                self.assertIn(f"{store_root} is a symlink", run.stderr)
-        self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through the symlink")
+                run = self.bash(f"regime_env {args}; {probe}")
+                self.assertEqual((run.returncode, run.stdout), (0, f"{root}\nexported=0\n"), run.stderr)
+        self.assertFalse(root.exists(), "the helper reads the binding and makes nothing")
+        self.assertEqual(sorted(path.name for path in binding.parent.iterdir()), ["origin", "store-root"])
+        explicit = self.root / "explicit"
+        explicit.mkdir()
+        (explicit / "store-root").write_text(f"{root}\n")
+        run = self.bash(f"regime_env test; {probe}", HCOM_DIR=str(explicit))
+        self.assertEqual((run.returncode, run.stdout), (0, f"{root}\nexported=0\n"), "an explicit store's binding")
+        self.assertFalse((self.home / ".local/state/hcom/kit-pilot/store").exists(), "no store under the hcom store")
+
+    def test_a_store_root_binding_outside_its_grammar_is_refused_by_name(self):
+        """U215b: the binding is a regular file of this user, never a link, holding one absolute path under this
+        user's home with no trailing slash and no control character; anything else is refused (return 1) naming the
+        binding, and nothing is written. A link is refused even when its target holds a path the grammar accepts."""
+        binding = self.bind() / "store-root"
+        elsewhere = self.root / "elsewhere"
+        elsewhere.mkdir()
+        root = self.home / ".local/state/regime-store/kit-pilot"
+        for label, content in (
+            ("relative", ".local/state/regime-store/kit-pilot\n"),
+            ("a tab", f"{self.home}/.local/state/regime-store/kit\tpilot\n"),
+            ("two lines", f"{root}\n{root}\n"),
+            ("outside HOME", f"{elsewhere}\n"),
+            ("a trailing slash", f"{root}/\n"),
+            ("empty", ""),
+        ):
+            with self.subTest(content=label):
+                binding.write_text(content)
+                for args in ("test", "test --unbound-ok"):
+                    run = self.bash(f"regime_env {args}")
+                    self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+                    self.assertIn(f"refused: the store-root binding {binding}", run.stderr)
+        binding.unlink()
+        (elsewhere / "store-root").write_text(f"{root}\n")
+        binding.symlink_to(elsewhere / "store-root")
+        run = self.bash("regime_env test")
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertIn(f"refused: {binding} is a symlink", run.stderr)
+        binding.unlink()
+        binding.mkdir()
+        run = self.bash("regime_env test")
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertIn(f"refused: the store-root binding {binding} is not a regular file of this user", run.stderr)
+        self.assertEqual(sorted(path.name for path in elsewhere.iterdir()), ["store-root"], "nothing written")
+        self.assertFalse(root.exists())
 
     def test_defaults_derive_from_the_main_checkout_and_explicit_values_win(self):
         self.bind()

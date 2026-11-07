@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 # @file regime-init
-# @brief Prepare a repository on this host for the hcom regime: the program store under `~/.local/state/hcom/<slug>/store/`, the store origin, the AGENTS.md audit section.
+# @brief Prepare a repository on this host for the hcom regime: the program store under the bound store root (by default `~/.local/state/regime-store/<slug>/`), the store-root binding, the store origin, the AGENTS.md audit section.
 # @description
 #   Regime-cutover U33, a coordinator lever pre-authorized by `Bash(~/.local/bin/common/regime-init *)`. Run it
 #   in the git checkout of the repository. It derives the repository slug, hcom store and team through the
-#   sourced regime-env helper, then creates the program store `~/.local/state/hcom/<slug>/store/<program>/` (U215: the
-#   store root `REGIME_STORE_ROOT` regime-env derives beside the hcom store, outside every checkout, the root and the
-#   program directory each made 0700 as a real directory of this user; handoff/07-store-move-design.md) with the
-#   templates from `~/.agents/regime/` (preferences.md, units.tsv, ledger.tsv, decisions.tsv, gates.md),
-#   writes `~/.local/state/hcom/<slug>/origin` with the toplevel, installs the checkout guard (U129: `checkout-guard.sh
+#   sourced regime-env helper, then creates the program store `<store root>/<program>/` (U215, U215b: the store root
+#   is the one the binding `~/.local/state/hcom/<slug>/store-root` names, by default
+#   `~/.local/state/regime-store/<slug>`, outside every checkout and outside the hcom store, which hcom-seat grants to
+#   every seat for the bus; `regime-store`, `<slug>` and `<program>` each made 0700 under `umask 077` or found a real
+#   directory of this user with mode 0700, read by `/usr/bin/stat`, any other mode refused by name before anything is
+#   written; handoff/07-store-move-design.md) with the templates from `~/.agents/regime/` (preferences.md, units.tsv,
+#   ledger.tsv, decisions.tsv, gates.md), writes the binding `~/.local/state/hcom/<slug>/store-root` (0600, after the
+#   directories exist; one already there is honoured when it names a path under this user's home, else refused) and
+#   `~/.local/state/hcom/<slug>/origin` with the toplevel, installs the checkout guard (U129: `checkout-guard.sh
 #   install <toplevel>`, the `reference-transaction` hook that refuses, while a store exists, every move of a local
 #   branch in the checkout or a linked worktree of it to a commit origin does not hold, which is every commit made
 #   there; round 2 removes round 1's `pre-commit` and `post-checkout`), and prints the AGENTS.md audit section, or
@@ -17,10 +21,10 @@
 #   guard's own hook (`unchanged`), and says that nothing changed. It never writes through a symlink, and it refuses
 #   outside a git checkout, when the derived store's origin names another checkout with the same slug, and when the
 #   guard refuses (a linked worktree, a foreign hook at its path).
-# @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`), the store directory under the store root `~/.local/state/hcom/<slug>/store`.
+# @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`), the store directory under the bound store root (by default `~/.local/state/regime-store/<slug>`).
 # @option --force Replace store files that differ from their template.
 # @option --write-agents Append the audit section to AGENTS.md when it has no `## Audit` heading.
-# @stdout One row per file (`created`, `unchanged`, `kept`, `replaced`, `appended`; `checkout-guard: installed`, `unchanged` or `removed` per hook), the section when not written, the next commands.
+# @stdout One row per path (`created` or `unchanged` for the store root and the store-root binding; `created`, `unchanged`, `kept`, `replaced`, `appended` per file; `checkout-guard: installed`, `unchanged` or `removed` per hook), the section when not written, the next commands.
 # @exitcode 0 Done, including when nothing changed.
 # @exitcode 2 A refusal, before or instead of the write it names.
 # @example
@@ -83,7 +87,7 @@ lever_self_check() {
 }
 lever_self_check
 
-usage=$'usage: regime-init <program> [--force] [--write-agents]\n  the program store is made at ~/.local/state/hcom/<slug>/store/<program> (REGIME_STORE_ROOT of regime-env, U215)'
+usage=$'usage: regime-init <program> [--force] [--write-agents]\n  the program store is made at <store root>/<program>, the root bound in ~/.local/state/hcom/<slug>/store-root (by default ~/.local/state/regime-store/<slug>, U215b)'
 refuse() {
     echo "regime-init: $*" >&2
     exit 2
@@ -113,18 +117,30 @@ inherited=''
 regime_env regime-init --unbound-ok || exit 2
 templates=${LEVER_MANIFEST%/*}/regime
 [[ -d ${templates} ]] || refuse "templates absent: ${templates}"
-# U215: the program store lies under the store root regime-env derives beside the hcom store (`${HCOM_DIR}/store`),
-# outside every checkout; the checkout is named here for AGENTS.md, the guard's hook and the origin's content alone.
-[[ -n ${REGIME_STORE_ROOT:-} ]] || refuse "regime-env derived no store root for ${HCOM_DIR}"
-store_root=${REGIME_STORE_ROOT}
+# U215b: the program store lies under the store root bound in `${HCOM_DIR}/store-root`, which regime-env has read and
+# held to its grammar (one absolute path under HOME) when it exists; absent, this first run binds the default root
+# `~/.local/state/regime-store/<slug>`, a directory outside every checkout and outside every seat's write grant (the
+# hcom store is granted to every seat for the bus, verdict U215-11a32ed6 P1). The checkout is named here for
+# AGENTS.md, the guard's hook and the origin's content alone.
+[[ -n ${REGIME_SLUG:-} ]] || refuse "regime-env derived no repository slug for ${checkout}"
+store_parent=${HOME}/.local/state/regime-store
+store_root=${REGIME_STORE_ROOT:-${store_parent}/${REGIME_SLUG}}
 store=${store_root}/${program}
+binding=${REGIME_STORE_BINDING:-${HCOM_DIR}/store-root}
 origin=${REGIME_ORIGIN:-${HCOM_DIR}/origin}
 # Checked before anything is written: an explicit HCOM_DIR gets the same no-symlink rule as a derived one.
-[[ ! -L ${HCOM_DIR} && ! -L ${origin} ]] || refuse "refused: ${HCOM_DIR} or ${origin} is a symlink"
+[[ ! -L ${HCOM_DIR} && ! -L ${origin} && ! -L ${binding} ]] || refuse "refused: ${HCOM_DIR}, ${origin} or ${binding} is a symlink"
 
-# Nothing is written through a symlink: the store root, the program store, each file and AGENTS.md are refused when
-# one stands there (the two store components are held again, as real directories of this user, when they are made).
-for path in "${store_root}" "${store}" "${checkout}/AGENTS.md"; do
+# The store components, outermost first: `regime-store` is one of them when the root lies directly under it (the
+# default root, or a binding that names a sibling slug there); a root bound elsewhere under HOME brings its own two.
+components=()
+if [[ ${store_root%/*} == "${store_parent}" ]]; then # lint-comparisons: allow both are spelled from the same HOME; the binding's grammar is held unresolved on purpose
+    components+=("${store_parent}")
+fi
+components+=("${store_root}" "${store}")
+# Nothing is written through a symlink: each store component, each file and AGENTS.md are refused when one stands
+# there (the components are held again, as 0700 directories of this user, when they are made).
+for path in "${components[@]}" "${checkout}/AGENTS.md"; do
     [[ ! -L ${path} ]] || refuse "refused: ${path} is a symlink"
 done
 
@@ -156,30 +172,80 @@ place() {
     fi
 }
 
-# @description Make one component of the program store, the store root and then the program directory under it, each
-#   by its own `mkdir` under `umask 077` (no `-p` across both, so neither is made through an entry planted above it),
-#   the shape of hcom-seat's state_root_make: present or made, the path is a real directory of this user (no symlink,
-#   a directory, owned by this user), else refused by name before anything is written; mkdir takes no existing entry,
-#   so a link planted between the check and the mkdir fails it instead of being followed.
+# @description Make one component of the program store (`regime-store`, the store root `<slug>`, the program directory),
+#   each by its own `mkdir` under `umask 077` (no `-p` across them, so none is made through an entry planted above
+#   it), the shape of hcom-seat's state_root_make: present or made, the path is a real directory of this user (no
+#   symlink, a directory, owned by this user) whose mode is 0700, read by `/usr/bin/stat` (Darwin `-f %Lp`, else
+#   `-c %a`; a failed read refuses, standing order 21), else refused by name before anything is written (U215b: a
+#   pre-made 0777 component is a refusal, never kept; verdict U215-11a32ed6 P2); mkdir takes no existing entry, so a
+#   link planted between the check and the mkdir fails it instead of being followed. Prints nothing: the caller prints
+#   the row once every component is held, so a refusal leaves stdout empty.
 # @arg $1 path The directory.
 # @arg $2 string What it is, for the refusal.
+# @set made 1 when this call made the directory, else 0.
+case ${OSTYPE} in
+darwin*) stat_mode=(-f %Lp) ;;
+*) stat_mode=(-c %a) ;;
+esac
 store_dir_make() {
-    local path=$1 what=$2
+    local path=$1 what=$2 mode
+    made=0
     [[ ! -L ${path} ]] || refuse "refused: ${what} ${path} is a symlink"
     if [[ ! -e ${path} ]]; then
         (umask 077 && mkdir "${path}") || refuse "cannot create ${what} ${path}"
+        made=1
     fi
     [[ -d ${path} && ! -L ${path} && -O ${path} ]] || refuse "refused: ${what} ${path} is not a real directory of this user"
+    mode=$(/usr/bin/stat "${stat_mode[@]}" "${path}") || refuse "cannot read the mode of ${what} ${path}"
+    [[ ${mode} == 700 ]] || refuse "refused: ${what} ${path} has mode ${mode}, not 0700"
 }
 
-# The hcom store holds the store root and the origin. hcom makes it itself at the first seat launch, so a first run
-# here finds it absent (on a fresh host its parents too) and makes it; present, it must be a real directory of this user.
+# The store components first, held before any other write (a refusal leaves stdout empty and nothing made beyond the
+# components above the refused one); `~/.local/state` itself is a shared XDG directory, made with its parents when a
+# fresh host lacks it and not held to a mode. The root's row is printed once every component is held.
+if [[ ! -e ${HOME}/.local/state ]]; then
+    mkdir -p "${HOME}/.local/state" || refuse "cannot create ${HOME}/.local/state"
+fi
+root_made=0
+for path in "${components[@]}"; do
+    what='the program store'
+    if [[ ${path} == "${store_parent}" ]]; then # lint-comparisons: allow both are spelled from the same HOME, chosen above by the same test
+        what='the store parent'
+    elif [[ ${path} == "${store_root}" ]]; then # lint-comparisons: allow both are the spelled root, chosen above by the same test
+        what='the store root'
+    fi
+    store_dir_make "${path}" "${what}"
+    if [[ ${path} == "${store_root}" ]]; then # lint-comparisons: allow both are the spelled root
+        root_made=${made}
+    fi
+done
+if ((root_made)); then
+    printf 'created\t%s\n' "${store_root}"
+    changed=1
+else
+    printf 'unchanged\t%s\n' "${store_root}"
+fi
+
+# The hcom store holds the two bindings, `store-root` and `origin`. hcom makes it itself at the first seat launch, so a
+# first run here finds it absent (on a fresh host its parents too) and makes it; present, it must be a real directory
+# of this user.
 if [[ ! -e ${HCOM_DIR} ]]; then
     mkdir -p "${HCOM_DIR}" || refuse "cannot create ${HCOM_DIR}"
 fi
 [[ -d ${HCOM_DIR} && ! -L ${HCOM_DIR} && -O ${HCOM_DIR} ]] || refuse "refused: the hcom store ${HCOM_DIR} is not a real directory of this user"
-store_dir_make "${store_root}" 'the store root'
-store_dir_make "${store}" 'the program store'
+
+# The store-root binding, written 0600 after the directories exist (U215b). Present, regime-env has read it and the
+# root above is its content, so a differing content now is a change since that read and a refusal, like an origin that
+# names another checkout; noclobber keeps a file that appeared since the check from being overwritten.
+if [[ -e ${binding} ]]; then
+    bound=$(cat "${binding}") || refuse "cannot read ${binding}"
+    [[ ${bound} == "${store_root}" ]] || refuse "refused: the store-root binding ${binding} names ${bound}, not ${store_root} (it changed since regime-env read it)" # lint-comparisons: allow the root is the binding's own spelled content
+    printf 'unchanged\t%s\n' "${binding}"
+else
+    (umask 077 && set -C && printf '%s\n' "${store_root}" > "${binding}") || refuse "cannot write ${binding}"
+    printf 'created\t%s\n' "${binding}"
+    changed=1
+fi
 for file in preferences.md units.tsv ledger.tsv decisions.tsv gates.md; do
     place "${file}"
 done
@@ -197,7 +263,8 @@ fi
 # directory, or finds its own there and prints `unchanged`, and removes a round-1 `pre-commit` or `post-checkout` that
 # is still there (`removed`); its refusals (a linked worktree, a foreign hook) are this run's, after the store rows and
 # before the AGENTS section. Its trigger is still a store under the checkout, which this lever no longer creates
-# (U215), so the hook is installed and inert until U219 moves the trigger (handoff/07-store-move-design.md).
+# (U215), so the hook is installed and inert in a freshly prepared checkout until U219 moves the trigger
+# (handoff/07-store-move-design.md); this program's live store is still under its checkout, so the guard fires there.
 [[ -x ${LEVER_DIR}/checkout-guard.sh ]] || refuse "checkout-guard.sh absent beside this script: ${LEVER_DIR}/checkout-guard.sh"
 guard_rows=$("${LEVER_DIR}/checkout-guard.sh" install "${checkout}") || refuse "checkout-guard.sh install ${checkout} failed; the store is in place, the hook is not"
 printf '%s\n' "${guard_rows}"
@@ -232,7 +299,7 @@ else
     cat "${section}" || refuse "cannot read ${section}"
 fi
 
-((changed)) || echo 'regime-init: nothing changed; the program store, origin and AGENTS.md were already in place'
+((changed)) || echo 'regime-init: nothing changed; the program store, its binding, origin and AGENTS.md were already in place'
 # hcom reads only HCOM_DIR, which the levers export to their own children, so the listing names the store itself.
 listing=$(printf 'HCOM_DIR=%q hcom list -v' "${HCOM_DIR}") || refuse 'cannot format the store-scoped hcom listing'
 cat << EOF

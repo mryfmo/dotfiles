@@ -888,9 +888,9 @@ claude:
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
       worker-worktree.sh: 3cfe8e3a98ce7379bcbfab9883e8c0f60c53fe7f38e2427512ef92c355c04dd1
-      regime-env: b185fc4464d9ec610041b03071bee9450e40241aa1c8da1abe7f6d72c8a2ccd9
+      regime-env: 4839e143627c640e77aaf808022bcee25526ac3dbccaec0ead212c4eb530e786
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
-      regime-init: e197e587ebe9c222ea17e00b1cc8a7ba671baefdf4a664fc47bbd1d66f4ddd0a
+      regime-init: 118cf5005e59c62252f1c9f1be114599bd79d98b5bb0aed3787a68ff163c6c12
       checkout-guard.sh: f87d279dbc65e7f3d0119d05f820222f9903d865087394f2663d86e1058e894c
       seat-login-preflight: 7d12ffb08da39735f6c368ddb9ab4ed10084d755a1f57470edc64d1d78e4ae61
       regime-start: c7b630d2353020e57c57a01af94fac5f7ed7f503071de9d1a15172eeb057bc6b

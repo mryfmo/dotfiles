@@ -545,14 +545,14 @@
       "target": ".local/bin/common/regime-env",
       "kind": "file",
       "executable": true,
-      "sha256": "b185fc4464d9ec610041b03071bee9450e40241aa1c8da1abe7f6d72c8a2ccd9"
+      "sha256": "4839e143627c640e77aaf808022bcee25526ac3dbccaec0ead212c4eb530e786"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-init",
       "target": ".local/bin/common/regime-init",
       "kind": "file",
       "executable": true,
-      "sha256": "e197e587ebe9c222ea17e00b1cc8a7ba671baefdf4a664fc47bbd1d66f4ddd0a"
+      "sha256": "118cf5005e59c62252f1c9f1be114599bd79d98b5bb0aed3787a68ff163c6c12"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-start",

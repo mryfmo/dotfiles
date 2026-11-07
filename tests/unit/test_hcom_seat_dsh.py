@@ -312,6 +312,30 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertNotIn(b"router-credentials", text)
         return text
 
+    def store_root(self):
+        """The program store's root regime-env derives for the fixture's checkout (U215c), which the omp roles read and
+        the orchestrator writes (U219)."""
+        return f"{self.home.resolve()}/.local/state/regime-store/repo"
+
+    def without_store_root_rows(self, settings, role):
+        """This head's rendered omp settings (bytes) with exactly the U219 rows removed: the store root once in
+        allowRead for both roles, once in allowWrite for the orchestrator and once in denyWrite for the worker
+        (U219c), each after another row; nothing else names it."""
+        needle = b"," + json.dumps(self.store_root()).encode()
+        self.assertEqual(settings.count(needle), 2, settings)
+        text = settings.replace(needle, b"")
+        self.assertNotIn(b"regime-store", text)
+        return text
+
+    def without_dsh_store_root_row(self, settings):
+        """This head's rendered dsh or router settings (bytes) with exactly the U219c row removed: the store root once
+        in denyWrite, after another row; nothing else names it."""
+        needle = b"," + json.dumps(self.store_root()).encode()
+        self.assertEqual(settings.count(needle), 1, settings)
+        text = settings.replace(needle, b"")
+        self.assertNotIn(b"regime-store", text)
+        return text
+
     def earlier_lever(self, head):
         """The `hcom-seat` of the earlier `head`, unpacked with its manifest into the scratch (git archive of its
         `scripts/orchestrator` and manifest, so its self-check reads its own pin and it sources its own regime-env); a
@@ -446,10 +470,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def test_the_omp_roles_settings_are_byte_identical_to_the_earlier_heads(self):
         """No round's row changes an omp role's settings: the worker's and the orchestrator's `srt-settings.json`
         rendered by this head equal, byte for byte, the ones each earlier head (EARLIER_HEADS) renders on the same
-        scratch host, once exactly the U318 rows (without_shared_claude_rows) and the credential-root deny pair (U353b,
-        U353d; without_omp_credential_rows) are taken out. An earlier lever runs from its own tree (git archive of its
-        `scripts/orchestrator` and manifest, so its self-check reads its own pin); a checkout without that commit skips
-        it."""
+        scratch host, once exactly the U318 rows (without_shared_claude_rows), the credential-root deny pair (U353b,
+        U353d; without_omp_credential_rows) and the store-root grants (U219; without_store_root_rows) are taken out. An
+        earlier lever runs from its own tree (git archive of its `scripts/orchestrator` and manifest, so its self-check
+        reads its own pin); a checkout without that commit skips it."""
         for head in EARLIER_HEADS:
             old_seat = self.earlier_lever(head)
             for role in ("worker", "orchestrator"):
@@ -462,7 +486,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     self.assertEqual(run.returncode, 0, f"{label} {head[:8]} {role}: {run.stderr}")
                     rendered[label] = Path(self.seats, ".sandbox", role, "srt-settings.json").read_bytes()
                 with self.subTest(head=head[:8], role=role):
-                    this_head = self.without_omp_credential_rows(self.without_shared_claude_rows(rendered["this head"]))
+                    this_head = self.without_store_root_rows(
+                        self.without_omp_credential_rows(self.without_shared_claude_rows(rendered["this head"])), role
+                    )
                     self.assertEqual(rendered["earlier head"], this_head)
                     self.assertIn(b'"allowRead":[', rendered["this head"])
 
@@ -769,8 +795,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def test_the_dsh_settings_are_byte_identical_to_the_u318_head(self):
         """U321: the router row changes no byte of the dsh role's settings. The dsh `srt-settings.json` this head renders
         equals, byte for byte, the one the U318 head (DSH_EARLIER_HEADS) renders on the same scratch host, the
-        per-launch name aside (without_launch_name) and the two U353 rows taken out (without_credential_rows: the
-        credential root's denyRead and denyWrite rows, the one change U353 makes to the dsh row); the earlier lever
+        per-launch name aside (without_launch_name), the two U353 rows taken out (without_credential_rows: the
+        credential root's denyRead and denyWrite rows, the one change U353 makes to the dsh row) and the store root's
+        denyWrite row taken out (U219c, without_dsh_store_root_row); the earlier lever
         runs from its own tree (earlier_lever)."""
         for head in DSH_EARLIER_HEADS:
             old_seat = self.earlier_lever(head)
@@ -780,13 +807,45 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 (name,) = self.slots()[0]
                 settings = Path(self.seats, ".sandbox", name, "srt-settings.json").read_bytes()
                 if label == "this head":
-                    settings = self.without_credential_rows(settings)
+                    settings = self.without_dsh_store_root_row(self.without_credential_rows(settings))
                 rendered[label] = self.without_launch_name(settings, name)
                 ((status, out, err),) = self.release(procs)
                 self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), f"{label} {head[:8]}: {err}")
             with self.subTest(head=head[:8]):
                 self.assertEqual(rendered["earlier head"], rendered["this head"])
                 self.assertIn(b'"allowLocalBinding":false', rendered["this head"])
+
+    def test_the_dsh_and_router_rows_deny_the_store_root_for_write_and_the_launch_makes_it(self):
+        """U219c (verdict U219-985b7c04 P1 `:1981` and P2 `:1815`): the dsh and router rows carry the program store's
+        root `<physical HOME>/.local/state/regime-store/<slug>` in `denyWrite` (the shape U353d gave the credential
+        root: the held physical path, tagged, right before the credential root's row), in no grant list and in no
+        `denyRead` row (the rows read nothing of it today and gain no read grant, U219c FORBIDDEN); a launch of either
+        row that finds the root absent makes both components 0700 directories of this user before its settings file
+        is written, since srt 0.0.81's Linux backend binds a deny only for a path that exists."""
+        root = Path(self.store_root())
+        cred = f"{self.dsh_home}/router-credentials"
+        self.assertFalse(root.parent.exists(), "absent before the first launch")
+        for role in ("dsh", "router"):
+            with self.subTest(role=role):
+                procs = self.held_launch("--", "--version", role=role)
+                (name,) = self.slots()[0]
+                fs = self.settings_of(name)["filesystem"]
+                ((status, out, err),) = self.release(procs)
+                self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+                self.assertEqual((fs["denyWrite"].count(str(root)), fs["denyRead"].count(str(root))), (1, 0), fs)
+                self.assertEqual(
+                    fs["denyWrite"].index(str(root)) + 1, fs["denyWrite"].index(cred), "before the credential row"
+                )
+                for key in ("allowRead", "allowWrite"):
+                    self.assertEqual(
+                        [row for row in fs[key] if row == str(root) or row.startswith(f"{root}/")], [], key
+                    )
+                for path in (root.parent, root):
+                    self.assertTrue(path.is_dir() and not path.is_symlink(), path)
+                    self.assertEqual(
+                        (stat.S_IMODE(os.lstat(path).st_mode), os.lstat(path).st_uid), (0o700, os.getuid()), path
+                    )
+                self.assertEqual(self.slots(), ([], []))
 
     def test_a_router_state_root_that_is_a_link_or_a_file_refuses_and_a_linked_dsh_home_renders_inside_it(self):
         """U321b (verdict U321-fec87e14 P1 `:1551`, the auditor's `test_state_root_link_escapes_dsh_home`): round 1
@@ -1646,7 +1705,15 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual(len(tags), 10 + 8 + 8 + 2 + 1 + 2, tags)
         text = test_hcom_seat.SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_each", "ancestors_of")
-        names += ("identity_table", "ascii_lower", "within_ix", "tag_row", "row_tag", "settings_judge")
+        names += (
+            "identity_table",
+            "ascii_lower",
+            "within_ix",
+            "tag_row",
+            "row_tag",
+            "store_root_judge",
+            "settings_judge",
+        )
         functions = "\n".join(
             text[text.index(f"\n{fn}() {{") : text.index("\n}\n", text.index(f"\n{fn}() {{")) + 3] for fn in names
         )
@@ -1658,7 +1725,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 for var, rows in (("allow_read", allow_read), ("write", write), ("deny_read", deny_read), ("deny_write", deny_write))
             )  # fmt: skip
             tagged = "\n".join(f"tag_row {tag} {kind} {ix} {shlex.quote(path)}" for tag, kind, ix, path in tags)
-            script = f"set -euo pipefail\n{stat_args}\n{functions}\n{lists}\n"
+            # The store-root rule (U219c) is a launch's: with no root held, settings_judge's first step is inert here.
+            script = f"set -euo pipefail\n{stat_args}\nstore_root_phys=''\n{functions}\n{lists}\n"
             script += f"row_tags=() row_tag_kinds=() row_tag_ixs=() row_tag_paths=()\n{tagged}\n"
             script += 'settings_judge || { printf "grant=%s\\ndeny=%s\\n" "${judge_grant}" "${judge_deny}"; exit 3; }\n'
             return subprocess.run(["/bin/bash", "-c", script], capture_output=True, text=True, check=False, timeout=60)

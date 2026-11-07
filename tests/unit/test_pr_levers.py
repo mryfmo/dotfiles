@@ -1045,6 +1045,22 @@ class PrThreadsCheckTest(ThreadsFixture):
 
 
 LEDGER_HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
+# The required status contexts of the main ruleset `main integration gate` (`gh api repos/mryfmo/dotfiles/rulesets/
+# 24397953`, the `required_status_checks` rule) as measured 2026-11-07T03:34Z (decisions row 2026-11-07T03:35:00Z),
+# in the brief's order: the checks pr-merge.sh requires by name since U330 (REQUIRED_CHECKS). The merge fixtures list
+# every one of them as `pass`, since the gate refuses a head that lacks one; tests.unit.test_pr_merge holds the
+# lever's array equal to this tuple, so a ruleset edit is a change here and there, and a drift fails CI, not a merge.
+RULESET_REQUIRED_CHECKS = (
+    "public-bootstrap (macos-15, client)",
+    "public-bootstrap (ubuntu-24.04, client)",
+    "public-bootstrap (ubuntu-24.04, server)",
+    "regime",
+    "test (macos-15, client)",
+    "test (ubuntu-24.04, client)",
+    "test (ubuntu-24.04, server)",
+    "validate",
+)
+GREEN_CHECKS = [{"bucket": "pass", "name": name} for name in RULESET_REQUIRED_CHECKS]
 
 
 def ledger_row(
@@ -1180,7 +1196,8 @@ class PrMergeTest(PrLeverTestCase):
         merged_head=None,
     ):
         if checks is None:
-            checks = [{"bucket": "pass", "name": "test"}, {"bucket": "skipping", "name": "docs"}]
+            # every required check passes (U330), and a check that is not required may skip
+            checks = [*GREEN_CHECKS, {"bucket": "skipping", "name": "docs"}]
         listing = {"match": r"^pr checks 7 --json bucket,name$", "json": checks}
         if checks_exit:
             listing = {"match": listing["match"], "exit": checks_exit, "stderr": "HTTP 502"}

@@ -36,23 +36,30 @@
 #   `xdg-open`/`open` pointed at `regime-open-url` for that command only. Claude has no login to run here: the
 #   operator's one step is the printed command `CLAUDE_CONFIG_DIR=<dir> claude auth login` (with
 #   `BROWSER=regime-open-url` in an SSH session, where the page shows a code to paste at the prompt,
-#   docs/remote-host-logins.md), which Claude Code stores under that directory and refreshes itself; the profile mode
-#   makes the directory 0700 first when absent, as hcom-seat does at a launch, so the login lands in a directory this
-#   kit made. The consent click is the human step. Anywhere else (a seat, a script) it prints the command and
-#   refuses, since a login is the operator's step (standing order 4).
+#   docs/remote-host-logins.md), shell-quoted so a seats root with a space pastes whole, which Claude Code stores under
+#   that directory and refreshes itself. Both modes hold the seats root, its `.state` and `claude` to real directories
+#   of this user (a link, a file or another user's directory refuses, exit 2, naming the component), on one normalised
+#   spelling of the root (no empty, `.` or `..` component, no trailing slash; regime-cutover U318c: `<link>//` made
+#   `-L` follow the link) and only under a parent this user can search (a component that cannot be judged refuses
+#   naming it, never reads as absent); the profile mode makes the chain 0700 first when absent, as hcom-seat does at a
+#   launch, so the login lands in a directory this kit made. The consent click is the human step. Anywhere else (a
+#   seat, a script) it prints the command and refuses, since a login is the operator's step (standing order 4).
 # @arg $1 string `--check`, or the profile.
 # @arg $@ string With `--check`: profile names (default: every deployed overlay).
 # @env SSH_CONNECTION Set by sshd: this host is remote to the operator's terminal.
 # @env DISPLAY With WAYLAND_DISPLAY: a Linux host with neither has no local browser, so it counts as remote.
 # @env HCOM_LAUNCHED Set by hcom inside a seat: never run a login there.
 # @env REGIME_SEATS_ROOT The seats root whose `.state/claude` is the shared Claude Code directory (hcom-seat passes its
-#   resolved one); unset, `~/.local/state/omp-seats/<slug>` of the checkout this runs in (regime-env's slug).
+#   resolved one), an absolute path judged on its normalised spelling; unset, `~/.local/state/omp-seats/<slug>` of the
+#   checkout this runs in (regime-env's slug).
 # @stdout With `--check`: one line per profile.
 # @stderr The profile mode's report and refusals.
 # @exitcode 0 Checked, or the profile's route is usable (or the host is local and the route is openai-siwc).
 # @exitcode 1 A record or producer is unreadable, or a login ran and the route is still not usable.
-# @exitcode 2 A usage error, or a seat without a login outside the operator's terminal (a remote host, or any host on
-#   the claude-bridge route, whose login is the operator's printed command).
+# @exitcode 2 A usage error, a component of the shared Claude Code directory path that is a link, a file or another
+#   user's directory or that cannot be judged (a parent this user cannot search), a failed read of the operator's login
+#   command, or a seat without a login outside the operator's terminal (a remote host, or any host on the claude-bridge
+#   route, whose login is the operator's printed command).
 # @example
 #   seat-login-preflight --check
 #   seat-login-preflight audit
@@ -252,15 +259,46 @@ siwc_state() {
     printf 'registered (host %s, client %s), agent.db mtime %s\n' "${host}" "${client}" "${mtime}"
 }
 
+# @description Set `claude_seats_root` to the one spelling of the absolute path `$1` (regime-cutover U318c): every
+#   run of `/` is one `/`, a `.` component is dropped, a `..` component takes the component before it (none at the
+#   root), and no `/` ends it (a bare `/` stays `/`). Lexical, by parameter expansion alone: `realpath` or `pwd -P`
+#   would follow the link the component tests must catch, and `${root%/}` stripped one slash, so `<link>//` kept a
+#   trailing slash that made `-L` follow the link.
+# @arg $1 string An absolute path.
+# @set claude_seats_root The normalised spelling.
+seats_root_normalise() {
+    local rest=$1 part n
+    local -a parts=()
+    while [[ -n ${rest} ]]; do
+        part=${rest%%/*}
+        if [[ ${rest} == */* ]]; then rest=${rest#*/}; else rest=''; fi # lint-comparisons: allow a split of one path into its components, no path compare
+        case ${part} in
+        '' | .) ;;
+        ..)
+            n=${#parts[@]}
+            ((n == 0)) || unset "parts[n - 1]"
+            ;;
+        *) parts+=("${part}") ;;
+        esac
+    done
+    claude_seats_root=''
+    for part in ${parts[@]+"${parts[@]}"}; do
+        claude_seats_root+=/${part}
+    done
+    [[ -n ${claude_seats_root} ]] || claude_seats_root=/
+}
+
 # @description Set `claude_config` to the shared Claude Code directory of this host's seats root,
 #   `<seats-root>/.state/claude` (regime-cutover U318, hcom-seat's `claude_config` row), and `claude_seats_root` to
-#   that root: `REGIME_SEATS_ROOT` when set (hcom-seat passes its resolved one), else `~/.local/state/omp-seats/<slug>`
-#   of the checkout this runs in (regime-env's toplevel and slug readers; the store binding is hcom-seat's concern),
-#   with HOME in `pwd -P` form so the directory has one spelling. A failure sets `claude_config_error` and returns 2.
+#   that root: `REGIME_SEATS_ROOT` when set (hcom-seat passes its resolved one; it must be absolute), else
+#   `~/.local/state/omp-seats/<slug>` of the checkout this runs in (regime-env's toplevel and slug readers; the store
+#   binding is hcom-seat's concern), with HOME in `pwd -P` form. Either form is normalised to one spelling
+#   (seats_root_normalise) before any test reads it, so every component test and every printed path use that spelling.
+#   A failure sets `claude_config_error` and returns 2.
 # @set claude_config The directory.
-# @set claude_seats_root The seats root.
+# @set claude_seats_root The seats root, normalised.
 # @set claude_config_error The reason, when none can be derived.
-# @exitcode 2 No seats root can be derived.
+# @exitcode 2 No seats root can be derived, or REGIME_SEATS_ROOT is not an absolute path.
 claude_config_dir() {
     local root=${REGIME_SEATS_ROOT:-} top slug home
     claude_config='' claude_seats_root='' claude_config_error=''
@@ -279,63 +317,106 @@ claude_config_dir() {
         fi
         root=${home}/.local/state/omp-seats/${slug}
     fi
-    claude_seats_root=${root%/}
-    claude_config=${claude_seats_root}/.state/claude
+    if [[ ${root} != /* ]]; then # lint-comparisons: allow an absolute-path test on one path, no path compare
+        claude_config_error="no seats root: REGIME_SEATS_ROOT ${root} is not an absolute path"
+        return 2
+    fi
+    seats_root_normalise "${root}"
+    claude_config=${claude_seats_root%/}/.state/claude
 }
 
 # @description Print the operator's one Claude step: `CLAUDE_CONFIG_DIR=<dir> claude auth login`, after
 #   `BROWSER=regime-open-url` in an SSH session, where the laptop's browser opens the page and shows a code to paste at
-#   the prompt (docs/remote-host-logins.md).
-# @stdout The command.
+#   the prompt (docs/remote-host-logins.md). The directory is shell-quoted (`%q`), so a seats root holding a space, a
+#   quote or a `$` pastes as one assignment of the same directory (regime-cutover U318b).
+# @stdout The command, one line.
 claude_login_command() {
     local browser=''
     [[ -z ${SSH_CONNECTION:-} ]] || browser='BROWSER=regime-open-url '
-    printf '%sCLAUDE_CONFIG_DIR=%s claude auth login\n' "${browser}" "${claude_config}"
+    printf '%sCLAUDE_CONFIG_DIR=%q claude auth login\n' "${browser}" "${claude_config}"
+}
+
+# @description Refuse the Claude route's absent login after its state line, naming the operator's one step: the
+#   command claude_login_command prints, whose status is read (standing order 21; regime-cutover U318b: unread, a
+#   failed producer printed an ordinary absence with an empty command), so a failed producer refuses naming it instead.
+# @arg $1 string The profile line of the absent state.
+# @exitcode 2 Always: the login is the operator's step, or its command could not be produced (the command dies).
+claude_login_refuse() {
+    local step
+    step=$(claude_login_command) || die "$1; cannot name the operator's login step: claude_login_command failed"
+    die "$1; log in once: ${step}; a login is the operator's step: run that command in your own terminal on this host, then start the seat again"
+}
+
+# @description Hold the shared Claude Code directory path to its three components, the seats root, its `.state` and
+#   `claude` (claude_config_dir, on the normalised spelling), each absent or a directory of this user that is no
+#   symbolic link; both modes call it before anything reads or makes the directory, and it writes nothing. A file test
+#   (`-L`, `-e`, `-d`, `-O`) answers false both for "not so" and for "could not look", so a component is judged only
+#   under a parent this user can search: the nearest ancestor this user can see is found first (`-e` true needs its
+#   own parent searchable; `/` is always seen), a directory there that this user cannot search refuses naming the
+#   component and the directory (regime-cutover U318c: an owned root of mode 000 hid a linked `.state`, which read as
+#   absent), and an absent entry under a searchable directory is absent, as is everything below a file or a dangling
+#   link (the profile mode's mkdir names that). A link, a file or another user's directory refuses naming the
+#   component, since a login under it would land outside what this kit made (regime-cutover U318b: `--check` judged the
+#   leaf alone, so a linked `.state` reached another directory and a file there read as absent).
+# @exitcode 2 A component is a symbolic link, not a directory, a directory of another user, or cannot be judged (the
+#   command dies).
+claude_config_validate() {
+    local path seen above kind
+    for path in "${claude_seats_root}" "${claude_seats_root%/}/.state" "${claude_config}"; do
+        seen=${path%/*}
+        [[ -n ${seen} ]] || seen=/
+        above=0
+        while [[ ! -e ${seen} && ! -L ${seen} ]] && ((${#seen} > 1)); do
+            seen=${seen%/*}
+            [[ -n ${seen} ]] || seen=/
+            above=1
+        done
+        [[ -d ${seen} ]] || return 0
+        [[ -x ${seen} ]] ||
+            die "refused: cannot read the shared Claude Code directory path component ${path} (permission denied: ${seen} is not searchable by this user); fix its mode before a seat starts"
+        ((above == 0)) || return 0
+        if [[ -L ${path} ]]; then
+            kind='a symbolic link'
+        elif [[ ! -e ${path} ]]; then
+            return 0
+        elif [[ ! -d ${path} ]]; then
+            kind='not a directory'
+        elif [[ ! -O ${path} ]]; then
+            kind='a directory of another user'
+        else
+            continue
+        fi
+        die "refused: the shared Claude Code directory path component ${path} is ${kind}; move it aside before a seat starts"
+    done
 }
 
 # @description Make the shared Claude Code directory 0700, with its `.state` parent and the seats root, when absent
 #   (regime-cutover U318), as hcom-seat makes them at a launch, so the operator's login lands in a directory this kit
-#   made. Each of the three is held to no symbolic link and, when it exists, a directory; nothing else is written. Runs
-#   in the profile mode alone (`--check` reports an absent directory as absent).
-# @exitcode 1 A component is a link or not a directory, or the mkdir failed (the command dies).
+#   made, after claude_config_validate has held the three to real directories of this user; nothing else is written.
+#   Runs in the profile mode alone (`--check` reports an absent directory as absent).
+# @exitcode 1 The mkdir failed (the command dies). 2 A component refuses (claude_config_validate).
 claude_config_ensure() {
-    local path
-    for path in "${claude_seats_root}" "${claude_seats_root}/.state" "${claude_config}"; do
-        if [[ -L ${path} ]] || [[ -e ${path} && ! -d ${path} ]]; then
-            die "the shared Claude Code directory path ${path} is not a real directory; move it aside before a seat starts" 1
-        fi
-    done
+    claude_config_validate
     [[ -d ${claude_config} ]] || (umask 077 && mkdir -p "${claude_config}") ||
         die "cannot create the shared Claude Code directory ${claude_config}" 1
 }
 
 # @description Print the Claude Code login line of this host (regime-cutover U318): the one claude.ai login of the
-#   shared directory (claude_config_dir), which every seat's bridge child and the dsh role's gateway child run under,
-#   read by one call, `CLAUDE_CONFIG_DIR=<dir> claude auth status`, with its status and its JSON (one document, read
-#   by jq as the SIWC record is; `authMethod` a string held to a charset, the one field that reaches the terminal).
-#   Present when `authMethod` is `claude.ai`; absent when the call exits 1 (not logged in), names another method
-#   (`oauth_token`, `api_key`: a token or key the seat never gets) or the directory is absent; unreadable, never
-#   absent, when no seats root can be derived, the directory is a link or no directory, claude or jq is missing, the
-#   call exits otherwise or prints no auth status record (standing order 21). A CLAUDE_CODE_OAUTH_TOKEN in this
-#   environment is no input (regime-cutover U312): the call runs without it, as the seat shim clears it. In readiness
-#   mode an absent login names the operator's one step (claude_login_command).
-# @arg $1 int 1 to require a login the seat's child can use (launch readiness).
+#   shared directory `claude_config`, which the caller derived (claude_config_dir) and held to a real directory chain
+#   of this user (claude_config_validate) in its own shell, so a refusal there exits the lever naming the component;
+#   every seat's bridge child and the dsh role's gateway child run under it. The login is read by one call,
+#   `CLAUDE_CONFIG_DIR=<dir> claude auth status`, with its status and its JSON (one document, read by jq as the SIWC
+#   record is; `authMethod` a string held to a charset, the one field that reaches the terminal). Present when
+#   `authMethod` is `claude.ai`; absent when the call exits 1 (not logged in), names another method (`oauth_token`,
+#   `api_key`: a token or key the seat never gets) or the directory is absent; unreadable, never absent, when claude or
+#   jq is missing, the call exits otherwise or prints no auth status record (standing order 21). A
+#   CLAUDE_CODE_OAUTH_TOKEN in this environment is no input (regime-cutover U312): the call runs without it, as the
+#   seat shim clears it. The operator's step for an absent login is the caller's (claude_login_refuse).
 # @exitcode 0 Present. 1 Absent. 2 Unreadable.
 claude_state() {
-    local ready=${1:-0} body status=0 method step='' tool
-    claude_config_dir || {
-        printf 'unreadable (%s)\n' "${claude_config_error}"
-        return 2
-    }
-    if ((ready)); then
-        step="; log in once: $(claude_login_command)"
-    fi
-    if [[ -L ${claude_config} ]] || [[ -e ${claude_config} && ! -d ${claude_config} ]]; then
-        printf 'unreadable (%s is not a real directory)\n' "${claude_config}"
-        return 2
-    fi
+    local body status=0 method tool
     if [[ ! -d ${claude_config} ]]; then
-        printf 'absent (no %s)%s\n' "${claude_config}" "${step}"
+        printf 'absent (no %s)\n' "${claude_config}"
         return 1
     fi
     for tool in claude jq; do
@@ -350,7 +431,7 @@ claude_state() {
     case ${status} in
     0) ;;
     1)
-        printf 'absent (not logged in under %s)%s\n' "${claude_config}" "${step}"
+        printf 'absent (not logged in under %s)\n' "${claude_config}"
         return 1
         ;;
     *)
@@ -366,7 +447,7 @@ claude_state() {
         printf 'login present (claude.ai, %s)\n' "${claude_config}"
         return 0
     fi
-    printf 'absent (authMethod %s under %s, not claude.ai)%s\n' "${method}" "${claude_config}" "${step}"
+    printf 'absent (authMethod %s under %s, not claude.ai)\n' "${method}" "${claude_config}"
     return 1
 }
 
@@ -390,7 +471,16 @@ profile_line() {
     esac
     case ${route} in
     openai-siwc) state=$(siwc_state "$1" "${ready}") || status=$? ;;
-    claude-bridge) state=$(claude_state "${ready}") || status=$? ;;
+    claude-bridge)
+        # The directory is derived and its chain judged in this shell, so a bad component refuses the lever naming it
+        # (claude_config_validate), where a subshell's exit would read as one unreadable line (regime-cutover U318b).
+        if claude_config_dir; then
+            claude_config_validate
+            state=$(claude_state) || status=$?
+        else
+            state="unreadable (${claude_config_error})" status=2
+        fi
+        ;;
     *) state="not a seat login route" status=3 ;;
     esac
     printf '%s %s: %s\n' "$1" "${route}" "${state}"
@@ -474,8 +564,9 @@ if ((route_status == 0)) && [[ ${route} == openai-siwc && -z ${SSH_CONNECTION:-}
     ! [[ ${os} == Linux && -z ${DISPLAY:-} && -z ${WAYLAND_DISPLAY:-} ]]; then
     exit 0
 fi
-# The Claude route's login lives in the shared directory of this seats root (U318): derived here and made 0700 when
-# absent, before the one status call, so the operator's login lands in a directory this kit made.
+# The Claude route's login lives in the shared directory of this seats root (U318): derived here, its chain held to
+# real directories of this user and made 0700 when absent, before the one status call, so the operator's login lands
+# in a directory this kit made.
 if ((route_status == 0)) && [[ ${route} == claude-bridge ]]; then
     claude_config_dir || die "${role} ${route}: unreadable (${claude_config_error}); fix it before a seat starts" 1
     claude_config_ensure
@@ -495,9 +586,9 @@ case ${status} in
     ;;
 esac
 route=$(route_of "${role}") || die "${line}" 1
-# The Claude route has no login to run here: the line names the operator's one command (U318, standing order 48).
+# The Claude route has no login to run here: the operator's one command follows the line (U318, standing order 48).
 if [[ ${route} == claude-bridge ]]; then
-    die "${line}; a login is the operator's step: run that command in your own terminal on this host, then start the seat again"
+    claude_login_refuse "${line}"
 fi
 if [[ ! -t 0 || ! -t 1 || -n ${HCOM_LAUNCHED:-} ]]; then
     die "${line}; a login is the operator's step: run \`seat-login-preflight ${role}\` in your own terminal on this host, then start the seat again"

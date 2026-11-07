@@ -8,6 +8,7 @@ under `/usr/bin/env -i`, so the fake srt here takes its instructions from a file
 environment, and the fake dsh records what reached it into a file the test names. Nothing real starts.
 """
 
+import copy
 import hashlib
 import json
 import os
@@ -45,6 +46,10 @@ EARLIER_HEADS = (
     "2b2415f6cae8b5d1db8d65a560f7cfb9e48e5ab6",  # main after U306, before the profile config row (U310)
 )
 
+# The head before the router row (U321, the U318 head this branch starts from): the dsh role's settings are held
+# byte-identical to it, the per-launch name aside.
+DSH_EARLIER_HEADS = ("e0dd8cc221de0b19477d82c850d1f631042bef4d",)
+
 
 def interpreter_own_names():
     """The names the host's python3 (the fakes' interpreter) adds to an empty environment on its own: Apple's
@@ -54,6 +59,20 @@ def interpreter_own_names():
         capture_output=True, text=True, check=True,
     )  # fmt: skip
     return set(json.loads(probe.stdout)) - {"PATH"}
+
+
+def flatten(value, path=""):
+    """One `{json-pointer-like path: leaf}` map of a parsed settings file, so two renderings diff row by row."""
+    if isinstance(value, dict):
+        items = value.items()
+    elif isinstance(value, list):
+        items = enumerate(value)
+    else:
+        return {path: value}
+    out = {}
+    for key, item in items:
+        out.update(flatten(item, f"{path}/{key}"))
+    return out
 
 
 FAKE_SRT = textwrap.dedent(
@@ -183,13 +202,22 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         argv = [str(self.lever), "dsh", "--seats-root", self.seats, "--home", str(self.dsh_home), *args]
         return subprocess.run(argv, cwd=self.repo, env=env, capture_output=True, text=True, check=False)
 
-    def held_launch(self, *args, count=1, new_session=False, **overrides):
-        """Start `count` launches whose dsh waits for `release`, and return them once every dsh has recorded itself,
-        so the per-launch slots can be read while they exist; `new_session` makes each launcher its own process
-        group, the target of a signal to the group."""
+    def held_launch(self, *args, count=1, new_session=False, role="dsh", seat=None, home=None, **overrides):
+        """Start `count` launches of `role` (dsh, or router, U321) by the lever `seat` (this head's by default) under the
+        DSH_HOME `home` (the fixture's by default) whose dsh waits for `release`, and return them once every dsh has
+        recorded itself, so the per-launch slots can be read while they exist; `new_session` makes each launcher its
+        own process group, the target of a signal to the group."""
         (self.calls / "hold").touch()
         env = {**self.env, **overrides}
-        argv = [str(test_hcom_seat.SEAT), "dsh", "--seats-root", self.seats, "--home", str(self.dsh_home), *args]
+        argv = [
+            str(seat or test_hcom_seat.SEAT),
+            role,
+            "--seats-root",
+            self.seats,
+            "--home",
+            str(home or self.dsh_home),
+            *args,
+        ]
         before = len(self.dsh_calls())
         procs = [
             subprocess.Popen(
@@ -227,6 +255,37 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             sorted(p.name for p in sandbox.iterdir()) if sandbox.exists() else [],
             sorted(p.name for p in state.iterdir() if p.name != "claude") if state.exists() else [],
         )
+
+    def without_launch_name(self, settings, name):
+        """`settings` (a parsed settings file, or its bytes) with the per-launch seat name `name` replaced by
+        `<launch>`, so two launches, of one role or of the dsh and router roles, compare."""
+        if isinstance(settings, bytes):
+            return settings.replace(name.encode(), b"<launch>")
+        return json.loads(json.dumps(settings).replace(name, "<launch>"))
+
+    def earlier_lever(self, head):
+        """The `hcom-seat` of the earlier `head`, unpacked with its manifest into the scratch (git archive of its
+        `scripts/orchestrator` and manifest, so its self-check reads its own pin and it sources its own regime-env); a
+        checkout without that commit (a shallow or squashed clone) skips the calling test."""
+        probe = subprocess.run(
+            ["git", "-C", str(test_hcom_seat.ROOT), "cat-file", "-e", f"{head}^{{commit}}"],
+            env=self.env, capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        if probe.returncode != 0:
+            self.skipTest(f"the earlier head {head} is not in this checkout (a shallow or squashed clone)")
+        old_root = Path(self.temp.name).resolve() / f"head-{head[:8]}"
+        old_root.mkdir()
+        archive = old_root / "tree.tar"
+        subprocess.run(
+            ["git", "-C", str(test_hcom_seat.ROOT), "archive", "--format=tar", "-o", str(archive), head,
+             "scripts/orchestrator", "home/dot_agents/agent-config.yaml"],
+            env=self.env, capture_output=True, text=True, check=True,
+        )  # fmt: skip
+        with tarfile.open(archive) as tar:
+            tar.extractall(old_root, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
+        old_seat = old_root / "scripts/orchestrator/hcom-seat"
+        self.assertTrue(os.access(old_seat, os.X_OK), old_seat)
+        return old_seat
 
     def test_the_dsh_settings_are_the_workers_but_the_named_rows(self):
         """The role table's rows are the only difference: the cwd and state slot for the worktree, DSH_HOME and the
@@ -336,24 +395,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         its own tree (git archive of its `scripts/orchestrator` and manifest, so its self-check reads its own pin); a
         checkout without that commit skips it."""
         for head in EARLIER_HEADS:
-            probe = subprocess.run(
-                ["git", "-C", str(test_hcom_seat.ROOT), "cat-file", "-e", f"{head}^{{commit}}"],
-                env=self.env, capture_output=True, text=True, check=False,
-            )  # fmt: skip
-            if probe.returncode != 0:
-                self.skipTest(f"the earlier head {head} is not in this checkout (a shallow or squashed clone)")
-            old_root = Path(self.temp.name).resolve() / f"head-{head[:8]}"
-            old_root.mkdir()
-            archive = old_root / "tree.tar"
-            subprocess.run(
-                ["git", "-C", str(test_hcom_seat.ROOT), "archive", "--format=tar", "-o", str(archive), head,
-                 "scripts/orchestrator", "home/dot_agents/agent-config.yaml"],
-                env=self.env, capture_output=True, text=True, check=True,
-            )  # fmt: skip
-            with tarfile.open(archive) as tar:
-                tar.extractall(old_root, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
-            old_seat = old_root / "scripts/orchestrator/hcom-seat"
-            self.assertTrue(os.access(old_seat, os.X_OK), old_seat)
+            old_seat = self.earlier_lever(head)
             for role in ("worker", "orchestrator"):
                 rendered = {}
                 for label, seat in (("earlier head", old_seat), ("this head", test_hcom_seat.SEAT)):
@@ -470,8 +512,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             (["dsh", "--home", str(not_executable), "--", "--version"], {}, "cannot resolve the dsh command to a physical executable file"),
             (["dsh", "--home", str(self.dsh_home), "--profile", "bad name", "--", "--version"], {}, "profile 'bad name' is outside"),
             (["dsh", "--home", str(self.dsh_home), "--ext", str(self.bridge)], {}, "--ext is an option of the omp roles"),
-            (["worker", "--profile", "thak"], {}, "--profile, --home and -- are options of the dsh role"),
-            (["worker", "--", "--version"], {}, "--profile, --home and -- are options of the dsh role"),
+            (["worker", "--profile", "thak"], {}, "--profile, --home and -- are options of the dsh and router roles"),
+            (["worker", "--", "--version"], {}, "--profile, --home and -- are options of the dsh and router roles"),
             (["dsh", "--home", str(inside), "--", "--version"], {}, "lies inside the main checkout"),
             (["dsh", "--home", str(planted_home), "--", "--version"], {"PATH": f"{planted_home}/bin:{self.env['PATH']}"}, "lies under the seat write root"),
             (["dsh", "--", "--version"], {"DSH_HOME": str(self.temp.name) + "/absent"}, "DSH_HOME is not a directory"),
@@ -548,6 +590,511 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual(len(self.calls_of("srt")), before + 1, "the dry run reads the srt version and starts nothing")
         self.assertEqual(len(self.dsh_calls()), 1)
         self.assertEqual(self.slots(), ([], []), "the dry run makes no per-launch slot")
+
+    def test_the_router_settings_are_the_dsh_settings_but_the_loopback_grant_and_the_state_root(self):
+        """U321: the router role is one more row of the role table, the dsh row with the loopback grant and the Router's
+        state root. Its rendered settings, the per-launch name aside, equal the dsh role's with exactly two changes:
+        `allowLocalBinding` true and `<DSH_HOME>/router-state` as allowWrite row 6, after `~/.omp/run`; every other row
+        (the shared omp profile `~/.omp/profiles/dsh` among them, so the tagged positions hold), every deny, the domain
+        list and the rest are equal, and the dsh role's own settings keep the binding false. dsh receives the fixed
+        profile and the shared `OMP_PROFILE`; both roles' slots go when dsh exits."""
+        rendered = {}
+        for role in ("dsh", "router"):
+            procs = self.held_launch("--", "--version", role=role)
+            (name,) = self.slots()[0]
+            self.assertRegex(name, rf"^{role}-\d{{8}}-\d{{6}}-\d+$")
+            rendered[role] = self.without_launch_name(self.settings_of(name), name)
+            ((status, out, err),) = self.release(procs)
+            self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+            self.assertEqual(self.slots(), ([], []), f"the {role} slots are gone once dsh exited")
+        dsh, router = rendered["dsh"], rendered["router"]
+        home = self.home.resolve()
+        state_root = f"{self.dsh_home}/router-state"
+        expected = copy.deepcopy(dsh)
+        expected["network"]["allowLocalBinding"] = True
+        expected["filesystem"]["allowWrite"].insert(6, state_root)
+        self.assertEqual(router, expected)
+        self.assertIs(dsh["network"]["allowLocalBinding"], False)
+        self.assertNotIn(state_root, json.dumps(dsh))
+        self.assertEqual(
+            router["filesystem"]["allowWrite"][3:7],
+            [str(self.dsh_home), str(home / ".omp/profiles/dsh"), str(home / ".omp/run"), state_root],
+        )
+        self.assertNotIn(state_root, router["filesystem"]["allowRead"], "DSH_HOME, read row 3, already reads it")
+        # The flattened diff, the inserted row taken out, is the one binding value and nothing else.
+        trimmed = copy.deepcopy(router)
+        del trimmed["filesystem"]["allowWrite"][6]
+        flat_dsh, flat_router = flatten(dsh), flatten(trimmed)
+        diff = {
+            key: (flat_dsh.get(key), flat_router.get(key))
+            for key in sorted(set(flat_dsh) | set(flat_router))
+            if flat_dsh.get(key) != flat_router.get(key)
+        }
+        self.assertEqual(diff, {"/network/allowLocalBinding": (False, True)})
+        dsh_call, router_call = self.dsh_calls()
+        self.assertEqual(dsh_call["argv"], ["--version"])
+        self.assertEqual(router_call["argv"], ["--profile", "router", "--version"])
+        self.assertEqual((dsh_call["env"]["OMP_PROFILE"], router_call["env"]["OMP_PROFILE"]), ("dsh", "dsh"))
+        self.assertEqual((dsh_call["env"]["DSH_HOME"], router_call["env"]["DSH_HOME"]), (str(self.dsh_home),) * 2)
+
+    def test_the_router_role_runs_the_router_profile_alone(self):
+        """U321: the router role's grants exist for the Router, so the role accepts the DSH profile `router` alone
+        (`--profile router` or none) and refuses any other by name, exit 2, before any tool is resolved or anything is
+        made; the profile shape rule, the `--ext` refusal and the omp roles' refusal of the dsh options hold for it as
+        for dsh."""
+        cases = (
+            (["router", "--profile", "thak"], "the router role runs the DSH profile 'router' alone; --profile 'thak' is refused"),
+            (["router", "--profile", "dsh", "--dry-run"], "the router role runs the DSH profile 'router' alone; --profile 'dsh' is refused"),
+            (["router", "--profile", "bad name"], "profile 'bad name' is outside"),
+            (["router", "--ext", str(self.bridge)], "--ext is an option of the omp roles"),
+            (["worker", "--profile", "router"], "--profile, --home and -- are options of the dsh and router roles"),
+        )  # fmt: skip
+        for args, message in cases:
+            with self.subTest(args=args):
+                run = self.seat(*args, "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+        self.assertFalse(Path(self.seats).exists())
+        self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
+
+    def test_a_router_dry_run_prints_the_launch_line_with_the_router_profile_and_makes_no_slot(self):
+        """U321: `hcom-seat router [--profile router] --dry-run -- <args>` prints the foreground launch line with the
+        router per-launch shim, `OMP_PROFILE=dsh` and `--profile router` first among dsh's arguments, whether the
+        profile was given or defaulted, reads the srt version and makes no seats root and no slot."""
+        for args in (["--profile", "router"], []):
+            with self.subTest(args=args):
+                before = len(self.calls_of("srt"))
+                run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), *args, "--dry-run",
+                                "--", "--version", USER="u321")  # fmt: skip
+                self.assertEqual(run.returncode, 0, run.stderr)
+                line = shlex.split(run.stdout)
+                self.assertEqual(line[:2], ["/usr/bin/env", "-i"])
+                self.assertEqual(
+                    line[2:8],
+                    [f"HOME={self.home}", f"PATH={self.tools}:/usr/bin:/bin:/usr/sbin:/sbin", f"DSH_HOME={self.dsh_home}",
+                     "OMP_PROFILE=dsh", f"CLAUDE_CONFIG_DIR={Path(self.seats, '.state/claude')}", "USER=u321"],
+                )  # fmt: skip
+                self.assertRegex(line[8], rf"^{re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
+                self.assertEqual(line[9:], ["--profile", "router", "--version"])
+                self.assertEqual(
+                    len(self.calls_of("srt")), before + 1, "the dry run reads the srt version and starts nothing"
+                )
+        self.assertFalse(Path(self.seats).exists(), "the dry run makes no seats root and no slot")
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_the_router_canary_refuses_like_the_dsh_roles_and_both_slots_go(self):
+        """U321: the router shim is the dsh shim: a canary that finds the sandbox open starts no dsh, exit 2, and the
+        per-launch slots go with the refusal; with the canary holding, the launch goes through and the slots go too."""
+        (self.calls / "canary-answer").write_text("write-open read-denied ssh-denied debug-denied\n")
+        run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(
+            "the sandbox does not hold (canary: write-open read-denied ssh-denied debug-denied); dsh not started",
+            run.stderr,
+        )
+        self.assertEqual(self.dsh_calls(), [])
+        self.assertEqual(self.slots(), ([], []))
+        (self.calls / "canary-answer").unlink()
+        run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version")
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        (dsh,) = self.dsh_calls()
+        self.assertEqual(dsh["argv"], ["--profile", "router", "--version"])
+        self.assertEqual(self.slots(), ([], []))
+
+    def test_the_dsh_settings_are_byte_identical_to_the_u318_head(self):
+        """U321: the router row changes no byte of the dsh role's settings. The dsh `srt-settings.json` this head renders
+        equals, byte for byte, the one the U318 head (DSH_EARLIER_HEADS) renders on the same scratch host, the
+        per-launch name aside (without_launch_name); the earlier lever runs from its own tree (earlier_lever)."""
+        for head in DSH_EARLIER_HEADS:
+            old_seat = self.earlier_lever(head)
+            rendered = {}
+            for label, seat in (("earlier head", old_seat), ("this head", test_hcom_seat.SEAT)):
+                procs = self.held_launch("--", "--version", seat=seat)
+                (name,) = self.slots()[0]
+                settings = Path(self.seats, ".sandbox", name, "srt-settings.json").read_bytes()
+                rendered[label] = self.without_launch_name(settings, name)
+                ((status, out, err),) = self.release(procs)
+                self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), f"{label} {head[:8]}: {err}")
+            with self.subTest(head=head[:8]):
+                self.assertEqual(rendered["earlier head"], rendered["this head"])
+                self.assertIn(b'"allowLocalBinding":false', rendered["this head"])
+
+    def test_a_router_state_root_that_is_a_link_or_a_file_refuses_and_a_linked_dsh_home_renders_inside_it(self):
+        """U321b (verdict U321-fec87e14 P1 `:1551`, the auditor's `test_state_root_link_escapes_dsh_home`): round 1
+        rendered `<DSH_HOME>/router-state` as spelled, so a link there pointing outside DSH_HOME (the auditor's
+        `~/.config/autostart`) became allowWrite row 6 and the launch went through. The state root is held before the
+        roots are rendered: a link refuses by name, exit 2, in a dry run too, before any tool is resolved, with no
+        seats root, no settings file and nothing written at the link's target; a regular file refuses; a DSH_HOME that
+        is itself a link resolves first, so the root renders as its physical path inside the physical DSH_HOME, and an
+        absent root is made 0700 by the launch."""
+        home = self.home.resolve()
+        outside = home / ".config/autostart"
+        outside.mkdir(parents=True)
+        state_root = self.dsh_home / "router-state"
+        state_root.symlink_to(outside)
+        for args in ([], ["--dry-run"]):
+            with self.subTest(case="a link outside DSH_HOME", args=args):
+                run = self.seat(
+                    "router", "--seats-root", self.seats, "--home", str(self.dsh_home), *args, "--", "--version"
+                )
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(
+                    f"the router role's state root {state_root} is a symbolic link; it must be a real directory inside"
+                    " DSH_HOME, or absent",
+                    run.stderr,
+                )
+        self.assertTrue(state_root.is_symlink(), "the launch neither removed nor replaced the link")
+        self.assertEqual(sorted(outside.iterdir()), [], "nothing was written at the link's target")
+        state_root.unlink()
+        state_root.write_text("not a directory\n")
+        with self.subTest(case="a regular file"):
+            run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version")
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertIn(f"the router role's state root {state_root} exists and is not a directory", run.stderr)
+        self.assertFalse(Path(self.seats).exists(), "no seats root, so no settings file")
+        self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
+        state_root.unlink()
+        linked_home = Path(self.temp.name).resolve() / "linked-home"
+        linked_home.symlink_to(self.dsh_home)
+        with self.subTest(case="an absent state root, then a linked DSH_HOME"):
+            procs = self.held_launch("--", "--version", role="router")
+            (name,) = self.slots()[0]
+            settings = self.settings_of(name)
+            ((status, out, err),) = self.release(procs)
+            self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+            self.assertEqual(settings["filesystem"]["allowWrite"][6], str(state_root))
+            self.assertTrue(state_root.is_dir() and not state_root.is_symlink())
+            self.assertEqual(stat.S_IMODE(state_root.stat().st_mode), 0o700, "an absent state root is made 0700")
+            shutil.rmtree(state_root)
+            procs = self.held_launch("--", "--version", role="router", home=linked_home)
+            (name,) = self.slots()[0]
+            settings = self.settings_of(name)
+            ((status, out, err),) = self.release(procs)
+            self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+            self.assertEqual(settings["filesystem"]["allowWrite"][3], str(self.dsh_home), "DSH_HOME renders physical")
+            self.assertEqual(
+                settings["filesystem"]["allowWrite"][6], str(state_root), "the state root renders physical, inside it"
+            )
+            self.assertNotIn(str(linked_home), json.dumps(settings))
+            self.assertTrue(state_root.is_dir() and not state_root.is_symlink())
+            self.assertEqual(stat.S_IMODE(state_root.stat().st_mode), 0o700)
+            self.assertEqual(self.dsh_calls()[-1]["env"]["DSH_HOME"], str(self.dsh_home))
+        self.assertEqual(self.slots(), ([], []))
+
+    def test_the_passthrough_cannot_reselect_the_router_profile(self):
+        """U321b (verdict U321-fec87e14 P1 `:316`, the auditor's `test_forwarded_profile_selectors_are_not_refused`): the
+        fixed `--profile router` was placed before the verbatim dsh arguments and nothing held those, so `-- --profile
+        thak` reached dsh as `--profile router --profile thak` and the restriction rested on dsh's option precedence.
+        Each selector form among the verbatim arguments (`--profile <name>`, `--profile=<name>`, `-p <name>`,
+        `-p<name>`) refuses by name, exit 2, in a dry run too, before any tool is resolved or anything is made; a
+        passthrough without a selector keeps round 1's launch line, `--profile router` once and first; the dsh row,
+        whose profile is not fixed, forwards a selector as before."""
+        message = "the router role runs the DSH profile 'router' alone; the dsh argument {!r} selects a profile and is refused"
+        for selector in (["--profile", "thak"], ["--profile=thak"], ["-p", "thak"], ["-pthak"]):
+            for args in ([], ["--dry-run"], ["--profile", "router"]):
+                with self.subTest(selector=selector, args=args):
+                    run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), *args,
+                                    "--", "--version", *selector)  # fmt: skip
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(message.format(selector[0]), run.stderr)
+        self.assertFalse(Path(self.seats).exists())
+        self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
+        run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run",
+                        "--", "--version", "--flag", "-x", "value")  # fmt: skip
+        self.assertEqual(run.returncode, 0, run.stderr)
+        line = shlex.split(run.stdout)
+        self.assertRegex(line[7], rf"^{re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
+        self.assertEqual(line[8:], ["--profile", "router", "--version", "--flag", "-x", "value"])
+        self.assertEqual(line.count("--profile"), 1)
+        run = self.launch("--", "--profile", "thak", "--version")
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        (dsh,) = self.dsh_calls()
+        self.assertEqual(dsh["argv"], ["--profile", "thak", "--version"], "the dsh row fixes no profile")
+        self.assertEqual(self.slots(), ([], []))
+
+    def debug_trap_hook(self, name, handler):
+        """A BASH_ENV file installing `handler` (bash lines defining `u321c_hook`, called with the command bash is about
+        to run) as the lever's DEBUG trap: top-level commands of hcom-seat alone (no `set -T`, so no function or
+        subshell inherits it), the form of the round-2 auditor's race probe (verdict U321b-7dfaa839 P1 `:1567`).
+        Returns the environment overrides: the hook, and `U321C_TRACE`, the file the handler records itself in."""
+        hook = Path(self.temp.name) / f"{name}-hook.bash"
+        trace = Path(self.temp.name) / f"{name}-trace"
+        trace.write_text("")
+        hook.write_text(f"{handler}\ntrap 'u321c_hook \"${{BASH_COMMAND}}\"' DEBUG\n")
+        return {"BASH_ENV": str(hook), "U321C_TRACE": str(trace)}, trace
+
+    def test_a_state_root_swapped_between_the_hold_and_the_render_grants_the_held_directory_alone(self):
+        """U321c (verdict U321b-7dfaa839 P1 `:1567`, the auditor's DEBUG-trap race; the mechanism-change row of
+        2026-11-07T02:25:00Z, form remove): round 2 held `<DSH_HOME>/router-state` physical and then `seat_write_roots`
+        resolved it a second time, so a swap of the directory for a link to `~/.config/autostart` between the two
+        reads, restored before the final check, rendered the outside path as allowWrite row 6 and the launch went
+        through. Now the hold resolves the path once and the render prints the held value: the same swap, made by a
+        DEBUG trap before the render and undone before the next command, changes nothing in the settings. Row 6 is the
+        held physical directory, the outside path appears nowhere, and the launch goes through on the restored
+        directory."""
+        home = self.home.resolve()
+        outside = home / ".config/autostart"
+        outside.mkdir(parents=True)
+        state_root = self.dsh_home / "router-state"
+        state_root.mkdir(0o700)
+        overrides, trace = self.debug_trap_hook(
+            "race",
+            textwrap.dedent(
+                """\
+                u321c_phase=0
+                u321c_hook() {
+                    case ${u321c_phase}:$1 in
+                    0:seat_roots_out=*)
+                        /bin/rmdir "${U321C_ROOT}" && /bin/ln -s "${U321C_OUTSIDE}" "${U321C_ROOT}" || exit 97
+                        u321c_phase=1
+                        builtin printf 'swapped before: %s\\n' "$1" >> "${U321C_TRACE}"
+                        ;;
+                    1:*)
+                        /bin/rm "${U321C_ROOT}" && /bin/mkdir -m 700 "${U321C_ROOT}" || exit 98
+                        u321c_phase=2
+                        builtin printf 'restored before: %s\\n' "$1" >> "${U321C_TRACE}"
+                        ;;
+                    esac
+                }
+                """
+            ),
+        )
+        overrides.update(U321C_ROOT=str(state_root), U321C_OUTSIDE=str(outside))
+        procs = self.held_launch("--", "--version", role="router", **overrides)
+        (name,) = self.slots()[0]
+        settings = self.settings_of(name)
+        ((status, out, err),) = self.release(procs)
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        recorded = trace.read_text().splitlines()
+        self.assertEqual(len(recorded), 2, recorded)
+        self.assertRegex(
+            recorded[0], r"^swapped before: seat_roots_out=\$\(seat_write_roots ", "the swap preceded the render"
+        )
+        self.assertTrue(recorded[1].startswith("restored before: "), recorded)
+        self.assertEqual(settings["filesystem"]["allowWrite"][6], str(state_root), "row 6 is the held physical path")
+        self.assertEqual(
+            settings["filesystem"]["allowWrite"][3:7],
+            [str(self.dsh_home), str(home / ".omp/profiles/dsh"), str(home / ".omp/run"), str(state_root)],
+        )
+        self.assertNotIn(str(outside), json.dumps(settings), "nothing outside DSH_HOME reaches the settings")
+        for root in settings["filesystem"]["allowWrite"]:
+            self.assertFalse(root.startswith(f"{home}/.config"), root)
+        self.assertEqual(sorted(outside.iterdir()), [], "nothing was written at the link's target")
+        self.assertTrue(state_root.is_dir() and not state_root.is_symlink())
+        self.assertEqual(self.dsh_calls()[-1]["argv"], ["--profile", "router", "--version"])
+        self.assertEqual(self.slots(), ([], []))
+
+    def test_a_held_state_root_removed_before_the_sandbox_write_refuses_by_name_and_writes_no_settings(self):
+        """U321c: the held value names a directory that existed when it was held; nothing in the launch resolves the
+        path again, and the sandbox write derives nothing from it. A held directory removed after the hold (a DEBUG
+        trap before `seat_sandbox_write`) refuses, exit 2, naming the state root; no settings file is written, so no
+        grant of any kind reaches srt, and dsh does not start. The lever does not make the directory again (the
+        7dfaa839 write made it anew and launched)."""
+        state_root = self.dsh_home / "router-state"
+        state_root.mkdir(0o700)
+        overrides, trace = self.debug_trap_hook(
+            "removal",
+            textwrap.dedent(
+                """\
+                u321c_hook() {
+                    case $1 in
+                    seat_sandbox_write)
+                        /bin/rmdir "${U321C_ROOT}" || exit 97
+                        builtin printf 'removed before: %s\\n' "$1" >> "${U321C_TRACE}"
+                        ;;
+                    esac
+                }
+                """
+            ),
+        )
+        run = self.seat(
+            "router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version",
+            U321C_ROOT=str(state_root), **overrides,
+        )  # fmt: skip
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"the router role's state root {state_root} is not a real directory of this user", run.stderr)
+        self.assertEqual(
+            trace.read_text(), "removed before: seat_sandbox_write\n", "the trap removed the held directory"
+        )
+        self.assertFalse(state_root.exists() or state_root.is_symlink(), "the launch made no second directory")
+        self.assertEqual(list(Path(self.seats).rglob("srt-settings.json")) if Path(self.seats).exists() else [], [])
+        self.assertEqual(self.slots(), ([], []))
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_an_invalid_state_root_in_a_dry_run_makes_no_tool_directory_no_link_and_runs_no_host_git(self):
+        """U321c (verdict U321b-7dfaa839 P3 `README.md:145`): round 2's hold ran after the private tool directory and
+        the host git reads, so an invalid-state-root dry run made eight tool links and ran git three times before
+        refusing. The hold is now one of the pre-launch checks: a link outside DSH_HOME or a regular file at
+        `router-state` refuses, exit 2, with the private tool directory absent (so no link under it), zero host git
+        calls (a logging git first on PATH), no seats root, no srt or dsh call. The contrast: a dry run with a valid
+        absent state root goes through to the host git reads and (U321d) makes nothing, not the state root either."""
+        home = self.home.resolve()
+        outside = home / ".config/autostart"
+        outside.mkdir(parents=True)
+        state_root = self.dsh_home / "router-state"
+        log = Path(self.temp.name) / "git-calls"
+        wrapper = Path(self.temp.name) / "logging-git"
+        wrapper.mkdir()
+        real_git = shutil.which("git", path=SYSTEM_PATH)
+        (wrapper / "git").write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nexec "{real_git}" "$@"\n')
+        (wrapper / "git").chmod(0o755)
+        path = f"{wrapper}:{self.env['PATH']}"
+        cases = (
+            ("a link outside DSH_HOME", lambda: state_root.symlink_to(outside),
+             f"the router role's state root {state_root} is a symbolic link; it must be a real directory inside DSH_HOME, or absent"),
+            ("a regular file", lambda: state_root.write_text("not a directory\n"),
+             f"the router role's state root {state_root} exists and is not a directory"),
+        )  # fmt: skip
+        for label, plant, message in cases:
+            plant()
+            with self.subTest(case=label):
+                run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run",
+                                "--", "--version", PATH=path)  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertFalse(self.tools.exists(), "the private tool directory is not made, so no link under it")
+                self.assertFalse(log.exists(), "no host git call")
+            state_root.unlink()
+        self.assertEqual(sorted(outside.iterdir()), [], "nothing was written at the link's target")
+        self.assertFalse(Path(self.seats).exists(), "no seats root")
+        self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
+        run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run",
+                        "--", "--version", PATH=path)  # fmt: skip
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertFalse(state_root.exists() or state_root.is_symlink(), "a dry run makes no state root (U321d)")
+        self.assertFalse(Path(self.seats).exists(), "the dry run still makes no seats root and no slot")
+        self.assertTrue(log.exists(), "the valid dry run goes on to the host git reads through the logging git")
+
+    def test_a_dsh_home_link_retargeted_between_the_hold_and_the_render_grants_the_held_home_alone(self):
+        """U321d (verdict U321c-b80a4794 P1 `:630`, the auditor's parent-alias race; class containment-boundary, the
+        first strike after the mechanism-change row of 2026-11-07T02:25:00Z, form remove): round 3 held
+        `<DSH_HOME>/router-state` once but resolved DSH_HOME on its own at the hold, again at the render and again at
+        the deny row, so a DSH_HOME link retargeted to `~/.config/autostart` during the hold and restored before the
+        render launched with allowWrite row 3 at the real home and row 6 at `~/.config/autostart/router-state`. Now
+        the home is resolved exactly once (`dsh_home_hold`) and every later use reads that variable: the same
+        retarget, made by a DEBUG trap before `state_root_hold` and undone before the render, changes nothing. Rows 3
+        to 6 name the held physical home, the outside path appears nowhere, nothing is written under it, the state
+        root is made inside the held home, and dsh runs under `DSH_HOME=<held home>`."""
+        home = self.home.resolve()
+        outside = home / ".config/autostart"
+        outside.mkdir(parents=True)
+        linked_home = Path(self.temp.name).resolve() / "linked-home"
+        linked_home.symlink_to(self.dsh_home)
+        state_root = self.dsh_home / "router-state"
+        overrides, trace = self.debug_trap_hook(
+            "parent-alias",
+            textwrap.dedent(
+                """\
+                u321d_phase=0
+                u321c_hook() {
+                    case ${u321d_phase}:$1 in
+                    0:state_root_hold)
+                        /bin/rm "${U321D_LINK}" && /bin/ln -s "${U321D_OUTSIDE}" "${U321D_LINK}" || exit 97
+                        u321d_phase=1
+                        builtin printf 'retargeted before: %s\\n' "$1" >> "${U321C_TRACE}"
+                        ;;
+                    1:seat_roots_out=*)
+                        /bin/rm "${U321D_LINK}" && /bin/ln -s "${U321D_HOME}" "${U321D_LINK}" || exit 98
+                        u321d_phase=2
+                        builtin printf 'restored before: %s\\n' "$1" >> "${U321C_TRACE}"
+                        ;;
+                    esac
+                }
+                """
+            ),
+        )
+        overrides.update(U321D_LINK=str(linked_home), U321D_OUTSIDE=str(outside), U321D_HOME=str(self.dsh_home))
+        procs = self.held_launch("--", "--version", role="router", home=linked_home, **overrides)
+        (name,) = self.slots()[0]
+        settings = self.settings_of(name)
+        ((status, out, err),) = self.release(procs)
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        recorded = trace.read_text().splitlines()
+        self.assertEqual(len(recorded), 2, recorded)
+        self.assertEqual(recorded[0], "retargeted before: state_root_hold", "the retarget preceded the state root hold")
+        self.assertRegex(
+            recorded[1], r"^restored before: seat_roots_out=\$\(seat_write_roots ", "undone before the render"
+        )
+        self.assertEqual(
+            settings["filesystem"]["allowWrite"][3:7],
+            [str(self.dsh_home), str(home / ".omp/profiles/dsh"), str(home / ".omp/run"), str(state_root)],
+            "rows 3 to 6 name the held physical home",
+        )
+        self.assertEqual(settings["filesystem"]["allowRead"][3], str(self.dsh_home))
+        self.assertNotIn(str(outside), json.dumps(settings), "nothing outside the held home reaches the settings")
+        self.assertNotIn(str(linked_home), json.dumps(settings), "the spelled link appears nowhere")
+        for root in settings["filesystem"]["allowWrite"]:
+            self.assertFalse(root.startswith(f"{home}/.config"), root)
+        self.assertEqual(sorted(outside.iterdir()), [], "nothing was written at the retargeted link's target")
+        self.assertTrue(
+            state_root.is_dir() and not state_root.is_symlink(), "the state root is made inside the held home"
+        )
+        self.assertEqual(stat.S_IMODE(state_root.stat().st_mode), 0o700)
+        self.assertEqual(self.dsh_calls()[-1]["env"]["DSH_HOME"], str(self.dsh_home))
+        self.assertEqual(self.dsh_calls()[-1]["argv"], ["--profile", "router", "--version"])
+        self.assertEqual(self.slots(), ([], []))
+
+    def test_a_denied_dsh_home_in_a_router_dry_run_refuses_with_no_directory_made_under_it(self):
+        """U321d (verdict U321c-b80a4794 P2 `:635`, the auditor's denied-home probe): round 3's hold made `router-state`
+        before DSH_HOME's deny judgement, so `router --home ~/.ssh --dry-run` created `~/.ssh/router-state` and then
+        refused the denied home, where the dsh role refused without a write. Now the hold writes nothing and the make
+        runs after the judgement, in a real launch alone: the router role refuses `~/.ssh` by the judge's name, exit 2,
+        in a dry run and in a launch, as the dsh role does, nothing appears under `~/.ssh`, no seats root exists, and
+        the DEBUG-trap recorder shows the private tool directory's mkdir alone."""
+        home = self.home.resolve()
+        ssh = home / ".ssh"
+        ssh.mkdir()
+        hook = Path(self.temp.name) / "trace-hook.bash"
+        hook.write_text('set -T\ntrap \'builtin printf "%s\\0" "$BASH_COMMAND" >> "$U272_TRACE"\' DEBUG\n')
+        trace = Path(self.temp.name) / "trace"
+        for role, args in (("router", ["--dry-run"]), ("router", []), ("dsh", ["--dry-run"])):
+            with self.subTest(role=role, args=args):
+                trace.write_text("")
+                run = self.seat(role, "--seats-root", self.seats, "--home", str(ssh), *args, "--", "--version",
+                                BASH_ENV=str(hook), U272_TRACE=str(trace))  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(
+                    f"allowRead row {ssh} is, contains or lies inside {ssh}, a row of its denyRead list", run.stderr
+                )
+                commands = trace.read_text().split("\0")[:-1]
+                self.assertIn("settings_judge", " ".join(commands), "the refusal is the judge's")
+                mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
+                self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
+                self.assertEqual(sorted(ssh.iterdir()), [], "nothing is made under the denied home")
+        self.assertFalse(Path(self.seats).exists())
+        self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
+
+    def test_a_router_dry_run_with_an_absent_state_root_makes_nothing_and_prints_the_would_make_line(self):
+        """U321d: a dry run of the router role with a valid, absent state root makes nothing (no `router-state`, no
+        seats root, no slot; DSH_HOME keeps its one entry), prints the launch line, exit 0, and says on stderr what a
+        launch would make: the state root, 0700. A launch then makes exactly that directory, 0700, inside the held
+        home, after the judgement, and says nothing of the kind."""
+        state_root = self.dsh_home / "router-state"
+        run = self.seat(
+            "router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run", "--", "--version"
+        )
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(
+            f"hcom-seat: the router role's state root {state_root} does not exist; a launch creates it (0700)",
+            run.stderr,
+        )
+        self.assertRegex(
+            run.stdout, rf" {re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh --profile router "
+        )
+        self.assertFalse(state_root.exists() or state_root.is_symlink(), "the dry run makes no state root")
+        self.assertEqual(sorted(self.dsh_home.iterdir()), [self.dsh_home / "bin"], "DSH_HOME keeps its one entry")
+        self.assertFalse(Path(self.seats).exists(), "no seats root and no slot")
+        self.assertEqual(self.dsh_calls(), [])
+        procs = self.held_launch("--", "--version", role="router")
+        (name,) = self.slots()[0]
+        settings = self.settings_of(name)
+        ((status, out, err),) = self.release(procs)
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        self.assertNotIn("does not exist; a launch creates it", err)
+        self.assertEqual(settings["filesystem"]["allowWrite"][6], str(state_root))
+        self.assertTrue(state_root.is_dir() and not state_root.is_symlink(), "a launch makes the held state root")
+        self.assertEqual(stat.S_IMODE(state_root.stat().st_mode), 0o700)
+        self.assertEqual(self.slots(), ([], []))
 
     def test_the_dsh_settings_deny_every_git_hcom_and_record_path_for_read_and_write(self):
         """U272c P1 `hcom-seat:1876`: srt reads everything an explicit deny does not name, so removing a grant denied

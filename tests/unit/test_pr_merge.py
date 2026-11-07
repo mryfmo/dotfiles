@@ -1,14 +1,18 @@
-"""Exercise the sweep gate of scripts/orchestrator/pr-merge.sh (regime-cutover U147, every unit since U244): a pull
-request merges only with a `sweep` ledger row of its unit or a fix unit of it at the audited head, read through
-scripts/orchestrator/ledger.py and read by its shape, whatever the unit's brief says; the lever reads no brief and no
-brief checker. The admitted row is the exact row of the AGENTS.md Audit sweep rule alone (pr `-`, verifier
-`security-audit-skill <pin>` with the pin word a prefix of the manifest's `assets.security-audit-skill.pin`, evidence a
-findings file `sweeps/<path>.json` that is a regular file of this user under the store). The fixture is PrLeverTestCase
-of test_pr_levers (the scratch checkout, the fake gh, `writes()`, `sweep_row`), the store built as PrMergeTest builds
-it plus a plain brief under `briefs/`, which the gate never opens; no test class is imported, since unittest discovery
-would run an imported class a second time."""
+"""Exercise the sweep gate and the CI gate of scripts/orchestrator/pr-merge.sh. The sweep gate (regime-cutover U147,
+every unit since U244): a pull request merges only with a `sweep` ledger row of its unit or a fix unit of it at the
+audited head, read through scripts/orchestrator/ledger.py and read by its shape, whatever the unit's brief says; the
+lever reads no brief and no brief checker. The admitted row is the exact row of the AGENTS.md Audit sweep rule alone
+(pr `-`, verifier `security-audit-skill <pin>` with the pin word a prefix of the manifest's
+`assets.security-audit-skill.pin`, evidence a findings file `sweeps/<path>.json` that is a regular file of this user
+under the store). The CI gate (U330): every check of the lever's REQUIRED_CHECKS, the main ruleset's required
+contexts, must be listed by `gh pr checks` with bucket `pass`, so a head whose `pull_request` workflows never ran is
+refused naming the missing checks, and the array is held equal to the contexts recorded in test_pr_levers. The fixture
+is PrLeverTestCase of test_pr_levers (the scratch checkout, the fake gh, `writes()`, `sweep_row`, the green listing),
+the store built as PrMergeTest builds it plus a plain brief under `briefs/`, which the gate never opens; no test class
+is imported, since unittest discovery would run an imported class a second time."""
 
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -16,10 +20,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from test_pr_levers import (  # noqa: E402
     FOOTER,
+    GREEN_CHECKS,
     LEDGER_HEADER,
     LEVERS,
     MANIFEST_PIN,
     PIN8,
+    RULESET_REQUIRED_CHECKS,
     SHA_A,
     SHA_B,
     PrLeverTestCase,
@@ -102,7 +108,7 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
-            {"match": r"^pr checks 7 --json bucket,name$", "json": [{"bucket": "pass", "name": "test"}]},
+            {"match": r"^pr checks 7 --json bucket,name$", "json": GREEN_CHECKS},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",
                 "json": {"headRefOid": head, "baseRefName": "main"},
@@ -399,3 +405,163 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.sweeps.unlink()
         shutil.move(elsewhere, self.sweeps)
         self.assert_merged(self.merge())
+
+
+# The lever's REQUIRED_CHECKS array as written: `REQUIRED_CHECKS=(`, one single-quoted name per line, `)`.
+REQUIRED_CHECKS_CONSTANT = re.compile(r"^REQUIRED_CHECKS=\(\n((?:    '[^'\n]*'\n)+)\)$", re.MULTILINE)
+# The checks PR 708's head 792604f9 had on 2026-11-07 (decisions row 2026-11-07T01:45:00Z): `regime`, a
+# `pull_request_target` workflow, GitGuardian, and CodeRabbit skipping; none of the `pull_request` workflows, which
+# GitHub runs on the merge ref, so a pull request that conflicts with main gets none of them.
+PR_708_CHECKS = [
+    {"bucket": "pass", "name": "regime"},
+    {"bucket": "pass", "name": "GitGuardian Security Checks"},
+    {"bucket": "skipping", "name": "CodeRabbit"},
+]
+VERDICT_TEXT = "## Findings\n\n- none\n\n## Reproduced\n\n- the head builds\n\n## Notes\n\nnone\n\nBlocking: 0\nFiled: 0\nVerdict: correct\n"
+
+
+def listing(**buckets):
+    """The green listing with the named required checks' buckets replaced (`validate="skipping"`); a name with a
+    space is passed through a dict (`listing(**{"test (ubuntu-24.04, client)": "pending"})`)."""
+    return [{"bucket": buckets.get(check["name"], check["bucket"]), "name": check["name"]} for check in GREEN_CHECKS]
+
+
+class PrMergeRequiredChecksTest(PrLeverTestCase):
+    """U330: the CI gate requires the main ruleset's eight contexts by name. On 2026-11-07 PR 708's head 792604f9
+    conflicted with main, GitHub ran none of its `pull_request` workflows, and `gh pr checks` listed three passing
+    checks (`regime`, GitGuardian, CodeRabbit skipping); the gate at 668ba887 (at least one check, every bucket `pass`
+    or `skipping`) would have merged it with no test leg run. Now every REQUIRED_CHECKS name must be listed with bucket
+    `pass`: an absent one, or one listed `skipping`, is refused naming it apart from the red ones (`CI has no result
+    for: ...`); a red one refuses as before; every required check `pass` plus extras merges as before. The store holds
+    the correct row, its verdict file and the sweep row, so the CI read is the gate that decides."""
+
+    def setUp(self):
+        super().setUp()
+        self.records = self.repo / ".orchestration/orchestrate/regime-cutover"
+        self.records.mkdir(parents=True)
+        reader = self.repo / "scripts/orchestrator/ledger.py"
+        reader.parent.mkdir(parents=True)
+        shutil.copy2(LEVERS / "ledger.py", reader)
+        (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
+        (self.records / "sweeps").mkdir()
+        (self.records / f"sweeps/U71-{SHA_A[:8]}.json").write_text("{}\n")
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A) + sweep_row())
+        (self.records / "verdicts").mkdir()
+        (self.records / f"verdicts/U71-{SHA_A[:8]}.md").write_text(VERDICT_TEXT)
+        self.body = f"## Summary\n\nProgram-Unit: regime-cutover/U71\n\n{FOOTER}\n"
+
+    def merge(self, checks):
+        """One run of the lever with `checks` as the `gh pr checks` listing, against a fresh gh call log."""
+        self.calls.unlink(missing_ok=True)
+        self.answer(
+            {
+                "match": r"^pr view 7 --json state,baseRefName,headRefOid,isDraft$",
+                "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": SHA_A, "isDraft": False},
+            },
+            {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
+            {"match": r"^pr checks 7 --json bucket,name$", "json": checks},
+            {
+                "match": r"^pr view 7 --json headRefOid,baseRefName$",
+                "json": {"headRefOid": SHA_A, "baseRefName": "main"},
+            },
+            {"match": rf"^pr merge 7 --squash --match-head-commit {SHA_A}$", "exit": 0, "stderr": "x"},
+            {
+                "match": r"^pr view 7 --json state,mergeCommit,baseRefName,headRefOid$",
+                "json": {"state": "MERGED", "mergeCommit": {"oid": SHA_B}, "baseRefName": "main", "headRefOid": SHA_A},
+            },
+        )
+        return self.run_lever("pr-merge.sh", "7", "--records", str(self.records))
+
+    def assert_merged(self, run):
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, RECEIPT.format(ts="2026-10-25T09:00:00Z"))
+        self.assertEqual(self.writes(), [MERGE_CALL])
+
+    def assert_no_result(self, run, named):
+        """Refused after the checks read, with no write and no receipt, the missing checks named in the array's order
+        and the red-check refusal absent."""
+        self.assert_refused(run, f"CI has no result for: {named}; every check of REQUIRED_CHECKS")
+        calls = [call[: len(CHECKS_CALL)] for call in self.gh_calls()]  # the recorded call carries its --jq too
+        self.assertIn(CHECKS_CALL, calls, "the refusal is the CI gate's, after the checks read")
+        self.assertNotIn("CI is not green", run.stderr)
+        self.assertEqual(run.stdout, "", "no receipt")
+
+    def test_the_pr_708_listing_is_refused_naming_the_required_checks_it_lacks(self):
+        """The PR 708 case: three passing checks, none of them a `pull_request` workflow's. The seven required checks
+        the listing lacks are named bare, in the array's order; `regime`, listed and passing, is not among them; no
+        check is red, so the refusal is the named-check one alone, with no write."""
+        run = self.merge(PR_708_CHECKS)
+        absent = [name for name in RULESET_REQUIRED_CHECKS if name != "regime"]
+        self.assertEqual(len(absent), 7)
+        self.assert_no_result(run, ", ".join(absent))
+        named = run.stderr.split("CI has no result for: ")[1].split(";")[0]
+        self.assertNotIn("regime", named)
+        self.assertNotIn("GitGuardian", named)
+        self.assertNotIn("CodeRabbit", named)
+
+    def test_every_required_check_passing_plus_extras_merges_as_before(self):
+        """The listing of a pull request whose workflows all ran: the eight required checks `pass`, GitGuardian `pass`,
+        CodeRabbit and a docs job `skipping`, in any order."""
+        extras = [
+            {"bucket": "pass", "name": "GitGuardian Security Checks"},
+            {"bucket": "skipping", "name": "CodeRabbit"},
+            {"bucket": "skipping", "name": "docs"},
+        ]
+        self.assert_merged(self.merge([*GREEN_CHECKS, *extras]))
+        self.assert_merged(self.merge([*extras, *reversed(GREEN_CHECKS)]))
+        self.assert_merged(self.merge(GREEN_CHECKS))
+
+    def test_a_required_check_that_is_skipping_is_no_result_and_a_name_is_compared_whole(self):
+        """`skipping` satisfies only a check that is not required: each required check skipping in turn is refused
+        naming it with its bucket; a check whose name only starts with a required one (`test` for `test (ubuntu-24.04,
+        client)`, `validate (ubuntu-24.04)` for `validate`) is no result for it; a required name listed twice, `pass`
+        and `skipping`, is no result either."""
+        for name in RULESET_REQUIRED_CHECKS:
+            with self.subTest(name):
+                self.assert_no_result(self.merge(listing(**{name: "skipping"})), f"{name}=skipping")
+        renamed = [
+            {
+                "bucket": "pass",
+                "name": {"test (ubuntu-24.04, client)": "test", "validate": "validate (ubuntu-24.04)"}.get(
+                    check["name"], check["name"]
+                ),
+            }
+            for check in GREEN_CHECKS
+        ]
+        self.assert_no_result(self.merge(renamed), "test (ubuntu-24.04, client), validate")
+        twice = [*GREEN_CHECKS, {"bucket": "skipping", "name": "regime"}]
+        self.assert_no_result(self.merge(twice), "regime=skipping")
+        self.assert_no_result(self.merge(list(reversed(twice))), "regime=skipping")
+
+    def test_a_required_check_that_is_pending_or_red_refuses_as_before_naming_the_red_check(self):
+        """A pending, failed or cancelled required check is the red-check refusal of U71, named with its bucket, and
+        the named-check refusal does not follow it; an empty listing is still `no check is reported`."""
+        for bucket in ("pending", "fail", "cancel"):
+            with self.subTest(bucket):
+                run = self.merge(listing(**{"test (ubuntu-24.04, client)": bucket}))
+                self.assert_refused(run, f"CI is not green on the head {SHA_A}: test (ubuntu-24.04, client)={bucket}")
+                self.assertNotIn("CI has no result", run.stderr)
+                self.assertEqual(run.stdout, "", "no receipt")
+        run = self.merge([])
+        self.assert_refused(run, f"no check is reported on the head {SHA_A}")
+        self.assertNotIn("CI has no result", run.stderr)
+
+    def test_the_lever_s_required_checks_equal_the_ruleset_s_required_contexts(self):
+        """REQUIRED_CHECKS, read from the lever's text as one array of single-quoted names, equals the contexts of
+        ruleset 24397953 recorded in test_pr_levers from the 2026-11-07T03:34Z measurement, name for name and in order,
+        with no name twice; the deployed copy holds the same bytes; the README's policy-table row for the lever states
+        the rule, naming the array and the four job names. A ruleset edit is a change to the lever and to the recorded
+        tuple, and a drift between them fails here, never at a merge."""
+        text = (LEVERS / "pr-merge.sh").read_text()
+        blocks = REQUIRED_CHECKS_CONSTANT.findall(text)
+        self.assertEqual(len(blocks), 1, "one REQUIRED_CHECKS array")
+        names = [line.strip()[1:-1] for line in blocks[0].splitlines()]
+        self.assertEqual(names, list(RULESET_REQUIRED_CHECKS))
+        self.assertEqual(len(set(names)), len(names), "no name twice")
+        deployed = LEVERS.parents[1] / "home/dot_local/bin/common/executable_pr-merge.sh"
+        self.assertEqual(deployed.read_bytes(), (LEVERS / "pr-merge.sh").read_bytes())
+        readme = (LEVERS / "README.md").read_text()
+        rows = [line for line in readme.splitlines() if line.startswith("| `~/.local/bin/common/pr-merge.sh *`")]
+        self.assertEqual(len(rows), 1, "one policy-table row for the lever")
+        for word in ("U330", "REQUIRED_CHECKS", "public-bootstrap", "regime", "test", "validate", "PR 708"):
+            self.assertIn(word, rows[0])

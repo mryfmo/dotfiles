@@ -875,7 +875,7 @@ claude:
   # held directory descriptor and nothing else.
   levers:
     sha256:
-      hcom-seat: 940afff24d7a96734ec783b9e9d0b99b71985dead9d1bc63aa66665be9899b29
+      hcom-seat: 34db7b4aa8954eac4e7e9a5fcd28cfe6f54350108bd7d0bee34e8861c95c4993
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -884,7 +884,7 @@ claude:
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: c48f38c22638f0004caeb6151a79b1abfc260f055c306ef678a0c303c2dafb3e
       checkout-guard.sh: f87d279dbc65e7f3d0119d05f820222f9903d865087394f2663d86e1058e894c
-      seat-login-preflight: 9e2d4e2071762f8b4e2726ef8ad0efdfae3ef6390b4b6c8205fdaac28c48c7a4
+      seat-login-preflight: 7d12ffb08da39735f6c368ddb9ab4ed10084d755a1f57470edc64d1d78e4ae61
       regime-start: c7b630d2353020e57c57a01af94fac5f7ed7f503071de9d1a15172eeb057bc6b
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       pr-thread-reply.sh: a87078136ec916af8d3e46cd907b729d00ae8b3a6ea841c05ad77daefed3087c
@@ -894,7 +894,7 @@ claude:
       pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
       pr-threads-check.sh: 984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c
       records-sync.sh: 234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e
-      pr-merge.sh: 5e235e90d6ee5b00a1014750744b07da48d7962e64abffc5b2f0a0fb56fd9772
+      pr-merge.sh: f9063f3bcd4f84cb1007cfb919d757e5aa20db5358a9cfb1cd91a46ab4cade9b
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5

@@ -748,6 +748,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         (dsh_home / "bin").mkdir(parents=True)
         (dsh_home / "bin/dsh").write_text(test_hcom_seat_dsh.FAKE_DSH.format(calls=str(self.calls)))
         (dsh_home / "bin/dsh").chmod(0o755)
+        # The rendered overlay the dsh role's profile config is placed from (U310): main's hcom-seat refuses a dsh
+        # launch without it, so the reference launch places the file test_hcom_seat_dsh.py's fixture writes (U343d).
+        (self.profiles / "dsh.yml").write_text(test_hcom_seat_dsh.DSH_OVERLAY.format(extension=self.bridge))
         rendered = {}
         for role in ("dsh", "router"):
             (self.calls / "hold").touch()

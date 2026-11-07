@@ -629,7 +629,7 @@ class HcomSeatTest(SeatFixture):
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertTrue(run.stderr.startswith("hcom-seat: "), run.stderr)
         self.assertIn(
-            "unknown role 'audit'; expected orchestrator, worker or dsh", self.seat("audit", "--dry-run").stderr
+            "unknown role 'audit'; expected orchestrator, worker, dsh or router", self.seat("audit", "--dry-run").stderr
         )
         (self.policies / "orchestrator.yml").write_text("tools: {}\n")
         (self.profiles / "orchestrator.yml").unlink()

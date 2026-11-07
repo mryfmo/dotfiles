@@ -25,10 +25,32 @@ import time
 import unittest
 from pathlib import Path
 
-import yaml
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import test_hcom_seat  # noqa: E402  # the fixture, as a module attribute so its tests are not collected twice
+
+# The unit run has no PyYAML of its own (tests/unit/test_kwp_skills_drift.py): the one YAML read-back below runs in
+# the `uv run --with pyyaml` child the Makefile's probe warms, and a child that fails is a failure, never a pass.
+UV_PYYAML = [
+    shutil.which("uv") or "uv",
+    "run",
+    "--offline",
+    "--no-config",
+    "--no-project",
+    "--with",
+    "pyyaml",
+    "python",
+    "-I",
+]
+YAML_EXTENSIONS = "import json, sys, yaml\nprint(json.dumps(yaml.safe_load(sys.stdin.read())['extensions']))\n"
+
+
+def yaml_extensions(text):
+    """The `extensions` list PyYAML reads from `text`, through the uv child; a non-zero exit raises with its stderr."""
+    run = subprocess.run([*UV_PYYAML, "-c", YAML_EXTENSIONS], input=text, capture_output=True, text=True, check=False)
+    if run.returncode != 0:
+        raise AssertionError(f"uv pyyaml reader exited {run.returncode}: {run.stderr}")
+    return json.loads(run.stdout)
+
 
 SYSTEM_PATH = test_hcom_seat.SYSTEM_PATH
 SHARED_CLAUDE_DENIES = test_hcom_seat.SHARED_CLAUDE_DENIES
@@ -2268,7 +2290,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         text = self.profile_config.read_text()
         self.assertEqual(text, placed_overlay(real))
         self.assertIn("  - '" + str(real).replace("'", "''") + "'\n", text)
-        self.assertEqual(yaml.safe_load(text)["extensions"], [str(real)])
+        self.assertEqual(yaml_extensions(text), [str(real)])
         self.assertEqual(len(self.dsh_calls()), 1)
 
     def scratch_tree(self):

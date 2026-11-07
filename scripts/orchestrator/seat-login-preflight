@@ -10,12 +10,14 @@
 #
 #   `--check [<profile>...]` prints one line per profile (all overlays when none is named) from metadata
 #   only, never a token: SIWC is `registration.json` (host id and issued client id, which carry no token),
-#   held to the extension's record schema (one JSON document), plus the mtime of the profile's `agent.db`; Claude is the
-#   token file the seat shim reads (`login present`), else the
-#   credentials file or the macOS Keychain item (attributes only), which are `host login only`: the seat's bridge
-#   child runs under its own `CLAUDE_CONFIG_DIR` (hcom-seat's shim, regime-cutover U190) and reads neither. A
-#   record that exists but cannot be read or breaks its schema, and a producer (`uname`, `stat`, `date`,
-#   `security`) that fails, are reported as unreadable, never as absent, and make the exit status 1.
+#   held to the extension's record schema (one JSON document), plus the mtime of the profile's `agent.db`; Claude is
+#   the one claude.ai login of the seats' shared Claude Code directory `<seats-root>/.state/claude` (regime-cutover
+#   U318: every seat's bridge child and the dsh role's gateway child run under it as `CLAUDE_CONFIG_DIR`), read by one
+#   call, `CLAUDE_CONFIG_DIR=<dir> claude auth status`, whose exit status and JSON `authMethod` decide (`login present
+#   (claude.ai, <dir>)`, else absent naming the method or the missing directory); the line prints the directory and
+#   the method, never a credential. A record that exists but cannot be read or breaks its schema, and a producer
+#   (`uname`, `stat`, `date`, `claude`, `jq`) that fails, are reported as unreadable, never as absent, and make the
+#   exit status 1.
 #
 #   `<profile>` (a seat profile of the manifest's `omp.roles`: orchestrator, worker or audit; `hcom-seat`
 #   calls it with the seat's role before it creates or starts anything) checks that a seat can use the login,
@@ -25,31 +27,32 @@
 #   active `openai-siwc` login in `agent.db`, counted by the extension's `src/credentials.ts` without reading a
 #   token: the issued client is saved before the token exchange, so a record proves only that a sign-in began.
 #   The Claude route is checked on every host (regime-cutover U190b), local included, since the seat's child logs
-#   in by the token alone wherever it runs: it needs a usable token file (a regular file whose first line, read as the
-#   seat shim reads it, is non-empty), which the shim alone reads into the seat (regime-cutover U312: no shell exports
-#   it, and a variable in this environment is no input); a directory, an empty file or an empty first line is
-#   `token file unusable` and counts as absent;
-#   a credentials file or Keychain item alone is refused as a host login the seat's child never sees,
-#   with the instruction to run `claude setup-token` and store the token in the file (0600). An absent
-#   login is logged in here only in the operator's own terminal (stdin and stdout a TTY, not inside a seat):
-#   SIWC through `omp --profile <profile> login openai-siwc` with `OPENAI_SIWC_CALLBACK_PORT=1455`, which
-#   the `seat-host` SSH entry forwards back from the laptop, and `xdg-open`/`open` pointed at
-#   `regime-open-url` for that command only. Claude has no login to run here: `claude auth login` would store a
-#   host login, so the token file is named instead and the command refuses. The consent click is the human step.
-#   Anywhere else (a seat, a script) it prints the command and refuses, since a login is the operator's step
-#   (standing order 4).
+#   in by the shared directory's login wherever it runs: it needs `authMethod` `claude.ai` there (an `oauth_token` or
+#   `api_key` method, an exit 1 of `claude auth status` or an absent directory counts as absent; the operator's
+#   `~/.claude`, the Keychain item of the default directory and a variable in this environment are no input, regime-
+#   cutover U312, U318). An absent login is logged in here only in the operator's own terminal (stdin and stdout a
+#   TTY, not inside a seat): SIWC through `omp --profile <profile> login openai-siwc` with
+#   `OPENAI_SIWC_CALLBACK_PORT=1455`, which the `seat-host` SSH entry forwards back from the laptop, and
+#   `xdg-open`/`open` pointed at `regime-open-url` for that command only. Claude has no login to run here: the
+#   operator's one step is the printed command `CLAUDE_CONFIG_DIR=<dir> claude auth login` (with
+#   `BROWSER=regime-open-url` in an SSH session, where the page shows a code to paste at the prompt,
+#   docs/remote-host-logins.md), which Claude Code stores under that directory and refreshes itself; the profile mode
+#   makes the directory 0700 first when absent, as hcom-seat does at a launch, so the login lands in a directory this
+#   kit made. The consent click is the human step. Anywhere else (a seat, a script) it prints the command and
+#   refuses, since a login is the operator's step (standing order 4).
 # @arg $1 string `--check`, or the profile.
 # @arg $@ string With `--check`: profile names (default: every deployed overlay).
 # @env SSH_CONNECTION Set by sshd: this host is remote to the operator's terminal.
 # @env DISPLAY With WAYLAND_DISPLAY: a Linux host with neither has no local browser, so it counts as remote.
 # @env HCOM_LAUNCHED Set by hcom inside a seat: never run a login there.
+# @env REGIME_SEATS_ROOT The seats root whose `.state/claude` is the shared Claude Code directory (hcom-seat passes its
+#   resolved one); unset, `~/.local/state/omp-seats/<slug>` of the checkout this runs in (regime-env's slug).
 # @stdout With `--check`: one line per profile.
 # @stderr The profile mode's report and refusals.
 # @exitcode 0 Checked, or the profile's route is usable (or the host is local and the route is openai-siwc).
 # @exitcode 1 A record or producer is unreadable, or a login ran and the route is still not usable.
-# @exitcode 2 A usage error, a seat without a login outside the operator's terminal (a remote host, or any host on the
-#   claude-bridge route), or a seat on the claude-bridge route whose only login is a host login (the token file is the
-#   operator's step).
+# @exitcode 2 A usage error, or a seat without a login outside the operator's terminal (a remote host, or any host on
+#   the claude-bridge route, whose login is the operator's printed command).
 # @example
 #   seat-login-preflight --check
 #   seat-login-preflight audit
@@ -74,6 +77,8 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the sourced regime-env helper's caller below
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -109,10 +114,16 @@ lever_self_check() {
     }
 }
 lever_self_check
+# The seats root derivation (regime_toplevel, regime_slug) comes from the pinned helper beside this file (U33, U318).
+[[ -r ${LEVER_DIR}/regime-env ]] || {
+    echo "seat-login-preflight: refused: regime-env unreadable beside this script: ${LEVER_DIR}/regime-env" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/regime-env
+. "${LEVER_DIR}/regime-env"
 
 profiles_dir=${HOME}/.agents/omp/profiles
 siwc_ext=${HOME}/.agents/omp/extensions/openai-siwc
-token_file=${HOME}/.config/claude-code/oauth-token
 callback_port=1455
 # The seat profiles, the values of `omp.roles` in home/dot_agents/agent-config.yaml.
 seat_profiles=(orchestrator worker audit)
@@ -130,6 +141,18 @@ else .[0]
         and ((has("accountId") | not) or (.accountId | type == "string" and length > 0))
     then [.hostId, (.clientId // "")] | @tsv
     else error("not a registration record")
+    end
+end'
+# `claude auth status` (Claude Code's documented reader, U318): one JSON document whose `authMethod` names the login
+# (`claude.ai`, `oauth_token`, `api_key`); the method is held to a charset, the one field printed, and nothing else
+# of the record reaches the terminal.
+# shellcheck disable=SC2016 # jq source, not shell
+auth_status_filter='
+if length != 1 then error("not exactly one JSON document")
+else .[0]
+    | if type == "object" and (.authMethod | type == "string" and test("\\A[A-Za-z0-9._-]{1,40}\\z"))
+    then .authMethod
+    else error("not an auth status record")
     end
 end'
 # The login's scratch overlay and opener shims, removed on every exit.
@@ -229,73 +252,121 @@ siwc_state() {
     printf 'registered (host %s, client %s), agent.db mtime %s\n' "${host}" "${client}" "${mtime}"
 }
 
-# @description Print the Claude Code login line of this host. The seat's bridge child runs under its own
-#   `CLAUDE_CONFIG_DIR` (hcom-seat's shim, regime-cutover U190), so it reads neither the operator's credentials file
-#   nor the Keychain item: a usable token file (the shim reads it) is a login, the two host stores are `host login
-#   only`, in readiness mode with the token-file instruction; a variable in this environment is no input
-#   (regime-cutover U312). The token file counts as the shim reads it
-#   (regime-cutover U190b): a regular file whose first line, read by `/usr/bin/head -n 1`, is non-empty; the line goes
-#   into a variable to be tested for emptiness and nowhere else. A directory (or a link to one), an empty file or an
-#   empty first line is reported as `token file unusable (<reason>)` beside the host stores and counts as absent. The
-#   stores are tried in that order and the first one found is reported, so `--check` names the store a seat would use.
-# @arg $1 int 1 to require a login the seat's bridge child can use (launch readiness).
-# @exitcode 0 Present. 1 Absent, or a host login only. 2 Unreadable.
+# @description Set `claude_config` to the shared Claude Code directory of this host's seats root,
+#   `<seats-root>/.state/claude` (regime-cutover U318, hcom-seat's `claude_config` row), and `claude_seats_root` to
+#   that root: `REGIME_SEATS_ROOT` when set (hcom-seat passes its resolved one), else `~/.local/state/omp-seats/<slug>`
+#   of the checkout this runs in (regime-env's toplevel and slug readers; the store binding is hcom-seat's concern),
+#   with HOME in `pwd -P` form so the directory has one spelling. A failure sets `claude_config_error` and returns 2.
+# @set claude_config The directory.
+# @set claude_seats_root The seats root.
+# @set claude_config_error The reason, when none can be derived.
+# @exitcode 2 No seats root can be derived.
+claude_config_dir() {
+    local root=${REGIME_SEATS_ROOT:-} top slug home
+    claude_config='' claude_seats_root='' claude_config_error=''
+    if [[ -z ${root} ]]; then
+        if ! top=$(regime_toplevel); then
+            claude_config_error='no seats root: set REGIME_SEATS_ROOT or run inside a checkout'
+            return 2
+        fi
+        if ! slug=$(regime_slug "${top}"); then
+            claude_config_error="no seats root: cannot derive a repository slug from ${top}"
+            return 2
+        fi
+        if ! home=$(cd "${HOME}" && pwd -P); then
+            claude_config_error="no seats root: cannot resolve HOME ${HOME}"
+            return 2
+        fi
+        root=${home}/.local/state/omp-seats/${slug}
+    fi
+    claude_seats_root=${root%/}
+    claude_config=${claude_seats_root}/.state/claude
+}
+
+# @description Print the operator's one Claude step: `CLAUDE_CONFIG_DIR=<dir> claude auth login`, after
+#   `BROWSER=regime-open-url` in an SSH session, where the laptop's browser opens the page and shows a code to paste at
+#   the prompt (docs/remote-host-logins.md).
+# @stdout The command.
+claude_login_command() {
+    local browser=''
+    [[ -z ${SSH_CONNECTION:-} ]] || browser='BROWSER=regime-open-url '
+    printf '%sCLAUDE_CONFIG_DIR=%s claude auth login\n' "${browser}" "${claude_config}"
+}
+
+# @description Make the shared Claude Code directory 0700, with its `.state` parent and the seats root, when absent
+#   (regime-cutover U318), as hcom-seat makes them at a launch, so the operator's login lands in a directory this kit
+#   made. Each of the three is held to no symbolic link and, when it exists, a directory; nothing else is written. Runs
+#   in the profile mode alone (`--check` reports an absent directory as absent).
+# @exitcode 1 A component is a link or not a directory, or the mkdir failed (the command dies).
+claude_config_ensure() {
+    local path
+    for path in "${claude_seats_root}" "${claude_seats_root}/.state" "${claude_config}"; do
+        if [[ -L ${path} ]] || [[ -e ${path} && ! -d ${path} ]]; then
+            die "the shared Claude Code directory path ${path} is not a real directory; move it aside before a seat starts" 1
+        fi
+    done
+    [[ -d ${claude_config} ]] || (umask 077 && mkdir -p "${claude_config}") ||
+        die "cannot create the shared Claude Code directory ${claude_config}" 1
+}
+
+# @description Print the Claude Code login line of this host (regime-cutover U318): the one claude.ai login of the
+#   shared directory (claude_config_dir), which every seat's bridge child and the dsh role's gateway child run under,
+#   read by one call, `CLAUDE_CONFIG_DIR=<dir> claude auth status`, with its status and its JSON (one document, read
+#   by jq as the SIWC record is; `authMethod` a string held to a charset, the one field that reaches the terminal).
+#   Present when `authMethod` is `claude.ai`; absent when the call exits 1 (not logged in), names another method
+#   (`oauth_token`, `api_key`: a token or key the seat never gets) or the directory is absent; unreadable, never
+#   absent, when no seats root can be derived, the directory is a link or no directory, claude or jq is missing, the
+#   call exits otherwise or prints no auth status record (standing order 21). A CLAUDE_CODE_OAUTH_TOKEN in this
+#   environment is no input (regime-cutover U312): the call runs without it, as the seat shim clears it. In readiness
+#   mode an absent login names the operator's one step (claude_login_command).
+# @arg $1 int 1 to require a login the seat's child can use (launch readiness).
+# @exitcode 0 Present. 1 Absent. 2 Unreadable.
 claude_state() {
-    local ready=${1:-0} credentials=${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/.credentials.json mode mtime status=0 store=''
-    local first reason note=''
-    if [[ -e ${token_file} || -L ${token_file} ]]; then
-        if [[ -d ${token_file} ]]; then
-            reason='a directory'
-        elif [[ ! -f ${token_file} ]]; then
-            reason='not a regular file'
-        elif [[ ! -s ${token_file} ]]; then
-            reason='empty'
-        else
-            if ! first=$(/usr/bin/head -n 1 -- "${token_file}"); then
-                printf 'unreadable (cannot read the first line of %s)\n' "${token_file}"
-                return 2
-            fi
-            if [[ -n ${first} ]]; then
-                unset first
-                if ! mode=$(mode_of "${token_file}") || ! mtime=$(stamp "${token_file}"); then
-                    printf 'unreadable (cannot read the mode or mtime of %s)\n' "${token_file}"
-                    return 2
-                fi
-                printf 'login present (token file %s, mtime %s; the seat shim exports it)\n' "${mode}" "${mtime}"
-                return 0
-            fi
-            unset first
-            reason='empty first line'
-        fi
-        note="; token file unusable (${reason})"
+    local ready=${1:-0} body status=0 method step='' tool
+    claude_config_dir || {
+        printf 'unreadable (%s)\n' "${claude_config_error}"
+        return 2
+    }
+    if ((ready)); then
+        step="; log in once: $(claude_login_command)"
     fi
-    if [[ -f ${credentials} ]]; then
-        if ! mode=$(mode_of "${credentials}") || ! mtime=$(stamp "${credentials}"); then
-            printf 'unreadable (cannot read the mode or mtime of %s)\n' "${credentials}"
-            return 2
-        fi
-        store="credentials file ${mode}, mtime ${mtime}"
-    elif [[ ${os} == Darwin ]]; then
-        # Exit 44 is security's "item not found"; any other failure is a failed read.
-        security find-generic-password -s 'Claude Code-credentials' > /dev/null 2>&1 || status=$?
-        case ${status} in
-        0) store='Keychain item' ;;
-        44) ;;
-        *)
-            printf 'unreadable (security find-generic-password exited %s)\n' "${status}"
-            return 2
-            ;;
-        esac
+    if [[ -L ${claude_config} ]] || [[ -e ${claude_config} && ! -d ${claude_config} ]]; then
+        printf 'unreadable (%s is not a real directory)\n' "${claude_config}"
+        return 2
     fi
-    if [[ -z ${store} ]]; then
-        printf 'absent%s\n' "${note}"
+    if [[ ! -d ${claude_config} ]]; then
+        printf 'absent (no %s)%s\n' "${claude_config}" "${step}"
         return 1
     fi
-    if ((ready)); then
-        printf "host login only (%s%s): not visible to the seat's bridge child under its own CLAUDE_CONFIG_DIR; run claude setup-token and store it in ~/.config/claude-code/oauth-token (0600)\\n" "${store}" "${note}"
-    else
-        printf 'host login only (%s%s)\n' "${store}" "${note}"
+    for tool in claude jq; do
+        if ! command -v "${tool}" > /dev/null; then
+            printf 'unreadable (no %s on PATH to read the login of %s)\n' "${tool}" "${claude_config}"
+            return 2
+        fi
+    done
+    # The one call, under the shared directory and without a caller's token name; its stderr is dropped, its stdout
+    # goes to jq alone, so no field but the method is ever printed.
+    body=$(unset CLAUDE_CODE_OAUTH_TOKEN && CLAUDE_CONFIG_DIR=${claude_config} claude auth status 2> /dev/null) || status=$?
+    case ${status} in
+    0) ;;
+    1)
+        printf 'absent (not logged in under %s)%s\n' "${claude_config}" "${step}"
+        return 1
+        ;;
+    *)
+        printf 'unreadable (claude auth status exited %s under %s)\n' "${status}" "${claude_config}"
+        return 2
+        ;;
+    esac
+    if ! method=$(jq -ers "${auth_status_filter}" <<< "${body}" 2> /dev/null); then
+        printf 'unreadable (claude auth status printed no auth status record under %s)\n' "${claude_config}"
+        return 2
     fi
+    if [[ ${method} == claude.ai ]]; then
+        printf 'login present (claude.ai, %s)\n' "${claude_config}"
+        return 0
+    fi
+    printf 'absent (authMethod %s under %s, not claude.ai)%s\n' "${method}" "${claude_config}" "${step}"
     return 1
 }
 
@@ -360,17 +431,12 @@ peer_name() {
     printf '%s\n' "${name:-${client:-the laptop of the seat-host SSH session}}"
 }
 
-# @description Run the role's login in the operator's terminal, then report whether it took. The Claude route has
-#   none to run: the seat's child reads the token alone (hcom-seat's shim exports it from the token file), and
-#   `claude auth login` would store a host login that child never sees, so the token file is named and the command
-#   refuses (exit 2).
+# @description Run the role's login in the operator's terminal, then report whether it took. The Claude route never
+#   reaches here: its login is the operator's printed command (U318), so the caller refuses before this runs.
 # @arg $1 string Role (its profile has the same name).
 # @arg $2 string Route.
 login() {
     local role=$1 route=$2 status=0 peer
-    if [[ ${route} == claude-bridge ]]; then
-        die "${role} needs a Claude login the seat can use, which is the token file: run \`claude setup-token\` on the laptop and store the token in ~/.config/claude-code/oauth-token on this host (mode 0600), then start the seat again"
-    fi
     scratch=$(mktemp -d "${TMPDIR:-/tmp}/seat-login.XXXXXX") || die "cannot create a scratch directory" 1
     peer=$(peer_name) || die "cannot name the host whose browser opens the sign-in" 1
     printf 'seat-login-preflight: %s needs a %s login on this host; the sign-in opens in the browser of %s\n' "${role}" "${route}" "${peer}" >&2
@@ -408,6 +474,12 @@ if ((route_status == 0)) && [[ ${route} == openai-siwc && -z ${SSH_CONNECTION:-}
     ! [[ ${os} == Linux && -z ${DISPLAY:-} && -z ${WAYLAND_DISPLAY:-} ]]; then
     exit 0
 fi
+# The Claude route's login lives in the shared directory of this seats root (U318): derived here and made 0700 when
+# absent, before the one status call, so the operator's login lands in a directory this kit made.
+if ((route_status == 0)) && [[ ${route} == claude-bridge ]]; then
+    claude_config_dir || die "${role} ${route}: unreadable (${claude_config_error}); fix it before a seat starts" 1
+    claude_config_ensure
+fi
 
 status=0
 line=$(profile_line "${role}" 1) || status=$?
@@ -423,6 +495,10 @@ case ${status} in
     ;;
 esac
 route=$(route_of "${role}") || die "${line}" 1
+# The Claude route has no login to run here: the line names the operator's one command (U318, standing order 48).
+if [[ ${route} == claude-bridge ]]; then
+    die "${line}; a login is the operator's step: run that command in your own terminal on this host, then start the seat again"
+fi
 if [[ ! -t 0 || ! -t 1 || -n ${HCOM_LAUNCHED:-} ]]; then
     die "${line}; a login is the operator's step: run \`seat-login-preflight ${role}\` in your own terminal on this host, then start the seat again"
 fi

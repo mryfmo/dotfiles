@@ -246,6 +246,23 @@ class DshRouterProfileTest(unittest.TestCase):
         self.assertIn("the allowed list is empty", self.patch)
         self.assertIn(f"pin {self.asset['pin']}", self.patch)
 
+    def test_the_source_comment_names_the_settings_lever_and_the_plugin_row_admits_state_dir_alone(self) -> None:
+        # U353: the Source values are no plugin config (upstream src/deployment.ts:33-44 refuses `repository` on the
+        # plugin row, naming the Source as where it moved), so the rendered comment says where they live now (the
+        # Router's settings store, written through the Management API by `router-settings-apply`), which wrapper the
+        # Source's `cli` names (`router-gh`, `GH_CONFIG_DIR` under `$DSH_HOME/router-credentials`) and the one launch
+        # (`hcom-seat router -- --no-open`); the plugin row carries `stateDir` and no live key beyond it.
+        comments = "\n".join(line for line in self.patch.splitlines() if line.startswith("#"))
+        self.assertIn("`router-settings-apply`", comments)
+        self.assertIn("`router-gh`", comments)
+        self.assertIn("$DSH_HOME/router-credentials", comments)
+        self.assertIn("`hcom-seat router -- --no-open`", comments)
+        self.assertNotIn("hcom-seat dsh --profile router", comments)
+        row = self.rows["id: dsh-superagent"]
+        self.assertEqual("  config:\n    stateDir: !!js process.env.DSH_HOME + '/router-state'\n", row)
+        for key in ("repository", "cli", "accept_mode", "mode", "observePulls", "eval", "enabled"):
+            self.assertNotRegex(row, rf"^\s+{key}:", key)
+
     def test_the_session_log_upload_is_off_and_the_thak_rows_are_carried(self) -> None:
         self.assertIn("- id: session-log-deepseek\n  config:\n    enabled: false\n", self.patch)
         for row in ("id: llm-deepseek", "id: llm-deepseek-account", "id: web-search-deepseek", "id: web-deepseek-api"):

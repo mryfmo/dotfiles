@@ -5528,10 +5528,26 @@
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
-<span class="c1"># The chezmoi script includes scripts/lib/ci-runner.sh before this file; a direct run sources it.</span>
+<span class="c1"># The chezmoi script includes scripts/lib/ci-runner.sh before this file, so the rendered run_once already defines</span>
+<span class="c1"># is_ci_runner; a direct run (a test, an operator's shell) sources it from the tree. The helper's directory is a</span>
+<span class="c1"># parameter expansion, never a command substitution: the Ubuntu client's snap-unavailable test runs its installer</span>
+<span class="c1"># with an empty PATH, and a producer's status would be lost in the source line (standing order 21, regime-cutover</span>
+<span class="c1"># U297c, U301). A helper that cannot be read or sourced refuses here, naming its path: no is_ci_runner decision below</span>
+<span class="c1"># may run without it. One block in the five installers, pinned by tests/unit/test_ci_runner.py; copy it whole.</span>
 <span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">declare</span><span class="w"> </span>-F<span class="w"> </span>is_ci_runner<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>*/*<span class="o">)</span><span class="w"> </span><span class="nv">ci_runner_helper</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]%/*</span><span class="si">}</span><span class="s2">/../../../scripts/lib/ci-runner.sh"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="nv">ci_runner_helper</span><span class="o">=</span><span class="s2">"../../../scripts/lib/ci-runner.sh"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-r<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ci_runner_helper</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"install/macos/common/misc.sh: ci-runner helper unreadable: </span><span class="si">${</span><span class="nv">ci_runner_helper</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="c1"># shellcheck source=scripts/lib/ci-runner.sh</span>
-<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/../../../scripts/lib/ci-runner.sh"</span>
+<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ci_runner_helper</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"install/macos/common/misc.sh: ci-runner helper failed to source: </span><span class="si">${</span><span class="nv">ci_runner_helper</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
 <span class="k">fi</span>
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">BREW_PACKAGES</span><span class="o">=(</span>

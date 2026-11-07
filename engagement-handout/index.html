@@ -384,6 +384,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#the-routers-agent-account-m-26-stage-b-one-operator-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Router's agent account (M-26 stage B, one operator step)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2338,6 +2349,62 @@
     
   
     home/dot_local/bin/common/executable_remove-agent-asset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_router-gh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_router-gh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_router-settings-apply/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_router-settings-apply
   
 
     
@@ -5551,6 +5618,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#the-routers-agent-account-m-26-stage-b-one-operator-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Router's agent account (M-26 stage B, one operator step)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5738,6 +5816,43 @@
 </tr>
 </tbody>
 </table>
+<h2 id="the-routers-agent-account-m-26-stage-b-one-operator-step">The Router's agent account (M-26 stage B, one operator step)<a class="headerlink" href="#the-routers-agent-account-m-26-stage-b-one-operator-step" title="Permanent link">&para;</a></h2>
+<p>The dsh-superagent Router (<code>hcom-seat router -- --no-open</code>, the <code>router</code> role of <code>scripts/orchestrator/hcom-seat</code>) acts on GitHub as the agent account of the M-25 handout (<code>handouts/m25-agent-github-account.md</code> in the program store: a direct collaborator with the <code>Write</code> role, never the operator's own login), through the <code>gh</code> wrapper <code>router-gh</code> whose <code>GH_CONFIG_DIR</code> is <code>&lt;DSH_HOME&gt;/router-credentials/gh</code>. That directory is the Router's credential root: every <code>hcom-seat</code> launch of every role makes <code>&lt;DSH_HOME&gt;/router-credentials</code> (0700, this user, empty) before it writes its own srt settings (U353d: srt 0.0.81's Linux backend mounts nothing for a deny of a path that is not there, so the path the omp seats are denied must exist before they start), the Router alone may read it under srt, every other row denies it for read and for write, and the kit never writes a token anywhere. Until the login is there the Router starts and waits (<code>dsh-superagent is waiting for setup: The agent GitHub CLI cannot read its account.</code> in its log), which is the expected state before this step. The login is stored in the directory itself (<code>--insecure-storage</code>, a file of mode 0600 under a 0700 directory) and not in the Keychain, and the control that keeps <code>gh</code> off the Keychain is <code>router-gh</code>'s file-only token path, not srt: srt's macOS baseline allows <code>com.apple.securityd.xpc</code>, so the Keychain stays reachable to the Router's processes, but <code>router-gh</code> reads the token from that <code>hosts.yml</code> and sets <code>GH_TOKEN</code>, which gh reads before any stored credential (<code>gh help environment</code>), so gh never asks the Keychain; srt's deny rows are the omp seats' boundary (every other seat is denied the directory for read and for write), not the Router's route to its account.</p>
+<table>
+<thead>
+<tr>
+<th>step</th>
+<th>command</th>
+<th>check</th>
+<th>source</th>
+<th>dry-run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>the agent part, run by the coordinator: <code>hcom-seat router -- --no-open</code> once on the Router host, so <code>~/.dsh/router-credentials</code> exists (0700; since U353d every role's launch makes it, so an earlier <code>hcom-seat worker</code> on that host has made it already); the log line above is the ready state</td>
+<td><code>test -d ~/.dsh/router-credentials</code> exit 0; <code>stat -f %Lp ~/.dsh/router-credentials</code> prints <code>700</code> (macOS; <code>stat -c %a</code> on Ubuntu)</td>
+<td><code>scripts/orchestrator/hcom-seat:831-845</code> (<code>cred_home_hold</code>: the home of the root, the held physical <code>DSH_HOME</code> for the router and dsh rows, the caller's <code>DSH_HOME</code> else <code>~/.dsh</code> for the omp roles), <code>:864-878</code> (<code>cred_root_hold</code>: the root held under it before any tool is resolved), <code>:890-908</code> (<code>cred_root_make</code>: made 0700 by every role's real launch, the foreground rows after the judgement; a dry run prints <code>does not exist; a launch creates it (0700)</code>), <code>:2683</code> and <code>:2995</code> (the calls, U353d); upstream <code>src/index.ts:24</code>, <code>src/setup.ts:12</code> (the waiting line)</td>
+<td>scratch HOME <code>/tmp/u353c/home</code> with <code>$HOME/.dsh</code> made and no deployed kit (2026-11-07, <code>/tmp/u353c/dry-step1.txt</code>): <code>hcom-seat router --dry-run -- --no-open</code> exits 2 with <code>hcom-seat: profile config overlay absent or a symbolic link: /tmp/u353c/home/.agents/omp/profiles/dsh.yml</code> and makes nothing under <code>$HOME/.dsh</code>; the launch itself is <code>operator-only: it needs the deployed kit, srt and the dsh-superagent plugin on the Router host, where the coordinator runs it</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>the human part, typed once in the operator's own terminal on the Router host, signed in as the agent account with its fine-grained token (this repository only; Contents read and write, Pull requests read and write, Metadata read; no Administration): <code>GH_CONFIG_DIR=~/.dsh/router-credentials/gh gh auth login --hostname github.com --git-protocol https --insecure-storage --with-token &lt; &lt;token file&gt;</code>, then remove the token file; nothing else is placed under the root</td>
+<td><code>DSH_HOME=~/.dsh ~/.local/bin/common/router-gh api user --jq .login</code> prints the agent account's login (not <code>mryfmo</code> or <code>moriya-fumio-thd</code>); <code>DSH_HOME=~/.dsh ~/.local/bin/common/router-gh auth status</code> names github.com and that account alone</td>
+<td><code>scripts/orchestrator/router-gh:101-129</code> (the chain <code>&lt;root&gt;</code>, <code>&lt;root&gt;/gh</code>, <code>&lt;root&gt;/gh/hosts.yml</code>, each held: no link, this user's, the leaf mode <code>?00</code>), <code>:135-164</code> (the <code>oauth_token:</code> row at the <code>github.com:</code> block's own depth, exactly one; the <code>users:</code> rows gh 2.40 and later writes are never read), <code>:167-168</code> (the caller's token names and <code>GH_HOST</code> removed, <code>GH_TOKEN</code> and <code>GH_CONFIG_DIR</code> set, <code>exec gh</code>); <code>gh help environment</code> (<code>GH_TOKEN</code> takes precedence over stored credentials; <code>GH_CONFIG_DIR</code>); <code>gh auth login --help</code> (<code>--insecure-storage</code>, <code>--with-token</code>); <code>handouts/m25-agent-github-account.md</code> (the token's permissions)</td>
+<td>scratch HOME <code>/tmp/u353c/home2</code> (2026-11-07, <code>/tmp/u353c/dry-step2.txt</code>): the root made 0700 and no login, <code>DSH_HOME=$HOME/.dsh router-gh api user --jq .login</code> with a recording <code>gh</code> on PATH exits 2 with <code>router-gh: no gh login under the credential root: /private/tmp/u353c/home2/.dsh/router-credentials/gh is absent; the agent account's login inside the root is the operator's step (docs/engagement-handout.md), and gh runs with no other credential</code>, and the recorder never ran; then a <code>gh/hosts.yml</code> of mode <code>600</code> in the form gh 2.40 and later writes (the host-level row and a <code>users:</code> row holding another value) makes the same command exit 7 (the recorder's status) with the record <code>api user --jq .login</code>, <code>GH_CONFIG_DIR</code> <code>/private/tmp/u353c/home2/.dsh/router-credentials/gh</code> and <code>GH_TOKEN</code> the host-level value alone; the login itself is <code>operator-only: the token is the agent account's, created and held by the operator, and sits on no agent host</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>the agent part again, run by the coordinator after step 2 while the Router runs: <code>~/.local/bin/common/router-settings-apply</code>, which saves the Source row and the accept mode into the Router's store through its loopback Management API; the Router restarts and polls</td>
+<td>the lever prints <code>source:github saved (revision &lt;n&gt;, restarting)</code> and <code>eval saved (revision &lt;n&gt;, restarting)</code> (or <code>unchanged</code> on a later run) and exits 0; the Router's log then shows <code>dsh-superagent ready</code></td>
+<td><code>scripts/orchestrator/router-settings-apply:15</code> (<code>GET settings</code> with the <code>x-orchestrator-request: 1</code> header), <code>:256</code> (<code>loopback_opener</code>: no proxy, no redirect), <code>:389-394</code> (the <code>unchanged</code> and <code>saved</code> lines), <code>:398</code> (<code>main</code>: <code>eval</code> first, then <code>source:github</code>); upstream <code>src/app/settings.ts:167</code>, <code>src/deployment.ts:95</code> (the account probe before the Source save); <code>scripts/orchestrator/README.md:149</code></td>
+<td><code>operator-only: the step needs the Router running on its host with the Management API on loopback and the login of step 2 in place, which no scratch HOME holds; the executed stand-in is the fake Management API of tests/unit/test_router_settings_apply.py (test_the_two_put_bodies_follow_upstreams_grammar_after_the_revision_is_read_and_a_second_run_puts_nothing, test_a_source_save_before_the_token_names_the_setup_code_saves_the_mode_and_exits_2), green at this head</code></td>
+</tr>
+</tbody>
+</table>
+<p>Before step 2 the same <code>router-settings-apply</code> saves <code>eval</code> and exits 2 naming <code>setup agentCliSignedOut</code>: the Router refuses a Source row whose CLI cannot read its account (upstream <code>src/app/settings.ts:167</code>, <code>src/deployment.ts:95</code>), which is the proof that no token is in place, not a defect. The token never enters the repository, the program store or a seat's environment; <code>router-gh</code> holds the root, its <code>gh/</code> and that <code>hosts.yml</code> as one chain (each no link, the directories this user's, the file a regular file of this user with mode 0600; U353c), reads the <code>oauth_token:</code> row at the <code>github.com:</code> block's own depth (the active login; the <code>users:</code> rows gh 2.40 and later writes beside it are never read) and hands it to <code>gh</code> as <code>GH_TOKEN</code> with the caller's token names replaced or removed first, so <code>gh</code> never consults the Keychain and an empty root is a refusal, never the operator's own login (U353b).</p>
 
 
 

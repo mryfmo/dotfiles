@@ -137,14 +137,22 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def launch(self, *args, **overrides):
         return self.seat("dsh", "--seats-root", self.seats, "--home", str(self.dsh_home), *args, **overrides)
 
-    def held_launch(self, *args, count=1, new_session=False, role="dsh", seat=None, **overrides):
-        """Start `count` launches of `role` (dsh, or router, U321) by the lever `seat` (this head's by default) whose dsh
-        waits for `release`, and return them once every dsh has recorded itself, so the per-launch slots can be read
-        while they exist; `new_session` makes each launcher its own process group, the target of a signal to the
-        group."""
+    def held_launch(self, *args, count=1, new_session=False, role="dsh", seat=None, home=None, **overrides):
+        """Start `count` launches of `role` (dsh, or router, U321) by the lever `seat` (this head's by default) under the
+        DSH_HOME `home` (the fixture's by default) whose dsh waits for `release`, and return them once every dsh has
+        recorded itself, so the per-launch slots can be read while they exist; `new_session` makes each launcher its
+        own process group, the target of a signal to the group."""
         (self.calls / "hold").touch()
         env = {**self.env, **overrides}
-        argv = [str(seat or test_hcom_seat.SEAT), role, "--seats-root", self.seats, "--home", str(self.dsh_home), *args]
+        argv = [
+            str(seat or test_hcom_seat.SEAT),
+            role,
+            "--seats-root",
+            self.seats,
+            "--home",
+            str(home or self.dsh_home),
+            *args,
+        ]
         before = len(self.dsh_calls())
         procs = [
             subprocess.Popen(
@@ -645,6 +653,99 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             with self.subTest(head=head[:8]):
                 self.assertEqual(rendered["earlier head"], rendered["this head"])
                 self.assertIn(b'"allowLocalBinding":false', rendered["this head"])
+
+    def test_a_router_state_root_that_is_a_link_or_a_file_refuses_and_a_linked_dsh_home_renders_inside_it(self):
+        """U321b (verdict U321-fec87e14 P1 `:1551`, the auditor's `test_state_root_link_escapes_dsh_home`): round 1
+        rendered `<DSH_HOME>/router-state` as spelled, so a link there pointing outside DSH_HOME (the auditor's
+        `~/.config/autostart`) became allowWrite row 6 and the launch went through. The state root is held before the
+        roots are rendered: a link refuses by name, exit 2, in a dry run too, before any tool is resolved, with no
+        seats root, no settings file and nothing written at the link's target; a regular file refuses; a DSH_HOME that
+        is itself a link resolves first, so the root renders as its physical path inside the physical DSH_HOME, and an
+        absent root is made 0700 by the launch."""
+        home = self.home.resolve()
+        outside = home / ".config/autostart"
+        outside.mkdir(parents=True)
+        state_root = self.dsh_home / "router-state"
+        state_root.symlink_to(outside)
+        for args in ([], ["--dry-run"]):
+            with self.subTest(case="a link outside DSH_HOME", args=args):
+                run = self.seat(
+                    "router", "--seats-root", self.seats, "--home", str(self.dsh_home), *args, "--", "--version"
+                )
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(
+                    f"the router role's state root {state_root} is a symbolic link; it must be a real directory inside"
+                    " DSH_HOME, or absent",
+                    run.stderr,
+                )
+        self.assertTrue(state_root.is_symlink(), "the launch neither removed nor replaced the link")
+        self.assertEqual(sorted(outside.iterdir()), [], "nothing was written at the link's target")
+        state_root.unlink()
+        state_root.write_text("not a directory\n")
+        with self.subTest(case="a regular file"):
+            run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version")
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertIn(f"the router role's state root {state_root} exists and is not a directory", run.stderr)
+        self.assertFalse(Path(self.seats).exists(), "no seats root, so no settings file")
+        self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
+        state_root.unlink()
+        linked_home = Path(self.temp.name).resolve() / "linked-home"
+        linked_home.symlink_to(self.dsh_home)
+        with self.subTest(case="an absent state root, then a linked DSH_HOME"):
+            procs = self.held_launch("--", "--version", role="router")
+            (name,) = self.slots()[0]
+            settings = self.settings_of(name)
+            ((status, out, err),) = self.release(procs)
+            self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+            self.assertEqual(settings["filesystem"]["allowWrite"][6], str(state_root))
+            self.assertTrue(state_root.is_dir() and not state_root.is_symlink())
+            self.assertEqual(stat.S_IMODE(state_root.stat().st_mode), 0o700, "an absent state root is made 0700")
+            shutil.rmtree(state_root)
+            procs = self.held_launch("--", "--version", role="router", home=linked_home)
+            (name,) = self.slots()[0]
+            settings = self.settings_of(name)
+            ((status, out, err),) = self.release(procs)
+            self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+            self.assertEqual(settings["filesystem"]["allowWrite"][3], str(self.dsh_home), "DSH_HOME renders physical")
+            self.assertEqual(
+                settings["filesystem"]["allowWrite"][6], str(state_root), "the state root renders physical, inside it"
+            )
+            self.assertNotIn(str(linked_home), json.dumps(settings))
+            self.assertTrue(state_root.is_dir() and not state_root.is_symlink())
+            self.assertEqual(stat.S_IMODE(state_root.stat().st_mode), 0o700)
+            self.assertEqual(self.dsh_calls()[-1]["env"]["DSH_HOME"], str(self.dsh_home))
+        self.assertEqual(self.slots(), ([], []))
+
+    def test_the_passthrough_cannot_reselect_the_router_profile(self):
+        """U321b (verdict U321-fec87e14 P1 `:316`, the auditor's `test_forwarded_profile_selectors_are_not_refused`): the
+        fixed `--profile router` was placed before the verbatim dsh arguments and nothing held those, so `-- --profile
+        thak` reached dsh as `--profile router --profile thak` and the restriction rested on dsh's option precedence.
+        Each selector form among the verbatim arguments (`--profile <name>`, `--profile=<name>`, `-p <name>`,
+        `-p<name>`) refuses by name, exit 2, in a dry run too, before any tool is resolved or anything is made; a
+        passthrough without a selector keeps round 1's launch line, `--profile router` once and first; the dsh row,
+        whose profile is not fixed, forwards a selector as before."""
+        message = "the router role runs the DSH profile 'router' alone; the dsh argument {!r} selects a profile and is refused"
+        for selector in (["--profile", "thak"], ["--profile=thak"], ["-p", "thak"], ["-pthak"]):
+            for args in ([], ["--dry-run"], ["--profile", "router"]):
+                with self.subTest(selector=selector, args=args):
+                    run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), *args,
+                                    "--", "--version", *selector)  # fmt: skip
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(message.format(selector[0]), run.stderr)
+        self.assertFalse(Path(self.seats).exists())
+        self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
+        run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run",
+                        "--", "--version", "--flag", "-x", "value")  # fmt: skip
+        self.assertEqual(run.returncode, 0, run.stderr)
+        line = shlex.split(run.stdout)
+        self.assertRegex(line[7], rf"^{re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
+        self.assertEqual(line[8:], ["--profile", "router", "--version", "--flag", "-x", "value"])
+        self.assertEqual(line.count("--profile"), 1)
+        run = self.launch("--", "--profile", "thak", "--version")
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        (dsh,) = self.dsh_calls()
+        self.assertEqual(dsh["argv"], ["--profile", "thak", "--version"], "the dsh row fixes no profile")
+        self.assertEqual(self.slots(), ([], []))
 
     def test_the_dsh_settings_deny_every_git_hcom_and_record_path_for_read_and_write(self):
         """U272c P1 `hcom-seat:1876`: srt reads everything an explicit deny does not name, so removing a grant denied

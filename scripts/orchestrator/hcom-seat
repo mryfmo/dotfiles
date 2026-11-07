@@ -114,9 +114,22 @@
 #   before any tool is resolved; the command `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt
 #   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME, OMP_PROFILE and
 #   CLAUDE_CONFIG_DIR before the shim adds its own exports (regime-cutover U312: a caller's CLAUDE_CODE_OAUTH_TOKEN
-#   is no input for any role). No omp overlay, rules file, extension or login preflight is read for it. The
-#   per-launch sandbox and state slot are removed when dsh exits, and by the trap a hangup, interrupt or termination
-#   runs before this process ends by that signal.
+#   is no input for any role). No rules file, `--config` overlay, `-e` list or login preflight is read for it. Its
+#   profile config row (regime-cutover U310): the rendered overlay `~/.agents/omp/profiles/dsh.yml` (the generator's,
+#   like the seat overlays) is placed as the profile's own `~/.omp/profiles/dsh/agent/config.yml`, the file the
+#   gateway child `omp auth-gateway stdio` reads for its model providers, every `extensions` entry rewritten to its
+#   canonical `claude.levers.extensions` path as the omp roles' `-e` list is; a config already equal is left alone, a
+#   different one replaced and the launch says so, and a linked `agent/` or `config.yml` is refused before anything
+#   is made (profile_config_check, a reading that creates nothing; a canonical path holding a control character, a
+#   leading `-` or a `#` after white space is refused by name before it is rendered, rendered_path_check, U310f).
+#   The write is one run of the pinned helper `profile-config-place.py` on one held descriptor of `agent/`
+#   (profile_config_place, regime-cutover U310d: the compare, the exclusive create at a random name, the write, the
+#   rename and the read-back all through `dir_fd`; this lever checks no path in `agent/` and then acts on it), after
+#   the per-launch slots; the helper runs from the lever's own copy, made once this launch in a directory of its own
+#   and hashed there against the manifest pin, so the path beside this file is read once (helper_copy_make, U310f);
+#   a dry run runs it with `--dry-run` after settings_judge and writes nothing. The per-launch sandbox and
+#   state slot are removed when dsh exits, by a refusal after they were made (refuse), and by the trap a hangup,
+#   interrupt or termination runs before this process ends by that signal.
 #   The router role (regime-cutover U321): the dsh row with three cells of its own and nothing else. U317b measured
 #   (2026-11-07T00:12Z, the prototype at pin 8c32a9dc) that dsh-superagent's Runtime does not start without the
 #   `dsh-host-webserver` plugin, so the Router needs a loopback listener, which the dsh row forbids. The cells: the DSH
@@ -237,9 +250,112 @@ lever_self_check() {
 lever_self_check
 
 usage='usage: hcom-seat <orchestrator|worker> [--name <name>] [--seats-root <dir>] [--ext <dir>]... [--dry-run] | hcom-seat <dsh|router> [--name <name>] [--seats-root <dir>] [--profile <name>] [--home <DSH_HOME>] [--dry-run] [-- <dsh args>]'
+# `slots_made` is 1 from the moment the dsh role's per-launch slots may exist (set where the trap is installed, before
+# seat_sandbox_write); a refusal then removes them first (slots_remove, the one cleanup the normal exit and the trap
+# run), so no refusal after the slots exist leaves one behind (regime-cutover U310c). The flag is cleared before the
+# removal: slots_remove refuses through this function when a slot cannot be read. The flag is read with a default
+# because the tests run this function extracted from the lever's text, without the assignment below. The helper
+# copy's directory (helper_slot, regime-cutover U310f) goes the same way: a refusal after the copy exists removes it.
+slots_made=0
+helper_slot=''
 refuse() {
     echo "hcom-seat: $*" >&2
+    if [[ -n ${helper_slot:-} ]]; then helper_copy_remove; fi
+    if ((${slots_made:-0})); then
+        slots_made=0
+        slots_remove || :
+    fi
     exit 2
+}
+
+# @description Hold the profile config helper `$1` beside this file to the rules lever_self_check applies to this
+#   file, before anything reads it (regime-cutover U310f): it sits in LEVER_DIR, the physical directory of this file
+#   (`pwd -P`, so no link above it), and is itself no link (`-L` refused first), a regular file of this user whose
+#   mode grants no group or other write (`stat`, read with its status). The round-5 audit of U310 located the helper
+#   by path, hashed that path and then executed the path; a link at it whose target was replaced after the hash ran
+#   other Python. Nothing here reads the file's bytes: the one read is the copy (helper_copy_make), made right before
+#   the helper's one run.
+# @arg $1 string The helper's name beside this file; its name is the pin's key.
+# @set profile_config_helper The helper's path beside this file, named in refusals.
+helper_path_check() {
+    local helper_name=$1 path=${LEVER_DIR}/$1 mode
+    profile_config_helper=${path}
+    [[ ! -L ${path} ]] || refuse "${helper_name} beside this script is a symbolic link: ${path}; the helper runs from the lever's own directory only"
+    [[ -r ${path} ]] || refuse "${helper_name} unreadable beside this script: ${path}"
+    [[ -f ${path} ]] || refuse "${helper_name} beside this script is not a regular file: ${path}"
+    [[ -O ${path} ]] || refuse "${helper_name} beside this script is not this user's own file: ${path}"
+    mode=$(/usr/bin/stat "${mode_args[@]}" -- "${path}") || refuse "cannot read the mode of ${path}"
+    [[ ${mode} =~ ^[0-7]+[0145][0145]$ ]] ||
+        refuse "${helper_name} beside this script is writable by its group or by others (mode '${mode}'): ${path}; the helper runs from the lever's own directory only"
+}
+
+# @description Read the profile config helper (helper_path_check) once, into the lever's own copy (regime-cutover
+#   U310f): a regular file this lever creates now, 0600, in a directory it makes now with `mkdir` (no `-p`: an entry
+#   of any kind at the name fails it and refuses), 0700, under its own `~/.local/state/hcom-seat` (0700, this user's,
+#   proved before), a place no seat and no other user writes. What is hashed (helper_pin_check) and run
+#   (profile_config_place) is this copy; the path beside this file is never read again. It runs right before the
+#   helper's one run, after settings_judge has accepted the boundary (profile_config_hold), so nothing is made before
+#   the judge beyond the private tool directory; the copy's directory is removed by helper_copy_remove once the
+#   helper has run, by a refusal and by the signal trap.
+# @set helper_slot The per-launch directory holding the copy.
+# @set helper_copy The copy that is hashed and run.
+helper_copy_make() {
+    local path=${profile_config_helper} err
+    helper_slot=${tools_dir%/*}/profile-config-place.${name}
+    if ! err=$( (umask 077 && /bin/mkdir "${helper_slot}") 2>&1); then
+        local failed=${helper_slot}
+        helper_slot=''
+        refuse "cannot create the helper copy directory ${failed}: ${err:-the umask set or the mkdir failed with no message}"
+    fi
+    helper_copy=${helper_slot}/${path##*/}
+    if ! err=$( (umask 077 && /bin/cat -- "${path}" > "${helper_copy}") 2>&1); then
+        refuse "cannot copy ${path} into ${helper_slot}: ${err:-the umask set or the copy failed with no message}"
+    fi
+}
+
+# @description Remove the helper copy's directory (helper_copy_make) when one exists; a removal that fails is named,
+#   and the function returns 0 either way, so the status a launch returns is dsh's or the refusal's. Idempotent: the
+#   variable is cleared first, so a refusal inside a removal cannot recurse into it.
+helper_copy_remove() {
+    local slot=${helper_slot:-}
+    [[ -n ${slot} ]] || return 0
+    helper_slot=''
+    /bin/rm -rf -- "${slot}" || echo "hcom-seat: the helper copy directory ${slot} remains after its removal; remove it by hand" >&2
+}
+
+# @description Refuse unless the file `$1`'s sha256 equals the `claude.levers.sha256.<name>` pin of `$2`'s name in the
+#   manifest the self-check read (regime-cutover U310d): the profile config helper is run by this lever, so it is
+#   held to its pin the way this file is held to its own (lever_self_check), with the same readers; an unreadable
+#   file, a missing pin or a differing digest refuses naming it. `$1` is the lever's own copy (helper_copy_make) and
+#   `$2` the path beside this file the refusal names; the digest is the copy's, the file that runs (U310f).
+# @arg $1 string The file hashed, the copy.
+# @arg $2 string The helper's path beside this file; its name is the pin's key.
+helper_pin_check() {
+    # No local named `name`: a refusal here runs slots_remove, which reads the seat's per-launch `name`, and a local of
+    # that name in this dynamic scope would hide it (the state slot was left behind that way during round 6).
+    local file=$1 named=$2 key=${2##*/} pin digest
+    [[ -r ${file} ]] || refuse "the copy ${file} of ${key} is unreadable"
+    pin=$(sed -n -E "s/^      ${key//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || refuse "cannot read ${LEVER_MANIFEST}"
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || refuse "no single sha256 pin for ${key} in ${LEVER_MANIFEST}"
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${file}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${file}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash ${named} (its copy ${file})"
+    [[ ${digest} == "${pin}" ]] || refuse "sha256 ${digest} of ${named} differs from the pin in ${LEVER_MANIFEST}; the helper is not the pinned one (the digest is of the lever's copy ${file})"
+}
+
+# @description Hold the profile config helper for its one run (regime-cutover U310f): the copy (helper_copy_make),
+#   its digest against the manifest pin (helper_pin_check), and the argv that runs it, the pinned python3 over the
+#   copy. Called once per run, by profile_config_compare in a dry run and by profile_config_write in a launch, after
+#   settings_judge and before `agent/` is made, so a pin that does not match refuses before any act on the profile.
+# @set profile_config_cmd The argv that runs the copy.
+profile_config_hold() {
+    helper_copy_make
+    helper_pin_check "${helper_copy}" "${profile_config_helper}"
+    profile_config_cmd=("${profile_config_python[@]}" -I -S "${helper_copy}")
 }
 
 # @description Print the UTC stamp `YYYYMMDD-HHMMSS` of a dsh launch's seat name, from `/bin/date` read status first
@@ -297,6 +413,9 @@ gate=${HOME}/.agents/omp/hooks
 # alike; empty when the caller chooses) and `state_root` (the name of a directory under DSH_HOME the row grants as a
 # write root of its own, held once by state_root_hold from the one held physical DSH_HOME before anything of the launch
 # is made and made by state_root_make after the home's deny judgement, U321b to U321d; empty for a row without one).
+# The profile config row (U310): the omp roles' overlays ride the launch flags (`--config`, omp_inputs_check), so
+# their row is `none`; the foreground roles' overlay, the one of their omp profile (`omp_profile`), is placed as that
+# profile's own `agent/config.yml` (profile_config_check; the write is the helper's, profile_config_place).
 case ${role} in
 orchestrator | worker) role_launch=hcom omp_profile=${role} allow_local_binding=false role_profile='' state_root='' ;;
 dsh) role_launch=foreground omp_profile=dsh allow_local_binding=false role_profile='' state_root='' ;;
@@ -307,10 +426,12 @@ case ${role_launch} in
 hcom)
     # The extension the role's model route needs first, the optional one second.
     exts=("${bridge}" "${siwc}")
+    profile_config=none
     ((! dsh_options)) || refuse '--profile, --home and -- are options of the dsh and router roles'
     ;;
 foreground)
     exts=()
+    profile_config=${HOME}/.agents/omp/profiles/${omp_profile}.yml
     ((${#user_exts[@]} == 0)) || refuse '--ext is an option of the omp roles'
     dsh_home=${dsh_home:-${DSH_HOME:-${HOME}/.dsh}}
     [[ -z ${profile_name} || ${profile_name} =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ ]] ||
@@ -953,8 +1074,8 @@ if [[ ${os} == Linux && ! -x /usr/bin/jq ]]; then
     refuse 'the system jq /usr/bin/jq is absent; it reads the seat sandbox settings on Linux (apt install jq)'
 fi
 case ${os} in
-Darwin) stat_args=(-L -f '%d:%i') lstat_args=(-f '%d:%i') size_args=(-L -f '%z') ;;
-Linux) stat_args=(-L -c '%d:%i') lstat_args=(-c '%d:%i') size_args=(-L -c '%s') ;;
+Darwin) stat_args=(-L -f '%d:%i') lstat_args=(-f '%d:%i') size_args=(-L -f '%z') mode_args=(-L -f '%Lp') ;;
+Linux) stat_args=(-L -c '%d:%i') lstat_args=(-c '%d:%i') size_args=(-L -c '%s') mode_args=(-L -c '%a') ;;
 *) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
 # srt 0.0.81 keeps its own TMPDIR writable whatever the policy says (SANDBOX_OWN_WRITE_PATHS in
@@ -1045,6 +1166,248 @@ for settings_file in ${settings_files[@]+"${settings_files[@]}"}; do
     done <<< "${listed}"
 done
 add_roots "${roots[@]}"
+# @description Resolve every extension directory `$@` to its canonical entry of the extension allow-list
+#   (regime-cutover U31): `claude.levers.extensions` in the manifest the self-check read, so the installed copy reads
+#   it from ~/.agents, outside every sandbox write root. A read failure is a refusal, not an empty list. The caller
+#   gets the canonical allow-list entry (`pwd -P` of the listed path), never the caller's spelling: a symlink the
+#   caller controls could be swapped between this check and omp resolving the path.
+# @arg $@ string Extension directories.
+# @set checked The canonical allow-list entries, in the order given.
+extensions_canonical() {
+    local allowed ext real listed entry entry_real
+    allowed=$(awk '
+    /^  levers:$/ { levers = 1; next }
+    levers && /^  [^ ]/ { levers = 0 }
+    levers && /^    extensions:$/ { list = 1; next }
+    list && /^      - / { sub(/^      - /, ""); print; next }
+    list { list = 0 }
+' "${LEVER_MANIFEST}") || refuse "cannot read the extension allow-list in ${LEVER_MANIFEST}"
+    [[ -n ${allowed} ]] || refuse "no extension allow-list (claude.levers.extensions) in ${LEVER_MANIFEST}"
+    checked=()
+    for ext in "$@"; do
+        [[ -d ${ext} ]] || refuse "extension directory absent: ${ext}"
+        real=$(cd "${ext}" && pwd -P) || refuse "cannot resolve extension directory: ${ext}"
+        listed=''
+        while IFS= read -r entry; do
+            entry=${entry/#\~/${HOME}}
+            # An entry that is absent or cannot be resolved lists nothing, so the extension stays refused.
+            [[ -d ${entry} ]] || continue
+            entry_real=$(cd "${entry}" && pwd -P) || continue
+            if [[ ${entry_real} -ef ${real} ]]; then listed=${entry_real}; fi
+        done <<< "${allowed}"
+        [[ -n ${listed} ]] || refuse "extension directory is not in the allow-list (claude.levers.extensions): ${ext}"
+        checked+=("${listed}")
+    done
+}
+# @description Read whether the path `$1` below HOME exists, every directory above it tested for searchability first
+#   (standing order 21, regime-cutover U310b): `[ -e ]` below a directory this user cannot search is false for a
+#   present file as for an absent one, so an existing directory that cannot be searched refuses naming it, and
+#   `path_present` is read only below searchable directories. A symbolic link counts as present and is not followed; the
+#   caller judges it.
+# @arg $1 string An absolute path below HOME.
+# @set path_present 1 when the path exists, 0 when it is absent.
+present_under_home() {
+    local above=${HOME} rest=${1#"${HOME}"/} part
+    path_present=0
+    while :; do
+        [[ -d ${above} && -x ${above} ]] || refuse "cannot search ${above}; the dsh profile config below it cannot be read"
+        part=${rest%%/*}
+        [[ -e ${above}/${part} || -L ${above}/${part} ]] || return 0
+        [[ ${rest} != "${part}" ]] || break
+        above=${above}/${part} rest=${rest#*/}
+    done
+    path_present=1
+}
+# @description Run the profile config helper `profile-config-place.py` (the lever's own copy, helper_copy_make) once
+#   over the dsh profile's
+#   `agent/` directory `$1` and read its status (regime-cutover U310d): the one writer of the row. Three audit rounds
+#   of U310 found one class, symlink-write, in this lever's own write: each round checked a path in `agent/` (a
+#   directory the role's own sandboxed process writes too) and then acted on it, and the entry was swapped between
+#   the two (round 1 a link planted at the temporary's predictable name, round 2 the temporary swapped after its
+#   open, round 3 `config.yml` swapped to a directory link before `mv`). Nothing of that shape remains here: the
+#   helper opens `agent/` once (`O_NOFOLLOW`) and runs every step on that descriptor (`dir_fd`): the identity read,
+#   the compare, the exclusive create at a random name, the write, the rename and the read-back, and the removal on
+#   a refusal; this lever makes no check over a path in `agent/` that a later act depends on. The rendering goes to
+#   the helper's stdin; its status decides (standing order 21): 0 and one decision word, 2 a refusal whose line (the
+#   step, the path, the errno) becomes this lever's refusal, any other status a helper that could not run, refused
+#   naming the status. With `$2` set to `--dry-run` the helper stops after the compare and writes nothing.
+# @arg $1 string The `agent/` directory of the role's own profile, its physical path.
+# @arg $2 string `--dry-run`, or empty.
+# @set profile_config_decision The helper's word: placed, replaced, kept, absent or differs.
+profile_config_place() {
+    local agent=$1 mode=$2 target=$1/config.yml output status=0
+    output=$("${profile_config_cmd[@]}" ${mode:+"${mode}"} "${agent}" "${UID}" <<< "${profile_config_text}" 2>&1) || status=$?
+    # The one run is over: the copy's directory goes now, whatever the status says below.
+    helper_copy_remove
+    case ${status} in
+    0)
+        case ${output} in
+        placed | replaced | kept | absent | differs) profile_config_decision=${output} ;;
+        *) refuse "the profile config helper ${profile_config_helper##*/} printed no decision for ${target}: '${output}'" ;;
+        esac
+        ;;
+    2) refuse "the dsh profile config ${target} was not placed: ${output}" ;;
+    *) refuse "the profile config helper ${profile_config_helper##*/} exited ${status} for ${target}: ${output:-no output}" ;;
+    esac
+}
+# @description Print what the helper decided about the config `$1`, in the words the earlier rounds printed; a config
+#   the check already announced as absent (profile_config_action `place`) gets no second line.
+# @arg $1 string The config path.
+profile_config_report() {
+    case ${profile_config_decision} in
+    kept) echo "hcom-seat: the dsh profile config $1 equals ${profile_config}; the launch leaves it" >&2 ;;
+    replaced | differs) echo "hcom-seat: the dsh profile config $1 differs from ${profile_config}; the launch replaces it" >&2 ;;
+    placed | absent)
+        [[ ${profile_config_action} == place ]] ||
+            echo "hcom-seat: the dsh profile config $1 went absent after the check; the launch places it from ${profile_config}" >&2
+        ;;
+    esac
+}
+# @description Read the placement target: every existence read goes through present_under_home, and an `agent/` or
+#   `config.yml` that is a symbolic link or not a plain directory or file refuses, since a write would follow it out
+#   of the profile (the profile root itself is judged by settings_judge). A reading that decides the early refusal,
+#   before anything is made, and the printed decision only: the write's own judgement of what stands at `agent/` and
+#   `config.yml` is the helper's, on its held descriptor (profile_config_place, regime-cutover U310d).
+# @arg $1 string The `agent/` directory.
+# @arg $2 string The config path inside it.
+# @set path_present 1 when the config exists, 0 when it or `agent/` is absent.
+profile_config_target_check() {
+    present_under_home "$1"
+    ((path_present)) || return 0
+    [[ ! -L $1 ]] || refuse "$1 is a symbolic link; the dsh role writes its profile config inside its profile only"
+    [[ -d $1 ]] || refuse "$1 is not a directory"
+    present_under_home "$2"
+    ((path_present)) || return 0
+    [[ ! -L $2 ]] || refuse "$2 is a symbolic link; the dsh role writes its profile config inside its profile only"
+    [[ -f $2 ]] || refuse "$2 is not a regular file"
+}
+# @description The dsh role's profile config row (regime-cutover U310, round 2 U310b): render what the role's own omp
+#   profile must hold and decide what the launch does about it, before anything is made (the private tool directory
+#   included) and in a dry run too. The gateway child `omp auth-gateway stdio` the harness starts in that profile
+#   resolves a request's model among the providers the profile's own `agent/config.yml` loads (omp 18.12.6
+#   src/cli/auth-gateway-stdio.ts:60-64: `Settings.init`, then `loadCliExtensionProviders`), with no `--config`
+#   overlay and no `-e` list, so the kit's bridge route reaches it through that file alone (item g6,
+#   2026-11-06T19:22Z: without it, `HTTP 404: No available model matches "claude-bridge/claude-opus-5-5"`). The file
+#   is the rendered overlay `profile_config` (the generator's, like the seat overlays), each `extensions` entry
+#   replaced by its canonical allow-list path (extensions_canonical, the rule the omp roles' `-e` list follows),
+#   written as a single-quoted YAML scalar with a `'` doubled, so a path holding ` # `, a quote or a trailing space
+#   is read whole by the child (regime-cutover U310e); an overlay naming no extension refuses, as does a failed read
+#   (the read is `/bin/cat` with its status read: bash 5.2 runs `$(< file)` without a fork, so its failed redirection
+#   ended the launch by errexit on Linux before the handler ran, exit 1 with no refusal; U310e). The target
+#   `~/.omp/profiles/<role>/agent/config.yml`
+#   is read by profile_config_target_check (every existence read through present_under_home, a link or an irregular
+#   entry refused); an absent one is placed. A present one is compared by the helper on its held descriptor: in a
+#   dry run after settings_judge has accepted the profile boundary (profile_config_compare, nothing written), in a
+#   launch at the write itself (profile_config_write), so the compare and the act are one program on one descriptor
+#   (regime-cutover U310d). The decision is printed, in a dry run too.
+# @set profile_config_text The config to place, without its final newline.
+# @set profile_config_action `place` (the target is absent), or `compare` (present: the helper decides at the write).
+profile_config_check() {
+    local text line list=0 i=0 agent target q="'"
+    local -a listed_exts=()
+    [[ -f ${profile_config} && ! -L ${profile_config} ]] ||
+        refuse "profile config overlay absent or a symbolic link: ${profile_config}"
+    text=$(/bin/cat -- "${profile_config}") || refuse "cannot read the profile config overlay ${profile_config}"
+    while IFS= read -r line; do
+        if ((list)) && [[ ${line} == '  - '* ]]; then
+            listed_exts+=("${line#  - }")
+        elif [[ ${line} == 'extensions:' ]]; then
+            list=1
+        else
+            list=0
+        fi
+    done <<< "${text}"
+    ((${#listed_exts[@]})) ||
+        refuse "the profile config overlay ${profile_config} names no extension; the gateway child needs the bridge route"
+    extensions_canonical "${listed_exts[@]}"
+    rendered_path_check 'the canonical extension path' "${checked[@]}"
+    profile_config_text='' list=0
+    while IFS= read -r line; do
+        if ((list)) && [[ ${line} == '  - '* ]]; then
+            line="  - '${checked[i]//${q}/${q}${q}}'"
+            i=$((i + 1))
+        elif [[ ${line} == 'extensions:' ]]; then
+            list=1
+        else
+            list=0
+        fi
+        profile_config_text+=${line}$'\n'
+    done <<< "${text}"
+    profile_config_text=${profile_config_text%$'\n'}
+    agent=${HOME}/.omp/profiles/${omp_profile}/agent
+    target=${agent}/config.yml
+    profile_config_target_check "${agent}" "${target}"
+    if ((! path_present)); then
+        profile_config_action=place
+        echo "hcom-seat: the dsh profile config ${target} is absent; the launch places it from ${profile_config}" >&2
+        return 0
+    fi
+    profile_config_action=compare
+}
+# @description Refuse (exit 2) a path this lever would render into the profile config when it holds a control
+#   character (a newline among them: inside a single-quoted YAML scalar a line break folds into a space, so the child
+#   would read another path; regime-cutover U310f, the round-5 verdict's P2 at :1121), begins with `-`, or holds a
+#   `#` after white space, each named before anything is rendered. The scalars stay single-quoted with a `'` doubled
+#   (U310e); this check refuses the shapes the quoting is not asked to carry. Every path value the lever renders is
+#   a canonical extension path (`pwd -P` of an allow-list entry); the other values come from the overlay unchanged.
+# @arg $1 string What the paths are, for the refusal.
+# @arg $@ string The paths.
+rendered_path_check() {
+    local what=$1 path
+    shift
+    for path in "$@"; do
+        [[ ${path} != *[[:cntrl:]]* ]] || refuse "${what} holds a control character and is not rendered into the profile config: '${path}'"        # lint-comparisons: allow a content test
+        [[ ${path} != -* ]] || refuse "${what} begins with '-' and is not rendered into the profile config: '${path}'"                             # lint-comparisons: allow a shape test
+        [[ ${path} != *[[:space:]]'#'* ]] || refuse "${what} holds a '#' after white space and is not rendered into the profile config: '${path}'" # lint-comparisons: allow a content test
+    done
+}
+# @description The dry run's reading of a present profile config (regime-cutover U310d): the helper runs with
+#   `--dry-run` after settings_judge has accepted the profile boundary and prints the decision a launch would take,
+#   writing nothing (round 2 wrote a temporary file here, so a linked profile root took it into another profile:
+#   verdict U310-8f393491 P2; nothing is written here any more). A launch reads nothing here: its one helper run is
+#   the write (profile_config_write), after the per-launch slots, so no decision is carried across the launch's own
+#   mkdirs.
+# @set profile_config_decision The helper's word.
+profile_config_compare() {
+    local profile agent
+    ((dry_run)) || return 0
+    # The pin is read in every dry run, a present config or not; the copy goes before the launch line is printed.
+    profile_config_hold
+    if [[ ${profile_config_action} == compare ]]; then
+        profile=$(physical_path "${HOME}/.omp/profiles/${omp_profile}") || refuse "cannot resolve the profile directory ${HOME}/.omp/profiles/${omp_profile}"
+        agent=${profile}/agent
+        profile_config_place "${agent}" --dry-run
+        profile_config_report "${agent}/config.yml"
+    fi
+    helper_copy_remove
+}
+# @description Place the dsh role's profile config (regime-cutover U310, rounds U310b to U310d), after
+#   seat_sandbox_write made the profile directory: `agent/` is made 0700 when absent (two launches at once, the
+#   role's normal case, may both find it absent; the loser of the mkdir race goes on with what stands there), and the
+#   one helper run does the rest on its held descriptor: whether `agent/` is a real directory of this user, whether
+#   `config.yml` equals the rendering (nothing written then), the exclusive create, the write, the rename and the
+#   read-back. This function tests nothing about `agent/` or `config.yml` by path: a failed mkdir is read by its
+#   message alone (an entry of any kind at the name is `File exists`, and what it is the helper reads on its
+#   descriptor; any other failure refuses naming it).
+profile_config_write() {
+    local profile agent err
+    profile_config_hold
+    profile=$(physical_path "${HOME}/.omp/profiles/${omp_profile}") || refuse "cannot resolve the profile directory ${HOME}/.omp/profiles/${omp_profile}"
+    agent=${profile}/agent
+    if ! err=$( (umask 077 && /bin/mkdir "${agent}") 2>&1); then
+        case ${err} in
+        *'File exists'*) ;;
+        *) refuse "cannot create ${agent}: ${err:-the umask set or the mkdir failed with no message}" ;;
+        esac
+    fi
+    profile_config_place "${agent}" ''
+    profile_config_report "${agent}/config.yml"
+}
+# The profile config row is read here, after the complete protected set and before the first directory of the
+# launch is made (the private tool directory next), so a bad overlay or a linked, unsearchable or irregular target
+# refuses on a fresh HOME with nothing created, in a dry run too. The compare of a present config, the helper's
+# read-only `--dry-run` run (nothing written), runs after settings_judge (profile_config_compare below).
+if [[ ${role_launch} == foreground ]]; then profile_config_check; fi
 tools_dir=${HOME}/.local/state/hcom-seat/tools
 /bin/mkdir -p "${tools_dir}" || refuse "cannot create the private tool directory ${tools_dir}"
 /bin/chmod 700 "${tools_dir%/*}" "${tools_dir}" || refuse "cannot restrict the private tool directory ${tools_dir}"
@@ -1125,6 +1488,20 @@ done
 git_path=$(find_on_path git) || refuse 'git not found in the private tool directory'
 pin_exec git "${git_path}"
 git_cmd=("${pinned[@]}")
+# The dsh role's profile config helper (regime-cutover U310d, U310f): `profile-config-place.py` beside this file, run
+# by the python3 resolved above (required for this role, pinned like git: its physical file and interpreter chain
+# checked against the protected set) as `python3 -I -S <copy>`. The helper is pinned in the manifest like this lever
+# (`claude.levers.sha256`, refreshed by scripts/generate-agent-configs.py). The path beside this file is held to the
+# self-check's rules here (helper_path_check) and read once, right before the helper's one run, by the copy this
+# lever makes in a directory of its own (profile_config_hold: helper_copy_make, then helper_pin_check over the copy);
+# the copy is what runs, so a rewrite of the path after the hash, or a link at it, places nothing and runs nothing.
+profile_config_cmd=() profile_config_python=() profile_config_helper='' helper_copy=''
+if [[ ${role_launch} == foreground ]]; then
+    python_path=$(find_on_path python3) || refuse "python3 not found (mise which, then the caller's PATH); the dsh role runs its profile config helper with it"
+    pin_exec python3 "${python_path}"
+    profile_config_python=("${pinned[@]}")
+    helper_path_check profile-config-place.py
+fi
 # Inside the sandbox the seat works with its tools (gh, uv, linters) from the caller's absolute PATH entries after
 # these; every process there is contained, and nothing outside the sandbox runs from that list.
 seat_path=${PATH}
@@ -1313,7 +1690,8 @@ command -v hcom > /dev/null || refuse 'hcom not found on PATH'
 [[ ${HCOM_TEAM:-} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "team '${HCOM_TEAM:-}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
 # @description Check the omp roles' inputs and set `exts` to the canonical extension directories: the policy and
 #   profile overlays and the standing rules must exist, and every extension directory, a default, `--ext` or the stop
-#   gate's, must resolve to an entry of `claude.levers.extensions`. The dsh role runs no omp and reads none of these.
+#   gate's, must resolve to an entry of `claude.levers.extensions` (extensions_canonical). The dsh role runs no omp
+#   session and reads none of these; its profile config goes through profile_config_check.
 # @set policy The policy overlay.
 # @set profile The profile overlay.
 # @set rules The standing rules file.
@@ -1332,34 +1710,7 @@ omp_inputs_check() {
     fi
     # The stop gate rides every launch, after the route's extensions; --ext never drops it (U33c).
     exts+=("${gate}")
-    # The extension allow-list (regime-cutover U31): claude.levers.extensions in the manifest the self-check read, so
-    # the installed copy reads it from ~/.agents, outside every sandbox write root. A read failure is a refusal, not an
-    # empty list.
-    allowed=$(awk '
-    /^  levers:$/ { levers = 1; next }
-    levers && /^  [^ ]/ { levers = 0 }
-    levers && /^    extensions:$/ { list = 1; next }
-    list && /^      - / { sub(/^      - /, ""); print; next }
-    list { list = 0 }
-' "${LEVER_MANIFEST}") || refuse "cannot read the extension allow-list in ${LEVER_MANIFEST}"
-    [[ -n ${allowed} ]] || refuse "no extension allow-list (claude.levers.extensions) in ${LEVER_MANIFEST}"
-    # The launch passes the canonical allow-list entry (`pwd -P` of the listed path), never the caller's spelling: a
-    # symlink the caller controls could be swapped between this check and omp resolving `-e`.
-    checked=()
-    for ext in "${exts[@]}"; do
-        [[ -d ${ext} ]] || refuse "extension directory absent: ${ext}"
-        real=$(cd "${ext}" && pwd -P) || refuse "cannot resolve extension directory: ${ext}"
-        listed=''
-        while IFS= read -r entry; do
-            entry=${entry/#\~/${HOME}}
-            # An entry that is absent or cannot be resolved lists nothing, so the extension stays refused.
-            [[ -d ${entry} ]] || continue
-            entry_real=$(cd "${entry}" && pwd -P) || continue
-            if [[ ${entry_real} -ef ${real} ]]; then listed=${entry_real}; fi
-        done <<< "${allowed}"
-        [[ -n ${listed} ]] || refuse "extension directory is not in the allow-list (claude.levers.extensions): ${ext}"
-        checked+=("${listed}")
-    done
+    extensions_canonical "${exts[@]}"
     exts=("${checked[@]}")
 }
 if [[ ${role_launch} == hcom ]]; then omp_inputs_check; fi
@@ -2195,6 +2546,9 @@ if [[ ${role_launch} == foreground ]]; then
     # The router row's state root is made now, after the home it lies in has passed the judgement, in a real launch
     # alone (state_root_make, regime-cutover U321d); a dry run says what a launch would make and makes nothing.
     if [[ -n ${state_root} ]]; then state_root_make "${dry_run}"; fi
+    # The dry run's compare of a present profile config runs the helper after the judge's acceptance of the profile
+    # boundary and writes nothing (regime-cutover U310c, U310d); a launch compares at the write.
+    profile_config_compare
 fi
 roots=("${seat_write[@]}" "${seats_root}" "${HCOM_DIR}" "${common}")
 while IFS= read -r root; do roots+=("${root}"); done <<< "${other_roots}"
@@ -2601,6 +2955,7 @@ slots_remove() {
 foreground_signal() {
     local removed=0
     trap - HUP INT TERM
+    helper_copy_remove
     slots_remove || removed=$?
     ((removed == 0)) || {
         echo "hcom-seat: ended by SIG$1; the launch exits 2 because a per-launch slot remains" >&2
@@ -2614,9 +2969,13 @@ if [[ ${role_launch} == foreground ]]; then
     # on purpose: the handler needs the signal's name.
     # shellcheck disable=SC2064
     for sig in HUP INT TERM; do trap "foreground_signal ${sig}" "${sig}"; done
+    # From here a refusal removes the slots too (refuse): the write of the profile config and the sandbox write itself
+    # refuse after a slot may exist.
+    slots_made=1
 fi
 if [[ ${role_launch} == hcom ]]; then seat_settings_render; fi
 seat_sandbox_write
+if [[ ${role_launch} == foreground ]]; then profile_config_write; fi
 case ${role_launch} in
 hcom)
     # hcom resolves `omp`, `hcom` and `herdr` from this PATH and pins the shim as the runner's tool path (U85); hcom

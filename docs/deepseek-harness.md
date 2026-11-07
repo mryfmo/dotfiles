@@ -51,7 +51,18 @@ in the foreground under `/usr/bin/env -i` with `HOME`, `USER`, `LANG`, `TERM`,
 `PATH`, `DSH_HOME`, `OMP_PROFILE` and a caller's `CLAUDE_CODE_OAUTH_TOKEN`
 alone, waits, removes the per-launch slots and returns dsh's status; a hangup,
 interrupt or termination runs the same removal before the lever ends by that
-signal, so the caller's status names it. The dsh
+signal. Before the launch the lever places the kit's rendered overlay
+`~/.agents/omp/profiles/dsh.yml` (the bridge route as `modelRoles.default`,
+the bridge extension, the seat providers off) as the profile's own
+`~/.omp/profiles/dsh/agent/config.yml`, the file the gateway child reads for
+its providers, with the extension entry at its canonical allow-list path; the
+write is one run of the pinned helper `profile-config-place.py` beside the
+lever, every step on one held descriptor of `agent/` (`dir_fd`, `O_NOFOLLOW`:
+the compare, an exclusive create at a random name, the write, the rename, a
+read-back), so an equal file is left alone, a different one replaced, and a
+linked `agent/` or `config.yml`, a directory at `config.yml`, an entry at the
+temporary's name or a failed step refuses with exit 2 naming the step (U310,
+U310d; `tests/unit/test_profile_config_place.py`). The dsh
 runtime is never executed outside srt. Two launches at once share no settings
 file. The role's rows and the hazard-by-hazard account of the four verdicts
 are in `scripts/orchestrator/README.md` ("The dsh role") and the tests in
@@ -113,3 +124,33 @@ settings, one write beside the tree, and refuses the install unless srt
 denies it. `srt` is the kit's mise pin; a host without it gets no build and
 no install. The tests are in `tests/unit/test_update_agent_assets.py`
 (`DeepseekHarnessTest`, the U322 and U322b groups).
+
+The dsh-superagent intake (regime-cutover U317) is a second profile under the
+same role: `assets.dsh-superagent` pins the prototype at one commit with the
+sha256 of GitHub's archive and zero patches, `update_dsh_superagent` (the
+harness step's sibling, the same `DSH_HOME` opt-in) installs it under
+`$DSH_HOME/plugins/dsh-superagent` and runs `pnpm install` in the rendered
+`router` profile, whose `package.json` links it beside the omp-gateway plugin.
+Every archive member must lie under the one root that names the pin, and the
+upstream build (`pnpm install --frozen-lockfile && pnpm build`) runs inside one
+`srt --settings` invocation whose writes are the new tree and
+`$DSH_HOME/.pnpm-store`, whose reads deny the credential roots the dsh role
+denies, and whose network is the package registry alone; the profile install
+runs the same way with the profile directory as its write root. `srt`, `pnpm`
+and `node` are the kit's mise pins, and an absent `srt` refuses the step before
+any download. The rendered `home/dot_dsh/profiles/router/cordis.patch.yml`
+keeps the thak rows (the session log upload off, the API-key rows and the
+harness sandbox disabled, the default model on the gateway provider), binds the
+panel to `127.0.0.1:3082`, puts `stateDir` at `$DSH_HOME/router-state` (inside
+the role's write root; the listener itself waits for a `router` role with the
+loopback grant, U321), and restates the bundle's two agent presets with their
+sandbox rows disabled. The GitHub Source row
+(`assets.dsh-superagent.sources.github`: the repository and
+`accept_mode: observe`, the M-18 ladder row) is data for the Management API
+save; in observe mode the allowed list is empty, so a positive assessment is an
+ignore Decision marked would-accept and nothing is accepted.
+`hcom-seat router -- --no-open` starts the Router under srt, and
+`intake-observe.py <orchestrator.sqlite> <decisions.tsv>` appends the
+would-accept Decisions as rows, reading the store read-only, creating the table
+with the `decisions.tsv` header when it is absent, and refusing to run when its
+own sha256 differs from its manifest pin.

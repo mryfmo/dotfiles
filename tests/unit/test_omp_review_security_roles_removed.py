@@ -9,6 +9,7 @@ are a different thing and stay. The dry run applies a scratch source that holds 
 """
 
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -16,19 +17,49 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 RETIRED = ("review", "security")
 REMOVALS = tuple(f".agents/omp/profiles/{role}.yml" for role in RETIRED)
+SEAT_ROLES = ("audit", "orchestrator", "worker")
+
+
+def gateway_roles():
+    """The keys of the manifest's `omp.gateway_roles` mapping (regime-cutover U310: one placed overlay per gateway
+    role, the dsh role's), read from the manifest's lines so the test needs no PyYAML: the four-space keys under the
+    `  gateway_roles:` line of the top-level `omp:` block, up to the next line indented less."""
+    roles, block, listing = [], False, False
+    for line in MANIFEST.read_text().splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if not line.startswith(" "):
+            block = line == "omp:"
+            listing = False
+            continue
+        if block and line == "  gateway_roles:":
+            listing = True
+            continue
+        if listing:
+            key = re.match(r"    ([A-Za-z0-9_-]+):", line)
+            if key is None:
+                listing = False
+            else:
+                roles.append(key.group(1))
+    return roles
 
 
 class OmpReviewSecurityRolesRemovedTest(unittest.TestCase):
     def test_only_the_seat_overlays_render_and_the_model_profiles_stay(self):
-        # The generator renders one overlay per manifest omp role, and `generate-agent-configs.py --check` (CI's render
-        # check) fails when the rendered set and the roles differ, so the rendered set is the role list. The Codex
+        # The generator renders one overlay per manifest omp role and one per gateway role (U310: `omp.gateway_roles`,
+        # the dsh role's placed config), and `generate-agent-configs.py --check` (CI's render check) fails when the
+        # rendered set and those lists differ, so the rendered set is the two lists and nothing else. The Codex
         # profile scripts are rendered per model profile, so theirs is the model-profile list. No PyYAML needed.
         overlays = sorted(p.name for p in (ROOT / "home/dot_agents/omp/profiles").iterdir())
-        self.assertEqual(["audit.yml.tmpl", "orchestrator.yml.tmpl", "worker.yml.tmpl"], overlays)
+        gateway = gateway_roles()
+        self.assertEqual(["dsh"], gateway, "the manifest names the dsh role as the one gateway role")
+        self.assertEqual(sorted(f"{role}.yml.tmpl" for role in (*SEAT_ROLES, *gateway)), overlays)
         for role in RETIRED:
             with self.subTest(role=role):
+                self.assertNotIn(role, gateway)
                 self.assertTrue((ROOT / f"home/dot_codex/modify_private_{role}.config.toml").is_file())
 
     def test_chezmoiremove_lists_the_deployed_overlays(self):

@@ -198,6 +198,18 @@ omp:
     orchestrator: deep
     worker: standard
     audit: audit
+  # The gateway role (regime-cutover U310). The dsh role of hcom-seat runs no omp session: its omp is
+  # the child `omp auth-gateway stdio` the dsh-omp-gateway plugin starts in the role's own profile
+  # ~/.omp/profiles/dsh (OMP_PROFILE), and that child reads the profile's agent/config.yml alone, no
+  # --config overlay and no -e list, so with none in place it had no claude-bridge provider (item g6,
+  # 2026-11-06T19:22Z: `HTTP 404: No available model matches "claude-bridge/claude-opus-5-5"`). One
+  # overlay renders per key to ~/.agents/omp/profiles/<role>.yml with the gateway route of the named
+  # profile's dsh model as modelRoles.default, the bridge directory of extension_providers as
+  # `extensions`, every seat provider off and skills off (DSH reads ~/.agents/skills itself); hcom-seat
+  # places it as ~/.omp/profiles/<role>/agent/config.yml before the launch, the extension entry
+  # rewritten to the canonical claude.levers.extensions path, left alone when already equal.
+  gateway_roles:
+    dsh: deep
 
 # The dangerous GitHub-write and destructive commands no agent runs on its own (regime-cutover U76).
 # One list, rendered by scripts/generate-agent-configs.py to three consumers:
@@ -862,9 +874,14 @@ claude:
   # acp-relay.py is its socket relay, pinned like regime-env and checked by the
   # broker before it runs; acp-seat is the thin client dsh-subagent-acp runs
   # inside the Router's sandbox, self-checked like brief-check.py.
+  # profile-config-place.py is hcom-seat's helper for the dsh role's profile config
+  # write (U310d): installed and pinned the same way, run by hcom-seat alone as
+  # `python3 -I -S` after hcom-seat has read its digest against this pin, never by
+  # a policy rule; it writes one file inside the role's own profile through one
+  # held directory descriptor and nothing else.
   levers:
     sha256:
-      hcom-seat: d344e6e1f4ddc7db76863192e8304e9a5c32b3755b0cb65b3597440309dbb792
+      hcom-seat: 34db7b4aa8954eac4e7e9a5fcd28cfe6f54350108bd7d0bee34e8861c95c4993
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -887,10 +904,12 @@ claude:
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
+      profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       acp-broker: cd58bce6a2923422bf97c152f74a4ace49f851758d4dfa8bdbfe8db536a968d3
       acp-relay.py: f4c3a2779e332936cbfb44f151f9b4f8cd759c526e030c5fbda5d1be03c3e055
       acp-seat: 9fe73e7b148d24b7c27f575a5f62ee37c1b2dd41084d723009642b9a90fdd47f
+      intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).
@@ -1389,6 +1408,40 @@ assets:
     render:
       file: scripts/lib/installer-pins.sh
       constants: {DSH_PIN_TAG: pin, DSH_ARCHIVE_SHA256: sha256, DSH_COMMIT: ref_commit}
+  dsh-superagent:
+    source: git-commit
+    upstream: deepseek-ai/dsh-superagent-prototype
+    pin: 8c32a9dc5d72c033816c6a8110b37f40cf94fba4
+    verify: sha256
+    sha256: 64cf5bea00cbe7153adaa77b9e583d839f3f3818793e2e1541ddc789451485a6
+    reason: >-
+      the prototype is a one-commit publication (2026-10-31, unsigned) with issues and pull requests disabled, so the
+      reviewed sha256 of GitHub's source archive of the commit is the check; the kit owns the fork
+      (<owner>/dsh-superagent, operator step T-M-26-01, after which upstream moves there by one --set-asset change)
+      and its Source adapters; the bump-review owner is the operator until a decisions row names someone else.
+    note: >-
+      zero patches today: the archive is installed as published and built in its own tree inside srt (the build's
+      writes are that tree and $DSH_HOME/.pnpm-store, its network the package registry alone); sha256 is GitHub's source
+      archive of the commit (https://github.com/deepseek-ai/dsh-superagent-prototype/archive/<pin>.tar.gz), read
+      twice on 2026-11-06 with the same digest (237 entries). Installed by update_dsh_superagent only on a host whose
+      operator exported DSH_HOME and created it (the opt-in update_deepseek_harness reads), under
+      $DSH_HOME/plugins/dsh-superagent, then linked into the rendered router profile by its link: dependency through
+      pnpm from mise, inside srt as well. The Router is started by `hcom-seat dsh --profile router -- --no-open` under srt and never by
+      the archive's scripts/dsh-superagent (tmux, the harness outside any sandbox). sources.github is the kit's
+      GitHub Source row: the repository the Source watches and the accept mode of the M-18 ladder; accept_mode_row
+      is the decisions.tsv row that set the mode, and auto needs accept_mode_auto_row as well (the two row
+      timestamps M-18 defines). In observe mode the allowed list is empty, so no accept path exists: a positive
+      assessment is an ignore Decision marked would-accept (src/policy.ts:57, reason code observed).
+    install_path: ~/.dsh/plugins/dsh-superagent
+    installer: scripts/update-agent-assets.sh#update_dsh_superagent
+    render:
+      file: scripts/lib/installer-pins.sh
+      constants: {DSH_SUPERAGENT_COMMIT: pin, DSH_SUPERAGENT_SHA256: sha256}
+    sources:
+      github:
+        repository: mryfmo/dotfiles
+        accept_mode: observe
+        accept_mode_row: "2026-11-06T23:24:00Z"
   graphifyy:
     source: github-release
     upstream: Graphify-Labs/graphify

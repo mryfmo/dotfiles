@@ -198,6 +198,18 @@ omp:
     orchestrator: deep
     worker: standard
     audit: audit
+  # The gateway role (regime-cutover U310). The dsh role of hcom-seat runs no omp session: its omp is
+  # the child `omp auth-gateway stdio` the dsh-omp-gateway plugin starts in the role's own profile
+  # ~/.omp/profiles/dsh (OMP_PROFILE), and that child reads the profile's agent/config.yml alone, no
+  # --config overlay and no -e list, so with none in place it had no claude-bridge provider (item g6,
+  # 2026-11-06T19:22Z: `HTTP 404: No available model matches "claude-bridge/claude-opus-5-5"`). One
+  # overlay renders per key to ~/.agents/omp/profiles/<role>.yml with the gateway route of the named
+  # profile's dsh model as modelRoles.default, the bridge directory of extension_providers as
+  # `extensions`, every seat provider off and skills off (DSH reads ~/.agents/skills itself); hcom-seat
+  # places it as ~/.omp/profiles/<role>/agent/config.yml before the launch, the extension entry
+  # rewritten to the canonical claude.levers.extensions path, left alone when already equal.
+  gateway_roles:
+    dsh: deep
 
 # The dangerous GitHub-write and destructive commands no agent runs on its own (regime-cutover U76).
 # One list, rendered by scripts/generate-agent-configs.py to three consumers:
@@ -856,9 +868,14 @@ claude:
   # brief-check.py is the orchestrator seat's brief gate (U104): the same install
   # and self-check, run from the checkout before the first TASK of a unit and
   # allowed by the orchestrator policy alone; it reads one brief and writes nothing.
+  # profile-config-place.py is hcom-seat's helper for the dsh role's profile config
+  # write (U310d): installed and pinned the same way, run by hcom-seat alone as
+  # `python3 -I -S` after hcom-seat has read its digest against this pin, never by
+  # a policy rule; it writes one file inside the role's own profile through one
+  # held directory descriptor and nothing else.
   levers:
     sha256:
-      hcom-seat: d344e6e1f4ddc7db76863192e8304e9a5c32b3755b0cb65b3597440309dbb792
+      hcom-seat: 34db7b4aa8954eac4e7e9a5fcd28cfe6f54350108bd7d0bee34e8861c95c4993
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -881,6 +898,7 @@ claude:
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
+      profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the

@@ -48,6 +48,12 @@
       "executable": false
     },
     {
+      "source": "home/dot_agents/omp/profiles/dsh.yml.tmpl",
+      "target": ".agents/omp/profiles/dsh.yml",
+      "kind": "template",
+      "executable": false
+    },
+    {
       "source": "home/dot_agents/omp/profiles/orchestrator.yml.tmpl",
       "target": ".agents/omp/profiles/orchestrator.yml",
       "kind": "template",
@@ -429,7 +435,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "d344e6e1f4ddc7db76863192e8304e9a5c32b3755b0cb65b3597440309dbb792"
+      "sha256": "34db7b4aa8954eac4e7e9a5fcd28cfe6f54350108bd7d0bee34e8861c95c4993"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
@@ -493,6 +499,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_profile-config-place.py",
+      "target": ".local/bin/common/profile-config-place.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014"
     },
     {
       "source": "home/dot_local/bin/common/executable_read-lib.sh",
@@ -734,6 +747,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "pr-update-branch.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "profile-config-place.py"
     },
     {
       "source": "home/dot_local/bin/common",

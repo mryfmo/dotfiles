@@ -5536,7 +5536,7 @@
 <span class="c1">#   `--check [&lt;profile&gt;...]` prints one line per profile (all overlays when none is named) from metadata</span>
 <span class="c1">#   only, never a token: SIWC is `registration.json` (host id and issued client id, which carry no token),</span>
 <span class="c1">#   held to the extension's record schema (one JSON document), plus the mtime of the profile's `agent.db`; Claude is the</span>
-<span class="c1">#   `CLAUDE_CODE_OAUTH_TOKEN` variable or the token file the seat shim exports (`login present`), else the</span>
+<span class="c1">#   token file the seat shim reads (`login present`), else the</span>
 <span class="c1">#   credentials file or the macOS Keychain item (attributes only), which are `host login only`: the seat's bridge</span>
 <span class="c1">#   child runs under its own `CLAUDE_CONFIG_DIR` (hcom-seat's shim, regime-cutover U190) and reads neither. A</span>
 <span class="c1">#   record that exists but cannot be read or breaks its schema, and a producer (`uname`, `stat`, `date`,</span>
@@ -5550,9 +5550,10 @@
 <span class="c1">#   active `openai-siwc` login in `agent.db`, counted by the extension's `src/credentials.ts` without reading a</span>
 <span class="c1">#   token: the issued client is saved before the token exchange, so a record proves only that a sign-in began.</span>
 <span class="c1">#   The Claude route is checked on every host (regime-cutover U190b), local included, since the seat's child logs</span>
-<span class="c1">#   in by the token alone wherever it runs: it needs the variable in this environment or a usable token file (a</span>
-<span class="c1">#   regular file whose first line, read as the seat shim reads it, is non-empty), which the shim exports into</span>
-<span class="c1">#   the seat; a directory, an empty file or an empty first line is `token file unusable` and counts as absent;</span>
+<span class="c1">#   in by the token alone wherever it runs: it needs a usable token file (a regular file whose first line, read as the</span>
+<span class="c1">#   seat shim reads it, is non-empty), which the shim alone reads into the seat (regime-cutover U312: no shell exports</span>
+<span class="c1">#   it, and a variable in this environment is no input); a directory, an empty file or an empty first line is</span>
+<span class="c1">#   `token file unusable` and counts as absent;</span>
 <span class="c1">#   a credentials file or Keychain item alone is refused as a host login the seat's child never sees,</span>
 <span class="c1">#   with the instruction to run `claude setup-token` and store the token in the file (0600). An absent</span>
 <span class="c1">#   login is logged in here only in the operator's own terminal (stdin and stdout a TTY, not inside a seat):</span>
@@ -5567,7 +5568,6 @@
 <span class="c1"># @env SSH_CONNECTION Set by sshd: this host is remote to the operator's terminal.</span>
 <span class="c1"># @env DISPLAY With WAYLAND_DISPLAY: a Linux host with neither has no local browser, so it counts as remote.</span>
 <span class="c1"># @env HCOM_LAUNCHED Set by hcom inside a seat: never run a login there.</span>
-<span class="c1"># @env CLAUDE_CODE_OAUTH_TOKEN Claude Code's token; only its presence is tested.</span>
 <span class="c1"># @stdout With `--check`: one line per profile.</span>
 <span class="c1"># @stderr The profile mode's report and refusals.</span>
 <span class="c1"># @exitcode 0 Checked, or the profile's route is usable (or the host is local and the route is openai-siwc).</span>
@@ -5756,8 +5756,9 @@ siwc_state<span class="o">()</span><span class="w"> </span><span class="o">{</sp
 
 <span class="c1"># @description Print the Claude Code login line of this host. The seat's bridge child runs under its own</span>
 <span class="c1">#   `CLAUDE_CONFIG_DIR` (hcom-seat's shim, regime-cutover U190), so it reads neither the operator's credentials file</span>
-<span class="c1">#   nor the Keychain item: the variable or a usable token file (the shim exports it) is a login, the two host stores are</span>
-<span class="c1">#   `host login only`, in readiness mode with the token-file instruction. The token file counts as the shim reads it</span>
+<span class="c1">#   nor the Keychain item: a usable token file (the shim reads it) is a login, the two host stores are `host login</span>
+<span class="c1">#   only`, in readiness mode with the token-file instruction; a variable in this environment is no input</span>
+<span class="c1">#   (regime-cutover U312). The token file counts as the shim reads it</span>
 <span class="c1">#   (regime-cutover U190b): a regular file whose first line, read by `/usr/bin/head -n 1`, is non-empty; the line goes</span>
 <span class="c1">#   into a variable to be tested for emptiness and nowhere else. A directory (or a link to one), an empty file or an</span>
 <span class="c1">#   empty first line is reported as `token file unusable (&lt;reason&gt;)` beside the host stores and counts as absent. The</span>
@@ -5767,10 +5768,6 @@ siwc_state<span class="o">()</span><span class="w"> </span><span class="o">{</sp
 claude_state<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">ready</span><span class="o">=</span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="nv">0</span><span class="si">}</span><span class="w"> </span><span class="nv">credentials</span><span class="o">=</span><span class="si">${</span><span class="nv">CLAUDE_CONFIG_DIR</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.claude</span><span class="si">}</span>/.credentials.json<span class="w"> </span>mode<span class="w"> </span>mtime<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">store</span><span class="o">=</span><span class="s1">''</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>first<span class="w"> </span>reason<span class="w"> </span><span class="nv">note</span><span class="o">=</span><span class="s1">''</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">CLAUDE_CODE_OAUTH_TOKEN</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'login present (env token)\n'</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">token_file</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">token_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">token_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nv">reason</span><span class="o">=</span><span class="s1">'a directory'</span>

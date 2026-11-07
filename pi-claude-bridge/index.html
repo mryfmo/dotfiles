@@ -5765,12 +5765,12 @@ comes from an extension that <code>omp.extensions</code> does not list.</p>
 <code>&lt;seats-root&gt;/.state/&lt;name&gt;/claude</code>, which <code>hcom-seat</code>'s shim exports (regime-cutover
 U190), so its <code>.claude.json</code>, projects, sessions, backups and plugins land in the
 seat's state slot and never in the operator's <code>~/.claude</code> or <code>~/.claude.json</code>. It logs
-in by <code>CLAUDE_CODE_OAUTH_TOKEN</code> alone: the shim exports it from
-<code>~/.config/claude-code/oauth-token</code> (first line, mode 0600) when the caller has not
-already set it. The operator makes that token once with <code>claude setup-token</code> on the
-laptop and stores it in the file by hand, on every seat host alike (gate G-27).
-<code>seat-login-preflight &lt;role&gt;</code> counts only the variable or that file; a Keychain item or
-credentials file is reported as <code>host login only</code> and starts no seat, with the
+in by <code>CLAUDE_CODE_OAUTH_TOKEN</code> alone: the shim reads it from
+<code>~/.config/claude-code/oauth-token</code> (first line, mode 0600), the seats' current login,
+and a caller's variable is no input (U312). The operator makes that token once with
+<code>claude setup-token</code> on the laptop and stores it in the file by hand, on every seat
+host alike (gate G-27). <code>seat-login-preflight &lt;role&gt;</code> counts only that file; a Keychain
+item or credentials file is reported as <code>host login only</code> and starts no seat, with the
 setup-token instruction. Measured 2026-11-05 (Claude Code 2.1.316): a scratch
 <code>CLAUDE_CONFIG_DIR</code> with the host Keychain item and credentials file present answers
 <code>Not logged in</code>, so the child cannot borrow a host login. The Agent SDK reads the
@@ -5786,8 +5786,9 @@ the operator's own terminal; no script does this, and without it such a turn end
 (<code>regime-open-url</code> opens it on the laptop); its callback port is random (50903, 50915
 and 50920 on three runs, Claude Code 2.1.309), so the page shows a code to paste at the
 prompt. That is the host's login, not the seat's: the seat route on every host is the
-token file above. <code>~/.zshenv</code> and <code>~/.profile</code> also export the file as
-<code>CLAUDE_CODE_OAUTH_TOKEN</code> for a login shell's own <code>claude</code>. The steps are in
+token file above, which only the seat shim reads. No shell exports it (U312), so a
+login shell's own <code>claude</code> keeps the host login and its claude.ai connectors; whether
+the file stays the seat login is U314's open decision. The steps are in
 <code>docs/remote-host-logins.md</code>.</p>
 <h2 id="load-check">Load check<a class="headerlink" href="#load-check" title="Permanent link">&para;</a></h2>
 <p><code>omp models</code> never evaluates extension modules, so the only instrument is a

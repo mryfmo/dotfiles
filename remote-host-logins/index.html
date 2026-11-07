@@ -5536,7 +5536,7 @@ consent click and, for Claude, pasting a code.</p>
 </tr>
 <tr>
 <td>Claude (<code>claude-bridge</code>, the <code>orchestrator</code> and <code>worker</code> profiles; the bridge child runs under a per-seat <code>CLAUDE_CONFIG_DIR</code>, U190)</td>
-<td><code>~/.config/claude-code/oauth-token</code> (0600), which the seat shim exports as <code>CLAUDE_CODE_OAUTH_TOKEN</code>, or that variable already in the environment; never the Keychain or <code>~/.claude/.credentials.json</code>, which the child under its own config directory does not read</td>
+<td><code>~/.config/claude-code/oauth-token</code> (0600), the seats' current login, which the seat shim alone reads into the seat's child as <code>CLAUDE_CODE_OAUTH_TOKEN</code> (U312: no shell exports it, and a variable in the environment is no input; the mechanism itself is under review in U314); never the Keychain or <code>~/.claude/.credentials.json</code>, which the child under its own config directory does not read</td>
 <td><code>claude setup-token</code> on the laptop, with the token stored in <code>~/.config/claude-code/oauth-token</code> (0600) on the seat host by hand: the seat route on every host, remote or not. <code>claude auth login</code> with <code>BROWSER=regime-open-url</code> (the callback port is random, so the browser shows a code to paste at the prompt) logs in the host's own <code>claude</code>, not the seat.</td>
 </tr>
 </tbody>
@@ -5558,19 +5558,22 @@ which opens allow-listed sign-in hosts only.</p>
   <code>claude.levers.sha256</code>). With <code>--check</code> it backs the "Seat logins" section of <code>make doctor</code> from metadata only. Given
   a seat profile (orchestrator, worker or audit), it checks that a seat can use the login:
   an <code>openai-siwc</code> login stored in the profile's <code>agent.db</code>, counted by the extension's <code>src/credentials.ts</code>
-  without reading a token, and for Claude, on every host, the variable or a usable token file (a regular file
-  whose first line is non-empty, as the seat shim reads it; U190b); a credentials file or Keychain item is a
-  host login the seat's child never sees. <code>hcom-seat</code> runs it with the seat's role before it creates or
-  starts anything.</li>
+  without reading a token, and for Claude, on every host, a usable token file (a regular file whose first
+  line is non-empty, as the seat shim reads it; U190b); a token variable in the environment is no input
+  (U312), and a credentials file or Keychain item is a host login the seat's child never sees. <code>hcom-seat</code>
+  runs it with the seat's role before it creates or starts anything.</li>
 <li><code>openai-siwc</code>: <code>OPENAI_SIWC_CALLBACK_PORT</code> and <code>src/seed.ts</code>, which seeds a registration with the
   laptop's issued client id and a fresh host id, so the ChatGPT account shows one client with one host
   per machine. The seat host still signs in once.</li>
-<li><code>~/.zshenv</code> and <code>~/.profile</code>: export <code>CLAUDE_CODE_OAUTH_TOKEN</code> from the token file when it is
-  non-empty, and from nothing else. <code>~/.zshenv</code> runs in every zsh, not only login shells (it also
-  serves the non-interactive SSH commands that bootstrap Mosh and herdr), so every zsh child
-  process, a Claude Code hook or Bash command included, inherits the variable. The managed Claude settings
-  withhold it from sandboxed commands: <code>sandbox.credentials.envVars</code> denies the variable and
-  <code>sandbox.credentials.files</code> denies the token file, so a sandboxed zsh cannot read it back (U68).</li>
+<li><code>~/.zshenv</code> and <code>~/.profile</code>: export nothing of the token (U312). Until then they exported
+  <code>CLAUDE_CODE_OAUTH_TOKEN</code> from the token file into every zsh and every login shell, so on a host that
+  held the file the operator's interactive Claude Code, its hooks and every child process logged in with
+  the seat token instead of the host's claude.ai login and lost the claude.ai connectors (measured on the
+  laptop, 2026-11-06). The token file is the seats' current login: the seat shim is its one reader and the
+  seat's child its one consumer, and a variable in the caller's environment is no input to any seat. The
+  managed Claude settings still deny the variable (<code>sandbox.credentials.envVars</code>) and the token file
+  (<code>sandbox.credentials.files</code>) to sandboxed commands, as defence in depth (U68). Whether the file stays
+  the seat login at all is U314's open decision.</li>
 </ul>
 <h2 id="measurements-2026-10-24-this-laptop">Measurements (2026-10-24, this laptop)<a class="headerlink" href="#measurements-2026-10-24-this-laptop" title="Permanent link">&para;</a></h2>
 <ul>
@@ -5634,8 +5637,8 @@ seat-host</code> gave the forwards to the tagged host only. A Unix-socket <code>
 </tr>
 <tr>
 <td><code>~/.config/claude-code/oauth-token</code></td>
-<td>Created by the operator, mode 0600, outside the repository; read by every zsh (<code>~/.zshenv</code>) and by sh and bash login shells (<code>~/.profile</code>), and exported only when non-empty; no seat writes or prints it. The seat shim reads its first line into the seat's environment as <code>CLAUDE_CODE_OAUTH_TOKEN</code> through a checked read (a failed read refuses the launch; the value is never printed or written), and the seat's srt settings deny the operator's <code>~/.claude</code> and <code>~/.claude.json</code> for read and write (U190b). Sandboxed Claude Code commands get neither the variable nor the file (<code>sandbox.credentials</code>, U68).</td>
-<td>residual: once exported, the variable is in every child process of that shell, including the seats, which need it, Claude Code hooks and the two excluded commands <code>git push</code> and <code>gh</code> (each prompts every time), and any other program the operator runs there. That is the vendor's documented mechanism. <code>CLAUDE_CODE_SUBPROCESS_ENV_SCRUB</code> is not set: it would also turn sandbox auto-allow off.</td>
+<td>Created by the operator, mode 0600, outside the repository; read by the seat shim alone (U312: no shell exports it, and the shim clears a caller's <code>CLAUDE_CODE_OAUTH_TOKEN</code> before its read, so no caller value is an input); no seat writes or prints it. The seat shim reads its first line into the seat's environment as <code>CLAUDE_CODE_OAUTH_TOKEN</code> through a checked read (a failed read refuses the launch; an empty file or first line is refused by the preflight; the value is never printed or written), and the seat's srt settings deny the operator's <code>~/.claude</code> and <code>~/.claude.json</code> for read and write (U190b). Sandboxed Claude Code commands get neither the variable nor the file (<code>sandbox.credentials</code>, U68).</td>
+<td>closed for every process outside a seat (U312): <code>test_no_shell_exports_the_token_file</code>, <code>test_no_rc_line_names_the_variable</code>, <code>test_the_shim_reads_the_token_file_over_a_token_the_caller_exported</code>, and the dsh case of <code>test_the_environment_reaching_dsh_is_the_listed_names_and_the_shims_exports</code>. residual: inside a seat the variable is in every child of the seat's omp, which is the seat's own srt boundary. A host without the file starts no seat, by design. The file's placement and the seat-login mechanism itself are U314's open decision.</td>
 </tr>
 <tr>
 <td><code>seat-login-preflight --check</code> and <code>make doctor</code></td>
@@ -5644,8 +5647,8 @@ seat-host</code> gave the forwards to the tagged host only. A Unix-socket <code>
 </tr>
 <tr>
 <td><code>seat-login-preflight &lt;profile&gt;</code> (readiness and logins)</td>
-<td>Accepts the three seat profiles of <code>omp.roles</code> (orchestrator, worker, audit) and refuses any other name, a deployed overlay or not. A seat starts only on a login it can use: an <code>openai-siwc</code> login counted in <code>agent.db</code> (an issued client is saved before the token exchange, so a record alone proves nothing), and for the claude-bridge route, on every host (local included, U190b), the token variable or a usable token file (a regular file whose first line is non-empty, as the seat shim reads it); a credentials file or Keychain item alone is refused with the <code>claude setup-token</code> instruction, and in the operator's terminal that step is named instead of a browser login. Runs a login only with stdin and stdout on a TTY and <code>HCOM_LAUNCHED</code> unset, so only in the operator's own terminal and never in a seat (standing order 4); elsewhere it refuses with exit 2 and names the command. The opener shims and the overlay live in a <code>mktemp -d</code> directory removed on exit. A failed or ineffective login exits 1, so the seat does not start.</td>
-<td>closed: <code>test_without_the_operators_terminal_a_missing_login_refuses_and_runs_nothing</code>, <code>test_a_failed_or_ineffective_login_keeps_the_seat_from_starting</code>, <code>test_the_retired_review_and_security_seat_profiles_are_refused_even_with_a_deployed_overlay</code>, <code>test_a_registration_without_a_stored_login_is_not_ready</code>, <code>test_readiness_counts_the_variable_or_the_token_file_and_never_a_host_only_login</code>, <code>test_the_claude_rule_holds_on_a_local_host</code>, <code>test_a_token_file_the_shim_would_export_nothing_from_is_unusable</code>, <code>test_the_operators_terminal_names_the_token_step_for_claude_and_runs_no_browser_login</code>, <code>test_a_remote_seat_without_a_login_starts_nothing</code> (<code>tests/unit/test_hcom_seat.py</code>).</td>
+<td>Accepts the three seat profiles of <code>omp.roles</code> (orchestrator, worker, audit) and refuses any other name, a deployed overlay or not. A seat starts only on a login it can use: an <code>openai-siwc</code> login counted in <code>agent.db</code> (an issued client is saved before the token exchange, so a record alone proves nothing), and for the claude-bridge route, on every host (local included, U190b), a usable token file (a regular file whose first line is non-empty, as the seat shim reads it; a token variable in the environment is no input, U312); a credentials file or Keychain item alone is refused with the <code>claude setup-token</code> instruction, and in the operator's terminal that step is named instead of a browser login. Runs a login only with stdin and stdout on a TTY and <code>HCOM_LAUNCHED</code> unset, so only in the operator's own terminal and never in a seat (standing order 4); elsewhere it refuses with exit 2 and names the command. The opener shims and the overlay live in a <code>mktemp -d</code> directory removed on exit. A failed or ineffective login exits 1, so the seat does not start.</td>
+<td>closed: <code>test_without_the_operators_terminal_a_missing_login_refuses_and_runs_nothing</code>, <code>test_a_failed_or_ineffective_login_keeps_the_seat_from_starting</code>, <code>test_the_retired_review_and_security_seat_profiles_are_refused_even_with_a_deployed_overlay</code>, <code>test_a_registration_without_a_stored_login_is_not_ready</code>, <code>test_readiness_counts_the_token_file_alone_and_never_a_variable_or_a_host_only_login</code>, <code>test_the_claude_rule_holds_on_a_local_host</code>, <code>test_a_token_file_the_shim_would_export_nothing_from_is_unusable</code>, <code>test_the_operators_terminal_names_the_token_step_for_claude_and_runs_no_browser_login</code>, <code>test_a_remote_seat_without_a_login_starts_nothing</code> (<code>tests/unit/test_hcom_seat.py</code>).</td>
 </tr>
 <tr>
 <td><code>src/credentials.ts</code> (login count)</td>

@@ -1787,9 +1787,12 @@ function dsh_prune_older() {
 #   caller names and nothing else (no wildcard, no local binding, no nested user namespace, no pty). The form is
 #   update_dsh_superagent's build on PR 711 (U317b), whose next round adopts this function.
 # @description
-#   Every producer is read with its status (standing order 21): `type -P srt` (the kit pins
-#   npm:@anthropic-ai/sandbox-runtime in home/dot_mise/config.toml; it is on PATH under mise), `mise which pnpm` and
-#   `mise which node` under MISE_EXEC_AUTO_INSTALL=false (nothing is installed on the step's behalf, verdicts/U276b),
+#   Every producer is read with its status (standing order 21): `mise which srt`, `mise which pnpm` and
+#   `mise which node` under MISE_EXEC_AUTO_INSTALL=false (the kit pins npm:@anthropic-ai/sandbox-runtime, pnpm and
+#   node in home/dot_mise/config.toml; nothing is installed on the step's behalf, verdicts/U276b; srt is never read
+#   from PATH, where main puts the mise shims first: the shim, started by the `env -i` below with XDG_STATE_HOME
+#   inside the store, finds no trust store there and exits 1 with `mise ERROR Config files ... are not trusted`,
+#   regime-cutover U354),
 #   pwd -P of HOME, of /tmp, of /private/tmp where it is a directory, of the directory and of the store,
 #   resolve_dotfiles_source_dir and `git rev-parse --git-common-dir` for the checkout's git directories, and srt's own
 #   exit. The settings file is created here
@@ -1850,15 +1853,12 @@ function build_under_srt() {
         return 1
         ;;
     esac
-    # The containment first: no srt is no run. The kit pins it; the refusal names the pin.
-    srt="$(type -P srt)" || {
-        printf 'build_under_srt: srt is absent from PATH (the kit pins npm:@anthropic-ai/sandbox-runtime 0.0.81 in home/dot_mise/config.toml; run mise install and rerun make update); nothing run.\n' >&2
+    # The containment first: no srt is no run. The kit pins it; the refusal names the pin. Read through mise like
+    # pnpm and node below, never `type -P`: on a host PATH that resolves to the mise shim, not the binary (U354).
+    srt="$(MISE_EXEC_AUTO_INSTALL=false mise which srt 2> /dev/null)" || {
+        printf 'build_under_srt: srt is absent (mise which srt failed; the kit pins npm:@anthropic-ai/sandbox-runtime 0.0.81 in home/dot_mise/config.toml, so run mise install and rerun make update); nothing run.\n' >&2
         return 1
     }
-    if [ ! -f "${srt}" ] || [ ! -x "${srt}" ]; then
-        printf 'build_under_srt: %s (srt on PATH) is not an executable file; nothing run.\n' "${srt}" >&2
-        return 1
-    fi
     pnpm_bin="$(MISE_EXEC_AUTO_INSTALL=false mise which pnpm 2> /dev/null)" || {
         printf 'build_under_srt: pnpm is absent (mise which pnpm failed; the kit pins it in home/dot_mise/config.toml, so run mise install and rerun make update); nothing run.\n' >&2
         return 1
@@ -1867,7 +1867,7 @@ function build_under_srt() {
         printf 'build_under_srt: node is absent (mise which node failed; the kit pins it in home/dot_mise/config.toml, so run mise install and rerun make update); nothing run.\n' >&2
         return 1
     }
-    for path in "${pnpm_bin}" "${node_bin}"; do
+    for path in "${srt}" "${pnpm_bin}" "${node_bin}"; do
         case ${path} in # lint-comparisons: allow the case reads the spelling (absolute or not), the file tests below read the entry
         /*) ;;
         *)
@@ -2571,10 +2571,11 @@ readonly DSH_SUPERAGENT_REGISTRY_HOST="registry.npmjs.org"
 
 #
 # @description Resolve one build tool the dsh-superagent step runs by `mise which` (the kit's pins in
-#   home/dot_mise/config.toml: pnpm, node), with the status read: a failed answer, a relative one or one that is not an
-#   executable file refuses the step (standing order 21). MISE_EXEC_AUTO_INSTALL=false keeps mise from installing
-#   anything the step asks after (verdicts/U276b). srt is not read here but from PATH (`type -P`, the producer
-#   `build_under_srt` reads for its runs), so the step checks the one binary the runs use (regime-cutover U317d).
+#   home/dot_mise/config.toml: srt, pnpm, node), with the status read: a failed answer, a relative one or one that is
+#   not an executable file refuses the step (standing order 21). MISE_EXEC_AUTO_INSTALL=false keeps mise from
+#   installing anything the step asks after (verdicts/U276b). srt is read here too, as `build_under_srt` reads it for
+#   its runs (regime-cutover U354: never from PATH, where the updater's main puts the mise shims first and the shim
+#   fails under the sanitised environment), so the step checks the one binary the runs use (regime-cutover U317d).
 # @arg $1 string The tool.
 # @stdout The tool's absolute path.
 # @exitcode 1 No usable answer; the line names the tool.
@@ -2617,10 +2618,10 @@ function dsh_superagent_tool() {
 #   the canary (the U272 form) proves one write beside the tree is denied inside before any upstream code runs, then
 #   `pnpm install --frozen-lockfile` and `pnpm build` each run as one `build_under_srt` call whose writes are the tree
 #   and the pnpm store $DSH_HOME/.pnpm-store, whose reads deny the dsh role's credential rows and the checkout, and
-#   whose network is the registry host alone; srt is read from PATH and pnpm and node from the kit's mise pins, with
-#   their status, before any download, and an absent one refuses the step; the download directory goes; the previous
-#   tree, when there is one, is renamed aside and the new tree renamed into place (one rename publishes it, and a
-#   failed publication puts the previous tree back); the router profile's plugins are installed by one more
+#   whose network is the registry host alone; srt, pnpm and node are read from the kit's mise pins (`mise which`,
+#   with their status; U354) before any download, and an absent one refuses the step; the download directory goes;
+#   the previous tree, when there is one, is renamed aside and the new tree renamed into place (one rename publishes
+#   it, and a failed publication puts the previous tree back); the router profile's plugins are installed by one more
 #   `build_under_srt` run whose writes are the profile directory and the store (its package.json links the tree by a
 #   relative link: dependency, so the link follows the directory name), after its own canary, its lockfile held to the
 #   registry the same way when pnpm has written one; the step is recorded; and only then does the previous tree go.
@@ -2636,7 +2637,7 @@ function dsh_superagent_tool() {
 #   ~/.agents/.installed-manifest.json: absent, or a regular file that is not a symlink; the step's recorded
 #   source_version equal to the pin with the tree in place is the already-installed exit (the profile install is
 #   run again, under srt, only when the profile's node_modules holds no dsh-superagent entry).
-#   Every producer the step reads (pwd -P, type -P, mise which, shasum, tar's member list, jq, grep on the lockfiles,
+#   Every producer the step reads (pwd -P, mise which, shasum, tar's member list, jq, grep on the lockfiles,
 #   the three mktemp) refuses the step on a failed answer (standing order 21); a download that fails is one WARN line,
 #   nothing installed, nothing recorded.
 # @exitcode 0 Installed, already installed, no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh or the router
@@ -2759,13 +2760,10 @@ function update_dsh_superagent() (
         }
     fi
     # The containment and the build tools, before any download: the upstream code runs only inside srt, so no srt is
-    # no build. srt is read as `build_under_srt` reads it (`type -P`: the kit pins npm:@anthropic-ai/sandbox-runtime
-    # in mise, so PATH holds it under mise), pnpm and node by the kit's mise pins; `build_under_srt` reads all three
-    # for each run.
-    type -P srt > /dev/null || {
-        printf 'update_dsh_superagent: srt is absent from PATH (the kit pins npm:@anthropic-ai/sandbox-runtime 0.0.81 in home/dot_mise/config.toml; run mise install and rerun make update); nothing installed, nothing recorded.\n' >&2
-        return 1
-    }
+    # no build. srt is read as `build_under_srt` reads it (`mise which srt`: the kit pins
+    # npm:@anthropic-ai/sandbox-runtime in mise; the mise shim main puts first on PATH is never the answer, U354),
+    # pnpm and node by the kit's mise pins; `build_under_srt` reads all three for each run.
+    dsh_superagent_tool srt > /dev/null || return 1
     dsh_superagent_tool pnpm > /dev/null || return 1
     dsh_superagent_tool node > /dev/null || return 1
     # ${name:+"${name}"} and `|| :` as in update_deepseek_harness: the subshell's locals may be unwound before the EXIT

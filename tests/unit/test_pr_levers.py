@@ -670,6 +670,103 @@ class PrCloseTest(PrLeverTestCase):
         self.assertIn("nothing was closed", run.stderr)
         self.assertEqual(self.writes(), [])
 
+    def derived_store(self, program="regime-cutover"):
+        """The derived program store `${REGIME_STORE_ROOT}/<program>` (regime-cutover U216, store move 2 of 5): the
+        root is regime-env's fixed derivation `<physical HOME>/.local/state/regime-store/<slug>` (U215), here the
+        fixture's HOME and the slug `repo` of the fixture checkout `<root>/repo`."""
+        return self.root / "home/.local/state/regime-store/repo" / program
+
+    def test_the_derived_store_s_handouts_hold_the_table_when_the_derived_store_exists_and_the_checkout_form_is_refused_then(
+        self,
+    ):
+        """U216 (handoff/07-store-move-design.md): when `${REGIME_STORE_ROOT}/<program>` exists as a directory it is the
+        program's store and the table must lie in its `handouts/`; the checkout form `<toplevel>/.orchestration/
+        orchestrate/<program>/handouts/` is refused then, naming both forms, before any `gh` call. The refusals of the
+        table's place and shape hold for the derived form as for the checkout form, and a symbolic link or a file at
+        `<root>/<program>` is refused by name (the per-component hold of the chain walk, applied to the derived form)."""
+        derived = self.derived_store()
+        derived.mkdir(parents=True)
+        shutil.move(str(self.handouts), str(derived / "handouts"))
+        table = derived / "handouts/cleanup-table.md"
+        self.github()
+        run = self.run_lever("pr-close.sh", "--from-table", str(table), "--only", "378")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"store: derived {derived}\n", run.stderr)
+        self.assertEqual(
+            run.stdout.splitlines(), ["closed pr=378 branch=tools/chain-glue-finish", "summary closed=1 refused=0"]
+        )
+        self.assertEqual(
+            self.writes(),
+            [["pr", "close", "378", "--comment", "close: superseded by the cutover (agmsg-regime tooling)"]],
+        )
+        # the checkout form, rebuilt beside it, is refused naming both forms while the derived store exists
+        self.calls.unlink()
+        self.handouts.mkdir(parents=True)
+        self.table.write_text(self.TABLE)
+        run = self.run_lever("pr-close.sh", "--from-table", str(self.table), "--only", "378")
+        self.assert_refused(run, "pre-move form")
+        self.assertIn(str(self.handouts.parent), run.stderr)
+        self.assertIn(str(derived), run.stderr)
+        self.assertEqual(self.gh_calls(), [])
+        # the place and shape refusals hold for the derived form too, before any gh call
+        elsewhere = derived / "cleanup-table.md"
+        elsewhere.write_text(self.TABLE)
+        link = derived / "handouts/link.md"
+        link.symlink_to(table)
+        no_header = derived / "handouts/no-header.md"
+        no_header.write_text(self.TABLE.replace("| PR | branch |", "| branch | PR |"))
+        other = self.derived_store("other-program") / "handouts/cleanup-table.md"
+        other.parent.mkdir(parents=True)
+        other.write_text(self.TABLE)
+        for path, message in (
+            (elsewhere, "is not under"),
+            (link, "not a regular file"),
+            (no_header, "no '## Open pull requests' section"),
+            (self.tmp / "handouts/cleanup-table.md", "is not under"),
+        ):
+            with self.subTest(path=str(path.relative_to(self.root))):
+                if not path.exists():
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(self.TABLE)
+                self.assert_refused(self.run_lever("pr-close.sh", "--from-table", str(path)), message)
+        # another program's derived store holds its own handouts: the rule is per program
+        run = self.run_lever("pr-close.sh", "--from-table", str(other), "--only", "378")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"store: derived {other.parent.parent}\n", run.stderr)
+        self.assertEqual(self.gh_calls()[0][:2], ["pr", "view"])
+        # a symbolic link or a file at <root>/<program> is refused by name, whichever form the table names
+        self.calls.unlink()
+        real = self.root / "elsewhere"
+        shutil.move(str(derived), str(real))
+        derived.symlink_to(real)
+        run = self.run_lever("pr-close.sh", "--from-table", str(self.table))
+        self.assert_refused(run, f"{derived} is a symlink")
+        # a table reached through the link resolves (`pwd -P`) to a place that is neither form, refused naming both
+        run = self.run_lever("pr-close.sh", "--from-table", str(table))
+        self.assert_refused(run, "is not under")
+        self.assertIn(str(self.derived_store().parent), run.stderr)
+        self.assertIn(f"{self.repo}/.orchestration/orchestrate/<program>/handouts/", run.stderr)
+        derived.unlink()
+        derived.write_text("not a store\n")
+        self.assert_refused(self.run_lever("pr-close.sh", "--from-table", str(self.table)), f"{derived} exists but")
+        self.assertEqual(self.gh_calls(), [])
+
+    def test_the_checkout_store_stands_as_the_pre_move_form_while_the_derived_store_is_absent(self):
+        """U216: with no `${REGIME_STORE_ROOT}/<program>` directory the table directory is the checkout store's
+        `handouts/` as before U216, the stderr line names the pre-move form and the unit that removes it (U221), and
+        nothing is made under HOME; another program's derived store changes nothing for this program."""
+        self.github()
+        run = self.run_lever("pr-close.sh", "--from-table", str(self.table), "--only", "378")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"store: checkout {self.handouts.parent} (pre-move form, removed by U221)\n", run.stderr)
+        self.assertFalse((self.root / "home/.local").exists(), "the lever makes nothing under HOME")
+        self.calls.unlink()
+        self.derived_store("other-program").mkdir(parents=True)
+        run = self.run_lever("pr-close.sh", "--from-table", str(self.table), "--only", "378")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"store: checkout {self.handouts.parent} (pre-move form, removed by U221)\n", run.stderr)
+        self.assertFalse(self.derived_store().exists())
+
 
 # A fake sha256sum or shasum for PrBodyEditTest: it fails with exit 1 when its stdin is the file FAKE_HASH_FAIL names
 # (compared by device and inode, so the self-checks of the lever and its libraries hash through to the real tool), and
@@ -1359,6 +1456,79 @@ class PrMergeTest(PrLeverTestCase):
         run = self.run_lever("pr-merge.sh", "7", "--records", str(store), cwd=linked)
         self.assert_refused(run, "is a linked worktree")
         self.assertEqual(self.writes(), [])
+
+    def derived_store(self, program="regime-cutover"):
+        """The derived program store `${REGIME_STORE_ROOT}/<program>` (regime-cutover U216, store move 2 of 5): the
+        root is regime-env's fixed derivation `<physical HOME>/.local/state/regime-store/<slug>` (U215), here the
+        fixture's HOME and the slug `repo` of the fixture checkout `<root>/repo`."""
+        return self.root / "home/.local/state/regime-store/repo" / program
+
+    def test_the_derived_store_is_the_store_when_it_exists_and_the_checkout_form_is_refused_then(self):
+        """U216 (handoff/07-store-move-design.md): when `${REGIME_STORE_ROOT}/<program>` exists as a directory it is
+        the program's store, `--records` must resolve to it, and the stderr line says `derived`; the checkout form
+        `<toplevel>/.orchestration/orchestrate/<program>` is refused then naming both forms, with no write. A symbolic
+        link or a file at `<root>/<program>` is refused by name before anything is read through it (the per-component
+        hold of the chain walk, applied to the derived form), whichever form `--records` names."""
+        derived = self.derived_store()
+        derived.parent.mkdir(parents=True)
+        shutil.move(str(self.records), str(derived))
+        self.github()
+        run = self.run_lever("pr-merge.sh", "7", "--records", str(derived))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"store: derived {derived}\n", run.stderr)
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z\n")
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # the checkout form, rebuilt with the same records, is refused naming both forms while the derived store exists
+        self.calls.unlink()
+        shutil.copytree(derived, self.records)
+        self.github()
+        run = self.merge()
+        self.assert_refused(run, "pre-move form")
+        self.assertIn(str(self.records), run.stderr)
+        self.assertIn(str(derived), run.stderr)
+        # another program's derived store does not stand for this program's: the body names regime-cutover
+        self.calls.unlink()
+        other = self.derived_store("other-program")
+        shutil.copytree(derived, other)
+        self.github()
+        self.assert_refused(self.run_lever("pr-merge.sh", "7", "--records", str(other)), "is not the program's store")
+        # a symbolic link or a file at <root>/regime-cutover is refused by name, whichever form --records names
+        real = self.root / "elsewhere"
+        shutil.move(str(derived), str(real))
+        derived.symlink_to(real)
+        for records in (derived, self.records):
+            with self.subTest(records=str(records.relative_to(self.root))):
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                run = self.run_lever("pr-merge.sh", "7", "--records", str(records))
+                self.assert_refused(run, f"{derived} is a symlink")
+        derived.unlink()
+        derived.write_text("not a store\n")
+        self.calls.unlink(missing_ok=True)
+        self.github()
+        self.assert_refused(self.merge(), f"{derived} exists but")
+
+    def test_the_checkout_store_stands_as_the_pre_move_form_while_the_derived_store_is_absent(self):
+        """U216: with no `${REGIME_STORE_ROOT}/<program>` directory the checkout's own store is the store as before
+        U216, the stderr line names the pre-move form and the unit that removes it (U221), and nothing is made under
+        HOME; another program's derived store, or the bare root, changes nothing for this program. A `--records`
+        outside the checkout is still named as such."""
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"store: checkout {self.records} (pre-move form, removed by U221)\n", run.stderr)
+        self.assertFalse((self.root / "home/.local").exists(), "the lever makes nothing under HOME")
+        self.calls.unlink()
+        self.derived_store("other-program").mkdir(parents=True)
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"store: checkout {self.records} (pre-move form, removed by U221)\n", run.stderr)
+        self.assertFalse(self.derived_store().exists())
+        self.calls.unlink()
+        self.github()
+        run = self.run_lever("pr-merge.sh", "7", "--records", str(self.derived_store("other-program")))
+        self.assert_refused(run, "outside the checkout")
 
     def test_a_retarget_after_the_last_read_is_reported_as_a_failure(self):
         # gh pr merge takes no base; a retarget in the last window is caught on the read after the merge

@@ -83,17 +83,17 @@ TABLE: dict[str, Kind] = {
     # The lint reads Dollar on both quoted kinds: an ANSI-C `$'…'` or a locale `$"…"` string has no known text to it.
     "DblQuoted": Kind(None, ("Parts", "Dollar", "Pos.Line"), {"Dollar": (True,)}),
     "SglQuoted": Kind(None, ("Value", "Dollar", "Pos.Line"), {"Dollar": (True,)}),
-    # The lint reads a literal's value for the one `source` shape rule f accepts (U112 round 14): the two libraries
-    # beside a lever, named by `${LEVER_DIR}` and one of these literals; and for the whole-array subscripts `@` and `*`,
-    # which evaluate no arithmetic where an index is read (U112 round 18).
+    # The lint reads a literal's value for the one `source` shape rule f accepts (U112 round 14): the three libraries
+    # beside a lever (`/regime-env` the third since U216), named by `${LEVER_DIR}` and one of these literals; and for
+    # the whole-array subscripts `@` and `*`, which evaluate no arithmetic where an index is read (U112 round 18).
     "Lit": Kind(
         None,
         ("Value", "Pos.Line", "Pos.Offset", "End.Offset"),
-        {"Value": ("a\\ b", "/git-isolated.sh", "/read-lib.sh", "@", "*")},
+        {"Value": ("a\\ b", "/git-isolated.sh", "/read-lib.sh", "/regime-env", "@", "*")},
     ),
     # A parameter's name is its Param.Value, bare: the sandbox guard looks for TMPDIR and the lint for jq by that
     # spelling, so the fixture expands both. The lint reads `$?` as the whole node (Short, Param.Value `?`): the
-    # `name=$?` branch of a tested read; and LEVER_DIR, the directory of the two libraries a `source` may name.
+    # `name=$?` branch of a tested read; and LEVER_DIR, the directory of the three libraries a `source` may name.
     # The lint reads an expansion that assigns its parameter (`Exp.Op` `=` or `:=`), the arithmetic its Index or Slice
     # holds, and the parameters bash alone sets (`$#`, `$$`, `$!`, with `$?`) as numeric in arithmetic (U112 round 18).
     "ParamExp": Kind(

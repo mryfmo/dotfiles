@@ -6,10 +6,16 @@
 #   allows `~/.local/bin/common/pr-merge.sh *` and denies the `gh pr merge` command text (a speed bump: text rows do
 #   not stop a glob spelling; a seat running `gh` itself is the residual unit U88 removes). `<pr>` is decimal and
 #   checked before the first `gh` call. The lever runs in the main checkout (a linked worktree is refused) and reads
-#   only that checkout's store: `<toplevel>/.orchestration/orchestrate/<program>/ledger.tsv` (header
+#   one program store, chosen by one rule with two forms (regime-cutover U216, store move 2 of 5,
+#   handoff/07-store-move-design.md): the derived store `${REGIME_STORE_ROOT}/<program>` when that directory exists,
+#   the root being the fixed derivation `<physical HOME>/.local/state/regime-store/<slug>` the sourced `regime-env`
+#   exports (U215); else, until U221 moves the live store of this program there and removes the form, the checkout's
+#   own store `<toplevel>/.orchestration/orchestrate/<program>` (the pre-move form; `store_resolve`, which prints the
+#   form chosen on stderr). The store's `ledger.tsv` (header
 #   `ts unit pr head_sha verdict verifier evidence`), `<program>` taken from the pull request body's one
 #   `Program-Unit: <program>/U<n>` line, no directory of that chain nor the ledger a symlink, each owned by this user;
-#   `--records` must resolve (`pwd -P`) to exactly that store, so a ledger written anywhere else is never read. It reads
+#   `--records` must resolve (`pwd -P`) to exactly the chosen store (one naming the other form is refused naming
+#   both), so a ledger written anywhere else is never read. It reads
 #   `gh pr view <pr> --json state,baseRefName,headRefOid,isDraft` and refuses unless the pull request is `OPEN`, not a
 #   draft and based on `main`. The verdict is the newest `ledger.tsv` row whose `pr` is `<pr>` and whose `head_sha` is
 #   the full 40-hex sha it judged (a short sha never matches); newest by the row's ts column parsed as a time (the
@@ -66,8 +72,8 @@
 #   header's or whose required column is empty are refusals naming the line (standing order 21); the rows are split
 #   by awk on the tab alone, since bash's `read` merges adjacent tabs (U119 round 3). Every store path the lever
 #   opens (`ledger.tsv`, `verdicts/`, the verdict file, `dispositions.tsv`, `units.tsv`) must be a regular file or
-#   directory of this user and no symlink, and `--records` must resolve inside this checkout to exactly the body's
-#   store. The
+#   directory of this user and no symlink, and `--records` must resolve to exactly the store `store_resolve` chose for
+#   the body's program (the derived store, or the checkout's own store while no derived one exists). The
 #   lever reads no local git objects or refs; it decides from `gh` reads and the store alone, and git only names the
 #   checkout (`rev-parse --show-toplevel`, `--absolute-git-dir`, `--git-common-dir`). CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
 #   the head (and whose second read must still report base `main`: `--match-head-commit` pins only the head): at least
@@ -110,7 +116,8 @@
 #   row names, and judges no sweep's content.
 # @arg $1 int The pull request number.
 # @option --records <dir> The program store holding `ledger.tsv`, `verdicts/`, `dispositions.tsv` and `units.tsv`
-#   (required; must resolve to the checkout's own store, above; a directory outside the checkout is refused).
+#   (required; must resolve to the store `store_resolve` chose: `${REGIME_STORE_ROOT}/<program>` when it exists, else
+#   the checkout's own store, above; a directory naming the other form, or any other directory, is refused).
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
@@ -131,6 +138,7 @@
 #   for a check of REQUIRED_CHECKS (U330).
 # @example
 #   ~/.local/bin/common/pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover
+#   ~/.local/bin/common/pr-merge.sh 480 --records ~/.local/state/regime-store/dotfiles/regime-cutover
 set -euo pipefail
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
@@ -207,6 +215,17 @@ git_env_scrub
 }
 # shellcheck source=scripts/orchestrator/read-lib.sh
 . "${LEVER_DIR}/read-lib.sh"
+
+# The store root (regime-cutover U216): the program stores lie under `REGIME_STORE_ROOT`, the root the sourced
+# regime-env derives from the physical HOME and this checkout's slug (U215) and holds component by component; the
+# helper is sourced from the directory this lever runs from and self-checked like a lever (U33), so a rewritten copy
+# stops this lever. The call that derives the root comes after this lever's own checkout checks, below.
+[[ -r ${LEVER_DIR}/regime-env ]] || {
+    echo "pr-merge.sh: refused: regime-env unreadable beside this script: ${LEVER_DIR}/regime-env" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/regime-env
+. "${LEVER_DIR}/regime-env"
 
 lever='pr-merge.sh'
 usage='usage: pr-merge.sh <pr> --records <dir>'
@@ -709,18 +728,67 @@ require_sweep_row() {
         refuse "${findings_file}, the findings file the sweep row of ${unit} at ${audited_head} names, is not a regular file of this user (a symlink or missing); a sweep whose findings file is not in the store admits no merge"
 }
 
+# @description Choose the program store this lever reads (regime-cutover U216, store move 2 of 5,
+#   handoff/07-store-move-design.md; U215 gave regime-env the root): the derived store `${REGIME_STORE_ROOT}/<program>`
+#   when that directory exists, the root being the fixed derivation `<physical HOME>/.local/state/regime-store/<slug>`
+#   the sourced regime-env exports after holding every component of it; else the pre-move form
+#   `<toplevel>/.orchestration/orchestrate/<program>`, this main checkout's own store, which stands until U221 moves the
+#   live store of this program to the root and removes this form. One rule, two forms: while the derived store exists
+#   the checkout form is refused (the caller refuses a path naming it, naming both forms), and while it does not the
+#   checkout form is read as before U216. The per-component holds of the chain walk (U71) stay and apply to the form
+#   chosen: a symbolic link at `<root>/<program>` is refused by name before anything is read through it, an entry
+#   there that is not a directory of this user is refused by name, and only an absent one falls through to the
+#   checkout chain, whose three components are each a directory of this user and no symlink. The root's own
+#   components are held by regime-env (`regime_store_root`). Nothing is written. The form chosen is printed once on
+#   stderr (`store: derived <dir>`, or `store: checkout <dir> (pre-move form, removed by U221)`), the line the
+#   coordinator reads after the deploy. The same text stands in pr-close.sh (two levers, standing order 36: no helper
+#   file).
+# @arg $1 string The program name.
+# @set store The chosen store, `pwd -P` form (the root and the toplevel are both physical).
+# @set store_form `derived` or `checkout`.
+# @set store_derived The derived candidate `${REGIME_STORE_ROOT}/<program>`.
+# @set store_checkout The checkout candidate `<toplevel>/.orchestration/orchestrate/<program>`.
+store_resolve() {
+    local program=$1 path part
+    [[ -n ${REGIME_STORE_ROOT:-} ]] ||
+        refuse "regime-env derived no store root for ${toplevel}; the program store is judged under it (U216)"
+    store_derived=${REGIME_STORE_ROOT}/${program}
+    store_checkout=${toplevel}/.orchestration/orchestrate/${program}
+    [[ ! -L ${store_derived} ]] ||
+        refuse "${store_derived} is a symlink; the derived program store is a plain directory of this user under the store root ${REGIME_STORE_ROOT}, and nothing is read through a link"
+    if [[ -e ${store_derived} ]]; then
+        [[ -d ${store_derived} && -O ${store_derived} ]] ||
+            refuse "${store_derived} exists but is not a directory of this user; the derived program store under ${REGIME_STORE_ROOT} is read only as one"
+        store=${store_derived}
+        store_form=derived
+        echo "${lever}: store: derived ${store}" >&2
+        return 0
+    fi
+    path=${toplevel}
+    for part in .orchestration orchestrate "${program}"; do
+        path=${path}/${part}
+        [[ -d ${path} && ! -L ${path} && -O ${path} ]] ||
+            refuse "${path} is not a directory of this user (a symlink or a missing store); no derived store ${store_derived} exists, so ${lever} reads only the checkout's own store (the pre-move form, until U221)"
+    done
+    store=${store_checkout}
+    store_form=checkout
+    echo "${lever}: store: checkout ${store} (pre-move form, removed by U221)" >&2
+}
+
 # @description Set `ledger`, `store`, `units_file` and `unit` to the one store the merge may read (U71, bot P1
-#   4370212009: a caller-chosen ledger.tsv could hold a fabricated row): `<toplevel>/.orchestration/orchestrate/
-#   <program>/ledger.tsv` of this main checkout, `<program>` and `U<n>` taken from the pull request body's one
-#   `Program-Unit: <program>/U<n>` line. No directory from the checkout down and not the ledger is a symlink, each is
-#   owned by this user, and `--records` must resolve (`pwd -P`) inside the checkout and to exactly that directory;
-#   anything else is a refusal.
+#   4370212009: a caller-chosen ledger.tsv could hold a fabricated row): the store `store_resolve` chooses for
+#   `<program>` (U216: the derived store under `REGIME_STORE_ROOT` when it exists, else this main checkout's own
+#   store, the pre-move form), `<program>` and `U<n>` taken from the pull request body's one
+#   `Program-Unit: <program>/U<n>` line. No directory of the chosen chain and not the ledger is a symlink, each is
+#   owned by this user, and `--records` must resolve (`pwd -P`) to exactly that directory: one that names the other
+#   form is refused naming both forms, one outside the checkout while the checkout form stands is named as such, and
+#   anything else is refused as not the program's store.
 # @set ledger The canonical ledger path.
 # @set store The canonical store directory.
 # @set units_file The store's `units.tsv`, read by unit_row_exists.
 # @set unit The body's unit id; a ledger row for the pull request must be it or a `U<n>[a-z]` fix unit of it, and the row's unit names the verdict file (require_verdict_row).
 resolve_store() {
-    local body markers line program path given part
+    local body markers line program given
     body=$(gh_bounded pr view "${pr}" --json body --jq .body) || fail "cannot read the body of pull request ${pr}"
     markers=''
     while IFS= read -r line; do
@@ -732,20 +800,23 @@ resolve_store() {
         refuse "the body of pull request ${pr} must hold exactly one line 'Program-Unit: <program>/U<n>'; it holds: ${markers:-none}"
     program=${BASH_REMATCH[1]}
     unit=${BASH_REMATCH[2]}
-    path=${toplevel}
-    for part in .orchestration orchestrate "${program}"; do
-        path=${path}/${part}
-        [[ -d ${path} && ! -L ${path} && -O ${path} ]] ||
-            refuse "${path} is not a directory of this user (a symlink or a missing store); the merge reads only the checkout's own store"
-    done
+    store_resolve "${program}"
     given=$(cd "${records}" 2> /dev/null && pwd -P) || refuse "--records ${records} is no directory"
-    [[ ${given} == "${toplevel}/"* ]] || # lint-comparisons: allow both sides are pwd -P forms
-        refuse "--records ${records} resolves to ${given}, outside the checkout ${toplevel}; the merge reads only the checkout's own store"
-    [[ ${given} == "${path}" ]] || # lint-comparisons: allow both sides are pwd -P forms
-        refuse "--records ${records} is not the program's store ${path} (named by the body's Program-Unit line)"
-    store=${path}
-    ledger=${path}/ledger.tsv
-    units_file=${path}/units.tsv
+    if [[ ${given} != "${store}" ]]; then # lint-comparisons: allow both sides are pwd -P forms (the root and the toplevel are physical)
+        case ${store_form} in
+        derived)
+            [[ ${given} != "${store_checkout}" ]] || # lint-comparisons: allow both sides are pwd -P forms
+                refuse "--records ${records} resolves to the checkout store ${given}, the pre-move form, but the derived store ${store} exists and is the program's store (U216); the checkout form is refused while it exists, until U221 removes it"
+            ;;
+        *)
+            [[ ${given} == "${toplevel}/"* ]] || # lint-comparisons: allow both sides are pwd -P forms
+                refuse "--records ${records} resolves to ${given}, outside the checkout ${toplevel}; no derived store ${store_derived} exists, so the merge reads only the checkout's own store (the pre-move form, until U221)"
+            ;;
+        esac
+        refuse "--records ${records} is not the program's store ${store} (named by the body's Program-Unit line; the ${store_form} form)"
+    fi
+    ledger=${store}/ledger.tsv
+    units_file=${store}/units.tsv
     [[ -f ${ledger} && ! -L ${ledger} && -O ${ledger} && -r ${ledger} ]] ||
         refuse "${ledger} is not a readable regular file of this user"
 }
@@ -770,6 +841,12 @@ git_dir=$(cd "${git_dir}" && pwd -P) || refuse "cannot resolve ${git_dir}"
 common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_dir}"
 [[ ${git_dir} == "${common_dir}" ]] || # lint-comparisons: allow both sides are pwd -P forms
     refuse "${toplevel} is a linked worktree; run from the main checkout, where the orchestrator keeps its store"
+# U216: regime-env derives `REGIME_STORE_ROOT` for this checkout (its own refusals name this lever). This lever reads
+# nothing in the hcom store, so the store's `origin` binding is not asked of it (`--unbound-ok`; the dotfiles program
+# runs on the pre-U33 store pair and its derived hcom store `~/.local/state/hcom/dotfiles` carries no `origin`, so the
+# bound form would stop every merge on this host); the collision refusal (an `origin` naming another checkout) and
+# every store-root hold stay. The helper's refusal (return 1) is this lever's refusal status, exit 2.
+regime_env pr-merge.sh --unbound-ok || exit 2
 # The one reader of the ledger (U122 round 6), run from the checkout the store is in, as pr-audit.sh runs the
 # checkout's rounds-check.py and audit-carry.py; the lever's awk reader is gone with it.
 ledger_reader=${toplevel}/scripts/orchestrator/ledger.py

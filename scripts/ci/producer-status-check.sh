@@ -44,8 +44,15 @@
 #      grammar, by line, whatever they would do when run (a name no function defines is a plain command; a function that
 #      cleans up before it exits is not a refusal function: the cleanup goes in a trap, or the call carries an allow
 #      comment naming the cleanup line); (iii) a block or subshell whose statements are that grammar (`{ echo no >&2;
-#      exit 1; }`), so a bare `exit`, a `return`, a call of a refusal function or a `$?` inside one is a finding; (iv) a
-#      bare plain assignment (`=`, not `+=`) of exactly `$?` (`status=$?`; `status+=$?` adds the status to the value, 25
+#      exit 1; }`), with `return <1-255>` as the one terminator instead when the branch is a brace block and the `||`
+#      list sits inside a function body of the file (a sourced helper returns where a lever exits: regime-env's `|| {
+#      echo … >&2; return 1; }` blocks; a `return` at the top level of a script is a bash error, so it ends nothing
+#      there and stays a finding; U216b), never when the branch is a subshell, whose `return` ends the subshell alone
+#      while the function goes on (measured on bash 3.2: `f() { x=$(false) || ( echo no >&2; return 1 ); echo on; };
+#      if f; then echo ok; fi` prints `on` and `ok`; U216c), so a bare `exit` or `return`, a `return` outside every
+#      function body or inside a subshell, a call of a refusal function or a `$?` inside one is a finding; (iv) a
+#      bare plain assignment (`=`, not `+=`) of exactly `$?` (`status=$?`;
+#      `status+=$?` adds the status to the value, 25
 #      and 6 making 256, and is a finding naming the append). A branch statement run in the background (`exit 2 &`) or
 #      negated (`! exit 1`, `! (exit 1)`) handles nothing.
 #      Any other branch leaves the substitution a finding that names the branch's shape: a pipeline, an `&&` or `||`
@@ -64,9 +71,11 @@
 #      beside this script (`git ls-files`, `git config -f`, `git config --file`, `find`, `ls`) must capture its
 #      stderr to a file, and a later statement of the same list must test `[[ ! -s <that file> ]]` in a shape whose
 #      failure stops the script: the last statement of an `if` condition, or the left side of a `||` whose branch is
-#      one of the forms of rule a; a bare `[[ ! -s <file> ]]` statement is accepted only at the top level of a file
-#      whose prologue (rule c) runs `set -euo pipefail` before it, where `set -e` ends the script on its failure, and
-#      anywhere else (a function body, a block, a file with no prologue before it) is not a test. The producer
+#      one of the forms of rule a, judged in the same function context as a tested read's branch (inside a function
+#      body a brace block ending in `return <1-255>` closes the producer, a subshell ending in `return` does not;
+#      U216c); a bare `[[ ! -s <file> ]]` statement is accepted only at the top level of a file whose prologue (rule
+#      c) runs `set -euo pipefail` before it, where `set -e` ends the script on its failure, and anywhere else (a
+#      function body, a block, a file with no prologue before it) is not a test. The producer
 #      statement, the test statement and every statement on the path of each to the top level must be in the
 #      foreground and not negated, with no process substitution on the path: `git ls-files > l 2> e &` lets the next
 #      statement test `e` before the listing has finished, `! git ls-files > l 2> e` reads its failure as success, `{
@@ -133,9 +142,10 @@
 #      name such a word or have no known text (`command git ls-files` runs past rule b), and whose command is judged
 #      again when its own first word is a rebinder (`command unset -f refuse`, `command alias x=y`; `command -v` and
 #      `-V` print and run nothing); a RUNNER whose text or file this walk has not read: `eval` with any argument,
-#      `source` and `.` with any argument but the one accepted shape, `. "${LEVER_DIR}/git-isolated.sh"` or `.
-#      "${LEVER_DIR}/read-lib.sh"`, the two libraries every lever sources (LIBRARY_DIR, LIBRARY_FILES; the parts of
-#      the one argument, nothing else), `trap` with an action that is not empty, `-` or one simple command whose
+#      `source` and `.` with any argument but the one accepted shape, `. "${LEVER_DIR}/git-isolated.sh"`, `.
+#      "${LEVER_DIR}/read-lib.sh"` or `. "${LEVER_DIR}/regime-env"`, the three libraries the levers source
+#      (LIBRARY_DIR, LIBRARY_FILES; the parts of the one argument, nothing else), `trap` with an action that is not
+#      empty, `-` or one simple command whose
 #      first word is no rebinder (`trap cleanup EXIT` and `trap 'rm -f "${f}"' EXIT` are read whole; `trap 'refuse()
 #      { :; }' DEBUG` redefines the function before the next command runs), `mapfile` or `readarray` with `-C` (the
 #      callback is text bash runs).
@@ -292,7 +302,10 @@ DEFINITION_FLAGS = {  # how a finding names the flagged top-level definition of 
 }
 WRITERS = ("echo", "printf")  # the plain commands a refusal body may run before its `exit`, each sending fd 1 to fd 2
 STDOUT = 1  # the descriptor `1>&2` writes, as a number; `>&2` writes none
-GRAMMAR = "`echo`/`printf` to stderr, then one `exit <1-255>`"  # how a finding names the refusal grammar (forms ii, iii)
+GRAMMAR = (  # how a finding names the refusal grammar (forms ii, iii); the second terminator is form iii's inside a function
+    "`echo`/`printf` to stderr, then one `exit <1-255>`, or `return <1-255>` when the branch is a block inside a "
+    "function body"
+)
 SHAPES = {  # how a finding names the command kind of a branch; a kind not listed is named by shfmt's type
     "Block": "a block",
     "Subshell": "a subshell",
@@ -379,11 +392,12 @@ RUNS = {  # how a finding names what a RUNNER runs
     "mapfile": "runs a callback (`-C`)",
     "readarray": "runs a callback (`-C`)",
 }
-# The one `source` the rules accept: every lever sources the two libraries beside it, `. "${LEVER_DIR}/git-isolated.sh"`
-# and `. "${LEVER_DIR}/read-lib.sh"` (scripts/orchestrator/README.md); the argument's parts are the bare expansion of
-# LIBRARY_DIR and one literal of LIBRARY_FILES, in any quoting name_parts flattens. Nothing else is read as that file.
+# The one `source` the rules accept: every lever sources the libraries beside it, `. "${LEVER_DIR}/git-isolated.sh"`,
+# `. "${LEVER_DIR}/read-lib.sh"` and, since U216, `. "${LEVER_DIR}/regime-env"` (scripts/orchestrator/README.md); the
+# argument's parts are the bare expansion of LIBRARY_DIR and one literal of LIBRARY_FILES, in any quoting name_parts
+# flattens. Nothing else is read as that file.
 LIBRARY_DIR = "LEVER_DIR"
-LIBRARY_FILES = ("/git-isolated.sh", "/read-lib.sh")
+LIBRARY_FILES = ("/git-isolated.sh", "/read-lib.sh", "/regime-env")
 # A simple command as a trap's action, read whole: one identifier, then arguments holding no second command, no
 # substitution and no assignment (`;`, `&`, `|`, `(`, `)`, a backquote, `=`, a newline). `trap cleanup EXIT` and `trap
 # 'rm -f "${file}"' EXIT` are read; `trap 'refuse() { :; }' DEBUG`, which redefines the function before the next
@@ -401,7 +415,7 @@ GUARDED_NAMES = {
     "GIT_ISOLATED_ENV": "the array git_isolated of git-isolated.sh exports word by word before it execs git",
     "GIT_ISOLATED_ARGS": "the array git_isolated passes to git before the caller's arguments",
     "GIT_ISOLATED_SCRUB_NAMES": "the names git_env_scrub of git-isolated.sh removes from the environment",
-    "LEVER_DIR": "the directory the one accepted `source` reads the two libraries from (rule f)",
+    "LEVER_DIR": "the directory the one accepted `source` reads the three libraries from (rule f)",
     "refuse": "a refusal function a `||` branch calls (rule a, form ii)",
     "fail": "a refusal function a `||` branch calls (rule a, form ii)",
     "set": "the builtin the prologue `set -euo pipefail` relies on (rule c)",
@@ -468,8 +482,9 @@ DECLARERS = ("declare", "typeset", "readonly", "export", "local")  # the words s
 # that writes the variable its value names (`local -n r=PATH; r=x`). `export -n` removes the export attribute only.
 ATTRIBUTE_OPTIONS = {"declare": "in", "typeset": "in", "local": "in"}
 # The accepted writes: the exact text of each statement of the adopted set (this lint, scripts/orchestrator/read-lib.sh,
-# git-isolated.sh and the five levers) that writes a guarded name, as (the file names it is accepted in, the statement
-# text from its first byte to its last, why). A statement is accepted only when its file and its bytes both match: a
+# git-isolated.sh, regime-env and the five levers) that writes a guarded name, as (the file names it is accepted in,
+# the statement text from its first byte to its last, why). A statement is accepted only when its file and its bytes
+# both match: a
 # changed flag of the library, a new `IFS=` prefix in a lever, the same text in another file is a finding until a row
 # names it. Measured on head fb2774e9 (U112 round 20), plus the rows of the pr-merge.sh disposition gate (U119 round
 # 5) and of the pr-audit.sh round cap (U120 round 4); nothing else writes a guarded name there. This Python sits in a
@@ -477,7 +492,7 @@ ATTRIBUTE_OPTIONS = {"declare": "in", "typeset": "in", "local": "in"}
 # so a row text must keep them balanced as bash counts them (a text holding both kinds of quote is a double-quoted
 # Python string with the inner double quotes escaped), else the lint refuses to start and the enforced-set test fails.
 LEVERS = ("records-sync.sh", "pr-audit.sh", "pr-merge.sh", "pr-threads-check.sh", "pr-body-edit.sh")
-LIBRARIES = ("read-lib.sh", "git-isolated.sh")
+LIBRARIES = ("read-lib.sh", "git-isolated.sh", "regime-env")
 ACCEPTED_WRITES = (
     (
         LIBRARIES + LEVERS,
@@ -1271,6 +1286,14 @@ def function_body(stmt):
     return cmd.get("Body") if isinstance(cmd, dict) and cmd.get("Type") == "FuncDecl" else None
 
 
+def inside_function(stack):
+    """Whether a statement's path to the top level (stack, innermost first) passes through a function definition: a
+    `return` there returns from that function, so it is the terminator of a brace block branch (U216b, form iii; a
+    subshell's `return` ends the subshell alone, U216c); at the top level of a script it is a bash error and ends
+    nothing. Rule a's `||` branch and rule b's `[[ ! -s ]]` branch are judged by the same answer."""
+    return any(function_body(node) is not None for node in stack if isinstance(node, dict) and "Cmd" in node)
+
+
 def body_statements(stmt):
     """The statements a function body or a `||` branch runs: a block's or subshell's list, else the statement itself
     (`f() exit 2`, a plain command)."""
@@ -1412,6 +1435,11 @@ def branch_reason(shape):
     )
 
 
+def article(text):
+    """The indefinite article a message puts before a quoted terminator name: an for `exit`, a for `return`."""
+    return "an" if text == TERMINATORS[0] else "a"
+
+
 def terminator_shape(text, args):
     """None when `exit` or `return` (text), as the whole branch, ends the read with the failed status: no argument
     (the status of the failed substitution propagates), one argument whose known text is a decimal from 1 to 255, or
@@ -1421,12 +1449,12 @@ def terminator_shape(text, args):
     if not args:
         return None
     if len(args) != 1:
-        return f"an `{text}` with {len(args)} arguments"
+        return f"{article(text)} `{text}` with {len(args)} arguments"
     if status_parameter(args[0]):
         return None
     value = word_text(args[0])
     if value is None:
-        return f"an `{text}` whose argument has no known text"
+        return f"{article(text)} `{text}` whose argument has no known text"
     if value.isascii() and value.isdigit() and int(value) in FAILURE_STATUSES:
         return None
     if value.isascii() and value.isdigit() and int(value) % 256 == 0:
@@ -1434,15 +1462,15 @@ def terminator_shape(text, args):
     return f"`{text} {value}`, whose argument is not a decimal from 1 to 255"
 
 
-def exit_shape(args):
-    """None when the `exit` that ends a refusal body names its status: one argument whose known text is a decimal
-    from 1 to 255; else the shape that names why not. A bare `exit` and `exit $?` pass on the status of the statement
-    before them (an `echo`'s), so neither is in the grammar."""
+def terminator_exit_shape(text, args):
+    """None when the `exit` or `return` (text) that ends a refusal body names its status: one argument whose known
+    text is a decimal from 1 to 255; else the shape that names why not. A bare `exit` and `exit $?` pass on the status
+    of the statement before them (an `echo`'s), so neither is in the grammar, nor is either `return` form."""
     if not args:
-        return "a bare `exit`, whose status is the statement's before it"
+        return f"a bare `{text}`, whose status is the statement's before it"
     if len(args) == 1 and status_parameter(args[0]):
-        return "`exit $?`, whose status is the statement's before it"
-    return terminator_shape("exit", args)
+        return f"`{text} $?`, whose status is the statement's before it"
+    return terminator_shape(text, args)
 
 
 def sends_stdout_to_stderr(redirect):
@@ -1454,15 +1482,21 @@ def sends_stdout_to_stderr(redirect):
     return text is not None and text.isascii() and text.isdigit() and int(text, 10) == STDERR
 
 
-def refusal_break(stmts, defined):
+def refusal_break(stmts, defined, terminators=TERMINATORS[:1], enclosed_subshell=False):
     """What breaks the refusal grammar in the statements of a function body or of a block or subshell branch, as
     (what, line), else None. The grammar: zero or more plain commands whose known first word is `echo` or `printf`
     (not a name a function of this file takes, at any depth) with a redirect that sends fd 1 to fd 2, then exactly one
-    plain command `exit` (not such a name either) with one argument whose known text is a decimal from 1 to 255,
-    every statement in the foreground and not negated, no command substitution and no `$?` anywhere. The body is
-    matched, never analysed: the first statement that is anything else (a `return`, a declaration, an `if`, an
-    assignment, a call, an `exit` before the last statement, an `echo` without `>&2`, an `echo` where the `exit` must
-    be) is named, whatever it would do when run."""
+    plain command whose known first word is one of terminators (not such a name either) with one argument whose known
+    text is a decimal from 1 to 255, every statement in the foreground and not negated, no command substitution and
+    no `$?` anywhere. The terminators are `exit` alone for a refusal function's body (form ii: its `return` returns
+    from the refusal function, not from the caller), for a block or subshell at the top level of the file, and for a
+    subshell inside a function body (enclosed_subshell: its `return` ends the subshell alone and the function goes on,
+    which the finding says; U216c), and `exit` or `return` for a brace block inside a function body (form iii, U216b:
+    a sourced helper returns where a lever exits; a `return` at the top level of a script is a bash error, so it ends
+    nothing there). The body is matched, never analysed: the first statement that is anything else (a `return` where
+    `exit` alone ends the grammar, a declaration, an `if`, an assignment, a call, a terminator before the last
+    statement, an `echo` without `>&2`, an `echo` where the terminator must be) is named, whatever it would do when
+    run."""
     for index, stmt in enumerate(stmts):
         line = stmt["Pos"]["Line"]
         flag = flagged_path((stmt,))
@@ -1490,12 +1524,14 @@ def refusal_break(stmts, defined):
                 return f"the command `{text}` as the last statement, where the `exit` must be", line
             if not any(sends_stdout_to_stderr(redirect) for redirect in stmt.get("Redirs") or []):
                 return f"an `{text}` that does not send fd 1 to fd 2 (`>&2`)", line
-        elif text != "exit":
+        elif text not in terminators:
+            if enclosed_subshell and text == TERMINATORS[1]:
+                return f"the command `{text}`, which ends the subshell alone (the function around it goes on)", line
             return f"the command `{text}`", line
         elif not last:
-            return "an `exit` before the last statement", line
+            return f"{article(text)} `{text}` before the last statement", line
         else:
-            shape = exit_shape(args[1:])
+            shape = terminator_exit_shape(text, args[1:])
             if shape is not None:
                 return shape, line
         inner = [
@@ -1518,15 +1554,18 @@ def grammar_break(noun, broken):
     return f"{noun} breaks the refusal grammar ({GRAMMAR}) {where}"
 
 
-def branch_shape(stmt, tested, functions, defined, terminators):
+def branch_shape(stmt, tested, functions, defined, terminators, enclosed):
     """None when the `||` branch (stmt) handles the status of the tested statement, else the name of its shape. The
     branches that handle it: (i) a plain command whose known first word is one of terminators (`exit`, `return`; a
     function of that name anywhere in the file takes the name away) with no argument, one known decimal from 1 to 255
     or one bare `$?` (terminator_shape); (ii) a plain command whose known first word is one of REFUSAL_NAMES and names a
     function this file defines once, at top level, unflagged and before the tested statement (refusal_function), whose
     body is the refusal grammar (refusal_break; a name no function has is a plain command); (iii) a block or subshell
-    whose statements are that grammar; (iv) a bare `=` assignment of exactly `$?` (`+=` adds the status to the value). A
-    statement run in the background or negated handles nothing (the script goes on, or the failure reads as success)."""
+    whose statements are that grammar, ending in `exit <1-255>`, or in `return <1-255>` when the branch is a brace
+    block and the tested statement lies inside a function body (enclosed, inside_function: U216b; a subshell's
+    `return` ends the subshell alone, U216c); (iv) a bare `=` assignment of exactly `$?` (`+=` adds the status to the
+    value). A statement run in the background or negated handles nothing (the script goes on, or the failure reads as
+    success). Every caller passes enclosed: rule a's `||` list and rule b's `[[ ! -s ]]` test read the same context."""
     flag = flagged_path((stmt,))
     if flag is not None:
         return BRANCH_FLAGS[flag[0]]
@@ -1557,10 +1596,14 @@ def branch_shape(stmt, tested, functions, defined, terminators):
             return None
         return f"the command `{text}`"
     if kind in ("Block", "Subshell"):
-        broken = refusal_break(body_statements(stmt), defined)
+        # Only a brace block's `return` returns from the function around the `||` list; a subshell's ends the
+        # subshell alone and the function goes on (U216c), so the second terminator is a Block's.
+        subshell = kind == "Subshell"
+        ends = TERMINATORS if enclosed and not subshell else TERMINATORS[:1]
+        broken = refusal_break(body_statements(stmt), defined, ends, enclosed and subshell)
         if broken is None:
             return None
-        return grammar_break("a block that" if kind == "Block" else "a subshell that", broken)
+        return grammar_break("a subshell that" if subshell else "a block that", broken)
     if kind == "BinaryCmd":
         op = cmd.get("Op")
         return LIST_SHAPES.get(op, f"a `{op}` list")
@@ -1671,11 +1714,12 @@ class Walk:
             inner = body_statements(held)
             tested = inner[0] if len(inner) == 1 else held
             path = (tested, held, *path) if tested is not held else (held, *path)
-        self.test(tested, path, self.branch(stmt, binary["Y"]))
+        self.test(tested, path, self.branch(stmt, binary["Y"], stack))
 
-    def branch(self, stmt, branch):
-        """Why the `||` branch of the statement stmt does not handle the status of its tested read, else None."""
-        shape = branch_shape(branch, stmt, self.functions, self.defined, self.terminators)
+    def branch(self, stmt, branch, stack):
+        """Why the `||` branch of the statement stmt does not handle the status of its tested read, else None; stack
+        is stmt's path to the top level, which tells whether a block's `return` sits inside a function body."""
+        shape = branch_shape(branch, stmt, self.functions, self.defined, self.terminators, inside_function(stack))
         return None if shape is None else branch_reason(shape)
 
     def test(self, tested, path, reason, negation=True):
@@ -2048,12 +2092,13 @@ class Walk:
         """Whether a later statement of the producer's list tests `[[ ! -s <target> ]]` in a shape whose failure stops
         the script: None when the statement holds no such test, "" when it closes the producer, else why it does not,
         naming the test's line. The shapes: the last statement of an `if` condition; the left side of a `||` whose
-        branch is one rule a accepts (branch_shape); a bare statement at the top level of a file whose prologue runs
-        `set -euo pipefail` before it, where `set -e` ends the script on its failure (inside a function body, a block
-        or an `if`, or in a file with no such prologue, nothing reads that failure). The test and every statement on
-        its path to the top level must be in the foreground and not negated (flagged_path): `! [[ ! -s err ]] || exit
-        1` reads a non-empty file as clean, `[[ ! -s err ]] &` ends only the job. The leftmost statement of an `&&`
-        list or a pipeline is a test in neither shape."""
+        branch is one rule a accepts (branch_shape, judged in the list's own function context, outer: a brace block
+        ending in `return <1-255>` closes the producer inside a function body, U216c); a bare statement at the top
+        level of a file whose prologue runs `set -euo pipefail` before it, where `set -e` ends the script on its
+        failure (inside a function body, a block or an `if`, or in a file with no such prologue, nothing reads that
+        failure). The test and every statement on its path to the top level must be in the foreground and not negated
+        (flagged_path): `! [[ ! -s err ]] || exit 1` reads a non-empty file as clean, `[[ ! -s err ]] &` ends only the
+        job. The leftmost statement of an `&&` list or a pipeline is a test in neither shape."""
         cmd = command_of(stmt)
         kind = cmd.get("Type") if isinstance(cmd, dict) else None
         why = None
@@ -2061,7 +2106,7 @@ class Walk:
             path = (cond[-1], stmt, *outer)
         elif kind == "BinaryCmd" and cmd.get("Op") == "||" and self.tests_empty(cmd["X"], target):
             path = (cmd["X"], stmt, *outer)
-            shape = branch_shape(cmd["Y"], stmt, self.functions, self.defined, self.terminators)
+            shape = branch_shape(cmd["Y"], stmt, self.functions, self.defined, self.terminators, inside_function(outer))
             if shape is not None:
                 why = f"is the left side of a `||` whose branch is {shape} and does not end the script"
         elif kind == "TestClause" and self.tests_empty(stmt, target):

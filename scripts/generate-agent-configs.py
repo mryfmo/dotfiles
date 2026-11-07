@@ -190,8 +190,10 @@ DSH_SUPERAGENT_PLUGIN = "dsh-superagent"
 DSH_SUPERAGENT_LINK = "link:../../plugins/dsh-superagent"
 DSH_ROUTER_BUNDLES = ("@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app")
 DSH_ROUTER_WEBSERVER = {"host": "127.0.0.1", "port": 3082}
-# The Router state root (the brief's M-25 credential root is its sibling); the plugin requires an absolute path.
-DSH_ROUTER_STATE_DIR = "~/.local/state/dsh-router/state"
+# The Router's state root (regime-cutover U317b): `$DSH_HOME/router-state`, inside the dsh role's one write root
+# (hcom-seat seat_write_roots: DSH_HOME, exported into the dsh child as DSH_HOME), so the sandboxed launch can create
+# the store; the plugin requires an absolute path, and a launch without DSH_HOME gets a relative one it refuses.
+DSH_ROUTER_STATE_DIR = "router-state"
 DSH_ACCEPT_MODES = ("off", "observe", "auto")
 DSH_SOURCE_REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 DSH_LADDER_ROW_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
@@ -2561,7 +2563,7 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
     """The dsh-superagent Router profile (U317): its package.json (the Web profile's bundles, the superagent bundle and
     the omp-gateway plugin as link: dependencies the updater installs) and its cordis patch: the thak rows (the session
     log upload off, the official API and API-key rows disabled, the base sandbox row disabled, the default model on the
-    gateway provider), the webserver's loopback bind, the plugin's stateDir under the Router state root, the two
+    gateway provider), the webserver's loopback bind, the plugin's stateDir under $DSH_HOME (the dsh write root), the two
     presets restated with their sandbox rows disabled, the GitHub Source row as data, and the gateway insert. A
     manifest whose profiles name no dsh model renders no profile, like the thak renderer."""
     dsh = {name: profile["dsh"] for name, profile in model_profiles(manifest).items() if "dsh" in profile}
@@ -2613,7 +2615,7 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
         f"    port: {DSH_ROUTER_WEBSERVER['port']}",
         f"- id: {DSH_SUPERAGENT_PLUGIN}",
         "  config:",
-        f"    stateDir: !!js process.env.HOME + '{DSH_ROUTER_STATE_DIR.removeprefix('~')}'",
+        f"    stateDir: !!js process.env.DSH_HOME + '/{DSH_ROUTER_STATE_DIR}'",
     ]
     for preset_id, preset in dsh_superagent_presets().items():
         lines += [f"- id: {preset_id}", f"  name: '{DSH_PRESET_PLUGIN}'", "  config:", *patch_block(preset, 4)]

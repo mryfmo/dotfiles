@@ -10,8 +10,11 @@ Decision and nothing else; the store is read read-only and a symlink or a non-re
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -22,6 +25,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 LEVER = ROOT / "scripts/orchestrator/intake-observe.py"
 INSTALLED = ROOT / "home/dot_local/bin/common/executable_intake-observe.py"
+MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
+ROUNDS_CHECK = ROOT / "scripts/orchestrator/rounds-check.py"
 # src/app/store.ts:74 and :76 of dsh-superagent-prototype at 8c32a9dc5d72c033816c6a8110b37f40cf94fba4.
 SCHEMA = (
     "CREATE TABLE IF NOT EXISTS thread (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
@@ -85,9 +90,10 @@ class IntakeObserveTest(unittest.TestCase):
         return subprocess.run(argv, capture_output=True, text=True, check=False, timeout=60)
 
     def rows(self) -> list[list[str]]:
+        """The data rows of the table (the header the lever writes on creation is not a row)."""
         if not self.tsv.exists():
             return []
-        return [line.split("\t") for line in self.tsv.read_text().splitlines()]
+        return [line.split("\t") for line in self.tsv.read_text().splitlines()[1:]]
 
     def test_the_fixture_schema_is_the_archives_create_table_text(self) -> None:
         # store.ts:74 and :76 at the pin; a bump that changes either line changes this fixture with it.
@@ -146,7 +152,7 @@ class IntakeObserveTest(unittest.TestCase):
         third = self.run_lever()
         self.assertEqual("1\n", third.stdout, third.stderr)
         self.assertEqual(["d1", "d5", "d7"], [row[4] for row in self.rows()])
-        self.assertEqual(text, "".join(line + "\n" for line in self.tsv.read_text().splitlines()[:2]))
+        self.assertEqual(text, "".join(line + "\n" for line in self.tsv.read_text().splitlines()[:3]))
 
     def test_tabs_and_newlines_in_the_decision_text_become_spaces(self) -> None:
         reason = {"code": "observed", "values": {"text": "line one\nline\ttwo"}}
@@ -209,6 +215,137 @@ class IntakeObserveTest(unittest.TestCase):
         self.assertIn("usage: intake-observe.py <orchestrator.sqlite> <decisions.tsv>", result.stderr)
         self.assertEqual(LEVER.read_bytes(), INSTALLED.read_bytes(), "the deployed copy holds the same bytes")
         self.assertTrue(os.access(LEVER, os.X_OK))
+
+    def test_a_created_table_carries_the_header_rounds_check_reads_and_an_existing_one_gets_rows_alone(self) -> None:
+        # verdicts/U317 P2 :185: a created decisions.tsv had no header and rounds-check.py rejected it. The header is
+        # rounds-check's DECISIONS_HEADER joined by tabs, written once, on creation alone.
+        match = re.search(r"^DECISIONS_HEADER = \((.*)\)$", ROUNDS_CHECK.read_text(), re.MULTILINE)
+        header = "\t".join(name.strip().strip('"') for name in match[1].split(","))
+        self.assertEqual("ts\tphase\tdecision\twhy\tevidence\tresult", header)
+        self.save(decision("d1", "github:12", "2026-11-07T01:00:00Z"))
+        result = self.run_lever()
+        self.assertEqual((0, "1\n"), (result.returncode, result.stdout), result.stderr)
+        lines = self.tsv.read_text().splitlines()
+        self.assertEqual(header, lines[0])
+        self.assertEqual(2, len(lines))
+        self.assertEqual(6, len(lines[1].split("\t")), "every row has the header's width")
+        self.save(decision("d2", "github:13", "2026-11-07T02:00:00Z"))
+        result = self.run_lever()
+        self.assertEqual((0, "1\n"), (result.returncode, result.stdout), result.stderr)
+        lines = self.tsv.read_text().splitlines()
+        self.assertEqual([header], [line for line in lines if line == header], "one header, never a second")
+        self.assertEqual(3, len(lines))
+        # An existing table of the coordinator's is appended to as it is, header and all.
+        existing = self.dir / "store.tsv"
+        existing.write_text(header + "\n2026-11-07T00:00:00Z\tphase\tdecision\twhy\tevidence\tresult\n")
+        result = self.run_lever(str(self.db), str(existing))
+        self.assertEqual((0, "2\n"), (result.returncode, result.stdout), result.stderr)
+        self.assertEqual(4, len(existing.read_text().splitlines()))
+        self.assertEqual(header, existing.read_text().splitlines()[0])
+        # Nothing to append creates no table.
+        empty_db = self.dir / "state/empty.sqlite"
+        connection = sqlite3.connect(empty_db)
+        for statement in SCHEMA:
+            connection.execute(statement)
+        connection.commit()
+        connection.close()
+        result = self.run_lever(str(empty_db), str(self.dir / "never.tsv"))
+        self.assertEqual((0, "0\n"), (result.returncode, result.stdout), result.stderr)
+        self.assertFalse((self.dir / "never.tsv").exists())
+
+    def test_a_table_that_cannot_be_read_is_one_refusal_line_with_exit_2_and_nothing_appended(self) -> None:
+        # verdicts/U317 P3 :182: an unreadable existing table escaped the handler as a traceback with exit 1.
+        self.save(decision("d1", "github:12", "2026-11-07T01:00:00Z"))
+        self.tsv.write_bytes(b"\xff\xfe not utf-8\n")
+        result = self.run_lever()
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertEqual(1, len(result.stderr.splitlines()), result.stderr)
+        self.assertTrue(
+            result.stderr.startswith(f"intake-observe: the decisions table {self.tsv} could not be read: "),
+            result.stderr,
+        )
+        self.assertEqual(b"\xff\xfe not utf-8\n", self.tsv.read_bytes(), "nothing appended")
+        if os.geteuid() == 0:
+            self.skipTest("mode 000 does not stop root, so the unreadable-mode case is skipped")
+        self.tsv.write_text("")
+        self.tsv.chmod(0)
+        self.addCleanup(self.tsv.chmod, 0o600)
+        result = self.run_lever()
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertEqual(1, len(result.stderr.splitlines()), result.stderr)
+        self.assertIn(f"intake-observe: the decisions table {self.tsv} could not be read: ", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def installed_layout(self) -> tuple[Path, Path, dict[str, str]]:
+        """The deployed layout under a scratch HOME (tests/unit/test_lever_self_check.py's): the copy chezmoi installs
+        at ~/.local/bin/common/intake-observe.py and the manifest at ~/.agents/agent-config.yaml."""
+        home = self.dir / "home"
+        (home / ".local/bin/common").mkdir(parents=True)
+        (home / ".agents").mkdir()
+        copy = home / ".local/bin/common/intake-observe.py"
+        shutil.copy2(INSTALLED, copy)
+        shutil.copy2(MANIFEST, home / ".agents/agent-config.yaml")
+        env = {"PATH": os.environ["PATH"], "HOME": str(home), "LC_ALL": "C"}
+        return home, copy, env
+
+    def run_copy(self, copy: Path, env: dict[str, str]) -> subprocess.CompletedProcess:
+        argv = [sys.executable, "-I", str(copy), str(self.db), str(self.tsv)]
+        return subprocess.run(argv, capture_output=True, text=True, check=False, timeout=60, env=env, cwd=self.dir)
+
+    def test_the_self_check_refuses_an_altered_installed_copy_naming_the_digest_and_passes_the_pinned_one(self) -> None:
+        # verdicts/U317 P2 :169: an altered installed copy with the original pin ran and appended a row. The lever now
+        # hashes itself against claude.levers.sha256.intake-observe.py in the manifest beside it, in brief-check.py's
+        # form, before it reads anything: a different digest is exit 2 with one line and nothing on stdout.
+        self.save(decision("d1", "github:12", "2026-11-07T01:00:00Z"))
+        home, copy, env = self.installed_layout()
+        pin = re.search(r"^      intake-observe\.py: ([0-9a-f]{64})$", MANIFEST.read_text(), re.MULTILINE)[1]
+        self.assertEqual(hashlib.sha256(INSTALLED.read_bytes()).hexdigest(), pin, "the committed pin is current")
+        result = self.run_copy(copy, env)
+        self.assertEqual((0, "1\n"), (result.returncode, result.stdout), result.stderr)
+        self.tsv.unlink()
+        with copy.open("a") as handle:
+            handle.write('print("rewritten")\n')
+        altered = hashlib.sha256(copy.read_bytes()).hexdigest()
+        result = self.run_copy(copy, env)
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertEqual(
+            f"intake-observe.py: refused: sha256 {altered} of {copy.resolve()} differs from the pin in {home}/.agents/agent-config.yaml\n",
+            result.stderr,
+        )
+        self.assertFalse(self.tsv.exists(), "nothing appended")
+        # The deployed manifest is the installed copy's, not the checkout's: a zeroed deployed pin refuses the sound copy.
+        shutil.copy2(INSTALLED, copy)
+        manifest = home / ".agents/agent-config.yaml"
+        manifest.write_text(
+            manifest.read_text().replace(f"      intake-observe.py: {pin}", "      intake-observe.py: " + "0" * 64)
+        )
+        result = self.run_copy(copy, env)
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"differs from the pin in {manifest}", result.stderr)
+        manifest.write_text(MANIFEST.read_text().replace(f"      intake-observe.py: {pin}\n", ""))
+        result = self.run_copy(copy, env)
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn("refused: no single sha256 pin for intake-observe.py in", result.stderr)
+        manifest.unlink()
+        result = self.run_copy(copy, env)
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"refused: manifest unreadable: {manifest}", result.stderr)
+        self.assertFalse(self.tsv.exists())
+        # The checkout copy reads the checkout manifest: a scratch checkout with a zeroed pin refuses its copy too.
+        checkout = self.dir / "checkout"
+        (checkout / "scripts/orchestrator").mkdir(parents=True)
+        (checkout / "home/dot_agents").mkdir(parents=True)
+        shutil.copy2(LEVER, checkout / "scripts/orchestrator/intake-observe.py")
+        (checkout / "home/dot_agents/agent-config.yaml").write_text(
+            MANIFEST.read_text().replace(f"      intake-observe.py: {pin}", "      intake-observe.py: " + "0" * 64)
+        )
+        result = self.run_copy(checkout / "scripts/orchestrator/intake-observe.py", env)
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn("differs from the pin in", result.stderr)
+        self.assertIn("checkout/scripts/orchestrator/../../home/dot_agents/agent-config.yaml", result.stderr)
 
 
 if __name__ == "__main__":

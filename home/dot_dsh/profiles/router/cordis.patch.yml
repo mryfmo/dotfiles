@@ -27,7 +27,7 @@
     port: 3082
 - id: dsh-superagent
   config:
-    stateDir: !!js process.env.HOME + '/.local/state/dsh-router/state'
+    stateDir: !!js process.env.DSH_HOME + '/router-state'
 - id: dsh-superagent-worker-preset
   name: '@deepseek-ai/dsh-agent-preset'
   config:

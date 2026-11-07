@@ -304,13 +304,14 @@ class AssetManifestTest(unittest.TestCase):
             "update_pi_claude_bridge",
             "update_security_audit_skill",
             "update_deepseek_harness",
+            "update_dsh_superagent",
             "update_compactiondb",
         )
 
         # The three Claude plugin steps record through record_claude_plugin_step (one manifest_record "${step}"), and
-        # the sixteenth call is mark_sync_failed's failure mark (regime-cutover U283), a record of no install.
+        # the seventeenth call is mark_sync_failed's failure mark (regime-cutover U283), a record of no install.
         claude = {step for step in steps if step.startswith("update_claude_")}
-        self.assertEqual(16, updater.count('manifest_record "'))
+        self.assertEqual(17, updater.count('manifest_record "'))
         self.assertEqual(1, updater.count('manifest_record "$1" rsync "$2" "$3/.sync-incomplete"'))
         self.assertEqual(1, updater.count('manifest_record "${step}" plugin "${plugin_version}"'))
         self.assertEqual(

@@ -5314,24 +5314,78 @@ class DestinationGuardCallSiteTest(unittest.TestCase):
             self.assertFalse((home / ".agents").exists(), "nothing recorded")
 
 
+def real_srt() -> str | None:
+    """The host's srt (mise's pin, else PATH), for the one test that needs real containment; None skips it."""
+    found = shutil.which("srt")
+    if found:
+        return found
+    run = subprocess.run(
+        ["mise", "which", "srt"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "MISE_EXEC_AUTO_INSTALL": "false"},
+    )
+    answer = run.stdout.strip()
+    return answer if run.returncode == 0 and answer.startswith("/") and os.access(answer, os.X_OK) else None
+
+
 class DshSuperagentTest(unittest.TestCase):
-    """update_dsh_superagent over an archive built here, never downloaded (U317): the opt-in, the digest check before
-    anything is unpacked, the archive root naming the pin, the build inside the new tree, the one rename into place,
-    the router profile install and the manifest record. mise is a stub that logs its arguments, so no pnpm runs; each
-    producer the step reads (shasum, tar's member list, jq on the receipt) gets a failure injection that prints the
-    right value and exits non-zero (standing order 21)."""
+    """update_dsh_superagent over an archive built here, never downloaded (U317, round 2 U317b): the opt-in, the
+    physical-path rule over plugins/ and profiles/, the digest check before anything is unpacked, every archive member
+    under the one root naming the pin, the tools resolved by `mise which` before any download, the build and the
+    profile install each inside one `srt --settings` run, the one rename into place and the manifest record. mise is
+    a stub that answers `which` with scripts under the fixture: an `srt` that logs its argv, keeps each settings file
+    and runs the command after `--` uncontained, and a `pnpm` that logs into its working directory with the reduced
+    environment it saw; the one test that needs containment names the host's real srt. Each producer the step reads
+    (shasum, tar's member list, jq on the receipt, mise which, the three mktemp) gets a failure injection that prints
+    the right value and exits non-zero (standing order 21)."""
 
     COMMIT_MATCH = re.search(r'^DSH_SUPERAGENT_COMMIT="([^"]+)"$', INSTALLER_PINS, re.MULTILINE)
     COMMIT = COMMIT_MATCH[1] if COMMIT_MATCH else "0" * 40
     URL = f"https://codeload.github.com/deepseek-ai/dsh-superagent-prototype/tar.gz/{COMMIT}"
-    BUILD_CALLS = [
-        "mise exec -- pnpm install --frozen-lockfile",
-        "mise exec -- pnpm build",
-        "mise exec -- pnpm install",
-    ]
+    TOOL_CALLS = ["mise which srt", "mise which pnpm", "mise which node"]
+    # hcom-seat seat_settings_lists: the credential roots the dsh role denies, which the build's settings deny too.
+    CREDENTIAL_ROOTS = (
+        ".ssh",
+        ".gnupg",
+        ".aws",
+        ".netrc",
+        ".docker",
+        ".kube",
+        ".config/gcloud",
+        ".codex",
+        ".omp/agent",
+    )
+    REGISTRY = "registry.npmjs.org"
+    FAKE_SRT = (
+        "#!/bin/bash\n"
+        'echo "srt $*" >> "$CALLS"\n'
+        'settings=""\n'
+        'while [ "$#" -gt 0 ]; do\n'
+        "    case $1 in\n"
+        "    --settings) settings=$2; shift 2 ;;\n"
+        "    --) shift; break ;;\n"
+        "    *) shift ;;\n"
+        "    esac\n"
+        "done\n"
+        'cat "$settings" >> "$CALLS.settings"\n'
+        'exec "$@"\n'
+    )
+    # Inside the (fake or real) sandbox with the reduced environment: the working directory is a write root under
+    # both, HOME is readable under both; a step named in $HOME/pnpm-fail fails, a path in $HOME/pnpm-write is written.
+    FAKE_PNPM = (
+        "#!/bin/bash\n"
+        'printf \'%s in %s\\n\' "$*" "$PWD" >> "$PWD/pnpm-calls"\n'
+        'env | sort > "$PWD/pnpm-env"\n'
+        'if [ -f "$HOME/pnpm-fail" ] && [ "$1" = "$(cat "$HOME/pnpm-fail")" ]; then exit 1; fi\n'
+        'if [ -f "$HOME/pnpm-write" ]; then printf \'written\\n\' > "$(cat "$HOME/pnpm-write")" || exit 1; fi\n'
+        "exit 0\n"
+    )
 
-    def archive(self, home: Path, root: str | None = None) -> tuple[Path, str]:
-        """GitHub's commit archive: <repository>-<commit>/{package.json, pnpm-lock.yaml, src/index.ts}."""
+    def archive(self, home: Path, root: str | None = None, second_root: str | None = None) -> tuple[Path, str]:
+        """GitHub's commit archive: <repository>-<commit>/{package.json, pnpm-lock.yaml, src/index.ts}; with
+        `second_root`, the same files again under that root after the first (the auditor's two-root fixture)."""
         root = f"dsh-superagent-prototype-{self.COMMIT}" if root is None else root
         members = {
             "package.json": json.dumps({"name": "dsh-superagent", "version": "0.1.0"}) + "\n",
@@ -5340,11 +5394,12 @@ class DshSuperagentTest(unittest.TestCase):
         }
         payload = home / "archive.tgz"
         with tarfile.open(payload, "w:gz") as tar:
-            for name, text in members.items():
-                data = text.encode()
-                info = tarfile.TarInfo(f"{root}/{name}")
-                info.size = len(data)
-                tar.addfile(info, io.BytesIO(data))
+            for top in (root, *([second_root] if second_root else [])):
+                for name, text in members.items():
+                    data = (text if top == root else text.replace("0.1.0", "9.9.9")).encode()
+                    info = tarfile.TarInfo(f"{top}/{name}")
+                    info.size = len(data)
+                    tar.addfile(info, io.BytesIO(data))
         return payload, hashlib.sha256(payload.read_bytes()).hexdigest()
 
     def opted_in_home(self, directory: str) -> tuple[Path, Path]:
@@ -5354,13 +5409,25 @@ class DshSuperagentTest(unittest.TestCase):
         (dsh_home / "profiles/router/package.json").write_text('{"name": "router"}\n')
         (dsh_home / "plugins/omp-gateway").mkdir(parents=True)
         (home / "tmp").mkdir()
+        tools = home / "fakebin"
+        tools.mkdir()
+        for name, text in (("srt", self.FAKE_SRT), ("pnpm", self.FAKE_PNPM), ("node", "#!/bin/sh\nexit 0\n")):
+            (tools / name).write_text(text)
+            (tools / name).chmod(0o755)
         return home, dsh_home
 
-    def run_step(self, home: Path, payload: Path, digest: str, *, dsh_home: Path | None, mise=None, prelude=None):
+    def run_step(self, home: Path, payload: Path, digest: str, *, dsh_home: Path | None, prelude=None, srt="fake"):
+        """srt: `fake` (the logging stand-in), `real` (the host's, real_srt()), `absent` (mise which fails) or a path."""
+        tools = home / "fakebin"
+        srt_path = {"fake": str(tools / "srt"), "real": real_srt() or "", "absent": ""}.get(srt, srt)
         stubs = (
             f"DSH_SUPERAGENT_SHA256={digest}; "
             'curl() { echo "curl $*" >> "$CALLS"; cp "$PAYLOAD" "${@: -1}"; }; '
-            'mise() { echo "mise $*" >> "$CALLS"; ' + (mise or "return 0") + "; }; "
+            'mise() { echo "mise $*" >> "$CALLS"; case "$*" in '
+            f'"which srt") [ -n "{srt_path}" ] || return 1; printf "%s\\n" "{srt_path}" ;; '
+            f'"which pnpm") printf "%s\\n" "{tools}/pnpm" ;; '
+            f'"which node") printf "%s\\n" "{tools}/node" ;; '
+            "*) return 1 ;; esac; }; "
         )
         env = os.environ | {"HOME": str(home), "PAYLOAD": str(payload), "CALLS": str(home / "calls")}
         if (home / "tmp").is_dir():
@@ -5375,7 +5442,7 @@ class DshSuperagentTest(unittest.TestCase):
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=120,
             check=False,
         )
 
@@ -5383,8 +5450,30 @@ class DshSuperagentTest(unittest.TestCase):
         log = home / "calls"
         return log.read_text().splitlines() if log.exists() else []
 
+    def settings(self, home: Path) -> list[dict]:
+        """Each settings file the fake srt was handed, parsed, in call order."""
+        log = home / "calls.settings"
+        return [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
+
     def plugin_entries(self, dsh_home: Path) -> list[str]:
         return sorted(path.name for path in (dsh_home / "plugins").iterdir()) if (dsh_home / "plugins").exists() else []
+
+    def pnpm_calls(self, directory: Path) -> list[str]:
+        log = directory / "pnpm-calls"
+        return log.read_text().splitlines() if log.exists() else []
+
+    def assert_settings_shape(self, settings: dict, home: Path, write: list[str]) -> None:
+        """The one settings shape of both runs: the given write roots, the credential roots denied for read, the
+        registry alone, no binding, no socket, no pty."""
+        self.assertEqual(write, settings["filesystem"]["allowWrite"])
+        self.assertEqual([f"{home}/{root}" for root in self.CREDENTIAL_ROOTS], settings["filesystem"]["denyRead"])
+        self.assertEqual(([], []), (settings["filesystem"]["allowRead"], settings["filesystem"]["denyWrite"]))
+        self.assertEqual(
+            {"allowedDomains": [self.REGISTRY], "deniedDomains": [], "allowUnixSockets": [],
+             "allowMachLookup": ["com.apple.trustd.agent"], "allowLocalBinding": False},
+            settings["network"],
+        )  # fmt: skip
+        self.assertIs(False, settings["allowPty"])
 
     def test_no_opt_in_installs_nothing(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -5402,25 +5491,59 @@ class DshSuperagentTest(unittest.TestCase):
             self.assertEqual([], self.calls(home))
             self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home))
 
-    def test_installs_builds_links_and_records_in_one_run(self):
+    def test_installs_builds_inside_srt_links_and_records_in_one_run(self):
         with tempfile.TemporaryDirectory() as directory:
             home, dsh_home = self.opted_in_home(directory)
             payload, digest = self.archive(home)
             result = self.run_step(home, payload, digest, dsh_home=dsh_home)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             calls = self.calls(home)
-            self.assertEqual(4, len(calls), calls)
+            self.assertEqual(6, len(calls), calls)
+            self.assertEqual(self.TOOL_CALLS, calls[:3], "the tools are resolved before any download")
             self.assertTrue(
-                calls[0].startswith(
+                calls[3].startswith(
                     f"curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 {self.URL} -o "
                 )
             )
-            self.assertEqual(self.BUILD_CALLS, calls[1:])
             install = dsh_home / "plugins/dsh-superagent"
+            store = dsh_home / ".pnpm-store"
+            tools = home / "fakebin"
+            build, profile = self.settings(home)
+            tree = build["filesystem"]["allowWrite"][0]
+            self.assertTrue(tree.startswith(f"{install}."), tree)
+            self.assert_settings_shape(build, home, [tree, str(store)])
+            self.assert_settings_shape(profile, home, [f"{dsh_home}/profiles/router", str(store)])
+            environment = (
+                f"/usr/bin/env -i HOME={home} PATH={tools}:{tools}:/usr/bin:/bin TMPDIR={store}/tmp"
+                f" XDG_CACHE_HOME={store}/xdg-cache XDG_CONFIG_HOME={store}/xdg-config XDG_DATA_HOME={store}/xdg-data"
+                f" XDG_STATE_HOME={store}/xdg-state npm_config_store_dir={store}"
+                f" npm_config_manage_package_manager_versions=false PNPM={tools}/pnpm /bin/sh -c"
+            )
+            self.assertEqual(
+                f'srt --settings {tree}.srt-settings.json -- {environment} cd "$1" && "$PNPM" install --frozen-lockfile'
+                f' && "$PNPM" build sh {tree}',
+                calls[4],
+            )
+            self.assertEqual(
+                f'srt --settings {install}.profile.srt-settings.json -- {environment} cd "$1" && "$PNPM" install'
+                f" sh {dsh_home}/profiles/router",
+                calls[5],
+            )
+            # pnpm ran in the new tree (now the install) and in the profile, with the reduced environment.
+            self.assertEqual([f"install --frozen-lockfile in {tree}", f"build in {tree}"], self.pnpm_calls(install))
+            self.assertEqual([f"install in {dsh_home}/profiles/router"], self.pnpm_calls(dsh_home / "profiles/router"))
+            inside = (install / "pnpm-env").read_text()
+            self.assertIn(f"npm_config_store_dir={store}\n", inside)
+            self.assertIn(f"HOME={home}\n", inside)
+            for name in ("CALLS=", "PAYLOAD=", "DSH_HOME=", "DSH_SUPERAGENT_SHA256="):
+                self.assertNotIn(name, inside, "the environment inside is the reduced one")
             self.assertEqual('{"name": "dsh-superagent", "version": "0.1.0"}\n', (install / "package.json").read_text())
             self.assertTrue((install / "src/index.ts").is_file())
+            self.assertTrue((store / "tmp").is_dir(), "the store exists before srt runs (Linux grants existing paths)")
             self.assertEqual(
-                ["dsh-superagent", "omp-gateway"], self.plugin_entries(dsh_home), "no temporary tree is left"
+                ["dsh-superagent", "omp-gateway"],
+                self.plugin_entries(dsh_home),
+                "no temporary tree or settings file is left",
             )
             self.assertEqual([], list((home / "tmp").iterdir()), "the download directory is gone")
             self.assertIn(f"dsh-superagent {self.COMMIT} installed into {install}.", result.stdout)
@@ -5428,8 +5551,15 @@ class DshSuperagentTest(unittest.TestCase):
             self.assertEqual(
                 ("installer", self.COMMIT, [str(install)]), (step["kind"], step["source_version"], step["paths"])
             )
-            self.assertIn("pnpm build", step["commands"])
-            self.assertIn(f"pnpm install in {dsh_home}/profiles/router", step["commands"])
+            self.assertIn(
+                f"srt --settings <tree>.srt-settings.json -- pnpm install --frozen-lockfile && pnpm build (writes: <tree>, {dsh_home}/.pnpm-store)",
+                step["commands"],
+            )
+            self.assertIn(
+                f"srt --settings <settings> -- pnpm install in {dsh_home}/profiles/router (writes: that directory, {dsh_home}/.pnpm-store)",
+                step["commands"],
+            )
+            self.assertNotIn("mise exec", " ".join(step["commands"]), "no uncontained pnpm is recorded")
 
     def test_a_digest_mismatch_refuses_before_anything_is_unpacked(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -5438,7 +5568,8 @@ class DshSuperagentTest(unittest.TestCase):
             result = self.run_step(home, payload, "0" * 64, dsh_home=dsh_home)
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn(f"dsh-superagent checksum mismatch: expected {'0' * 64}, got {digest}.", result.stderr)
-            self.assertEqual(["curl"], [call.split()[0] for call in self.calls(home)], "the download, then no mise")
+            self.assertEqual([*self.TOOL_CALLS, "curl"], [*self.calls(home)[:3], self.calls(home)[3].split()[0]])
+            self.assertEqual(4, len(self.calls(home)), "the download, then no srt")
             self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "nothing unpacked")
             self.assertFalse((home / ".agents").exists(), "nothing recorded")
 
@@ -5453,7 +5584,7 @@ class DshSuperagentTest(unittest.TestCase):
                 "update_dsh_superagent: the digest of the downloaded archive could not be read; install refused.",
                 result.stderr,
             )
-            self.assertEqual(["curl"], [call.split()[0] for call in self.calls(home)])
+            self.assertEqual(4, len(self.calls(home)), "the tools and the download, then no srt")
             self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "nothing unpacked")
 
     def test_an_archive_whose_root_names_another_commit_is_refused_before_the_build(self):
@@ -5466,7 +5597,7 @@ class DshSuperagentTest(unittest.TestCase):
                 f"dsh-superagent archive root dsh-superagent-prototype-{'d' * 40} does not name the pin {self.COMMIT}; install refused.",
                 result.stderr,
             )
-            self.assertEqual(["curl"], [call.split()[0] for call in self.calls(home)], "no mise call")
+            self.assertEqual(4, len(self.calls(home)), "no srt call")
             self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "nothing unpacked")
         with tempfile.TemporaryDirectory() as directory:
             home, dsh_home = self.opted_in_home(directory)
@@ -5475,22 +5606,164 @@ class DshSuperagentTest(unittest.TestCase):
             result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn("the member list of the archive could not be read; install refused.", result.stderr)
-            self.assertEqual(["curl"], [call.split()[0] for call in self.calls(home)], "no mise call")
+            self.assertEqual(4, len(self.calls(home)), "no srt call")
 
-    def test_a_failed_build_removes_the_new_tree_and_records_nothing(self):
+    def test_an_archive_with_a_second_root_and_the_matching_digest_is_refused_before_unpack(self):
+        # verdicts/U317 P2 :2403: the first member alone was checked, so an archive whose later members sat under a
+        # second root installed that root's package.json through --strip-components=1. Every member is now held
+        # under the one root, before the tree is made.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            second = "dsh-superagent-prototype-" + "e" * 40
+            payload, digest = self.archive(home, second_root=second)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"dsh-superagent archive member {second}/package.json lies outside the one root"
+                f" dsh-superagent-prototype-{self.COMMIT} that names the pin; install refused before anything is unpacked.",
+                result.stderr,
+            )
+            self.assertEqual(4, len(self.calls(home)), "the tools and the download, then no srt")
+            self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "no tree was made")
+            self.assertFalse((home / ".agents").exists(), "nothing recorded")
+
+    def test_a_linked_profiles_or_plugins_parent_is_refused_before_any_download(self):
+        # verdicts/U317 P2 :2347: only the router leaf was link-checked; a linked profiles/ parent passed and the
+        # profile install wrote through it, outside DSH_HOME. Every directory the step writes under is now held to
+        # be no link and to resolve to its spelling under the physical DSH_HOME (the settings_judge rule).
+        for row in ("profiles", "plugins"):
+            with self.subTest(row=row), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                outside = home / "outside" / row
+                shutil.move(dsh_home / row, outside)
+                (dsh_home / row).symlink_to(outside)
+                payload, digest = self.archive(home)
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"update_dsh_superagent: {dsh_home}/{row} is a symlink or not a directory", result.stderr)
+                self.assertEqual([], self.calls(home), "no tool, no download, no srt")
+                self.assertEqual(
+                    sorted(path.name for path in outside.iterdir()), sorted(path.name for path in outside.iterdir())
+                )
+                self.assertFalse((outside / "dsh-superagent").exists() or (outside / "router/node_modules").exists())
+        with tempfile.TemporaryDirectory() as directory:
+            # The physical comparison itself, with no link at the row: a DSH_HOME whose physical path cannot be read
+            # refuses (the producer's status), and the control case installs.
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            prelude = 'pwd() { if [ "$1" = -P ] && [ "$PWD" -ef "$DSH_HOME" ]; then builtin pwd -P; return 77; fi; builtin pwd "$@"; }'
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"the physical path of DSH_HOME {dsh_home} could not be read", result.stderr)
+            self.assertEqual([], self.calls(home))
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_an_absent_srt_or_a_tool_that_is_no_executable_refuses_before_any_download(self):
+        # verdicts/U317 P1 :2421: the upstream build ran through mise outside srt. The containment and the build
+        # tools are the kit's mise pins, each read with its status before the download, so no srt is no build.
         with tempfile.TemporaryDirectory() as directory:
             home, dsh_home = self.opted_in_home(directory)
             payload, digest = self.archive(home)
-            mise = 'if [ "$*" = "exec -- pnpm build" ]; then return 1; fi; return 0'
-            result = self.run_step(home, payload, digest, dsh_home=dsh_home, mise=mise)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, srt="absent")
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("update_dsh_superagent: srt is absent (mise which srt failed", result.stderr)
+            self.assertEqual(["mise which srt"], self.calls(home), "no download, no build")
+            self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home))
+            (home / "calls").unlink()
+            not_executable = home / "srt.txt"
+            not_executable.write_text("not a program\n")
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, srt=str(not_executable))
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"{not_executable} (mise which srt) is not an executable file", result.stderr)
+            self.assertEqual(["mise which srt"], self.calls(home))
+            (home / "calls").unlink()
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, srt="relative/srt")
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("mise which srt answered relative/srt, not an absolute path", result.stderr)
+            self.assertEqual(["mise which srt"], self.calls(home))
+
+    def test_a_failed_build_inside_srt_removes_the_new_tree_and_records_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            (home / "pnpm-fail").write_text("build\n")
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn(
-                "update_dsh_superagent: the build failed; the new tree is removed; nothing installed, nothing recorded",
+                f"update_dsh_superagent: the build failed inside srt (a write outside the new tree and {dsh_home}/.pnpm-store is refused there); the new tree is removed; nothing installed, nothing recorded",
                 result.stderr,
             )
-            self.assertEqual(self.BUILD_CALLS[:2], self.calls(home)[1:], "no profile install after a failed build")
+            calls = self.calls(home)
+            self.assertEqual(5, len(calls), calls)
+            self.assertTrue(calls[4].startswith("srt --settings "), "the one build run, no profile install after it")
+            self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "the new tree and its settings are gone")
+            self.assertFalse((home / ".agents").exists(), "nothing recorded")
+            self.assertEqual([], self.pnpm_calls(dsh_home / "profiles/router"))
+
+    def test_a_build_that_writes_outside_its_directory_fails_under_the_real_srt(self):
+        # The auditor's reproduction (verdicts/U317 P1 :2421): a build command that wrote outside the permitted roots
+        # exited 0 and the updater installed. Under the real srt the write is EPERM, the fake pnpm reports it, the
+        # build fails and nothing is installed; the control run under the same srt installs.
+        srt = real_srt()
+        if srt is None:
+            self.skipTest("no srt on this host (mise pins @anthropic-ai/sandbox-runtime)")
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            marker = home / "outside/marker"
+            marker.parent.mkdir()
+            (home / "pnpm-write").write_text(f"{marker}\n")
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home, srt="real")
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("update_dsh_superagent: the build failed inside srt", result.stderr)
+            self.assertFalse(marker.exists(), "the write outside the roots did not land")
             self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "the new tree is gone")
             self.assertFalse((home / ".agents").exists(), "nothing recorded")
+            (home / "pnpm-write").unlink()
+            control = self.run_step(home, payload, digest, dsh_home=dsh_home, srt="real")
+            self.assertEqual(0, control.returncode, control.stdout + control.stderr)
+            install = dsh_home / "plugins/dsh-superagent"
+            self.assertEqual(2, len(self.pnpm_calls(install)), "both pnpm steps ran inside the real srt")
+            self.assertEqual(1, len(self.pnpm_calls(dsh_home / "profiles/router")))
+
+    def test_each_of_the_three_mktemp_reads_refuses_the_step_when_it_fails(self):
+        # verdicts/U317 P2 :5317: the download directory, the new tree and the previous tree's name each come from a
+        # mktemp whose status decides the install; a mktemp that prints a path and exits non-zero refuses the step,
+        # the previous tree stays, nothing is recorded, and the path it printed is not used.
+        for failing, message, built in (
+            (1, "the download directory could not be made; step refused.", False),
+            (2, "the install tree under {plugins} could not be made; install refused.", False),
+            (
+                3,
+                "a directory for the previous tree could not be made; the new tree is removed; nothing installed, nothing recorded.",
+                True,
+            ),
+        ):
+            with self.subTest(mktemp=failing), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                install = dsh_home / "plugins/dsh-superagent"
+                install.mkdir()
+                (install / "older").write_text("the tree of an earlier pin\n")
+                payload, digest = self.archive(home)
+                prelude = (
+                    'mktemp() { n=$(( $(cat "$HOME/mktemp-n" 2> /dev/null || echo 0) + 1 )); echo "$n" > "$HOME/mktemp-n"; '
+                    f'if [ "$n" -eq {failing} ]; then printf "%s\\n" "$HOME/not-made"; return 77; fi; command mktemp "$@"; }}'
+                )
+                result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"update_dsh_superagent: {message.format(plugins=dsh_home / 'plugins')}", result.stderr)
+                self.assertFalse((home / "not-made").exists(), "the printed path was not used")
+                self.assertEqual(
+                    "the tree of an earlier pin\n", (install / "older").read_text(), "the previous tree stays"
+                )
+                self.assertEqual(
+                    ["dsh-superagent", "omp-gateway"], self.plugin_entries(dsh_home), "no new tree, no aside"
+                )
+                self.assertFalse((home / ".agents").exists(), "nothing recorded")
+                srt_calls = [call for call in self.calls(home) if call.startswith("srt ")]
+                self.assertEqual(1 if built else 0, len(srt_calls), "the build ran only when the tree was made")
+                self.assertEqual([], self.pnpm_calls(dsh_home / "profiles/router"), "no profile install")
 
     def test_an_absent_router_profile_warns_and_installs_nothing(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -5500,7 +5773,7 @@ class DshSuperagentTest(unittest.TestCase):
             result = self.run_step(home, payload, digest, dsh_home=dsh_home)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             self.assertIn(f"WARN: update_dsh_superagent: {dsh_home}/profiles/router is absent", result.stderr)
-            self.assertEqual([], self.calls(home), "no download")
+            self.assertEqual([], self.calls(home), "no tool, no download")
 
     def test_an_already_installed_pin_downloads_nothing_and_a_previous_tree_goes_after_the_record(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -5521,7 +5794,22 @@ class DshSuperagentTest(unittest.TestCase):
             again = self.run_step(home, payload, digest, dsh_home=dsh_home)
             self.assertEqual(0, again.returncode, again.stdout + again.stderr)
             self.assertIn(f"dsh-superagent {self.COMMIT} is already installed at {install}.", again.stdout)
-            self.assertEqual([], self.calls(home), "no download, no mise call")
+            self.assertEqual(self.TOOL_CALLS, self.calls(home), "the tools are read, then no download and no srt")
+            # Without the profile link, the profile install alone runs, inside srt.
+            (home / "calls").unlink()
+            shutil.rmtree(dsh_home / "profiles/router/node_modules")
+            (home / "calls.settings").unlink()
+            repair = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, repair.returncode, repair.stdout + repair.stderr)
+            calls = self.calls(home)
+            self.assertEqual(4, len(calls), calls)
+            self.assertTrue(calls[3].startswith(f"srt --settings {install}.profile.srt-settings.json -- "))
+            self.assert_settings_shape(
+                self.settings(home)[0], home, [f"{dsh_home}/profiles/router", f"{dsh_home}/.pnpm-store"]
+            )
+            self.assertEqual(
+                ["dsh-superagent", "omp-gateway"], self.plugin_entries(dsh_home), "the settings file is gone"
+            )
 
     def test_a_receipt_read_that_fails_refuses_the_step_before_any_download(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -5535,7 +5823,7 @@ class DshSuperagentTest(unittest.TestCase):
             self.assertIn(
                 "update_dsh_superagent: the installed-manifest receipt could not be read; step refused.", result.stderr
             )
-            self.assertEqual([], self.calls(home), "no download, no mise call")
+            self.assertEqual([], self.calls(home), "no tool, no download, no srt")
             link = home / ".agents/.installed-manifest.json"
             link.unlink()
             link.symlink_to(home / "elsewhere.json")

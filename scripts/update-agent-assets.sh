@@ -2272,6 +2272,113 @@ function update_deepseek_harness() (
 # branch head. The repository path is the asset's upstream; the fork (T-M-26-01) moves it with the manifest's upstream.
 readonly DSH_SUPERAGENT_REPOSITORY="deepseek-ai/dsh-superagent-prototype"
 readonly DSH_SUPERAGENT_ARCHIVE_URL="https://codeload.github.com/${DSH_SUPERAGENT_REPOSITORY}/tar.gz/${DSH_SUPERAGENT_COMMIT}"
+# The package registry the archive's lockfile resolves from: pnpm-lock.yaml names no registry host (every resolution is
+# a bare `integrity`), so pnpm reads the default, and the build's srt settings admit that one host (regime-cutover
+# U317b).
+readonly DSH_SUPERAGENT_REGISTRY_HOST="registry.npmjs.org"
+
+#
+# @description Refuse a path srt's settings cannot carry as itself (regime-cutover U317b, hcom-seat's clean_path): every
+#   component of [A-Za-z0-9._@+-], none `.` or `..`, no trailing slash. srt 0.0.81 turns a settings path into a
+#   Seatbelt regex or a glob, so a quote, a space or a `*` would grant more than the path; the JSON below is written by
+#   the shell from such paths and no JSON tool runs.
+# @arg $1 string The path.
+# @exitcode 1 The path is not clean; the line names it.
+#
+function dsh_superagent_clean_path() {
+    if [[ ! $1 =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || [[ /$1/ == */./* ]] || [[ /$1/ == */../* ]]; then # lint-comparisons: allow a component test on one path, no path compare
+        printf 'update_dsh_superagent: %s is not a clean absolute path (components of [A-Za-z0-9._@+-], none . or .., no trailing slash), which the srt settings need; nothing installed, nothing recorded.\n' "$1" >&2
+        return 1
+    fi
+}
+
+#
+# @description Resolve one tool the dsh-superagent step runs by `mise which` (the kit's pins in home/dot_mise/config.toml:
+#   sandbox-runtime, pnpm, node), with the status read: a failed answer, a relative one or one that is not an executable
+#   file refuses the step (standing order 21). MISE_EXEC_AUTO_INSTALL=false keeps mise from installing anything the step
+#   asks after (verdicts/U276b).
+# @arg $1 string The tool.
+# @stdout The tool's absolute path.
+# @exitcode 1 No usable answer; the line names the tool.
+#
+function dsh_superagent_tool() {
+    local path
+    path="$(MISE_EXEC_AUTO_INSTALL=false mise which "$1" 2> /dev/null)" || {
+        printf 'update_dsh_superagent: %s is absent (mise which %s failed; the kit pins it in home/dot_mise/config.toml, so run make update after mise install); nothing installed, nothing recorded.\n' "$1" "$1" >&2
+        return 1
+    }
+    case ${path} in # lint-comparisons: allow the case reads the spelling (absolute or not), the file tests below read the entry
+    /*) ;;
+    *)
+        printf 'update_dsh_superagent: mise which %s answered %s, not an absolute path; nothing installed, nothing recorded.\n' "$1" "${path}" >&2
+        return 1
+        ;;
+    esac
+    if [ ! -f "${path}" ] || [ ! -x "${path}" ]; then
+        printf 'update_dsh_superagent: %s (mise which %s) is not an executable file; nothing installed, nothing recorded.\n' "${path}" "$1" >&2
+        return 1
+    fi
+    printf '%s\n' "${path}"
+}
+
+#
+# @description Print the srt settings of one dsh-superagent pnpm run (regime-cutover U317b): writes allowed under the
+#   given roots alone; reads denied under the credential roots the dsh role denies (hcom-seat seat_settings_lists:
+#   ~/.ssh, ~/.gnupg, ~/.aws, ~/.netrc, ~/.docker, ~/.kube, ~/.config/gcloud, ~/.codex, ~/.omp/agent); network to the
+#   registry host alone; no local binding, no unix socket, no pty. Every path is clean (dsh_superagent_clean_path), so
+#   the JSON needs no escaping.
+# @arg $@ path The write roots.
+# @stdout The settings JSON, one line.
+# @exitcode 1 A path is not clean.
+#
+function dsh_superagent_srt_settings() {
+    local path write='' deny='' sep=''
+    for path in "$@"; do
+        dsh_superagent_clean_path "${path}" || return 1
+        write+="${sep}\"${path}\""
+        sep=,
+    done
+    sep=''
+    for path in .ssh .gnupg .aws .netrc .docker .kube .config/gcloud .codex .omp/agent; do
+        dsh_superagent_clean_path "${HOME}/${path}" || return 1
+        deny+="${sep}\"${HOME}/${path}\""
+        sep=,
+    done
+    printf '{"network":{"allowedDomains":["%s"],"deniedDomains":[],"allowUnixSockets":[],"allowMachLookup":["com.apple.trustd.agent"],"allowLocalBinding":false},"filesystem":{"denyRead":[%s],"allowRead":[],"allowWrite":[%s],"denyWrite":[]},"allowPty":false}\n' "${DSH_SUPERAGENT_REGISTRY_HOST}" "${deny}" "${write}"
+}
+
+#
+# @description Run pnpm for the dsh-superagent step inside srt (regime-cutover U317b): one `srt --settings <file>` whose
+#   settings (dsh_superagent_srt_settings) grant writes under the given roots alone, running `/bin/sh -c` of the given
+#   text in the working directory with the environment reduced by `/usr/bin/env -i` to HOME, a PATH of the mise node
+#   and pnpm directories and the system directories, a TMPDIR and the XDG directories under the pnpm store, the store
+#   itself (npm_config_store_dir) and pnpm's package-manager self-install off (npm_config_manage_package_manager_versions),
+#   so every write of the upstream build lands under the roots or fails with srt's EPERM and fails the run.
+# @arg $1 path The settings file to write (removed by the caller).
+# @arg $2 path The working directory.
+# @arg $3 string The shell text run inside; `"$PNPM"` is pnpm.
+# @arg $@ path The write roots after it.
+# @env DSH_SUPERAGENT_SRT The srt path (dsh_superagent_tool).
+# @env DSH_SUPERAGENT_PNPM The pnpm path.
+# @env DSH_SUPERAGENT_PATH The PATH inside.
+# @env DSH_SUPERAGENT_STORE The pnpm store, a write root the caller lists.
+# @exitcode 1 The settings could not be written, or the text inside failed (srt's own status included).
+#
+function dsh_superagent_srt_run() {
+    local settings="$1" workdir="$2" script="$3" json
+    shift 3
+    json="$(dsh_superagent_srt_settings "$@")" || return 1
+    printf '%s\n' "${json}" > "${settings}" || {
+        printf 'update_dsh_superagent: the srt settings %s could not be written; nothing installed, nothing recorded.\n' "${settings}" >&2
+        return 1
+    }
+    "${DSH_SUPERAGENT_SRT}" --settings "${settings}" -- /usr/bin/env -i "HOME=${HOME}" "PATH=${DSH_SUPERAGENT_PATH}" \
+        "TMPDIR=${DSH_SUPERAGENT_STORE}/tmp" "XDG_CACHE_HOME=${DSH_SUPERAGENT_STORE}/xdg-cache" \
+        "XDG_CONFIG_HOME=${DSH_SUPERAGENT_STORE}/xdg-config" "XDG_DATA_HOME=${DSH_SUPERAGENT_STORE}/xdg-data" \
+        "XDG_STATE_HOME=${DSH_SUPERAGENT_STORE}/xdg-state" "npm_config_store_dir=${DSH_SUPERAGENT_STORE}" \
+        npm_config_manage_package_manager_versions=false "PNPM=${DSH_SUPERAGENT_PNPM}" \
+        /bin/sh -c "cd \"\$1\" && ${script}" sh "${workdir}"
+}
 
 #
 # @description Install the pinned dsh-superagent bundle (assets.dsh-superagent) under $DSH_HOME/plugins/dsh-superagent
@@ -2281,36 +2388,45 @@ readonly DSH_SUPERAGENT_ARCHIVE_URL="https://codeload.github.com/${DSH_SUPERAGEN
 #   The opt-in is update_deepseek_harness's: DSH_HOME exported, absolute and a directory whose identity (-ef) is
 #   ~/.dsh's, where the kit renders the router profile. The step is the harness step's shape: GitHub's archive of the
 #   pinned commit is downloaded into a mktemp directory and verified against its reviewed sha256 before anything is
-#   unpacked; the archive's one top-level member must name the pinned commit (the git-commit form of "the archive
-#   version equals the pin"); the tree is unpacked and built whole under a name of its own
-#   ($DSH_HOME/plugins/dsh-superagent.XXXXXX) with pnpm from mise (MISE_EXEC_AUTO_INSTALL=false, so a missing Node or
-#   pnpm refuses the build instead of installing a tool); the download directory goes; the previous tree, when there
-#   is one, is renamed aside and the new tree renamed into place (one rename publishes it, and a failed publication
-#   puts the previous tree back); the router profile's plugins are installed (its package.json links the tree by a
-#   relative link: dependency, so the link follows the directory name); the step is recorded; and only then does the
-#   previous tree go. Every input is one row of a table, checked before any download:
-#   DSH_HOME: exported, absolute, a directory -ef ~/.dsh (elsewhere is a WARN with exit 0; unset or absent is a skip).
+#   unpacked; every member of the archive lies under its one top-level member, which must name the pinned commit (the
+#   git-commit form of "the archive version equals the pin"; verdicts/U317 P2 :2403 read the first member alone); the
+#   tree is unpacked under a name of its own ($DSH_HOME/plugins/dsh-superagent.XXXXXX) and built there inside srt
+#   (verdicts/U317 P1 :2421: the upstream build scripts ran uncontained): one `srt --settings <tree>.srt-settings.json`
+#   over `pnpm install --frozen-lockfile && pnpm build`, the settings granting writes under the tree and the pnpm store
+#   $DSH_HOME/.pnpm-store alone, denying the credential roots the dsh role denies and admitting the registry host alone
+#   (dsh_superagent_srt_run); srt, pnpm and node are the kit's mise pins, resolved with their status before any
+#   download, and an absent one refuses the step; the download directory goes; the previous tree, when there is one,
+#   is renamed aside and the new tree renamed into place (one rename publishes it, and a failed publication puts the
+#   previous tree back); the router profile's plugins are installed by a second srt run whose writes are the profile
+#   directory and the store (its package.json links the tree by a relative link: dependency, so the link follows the
+#   directory name); the step is recorded; and only then does the previous tree go. Every input is one row of a table,
+#   checked before any download:
+#   DSH_HOME: exported, absolute, a directory -ef ~/.dsh (elsewhere is a WARN with exit 0; unset or absent is a skip),
+#   with a physical path (pwd -P) that can be read.
 #   DSH_SUPERAGENT_COMMIT: 40 lowercase hex; DSH_SUPERAGENT_SHA256: 64 lowercase hex (the rendered constants).
-#   DSH_HOME/plugins: absent, or a directory that is not a symlink.
-#   DSH_HOME/plugins/dsh-superagent: absent, or a directory that is not a symlink (the installed tree); anything else
-#   is refused, never removed.
-#   DSH_HOME/profiles/router: a directory that is not a symlink (the rendered profile); absent is a WARN with exit 0.
+#   DSH_HOME/plugins, DSH_HOME/plugins/dsh-superagent, DSH_HOME/profiles, DSH_HOME/profiles/router: each absent, or a
+#   directory that is not a symlink whose physical path is its spelling under the physical DSH_HOME, so no link on the
+#   path from DSH_HOME down redirects a write (verdicts/U317 P2 :2347: a linked profiles/ parent passed the leaf check;
+#   the rule is hcom-seat's settings_judge, every row physical); anything else is refused, never removed. An absent
+#   profiles/router is a WARN with exit 0 (the kit has not rendered the profile here).
 #   ~/.agents/.installed-manifest.json: absent, or a regular file that is not a symlink; the step's recorded
 #   source_version equal to the pin with the tree in place is the already-installed exit (the profile install is
-#   run again only when the profile's node_modules holds no dsh-superagent entry).
-#   Every producer the step reads (pwd -P, shasum, tar's member list, jq, mktemp) refuses the step on a failed answer
-#   (standing order 21); a download that fails is one WARN line, nothing installed, nothing recorded.
+#   run again, under srt, only when the profile's node_modules holds no dsh-superagent entry).
+#   Every producer the step reads (pwd -P, mise which, shasum, tar's member list, jq, the three mktemp) refuses the
+#   step on a failed answer (standing order 21); a download that fails is one WARN line, nothing installed, nothing
+#   recorded.
 # @exitcode 0 Installed, already installed, no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh or the router
 #   profile absent (a WARN), or the download failed (a WARN; nothing installed or recorded).
-# @exitcode 1 A constant malformed, a producer read, a shape check, the digest check, the archive member check, the
-#   unpack, the build, the publication, the profile install or the record failed; the line printed names the state
-#   left.
+# @exitcode 1 A constant malformed, a producer read, a shape check, a tool absent, the digest check, the archive member
+#   check, the unpack, the build, the publication, the profile install or the record failed; the line printed names
+#   the state left.
 #
 function update_dsh_superagent() (
-    local download_dir="" tarball actual tree="" members first top previous="" recorded install_dir row
+    local download_dir="" tarball actual tree="" settings="" profile_settings="" members member top previous="" recorded install_dir row
+    local dsh_home_real physical srt_bin pnpm_bin node_bin
     install_dir="${DSH_HOME:-}/plugins/dsh-superagent"
     dsh_superagent_record() {
-        manifest_record "update_dsh_superagent" installer "${DSH_SUPERAGENT_COMMIT}" "${install_dir}" -- "curl -fsSL ${DSH_SUPERAGENT_ARCHIVE_URL}" "shasum -a 256 <archive>" "tar tzf <archive> (one member root named ${DSH_SUPERAGENT_REPOSITORY##*/}-${DSH_SUPERAGENT_COMMIT})" "mktemp -d ${install_dir}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm build" "mv <tree> ${install_dir}" "pnpm install in ${DSH_HOME}/profiles/router"
+        manifest_record "update_dsh_superagent" installer "${DSH_SUPERAGENT_COMMIT}" "${install_dir}" -- "curl -fsSL ${DSH_SUPERAGENT_ARCHIVE_URL}" "shasum -a 256 <archive>" "tar tzf <archive> (every member under the one root ${DSH_SUPERAGENT_REPOSITORY##*/}-${DSH_SUPERAGENT_COMMIT})" "mktemp -d ${install_dir}.XXXXXX" "tar xzf <archive> -C <tree> --strip-components=1" "srt --settings <tree>.srt-settings.json -- pnpm install --frozen-lockfile && pnpm build (writes: <tree>, ${DSH_HOME}/.pnpm-store)" "mv <tree> ${install_dir}" "srt --settings <settings> -- pnpm install in ${DSH_HOME}/profiles/router (writes: that directory, ${DSH_HOME}/.pnpm-store)"
     }
     case ${DSH_SUPERAGENT_COMMIT:-} in
     [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
@@ -2338,16 +2454,28 @@ function update_dsh_superagent() (
         printf 'WARN: update_dsh_superagent: DSH_HOME is %s, not %s, where the kit renders the router profile; nothing installed.\n' "${DSH_HOME}" "${HOME}/.dsh" >&2
         return 0
     fi
-    for row in plugins plugins/dsh-superagent; do
+    # The physical-path rule (hcom-seat settings_judge; verdicts/U317 P2 :2347): DSH_HOME's physical path is read once,
+    # and every directory the step writes under is held, when it exists, to be no link and to resolve to its spelling
+    # under that path, so a linked profiles/ or plugins/ parent is refused before any download, like a linked leaf.
+    dsh_home_real="$(cd -P -- "${DSH_HOME}" && pwd -P)" || {
+        printf 'update_dsh_superagent: the physical path of DSH_HOME %s could not be read; nothing installed, nothing recorded.\n' "${DSH_HOME}" >&2
+        return 1
+    }
+    for row in plugins plugins/dsh-superagent profiles profiles/router; do
         if [ -L "${DSH_HOME}/${row}" ] || { [ -e "${DSH_HOME}/${row}" ] && [ ! -d "${DSH_HOME}/${row}" ]; }; then
-            printf 'update_dsh_superagent: %s is a symlink or not a directory; the step uses only a directory of its own there (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/${row}" >&2
+            printf 'update_dsh_superagent: %s is a symlink or not a directory; the step writes only under directories of its own there (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/${row}" >&2
+            return 1
+        fi
+        [ -d "${DSH_HOME}/${row}" ] || continue
+        physical="$(cd -P -- "${DSH_HOME}/${row}" && pwd -P)" || {
+            printf 'update_dsh_superagent: the physical path of %s could not be read; nothing installed, nothing recorded.\n' "${DSH_HOME}/${row}" >&2
+            return 1
+        }
+        if [ "${physical}" != "${dsh_home_real}/${row}" ]; then # lint-comparisons: allow both sides are pwd -P physical paths
+            printf 'update_dsh_superagent: %s resolves to %s, not %s; a link on the path would redirect the writes outside DSH_HOME (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/${row}" "${physical}" "${dsh_home_real}/${row}" >&2
             return 1
         fi
     done
-    if [ -L "${DSH_HOME}/profiles/router" ] || { [ -e "${DSH_HOME}/profiles/router" ] && [ ! -d "${DSH_HOME}/profiles/router" ]; }; then
-        printf 'update_dsh_superagent: %s is a symlink or not a directory; the step installs the profile plugins only into the directory the kit renders (move it aside and rerun make update); nothing installed, nothing recorded.\n' "${DSH_HOME}/profiles/router" >&2
-        return 1
-    fi
     if [ ! -d "${DSH_HOME}/profiles/router" ]; then
         printf 'WARN: update_dsh_superagent: %s is absent, so the kit has not rendered the router profile here; nothing installed.\n' "${DSH_HOME}/profiles/router" >&2
         return 0
@@ -2363,10 +2491,27 @@ function update_dsh_superagent() (
             return 1
         }
     fi
+    # The containment and the build tools, before any download: the upstream code runs only inside srt, so no srt is
+    # no build (the kit pins @anthropic-ai/sandbox-runtime, pnpm and node in mise).
+    srt_bin="$(dsh_superagent_tool srt)" || return 1
+    pnpm_bin="$(dsh_superagent_tool pnpm)" || return 1
+    node_bin="$(dsh_superagent_tool node)" || return 1
+    DSH_SUPERAGENT_SRT="${srt_bin}" DSH_SUPERAGENT_PNPM="${pnpm_bin}" DSH_SUPERAGENT_STORE="${DSH_HOME}/.pnpm-store"
+    DSH_SUPERAGENT_PATH="${pnpm_bin%/*}:${node_bin%/*}:/usr/bin:/bin"
+    # ${name:+"${name}"} and `|| :` as in update_deepseek_harness: the subshell's locals may be unwound before the EXIT
+    # trap runs on macOS bash, and a failing cleanup must not become the step's status.
+    trap 'rm -rf ${download_dir:+"${download_dir}"} ${tree:+"${tree}"} ${settings:+"${settings}"} ${profile_settings:+"${profile_settings}"} || :' EXIT
+    # srt on Linux grants writes only to paths that exist, so the store and its scratch directory are made first.
+    mkdir -p "${DSH_HOME}/plugins" "${DSH_SUPERAGENT_STORE}/tmp" || {
+        printf 'update_dsh_superagent: the plugin directory %s or the pnpm store %s could not be made; nothing installed, nothing recorded.\n' "${DSH_HOME}/plugins" "${DSH_SUPERAGENT_STORE}" >&2
+        return 1
+    }
+    profile_settings="${install_dir}.profile.srt-settings.json"
     if [ "${recorded}" = "${DSH_SUPERAGENT_COMMIT}" ] && [ -f "${install_dir}/package.json" ]; then
         printf 'dsh-superagent %s is already installed at %s.\n' "${DSH_SUPERAGENT_COMMIT}" "${install_dir}"
         if [ ! -e "${DSH_HOME}/profiles/router/node_modules/dsh-superagent" ]; then
-            (cd "${DSH_HOME}/profiles/router" && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm install) || {
+            # shellcheck disable=SC2016 # the text runs inside srt, where $PNPM is the environment the run sets
+            dsh_superagent_srt_run "${profile_settings}" "${DSH_HOME}/profiles/router" '"$PNPM" install' "${DSH_HOME}/profiles/router" "${DSH_SUPERAGENT_STORE}" || {
                 printf 'update_dsh_superagent: the router profile install failed; the installed tree and the record are untouched.\n' >&2
                 return 1
             }
@@ -2377,9 +2522,6 @@ function update_dsh_superagent() (
         printf 'update_dsh_superagent: the download directory could not be made; step refused.\n' >&2
         return 1
     }
-    # ${name:+"${name}"} and `|| :` as in update_deepseek_harness: the subshell's locals may be unwound before the EXIT
-    # trap runs on macOS bash, and a failing cleanup must not become the step's status.
-    trap 'rm -rf ${download_dir:+"${download_dir}"} ${tree:+"${tree}"} || :' EXIT
     tarball="${download_dir}/dsh-superagent-${DSH_SUPERAGENT_COMMIT}.tar.gz"
     curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${DSH_SUPERAGENT_ARCHIVE_URL}" -o "${tarball}" || {
         printf 'WARN: update_dsh_superagent: the dsh-superagent archive could not be downloaded (%s); nothing installed, nothing recorded; the existing install is unchanged and the next make update retries.\n' "${DSH_SUPERAGENT_ARCHIVE_URL}" >&2
@@ -2394,34 +2536,47 @@ function update_dsh_superagent() (
         return 1
     fi
     # GitHub's commit archive has one root member, <repository>-<commit>/; a verified archive whose root names another
-    # commit is a constant pairing error (the digest of one pin beside the commit of another) and is refused.
+    # commit is a constant pairing error (the digest of one pin beside the commit of another) and is refused. Every
+    # member is then held under that root (verdicts/U317 P2 :2403: a digest-matching archive with a second root
+    # installed the second root's package.json through --strip-components=1), before anything is unpacked.
     members="${download_dir}/members"
     tar tzf "${tarball}" > "${members}" || {
         printf 'update_dsh_superagent: the member list of the archive could not be read; install refused.\n' >&2
         return 1
     }
-    IFS= read -r first < "${members}" || {
+    IFS= read -r member < "${members}" || {
         printf 'update_dsh_superagent: the archive lists no member; install refused.\n' >&2
         return 1
     }
-    top="${first%%/*}"
+    top="${member%%/*}"
     if [ "${top}" != "${DSH_SUPERAGENT_REPOSITORY##*/}-${DSH_SUPERAGENT_COMMIT}" ]; then
         printf 'dsh-superagent archive root %s does not name the pin %s; install refused.\n' "${top}" "${DSH_SUPERAGENT_COMMIT}" >&2
         return 1
     fi
-    mkdir -p "${DSH_HOME}/plugins" || {
-        printf 'update_dsh_superagent: the plugin directory %s could not be made; install refused.\n' "${DSH_HOME}/plugins" >&2
-        return 1
-    }
+    while IFS= read -r member; do
+        case ${member} in # lint-comparisons: allow archive member names are data, not paths of this host
+        "${top}" | "${top}/" | "${top}/"?*) ;;
+        *)
+            printf 'dsh-superagent archive member %s lies outside the one root %s that names the pin; install refused before anything is unpacked.\n' "${member}" "${top}" >&2
+            return 1
+            ;;
+        esac
+    done < "${members}"
     tree="$(mktemp -d "${install_dir}.XXXXXX")" || {
         printf 'update_dsh_superagent: the install tree under %s could not be made; install refused.\n' "${DSH_HOME}/plugins" >&2
         return 1
     }
+    settings="${tree}.srt-settings.json"
     tar xzf "${tarball}" -C "${tree}" --strip-components=1 || return 1
-    (cd "${tree}" && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm install --frozen-lockfile && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm build) || {
-        printf 'update_dsh_superagent: the build failed; the new tree is removed; nothing installed, nothing recorded; the previous install, when there is one, is unchanged.\n' >&2
+    # The upstream build runs inside srt alone (verdicts/U317 P1 :2421): one invocation over both pnpm steps, writes
+    # under the new tree and the pnpm store, reads denied under the credential roots, network to the registry host.
+    # shellcheck disable=SC2016 # the text runs inside srt, where $PNPM is the environment the run sets
+    dsh_superagent_srt_run "${settings}" "${tree}" '"$PNPM" install --frozen-lockfile && "$PNPM" build' "${tree}" "${DSH_SUPERAGENT_STORE}" || {
+        printf 'update_dsh_superagent: the build failed inside srt (a write outside the new tree and %s is refused there); the new tree is removed; nothing installed, nothing recorded; the previous install, when there is one, is unchanged.\n' "${DSH_SUPERAGENT_STORE}" >&2
         return 1
     }
+    rm -f "${settings}" || :
+    settings=""
     rm -rf "${download_dir}" || printf 'WARN: update_dsh_superagent: the download directory %s could not be removed; it holds only the verified archive and the next make update makes a new one.\n' "${download_dir}" >&2
     download_dir=""
     if [ -d "${install_dir}" ]; then
@@ -2440,8 +2595,9 @@ function update_dsh_superagent() (
         return 1
     }
     tree=""
-    (cd "${DSH_HOME}/profiles/router" && MISE_EXEC_AUTO_INSTALL=false mise exec -- pnpm install) || {
-        printf 'update_dsh_superagent: the router profile install failed; the new tree is at %s but nothing is recorded, so the next make update installs again%s.\n' "${install_dir}" "${previous:+; the previous tree is kept at ${previous}}" >&2
+    # shellcheck disable=SC2016 # the text runs inside srt, where $PNPM is the environment the run sets
+    dsh_superagent_srt_run "${profile_settings}" "${DSH_HOME}/profiles/router" '"$PNPM" install' "${DSH_HOME}/profiles/router" "${DSH_SUPERAGENT_STORE}" || {
+        printf 'update_dsh_superagent: the router profile install failed inside srt; the new tree is at %s but nothing is recorded, so the next make update installs again%s.\n' "${install_dir}" "${previous:+; the previous tree is kept at ${previous}}" >&2
         return 1
     }
     printf 'dsh-superagent %s installed into %s.\n' "${DSH_SUPERAGENT_COMMIT}" "${install_dir}"

@@ -722,8 +722,9 @@ class DeepseekHarnessTest(unittest.TestCase):
     URL = f"https://github.com/deepseek-ai/deepseek-harness/archive/refs/tags/{TAG}.tar.gz"
     COMMIT_MATCH = re.search(r'^DSH_COMMIT="([^"]+)"$', INSTALLER_PINS, re.MULTILINE)
     COMMIT = COMMIT_MATCH[1] if COMMIT_MATCH else ""
-    # The commands the step runs inside srt, as the fake srt records them after the environment build_under_srt sets:
-    # the two build steps in the new tree and the profile install (the canary probe is read apart, canary_calls).
+    # The commands the step runs inside srt, as the fake srt records them after `--` (U322b: nothing stands between
+    # srt and the command): the two build steps in the new tree and the profile install (the canary probe is read
+    # apart, canary_calls).
     BUILD_CALLS = [
         "pnpm install --frozen-lockfile",
         f"DSH_CLIENT_COMMIT_HASH={COMMIT} pnpm run build",
@@ -754,19 +755,51 @@ class DeepseekHarnessTest(unittest.TestCase):
         ".claude",
         ".claude.json",
     )
-    ENV_PREFIX = " npm_config_manage_package_manager_versions=false "
-    # The fake srt: records its argv, keeps a copy of the settings it was given (the function removes the file after
-    # the run) with their mode, writes the DSH_CLIENT_COMMIT_HASH the build command carries, runs the body a test hands
-    # it (default: nothing), answers the canary probe `write-denied` and exits 0. The command after `--` is in `cmd`
-    # for a body that wants to run it (the canary test does, so the outside write lands).
+    # The variables `/usr/bin/env -i` hands srt (U322b DATA SHAPE): HOME, PATH and DSH_HOME, then the ones that point
+    # every cache and log of the tools inside the store (srt's TMPDIR through CLAUDE_CODE_TMPDIR, the XDG directories,
+    # pnpm's store, cache and state, npm's cache and logs, pnpm's self-install off). bash adds its own PWD, SHLVL and _
+    # to the fake srt's view of them.
+    SRT_VARIABLES = frozenset(
+        {
+            "HOME",
+            "PATH",
+            "DSH_HOME",
+            "TMPDIR",
+            "CLAUDE_CODE_TMPDIR",
+            "XDG_CACHE_HOME",
+            "XDG_CONFIG_HOME",
+            "XDG_DATA_HOME",
+            "XDG_STATE_HOME",
+            "npm_config_store_dir",
+            "npm_config_cache_dir",
+            "npm_config_state_dir",
+            "npm_config_cache",
+            "npm_config_logs_dir",
+            "npm_config_manage_package_manager_versions",
+        }
+    )
+    SHELL_OWN_VARIABLES = frozenset({"PWD", "OLDPWD", "SHLVL", "_"})
+    # The fake srt: records its argv and the environment it starts from (what env -i handed it), keeps a copy of the
+    # settings it was given (the function removes the file after the run) with their mode, writes the
+    # DSH_CLIENT_COMMIT_HASH the build command carries, runs the body a test hands it (default: nothing), answers the
+    # canary probe `write-denied` and exits 0. The command after `--` is in `cmd` for a body that wants to run it:
+    # `exec "${cmd[@]}"` runs it bare (the canary test does, so the outside write lands); `inside` runs it as srt 0.0.81
+    # does, from the fake's own environment plus what srt injects (SANDBOX_RUNTIME, the TMPDIR CLAUDE_CODE_TMPDIR names,
+    # the proxy pair) and re-parsed by `bash -c` (cli.js quotes the argv for that).
     FAKE_SRT = """#!/usr/bin/env bash
 set -u
-printf 'srt %s\\n' "$*" >> "$CALLS"
+printf 'srt %s\\n' "$*" >> "$HOME/calls"
+printf '== srt %s\\n' "$*" >> "$HOME/srt-env"
+env >> "$HOME/srt-env"
 cat "$2" >> "$HOME/srt-settings.jsonl"
 ls -ld "$2" >> "$HOME/srt-settings-modes"
 cmd=("$@")
 while [ "${cmd[0]}" != -- ]; do cmd=("${cmd[@]:1}"); done
 cmd=("${cmd[@]:1}")
+inside() {
+    HTTP_PROXY=http://localhost:3128 HTTPS_PROXY=http://localhost:3128 SANDBOX_RUNTIME=1 \\
+        TMPDIR="${CLAUDE_CODE_TMPDIR:-/tmp/claude}" bash -c "$(printf '%q ' "${cmd[@]}")"
+}
 case "$*" in
 *" pnpm run build")
     commit='<unset>'
@@ -806,13 +839,25 @@ exit 0
         return [line for line in self.calls(home) if line.startswith("srt ")]
 
     def build_calls(self, home: Path) -> list[str]:
-        """The commands the fake srt ran for the step, after the environment build_under_srt sets, the canary aside."""
-        commands = [line.split(self.ENV_PREFIX, 1)[1] for line in self.srt_calls(home)]
+        """The commands the fake srt ran for the step, as given after `--`, the canary aside."""
+        commands = [line.split(" -- ", 1)[1] for line in self.srt_calls(home)]
         return [command for command in commands if not command.startswith("/bin/sh -c ")]
 
     def canary_calls(self, home: Path) -> list[str]:
-        commands = [line.split(self.ENV_PREFIX, 1)[1] for line in self.srt_calls(home)]
+        commands = [line.split(" -- ", 1)[1] for line in self.srt_calls(home)]
         return [command for command in commands if command.startswith("/bin/sh -c ")]
+
+    def srt_environments(self, home: Path) -> list[dict[str, str]]:
+        """The environment each fake srt run started from (what env -i handed it), in order."""
+        path = home / "srt-env"
+        environments: list[dict[str, str]] = []
+        for line in path.read_text().splitlines() if path.exists() else []:
+            if line.startswith("== srt "):
+                environments.append({})
+            elif "=" in line and environments:
+                name, value = line.split("=", 1)
+                environments[-1][name] = value
+        return environments
 
     def settings_seen(self, home: Path) -> list[dict]:
         """The settings each fake srt run was given, in order."""
@@ -828,6 +873,15 @@ exit 0
             check=True,
         ).stdout.strip()
         return [f"{home_real}/{row}" for row in self.DENY_ROWS] + [str(ROOT.resolve()), str(Path(common).resolve())]
+
+    def expected_deny_write(self, home: Path) -> list[str]:
+        """srt 0.0.81's implicit write grants in physical form (U322b): /tmp/claude, its spelling under the physical
+        /tmp where that is a link (macOS: /private/tmp/claude), and ~/.npm/_logs under the physical HOME."""
+        rows = ["/tmp/claude"]
+        tmp_real = Path("/tmp").resolve()
+        if tmp_real != Path("/tmp"):  # lint-comparisons: allow a spelling test for a second, physical /tmp
+            rows.append(f"{tmp_real}/claude")
+        return rows + [f"{home.resolve()}/.npm/_logs"]
 
     def archive(
         self, home: Path, version: str | None = None, lockfile: str | None = "lockfileVersion: '9.0'\n"
@@ -941,6 +995,7 @@ exit 0
         srt: str | None = None,
         with_srt: bool = True,
         prelude: str | None = None,
+        extra_env: dict[str, str] | None = None,
     ):
         """build_under_srt called directly with `arguments` (shell text) under the fakes, DSH_HOME as given."""
         tools = self.fake_tools(home, srt=srt, with_srt=with_srt)
@@ -949,6 +1004,7 @@ exit 0
             "CALLS": str(home / "calls"),
             "PATH": self.search_path(tools, with_srt=with_srt),
         }
+        env.update(extra_env or {})
         env.pop("DSH_HOME", None)
         if dsh_home is not None:
             env["DSH_HOME"] = str(dsh_home)
@@ -3027,7 +3083,7 @@ exit 0
             store = (dsh_home / ".pnpm-store").resolve()
             self.assertTrue((store / "tmp").is_dir(), "the store and its TMPDIR are made before the run")
             self.assertEqual([str(build.resolve()), str(store)], seen[0]["filesystem"]["allowWrite"])
-            self.assertEqual([], seen[0]["filesystem"]["denyWrite"])
+            self.assertEqual(self.expected_deny_write(home), seen[0]["filesystem"]["denyWrite"])
             self.assertEqual([], seen[0]["filesystem"]["allowRead"])
             self.assertEqual(self.expected_deny(home), seen[0]["filesystem"]["denyRead"])
             self.assertEqual(["registry.npmjs.org", "cdn.sheetjs.com"], seen[0]["network"]["allowedDomains"])
@@ -3039,10 +3095,12 @@ exit 0
             self.assertTrue((home / "srt-settings-modes").read_text().startswith("-rw-------"))
             self.assertFalse(settings.exists(), "the settings file is removed after the run")
             [call] = self.srt_calls(home)
-            self.assertTrue(call.startswith(f"srt --settings {settings} -- /usr/bin/env -i HOME={home} PATH="), call)
-            self.assertIn(f" PATH={home}/bin:{home}/bin:/usr/bin:/bin ", call)
-            self.assertIn(f" npm_config_store_dir={store} ", call)
-            self.assertTrue(call.endswith(f"{self.ENV_PREFIX}pnpm run build"), call)
+            self.assertEqual(
+                f"srt --settings {settings} -- pnpm run build", call, "the command as given, nothing between"
+            )
+            [srt_env] = self.srt_environments(home)
+            self.assertEqual(f"{home}/bin:{home}/bin:/usr/bin:/bin", srt_env["PATH"])
+            self.assertEqual(str(store), srt_env["npm_config_store_dir"])
             self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host")
 
     def test_build_under_srt_refuses_an_existing_or_linked_settings_path_and_runs_nothing(self):
@@ -3105,7 +3163,7 @@ exit 0
                 )
                 self.assertEqual(status, result.returncode, result.stdout + result.stderr)
                 [call] = self.srt_calls(home)
-                self.assertTrue(call.endswith(f"{self.ENV_PREFIX}pnpm install --frozen-lockfile"), call)
+                self.assertEqual(f"srt --settings {settings} -- pnpm install --frozen-lockfile", call)
                 self.assertFalse(settings.exists(), "the settings file is removed whatever the exit")
 
     def test_build_under_srt_refuses_a_directory_that_is_a_symlink_a_file_or_absent_and_a_bad_host(self):
@@ -3176,6 +3234,216 @@ exit 0
                 self.assertEqual([], self.srt_calls(home))
                 self.assertFalse(settings.exists())
 
+    # U322b: the environment is sanitised outside srt, srt's implicit write grants are denied, and every decision of
+    # the helper has its failure injection (verdicts/U322-2feb0446.md: two P1, one P2).
+
+    def test_build_under_srt_sanitises_the_environment_outside_srt_and_the_child_keeps_what_srt_injects(self):
+        # P1 (:1941): `env -i` inside srt dropped HTTP_PROXY, HTTPS_PROXY and SANDBOX_RUNTIME, the variables srt
+        # injects and the only network path of its sandbox. Now env -i stands outside: the fake srt records the
+        # environment it starts from and runs the command as srt does (`inside`); the command is /usr/bin/env, so the
+        # result's stdout is the environment the build sees.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            build = dsh_home / "dsh/build"
+            build.mkdir(parents=True)
+            settings = dsh_home / "dsh/build.srt.json"
+            result = self.run_build_under_srt(
+                home,
+                f'"{build}" "{settings}" registry.npmjs.org -- /usr/bin/env',
+                dsh_home=dsh_home,
+                srt="inside; exit $?",
+                extra_env={
+                    "AWS_PROFILE": "operator",
+                    "GH_TOKEN": "not-for-the-build",
+                    "HTTP_PROXY": "http://caller.invalid:8080",
+                },
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            store = str((dsh_home / ".pnpm-store").resolve())
+            [srt_env] = self.srt_environments(home)
+            self.assertEqual(self.SRT_VARIABLES, frozenset(srt_env) - self.SHELL_OWN_VARIABLES, srt_env)
+            self.assertEqual(str(home), srt_env["HOME"])
+            self.assertEqual(f"{home}/bin:{home}/bin:/usr/bin:/bin", srt_env["PATH"])
+            self.assertEqual(str(dsh_home), srt_env["DSH_HOME"])
+            self.assertEqual(f"{store}/tmp", srt_env["CLAUDE_CODE_TMPDIR"])
+            for name in ("AWS_PROFILE", "GH_TOKEN", "HTTP_PROXY", "CALLS"):
+                self.assertNotIn(name, srt_env, f"{name} of the caller never reaches srt")
+            child = dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
+            self.assertEqual("http://localhost:3128", child["HTTP_PROXY"], "the proxy srt injected, not the caller's")
+            self.assertEqual("http://localhost:3128", child["HTTPS_PROXY"])
+            self.assertEqual("1", child["SANDBOX_RUNTIME"])
+            self.assertEqual(f"{store}/tmp", child["TMPDIR"], "srt hands its child the TMPDIR CLAUDE_CODE_TMPDIR names")
+            for name in self.SRT_VARIABLES:
+                self.assertEqual(srt_env[name], child[name], name)
+            for name in ("AWS_PROFILE", "GH_TOKEN"):
+                self.assertNotIn(name, child)
+            [call] = self.srt_calls(home)
+            self.assertEqual(f"srt --settings {settings} -- /usr/bin/env", call, "no env between srt and the command")
+
+    def test_build_under_srt_denies_srt_s_implicit_write_grants_and_points_the_tool_caches_and_logs_inside_the_roots(
+        self,
+    ):
+        # P1 (:1934): with denyWrite empty, srt 0.0.81 grants /tmp/claude, /private/tmp/claude and ~/.npm/_logs on its
+        # own (sandbox-utils.js SANDBOX_OWN_WRITE_PATHS and HOME_CONVENIENCE_WRITE_DIRS). The settings name them in
+        # physical form, and the environment points what would write there (srt's TMPDIR, pnpm's cache and state,
+        # npm's cache and logs) under the store, so nothing of the build asks for a host path outside the two roots.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            build = dsh_home / "dsh/build"
+            build.mkdir(parents=True)
+            settings = dsh_home / "dsh/build.srt.json"
+            result = self.run_build_under_srt(home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            [seen] = self.settings_seen(home)
+            store = str((dsh_home / ".pnpm-store").resolve())
+            self.assertEqual(self.expected_deny_write(home), seen["filesystem"]["denyWrite"])
+            self.assertIn("/tmp/claude", seen["filesystem"]["denyWrite"])
+            self.assertIn(f"{home.resolve()}/.npm/_logs", seen["filesystem"]["denyWrite"])
+            self.assertEqual(
+                [str(build.resolve()), store], seen["filesystem"]["allowWrite"], "the two roots, as before"
+            )
+            [srt_env] = self.srt_environments(home)
+            self.assertEqual(f"{store}/tmp", srt_env["TMPDIR"])
+            self.assertEqual(f"{store}/tmp", srt_env["CLAUDE_CODE_TMPDIR"], "what srt 0.0.81 hands its child as TMPDIR")
+            self.assertEqual(store, srt_env["npm_config_store_dir"])
+            self.assertEqual(f"{store}/cache", srt_env["npm_config_cache_dir"])
+            self.assertEqual(f"{store}/state", srt_env["npm_config_state_dir"])
+            self.assertEqual(f"{store}/npm-cache", srt_env["npm_config_cache"])
+            self.assertEqual(f"{store}/npm-cache/_logs", srt_env["npm_config_logs_dir"])
+            for name in ("XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME"):
+                self.assertTrue(srt_env[name].startswith(f"{store}/xdg-"), (name, srt_env[name]))
+            self.assertTrue((Path(store) / "tmp").is_dir(), "the TMPDIR inside the store exists before the run")
+            # Every variable that names a place for a tool's files names one under the store.
+            for name in self.SRT_VARIABLES - {"HOME", "PATH", "DSH_HOME", "npm_config_manage_package_manager_versions"}:
+                self.assertTrue(srt_env[name].startswith(store), (name, srt_env[name]))
+
+    def test_build_under_srt_refuses_when_the_git_common_directory_cannot_be_read(self):
+        # P2 (:1902): the read that names the checkout's git directories for the deny list. git answers on stdout as a
+        # healthy call would and fails; the refusal names the checkout, no settings file is written, no srt runs.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            build = dsh_home / "dsh/build"
+            build.mkdir(parents=True)
+            settings = dsh_home / "dsh/build.srt.json"
+            prelude = (
+                'git() { case "$*" in *--git-common-dir*) printf "%s\\n" "$HOME/not-a-git-dir"; return 128 ;; esac;'
+                ' command git "$@"; }'
+            )
+            result = self.run_build_under_srt(
+                home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"build_under_srt: the git common directory of {ROOT} could not be read; nothing run.", result.stderr
+            )
+            self.assertEqual([], self.srt_calls(home), "no srt run")
+            self.assertFalse(settings.exists(), "no settings written")
+            self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host")
+
+    def test_build_under_srt_refuses_when_a_physical_path_cannot_be_read_naming_it(self):
+        # P2 (:1902): the six pwd -P producers (HOME, /tmp, the directory, the store, the checkout, its git common
+        # directory). `pwd` is a shell function that fails for `-P` at one logical directory (the shell finds the
+        # function before its builtin, inside the read's subshell too) and runs the builtin everywhere else, so each
+        # producer is broken on its own; the control case proves the function changes nothing when no path matches.
+        common = subprocess.run(
+            ["git", "-C", str(ROOT), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            build = dsh_home / "dsh/build"
+            build.mkdir(parents=True)
+            settings = dsh_home / "dsh/build.srt.json"
+            store = dsh_home / ".pnpm-store"
+            cases = (
+                ("HOME", str(home), 1, f"the physical path of HOME {home} could not be read; nothing run."),
+                (
+                    "/tmp",
+                    "/tmp",
+                    1,
+                    "the physical path of /tmp could not be read, which the deny of srt's own /tmp/claude needs;"
+                    " nothing run.",
+                ),
+                ("the directory", str(build), 1, f"the physical path of {build} could not be read; nothing run."),
+                ("the store", str(store), 1, f"the physical path of {store} could not be read; nothing run."),
+                (
+                    "the checkout",
+                    str(ROOT),
+                    1,
+                    f"the physical path of the dotfiles checkout {ROOT} could not be read; nothing run.",
+                ),
+                (
+                    "the git common directory",
+                    common,
+                    1,
+                    f"the physical path of the git common directory {common} could not be read; nothing run.",
+                ),
+                ("none (control)", str(home / "elsewhere"), 0, ""),
+            )
+            for case, fail_at, status, message in cases:
+                with self.subTest(producer=case):
+                    for leftover in (home / "calls", home / "srt-env", home / "srt-settings.jsonl"):
+                        leftover.unlink(missing_ok=True)
+                    prelude = (
+                        'pwd() { if [ "${1-}" = -P ] && [ "$PWD" = "$FAIL_AT" ]; then return 1; fi; builtin pwd "$@"; }'
+                    )
+                    result = self.run_build_under_srt(
+                        home,
+                        f'"{build}" "{settings}" -- pnpm run build',
+                        dsh_home=dsh_home,
+                        prelude=prelude,
+                        extra_env={"FAIL_AT": fail_at},
+                    )
+                    self.assertEqual(status, result.returncode, result.stdout + result.stderr)
+                    if status == 0:
+                        self.assertEqual(1, len(self.srt_calls(home)), "the control case runs")
+                    else:
+                        self.assertIn(f"build_under_srt: {message}", result.stderr)
+                        self.assertEqual([], self.srt_calls(home), "no srt run")
+                    self.assertFalse(settings.exists(), "no settings file left")
+
+    def test_build_under_srt_refuses_when_the_settings_file_cannot_be_created_or_the_store_cannot_be_made(self):
+        # P2 (:1902): the settings creation (umask 077, noclobber) is a decision of its own, after every check: the
+        # open fails here because the parent is not writable, and the refusal names the path. The store's mkdir, the
+        # one write before the settings, likewise.
+        if os.geteuid() != 0:
+            with self.subTest(case="the settings parent is not writable"), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                build = dsh_home / "dsh/build"
+                build.mkdir(parents=True)
+                settings = dsh_home / "dsh/build.srt.json"
+                (dsh_home / "dsh").chmod(0o555)
+                try:
+                    result = self.run_build_under_srt(
+                        home, f'"{build}" "{settings}" registry.npmjs.org -- pnpm run build', dsh_home=dsh_home
+                    )
+                finally:
+                    (dsh_home / "dsh").chmod(0o755)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(
+                    f"build_under_srt: the settings file {settings} could not be created; nothing run.", result.stderr
+                )
+                self.assertEqual([], self.srt_calls(home), "no srt run")
+                self.assertFalse(settings.exists())
+                self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host")
+        with self.subTest(case="the store cannot be made"), tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            build = dsh_home / "dsh/build"
+            build.mkdir(parents=True)
+            settings = dsh_home / "dsh/build.srt.json"
+            prelude = 'mkdir() { case "$*" in *"/.pnpm-store/tmp") return 1 ;; esac; command mkdir "$@"; }'
+            result = self.run_build_under_srt(
+                home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(
+                f"build_under_srt: the pnpm store {dsh_home}/.pnpm-store could not be made; nothing run.", result.stderr
+            )
+            self.assertEqual([], self.srt_calls(home), "no srt run")
+            self.assertFalse(settings.exists(), "no settings written")
+
     def test_the_canary_refuses_the_install_when_the_fake_srt_lets_the_outside_write_land(self):
         # The U272 canary form: the probe writes beside the tree, outside both write roots, and must say write-denied.
         # Here the fake srt runs the command uncontained, so the write lands and the probe says write-open; the step
@@ -3240,6 +3508,13 @@ exit 0
             self.assertEqual([str((dsh_home / "profiles/thak").resolve()), store], seen[3]["filesystem"]["allowWrite"])
             for settings in seen:
                 self.assertEqual(self.expected_deny(home), settings["filesystem"]["denyRead"])
+                self.assertEqual(self.expected_deny_write(home), settings["filesystem"]["denyWrite"])
+            # U322b: every srt run starts from the sanitised set; run_step's own PAYLOAD and CALLS reach none of them.
+            environments = self.srt_environments(home)
+            self.assertEqual(4, len(environments))
+            for srt_env in environments:
+                self.assertEqual(self.SRT_VARIABLES, frozenset(srt_env) - self.SHELL_OWN_VARIABLES, srt_env)
+                self.assertEqual(str(home), srt_env["HOME"])
             self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host, outside srt")
             self.assertEqual(
                 ["current", install.name],

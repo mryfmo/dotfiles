@@ -1790,19 +1790,31 @@ function dsh_prune_older() {
 #   Every producer is read with its status (standing order 21): `type -P srt` (the kit pins
 #   npm:@anthropic-ai/sandbox-runtime in home/dot_mise/config.toml; it is on PATH under mise), `mise which pnpm` and
 #   `mise which node` under MISE_EXEC_AUTO_INSTALL=false (nothing is installed on the step's behalf, verdicts/U276b),
-#   pwd -P of HOME, of the directory and of the store, resolve_dotfiles_source_dir and `git rev-parse
+#   pwd -P of HOME, of /tmp, of the directory and of the store, resolve_dotfiles_source_dir and `git rev-parse
 #   --git-common-dir` for the checkout's git directories, and srt's own exit. The settings file is created here
 #   (umask 077, noclobber) at a path that holds nothing and is not a link, and is removed after the run; a path that
 #   exists is refused, never reused. The read denies are the rows hcom-seat's dsh role denies for every seat
 #   (seat_settings_render, by the same spellings, physical): ~/.ssh, ~/.gnupg, ~/.aws, ~/.netrc, ~/.docker, ~/.kube,
 #   ~/.config/gcloud, ~/.config/gh, ~/.codex, ~/.omp/agent, ~/.omp/profiles, ~/.hcom, ~/.local/state/hcom, the chezmoi
 #   sources, ~/Workspace, ~/.local/state/omp-seats, ~/.claude and ~/.claude.json, then the dotfiles checkout and its git
-#   common directory. Every path in the settings is clean (components of [A-Za-z0-9._@+-], none . or .., no trailing
-#   slash: srt reads a settings path as a pattern) and every host matches [A-Za-z0-9.-]; the JSON is written by the
-#   shell and no JSON tool runs. Inside, `/usr/bin/env -i` reduces the environment to HOME, a PATH of the mise pnpm
-#   and node directories and the system directories, a TMPDIR and the XDG directories under the store, the store
-#   itself (npm_config_store_dir) and pnpm's self-install off (npm_config_manage_package_manager_versions); a leading
-#   NAME=value word of the command reaches the command's environment through env.
+#   common directory. The write denies are the paths srt 0.0.81 grants on its own when `denyWrite` is empty
+#   (sandbox-utils.js SANDBOX_OWN_WRITE_PATHS and HOME_CONVENIENCE_WRITE_DIRS; hcom-seat names the same three as
+#   `srt_tmp_roots` and `~/.npm/_logs`): `/tmp/claude`, its physical spelling (`/private/tmp/claude` on macOS) and
+#   `~/.npm/_logs`, each in pwd -P form (regime-cutover U322b; `~/.claude/debug`, the fourth, srt drops itself under
+#   the `~/.claude` read deny). Every path in the settings is clean (components of [A-Za-z0-9._@+-], none . or .., no
+#   trailing slash: srt reads a settings path as a pattern) and every host matches [A-Za-z0-9.-]; the JSON is written
+#   by the shell and no JSON tool runs.
+# @description
+#   The environment is sanitised outside srt and completed inside (U322b): `/usr/bin/env -i` starts srt from HOME, a
+#   PATH of the mise pnpm and node directories and the system directories, DSH_HOME, and the variables that point every
+#   cache and log of the tools inside the two write roots (TMPDIR and CLAUDE_CODE_TMPDIR, which srt 0.0.81 reads as the
+#   TMPDIR it hands its child, at <store>/tmp; the XDG directories, pnpm's cache-dir and state-dir, npm's cache and
+#   logs-dir under the store; the store itself as npm_config_store_dir; pnpm's self-install off). srt 0.0.81 runs its
+#   child from its own environment plus what it injects (SANDBOX_RUNTIME, TMPDIR, HTTP_PROXY, HTTPS_PROXY and their
+#   lower-case forms, NO_PROXY), and its sandbox reaches the network through that proxy alone, so nothing between srt
+#   and the command may drop them: the command follows `--` as it was given, and a leading NAME=value word is read by
+#   the `bash -c` srt re-parses its argv with. No variable of the caller (a credential, a profile, a token) reaches srt
+#   or the build.
 # @arg $1 path The directory the command runs in and may write: a directory of this user that is not a symlink.
 # @arg $2 path The settings file to write: absent and not a link; created 0600 and removed after the run.
 # @arg $@ string The hosts the command may reach (none for a command that needs no network), then `--`, then the
@@ -1813,7 +1825,7 @@ function dsh_prune_older() {
 # @exitcode * The command's exit status under srt, passed through.
 #
 function build_under_srt() {
-    local dir="$1" settings="$2" hosts=() host srt pnpm_bin node_bin home_real dir_real store store_real source_root source_real common common_real path row deny=() write_json='' deny_json='' hosts_json='' json status=0
+    local dir="$1" settings="$2" hosts=() host srt pnpm_bin node_bin home_real tmp_real dir_real store store_real source_root source_real common common_real path row deny=() deny_write=() write_json='' deny_json='' deny_write_json='' hosts_json='' json status=0
     shift 2
     while [ $# -gt 0 ] && [ "$1" != -- ]; do
         hosts+=("$1")
@@ -1869,6 +1881,12 @@ function build_under_srt() {
         printf 'build_under_srt: the physical path of HOME %s could not be read; nothing run.\n' "${HOME}" >&2
         return 1
     }
+    # /tmp is resolved for the deny of srt's own temporary root below: `/tmp/claude` and, where /tmp is a link (macOS:
+    # /private/tmp), the spelling the kernel sees; `~/.npm/_logs` takes HOME's physical path.
+    tmp_real="$(cd /tmp && pwd -P)" || {
+        printf 'build_under_srt: the physical path of /tmp could not be read, which the deny of srt'\''s own /tmp/claude needs; nothing run.\n' >&2
+        return 1
+    }
     if [ -L "${dir}" ] || [ ! -d "${dir}" ] || [ ! -O "${dir}" ]; then
         printf 'build_under_srt: %s is not a directory of this user, or is a symlink; nothing run.\n' "${dir}" >&2
         return 1
@@ -1915,7 +1933,15 @@ function build_under_srt() {
         deny+=("${home_real}/${row}")
     done
     deny+=("${source_real}" "${common_real}")
-    for path in "${dir_real}" "${store_real}" "${deny[@]}"; do
+    # srt 0.0.81's implicit write grants, closed by name (hcom-seat's form for the operator's Claude Code state, U190b):
+    # its own TMPDIR root in both spellings where they differ, and npm's log directory under the home.
+    deny_write=(/tmp/claude)
+    case ${tmp_real} in # lint-comparisons: allow the spelling test says whether /tmp has a second, physical spelling
+    /tmp) ;;
+    *) deny_write+=("${tmp_real}/claude") ;;
+    esac
+    deny_write+=("${home_real}/.npm/_logs")
+    for path in "${dir_real}" "${store_real}" "${deny[@]}" "${deny_write[@]}"; do
         if [[ ! ${path} =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || [[ /${path}/ == */./* ]] || [[ /${path}/ == */../* ]]; then # lint-comparisons: allow a component test on one path, no path compare
             printf 'build_under_srt: %s is not a clean absolute path (components of [A-Za-z0-9._@+-], none . or .., no trailing slash), which the srt settings need; nothing run.\n' "${path}" >&2
             return 1
@@ -1930,19 +1956,25 @@ function build_under_srt() {
     done
     for path in "${dir_real}" "${store_real}"; do write_json+="${write_json:+,}\"${path}\""; done
     for path in "${deny[@]}"; do deny_json+="${deny_json:+,}\"${path}\""; done
+    for path in "${deny_write[@]}"; do deny_write_json+="${deny_write_json:+,}\"${path}\""; done
     json="{\"network\":{\"allowedDomains\":[${hosts_json}],\"deniedDomains\":[],\"allowUnixSockets\":[],\"allowMachLookup\":[\"com.apple.trustd.agent\"],\"allowLocalBinding\":false}"
-    json+=",\"filesystem\":{\"denyRead\":[${deny_json}],\"allowRead\":[],\"allowWrite\":[${write_json}],\"denyWrite\":[]},\"allowPty\":false}"
+    json+=",\"filesystem\":{\"denyRead\":[${deny_json}],\"allowRead\":[],\"allowWrite\":[${write_json}],\"denyWrite\":[${deny_write_json}]},\"allowPty\":false}"
     # noclobber: the file is created by this open or the open fails, so a path that appeared since the check above is
     # refused too; umask 077 gives it 0600.
     (umask 077 && set -C && printf '%s\n' "${json}" > "${settings}") || {
         printf 'build_under_srt: the settings file %s could not be created; nothing run.\n' "${settings}" >&2
         return 1
     }
-    (cd "${dir_real}" && exec "${srt}" --settings "${settings}" -- /usr/bin/env -i "HOME=${HOME}" \
-        "PATH=${pnpm_bin%/*}:${node_bin%/*}:/usr/bin:/bin" "TMPDIR=${store_real}/tmp" \
+    # env -i stands outside srt (verdicts/U322 P1 :1941): srt starts from these variables alone and its child gets them
+    # plus what srt injects; the command after -- is handed over as given.
+    (cd "${dir_real}" && exec /usr/bin/env -i "HOME=${HOME}" "PATH=${pnpm_bin%/*}:${node_bin%/*}:/usr/bin:/bin" \
+        "DSH_HOME=${DSH_HOME}" "TMPDIR=${store_real}/tmp" "CLAUDE_CODE_TMPDIR=${store_real}/tmp" \
         "XDG_CACHE_HOME=${store_real}/xdg-cache" "XDG_CONFIG_HOME=${store_real}/xdg-config" \
         "XDG_DATA_HOME=${store_real}/xdg-data" "XDG_STATE_HOME=${store_real}/xdg-state" \
-        "npm_config_store_dir=${store_real}" npm_config_manage_package_manager_versions=false "$@") || status=$?
+        "npm_config_store_dir=${store_real}" "npm_config_cache_dir=${store_real}/cache" \
+        "npm_config_state_dir=${store_real}/state" "npm_config_cache=${store_real}/npm-cache" \
+        "npm_config_logs_dir=${store_real}/npm-cache/_logs" npm_config_manage_package_manager_versions=false \
+        "${srt}" --settings "${settings}" -- "$@") || status=$?
     rm -f "${settings}" || printf 'WARN: build_under_srt: the settings file %s could not be removed; it grants nothing by itself, and the next run refuses it until it is moved aside.\n' "${settings}" >&2
     return "${status}"
 }

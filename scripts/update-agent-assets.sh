@@ -1782,10 +1782,11 @@ function dsh_prune_older() {
 #
 # @description Run one command of the DeepSeek harness step inside srt (regime-cutover U322). The upstream tag's install
 #   and build scripts and the profile's plugin install are the only upstream code `make update` executes, and each
-#   runs under `srt --settings <file>` whose settings this function writes: writes land under the build directory and
-#   the pnpm store or fail with srt's EPERM, reads of the credential roots fail, and the network reaches the hosts the
-#   caller names and nothing else (no wildcard, no local binding, no nested user namespace, no pty). The form is
-#   update_dsh_superagent's build on PR 711 (U317b), whose next round adopts this function.
+#   runs under `srt --settings <file>` whose settings this function writes: writes land under the build directory,
+#   the pnpm store and pnpm's store operation lock directory (the three write roots) or fail with srt's EPERM, reads
+#   of the credential roots fail, and the network reaches the hosts the caller names and nothing else (no wildcard,
+#   no local binding, no nested user namespace, no pty). The form is update_dsh_superagent's build on PR 711 (U317b),
+#   whose next round adopts this function.
 # @description
 #   Every producer is read with its status (standing order 21): `mise which srt`, `mise which pnpm` and
 #   `mise which node` under MISE_EXEC_AUTO_INSTALL=false (the kit pins npm:@anthropic-ai/sandbox-runtime, pnpm and
@@ -1793,9 +1794,10 @@ function dsh_prune_older() {
 #   from PATH, where main puts the mise shims first: the shim, started by the `env -i` below with XDG_STATE_HOME
 #   inside the store, finds no trust store there and exits 1 with `mise ERROR Config files ... are not trusted`,
 #   regime-cutover U354),
-#   pwd -P of HOME, of /tmp, of /private/tmp where it is a directory, of the directory and of the store,
-#   resolve_dotfiles_source_dir and `git rev-parse --git-common-dir` for the checkout's git directories, and srt's own
-#   exit. The settings file is created here
+#   pwd -P of HOME, of /tmp, of /private/tmp where it is a directory, of the directory and of the store, `id -u` (the
+#   uid names pnpm's store operation lock directory, U363), resolve_dotfiles_source_dir and
+#   `git rev-parse --git-common-dir` for the checkout's git directories, and srt's own exit. The settings file is
+#   created here
 #   (umask 077, noclobber) at a path that holds nothing and is not a link, and is removed after the run; a path that
 #   exists is refused, never reused. The read denies are the rows hcom-seat's dsh role denies for every seat
 #   (seat_settings_render, by the same spellings, physical): ~/.ssh, ~/.gnupg, ~/.aws, ~/.netrc, ~/.docker, ~/.kube,
@@ -1825,13 +1827,17 @@ function dsh_prune_older() {
 # @arg $2 path The settings file to write: absent and not a link; created 0600 and removed after the run.
 # @arg $@ string The hosts the command may reach (none for a command that needs no network), then `--`, then the
 #   command and its arguments.
-# @env DSH_HOME The opt-in directory; ${DSH_HOME}/.pnpm-store is the second write root, made here when absent.
+# @env DSH_HOME The opt-in directory; ${DSH_HOME}/.pnpm-store is the second write root, made here when absent. The
+#   third is pnpm's store operation lock directory, `<physical /tmp>/pnpm-store-operation-locks-<uid>` (pnpm 12 keeps
+#   its lock there whatever TMPDIR, XDG_STATE_HOME or store-dir say; the macOS unified log's measured denial, U363),
+#   made here 0700 when absent, accepted when it is a directory of this user, refused by name otherwise, and left in
+#   place after the run.
 # @stdout The command's.
 # @exitcode 1 A producer, a check or the settings write refused before the run; the line names it.
 # @exitcode * The command's exit status under srt, passed through.
 #
 function build_under_srt() {
-    local dir="$1" settings="$2" hosts=() host srt pnpm_bin node_bin home_real tmp_real tmp_second tmp_second_real='' dir_real store store_real source_root source_real common common_real path row spelling spellings=() deny=() deny_write=() write_json='' deny_json='' deny_write_json='' hosts_json='' json status=0
+    local dir="$1" settings="$2" hosts=() host srt pnpm_bin node_bin home_real tmp_real tmp_second tmp_second_real='' dir_real store store_real uid lock_dir source_root source_real common common_real path row spelling spellings=() deny=() deny_write=() write_json='' deny_json='' deny_write_json='' hosts_json='' json status=0
     shift 2
     while [ $# -gt 0 ] && [ "$1" != -- ]; do
         hosts+=("$1")
@@ -1927,6 +1933,35 @@ function build_under_srt() {
         printf 'build_under_srt: the physical path of %s could not be read; nothing run.\n' "${store}" >&2
         return 1
     }
+    # pnpm 12.8.1 opens its store operation lock at `<tmp>/pnpm-store-operation-locks-<uid>` under the system temporary
+    # directory, whatever TMPDIR, XDG_STATE_HOME or store-dir say (measured: `Sandbox: pnpm deny(1) file-write-create
+    # /private/tmp/pnpm-store-operation-locks-501`, the macOS unified log, regime-cutover U363), and srt denies what no
+    # root grants, so every real pnpm install failed at its first lock. The directory is made here from the physical
+    # temporary directory read above (no second /tmp word) and this uid, 0700 as pnpm itself makes it, and granted as
+    # the third write root; an entry there that is not a directory of this user (a link any user can plant under the
+    # sticky /tmp, a file) is refused by name, so no other process plants a lock the build follows. It stays after the
+    # run: pnpm reuses it and it holds lock files and nothing else.
+    uid="$(id -u)" || {
+        printf 'build_under_srt: the uid could not be read (id -u failed), which names pnpm'\''s store operation lock directory; nothing run.\n' >&2
+        return 1
+    }
+    if [[ ! ${uid} =~ ^[0-9]+$ ]]; then
+        printf 'build_under_srt: id -u answered %s, not a uid; nothing run.\n' "${uid}" >&2
+        return 1
+    fi
+    lock_dir="${tmp_real}/pnpm-store-operation-locks-${uid}"
+    # mkdir makes it or fails on an existing entry (a symlink included; it is never followed); the entry it failed on
+    # must then be a directory of this user, pnpm's own earlier make.
+    if ! (umask 077 && mkdir "${lock_dir}" 2> /dev/null); then
+        if [ -L "${lock_dir}" ]; then
+            printf 'build_under_srt: %s is a symlink; pnpm'\''s store operation lock directory must be a directory of this user (move it aside and rerun make update); nothing run.\n' "${lock_dir}" >&2
+            return 1
+        fi
+        if [ ! -d "${lock_dir}" ] || [ ! -O "${lock_dir}" ]; then
+            printf 'build_under_srt: %s could not be made and is not a directory of this user (pnpm keeps its store operation lock there; move the entry aside and rerun make update); nothing run.\n' "${lock_dir}" >&2
+            return 1
+        fi
+    fi
     source_root="$(resolve_dotfiles_source_dir)" || {
         printf 'build_under_srt: the dotfiles checkout could not be resolved, so its git directories cannot be denied; nothing run.\n' >&2
         return 1
@@ -1964,7 +1999,7 @@ function build_under_srt() {
         deny_write+=("${spelling}")
     done
     deny_write+=("${home_real}/.npm/_logs")
-    for path in "${dir_real}" "${store_real}" "${deny[@]}" "${deny_write[@]}"; do
+    for path in "${dir_real}" "${store_real}" "${lock_dir}" "${deny[@]}" "${deny_write[@]}"; do
         if [[ ! ${path} =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || [[ /${path}/ == */./* ]] || [[ /${path}/ == */../* ]]; then # lint-comparisons: allow a component test on one path, no path compare
             printf 'build_under_srt: %s is not a clean absolute path (components of [A-Za-z0-9._@+-], none . or .., no trailing slash), which the srt settings need; nothing run.\n' "${path}" >&2
             return 1
@@ -1977,7 +2012,7 @@ function build_under_srt() {
         fi
         hosts_json+="${hosts_json:+,}\"${host}\""
     done
-    for path in "${dir_real}" "${store_real}"; do write_json+="${write_json:+,}\"${path}\""; done
+    for path in "${dir_real}" "${store_real}" "${lock_dir}"; do write_json+="${write_json:+,}\"${path}\""; done
     for path in "${deny[@]}"; do deny_json+="${deny_json:+,}\"${path}\""; done
     for path in "${deny_write[@]}"; do deny_write_json+="${deny_write_json:+,}\"${path}\""; done
     json="{\"network\":{\"allowedDomains\":[${hosts_json}],\"deniedDomains\":[],\"allowUnixSockets\":[],\"allowMachLookup\":[\"com.apple.trustd.agent\"],\"allowLocalBinding\":false}"

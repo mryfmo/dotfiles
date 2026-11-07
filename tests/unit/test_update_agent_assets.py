@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -67,6 +68,14 @@ from codex_plugin_fixture import PONYTAIL, install_ponytail_copy, reviewed_conte
 from scratch_git import git_init
 
 OFFICIAL_CLONE = REVIEWED / "marketplaces/claude-plugins-official"
+
+
+def pnpm_lock_directory(tmp_real: str | None = None) -> str:
+    """pnpm 12's store operation lock directory, the third write root build_under_srt grants (regime-cutover U363):
+    `pnpm-store-operation-locks-<uid>` under the physical /tmp (or the stand-in a test's prelude makes `pwd -P` of /tmp
+    answer). pnpm makes it on its own outside srt (0700, this user's), so a run finds it present or makes it the same
+    way."""
+    return f"{tmp_real or Path('/tmp').resolve()}/pnpm-store-operation-locks-{os.getuid()}"
 
 
 def setUpModule() -> None:
@@ -907,6 +916,19 @@ exit 0
         test = 'test() { if [ "${1-}" = -d ] && [ "${2-}" = /private/tmp ]; then return 0; fi; builtin test "$@"; }; '
         cd = f'cd() {{ if [ "${{1-}}" = /private/tmp ]; then builtin cd "{fixture}"; return; fi; builtin cd "$@"; }}; '
         return pwd + test + cd
+
+    def tmp_stood_in(self, home: Path) -> tuple[str, Path]:
+        """A prelude for run_build_under_srt whose `pwd -P` of /tmp answers a fixture directory under the scratch HOME
+        (every other pwd runs the builtin), so a test plants and inspects entries under build_under_srt's physical
+        temporary directory without touching the host's own (U363); returns the prelude and the fixture."""
+        fixture = home / "tmp-real"
+        fixture.mkdir()
+        prelude = (
+            'pwd() { if [ "${1-}" = -P ]; then case "$PWD" in /tmp) printf "%s\\n" "'
+            + str(fixture)
+            + '"; return 0 ;; esac; fi; builtin pwd "$@"; }; '
+        )
+        return prelude, fixture
 
     def archive(
         self, home: Path, version: str | None = None, lockfile: str | None = "lockfileVersion: '9.0'\n"
@@ -3116,7 +3138,9 @@ exit 0
             self.assertEqual(1, len(seen), seen)
             store = (dsh_home / ".pnpm-store").resolve()
             self.assertTrue((store / "tmpdir").is_dir(), "the store and its TMPDIR are made before the run")
-            self.assertEqual([str(build.resolve()), str(store)], seen[0]["filesystem"]["allowWrite"])
+            self.assertEqual(
+                [str(build.resolve()), str(store), pnpm_lock_directory()], seen[0]["filesystem"]["allowWrite"]
+            )
             self.assertEqual(self.expected_deny_write(home), seen[0]["filesystem"]["denyWrite"])
             self.assertEqual([], seen[0]["filesystem"]["allowRead"])
             self.assertEqual(self.expected_deny(home), seen[0]["filesystem"]["denyRead"])
@@ -3229,7 +3253,9 @@ exit 0
             self.assertEqual(f"srt --settings {settings} -- pnpm run build", call)
             [seen] = self.settings_seen(home)
             store = (dsh_home / ".pnpm-store").resolve()
-            self.assertEqual([str(build.resolve()), str(store)], seen["filesystem"]["allowWrite"])
+            self.assertEqual(
+                [str(build.resolve()), str(store), pnpm_lock_directory()], seen["filesystem"]["allowWrite"]
+            )
             self.assertEqual(self.expected_deny(home), seen["filesystem"]["denyRead"])
             self.assertEqual(self.expected_deny_write(home), seen["filesystem"]["denyWrite"])
             self.assertEqual(["registry.npmjs.org"], seen["network"]["allowedDomains"])
@@ -3392,7 +3418,9 @@ exit 0
             self.assertIn("/tmp/claude", seen["filesystem"]["denyWrite"])
             self.assertIn(f"{home.resolve()}/.npm/_logs", seen["filesystem"]["denyWrite"])
             self.assertEqual(
-                [str(build.resolve()), store], seen["filesystem"]["allowWrite"], "the two roots, as before"
+                [str(build.resolve()), store, pnpm_lock_directory()],
+                seen["filesystem"]["allowWrite"],
+                "the two roots and pnpm's lock directory (U363), as before",
             )
             [srt_env] = self.srt_environments(home)
             self.assertEqual(f"{store}/tmpdir", srt_env["TMPDIR"])
@@ -3538,6 +3566,108 @@ exit 0
             [seen] = self.settings_seen(home)
             self.assertEqual(["/tmp/claude", f"{home.resolve()}/.npm/_logs"], seen["filesystem"]["denyWrite"])
             self.assertEqual([], [row for row in seen["filesystem"]["denyWrite"] if row.startswith("/private/tmp")])
+
+    def test_build_under_srt_makes_pnpm_s_store_operation_lock_directory_under_the_physical_tmp_and_grants_it(self):
+        # U363: pnpm 12.8.1 keeps its store operation lock at <tmp>/pnpm-store-operation-locks-<uid> whatever TMPDIR,
+        # XDG_STATE_HOME or store-dir say (the macOS unified log: `Sandbox: pnpm(67566) deny(1) file-write-create
+        # /private/tmp/pnpm-store-operation-locks-501`), and no write root covered it, so every real pnpm install
+        # inside srt failed with ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK. The function makes the directory (0700, this
+        # user's own) under the physical temporary directory before the run and grants it as the third write root; it
+        # stays after the run and a second run finds it. The first case stands a fixture in for /tmp so the host's own
+        # directory is neither read nor made; the second is the host's shape.
+        for case in ("a stand-in for /tmp", "the host's /tmp"):
+            with self.subTest(tmp=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                build = dsh_home / "dsh/build"
+                build.mkdir(parents=True)
+                settings = dsh_home / "dsh/build.srt.json"
+                if case == "a stand-in for /tmp":
+                    prelude, fixture = self.tmp_stood_in(home)
+                    lock_dir = Path(pnpm_lock_directory(str(fixture)))
+                    self.assertFalse(lock_dir.exists(), "absent before the first run")
+                else:
+                    prelude, lock_dir = None, Path(pnpm_lock_directory())
+                result = self.run_build_under_srt(
+                    home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                [seen] = self.settings_seen(home)
+                store = str((dsh_home / ".pnpm-store").resolve())
+                self.assertEqual([str(build.resolve()), store, str(lock_dir)], seen["filesystem"]["allowWrite"])
+                self.assertTrue(lock_dir.is_dir() and not lock_dir.is_symlink(), f"{lock_dir} is a directory")
+                self.assertEqual(os.getuid(), lock_dir.stat().st_uid, "this user's own")
+                self.assertFalse(settings.exists(), "the settings file is removed after the run")
+                [srt_env] = self.srt_environments(home)
+                self.assertEqual(f"{store}/tmpdir", srt_env["TMPDIR"], "the TMPDIR inside the store, as before")
+                if case != "a stand-in for /tmp":
+                    continue
+                self.assertEqual(0o700, stat.S_IMODE(lock_dir.stat().st_mode), "made 0700")
+                self.assertEqual([], list(lock_dir.iterdir()), "made empty; the step writes nothing there itself")
+                again = self.run_build_under_srt(
+                    home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+                )
+                self.assertEqual(0, again.returncode, again.stdout + again.stderr)
+                self.assertEqual(2, len(self.settings_seen(home)), "the second run finds the directory and runs")
+                self.assertEqual(str(lock_dir), self.settings_seen(home)[1]["filesystem"]["allowWrite"][2])
+
+    def test_build_under_srt_refuses_a_planted_entry_at_pnpm_s_lock_directory_path_and_a_uid_it_cannot_read(self):
+        # TRUST of U363: the lock directory is this user's own, so no other process plants a lock the build follows. A
+        # link at its path (any user can make one under the sticky /tmp), a regular file there, or a parent the
+        # directory cannot be made in, is refused by name before any settings file is written and before srt runs;
+        # `id -u`, the producer of the directory's name, refuses on failure and on an answer that is no uid.
+        cases = ("a symlink", "a regular file", "an unwritable parent", "id -u fails", "id -u answers no uid")
+        for case in cases:
+            if case == "an unwritable parent" and os.geteuid() == 0:
+                continue
+            with self.subTest(planted=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                build = dsh_home / "dsh/build"
+                build.mkdir(parents=True)
+                settings = dsh_home / "dsh/build.srt.json"
+                prelude, fixture = self.tmp_stood_in(home)
+                lock_dir = Path(pnpm_lock_directory(str(fixture)))
+                not_ours = (
+                    f"{lock_dir} could not be made and is not a directory of this user (pnpm keeps its store"
+                    " operation lock there; move the entry aside and rerun make update); nothing run."
+                )
+                if case == "a symlink":
+                    (home / "elsewhere").mkdir()
+                    lock_dir.symlink_to(home / "elsewhere")
+                    message = (
+                        f"{lock_dir} is a symlink; pnpm's store operation lock directory must be a directory of this"
+                        " user (move it aside and rerun make update); nothing run."
+                    )
+                elif case == "a regular file":
+                    lock_dir.write_text("")
+                    message = not_ours
+                elif case == "an unwritable parent":
+                    fixture.chmod(0o500)
+                    message = not_ours
+                elif case == "id -u fails":
+                    prelude += "id() { return 1; }; "
+                    message = (
+                        "the uid could not be read (id -u failed), which names pnpm's store operation lock directory;"
+                        " nothing run."
+                    )
+                else:
+                    prelude += 'id() { printf "nobody\\n"; }; '
+                    message = "id -u answered nobody, not a uid; nothing run."
+                try:
+                    result = self.run_build_under_srt(
+                        home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+                    )
+                finally:
+                    fixture.chmod(0o755)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"build_under_srt: {message}", result.stderr)
+                self.assertEqual([], self.srt_calls(home), "no srt run")
+                self.assertFalse(settings.exists(), "no settings file written")
+                self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host")
+                if case == "a symlink":
+                    self.assertTrue(lock_dir.is_symlink(), "the planted link is left as it was")
+                    self.assertEqual([], list((home / "elsewhere").iterdir()), "nothing written through it")
+                elif case in ("id -u fails", "id -u answers no uid"):
+                    self.assertFalse(lock_dir.exists(), "no directory made under a name the uid did not give")
 
     def test_build_under_srt_refuses_when_a_resolver_of_the_deny_list_fails_naming_it(self):
         # verdicts/U322c P2 (:1914): the resolver reads the pwd injections above do not reach. The `cd` of the deny
@@ -3694,10 +3824,15 @@ exit 0
             self.assertEqual(4, len(seen))
             self.assertEqual([], seen[0]["network"]["allowedDomains"], "the canary needs no network")
             for settings in seen[:3]:
-                self.assertEqual([str(install.resolve()), store], settings["filesystem"]["allowWrite"])
+                self.assertEqual(
+                    [str(install.resolve()), store, pnpm_lock_directory()], settings["filesystem"]["allowWrite"]
+                )
             for settings in seen[1:]:
                 self.assertEqual(["registry.npmjs.org"], settings["network"]["allowedDomains"])
-            self.assertEqual([str((dsh_home / "profiles/thak").resolve()), store], seen[3]["filesystem"]["allowWrite"])
+            self.assertEqual(
+                [str((dsh_home / "profiles/thak").resolve()), store, pnpm_lock_directory()],
+                seen[3]["filesystem"]["allowWrite"],
+            )
             for settings in seen:
                 self.assertEqual(self.expected_deny(home), settings["filesystem"]["denyRead"])
                 self.assertEqual(self.expected_deny_write(home), settings["filesystem"]["denyWrite"])
@@ -6624,12 +6759,12 @@ class DshSuperagentTest(unittest.TestCase):
     def assert_settings_shape(
         self, settings: dict, home: Path, write: list[str], hosts: list[str] | None = None
     ) -> None:
-        """build_under_srt's one settings shape, read back for the step's runs: the given write roots (physical) and
-        nothing else, the dsh role's credential rows and the checkout denied for read, srt's implicit write grants
-        denied by name, the hosts given (the registry alone for a pnpm run, none for the canary), no binding, no
-        socket, no pty."""
+        """build_under_srt's one settings shape, read back for the step's runs: the given write roots (physical) then
+        pnpm's store operation lock directory (U363) and nothing else, the dsh role's credential rows and the checkout
+        denied for read, srt's implicit write grants denied by name, the hosts given (the registry alone for a pnpm
+        run, none for the canary), no binding, no socket, no pty."""
         home_real = home.resolve()
-        self.assertEqual(write, settings["filesystem"]["allowWrite"])
+        self.assertEqual([*write, pnpm_lock_directory()], settings["filesystem"]["allowWrite"])
         deny_read = settings["filesystem"]["denyRead"]
         for row in self.CREDENTIAL_ROOTS:
             self.assertIn(f"{home_real}/{row}", deny_read)

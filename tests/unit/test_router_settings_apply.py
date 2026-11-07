@@ -46,6 +46,41 @@ def hosts_yml(value: str) -> str:
     return "github.com:\n    user: agent-account\n    git_protocol: https\n    oauth_" + "token: " + value + "\n"
 
 
+# A second value, for the same account's row under `users:` (U353c): the wrapper must hand gh the host-level row alone.
+HOSTS_USERS_VALUE = "fake_" + "u353c_users_row_fedcba9876543210"
+
+
+def hosts_yml_today(value: str, users_value: str | None = None, indent: int = 4) -> str:
+    """`hosts.yml` as gh 2.40 and later writes it for one account (`gh auth login --insecure-storage`): the active
+    account's rows at the host block's own depth (`indent` spaces; gh writes four) and every account's `oauth_token:`
+    again under `users: <account>:`, deeper; the `users:` block before the host-level row, so the order of the rows
+    proves nothing. `users_value` lets the deeper row differ, which shows which row reached gh."""
+    pad = " " * indent
+    users_value = value if users_value is None else users_value
+    return (
+        "github.com:\n"
+        + f"{pad}git_protocol: https\n"
+        + f"{pad}users:\n"
+        + f"{pad * 2}agent-account:\n"
+        + f"{pad * 3}oauth_"
+        + f"token: {users_value}\n"
+        + f"{pad}user: agent-account\n"
+        + f"{pad}oauth_"
+        + f"token: {value}\n"
+    )
+
+
+def hosts_yml_users_only(value: str) -> str:
+    """A `github.com:` block holding the `users:` rows alone, no row at the block's own depth: gh's file after the
+    active account was logged out (`gh auth logout` keeps the other accounts under `users:`), so no active login."""
+    return (
+        "github.com:\n    git_protocol: https\n    users:\n        agent-account:\n            oauth_"
+        + "token: "
+        + value
+        + "\n"
+    )
+
+
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 PROFILE = ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"
 API = "/orchestrator/api/"
@@ -603,7 +638,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         shared = self.dir / "elsewhere-hosts.yml"
         shared.write_text(hosts_yml(HOSTS_OAUTH_VALUE))
         shared.chmod(0o600)
-        no_row = f"router-gh: {hosts_phys} names no oauth_token for github.com; the agent account's login inside the root is the operator's step (docs/engagement-handout.md)"
+        no_row = f"router-gh: {hosts_phys} names no active login for github.com: no oauth_token row at the host block's own depth (the rows under users: are not read); the agent account's login inside the root is the operator's step (docs/engagement-handout.md)"
         cases = (
             ("a link", None, 0o600, f"router-gh: {hosts_phys} is a symbolic link; the login must be a regular file inside the credential root"),
             ("a group-readable file", hosts_yml(HOSTS_OAUTH_VALUE), 0o640, f"router-gh: {hosts_phys} has mode 640; the login must be readable by this user alone (0600)"),
@@ -623,6 +658,172 @@ class RouterSettingsApplyTest(unittest.TestCase):
                 self.assertEqual(run.stderr, message + "\n")
                 self.assertNotIn(HOSTS_OAUTH_VALUE, run.stderr, "no refusal prints the value")
                 self.assertFalse(record.exists(), "gh did not run")
+
+    def test_the_wrapper_reads_the_active_hosts_row_alone_from_todays_hosts_yml_and_refuses_users_rows_alone(self):
+        """U353c (verdict U353b-9c504ad9 P1 `:127`): gh 2.40 and later writes one login as the active account's rows at
+        the host block's own depth and the same account's `oauth_token:` again under `users: <account>:`, deeper; the
+        round-2 reader counted both and refused the documented setup. The wrapper measures the block's depth from its
+        first row and reads the `oauth_token:` rows at that depth alone: today's file runs gh once with `GH_TOKEN` the
+        host-level value (the deeper row's value never reaches gh), at four spaces as gh writes it and at two; a block
+        holding `users:` rows alone is refused naming no active login, and two host-level rows are refused as before;
+        on a refusal gh never runs and neither value is printed."""
+        fake, record = self.fake_gh()
+        dsh_home = self.dir / "dsh-home"
+        root = dsh_home / "router-credentials"
+        root.mkdir(parents=True)
+        env = {**self.env, "PATH": f"{fake}:{self.env['PATH']}", "DSH_HOME": str(dsh_home)}
+        hosts_phys = root.resolve() / "gh/hosts.yml"
+
+        def wrapper() -> subprocess.CompletedProcess:
+            return subprocess.run(
+                [str(WRAPPER), "api", "user"], capture_output=True, text=True, check=False, env=env, timeout=60
+            )
+
+        for indent in (4, 2):
+            with self.subTest(indent=indent):
+                self.place_login(root, hosts_yml_today(HOSTS_OAUTH_VALUE, HOSTS_USERS_VALUE, indent))
+                run = wrapper()
+                self.assertEqual((run.returncode, run.stderr), (7, ""), run.stdout)
+                self.assertEqual(
+                    record.read_text(), f"api user\n{root.resolve()}/gh\n{HOSTS_OAUTH_VALUE}\nunset\nunset\n"
+                )
+                self.assertNotIn(HOSTS_USERS_VALUE, record.read_text(), "the users: row never reaches gh")
+                record.unlink()
+        cases = (
+            (
+                "users rows alone",
+                hosts_yml_users_only(HOSTS_USERS_VALUE),
+                f"router-gh: {hosts_phys} names no active login for github.com: no oauth_token row at the host block's own depth (the rows under users: are not read); the agent account's login inside the root is the operator's step (docs/engagement-handout.md)",
+            ),
+            (
+                "two host-level rows",
+                hosts_yml_today(HOSTS_OAUTH_VALUE, HOSTS_USERS_VALUE) + hosts_yml(HOSTS_USERS_VALUE).splitlines()[-1] + "\n",
+                f"router-gh: {hosts_phys} names 2 oauth_token rows for github.com at the host block's own depth; exactly one is read",
+            ),
+        )  # fmt: skip
+        for case, text, message in cases:
+            with self.subTest(case=case):
+                self.place_login(root, text)
+                run = wrapper()
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, message + "\n")
+                self.assertNotIn(HOSTS_OAUTH_VALUE, run.stderr, "no refusal prints a value")
+                self.assertNotIn(HOSTS_USERS_VALUE, run.stderr, "no refusal prints a value")
+                self.assertFalse(record.exists(), "gh did not run")
+
+    def test_the_wrapper_holds_the_gh_directory_of_the_root_against_a_link_a_file_and_an_absence(self):
+        """U353c (verdict U353b-9c504ad9 P1 `:106`): round 2 held the root and the `hosts.yml` leaf against links, so
+        `<root>/gh` as a symbolic link to an outside directory of this user (`~/.config/gh`, say) passed and its login
+        reached gh as `GH_TOKEN`, a credential outside the promised root. The wrapper now walks `<root>`, `<root>/gh`,
+        `<root>/gh/hosts.yml` in order, each held by its own test before anything is read: a linked `<root>/gh` is
+        refused naming it and gh never runs, a regular file there is refused, an absent one is the state before the
+        operator's step and is refused naming that step; the leaf's refusals of round 2 stand (the test above)."""
+        fake, record = self.fake_gh()
+        dsh_home = self.dir / "dsh-home"
+        root = dsh_home / "router-credentials"
+        root.mkdir(parents=True)
+        env = {**self.env, "PATH": f"{fake}:{self.env['PATH']}", "DSH_HOME": str(dsh_home)}
+        gh_dir = root / "gh"
+        gh_phys = root.resolve() / "gh"
+        outside = self.dir / "outside-gh"
+        outside.mkdir()
+        (outside / "hosts.yml").write_text(hosts_yml(HOSTS_OAUTH_VALUE))
+        (outside / "hosts.yml").chmod(0o600)
+
+        def wrapper() -> subprocess.CompletedProcess:
+            return subprocess.run(
+                [str(WRAPPER), "api", "user"], capture_output=True, text=True, check=False, env=env, timeout=60
+            )
+
+        gh_dir.symlink_to(outside)
+        run = wrapper()
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-gh: {gh_phys} is a symbolic link; the login directory must be a real directory inside the credential root\n",
+        )
+        self.assertFalse(record.exists(), "gh did not run on the linked gh directory")
+        gh_dir.unlink()
+        gh_dir.write_text(hosts_yml_today(HOSTS_OAUTH_VALUE))
+        gh_dir.chmod(0o600)
+        run = wrapper()
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-gh: {gh_phys} is not a directory; the login directory must be a real directory inside the credential root\n",
+        )
+        self.assertFalse(record.exists(), "gh did not run on the file")
+        gh_dir.unlink()
+        run = wrapper()
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-gh: no gh login under the credential root: {gh_phys} is absent; the agent account's login inside the "
+            "root is the operator's step (docs/engagement-handout.md), and gh runs with no other credential\n",
+        )
+        self.assertFalse(record.exists(), "gh did not run on the empty root")
+        for text in (hosts_yml_today(HOSTS_OAUTH_VALUE), hosts_yml_today(HOSTS_OAUTH_VALUE, HOSTS_USERS_VALUE)):
+            self.assertNotIn(text, run.stderr)
+        # The chain whole: a real gh directory of this user under the root runs gh with the login's value.
+        self.place_login(root, hosts_yml_today(HOSTS_OAUTH_VALUE))
+        run = wrapper()
+        self.assertEqual((run.returncode, run.stderr), (7, ""), run.stdout)
+        self.assertEqual(record.read_text(), f"api user\n{gh_phys}\n{HOSTS_OAUTH_VALUE}\nunset\nunset\n")
+
+    def test_a_gh_directory_of_another_user_under_the_root_refuses(self):
+        """U353c: `<root>/gh` held to a directory of this user (`-O`), as the root and the leaf are. Only root can place
+        another user's directory there, so the test skips with that reason elsewhere."""
+        if os.geteuid() != 0:
+            self.skipTest("the harness runs as one user and cannot make a directory of another user under the root")
+        import pwd
+
+        fake, record = self.fake_gh()
+        dsh_home = self.dir / "dsh-home"
+        root = dsh_home / "router-credentials"
+        self.place_login(root, hosts_yml_today(HOSTS_OAUTH_VALUE))
+        other = pwd.getpwnam("nobody")
+        os.chown(root / "gh", other.pw_uid, other.pw_gid)
+        run = subprocess.run(
+            [str(WRAPPER), "api", "user"],
+            capture_output=True,
+            text=True,
+            check=False,
+            env={**self.env, "PATH": f"{fake}:{self.env['PATH']}", "DSH_HOME": str(dsh_home)},
+            timeout=60,
+        )
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(run.stderr, f"router-gh: {root.resolve()}/gh is not this user's directory\n")
+        self.assertFalse(record.exists(), "gh did not run")
+
+    def test_the_handout_table_of_the_routers_account_carries_the_source_and_dry_run_columns(self):
+        """U353c (verdict U353b-9c504ad9 P2 `docs/engagement-handout.md:55`): a handout row for the operator carries
+        the `source` column (the doc or `file:line` defining the command's behaviour) and the `dry-run` column (the
+        scratch-HOME run and its output, else `operator-only: <reason>`), standing order 5. The section's one table has
+        the five columns and every row fills each; the dry-run cell is a scratch-HOME receipt or the operator-only
+        reason."""
+        text = (ROOT / "docs/engagement-handout.md").read_text()
+        heading = "## The Router's agent account"
+        self.assertEqual(text.count(heading), 1, "one section for the Router's account")
+        section = text.split(heading, 1)[1].split("\n## ", 1)[0]
+        rows = [line for line in section.splitlines() if line.startswith("|")]
+        self.assertGreaterEqual(len(rows), 5, "a header, its rule and the three steps")
+        header = [cell.strip() for cell in rows[0].strip().strip("|").split("|")]
+        self.assertEqual(header, ["step", "command", "check", "source", "dry-run"])
+        steps = []
+        for row in rows[2:]:
+            cells = [cell.strip() for cell in row.strip().strip("|").split("|")]
+            with self.subTest(step=cells[0]):
+                self.assertEqual(len(cells), 5, row)
+                for name, cell in zip(header, cells):
+                    self.assertTrue(cell, f"the {name} cell of step {cells[0]} is filled")
+                self.assertRegex(cells[3], r"`[^`]+:[0-9]", "the source cell names a file:line")
+                self.assertRegex(
+                    cells[4],
+                    r"^(scratch HOME `|`operator-only: )",
+                    "a scratch-HOME receipt or the operator-only reason",
+                )
+            steps.append(cells[0])
+        self.assertEqual(steps, ["1", "2", "3"])
 
     def test_the_installed_copies_are_the_checkout_bytes_the_pins_are_current_and_an_altered_copy_refuses(self):
         # The lever and the wrapper are pinned like every lever (claude.levers.sha256): the chezmoi copy holds the same

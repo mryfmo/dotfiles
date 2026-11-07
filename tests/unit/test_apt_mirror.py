@@ -6,7 +6,8 @@ fires and apt never moves to the next mirror. scripts/ci/drop-azure-apt-mirror.p
 runs apt on a Ubuntu runner calls it first. After the drop every call goes to archive.ubuntu.com, which can print
 nothing for 15 minutes during `apt-get update` (runner-images#15040), so each call runs under GNU timeout with apt's
 own silence timeout and retries set, in one exact form, and the steps that hold them carry their own timeout-minutes.
-The measured budgets below come from passing `test` jobs of October 2026.
+The measured budgets below come from passing `test` jobs of October 2026; the unit-test step's budget is November
+2026's (regime-cutover U359: 19.0 min on macos-15 at main 49f3c33c, run 42347799380, doubled).
 """
 
 from __future__ import annotations
@@ -163,7 +164,7 @@ STEP_REST_BUDGET = {
     "Install apt packages for the unit tests": 0,
     "Install apt packages for Codecov": 0,
 }
-REST_ONLY_BUDGET = {"Install tools": 150, "Run Python unit tests": 1330}
+REST_ONLY_BUDGET = {"Install tools": 150, "Run Python unit tests": 2280}
 # U109 round 3 (audit of 0a9fa727): the step check attaches names and timeout-minutes through the hand-written
 # reader `jobs()` (CI's interpreter has no YAML parser), which returns a `run: |` body and a one-line plain scalar
 # and silently returned no body for `run: |-` and `run: >`. A failed read is never an absence (standing order 21):

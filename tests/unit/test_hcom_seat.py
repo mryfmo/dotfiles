@@ -229,6 +229,55 @@ class HcomSeatTest(SeatFixture):
         self.assertIn(f"seat-login-preflight: worker claude-bridge: login present (claude.ai, {shared})", run.stderr)
         self.assertEqual(len(self.calls_of("hcom")), 1)
 
+    def test_a_preflight_component_refusal_stops_the_launch_with_exit_2(self):
+        """U318c: hcom-seat runs seat-login-preflight with `|| exit $?`, so a component refusal of the shared Claude
+        Code directory chain (exit 2, the component named) is the launch's refusal, status and text unchanged, before
+        anything is made or started. The one component shape the launcher's own checks let through to the preflight
+        is a seats root that is a directory of another user: a link or a file at `.state`, and a root this user cannot
+        search, are refused by `own_slots_check` or `physical_path` first with the launcher's own line, and a trailing
+        `//` never reaches it, since the launcher passes the physical root. A dry run exits before the preflight, so
+        the launches here run against the fake hcom, which records every call."""
+        if os.geteuid() == 0:
+            self.skipTest("root owns every directory, so none is another user's")
+        (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
+        candidates = ("/var/empty", "/usr/share/misc", "/usr/share/zoneinfo")
+        other = next((Path(c) for c in candidates if Path(c).is_dir() and Path(c).stat().st_uid != os.geteuid()), None)
+        if other is None:
+            self.skipTest(f"no directory of another user among {candidates}")
+        real = Path(os.path.realpath(other))
+        run = self.seat("worker", "--seats-root", str(other))
+        line = (
+            f"seat-login-preflight: refused: the shared Claude Code directory path component {real} is a directory of"
+            " another user; move it aside before a seat starts\n"
+        )
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (2, "", line))
+        self.assertEqual(self.calls_of("hcom"), [], "no seat started")
+        self.assertFalse(self.claude_calls.exists(), "the chain refused before the one status call")
+        self.assertFalse((real / ".state").exists() or (real / ".sandbox").exists(), "nothing made")
+        # The preflight run directly, with the root the launcher hands it, gives the same status and text.
+        direct = subprocess.run(
+            [str(SEAT.parent / "seat-login-preflight"), "worker"], cwd=self.repo,
+            env={**self.env, "REGIME_SEATS_ROOT": str(real)}, capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        self.assertEqual((direct.returncode, direct.stdout, direct.stderr), (run.returncode, run.stdout, run.stderr))
+        # A planted link at `.state` under the fixture's seats root stops the launch with exit 2 as well, by the
+        # launcher's own slot check before the preflight runs, in a dry run too; the link is kept and nothing is made.
+        seats = Path(self.seats)
+        seats.mkdir()
+        elsewhere = self.home / "elsewhere"
+        elsewhere.mkdir()
+        (seats / ".state").symlink_to(elsewhere)
+        for extra in ([], ["--dry-run"]):
+            with self.subTest(extra=extra):
+                run = self.seat("worker", "--seats-root", self.seats, *extra)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"hcom-seat: the seat slot {seats}/.state is a symbolic link", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertFalse(self.claude_calls.exists())
+        self.assertTrue((seats / ".state").is_symlink())
+        self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), [])
+        self.assertEqual(sorted(p.name for p in seats.iterdir()), [".state"])
+
     def test_a_remote_siwc_seat_reads_its_registration_with_the_resolved_jq(self):
         """U85 round 22: seat-login-preflight reads the openai-siwc registration with jq, and macOS 14 has no
         /usr/bin/jq, so hcom-seat resolves jq like every tool (checked, linked into its private tool directory). With

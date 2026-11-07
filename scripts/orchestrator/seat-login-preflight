@@ -38,24 +38,28 @@
 #   `BROWSER=regime-open-url` in an SSH session, where the page shows a code to paste at the prompt,
 #   docs/remote-host-logins.md), shell-quoted so a seats root with a space pastes whole, which Claude Code stores under
 #   that directory and refreshes itself. Both modes hold the seats root, its `.state` and `claude` to real directories
-#   of this user (a link, a file or another user's directory refuses, exit 2, naming the component), and the profile
-#   mode makes the chain 0700 first when absent, as hcom-seat does at a launch, so the login lands in a directory this
-#   kit made. The consent click is the human step. Anywhere else (a seat, a script) it prints the command and
-#   refuses, since a login is the operator's step (standing order 4).
+#   of this user (a link, a file or another user's directory refuses, exit 2, naming the component), on one normalised
+#   spelling of the root (no empty, `.` or `..` component, no trailing slash; regime-cutover U318c: `<link>//` made
+#   `-L` follow the link) and only under a parent this user can search (a component that cannot be judged refuses
+#   naming it, never reads as absent); the profile mode makes the chain 0700 first when absent, as hcom-seat does at a
+#   launch, so the login lands in a directory this kit made. The consent click is the human step. Anywhere else (a
+#   seat, a script) it prints the command and refuses, since a login is the operator's step (standing order 4).
 # @arg $1 string `--check`, or the profile.
 # @arg $@ string With `--check`: profile names (default: every deployed overlay).
 # @env SSH_CONNECTION Set by sshd: this host is remote to the operator's terminal.
 # @env DISPLAY With WAYLAND_DISPLAY: a Linux host with neither has no local browser, so it counts as remote.
 # @env HCOM_LAUNCHED Set by hcom inside a seat: never run a login there.
 # @env REGIME_SEATS_ROOT The seats root whose `.state/claude` is the shared Claude Code directory (hcom-seat passes its
-#   resolved one); unset, `~/.local/state/omp-seats/<slug>` of the checkout this runs in (regime-env's slug).
+#   resolved one), an absolute path judged on its normalised spelling; unset, `~/.local/state/omp-seats/<slug>` of the
+#   checkout this runs in (regime-env's slug).
 # @stdout With `--check`: one line per profile.
 # @stderr The profile mode's report and refusals.
 # @exitcode 0 Checked, or the profile's route is usable (or the host is local and the route is openai-siwc).
 # @exitcode 1 A record or producer is unreadable, or a login ran and the route is still not usable.
 # @exitcode 2 A usage error, a component of the shared Claude Code directory path that is a link, a file or another
-#   user's directory, a failed read of the operator's login command, or a seat without a login outside the operator's
-#   terminal (a remote host, or any host on the claude-bridge route, whose login is the operator's printed command).
+#   user's directory or that cannot be judged (a parent this user cannot search), a failed read of the operator's login
+#   command, or a seat without a login outside the operator's terminal (a remote host, or any host on the claude-bridge
+#   route, whose login is the operator's printed command).
 # @example
 #   seat-login-preflight --check
 #   seat-login-preflight audit
@@ -255,15 +259,46 @@ siwc_state() {
     printf 'registered (host %s, client %s), agent.db mtime %s\n' "${host}" "${client}" "${mtime}"
 }
 
+# @description Set `claude_seats_root` to the one spelling of the absolute path `$1` (regime-cutover U318c): every
+#   run of `/` is one `/`, a `.` component is dropped, a `..` component takes the component before it (none at the
+#   root), and no `/` ends it (a bare `/` stays `/`). Lexical, by parameter expansion alone: `realpath` or `pwd -P`
+#   would follow the link the component tests must catch, and `${root%/}` stripped one slash, so `<link>//` kept a
+#   trailing slash that made `-L` follow the link.
+# @arg $1 string An absolute path.
+# @set claude_seats_root The normalised spelling.
+seats_root_normalise() {
+    local rest=$1 part n
+    local -a parts=()
+    while [[ -n ${rest} ]]; do
+        part=${rest%%/*}
+        if [[ ${rest} == */* ]]; then rest=${rest#*/}; else rest=''; fi # lint-comparisons: allow a split of one path into its components, no path compare
+        case ${part} in
+        '' | .) ;;
+        ..)
+            n=${#parts[@]}
+            ((n == 0)) || unset "parts[n - 1]"
+            ;;
+        *) parts+=("${part}") ;;
+        esac
+    done
+    claude_seats_root=''
+    for part in ${parts[@]+"${parts[@]}"}; do
+        claude_seats_root+=/${part}
+    done
+    [[ -n ${claude_seats_root} ]] || claude_seats_root=/
+}
+
 # @description Set `claude_config` to the shared Claude Code directory of this host's seats root,
 #   `<seats-root>/.state/claude` (regime-cutover U318, hcom-seat's `claude_config` row), and `claude_seats_root` to
-#   that root: `REGIME_SEATS_ROOT` when set (hcom-seat passes its resolved one), else `~/.local/state/omp-seats/<slug>`
-#   of the checkout this runs in (regime-env's toplevel and slug readers; the store binding is hcom-seat's concern),
-#   with HOME in `pwd -P` form so the directory has one spelling. A failure sets `claude_config_error` and returns 2.
+#   that root: `REGIME_SEATS_ROOT` when set (hcom-seat passes its resolved one; it must be absolute), else
+#   `~/.local/state/omp-seats/<slug>` of the checkout this runs in (regime-env's toplevel and slug readers; the store
+#   binding is hcom-seat's concern), with HOME in `pwd -P` form. Either form is normalised to one spelling
+#   (seats_root_normalise) before any test reads it, so every component test and every printed path use that spelling.
+#   A failure sets `claude_config_error` and returns 2.
 # @set claude_config The directory.
-# @set claude_seats_root The seats root.
+# @set claude_seats_root The seats root, normalised.
 # @set claude_config_error The reason, when none can be derived.
-# @exitcode 2 No seats root can be derived.
+# @exitcode 2 No seats root can be derived, or REGIME_SEATS_ROOT is not an absolute path.
 claude_config_dir() {
     local root=${REGIME_SEATS_ROOT:-} top slug home
     claude_config='' claude_seats_root='' claude_config_error=''
@@ -282,8 +317,12 @@ claude_config_dir() {
         fi
         root=${home}/.local/state/omp-seats/${slug}
     fi
-    claude_seats_root=${root%/}
-    claude_config=${claude_seats_root}/.state/claude
+    if [[ ${root} != /* ]]; then # lint-comparisons: allow an absolute-path test on one path, no path compare
+        claude_config_error="no seats root: REGIME_SEATS_ROOT ${root} is not an absolute path"
+        return 2
+    fi
+    seats_root_normalise "${root}"
+    claude_config=${claude_seats_root%/}/.state/claude
 }
 
 # @description Print the operator's one Claude step: `CLAUDE_CONFIG_DIR=<dir> claude auth login`, after
@@ -309,19 +348,40 @@ claude_login_refuse() {
 }
 
 # @description Hold the shared Claude Code directory path to its three components, the seats root, its `.state` and
-#   `claude` (claude_config_dir), each absent or a directory of this user that is no symbolic link; both modes call it
-#   before anything reads or makes the directory, and it writes nothing. A link, a file or another user's directory
-#   refuses naming the component, since a login under it would land outside what this kit made (regime-cutover U318b:
-#   `--check` judged the leaf alone, so a linked `.state` reached another directory and a file there read as absent).
-# @exitcode 2 A component is a symbolic link, not a directory, or a directory of another user (the command dies).
+#   `claude` (claude_config_dir, on the normalised spelling), each absent or a directory of this user that is no
+#   symbolic link; both modes call it before anything reads or makes the directory, and it writes nothing. A file test
+#   (`-L`, `-e`, `-d`, `-O`) answers false both for "not so" and for "could not look", so a component is judged only
+#   under a parent this user can search: the nearest ancestor this user can see is found first (`-e` true needs its
+#   own parent searchable; `/` is always seen), a directory there that this user cannot search refuses naming the
+#   component and the directory (regime-cutover U318c: an owned root of mode 000 hid a linked `.state`, which read as
+#   absent), and an absent entry under a searchable directory is absent, as is everything below a file or a dangling
+#   link (the profile mode's mkdir names that). A link, a file or another user's directory refuses naming the
+#   component, since a login under it would land outside what this kit made (regime-cutover U318b: `--check` judged the
+#   leaf alone, so a linked `.state` reached another directory and a file there read as absent).
+# @exitcode 2 A component is a symbolic link, not a directory, a directory of another user, or cannot be judged (the
+#   command dies).
 claude_config_validate() {
-    local path kind
-    for path in "${claude_seats_root}" "${claude_seats_root}/.state" "${claude_config}"; do
+    local path seen above kind
+    for path in "${claude_seats_root}" "${claude_seats_root%/}/.state" "${claude_config}"; do
+        seen=${path%/*}
+        [[ -n ${seen} ]] || seen=/
+        above=0
+        while [[ ! -e ${seen} && ! -L ${seen} ]] && ((${#seen} > 1)); do
+            seen=${seen%/*}
+            [[ -n ${seen} ]] || seen=/
+            above=1
+        done
+        [[ -d ${seen} ]] || return 0
+        [[ -x ${seen} ]] ||
+            die "refused: cannot read the shared Claude Code directory path component ${path} (permission denied: ${seen} is not searchable by this user); fix its mode before a seat starts"
+        ((above == 0)) || return 0
         if [[ -L ${path} ]]; then
             kind='a symbolic link'
-        elif [[ -e ${path} && ! -d ${path} ]]; then
+        elif [[ ! -e ${path} ]]; then
+            return 0
+        elif [[ ! -d ${path} ]]; then
             kind='not a directory'
-        elif [[ -d ${path} && ! -O ${path} ]]; then
+        elif [[ ! -O ${path} ]]; then
             kind='a directory of another user'
         else
             continue

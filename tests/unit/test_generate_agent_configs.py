@@ -264,6 +264,8 @@ LEVERS = (
     "regime-init",
     "regime-start",
     "regime-stop",
+    "router-gh",
+    "router-settings-apply",
     "seat-login-preflight",
     "worker-worktree.sh",
     "worktree-gc.sh",

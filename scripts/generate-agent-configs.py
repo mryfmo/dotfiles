@@ -2644,11 +2644,13 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
     auto_row = f", accept_mode_auto_row {github['accept_mode_auto_row']}" if "accept_mode_auto_row" in github else ""
     lines = [
         f"# {GENERATED_HEADER}",
-        f"# dsh-superagent pin {asset['pin']}; the Router runs under srt through `hcom-seat dsh --profile router`.",
+        f"# dsh-superagent pin {asset['pin']}; the Router runs under srt through `hcom-seat router -- --no-open`.",
         f"# GitHub Source (assets.{DSH_SUPERAGENT_ASSET}.sources.github): repository {github['repository']}, accept_mode",
         f"# {github['accept_mode']} (M-18 ladder row {github['accept_mode_row']}{auto_row}); the allowed list is empty.",
-        "# These two values are saved into the Router's settings store through its Management API (upstream",
-        "# docs/006-deployment.md, Settings), since the plugin row below admits stateDir and limits alone.",
+        "# These two values live in the Router's settings store (upstream docs/006-deployment.md, Settings), where the",
+        "# lever `router-settings-apply` writes them through the Management API after the launch's ready line, with the",
+        "# Source's `cli` set to `router-gh`, the gh wrapper whose GH_CONFIG_DIR is $DSH_HOME/router-credentials/gh (the",
+        "# router role's one read grant beyond the dsh row's; U353). The plugin row below admits stateDir and limits alone.",
         "- id: session-log-deepseek",
         "  config:",
         "    enabled: false",

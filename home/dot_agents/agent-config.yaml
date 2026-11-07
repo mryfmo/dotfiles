@@ -873,9 +873,17 @@ claude:
   # `python3 -I -S` after hcom-seat has read its digest against this pin, never by
   # a policy rule; it writes one file inside the role's own profile through one
   # held directory descriptor and nothing else.
+  # router-settings-apply and router-gh (U353, M-26 stage B): the settings
+  # writer the coordinator runs outside every sandbox after `hcom-seat router`
+  # is ready (the manifest's sources.github row and accept mode into the Router's
+  # store through its loopback Management API, revision-checked and idempotent),
+  # and the gh wrapper the Router's Source names as its cli (GH_CONFIG_DIR under
+  # $DSH_HOME/router-credentials, the router role's one read grant beyond the
+  # dsh row's; the login inside it is the operator's step). Both installed and
+  # pinned the same way.
   levers:
     sha256:
-      hcom-seat: 34db7b4aa8954eac4e7e9a5fcd28cfe6f54350108bd7d0bee34e8861c95c4993
+      hcom-seat: 35836c34162a6072c7126ab087bb8baaab86ea050fb25f0bd9e3dfe6bab1a9ae
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -901,6 +909,8 @@ claude:
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f
+      router-settings-apply: 377279c02c876cc32c774aac229d9d4bf670b2c0e54f9fb33b256f5697302db7
+      router-gh: abe04eba2c7d79fb3d95fcd618b7694398480c1e1fd3f3eb54436493a3c68139
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

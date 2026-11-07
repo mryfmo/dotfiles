@@ -447,7 +447,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "34db7b4aa8954eac4e7e9a5fcd28cfe6f54350108bd7d0bee34e8861c95c4993"
+      "sha256": "35836c34162a6072c7126ab087bb8baaab86ea050fb25f0bd9e3dfe6bab1a9ae"
     },
     {
       "source": "home/dot_local/bin/common/executable_intake-observe.py",
@@ -567,6 +567,20 @@
       "kind": "file",
       "executable": true,
       "sha256": "be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_router-gh",
+      "target": ".local/bin/common/router-gh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "abe04eba2c7d79fb3d95fcd618b7694398480c1e1fd3f3eb54436493a3c68139"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_router-settings-apply",
+      "target": ".local/bin/common/router-settings-apply",
+      "kind": "file",
+      "executable": true,
+      "sha256": "377279c02c876cc32c774aac229d9d4bf670b2c0e54f9fb33b256f5697302db7"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-login-preflight",
@@ -816,6 +830,16 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "rounds-check.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "router-gh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "router-settings-apply"
     },
     {
       "source": "home/dot_local/bin/common",

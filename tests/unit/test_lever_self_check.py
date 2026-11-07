@@ -40,7 +40,12 @@ LEVERS = (
     "brief-check.py",
     "worker-worktree.sh",
     "checkout-guard.sh",
+    "router-gh",
+    "router-settings-apply",
 )
+# The levers whose self-check is Python (hashlib and its own manifest read, no PATH tool): a sed or hash tool planted
+# on the caller's PATH is never consulted by them (brief-check.py, U104 round 3; router-settings-apply, U353).
+PYTHON_LEVERS = ("brief-check.py", "router-settings-apply")
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 
 
@@ -101,8 +106,11 @@ class LeverSelfCheckTest(unittest.TestCase):
     def test_a_rewritten_installed_lever_refuses_to_run(self):
         for name in LEVERS:
             with self.subTest(lever=name):
+                # The appended line is in the lever's own language, read from its interpreter line (router-settings-apply
+                # is Python without a `.py` suffix, U353d), so the self-check, not a parse error, is what refuses.
+                shebang = (self.bin / name).read_text().splitlines()[0]
                 with (self.bin / name).open("a") as lever:
-                    lever.write('print("rewritten")\n' if name.endswith(".py") else "echo rewritten\n")
+                    lever.write('print("rewritten")\n' if "python" in shebang else "echo rewritten\n")
                 run = self.run_lever(name)
                 self.assert_refused(run, "differs from the pin in")
                 self.assertNotIn("rewritten", run.stdout)
@@ -132,25 +140,29 @@ class LeverSelfCheckTest(unittest.TestCase):
 
         hcom-seat runs its self-check with PATH set to the system directories before any external command (U85
         round 4), so a producer planted on the caller's PATH is never consulted there and the check passes.
-        brief-check.py is Python (U104 round 3): it hashes with hashlib and reads the manifest itself, so it runs
-        neither tool and a planted one is never consulted; each of its own reads is failed in
-        `tests/unit/test_brief_check.py` (`InstalledBriefCheckTest`: manifest mode 000, a directory, no or two pin
-        lines, HOME unset or missing, and the hash read of its own bytes: the copy on stdin so `<stdin>` is the path,
-        and `builtins.open` raising in process, round 6), every one a refusal with nothing on stdout.
+        brief-check.py and router-settings-apply are Python (U104 round 3; U353, U353d): each hashes with hashlib and
+        reads the manifest itself, so it runs neither tool and a planted one is never consulted; each of
+        brief-check.py's own reads is failed in `tests/unit/test_brief_check.py` (`InstalledBriefCheckTest`: manifest
+        mode 000, a directory, no or two pin lines, HOME unset or missing, and the hash read of its own bytes: the copy
+        on stdin so `<stdin>` is the path, and `builtins.open` raising in process, round 6), every one a refusal with
+        nothing on stdout; router-settings-apply's installed-copy refusal is `tests/unit/test_router_settings_apply.py`'s.
         """
-        path_levers = [name for name in LEVERS if name not in ("hcom-seat", "brief-check.py")]
+        path_levers = [name for name in LEVERS if name != "hcom-seat" and name not in PYTHON_LEVERS]
+        self.assertIn("router-gh", path_levers, "the gh wrapper's self-check reads sed and the hash tool from PATH")
         env = self.fake_tools("sha256sum", "shasum")
         for name in path_levers:
             with self.subTest(lever=name, producer="hash"):
                 self.assert_refused(self.run_lever(name, env=env), "cannot hash")
         self.assert_passed(self.run_lever("hcom-seat", env=env))
-        self.assert_passed(self.run_lever("brief-check.py", env=env))
+        for name in PYTHON_LEVERS:
+            self.assert_passed(self.run_lever(name, env=env))
         env = self.fake_tools("sed")
         for name in path_levers:
             with self.subTest(lever=name, producer="sed"):
                 self.assert_refused(self.run_lever(name, env=env), "cannot read")
         self.assert_passed(self.run_lever("hcom-seat", env=env))
-        self.assert_passed(self.run_lever("brief-check.py", env=env))
+        for name in PYTHON_LEVERS:
+            self.assert_passed(self.run_lever(name, env=env))
 
     def test_hcom_seat_self_check_refuses_a_failing_producer(self):
         """U85 round 15: hcom-seat's own self-check fails closed on a failing sed or hash tool too. Its first statement

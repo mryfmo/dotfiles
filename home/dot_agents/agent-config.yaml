@@ -858,7 +858,7 @@ claude:
   # allowed by the orchestrator policy alone; it reads one brief and writes nothing.
   levers:
     sha256:
-      hcom-seat: 77d2b6743c8f90393c565fc93c69fa8265c9de321c8c3f5c4547f0118c4ac80d
+      hcom-seat: ddfb3ea46627bf5f474cb339ce599d35f61389ccf900db4e460e60b153f8d30c
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293

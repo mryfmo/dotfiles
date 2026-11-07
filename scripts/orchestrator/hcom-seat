@@ -117,14 +117,25 @@
 #   is no input for any role). No omp overlay, rules file, extension or login preflight is read for it. The
 #   per-launch sandbox and state slot are removed when dsh exits, and by the trap a hangup, interrupt or termination
 #   runs before this process ends by that signal.
-# @arg $1 string Role: orchestrator, worker or dsh.
+#   The router role (regime-cutover U321): the dsh row with three cells of its own and nothing else. U317b measured
+#   (2026-11-07T00:12Z, the prototype at pin 8c32a9dc) that dsh-superagent's Runtime does not start without the
+#   `dsh-host-webserver` plugin, so the Router needs a loopback listener, which the dsh row forbids. The cells: the DSH
+#   profile `router`, the only one the role accepts (`--profile router` or none); `allowLocalBinding: true` in the srt
+#   settings (srt 0.0.81 has no loopback-only form, so the grant is bind and inbound on every interface; the upstream
+#   Management API bounds it: it accepts the hosts `127.0.0.1:<port>` and `localhost:<port>` alone and only with the
+#   `x-orchestrator-request` header, upstream docs/006-deployment.md; the port is the profile's, this role grants
+#   binding and no port); and the Router's state root `<DSH_HOME>/router-state`, where U317b renders `stateDir`, as a
+#   write root of its own (seat_write_roots). The omp profile, OMP_PROFILE and every other row are the dsh role's, so
+#   the role's rendered settings differ from the dsh role's in exactly the binding value and that one write root, and
+#   no other role's settings change by a byte.
+# @arg $1 string Role: orchestrator, worker, dsh or router.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
 # @option --ext <dir> Extension directory in claude.levers.extensions, repeatable; replaces the role's default list (omp roles only).
-# @option --profile <name> dsh role only: the DSH profile, passed to dsh as `--profile <name>` (`[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`).
-# @option --home <dir> dsh role only: DSH_HOME (default: the environment's DSH_HOME, else ~/.dsh); an existing directory.
+# @option --profile <name> dsh and router roles only: the DSH profile, passed to dsh as `--profile <name>` (`[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`); the router role accepts `router` alone and defaults to it.
+# @option --home <dir> dsh and router roles only: DSH_HOME (default: the environment's DSH_HOME, else ~/.dsh); an existing directory.
 # @option --dry-run Print the launch line and exit 0 without creating a worktree or a slot or starting hcom or dsh.
-# @arg -- dsh role only: everything after it is passed to dsh verbatim.
+# @arg -- dsh and router roles only: everything after it is passed to dsh verbatim.
 # @env HCOM_DIR The program's private hcom store (default: ~/.local/state/hcom/<slug>, regime-env).
 # @env HCOM_TEAM The team thread (default: the repository slug, regime-env); passed to the seat as --hcom-team.
 # @env DSH_HOME The dsh role's default home, the opt-in of scripts/update-agent-assets.sh#update_deepseek_harness.
@@ -135,6 +146,7 @@
 # @example
 #   HCOM_DIR=/path/to/.hcom scripts/orchestrator/hcom-seat worker --name worker-2 --dry-run
 #   scripts/orchestrator/hcom-seat dsh --profile thak -- --version
+#   scripts/orchestrator/hcom-seat router --home ~/.dsh --dry-run -- --version
 set -euo pipefail
 # No caller PATH entry runs anything (regime-cutover U85): before the first external command PATH holds the fixed
 # system directories only, and the tools hcom-seat needs beyond them are resolved below into a private directory.
@@ -216,7 +228,7 @@ lever_self_check() {
 }
 lever_self_check
 
-usage='usage: hcom-seat <orchestrator|worker> [--name <name>] [--seats-root <dir>] [--ext <dir>]... [--dry-run] | hcom-seat dsh [--name <name>] [--seats-root <dir>] [--profile <name>] [--home <DSH_HOME>] [--dry-run] [-- <dsh args>]'
+usage='usage: hcom-seat <orchestrator|worker> [--name <name>] [--seats-root <dir>] [--ext <dir>]... [--dry-run] | hcom-seat <dsh|router> [--name <name>] [--seats-root <dir>] [--profile <name>] [--home <DSH_HOME>] [--dry-run] [-- <dsh args>]'
 refuse() {
     echo "hcom-seat: $*" >&2
     exit 2
@@ -265,30 +277,48 @@ done
 bridge=${HOME}/.local/lib/omp-extensions/pi-claude-bridge
 siwc=${HOME}/.agents/omp/extensions/openai-siwc
 gate=${HOME}/.agents/omp/hooks
-# The role table (regime-cutover U272): every difference between the roles is a row read here or in the places keyed
-# on the role below (seat_write_roots, the deny row before the overlap check and the judge after it, the read grants
-# in seat_sandbox_write, the command the shim execs, the launch and its trap), never a branch elsewhere. The omp roles
-# launch through hcom into a herdr pane; the dsh role runs its shim in the foreground.
+# The role table (regime-cutover U272, U321): every difference between the roles is a row read here or in the places
+# keyed on the role below (the directory row, seat_write_roots, the deny row before the overlap check and the judge
+# after it, the read grants in seat_settings_render, the binding value in seat_sandbox_write, the command the shim
+# execs, the launch and its trap), never a branch elsewhere. The cells read here: `role_launch` (the omp roles launch
+# through hcom into a herdr pane; the dsh and router roles run their shim in the foreground), `omp_profile` (the omp
+# profile the seat's login child lives in, `OMP_PROFILE`; the router role shares the dsh role's, so the two roles'
+# settings differ in their own cells alone), `allow_local_binding` (the srt `allowLocalBinding` value: true for the
+# router role alone, whose Runtime needs its loopback listener, U321; false for every other role) and `role_profile`
+# (a DSH profile the row fixes, the only one the role accepts; empty when the caller chooses).
 case ${role} in
-orchestrator | worker)
+orchestrator | worker) role_launch=hcom omp_profile=${role} allow_local_binding=false role_profile='' ;;
+dsh) role_launch=foreground omp_profile=dsh allow_local_binding=false role_profile='' ;;
+router) role_launch=foreground omp_profile=dsh allow_local_binding=true role_profile=router ;;
+*) refuse "unknown role '${role}'; expected orchestrator, worker, dsh or router" ;;
+esac
+case ${role_launch} in
+hcom)
     # The extension the role's model route needs first, the optional one second.
     exts=("${bridge}" "${siwc}")
-    role_launch=hcom
-    ((! dsh_options)) || refuse '--profile, --home and -- are options of the dsh role'
+    ((! dsh_options)) || refuse '--profile, --home and -- are options of the dsh and router roles'
     ;;
-dsh)
+foreground)
     exts=()
-    role_launch=foreground
     ((${#user_exts[@]} == 0)) || refuse '--ext is an option of the omp roles'
     dsh_home=${dsh_home:-${DSH_HOME:-${HOME}/.dsh}}
     [[ -z ${profile_name} || ${profile_name} =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ ]] ||
         refuse "profile '${profile_name}' is outside ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\$"
+    # A row that fixes the profile runs that profile alone: the router role's grants exist for the Router, so another
+    # profile under them would hold the loopback grant without the listener the grant is for.
+    if [[ -n ${role_profile} ]]; then
+        profile_name=${profile_name:-${role_profile}}
+        [[ ${profile_name} == "${role_profile}" ]] ||
+            refuse "the ${role} role runs the DSH profile '${role_profile}' alone; --profile '${profile_name}' is refused"
+    fi
+    # The profile is dsh's own argument, so it rides first among the arguments the launch passes verbatim (the launch
+    # line a dry run prints shows it).
+    if [[ -n ${profile_name} ]]; then dsh_args=(--profile "${profile_name}" ${dsh_args[@]+"${dsh_args[@]}"}); fi
     # A per-launch seat name: the sandbox, its settings file and the state slot are per name, so two launches at
     # once share no file (the U251d finding). The stamp comes from a checked producer held to its shape (utc_stamp).
     stamp=$(utc_stamp) || exit 2
     name=${name}-${stamp}-$$
     ;;
-*) refuse "unknown role '${role}'; expected orchestrator, worker or dsh" ;;
 esac
 [[ ${name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "name '${name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
 # `<seats-root>/.state/claude` is the shared Claude Code directory (U318), so no seat's state slot may take that name.
@@ -1253,11 +1283,11 @@ seats_root=${seats_root:-${REGIME_SEATS_ROOT:-}}
 # bridge child's and the dsh gateway child's `CLAUDE_CONFIG_DIR`, holding the one claude.ai login of this seats root.
 # Spelled here; own_slots_check reads it by lstat before anything resolves it, and seat_write_roots renders it physical.
 claude_config=${seats_root%/}/.state/claude
-# The role table's directory row: the orchestrator sits in the launch checkout, a worker in its worktree, the dsh role
-# in a scratch directory inside its per-launch state slot, which seat_sandbox_write makes.
+# The role table's directory row: the orchestrator sits in the launch checkout, a worker in its worktree, the dsh and
+# router roles in a scratch directory inside their per-launch state slot, which seat_sandbox_write makes.
 case ${role} in
 orchestrator) dir=${repo} ;;
-dsh) dir=${seats_root}/.state/${name}/cwd scratch_dir=${seats_root}/.state/${name}/cwd ;;
+dsh | router) dir=${seats_root}/.state/${name}/cwd scratch_dir=${seats_root}/.state/${name}/cwd ;;
 *) dir=${seats_root}/${name} ;;
 esac
 
@@ -1513,9 +1543,12 @@ fi
 seat_write_roots() {
     local path extra=()
     case $1 in
-    dsh) extra=("${dsh_home}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;
+    dsh | router) extra=("${dsh_home}" "${HOME}/.omp/profiles/${omp_profile}" "${HOME}/.omp/run") ;;
     *) extra=("${common}" "${HCOM_DIR}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;
     esac
+    # The router row's state root (regime-cutover U321): `<DSH_HOME>/router-state`, where U317b renders the Router's
+    # `stateDir`, after the dsh row's roots, so every tagged position (rows 0 to 2 and 4) stays the dsh role's.
+    [[ $1 != router ]] || extra+=("${dsh_home}/router-state")
     # The seat's own slots come first, then the shared Claude Code directory (seat_overlap_check and the dsh judge's
     # tags rely on the positions): its directory, its state directory, the shared directory.
     for path in "$3" "${seats_root%/}/.state/$2" "${claude_config}" "${extra[@]}" "${srt_tmp_roots[@]}" "${HOME}/.npm/_logs"; do
@@ -1830,23 +1863,23 @@ seat_settings_render() {
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
             "${claude_config_real}" "${checkout}/.orchestration/orchestrate")
         ;;
-    dsh)
+    dsh | router)
         # The deny row (U272d): the role's own denies for read and for write, after the worker's.
         deny_read+=("${checkout}" ${dsh_deny[@]+"${dsh_deny[@]}"})
         deny_write+=(${dsh_deny[@]+"${dsh_deny[@]}"})
-        allow_read=("${dir_real}" "${sandbox_state}" "${claude_config_real}" "${dsh_home}" "${h}/.omp/profiles/${role}"
+        allow_read=("${dir_real}" "${sandbox_state}" "${claude_config_real}" "${dsh_home}" "${h}/.omp/profiles/${omp_profile}"
             "${h}/.agents/skills" "${tools_dir}")
         # The judge's exempted grants, each one row by its position (tag_row, regime-cutover U272g): the own cwd and
         # state slot, rows 0 and 1 of both grant lists, the shared Claude Code directory, row 2 of both (seat_write_roots
         # puts the three first; the directory sits under the seats-root denies and over its configuration denies, U318),
-        # and the own omp profile, row 4 of both. DSH_HOME (row 3) and `~/.omp/run` (write row 5) carry no tag whatever
-        # they are spelled, so a DSH_HOME at or inside the profiles directory, or a `~/.omp/run` linked there, is judged
-        # like any row.
+        # and the own omp profile, row 4 of both. DSH_HOME (row 3), `~/.omp/run` (write row 5) and the router role's
+        # state root (write row 6) carry no tag whatever they are spelled, so a DSH_HOME at or inside the profiles
+        # directory, or a `~/.omp/run` linked there, is judged like any row.
         for kind in allowRead allowWrite; do
             tag_row slot "${kind}" 0 "${dir_real}"
             tag_row slot "${kind}" 1 "${sandbox_state}"
             tag_row slot "${kind}" 2 "${claude_config_real}"
-            tag_row profile "${kind}" 4 "${h}/.omp/profiles/${role}"
+            tag_row profile "${kind}" 4 "${h}/.omp/profiles/${omp_profile}"
         done
         ;;
     esac
@@ -2090,15 +2123,14 @@ omp_path=$(find_on_path omp) || refuse 'omp not found in the private tool direct
 pin_exec omp "${omp_path}"
 omp_cmd=("${pinned[@]}")
 # The role table's command row: what the shim execs under srt. The omp roles run omp with --no-extensions first (U66);
-# the dsh role runs `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt alone: it lies in its own
-# write root, so no identity rule can pin it, and nothing probes it outside containment (the U251 finding).
+# the dsh and router roles run `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt alone: it lies in
+# its own write root, so no identity rule can pin it, and nothing probes it outside containment (the U251 finding).
 case ${role_launch} in
 hcom) seat_cmd=("${omp_cmd[@]}" --no-extensions) shim_tool=omp ;;
 foreground)
     dsh_exec=$(physical_file "${dsh_home}/bin/dsh") ||
         refuse "cannot resolve the dsh command to a physical executable file: ${dsh_home}/bin/dsh"
     seat_cmd=("${dsh_exec}") shim_tool=dsh
-    if [[ -n ${profile_name} ]]; then seat_cmd+=(--profile "${profile_name}"); fi
     ;;
 esac
 srt_path=$(find_on_path srt) || refuse 'srt (@anthropic-ai/sandbox-runtime) not found in the private tool directory'
@@ -2158,7 +2190,7 @@ seat_sandbox_write() {
     # srt on Linux grants writes only to paths that exist, so omp's own state directories are made first. The seat's
     # slots under the seats root were proved free of links (own_slots_check); they are made one component at a time,
     # and each is checked again to be a real directory.
-    (umask 077 && mkdir -p "${seats_root}" "${HOME}/.omp/profiles/${role}" "${HOME}/.omp/run") ||
+    (umask 077 && mkdir -p "${seats_root}" "${HOME}/.omp/profiles/${omp_profile}" "${HOME}/.omp/run") ||
         refuse "cannot create the seats root ${seats_root} or omp's state directories"
     for path in "${seats_root}/.state" "${claude_config}" "${seats_root}/.state/${name}" \
         ${scratch_dir:+"${scratch_dir}"} "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do
@@ -2176,17 +2208,19 @@ seat_sandbox_write() {
     deny_write_json=${deny_write_json%]}${deny_write_patterns}]
     deny_read_json=$(json_paths 'a seat read deny' "${deny_read[@]}") || exit 2
     allow_read_json=$(json_paths 'a seat read root' "${allow_read[@]}") || exit 2
-    # No unix socket for any seat: the herdr socket would let a seat open a pane outside every sandbox. No local
-    # binding either: srt 0.0.81 grants it as bind and inbound on `*:*` (every interface); the one listener a seat
-    # runs, the hcom plugin's notify server, falls back to polling every 5 s when its bind fails (hcom.ts
-    # `startNotifyServer`, `FALLBACK_PENDING_POLL_MS`). The settings are written by the shell from clean paths only
-    # (json_paths), so no JSON tool runs and none is needed on macOS.
+    # No unix socket for any seat: the herdr socket would let a seat open a pane outside every sandbox. Local binding
+    # is the role table's `allow_local_binding` cell: false for every role but the router, whose Runtime needs its
+    # loopback listener (U321); srt 0.0.81 grants it as bind and inbound on `*:*` (every interface), and the upstream
+    # host check bounds what that listener answers. The one listener an omp seat runs, the hcom plugin's notify
+    # server, falls back to polling every 5 s when its bind fails (hcom.ts `startNotifyServer`,
+    # `FALLBACK_PENDING_POLL_MS`). The settings are written by the shell from clean paths only (json_paths), so no JSON
+    # tool runs and none is needed on macOS.
     domains='"github.com","api.github.com","uploads.github.com","codeload.github.com","objects.githubusercontent.com"'
     domains+=',"raw.githubusercontent.com","release-assets.githubusercontent.com","pypi.org","files.pythonhosted.org"'
     domains+=',"api.anthropic.com","claude.ai","platform.claude.com","console.anthropic.com"'
     domains+=',"chatgpt.com","auth.openai.com","api.openai.com"'
     json="{\"network\":{\"allowedDomains\":[${domains}],\"deniedDomains\":[],\"allowUnixSockets\":[]"
-    json+=",\"allowMachLookup\":[\"com.apple.trustd.agent\"],\"allowLocalBinding\":false}"
+    json+=",\"allowMachLookup\":[\"com.apple.trustd.agent\"],\"allowLocalBinding\":${allow_local_binding}}"
     json+=",\"filesystem\":{\"denyRead\":${deny_read_json},\"allowRead\":${allow_read_json}"
     json+=",\"allowWrite\":${write_json},\"denyWrite\":${deny_write_json}},\"allowPty\":true${linux_tools}}"
     if ! printf '%s\n' "${json}" > "${settings}.tmp" || ! mv -f "${settings}.tmp" "${settings}"; then
@@ -2302,7 +2336,7 @@ hcom)
     argv+=(--hcom-team "${HCOM_TEAM}")
     ;;
 foreground)
-    seat_env=("HOME=${HOME}" "PATH=${PATH}" "DSH_HOME=${dsh_home}" "OMP_PROFILE=${role}" "CLAUDE_CONFIG_DIR=${claude_config_real}")
+    seat_env=("HOME=${HOME}" "PATH=${PATH}" "DSH_HOME=${dsh_home}" "OMP_PROFILE=${omp_profile}" "CLAUDE_CONFIG_DIR=${claude_config_real}")
     # Only a name the caller exported rides (`inherited`, the start-up list): bash gives TERM a value of its own when
     # the caller had none, and a `TERM=dumb` of bash's making would reach dsh as the terminal's.
     for var in USER LANG TERM; do

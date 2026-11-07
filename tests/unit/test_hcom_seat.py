@@ -721,8 +721,8 @@ class HcomSeatTest(SeatFixture):
 
     def test_the_shim_exports_the_token_file_into_the_seat_and_never_prints_it(self):
         """U190: the bridge child logs in by CLAUDE_CODE_OAUTH_TOKEN alone, which the shim reads from the operator's
-        token file (first line) when the caller has not exported it. U190b: a file the shim would export nothing
-        from (empty, or an empty first line), or no file, is refused before the launch on every host."""
+        token file (first line); U312: always, a caller's variable being no input. U190b: a file the shim would
+        export nothing from (empty, or an empty first line), or no file, is refused before the launch on every host."""
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         record = self.plant_claude_env_recorder()
         shim = Path(self.seats, ".sandbox/worker/bin/omp")
@@ -750,16 +750,25 @@ class HcomSeatTest(SeatFixture):
         self.assertIn("worker claude-bridge: absent; a login is the operator's step", run.stderr)
         self.assertEqual(len(record.read_text().splitlines()), launches, "no omp ran without a login")
 
-    def test_the_shim_keeps_a_token_the_caller_already_exported(self):
-        """U190: a CLAUDE_CODE_OAUTH_TOKEN in the caller's environment wins over the token file."""
+    def test_the_shim_reads_the_token_file_over_a_token_the_caller_exported(self):
+        """U312 (inverting U190's caller-wins rule): the token file is the one source of the seat's token and the shim
+        its one reader. A CLAUDE_CODE_OAUTH_TOKEN in the caller's environment is no input: with the file, the seat
+        gets the file's first line; without the file, the shim run directly hands omp no variable at all."""
         # The token file is the fixture's (a usable fake value).
         record = self.plant_claude_env_recorder()
         caller = "fake-" + "caller-value-u190"
         run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CODE_OAUTH_TOKEN=caller)
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(self.claude_env_of(record)["CLAUDE_CODE_OAUTH_TOKEN"], caller)
-        self.assertNotIn(caller, run.stdout + run.stderr)
-        self.assertNotIn(FAKE_OAUTH_VALUE, run.stdout + run.stderr)
+        self.assertEqual(self.claude_env_of(record)["CLAUDE_CODE_OAUTH_TOKEN"], FAKE_OAUTH_VALUE)
+        shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        self.token.unlink()
+        env = {**self.env, "CLAUDE_CODE_OAUTH_TOKEN": caller}
+        direct = subprocess.run([str(shim), "--version"], env=env, capture_output=True, text=True, check=False)
+        self.assertEqual(direct.returncode, 0, direct.stderr)
+        self.assertEqual(self.claude_env_of(record)["CLAUDE_CODE_OAUTH_TOKEN"], "unset")
+        for text in (run.stdout, run.stderr, direct.stdout, direct.stderr, shim.read_text()):
+            self.assertNotIn(caller, text)
+            self.assertNotIn(FAKE_OAUTH_VALUE, text)
 
     @unittest.skipIf(os.geteuid() == 0, "root reads a mode-000 file, so head cannot be made to fail")
     def test_the_shim_refuses_when_the_token_file_cannot_be_read(self):

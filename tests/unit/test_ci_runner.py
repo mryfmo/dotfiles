@@ -290,34 +290,111 @@ class UbuntuClientInstallerTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual("", result.stdout + result.stderr)
 
-    def test_a_helper_that_cannot_be_read_or_sourced_refuses_and_names_it(self) -> None:
-        """Failure injection for the guarded source (standing order 21, U297c): the installer in a tree of the
-        repository's shape whose helper is absent, unreadable or does not parse exits 2 with the helper's path on
-        stderr, before install_chromium can decide without it."""
-        cases = {"absent": None, "unreadable": LIB.read_text(), "unparsable": "function is_ci_runner( {\n"}
-        for label, helper_text in cases.items():
-            with self.subTest(label), tempfile.TemporaryDirectory() as temp:
-                if label == "unreadable" and os.geteuid() == 0:
-                    self.skipTest("root reads a mode 000 file")
-                installer = Path(temp, "install/ubuntu/client/misc.sh")
-                helper = Path(temp, "scripts/lib/ci-runner.sh")
-                installer.parent.mkdir(parents=True)
-                shutil.copy(ROOT / "install/ubuntu/client/misc.sh", installer)
-                if helper_text is not None:
-                    helper.parent.mkdir(parents=True)
-                    helper.write_text(helper_text)
-                    if label == "unreadable":
-                        helper.chmod(0o000)
+
+INSTALLERS = (
+    "install/macos/common/brew.sh",
+    "install/macos/common/dependencies.sh",
+    "install/macos/common/docker.sh",
+    "install/macos/common/misc.sh",
+    "install/ubuntu/client/misc.sh",
+)
+GUARD_START = "# The chezmoi script includes scripts/lib/ci-runner.sh before this file"
+
+
+class InstallerHelperGuardTest(unittest.TestCase):
+    """The five installers the chezmoi scripts include after scripts/lib/ci-runner.sh carry one inline guard for a
+    direct run: the helper's directory comes from a parameter expansion, and a helper that cannot be read or whose
+    source returns non-zero exits 2 naming the installer and the helper's path (standing order 21; U297c, U301)."""
+
+    def source_copy(
+        self, temp: str, installer: str, helper_text: str | None, mode: int = 0o644
+    ) -> tuple[subprocess.CompletedProcess[str], str]:
+        """Source a copy of `installer` in a scratch tree of the repository's shape whose helper holds `helper_text`
+        (None: no helper) with `mode`; return the run and the helper path the guard computes."""
+        copy = Path(temp, installer)
+        copy.parent.mkdir(parents=True)
+        shutil.copy(ROOT / installer, copy)
+        if helper_text is not None:
+            helper = Path(temp, "scripts/lib/ci-runner.sh")
+            helper.parent.mkdir(parents=True)
+            helper.write_text(helper_text)
+            helper.chmod(mode)
+        result = subprocess.run(
+            ["/bin/bash", "-c", 'source "$1"', "_", str(copy)],
+            env=host_env(),
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        return result, f"{copy.parent}/../../../scripts/lib/ci-runner.sh"
+
+    def assert_refused(
+        self, result: subprocess.CompletedProcess[str], installer: str, reason: str, helper: str
+    ) -> None:
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn(f"{installer}: ci-runner helper {reason}: {helper}\n", result.stderr)
+        self.assertEqual("", result.stdout)
+
+    def test_a_direct_run_with_an_empty_path_defines_is_ci_runner(self) -> None:
+        """No external command may run before the helper is sourced: the Ubuntu client's snap-unavailable bats case
+        runs its installer with an empty PATH on purpose (U297c, the round-1 P1), and the macOS four take the same
+        block."""
+        for installer in INSTALLERS:
+            with self.subTest(installer):
                 result = subprocess.run(
-                    ["/bin/bash", "-c", 'source "$1"; install_chromium', "_", str(installer)],
-                    env=host_env(),
+                    ["/bin/bash", "-c", 'source "$1"; declare -F is_ci_runner > /dev/null', "_", installer],
+                    env=host_env(PATH=""),
                     cwd=ROOT,
                     capture_output=True,
                     text=True,
                 )
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual("", result.stdout + result.stderr)
+
+    def test_an_unreadable_helper_refuses_naming_the_installer_and_the_path(self) -> None:
+        """Failure injection for the guarded source (standing order 21): the helper is absent or mode 000."""
+        cases = {"absent": None, "mode 000": LIB.read_text()}
+        for installer in INSTALLERS:
+            for label, helper_text in cases.items():
+                with self.subTest(installer=installer, helper=label), tempfile.TemporaryDirectory() as temp:
+                    if label == "mode 000" and os.geteuid() == 0:
+                        self.skipTest("root reads a mode 000 file")
+                    mode = 0o000 if label == "mode 000" else 0o644
+                    result, helper = self.source_copy(temp, installer, helper_text, mode)
+                    self.assert_refused(result, installer, "unreadable", helper)
+
+    def test_a_helper_whose_source_returns_non_zero_refuses_naming_the_installer_and_the_path(self) -> None:
+        """The round-2 P3 of PR 705: a readable helper whose source returns non-zero exited 2 with an empty stderr
+        although the Contract promised the path; that branch names the installer and the path like the other. A
+        helper that does not parse never reaches the branch: a syntax error in a sourced file is fatal in a
+        non-interactive shell, which exits 2 with bash's own syntax-error message naming the helper's path (the line
+        number in that message is the parser's, bash 3.2 and 5.x disagree on it, and it is not the kit's behavior)."""
+        for installer in INSTALLERS:
+            with self.subTest(installer=installer, helper="returns 7"), tempfile.TemporaryDirectory() as temp:
+                result, helper = self.source_copy(temp, installer, "return 7\n")
+                self.assert_refused(result, installer, "failed to source", helper)
+            with self.subTest(installer=installer, helper="unparsable"), tempfile.TemporaryDirectory() as temp:
+                result, helper = self.source_copy(temp, installer, "function is_ci_runner( {\n")
                 self.assertEqual(2, result.returncode, result.stderr)
-                self.assertIn(f"{installer.parent}/../../../scripts/lib/ci-runner.sh", result.stderr)
+                self.assertRegex(result.stderr, rf"{re.escape(helper)}: line \d+: syntax error")
                 self.assertEqual("", result.stdout)
+
+    def test_the_five_guards_are_one_block_modulo_the_installer_path(self) -> None:
+        """Each installer is included standalone, so the guard is copied rather than shared; the copies are held
+        byte-identical except for the installer's own path in its two messages, so the next installer copies the
+        right shape."""
+        blocks: dict[str, str] = {}
+        for installer in INSTALLERS:
+            text = (ROOT / installer).read_text()
+            start = text.index(GUARD_START)
+            end = text.index("\nfi\n", start) + len("\nfi\n")
+            block = text[start:end]
+            self.assertEqual(2, block.count(installer), installer)
+            blocks[installer] = block.replace(installer, "<installer>")
+        self.assertEqual(1, len(set(blocks.values())), blocks)
+        block = blocks[INSTALLERS[0]]
+        self.assertNotIn("$(", block)
+        self.assertIn('/../../../scripts/lib/ci-runner.sh"', block)
 
 
 @unittest.skipUnless(CHEZMOI, "chezmoi is not installed")

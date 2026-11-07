@@ -482,14 +482,14 @@
       "target": ".local/bin/common/pr-close.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a"
+      "sha256": "7e9778c493949cde1a7773ed439f502ca687d84d3de9bbf9be0f00b915b20233"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-merge.sh",
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "f9063f3bcd4f84cb1007cfb919d757e5aa20db5358a9cfb1cd91a46ab4cade9b"
+      "sha256": "6c7f3ff20bbaad62855e177afe38499547aba5519d164f9a0a9faf579f3a3028"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",

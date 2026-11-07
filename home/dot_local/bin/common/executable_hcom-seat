@@ -914,6 +914,192 @@ for settings_file in ${settings_files[@]+"${settings_files[@]}"}; do
     done <<< "${listed}"
 done
 add_roots "${roots[@]}"
+# @description Resolve every extension directory `$@` to its canonical entry of the extension allow-list
+#   (regime-cutover U31): `claude.levers.extensions` in the manifest the self-check read, so the installed copy reads
+#   it from ~/.agents, outside every sandbox write root. A read failure is a refusal, not an empty list. The caller
+#   gets the canonical allow-list entry (`pwd -P` of the listed path), never the caller's spelling: a symlink the
+#   caller controls could be swapped between this check and omp resolving the path.
+# @arg $@ string Extension directories.
+# @set checked The canonical allow-list entries, in the order given.
+extensions_canonical() {
+    local allowed ext real listed entry entry_real
+    allowed=$(awk '
+    /^  levers:$/ { levers = 1; next }
+    levers && /^  [^ ]/ { levers = 0 }
+    levers && /^    extensions:$/ { list = 1; next }
+    list && /^      - / { sub(/^      - /, ""); print; next }
+    list { list = 0 }
+' "${LEVER_MANIFEST}") || refuse "cannot read the extension allow-list in ${LEVER_MANIFEST}"
+    [[ -n ${allowed} ]] || refuse "no extension allow-list (claude.levers.extensions) in ${LEVER_MANIFEST}"
+    checked=()
+    for ext in "$@"; do
+        [[ -d ${ext} ]] || refuse "extension directory absent: ${ext}"
+        real=$(cd "${ext}" && pwd -P) || refuse "cannot resolve extension directory: ${ext}"
+        listed=''
+        while IFS= read -r entry; do
+            entry=${entry/#\~/${HOME}}
+            # An entry that is absent or cannot be resolved lists nothing, so the extension stays refused.
+            [[ -d ${entry} ]] || continue
+            entry_real=$(cd "${entry}" && pwd -P) || continue
+            if [[ ${entry_real} -ef ${real} ]]; then listed=${entry_real}; fi
+        done <<< "${allowed}"
+        [[ -n ${listed} ]] || refuse "extension directory is not in the allow-list (claude.levers.extensions): ${ext}"
+        checked+=("${listed}")
+    done
+}
+# @description Read whether the path `$1` below HOME exists, every directory above it tested for searchability first
+#   (standing order 21, regime-cutover U310b): `[ -e ]` below a directory this user cannot search is false for a
+#   present file as for an absent one, so an existing directory that cannot be searched refuses naming it, and
+#   `path_present` is read only below searchable directories. A symbolic link counts as present and is not followed; the
+#   caller judges it.
+# @arg $1 string An absolute path below HOME.
+# @set path_present 1 when the path exists, 0 when it is absent.
+present_under_home() {
+    local above=${HOME} rest=${1#"${HOME}"/} part
+    path_present=0
+    while :; do
+        [[ -d ${above} && -x ${above} ]] || refuse "cannot search ${above}; the dsh profile config below it cannot be read"
+        part=${rest%%/*}
+        [[ -e ${above}/${part} || -L ${above}/${part} ]] || return 0
+        [[ ${rest} != "${part}" ]] || break
+        above=${above}/${part} rest=${rest#*/}
+    done
+    path_present=1
+}
+# @description Write the rendered profile config into a temporary file of this launch's own inside `$1`, the dsh
+#   profile's `agent/` (regime-cutover U310b; the kit's rule for a write into a directory the role writes too: a name
+#   no other process can predict, opened O_EXCL, then a rename). `mktemp` makes the file 0600 under a random name, so
+#   a file or link planted at any name in the directory is never opened; the path is held to a regular file that is
+#   no link before and after the write and to the (device, inode) `mktemp` made, and the write's own status is read.
+#   Every refusal removes the file first (tmp_refuse).
+# @arg $1 string The `agent/` directory, a real directory.
+# @set tmp_file The temporary file, holding the rendering.
+profile_config_tmp() {
+    local made written
+    tmp_file=$(/usr/bin/mktemp "$1/.config.yml.XXXXXX") || refuse "cannot make a temporary file in $1 (mktemp failed)"
+    [[ -f ${tmp_file} && ! -L ${tmp_file} ]] || tmp_refuse "${tmp_file} is not a regular file after mktemp made it"
+    made=$(/usr/bin/stat "${lstat_args[@]}" -- "${tmp_file}") || tmp_refuse "cannot read the identity of ${tmp_file}"
+    printf '%s\n' "${profile_config_text}" > "${tmp_file}" || tmp_refuse "cannot write ${tmp_file}"
+    [[ -f ${tmp_file} && ! -L ${tmp_file} ]] || tmp_refuse "${tmp_file} is not a regular file after the write"
+    written=$(/usr/bin/stat "${lstat_args[@]}" -- "${tmp_file}") || tmp_refuse "cannot read the identity of ${tmp_file}"
+    [[ ${written} == "${made}" ]] || tmp_refuse "${tmp_file} is not the file mktemp made (its identity changed)" # lint-comparisons: allow compares (device, inode) identities, not paths
+}
+# @description Remove the temporary file profile_config_tmp made (`rm` follows no link) and refuse with `$*`.
+# @arg $@ string The refusal.
+tmp_refuse() {
+    /bin/rm -f -- "${tmp_file}" || :
+    refuse "$@"
+}
+# @description The dsh role's profile config row (regime-cutover U310, round 2 U310b): render what the role's own omp
+#   profile must hold and decide what the launch does about it, before anything is made (the private tool directory
+#   included) and in a dry run too. The gateway child `omp auth-gateway stdio` the harness starts in that profile
+#   resolves a request's model among the providers the profile's own `agent/config.yml` loads (omp 18.12.6
+#   src/cli/auth-gateway-stdio.ts:60-64: `Settings.init`, then `loadCliExtensionProviders`), with no `--config`
+#   overlay and no `-e` list, so the kit's bridge route reaches it through that file alone (item g6,
+#   2026-11-06T19:22Z: without it, `HTTP 404: No available model matches "claude-bridge/claude-opus-5-5"`). The file
+#   is the rendered overlay `profile_config` (the generator's, like the seat overlays), each `extensions` entry
+#   replaced by its canonical allow-list path (extensions_canonical, the rule the omp roles' `-e` list follows); an
+#   overlay naming no extension refuses, as does a failed read. Every existence read of the target
+#   `~/.omp/profiles/<role>/agent/config.yml` goes through present_under_home, so a directory this user cannot search
+#   refuses by name instead of reading as absent; an `agent/` or `config.yml` that is a symbolic link refuses, since
+#   a write would follow it out of the profile (the profile root itself is judged by settings_judge). A present file
+#   is compared whole by `cmp` with the rendering in a temporary file of this launch's own (profile_config_tmp, the
+#   write's status read): two regular files, no process substitution; `cmp`'s status is read (equal, different, or a
+#   failed compare, which refuses) and the temporary file is removed. The decision is printed, in a dry run too.
+# @set profile_config_text The config to place, without its final newline.
+# @set profile_config_action `place`, `replace` or `keep`.
+profile_config_check() {
+    local text line list=0 i=0 status=0 agent target
+    local -a listed_exts=()
+    [[ -f ${profile_config} && ! -L ${profile_config} ]] ||
+        refuse "profile config overlay absent or a symbolic link: ${profile_config}"
+    text=$(< "${profile_config}") || refuse "cannot read the profile config overlay ${profile_config}"
+    while IFS= read -r line; do
+        if ((list)) && [[ ${line} == '  - '* ]]; then
+            listed_exts+=("${line#  - }")
+        elif [[ ${line} == 'extensions:' ]]; then
+            list=1
+        else
+            list=0
+        fi
+    done <<< "${text}"
+    ((${#listed_exts[@]})) ||
+        refuse "the profile config overlay ${profile_config} names no extension; the gateway child needs the bridge route"
+    extensions_canonical "${listed_exts[@]}"
+    profile_config_text='' list=0
+    while IFS= read -r line; do
+        if ((list)) && [[ ${line} == '  - '* ]]; then
+            line="  - ${checked[i]}"
+            i=$((i + 1))
+        elif [[ ${line} == 'extensions:' ]]; then
+            list=1
+        else
+            list=0
+        fi
+        profile_config_text+=${line}$'\n'
+    done <<< "${text}"
+    profile_config_text=${profile_config_text%$'\n'}
+    agent=${HOME}/.omp/profiles/${role}/agent
+    target=${agent}/config.yml
+    present_under_home "${agent}"
+    if ((path_present)); then
+        [[ ! -L ${agent} ]] || refuse "${agent} is a symbolic link; the dsh role writes its profile config inside its profile only"
+        [[ -d ${agent} ]] || refuse "${agent} is not a directory"
+        present_under_home "${target}"
+    fi
+    if ((! path_present)); then
+        profile_config_action=place
+        echo "hcom-seat: the dsh profile config ${target} is absent; the launch places it from ${profile_config}" >&2
+        return 0
+    fi
+    [[ ! -L ${target} ]] || refuse "${target} is a symbolic link; the dsh role writes its profile config inside its profile only"
+    [[ -f ${target} ]] || refuse "${target} is not a regular file"
+    profile_config_tmp "${agent}"
+    cmp -s "${target}" "${tmp_file}" || status=$?
+    /bin/rm -f -- "${tmp_file}" || refuse "cannot remove the temporary file ${tmp_file}"
+    case ${status} in
+    0)
+        profile_config_action=keep
+        echo "hcom-seat: the dsh profile config ${target} equals ${profile_config}; the launch leaves it" >&2
+        ;;
+    1)
+        profile_config_action=replace
+        echo "hcom-seat: the dsh profile config ${target} differs from ${profile_config}; the launch replaces it" >&2
+        ;;
+    *) refuse "cannot compare the profile config ${target} with the rendered overlay (cmp exited ${status})" ;;
+    esac
+}
+# @description Place the dsh role's profile config as profile_config_check decided (regime-cutover U310, round 2
+#   U310b), after seat_sandbox_write made the profile directory: `agent/` is made 0700 when absent, every existence
+#   read goes through present_under_home and the links are refused again at the write, and the file lands by a
+#   rename of the temporary file profile_config_tmp made (a name no other process can predict, opened O_EXCL, held to
+#   its inode), so no planted name is ever opened and the gateway child never reads a partial config. Two launches at
+#   once (the role's normal case) may both find `agent/` absent and both place the same bytes: the loser of the mkdir
+#   race takes the directory the winner made, held to a real directory, and each renames its own file. Nothing is
+#   written when the action is `keep`.
+profile_config_write() {
+    local agent=${HOME}/.omp/profiles/${role}/agent target
+    target=${agent}/config.yml
+    [[ ${profile_config_action} != keep ]] || return 0
+    present_under_home "${agent}"
+    if ((path_present)); then
+        [[ ! -L ${agent} ]] || refuse "${agent} is a symbolic link; the dsh role writes its profile config inside its profile only"
+    else
+        (umask 077 && /bin/mkdir "${agent}") || [[ -d ${agent} && ! -L ${agent} ]] || refuse "cannot create ${agent}"
+    fi
+    [[ -d ${agent} && ! -L ${agent} ]] || refuse "${agent} is not a real directory"
+    present_under_home "${target}"
+    if ((path_present)); then
+        [[ ! -L ${target} ]] || refuse "${target} is a symbolic link; the dsh role writes its profile config inside its profile only"
+        [[ -f ${target} ]] || refuse "${target} is not a regular file"
+    fi
+    profile_config_tmp "${agent}"
+    /bin/mv -f -- "${tmp_file}" "${target}" || tmp_refuse "cannot install ${target}"
+}
+# The profile config row is decided here, after the complete protected set and before the first directory of the
+# launch is made (the private tool directory next), so a bad overlay or a linked, unsearchable or irregular target
+# refuses on a fresh HOME with nothing created, in a dry run too.
+if [[ ${role_launch} == foreground ]]; then profile_config_check; fi
 tools_dir=${HOME}/.local/state/hcom-seat/tools
 /bin/mkdir -p "${tools_dir}" || refuse "cannot create the private tool directory ${tools_dir}"
 /bin/chmod 700 "${tools_dir%/*}" "${tools_dir}" || refuse "cannot restrict the private tool directory ${tools_dir}"
@@ -1204,39 +1390,6 @@ omp_inputs_check() {
     exts+=("${gate}")
     extensions_canonical "${exts[@]}"
     exts=("${checked[@]}")
-}
-# @description Resolve every extension directory `$@` to its canonical entry of the extension allow-list
-#   (regime-cutover U31): `claude.levers.extensions` in the manifest the self-check read, so the installed copy reads
-#   it from ~/.agents, outside every sandbox write root. A read failure is a refusal, not an empty list. The caller
-#   gets the canonical allow-list entry (`pwd -P` of the listed path), never the caller's spelling: a symlink the
-#   caller controls could be swapped between this check and omp resolving the path.
-# @arg $@ string Extension directories.
-# @set checked The canonical allow-list entries, in the order given.
-extensions_canonical() {
-    local allowed ext real listed entry entry_real
-    allowed=$(awk '
-    /^  levers:$/ { levers = 1; next }
-    levers && /^  [^ ]/ { levers = 0 }
-    levers && /^    extensions:$/ { list = 1; next }
-    list && /^      - / { sub(/^      - /, ""); print; next }
-    list { list = 0 }
-' "${LEVER_MANIFEST}") || refuse "cannot read the extension allow-list in ${LEVER_MANIFEST}"
-    [[ -n ${allowed} ]] || refuse "no extension allow-list (claude.levers.extensions) in ${LEVER_MANIFEST}"
-    checked=()
-    for ext in "$@"; do
-        [[ -d ${ext} ]] || refuse "extension directory absent: ${ext}"
-        real=$(cd "${ext}" && pwd -P) || refuse "cannot resolve extension directory: ${ext}"
-        listed=''
-        while IFS= read -r entry; do
-            entry=${entry/#\~/${HOME}}
-            # An entry that is absent or cannot be resolved lists nothing, so the extension stays refused.
-            [[ -d ${entry} ]] || continue
-            entry_real=$(cd "${entry}" && pwd -P) || continue
-            if [[ ${entry_real} -ef ${real} ]]; then listed=${entry_real}; fi
-        done <<< "${allowed}"
-        [[ -n ${listed} ]] || refuse "extension directory is not in the allow-list (claude.levers.extensions): ${ext}"
-        checked+=("${listed}")
-    done
 }
 if [[ ${role_launch} == hcom ]]; then omp_inputs_check; fi
 # git names the checkout and its git directories; they must be the ones found (and checked) before git ran, by
@@ -2015,95 +2168,6 @@ while IFS= read -r root; do orchestrator_write+=("${root}"); done <<< "${other_r
 # directory its write list holds; the main checkout stays protected for it only when it is not that checkout.
 repo_phys=$(physical_path "${repo}") || refuse "cannot resolve the launch checkout ${repo}"
 seat_overlap_check orchestrator "${repo_phys}" "${orchestrator_write[@]}"
-# @description The dsh role's profile config row (regime-cutover U310): render what the role's own omp profile must
-#   hold and decide what the launch does about it, before anything is made and in a dry run too. The gateway child
-#   `omp auth-gateway stdio` the harness starts in that profile resolves a request's model among the providers the
-#   profile's own `agent/config.yml` loads (omp 18.12.6 src/cli/auth-gateway-stdio.ts:60-64: `Settings.init`, then
-#   `loadCliExtensionProviders`), with no `--config` overlay and no `-e` list, so the kit's bridge route reaches it
-#   through that file alone (item g6, 2026-11-06T19:22Z: without it, `HTTP 404: No available model matches
-#   "claude-bridge/claude-opus-5-5"`). The file is the rendered overlay `profile_config` (the generator's, like the
-#   seat overlays), each `extensions` entry replaced by its canonical allow-list path (extensions_canonical, the rule
-#   the omp roles' `-e` list follows); an overlay naming no extension refuses, as does a failed read. The target
-#   `~/.omp/profiles/<role>/agent/config.yml` is compared whole by `cmp`, its status read (equal, different, or a
-#   failed read, which refuses), so an equal file is left alone, a different one replaced and an absent one placed; an
-#   `agent/` or `config.yml` that is a symbolic link refuses, since a write would follow it out of the profile (the
-#   profile root itself is judged by settings_judge). The decision is printed, in a dry run too.
-# @set profile_config_text The config to place, without its final newline.
-# @set profile_config_action `place`, `replace` or `keep`.
-profile_config_check() {
-    local text line list=0 i=0 status=0 agent target
-    exts=()
-    [[ -f ${profile_config} && ! -L ${profile_config} ]] ||
-        refuse "profile config overlay absent or a symbolic link: ${profile_config}"
-    text=$(< "${profile_config}") || refuse "cannot read the profile config overlay ${profile_config}"
-    while IFS= read -r line; do
-        if ((list)) && [[ ${line} == '  - '* ]]; then
-            exts+=("${line#  - }")
-        elif [[ ${line} == 'extensions:' ]]; then
-            list=1
-        else
-            list=0
-        fi
-    done <<< "${text}"
-    ((${#exts[@]})) ||
-        refuse "the profile config overlay ${profile_config} names no extension; the gateway child needs the bridge route"
-    extensions_canonical "${exts[@]}"
-    profile_config_text='' list=0
-    while IFS= read -r line; do
-        if ((list)) && [[ ${line} == '  - '* ]]; then
-            line="  - ${checked[i]}"
-            i=$((i + 1))
-        elif [[ ${line} == 'extensions:' ]]; then
-            list=1
-        else
-            list=0
-        fi
-        profile_config_text+=${line}$'\n'
-    done <<< "${text}"
-    profile_config_text=${profile_config_text%$'\n'}
-    agent=${HOME}/.omp/profiles/${role}/agent
-    target=${agent}/config.yml
-    [[ ! -L ${agent} ]] || refuse "${agent} is a symbolic link; the dsh role writes its profile config inside its profile only"
-    [[ ! -e ${agent} || -d ${agent} ]] || refuse "${agent} is not a directory"
-    [[ ! -L ${target} ]] || refuse "${target} is a symbolic link; the dsh role writes its profile config inside its profile only"
-    if [[ ! -e ${target} ]]; then
-        profile_config_action=place
-        echo "hcom-seat: the dsh profile config ${target} is absent; the launch places it from ${profile_config}" >&2
-        return 0
-    fi
-    [[ -f ${target} ]] || refuse "${target} is not a regular file"
-    cmp -s "${target}" <(printf '%s\n' "${profile_config_text}") || status=$?
-    case ${status} in
-    0)
-        profile_config_action=keep
-        echo "hcom-seat: the dsh profile config ${target} equals ${profile_config}; the launch leaves it" >&2
-        ;;
-    1)
-        profile_config_action=replace
-        echo "hcom-seat: the dsh profile config ${target} differs from ${profile_config}; the launch replaces it" >&2
-        ;;
-    *) refuse "cannot compare the profile config ${target} with the rendered overlay (cmp exited ${status})" ;;
-    esac
-}
-# @description Place the dsh role's profile config as profile_config_check decided (regime-cutover U310), after
-#   seat_sandbox_write made the profile directory: `agent/` is made 0700 when absent, the links are refused again at
-#   the write, and the file lands by a rename from a temporary file of this launch's own beside it, so the gateway
-#   child never reads a partial config. Two launches at once (the role's normal case) may both find `agent/` absent
-#   and both place the same bytes: the loser of the mkdir race takes the directory the winner made, held to a real
-#   directory, and each renames its own file. Nothing is written when the action is `keep`.
-profile_config_write() {
-    local agent=${HOME}/.omp/profiles/${role}/agent target
-    target=${agent}/config.yml
-    [[ ${profile_config_action} != keep ]] || return 0
-    [[ ! -L ${agent} ]] || refuse "${agent} is a symbolic link; the dsh role writes its profile config inside its profile only"
-    if [[ ! -e ${agent} ]]; then
-        (umask 077 && /bin/mkdir "${agent}") || [[ -d ${agent} && ! -L ${agent} ]] || refuse "cannot create ${agent}"
-    fi
-    [[ -d ${agent} && ! -L ${agent} ]] || refuse "${agent} is not a real directory"
-    [[ ! -L ${target} ]] || refuse "${target} is a symbolic link; the dsh role writes its profile config inside its profile only"
-    (umask 077 && printf '%s\n' "${profile_config_text}" > "${target}.tmp.$$") || refuse "cannot write ${target}.tmp.$$"
-    mv -f "${target}.tmp.$$" "${target}" || refuse "cannot install ${target}"
-}
 # The role table's refusal row (U272e, U272f): the dsh role's settings are rendered now and every grant of them is
 # judged against every deny of them, after the overlap invariant (whose refusals name the protected place) and
 # before anything is made, in a dry run too. The omp roles render theirs once their worktree exists (its `.git` file
@@ -2112,7 +2176,6 @@ if [[ ${role_launch} == foreground ]]; then
     seat_settings_render
     settings_judge ||
         refuse "the dsh role's ${judge_grant} is, contains or lies inside ${judge_deny}; the launch is refused before anything is made"
-    profile_config_check
 fi
 roots=("${seat_write[@]}" "${seats_root}" "${HCOM_DIR}" "${common}")
 while IFS= read -r root; do roots+=("${root}"); done <<< "${other_roots}"

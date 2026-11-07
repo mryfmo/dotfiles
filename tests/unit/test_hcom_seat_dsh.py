@@ -1015,7 +1015,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertTrue(agent.is_dir() and not agent.is_symlink() and not self.profile_config.is_symlink())
         self.assertEqual(stat.S_IMODE(agent.stat().st_mode), 0o700)
         self.assertEqual(stat.S_IMODE(self.profile_config.stat().st_mode), 0o600)
-        self.assertFalse((agent / "config.yml.tmp").exists())
+        self.assertEqual(sorted(p.name for p in agent.iterdir()), ["config.yml"], "no temporary file remains")
         self.profile_config.write_text("modelRoles:\n  default: stale/model\n")
         run = self.launch("--", "--version")
         self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
@@ -1031,7 +1031,11 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertIn(f"{self.profile_config} equals {overlay}; the launch leaves it", run.stderr)
         commands = trace.read_text().split("\0")[:-1]
         self.assertIn("profile_config_write", commands, "the write step ran and decided to leave the file")
-        self.assertEqual([c for c in commands if "${target}.tmp" in c or '/bin/mkdir "${agent}"' in c], [])
+        write_at = commands.index("profile_config_write")
+        self.assertTrue(any(c.startswith("/usr/bin/mktemp ") for c in commands[:write_at]), "the compare's temporary")
+        made = ("/usr/bin/mktemp", "profile_config_tmp", "/bin/mv -f", '/bin/mkdir "${agent}"', "${tmp_file}")
+        self.assertEqual([c for c in commands[write_at:] if any(word in c for word in made)], [])
+        self.assertEqual(sorted(p.name for p in self.profile_config.parent.iterdir()), ["config.yml"])
         after = self.profile_config.stat()
         self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
         self.assertEqual(self.profile_config.read_text(), expected)
@@ -1040,9 +1044,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
 
     def test_a_linked_agent_directory_or_config_and_a_bad_overlay_refuse_before_any_mkdir(self):
         """U310: an `agent/` or `config.yml` that is a symbolic link refuses (exit 2) naming it, in a dry run too,
-        before any directory is made (the recorder shows the tool directory's mkdir alone) and without following the
-        link; an overlay that is absent, names no extension or names a directory outside the allow-list refuses the
-        same way. Nothing reaches the link's target and no dsh starts."""
+        before any directory is made (U310b: the recorder shows no mkdir at all, the private tool directory's included,
+        and a fresh HOME gains no directory) and without following the link; an overlay that is absent, names no
+        extension or names a directory outside the allow-list refuses the same way. Nothing reaches the link's target
+        and no dsh starts."""
         home = self.home.resolve()
         overlay = self.profiles / "dsh.yml"
         elsewhere = Path(self.temp.name).resolve() / "elsewhere"
@@ -1086,10 +1091,177 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
                 commands = trace.read_text().split("\0")[:-1]
-                mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
-                self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
+                mkdirs = [c for c in commands if re.match(r"(/usr)?(/bin/)?(mkdir|mktemp)\b", c)]
+                self.assertEqual(mkdirs, [], "a refusal of the profile config row makes nothing")
+                self.assertFalse((self.home / ".local/state").exists(), "the private tool directory is not made")
                 self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), [], "nothing reaches the link's target")
                 self.assertFalse(Path(self.seats).exists())
+        self.assertEqual(self.dsh_calls(), [])
+
+    def test_a_planted_temporary_name_is_never_opened_and_the_config_lands_beside_it(self):
+        """U310b (the round-1 P1): the launcher writes through a name `mktemp` picks inside `agent/`, opened O_EXCL, so
+        a link planted at the old predictable `config.yml.tmp.<launcher pid>` (planted by a wrapper that then `exec`s
+        the launcher, so the pid is the launcher's own), at any other guessable `.config.yml.*` or `config.yml.tmp*`
+        name, a dangling one, or a regular file there, is never opened: the link's target (a scratch default-profile
+        config) keeps its bytes, inode and mtime through a placement and a replacement, every planted entry stands as
+        planted, and the real config lands as a regular file equal to the overlay with no temporary file left beside
+        it."""
+        home = self.home.resolve()
+        agent = home / ".omp/profiles/dsh/agent"
+        agent.mkdir(parents=True)
+        elsewhere = Path(self.temp.name).resolve() / "elsewhere"
+        elsewhere.mkdir()
+        default_config = elsewhere / "config.yml"
+        default_config.write_text("modelRoles:\n  default: operator/default\n")
+        before = default_config.stat()
+        links = ["config.yml.tmp", ".config.yml.tmp", ".config.yml.aaaaaa", ".config.yml.XXXXXX", ".config.yml.000000"]
+        for name in links:
+            (agent / name).symlink_to(default_config)
+        (agent / ".config.yml.zzzzzz").symlink_to(elsewhere / "missing")
+        (agent / "config.yml.tmp.1").write_text("a planted regular file\n")
+        pid_file = Path(self.temp.name) / "launcher-pid"
+        wrapper = Path(self.temp.name) / "plant-then-exec.sh"
+        wrapper.write_text(
+            "#!/bin/bash\n"
+            'ln -s "$1" "$2/config.yml.tmp.$$" || exit 97\n'
+            'printf "%s\\n" "$$" > "$3" || exit 97\n'
+            "shift 3\n"
+            f'exec {shlex.quote(str(test_hcom_seat.SEAT))} "$@"\n'
+        )
+        wrapper.chmod(0o755)
+        expected = DSH_OVERLAY.format(extension=self.bridge)
+
+        def planted():
+            self.assertEqual(default_config.read_text(), "modelRoles:\n  default: operator/default\n")
+            after = default_config.stat()
+            self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
+            for name in [*links, f"config.yml.tmp.{pid}"]:
+                self.assertTrue((agent / name).is_symlink(), name)
+                self.assertEqual(os.readlink(agent / name), str(default_config), name)
+            self.assertEqual(os.readlink(agent / ".config.yml.zzzzzz"), str(elsewhere / "missing"))
+            self.assertEqual((agent / "config.yml.tmp.1").read_text(), "a planted regular file\n")
+            self.assertTrue(self.profile_config.is_file() and not self.profile_config.is_symlink())
+            self.assertEqual(self.profile_config.read_text(), expected)
+            self.assertEqual(stat.S_IMODE(self.profile_config.stat().st_mode), 0o600)
+            names = [*links, ".config.yml.zzzzzz", "config.yml", "config.yml.tmp.1", f"config.yml.tmp.{pid}"]
+            self.assertEqual(sorted(p.name for p in agent.iterdir()), sorted(names), "no temporary file remains")
+            self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), ["config.yml"])
+
+        argv = [str(wrapper), str(default_config), str(agent), str(pid_file), "dsh", "--seats-root", self.seats,
+                "--home", str(self.dsh_home), "--", "--version"]  # fmt: skip
+        run = subprocess.run(argv, cwd=self.repo, env=self.env, capture_output=True, text=True, check=False)
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        pid = pid_file.read_text().strip()
+        self.assertTrue(pid.isdigit() and (agent / f"config.yml.tmp.{pid}").is_symlink(), pid)
+        self.assertIn(f"{self.profile_config} is absent; the launch places it", run.stderr)
+        planted()
+        self.profile_config.write_text("modelRoles:\n  default: stale/model\n")
+        run = self.launch("--", "--version")
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        self.assertIn(f"{self.profile_config} differs from", run.stderr)
+        planted()
+        self.assertEqual(len(self.dsh_calls()), 2)
+        self.assertEqual(self.slots(), ([], []))
+
+    def test_a_failed_compare_an_unsearchable_directory_or_a_failed_temporary_refuses_naming_it(self):
+        """U310b (the round-1 P2s and the auditor's probes): every read the placement decides on fails closed by name.
+        A `cmp` that exits 2 without output (a shell function the recorder's BASH_ENV channel defines, since the
+        lever's PATH is the system directories and a caller's shim never reaches it: the state a sandboxed or broken
+        /usr/bin/cmp leaves) refuses rather than keeping an equal config; a config dsh left unreadable refuses the same
+        way; an `agent/` that cannot be searched (mode 000, a linked config hidden inside) and a profile directory
+        that cannot be searched refuse naming the directory instead of reading as absent, in a dry run too; an overlay
+        that cannot be read refuses naming it; an `agent/` the launcher cannot write (mode 500) refuses at mktemp
+        naming it, at the compare and at the write. No temporary file remains, the config is never replaced by a
+        refused launch, nothing reaches the link's target and no dsh starts."""
+        home = self.home.resolve()
+        overlay = self.profiles / "dsh.yml"
+        elsewhere = Path(self.temp.name).resolve() / "elsewhere"
+        elsewhere.mkdir()
+        profile = home / ".omp/profiles/dsh"
+        agent = profile / "agent"
+        expected = DSH_OVERLAY.format(extension=self.bridge)
+        stale = "modelRoles:\n  default: stale/model\n"
+        cmp_shim = Path(self.temp.name) / "cmp-exits-2.bash"
+        cmp_shim.write_text("cmp() { return 2; }\n")
+        cannot_compare = (
+            f"cannot compare the profile config {self.profile_config} with the rendered overlay (cmp exited 2)"
+        )
+        no_temporary = f"cannot make a temporary file in {agent} (mktemp failed)"
+
+        def equal_config():
+            agent.mkdir(parents=True)
+            self.profile_config.write_text(expected)
+
+        def unreadable_config():
+            equal_config()
+            self.profile_config.chmod(0)
+
+        def unsearchable_agent():
+            agent.mkdir(parents=True)
+            self.profile_config.symlink_to(elsewhere / "config.yml")
+            agent.chmod(0)
+
+        def unsearchable_profile():
+            profile.mkdir(parents=True)
+            profile.chmod(0)
+
+        def read_only_agent_with_stale_config():
+            agent.mkdir(parents=True)
+            self.profile_config.write_text(stale)
+            agent.chmod(0o500)
+
+        def read_only_agent_without_config():
+            agent.mkdir(parents=True)
+            agent.chmod(0o500)
+
+        def unlock():
+            overlay.chmod(0o644)
+            for directory in (profile, agent):
+                if directory.is_dir() and not directory.is_symlink():
+                    directory.chmod(0o700)
+            if self.profile_config.is_file():
+                self.profile_config.chmod(0o600)
+            shutil.rmtree(profile, ignore_errors=True)
+
+        cases = (
+            ("cmp exits 2 silently", equal_config, [], str(cmp_shim), cannot_compare, expected),
+            ("cmp exits 2 silently, dry run", equal_config, ["--dry-run"], str(cmp_shim), cannot_compare, expected),
+            ("the config cannot be read", unreadable_config, [], None, cannot_compare, expected),
+            ("agent cannot be searched", unsearchable_agent, [], None,
+             f"cannot search {agent}; the dsh profile config below it cannot be read", None),
+            ("agent cannot be searched, dry run", unsearchable_agent, ["--dry-run"], None,
+             f"cannot search {agent}; the dsh profile config below it cannot be read", None),
+            ("the profile directory cannot be searched", unsearchable_profile, ["--dry-run"], None,
+             f"cannot search {profile}; the dsh profile config below it cannot be read", None),
+            ("the overlay cannot be read", lambda: overlay.chmod(0), [], None,
+             f"cannot read the profile config overlay {overlay}", None),
+            ("agent is read-only at the compare", read_only_agent_with_stale_config, [], None, no_temporary, stale),
+            ("agent is read-only at the compare, dry run", read_only_agent_with_stale_config, ["--dry-run"], None,
+             no_temporary, stale),
+            ("agent is read-only at the write", read_only_agent_without_config, [], None, no_temporary, None),
+        )  # fmt: skip
+        for label, arrange, args, bash_env, message, config_after in cases:
+            with self.subTest(case=label):
+                unlock()
+                overlay.write_text(DSH_OVERLAY.format(extension=self.bridge))
+                arrange()
+                run = self.launch(*args, "--", "--version", BASH_ENV=bash_env)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), [], "nothing reaches the link's target")
+                overlay.chmod(0o644)
+                for directory in (profile, agent):
+                    if directory.is_dir() and not directory.is_symlink():
+                        directory.chmod(0o700)
+                if agent.is_dir():
+                    self.assertEqual(
+                        [p.name for p in agent.iterdir() if p.name != "config.yml"], [], "no temporary file"
+                    )
+                if config_after is None:
+                    self.assertFalse(self.profile_config.is_file() and not self.profile_config.is_symlink())
+                else:
+                    self.profile_config.chmod(0o600)
+                    self.assertEqual(self.profile_config.read_text(), config_after, "a refused launch replaces nothing")
         self.assertEqual(self.dsh_calls(), [])
 
 

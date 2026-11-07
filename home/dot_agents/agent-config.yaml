@@ -900,6 +900,7 @@ claude:
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
+      intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).
@@ -1398,6 +1399,40 @@ assets:
     render:
       file: scripts/lib/installer-pins.sh
       constants: {DSH_PIN_TAG: pin, DSH_ARCHIVE_SHA256: sha256, DSH_COMMIT: ref_commit}
+  dsh-superagent:
+    source: git-commit
+    upstream: deepseek-ai/dsh-superagent-prototype
+    pin: 8c32a9dc5d72c033816c6a8110b37f40cf94fba4
+    verify: sha256
+    sha256: 64cf5bea00cbe7153adaa77b9e583d839f3f3818793e2e1541ddc789451485a6
+    reason: >-
+      the prototype is a one-commit publication (2026-10-31, unsigned) with issues and pull requests disabled, so the
+      reviewed sha256 of GitHub's source archive of the commit is the check; the kit owns the fork
+      (<owner>/dsh-superagent, operator step T-M-26-01, after which upstream moves there by one --set-asset change)
+      and its Source adapters; the bump-review owner is the operator until a decisions row names someone else.
+    note: >-
+      zero patches today: the archive is installed as published and built in its own tree inside srt (the build's
+      writes are that tree and $DSH_HOME/.pnpm-store, its network the package registry alone); sha256 is GitHub's source
+      archive of the commit (https://github.com/deepseek-ai/dsh-superagent-prototype/archive/<pin>.tar.gz), read
+      twice on 2026-11-06 with the same digest (237 entries). Installed by update_dsh_superagent only on a host whose
+      operator exported DSH_HOME and created it (the opt-in update_deepseek_harness reads), under
+      $DSH_HOME/plugins/dsh-superagent, then linked into the rendered router profile by its link: dependency through
+      pnpm from mise, inside srt as well. The Router is started by `hcom-seat dsh --profile router -- --no-open` under srt and never by
+      the archive's scripts/dsh-superagent (tmux, the harness outside any sandbox). sources.github is the kit's
+      GitHub Source row: the repository the Source watches and the accept mode of the M-18 ladder; accept_mode_row
+      is the decisions.tsv row that set the mode, and auto needs accept_mode_auto_row as well (the two row
+      timestamps M-18 defines). In observe mode the allowed list is empty, so no accept path exists: a positive
+      assessment is an ignore Decision marked would-accept (src/policy.ts:57, reason code observed).
+    install_path: ~/.dsh/plugins/dsh-superagent
+    installer: scripts/update-agent-assets.sh#update_dsh_superagent
+    render:
+      file: scripts/lib/installer-pins.sh
+      constants: {DSH_SUPERAGENT_COMMIT: pin, DSH_SUPERAGENT_SHA256: sha256}
+    sources:
+      github:
+        repository: mryfmo/dotfiles
+        accept_mode: observe
+        accept_mode_row: "2026-11-06T23:24:00Z"
   graphifyy:
     source: github-release
     upstream: Graphify-Labs/graphify

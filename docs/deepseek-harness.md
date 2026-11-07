@@ -124,3 +124,33 @@ settings, one write beside the tree, and refuses the install unless srt
 denies it. `srt` is the kit's mise pin; a host without it gets no build and
 no install. The tests are in `tests/unit/test_update_agent_assets.py`
 (`DeepseekHarnessTest`, the U322 and U322b groups).
+
+The dsh-superagent intake (regime-cutover U317) is a second profile under the
+same role: `assets.dsh-superagent` pins the prototype at one commit with the
+sha256 of GitHub's archive and zero patches, `update_dsh_superagent` (the
+harness step's sibling, the same `DSH_HOME` opt-in) installs it under
+`$DSH_HOME/plugins/dsh-superagent` and runs `pnpm install` in the rendered
+`router` profile, whose `package.json` links it beside the omp-gateway plugin.
+Every archive member must lie under the one root that names the pin, and the
+upstream build (`pnpm install --frozen-lockfile && pnpm build`) runs inside one
+`srt --settings` invocation whose writes are the new tree and
+`$DSH_HOME/.pnpm-store`, whose reads deny the credential roots the dsh role
+denies, and whose network is the package registry alone; the profile install
+runs the same way with the profile directory as its write root. `srt`, `pnpm`
+and `node` are the kit's mise pins, and an absent `srt` refuses the step before
+any download. The rendered `home/dot_dsh/profiles/router/cordis.patch.yml`
+keeps the thak rows (the session log upload off, the API-key rows and the
+harness sandbox disabled, the default model on the gateway provider), binds the
+panel to `127.0.0.1:3082`, puts `stateDir` at `$DSH_HOME/router-state` (inside
+the role's write root; the listener itself waits for a `router` role with the
+loopback grant, U321), and restates the bundle's two agent presets with their
+sandbox rows disabled. The GitHub Source row
+(`assets.dsh-superagent.sources.github`: the repository and
+`accept_mode: observe`, the M-18 ladder row) is data for the Management API
+save; in observe mode the allowed list is empty, so a positive assessment is an
+ignore Decision marked would-accept and nothing is accepted.
+`hcom-seat router -- --no-open` starts the Router under srt, and
+`intake-observe.py <orchestrator.sqlite> <decisions.tsv>` appends the
+would-accept Decisions as rows, reading the store read-only, creating the table
+with the `decisions.tsv` header when it is absent, and refusing to run when its
+own sha256 differs from its manifest pin.

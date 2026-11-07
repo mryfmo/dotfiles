@@ -127,9 +127,10 @@
 #   Management API bounds it: it accepts the hosts `127.0.0.1:<port>` and `localhost:<port>` alone and only with the
 #   `x-orchestrator-request` header, upstream docs/006-deployment.md; the port is the profile's, this role grants
 #   binding and no port); and the Router's state root `<DSH_HOME>/router-state`, where U317b renders `stateDir`, as a
-#   write root of its own (seat_write_roots), held before it is rendered (state_root_hold, U321b: no link, a directory
-#   of this user when present, its physical path inside the physical DSH_HOME, made 0700 after every check when
-#   absent). The omp profile, OMP_PROFILE and every other row are the dsh role's, so
+#   write root of its own (seat_write_roots), resolved exactly once, by state_root_hold, before anything of the
+#   launch is made (U321b, U321c: no link, a directory of this user, made 0700 at the hold when absent, its physical
+#   path inside the physical DSH_HOME; the rendering carries the held value and nothing resolves the path again). The
+#   omp profile, OMP_PROFILE and every other row are the dsh role's, so
 #   the role's rendered settings differ from the dsh role's in exactly the binding value and that one write root, and
 #   no other role's settings change by a byte.
 # @arg $1 string Role: orchestrator, worker, dsh or router.
@@ -291,7 +292,8 @@ gate=${HOME}/.agents/omp/hooks
 # router role alone, whose Runtime needs its loopback listener, U321; false for every other role), `role_profile`
 # (a DSH profile the row fixes, the only one the role accepts, in the options and among the verbatim dsh arguments
 # alike; empty when the caller chooses) and `state_root` (the name of a directory under DSH_HOME the row grants as a
-# write root of its own, held by state_root_hold before it is rendered, U321b; empty for a row without one).
+# write root of its own, resolved once by state_root_hold before anything of the launch is made, U321b and U321c;
+# empty for a row without one).
 case ${role} in
 orchestrator | worker) role_launch=hcom omp_profile=${role} allow_local_binding=false role_profile='' state_root='' ;;
 dsh) role_launch=foreground omp_profile=dsh allow_local_binding=false role_profile='' state_root='' ;;
@@ -605,6 +607,43 @@ physical_file() {
     [[ -f ${p} && -x ${p} ]] || return 1
     printf '%s\n' "${p}"
 }
+
+# @description Hold the role table's `state_root` cell (regime-cutover U321b, verdict U321-fec87e14 P1 `:1551`; U321c,
+#   verdict U321b-7dfaa839 P1 `:1567` and P3, the mechanism-change row of 2026-11-07T02:25:00Z, form remove):
+#   `<DSH_HOME>/<state_root>` is the one write root of the router row that is neither a slot this lever makes nor
+#   DSH_HOME itself. Round 1 rendered it as spelled, so a link at `router-state` escaped DSH_HOME; round 2 held it
+#   physical here and resolved it a second time where the roots are rendered, so a swap between the two reads
+#   rendered an outside grant. Now the path is resolved exactly once, here, into `state_root_phys`, which
+#   seat_write_roots prints verbatim and nothing else resolves again; and the hold is one of the pre-launch checks,
+#   right after the one resolver it needs (physical_path) is defined and before the private tool directory, any link,
+#   tool copy or host git call of the launch, in a dry run too, so a bad state root makes nothing. The spelled path
+#   is no symbolic link; absent, it is made 0700 now (the one write before the launch's own, inside DSH_HOME, which
+#   the dsh row owns) and held again; present, it is a directory and this user's (each refused by name); its physical
+#   form (physical_path, its status read) lies inside the physical DSH_HOME, by the prefix of the two trailing-slash
+#   forms (a DSH_HOME that is itself a link resolves first, so the root renders inside the physical home, as the dsh
+#   row's DSH_HOME does). So the held value always names a directory that existed, as this user's, when it was held;
+#   srt enforces that physical directory, and a later swap of the spelled path grants nothing (seat_sandbox_write
+#   refuses by name when the held directory is gone, and derives nothing from the path).
+# @set state_root_phys The physical path of the held state root; empty for a row without one.
+state_root_hold() {
+    local spelled=${dsh_home}/${state_root} home_real
+    home_real=$(physical_path "${dsh_home}") || refuse "cannot resolve DSH_HOME ${dsh_home}"
+    [[ ! -L ${spelled} ]] ||
+        refuse "the ${role} role's state root ${spelled} is a symbolic link; it must be a real directory inside DSH_HOME, or absent"
+    if [[ ! -e ${spelled} ]]; then
+        # mkdir takes no existing entry, so a link planted between the test above and here fails it.
+        (umask 077 && /bin/mkdir "${spelled}") || refuse "cannot create the ${role} role's state root ${spelled}"
+    fi
+    [[ ! -L ${spelled} ]] ||
+        refuse "the ${role} role's state root ${spelled} is a symbolic link; it must be a real directory inside DSH_HOME, or absent"
+    [[ -d ${spelled} ]] || refuse "the ${role} role's state root ${spelled} exists and is not a directory"
+    [[ -O ${spelled} ]] || refuse "the ${role} role's state root ${spelled} is not this user's directory"
+    state_root_phys=$(physical_path "${spelled}") || refuse "cannot resolve the ${role} role's state root ${spelled}"
+    [[ ${state_root_phys}/ == "${home_real}"/* ]] || # lint-comparisons: allow both operands physical (physical_path); the trailing slash makes the prefix a whole component
+        refuse "the ${role} role's state root ${spelled} resolves to ${state_root_phys}, outside DSH_HOME ${home_real}"
+}
+state_root_phys=''
+if [[ -n ${state_root} ]]; then state_root_hold; fi
 
 # @description Refuse (exit 2) when the physical path `$2`, or any directory above it, has the identity of a
 #   protected write root (`root_ids`).
@@ -1557,20 +1596,24 @@ fi
 # @stdout The roots.
 # @exitcode 1 A path could not be resolved.
 seat_write_roots() {
-    local path extra=()
+    local path extra=() held=''
     case $1 in
     dsh | router)
         extra=("${dsh_home}" "${HOME}/.omp/profiles/${omp_profile}" "${HOME}/.omp/run")
         # The row's state root (regime-cutover U321): `<DSH_HOME>/router-state` for the router row, where U317b renders
         # the Router's `stateDir`, after the dsh row's roots, so every tagged position (rows 0 to 2 and 4) stays the
-        # dsh role's. The path is the one state_root_hold held (U321b): physical, inside the physical DSH_HOME.
-        [[ -z ${state_root} ]] || extra+=("${state_root_real}")
+        # dsh role's. It is the value state_root_hold holds (U321c): printed verbatim below, never resolved here.
+        held=${state_root_phys}
         ;;
     *) extra=("${common}" "${HCOM_DIR}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;
     esac
     # The seat's own slots come first, then the shared Claude Code directory (seat_overlap_check and the dsh judge's
     # tags rely on the positions): its directory, its state directory, the shared directory.
-    for path in "$3" "${seats_root%/}/.state/$2" "${claude_config}" "${extra[@]}" "${srt_tmp_roots[@]}" "${HOME}/.npm/_logs"; do
+    for path in "$3" "${seats_root%/}/.state/$2" "${claude_config}" "${extra[@]}"; do
+        physical_path "${path}" || return 1
+    done
+    if [[ -n ${held} ]]; then printf '%s\n' "${held}"; fi
+    for path in "${srt_tmp_roots[@]}" "${HOME}/.npm/_logs"; do
         physical_path "${path}" || return 1
     done
 }
@@ -1609,31 +1652,6 @@ claude_config_real=$(physical_path "${claude_config}") || refuse "cannot resolve
 # The physical seats root goes to the preflight, so the login it judges and the directory the shim exports are one
 # spelling (the macOS Keychain item is keyed to the directory's path).
 seats_root_real=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
-
-# @description Hold the role table's `state_root` cell (regime-cutover U321b, verdict U321-fec87e14 P1 `:1551`):
-#   `<DSH_HOME>/<state_root>` is the one write root of the router row that is neither a slot this lever makes nor
-#   DSH_HOME itself, and round 1 rendered it as spelled, so a link at `router-state` pointing outside DSH_HOME became
-#   allowWrite row 6. Now, before the roots are rendered and in a dry run too: when the path exists it is no symbolic
-#   link, a directory, and this user's (each refused by name); its physical form (physical_path, its status read) lies
-#   inside the physical DSH_HOME, by the prefix of the two trailing-slash forms (a DSH_HOME that is itself a link
-#   resolves first, so the root renders inside the physical home, as the dsh row's DSH_HOME does); the physical form
-#   is what seat_write_roots renders. When absent it is made 0700 after every check (seat_sandbox_write), never here.
-# @set state_root_real The physical path of the state root.
-state_root_hold() {
-    local spelled=${dsh_home}/${state_root} home_real
-    home_real=$(physical_path "${dsh_home}") || refuse "cannot resolve DSH_HOME ${dsh_home}"
-    [[ ! -L ${spelled} ]] ||
-        refuse "the ${role} role's state root ${spelled} is a symbolic link; it must be a real directory inside DSH_HOME, or absent"
-    if [[ -e ${spelled} ]]; then
-        [[ -d ${spelled} ]] || refuse "the ${role} role's state root ${spelled} exists and is not a directory"
-        [[ -O ${spelled} ]] || refuse "the ${role} role's state root ${spelled} is not this user's directory"
-    fi
-    state_root_real=$(physical_path "${spelled}") || refuse "cannot resolve the ${role} role's state root ${spelled}"
-    [[ ${state_root_real}/ == "${home_real}"/* ]] || # lint-comparisons: allow both operands physical (physical_path); the trailing slash makes the prefix a whole component
-        refuse "the ${role} role's state root ${spelled} resolves to ${state_root_real}, outside DSH_HOME ${home_real}"
-}
-state_root_real=''
-if [[ -n ${state_root} ]]; then state_root_hold; fi
 
 # The exact roots (regime-cutover U85): this seat's `allowWrite` list, from the same function that writes the
 # settings, so the check and the sandbox cannot drift, and the other role's; the derived seats root and hcom store;
@@ -2236,15 +2254,12 @@ seat_sandbox_write() {
     # and each is checked again to be a real directory.
     (umask 077 && mkdir -p "${seats_root}" "${HOME}/.omp/profiles/${omp_profile}" "${HOME}/.omp/run") ||
         refuse "cannot create the seats root ${seats_root} or omp's state directories"
-    # The row's state root (U321b): absent at the hold (state_root_hold), it is made now, 0700, after every check;
-    # present, it was proved a real directory of this user, and is held to one again here, so a link planted since
-    # the hold refuses (mkdir fails on an existing entry, and a link is no directory).
-    if [[ -n ${state_root_real} ]]; then
-        if [[ ! -e ${state_root_real} && ! -L ${state_root_real} ]]; then
-            (umask 077 && /bin/mkdir "${state_root_real}") || refuse "cannot create the ${role} role's state root ${state_root_real}"
-        fi
-        [[ -d ${state_root_real} && ! -L ${state_root_real} && -O ${state_root_real} ]] ||
-            refuse "the ${role} role's state root ${state_root_real} is not a real directory of this user"
+    # The row's state root (U321b, U321c): held and made at the hold (state_root_hold), it is the held physical path
+    # the settings carry, whatever stands at the spelled path now. Gone since the hold, or no longer a real directory
+    # of this user, the launch refuses by name before the settings are written; nothing is derived from the path.
+    if [[ -n ${state_root_phys} ]]; then
+        [[ -d ${state_root_phys} && ! -L ${state_root_phys} && -O ${state_root_phys} ]] ||
+            refuse "the ${role} role's state root ${state_root_phys} is not a real directory of this user"
     fi
     for path in "${seats_root}/.state" "${claude_config}" "${seats_root}/.state/${name}" \
         ${scratch_dir:+"${scratch_dir}"} "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do

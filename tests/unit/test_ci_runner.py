@@ -367,7 +367,8 @@ class InstallerHelperGuardTest(unittest.TestCase):
         """The round-2 P3 of PR 705: a readable helper whose source returns non-zero exited 2 with an empty stderr
         although the Contract promised the path; that branch names the installer and the path like the other. A
         helper that does not parse never reaches the branch: a syntax error in a sourced file is fatal in a
-        non-interactive shell, which exits 2 with bash's own message naming the helper's path."""
+        non-interactive shell, which exits 2 with bash's own syntax-error message naming the helper's path (the line
+        number in that message is the parser's, bash 3.2 and 5.x disagree on it, and it is not the kit's behavior)."""
         for installer in INSTALLERS:
             with self.subTest(installer=installer, helper="returns 7"), tempfile.TemporaryDirectory() as temp:
                 result, helper = self.source_copy(temp, installer, "return 7\n")
@@ -375,7 +376,7 @@ class InstallerHelperGuardTest(unittest.TestCase):
             with self.subTest(installer=installer, helper="unparsable"), tempfile.TemporaryDirectory() as temp:
                 result, helper = self.source_copy(temp, installer, "function is_ci_runner( {\n")
                 self.assertEqual(2, result.returncode, result.stderr)
-                self.assertIn(f"{helper}: line 1: syntax error", result.stderr)
+                self.assertRegex(result.stderr, rf"{re.escape(helper)}: line \d+: syntax error")
                 self.assertEqual("", result.stdout)
 
     def test_the_five_guards_are_one_block_modulo_the_installer_path(self) -> None:

@@ -5497,7 +5497,7 @@
 
 
 <h1 id="installcommonaws_clish">install/common/aws_cli.sh<a class="headerlink" href="#installcommonaws_clish" title="Permanent link">&para;</a></h1>
-<p>On Linux the archive is verified and installed. On macOS AWS's install.sh is verified, then run under the XDG roots; it downloads the pkg and checks its Apple Developer team id before Apple's installer runs.</p>
+<p>One read of https://awscli.amazonaws.com/v2/version.txt names the release; every download, the skip check and the postcondition derive from that version. On Linux the versioned archive and its .sig, which AWS never rewrites, are verified and installed; the unversioned "latest" pair is not used, because AWS overwrites its two objects minutes apart and a run between the uploads pairs one release's archive with another's signature. On macOS AWS's install.sh is verified, then run under the XDG roots with that version; it downloads the pkg and checks its Apple Developer team id before Apple's installer runs.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/common/aws_cli.sh</code></li>
@@ -5506,7 +5506,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>aws_cli_archive_etag</code></li>
+<li><code>aws_cli_release_version</code></li>
 <li><code>aws_cli_url</code></li>
 <li><code>main</code></li>
 <li><code>verify_aws_cli_install</code></li>
@@ -5516,10 +5516,14 @@
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
 <span class="c1"># @file install/common/aws_cli.sh</span>
-<span class="c1"># @brief Install the current AWS CLI from AWS's official distribution, verified with AWS's GPG signature.</span>
+<span class="c1"># @brief Install the AWS CLI release that AWS's v2/version.txt names, verified with AWS's GPG signature.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   On Linux the archive is verified and installed. On macOS AWS's install.sh is verified, then run under the</span>
-<span class="c1">#   XDG roots; it downloads the pkg and checks its Apple Developer team id before Apple's installer runs.</span>
+<span class="c1">#   One read of https://awscli.amazonaws.com/v2/version.txt names the release; every download, the skip check</span>
+<span class="c1">#   and the postcondition derive from that version. On Linux the versioned archive and its .sig, which AWS</span>
+<span class="c1">#   never rewrites, are verified and installed; the unversioned "latest" pair is not used, because AWS</span>
+<span class="c1">#   overwrites its two objects minutes apart and a run between the uploads pairs one release's archive with</span>
+<span class="c1">#   another's signature. On macOS AWS's install.sh is verified, then run under the XDG roots with that</span>
+<span class="c1">#   version; it downloads the pkg and checks its Apple Developer team id before Apple's installer runs.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -5532,14 +5536,28 @@
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">AWS_CLI_KEY_PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_KEY_PATH</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.local/share/aws-cli-keys/aws-cli-public-key.asc</span><span class="si">}</span><span class="s2">"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">AWS_CLI_INSTALL_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/aws-cli"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">AWS_CLI_BIN_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin"</span>
-<span class="c1"># The ETag of the archive the last verified install came from; a changed ETag means a new release.</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">AWS_CLI_ETAG_FILE</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">XDG_STATE_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.local/state</span><span class="si">}</span><span class="s2">/dotfiles/aws-cli-archive.etag"</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Print the URL of AWS's current release: the archive for the current supported architecture</span>
-<span class="c1">#   on Linux, whose .sig is checked against the pinned key, and on macOS v2/version.txt, the release marker</span>
-<span class="c1">#   that v2/install.sh installs, whose ETag main reads.</span>
-<span class="c1"># @stdout The official x86_64 or aarch64 archive URL, or the macOS v2/version.txt URL.</span>
+<span class="c1"># @description Print the release version AWS's v2/version.txt names, for example 2.39.6, trimmed.</span>
+<span class="c1"># @exitcode 1 version.txt could not be read, or what it holds is not a &lt;major&gt;.&lt;minor&gt;.&lt;patch&gt; version.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>aws_cli_release_version<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>version
+<span class="w">    </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>curl<span class="w"> </span>--fail<span class="w"> </span>--location<span class="w"> </span>--silent<span class="w"> </span>--show-error<span class="w"> </span>--connect-timeout<span class="w"> </span><span class="m">30</span><span class="w"> </span>--speed-limit<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--speed-time<span class="w"> </span><span class="m">60</span><span class="w"> </span>https://awscli.amazonaws.com/v2/version.txt<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="p">//[[:</span><span class="nv">space</span><span class="p">:]]/</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+<span class="se">\.</span><span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+<span class="se">\.</span><span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+$<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'AWS CLI release check failed: version.txt names "%s", not a &lt;major&gt;.&lt;minor&gt;.&lt;patch&gt; version.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print the URL of the installer for one AWS CLI release: on Linux the versioned archive for the</span>
+<span class="c1">#   current supported architecture, an object AWS never rewrites, whose .sig is checked against the pinned</span>
+<span class="c1">#   key; on macOS v2/install.sh, which installs the version it is given.</span>
+<span class="c1"># @arg $1 string The release version, for example 2.39.6.</span>
+<span class="c1"># @stdout The official x86_64 or aarch64 versioned archive URL, or the macOS v2/install.sh URL.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>aws_cli_url<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>architecture<span class="w"> </span>kernel
@@ -5548,15 +5566,14 @@
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'uname -s failed; no AWS CLI archive was chosen.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="o">}</span>
-<span class="w">    </span><span class="c1"># macOS installs through v2/install.sh, which installs the release v2/version.txt names.</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kernel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Darwin<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'https://awscli.amazonaws.com/v2/version.txt\n'</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'https://awscli.amazonaws.com/v2/install.sh\n'</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nv">architecture</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">architecture</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>x86_64<span class="w"> </span><span class="p">|</span><span class="w"> </span>aarch64<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'https://awscli.amazonaws.com/awscli-exe-linux-%s.zip\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">architecture</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'https://awscli.amazonaws.com/awscli-exe-linux-%s-%s.zip\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">architecture</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Unsupported AWS CLI architecture: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">architecture</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
@@ -5606,8 +5623,11 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Verify and install the current AWS CLI without modifying a working install on verification failure.</span>
-<span class="c1">#   On macOS the verified file is install.sh, and version.txt names the release the postcondition expects.</span>
+<span class="c1"># @description Verify and install one AWS CLI release without modifying a working install on verification</span>
+<span class="c1">#   failure. On Linux the archive is the versioned one aws_cli_url names, and the CLI it stages must report</span>
+<span class="c1">#   that version before the upstream installer runs. On macOS the verified file is install.sh, run with</span>
+<span class="c1">#   --version so it installs that release, and the postcondition expects it.</span>
+<span class="c1"># @arg $1 string The release version, for example 2.39.6.</span>
 <span class="c1"># @exitcode 3 A download failed, so nothing was installed.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_aws_cli<span class="o">()</span><span class="w"> </span><span class="o">(</span>
@@ -5623,6 +5643,7 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>validity
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>temporary_dir
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>staged_version
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>dist_version
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>same_version_dir
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>active_version
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>kernel
@@ -5632,12 +5653,9 @@
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'uname -s failed; the AWS CLI was not installed.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="o">}</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kernel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Darwin<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">macos</span><span class="o">=</span><span class="m">1</span>
-<span class="w">        </span><span class="nv">archive_url</span><span class="o">=</span><span class="s2">"https://awscli.amazonaws.com/v2/install.sh"</span>
-<span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nv">archive_url</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>aws_cli_url<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">staged_version</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kernel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>Darwin<span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">macos</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="nv">archive_url</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>aws_cli_url<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged_version</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nv">temporary_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -rf "${temporary_dir}"'</span><span class="w"> </span>EXIT
 
@@ -5652,12 +5670,6 @@
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--output<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">3</span>
 <span class="w">    </span>curl<span class="w"> </span>--fail<span class="w"> </span>--location<span class="w"> </span>--silent<span class="w"> </span>--show-error<span class="w"> </span>--connect-timeout<span class="w"> </span><span class="m">30</span><span class="w"> </span>--speed-limit<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--speed-time<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_url</span><span class="si">}</span><span class="s2">.sig"</span><span class="w"> </span>--output<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">signature_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">3</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">macos</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="c1"># install.sh installs the release version.txt names, so the postcondition expects that one.</span>
-<span class="w">        </span><span class="nv">staged_version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>curl<span class="w"> </span>--fail<span class="w"> </span>--location<span class="w"> </span>--silent<span class="w"> </span>--show-error<span class="w"> </span>--connect-timeout<span class="w"> </span><span class="m">30</span><span class="w"> </span>--speed-limit<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--speed-time<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="se">\</span>
-<span class="w">            </span>https://awscli.amazonaws.com/v2/version.txt<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">3</span>
-<span class="w">        </span><span class="nv">staged_version</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">staged_version</span><span class="p">//[[:</span><span class="nv">space</span><span class="p">:]]/</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span>mkdir<span class="w"> </span>-m<span class="w"> </span><span class="m">700</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">inspection_home</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="nv">key_data</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>gpg<span class="w"> </span>--homedir<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">inspection_home</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--batch<span class="w"> </span>--with-colons<span class="w"> </span>--import-options<span class="w"> </span>show-only<span class="w"> </span>--import<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_KEY_PATH</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
@@ -5675,13 +5687,20 @@
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">macos</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_BIN_DIR</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_INSTALL_DIR</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">        </span><span class="nv">XDG_DATA_HOME</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_INSTALL_DIR</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="nv">XDG_BIN_HOME</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_BIN_DIR</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>bash<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">        </span><span class="nv">XDG_DATA_HOME</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_INSTALL_DIR</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="nv">XDG_BIN_HOME</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_BIN_DIR</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span>bash<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--version<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged_version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">        </span>verify_aws_cli_install<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged_version</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>unzip<span class="w"> </span>-q<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">archive_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nv">staged_version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>verify_aws_cli_version<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_dir</span><span class="si">}</span><span class="s2">/aws/dist/aws"</span><span class="w"> </span><span class="s2">"AWS CLI staged artifact verification failed"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nv">staged_version</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">staged_version</span><span class="p">#aws-cli/</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="c1"># The archive is the one the release version named, so the CLI it holds must be that release.</span>
+<span class="w">    </span><span class="nv">dist_version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>verify_aws_cli_version<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_dir</span><span class="si">}</span><span class="s2">/aws/dist/aws"</span><span class="w"> </span><span class="s2">"AWS CLI staged artifact verification failed"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">dist_version</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">dist_version</span><span class="p">#aws-cli/</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dist_version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged_version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'AWS CLI staged artifact verification failed: the archive holds aws-cli/%s, not the release aws-cli/%s.\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">dist_version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged_version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="c1"># The upstream installer's --update skips a version directory that already exists, so a broken</span>
 <span class="w">    </span><span class="c1"># install of the same version, or an interrupted update that left it beside an older active CLI,</span>
 <span class="w">    </span><span class="c1"># would never be repaired. Remove that directory first, after the signature and the staged CLI</span>
@@ -5703,49 +5722,32 @@
 <span class="o">)</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Print the ETag AWS serves for the current archive.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>aws_cli_archive_etag<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>url
-<span class="w">    </span><span class="nv">url</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>aws_cli_url<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span>curl<span class="w"> </span>--fail<span class="w"> </span>--location<span class="w"> </span>--silent<span class="w"> </span>--show-error<span class="w"> </span>--connect-timeout<span class="w"> </span><span class="m">30</span><span class="w"> </span>--speed-limit<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--speed-time<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--head<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span>
-<span class="w">        </span>awk<span class="w"> </span><span class="s1">'tolower($1) == "etag:" { etag = $2 } END { sub(/\r$/, "", etag); if (etag == "") exit 1; print etag }'</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Install or update the AWS CLI. Runs on every chezmoi apply and skips when the</span>
-<span class="c1">#   archive's ETag still matches the one recorded after the last verified install and that</span>
-<span class="c1">#   AWS CLI still runs.</span>
+<span class="c1"># @description Install or update the AWS CLI. Runs on every chezmoi apply: reads the release version</span>
+<span class="c1">#   v2/version.txt names once, skips when the installed AWS CLI already runs as that release, and</span>
+<span class="c1">#   otherwise installs that release. The skip check and the postcondition are the same predicate, so no</span>
+<span class="c1">#   state file is kept.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>etag<span class="w"> </span>recorded<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">etag</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>aws_cli_archive_etag<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>version<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>aws_cli_release_version<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="c1"># Only a CLI that still runs stays; a broken one fails the offline apply instead of passing.</span>
 <span class="w">        </span>verify_aws_cli_version<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_BIN_DIR</span><span class="si">}</span><span class="s2">/aws"</span><span class="w"> </span><span class="s2">"AWS CLI check"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Could not reach the AWS CLI archive, and no working AWS CLI is installed.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Could not read the AWS CLI release version, and no working AWS CLI is installed.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="o">}</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: could not reach the AWS CLI archive; the installed AWS CLI stays.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: could not read the AWS CLI release version; the installed AWS CLI stays.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="c1"># The recorded ETag counts only for an AWS CLI that still runs; a broken one is reinstalled. No</span>
-<span class="w">    </span><span class="c1"># readable record is no match: the verified install runs again and records it.</span>
-<span class="w">    </span><span class="nv">recorded</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>cat<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_ETAG_FILE</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">recorded</span><span class="o">=</span><span class="s2">""</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">recorded</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">etag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span>verify_aws_cli_version<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_BIN_DIR</span><span class="si">}</span><span class="s2">/aws"</span><span class="w"> </span><span class="s2">"AWS CLI check"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span>install_aws_cli<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
-<span class="w">    </span><span class="c1"># A failed download keeps a working AWS CLI (its ETag stays unrecorded, so the next apply retries);</span>
+<span class="w">    </span><span class="c1"># An AWS CLI that runs as the release needs nothing; a broken or older one is (re)installed.</span>
+<span class="w">    </span>verify_aws_cli_install<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span>install_aws_cli<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="c1"># A failed download keeps a working AWS CLI (the next apply compares it with version.txt again);</span>
 <span class="w">    </span><span class="c1"># a failed signature or postcondition never does.</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>verify_aws_cli_version<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_BIN_DIR</span><span class="si">}</span><span class="s2">/aws"</span><span class="w"> </span><span class="s2">"AWS CLI check"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: could not download the AWS CLI archive; the installed AWS CLI stays.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_ETAG_FILE</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">etag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AWS_CLI_ETAG_FILE</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: could not record the AWS CLI archive ETag; the next apply reinstalls it.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

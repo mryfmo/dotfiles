@@ -5,41 +5,41 @@ version: 'v0.0.3'
 workflows:
     '.github/workflows/agent-assets.yml':
         - 'actions/checkout@v7.0.1'
-        - 'astral-sh/setup-uv@v10.3.2'
+        - 'astral-sh/setup-uv@v10.3.3'
     '.github/workflows/apply-check.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/docs-check.yml':
         - 'actions/checkout@v7.0.1'
-        - 'astral-sh/setup-uv@v10.3.2'
-        - 'jdx/mise-action@v5.2.2'
+        - 'astral-sh/setup-uv@v10.3.3'
+        - 'jdx/mise-action@v5.2.4'
     '.github/workflows/docs.yml':
         - 'actions/checkout@v7.0.1'
-        - 'astral-sh/setup-uv@v10.3.2'
-        - 'jdx/mise-action@v5.2.2'
+        - 'astral-sh/setup-uv@v10.3.3'
+        - 'jdx/mise-action@v5.2.4'
     '.github/workflows/drift-watch.yml':
         - 'actions/checkout@v7.0.1'
-        - 'astral-sh/setup-uv@v10.3.2'
+        - 'astral-sh/setup-uv@v10.3.3'
     '.github/workflows/macos.yaml':
         - 'actions/checkout@v7.0.1'
         - 'benchmark-action/github-action-benchmark@v1.22.2'
-        - 'jdx/mise-action@v5.2.2'
+        - 'jdx/mise-action@v5.2.4'
         - 'webfactory/ssh-agent@v0.10.0'
     '.github/workflows/private-bootstrap.yaml':
         - 'actions/checkout@v7.0.1'
         - 'webfactory/ssh-agent@v0.10.0'
     '.github/workflows/regime.yml':
         - 'actions/checkout@v7.0.1'
-        - 'astral-sh/setup-uv@v10.3.2'
+        - 'astral-sh/setup-uv@v10.3.3'
     '.github/workflows/remote.yaml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/test.yaml':
         - 'actions/checkout@v7.0.1'
-        - 'astral-sh/setup-uv@v10.3.2'
+        - 'astral-sh/setup-uv@v10.3.3'
         - 'codecov/codecov-action@v7.1.1'
-        - 'jdx/mise-action@v5.2.2'
+        - 'jdx/mise-action@v5.2.4'
     '.github/workflows/ubuntu.yaml':
         - 'actions/checkout@v7.0.1'
-        - 'jdx/mise-action@v5.2.2'
+        - 'jdx/mise-action@v5.2.4'
         - 'webfactory/ssh-agent@v0.10.0'
 dependencies:
     'actions/checkout@v7.0.1':
@@ -52,9 +52,9 @@ dependencies:
         commit: 'sha1-ed597411d8f924073f98dfc5c65a23a2325f34cd'
         owner_id: 44036562
         repo_id: 205262760
-    'astral-sh/setup-uv@v10.3.2':
-        ref: 'v10.3.2'
-        commit: 'sha1-07a047e608db84b3d8c06cd9a7c7dcc9c355c18e'
+    'astral-sh/setup-uv@v10.3.3':
+        ref: 'v10.3.3'
+        commit: 'sha1-68559e99cc807c1eb7e9238fd43a15bba460eec2'
         owner_id: 115962839
         repo_id: 846733598
     'benchmark-action/github-action-benchmark@v1.22.2':
@@ -69,9 +69,9 @@ dependencies:
         repo_id: 200299178
         uses:
             - 'actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd'
-    'jdx/mise-action@v5.2.2':
-        ref: 'v5.2.2'
-        commit: 'sha1-8418fedb1110381a0d3ba51a7a415d7c1b884550'
+    'jdx/mise-action@v5.2.4':
+        ref: 'v5.2.4'
+        commit: 'sha1-6be3c7ed4c21d4f76b208d351d95aac273ebb76d'
         owner_id: 216188
         repo_id: 738284564
     'webfactory/ssh-agent@v0.10.0':

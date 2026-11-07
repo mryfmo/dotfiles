@@ -174,7 +174,7 @@ jobs:
           alert-comment-cc-users: "@mryfmo"
           benchmark-data-dir-path: "."
 
-      - uses: jdx/mise-action@v5.2.2
+      - uses: jdx/mise-action@v5.2.4
         with:
           # The newest mise at least 72 hours old, as hosts get it (minimum_release_age).
           minimum_release_age: 72h

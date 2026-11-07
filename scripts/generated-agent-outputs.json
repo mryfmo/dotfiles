@@ -447,7 +447,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "9fcba2a90da5a9aed63a2d6b59e59632a22fcc816acd2a2d148b04e1a673475c"
+      "sha256": "35836c34162a6072c7126ab087bb8baaab86ea050fb25f0bd9e3dfe6bab1a9ae"
     },
     {
       "source": "home/dot_local/bin/common/executable_intake-observe.py",

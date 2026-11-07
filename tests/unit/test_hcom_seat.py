@@ -2799,39 +2799,117 @@ class HcomSeatTest(SeatFixture):
         self.assertIn(f"hcom-seat: sandbox {self.seats}/.sandbox/worker", run.stderr)
         self.assertFalse(Path(self.seats).exists())
 
-    def test_the_omp_roles_deny_the_routers_credential_root_for_read(self):
-        """U353b (verdict U353-8791100f P1 `:430`): srt allows reads by default, so the worker and the orchestrator
-        settings carry the Router's credential root `<DSH_HOME>/router-credentials` in denyRead, once, with no grant at
-        or under it. The omp roles hold no DSH_HOME: the row is the kit's root under the caller's DSH_HOME, else
-        `~/.dsh`, in its physical form (a root no launch has made yet resolves through its nearest existing ancestor,
-        a linked home through its target); a DSH_HOME that cannot be resolved refuses the launch. The router row alone
-        reads it (tests/unit/test_hcom_seat_dsh.py), and no omp launch makes anything under `~/.dsh`."""
+    def test_every_omp_launch_makes_the_routers_credential_root_and_denies_it_for_read_and_write(self):
+        """U353d (verdict U353-318f268d P1 `:2383` and P2 `:2393`; the mechanism-change row of 2026-11-07T12:55:26Z,
+        form remove). srt 0.0.81's Linux backend mounts nothing for a denyRead entry that is not there
+        (`dist/sandbox/linux-sandbox-utils.js:1810-1812`), so the U353b row, which named `<DSH_HOME>/router-credentials`
+        whether or not it existed, left an omp seat started before the Router's first launch free to read the login
+        once the Router had made the root; and the omp rows denied the root for read alone, so a worker launched with
+        `DSH_HOME` equal to `HCOM_DIR` held the root under an allowWrite root with no covering denyWrite. Now every
+        launch of every role makes the root (the caller's `DSH_HOME`, else `~/.dsh`, held to a clean path and resolved
+        physically, a linked home through its target; the home made too when absent) as a 0700 directory of this user
+        before the settings file is written, and the orchestrator and worker rows carry its physical path once in
+        denyRead and once in denyWrite with no grant at or under it; a present root is kept; a dry run makes nothing and
+        says what a launch would make; a planted link or file at the root's path refuses by name with nothing made and
+        nothing started; a `DSH_HOME` that is not a clean absolute path refuses."""
         home = self.home.resolve()
-        default_root = str(home / ".dsh/router-credentials")
+        default_root = home / ".dsh/router-credentials"
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(
+            f"hcom-seat: the worker role's credential root {default_root} does not exist; a launch creates it (0700)",
+            run.stderr,
+        )
+        self.assertFalse((home / ".dsh").exists() or (home / ".dsh").is_symlink(), "a dry run makes nothing")
         for role in ("worker", "orchestrator"):
             with self.subTest(role=role):
                 run = self.seat(role, "--seats-root", self.seats)
                 self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertNotIn("does not exist; a launch creates it", run.stderr)
+                self.assertTrue(default_root.is_dir() and not default_root.is_symlink(), "the launch makes the root")
+                self.assertEqual(stat.S_IMODE(default_root.stat().st_mode), 0o700)
+                self.assertEqual(default_root.stat().st_uid, os.geteuid(), "a directory of this user")
+                self.assertEqual(stat.S_IMODE((home / ".dsh").stat().st_mode), 0o700, "the absent home is made 0700")
+                settings_file = Path(self.seats, ".sandbox", role, "srt-settings.json")
+                self.assertLessEqual(
+                    default_root.stat().st_mtime_ns,
+                    settings_file.stat().st_mtime_ns,
+                    "the root exists before the settings file is written",
+                )
                 fs = self.settings_of(role)["filesystem"]
-                self.assertEqual(fs["denyRead"].count(default_root), 1, fs["denyRead"])
+                self.assertEqual(fs["denyRead"].count(str(default_root)), 1, fs["denyRead"])
+                self.assertEqual(fs["denyWrite"].count(str(default_root)), 1, fs["denyWrite"])
                 for key in ("allowRead", "allowWrite"):
-                    under = [row for row in fs[key] if row == default_root or row.startswith(default_root + "/")]
+                    under = [row for row in fs[key] if row == str(default_root) or row.startswith(f"{default_root}/")]
                     self.assertEqual(under, [], key)
+                self.assertEqual(list(default_root.iterdir()), [], "the root is made empty and nothing is placed in it")
+        self.assertEqual(len(self.calls_of("omp")), 2, "both launches reached omp")
+        # A caller's DSH_HOME, spelled directly and through a link: the row and the made root are the physical path.
         other_home = Path(self.temp.name).resolve() / "other-dsh-home"
         other_home.mkdir()
         linked = Path(self.temp.name).resolve() / "linked-dsh-home"
         linked.symlink_to(other_home)
+        other_root = other_home / "router-credentials"
         for spelled in (other_home, linked):
             with self.subTest(dsh_home=str(spelled)):
                 run = self.seat("worker", "--seats-root", self.seats, DSH_HOME=str(spelled))
                 self.assertEqual(run.returncode, 0, run.stderr)
-                deny_read = self.settings_of("worker")["filesystem"]["denyRead"]
-                self.assertEqual(deny_read.count(str(other_home / "router-credentials")), 1, deny_read)
-                self.assertNotIn(default_root, deny_read)
+                self.assertTrue(other_root.is_dir() and not other_root.is_symlink())
+                self.assertEqual(stat.S_IMODE(other_root.stat().st_mode), 0o700)
+                fs = self.settings_of("worker")["filesystem"]
+                self.assertEqual(
+                    (fs["denyRead"].count(str(other_root)), fs["denyWrite"].count(str(other_root))), (1, 1)
+                )
+                self.assertNotIn(str(default_root), fs["denyRead"] + fs["denyWrite"])
+        # DSH_HOME equal to HCOM_DIR (the auditor's probe): the root lies under the store, a write root of the worker,
+        # and the denyWrite row covers it.
+        store_root = self.store.resolve() / "router-credentials"
+        run = self.seat("worker", "--seats-root", self.seats, DSH_HOME=str(self.store))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        fs = self.settings_of("worker")["filesystem"]
+        self.assertIn(str(self.store.resolve()), fs["allowWrite"])
+        self.assertEqual((fs["denyRead"].count(str(store_root)), fs["denyWrite"].count(str(store_root))), (1, 1))
+        self.assertTrue(store_root.is_dir() and not store_root.is_symlink())
+        self.assertEqual(stat.S_IMODE(store_root.stat().st_mode), 0o700)
+        # A DSH_HOME that is no clean absolute path refuses before anything is resolved.
         run = self.seat("worker", "--seats-root", self.seats, DSH_HOME="relative/dsh")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn("cannot resolve the Router's credential root relative/dsh/router-credentials", run.stderr)
-        self.assertFalse((home / ".dsh").exists(), "no omp launch makes anything under ~/.dsh")
+        self.assertIn("DSH_HOME 'relative/dsh' is not a clean absolute path", run.stderr)
+        # A planted link (into the operator's own gh directory) or a regular file at the root's path refuses by name,
+        # for both omp roles, in a dry run too, with no seats root, no tool run and nothing at the link's target.
+        planted_home = Path(self.temp.name).resolve() / "planted-dsh-home"
+        planted_home.mkdir()
+        outside = home / ".config/gh"
+        outside.mkdir(parents=True)
+        planted = planted_home / "router-credentials"
+        planted.symlink_to(outside)
+        fresh_seats = str(Path(self.temp.name).resolve() / "fresh-seats")
+        tools_before = (len(self.calls_of("srt")), len(self.calls_of("hcom")), len(self.calls_of("omp")))
+        for role in ("worker", "orchestrator"):
+            for args in ([], ["--dry-run"]):
+                with self.subTest(case="a link", role=role, args=args):
+                    run = self.seat(role, "--seats-root", fresh_seats, *args, DSH_HOME=str(planted_home))
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(
+                        f"the {role} role's credential root {planted} is a symbolic link; it must be a real directory"
+                        " inside DSH_HOME, or absent",
+                        run.stderr,
+                    )
+                    self.assertFalse(Path(fresh_seats).exists(), "no seats root and no settings file")
+                    self.assertEqual(list(outside.iterdir()), [], "nothing written at the link's target")
+        planted.unlink()
+        planted.write_text("")
+        for role in ("worker", "orchestrator"):
+            with self.subTest(case="a regular file", role=role):
+                run = self.seat(role, "--seats-root", fresh_seats, DSH_HOME=str(planted_home))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"the {role} role's credential root {planted} exists and is not a directory", run.stderr)
+                self.assertFalse(Path(fresh_seats).exists())
+        self.assertEqual(
+            (len(self.calls_of("srt")), len(self.calls_of("hcom")), len(self.calls_of("omp"))),
+            tools_before,
+            "no refused launch ran a tool",
+        )
 
 
 if __name__ == "__main__":

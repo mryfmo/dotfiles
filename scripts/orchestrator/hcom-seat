@@ -146,15 +146,17 @@
 #   its physical path inside the held home; the rendering carries the held value and nothing resolves the path again);
 #   absent, it is made 0700 after the home has passed the deny judgement, in a real launch alone (a dry run makes
 #   nothing and says what a launch would make, U321d). The Router's credential root `<DSH_HOME>/router-credentials`
-#   (regime-cutover U353, M-26 stage B): the one directory the role reads beyond the dsh row's grants, allowRead row 7,
-#   where the operator places the agent account's gh login (`router-gh` reads the token from its `gh/hosts.yml`); held
-#   like the state root (cred_root_hold, from the held physical DSH_HOME, no link, a directory of this user, inside the
-#   home; made 0700 by a real launch after the judgement, cred_root_make), denied for write by both foreground rows and
-#   for read by the dsh row (the role table's `cred_root_grant` cell: `read` for the router row, `deny` for the dsh row)
-#   and by the omp roles (U353b: one denyRead row of the kit's root under the caller's DSH_HOME, else `~/.dsh`, since
-#   srt allows reads by default), so no role writes it and only the Router reads it. The omp profile, OMP_PROFILE and
-#   every other row are the dsh role's, so the role's rendered settings differ from the dsh role's in exactly the
-#   binding value, that one write root and the credential root's grant.
+#   (regime-cutover U353, M-26 stage B; U353b; U353d): the one directory the role reads beyond the dsh row's grants,
+#   allowRead row 7, where the operator places the agent account's gh login (`router-gh` reads the token from its
+#   `gh/hosts.yml`); held like the state root by every role (cred_home_hold, cred_root_hold: under the held physical
+#   DSH_HOME for the foreground rows and under the caller's DSH_HOME else `~/.dsh` for the omp roles, which hold no
+#   DSH_HOME; no link, a directory of this user, inside the home), made 0700 by every role's real launch before its
+#   settings file is written (cred_root_make; the foreground rows after the judgement), because srt 0.0.81's Linux
+#   backend mounts nothing for a denyRead entry that is not there (U353d), and denied for read and for write by every
+#   row but the router's (the role table's `cred_root_grant` cell: `read` for the router row, `deny` for the dsh row;
+#   the omp rows in seat_settings_render) and for write by the router row too, so no role writes it and only the
+#   Router reads it. The omp profile, OMP_PROFILE and every other row are the dsh role's, so the role's rendered
+#   settings differ from the dsh role's in exactly the binding value, that one write root and the credential root's grant.
 # @arg $1 string Role: orchestrator, worker, dsh or router.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
@@ -421,9 +423,10 @@ gate=${HOME}/.agents/omp/hooks
 # is made and made by state_root_make after the home's deny judgement, U321b to U321d; empty for a row without one) and
 # `cred_root_grant` (the Router's credential root `<DSH_HOME>/router-credentials`, `cred_root`, regime-cutover U353:
 # `read` for the router row, whose allowRead gains it as its last row, `deny` for the dsh row, whose denyRead gains it;
-# both rows deny writing it, both hold it once by cred_root_hold beside the state root, and the router row alone makes
-# it, by cred_root_make after the judgement; empty for the omp roles, which have no DSH_HOME and deny the kit's root
-# under `${DSH_HOME:-~/.dsh}` for read instead, U353b, `cred_root_omp` in seat_settings_render).
+# both rows deny writing it; empty for the omp roles, whose denyRead and denyWrite gain the same root under the home
+# router-gh resolves, the caller's `${DSH_HOME:-~/.dsh}`, U353b and U353d, in seat_settings_render. Every role holds
+# the root once, by cred_home_hold and cred_root_hold beside the state root, and makes it by cred_root_make before
+# its settings file is written, U353d).
 # The profile config row (U310): the omp roles' overlays ride the launch flags (`--config`, omp_inputs_check), so
 # their row is `none`; the foreground roles' overlay, the one of their omp profile (`omp_profile`), is placed as that
 # profile's own `agent/config.yml` (profile_config_check; the write is the helper's, profile_config_place).
@@ -815,21 +818,51 @@ state_root_make() {
         refuse "the ${role} role's state root ${state_root_phys} is not a real directory of this user"
 }
 
-# @description Hold the role table's credential root (regime-cutover U353): `<DSH_HOME>/router-credentials`, the
-#   directory the agent account's gh login lives under (`router-gh` sets `GH_CONFIG_DIR` to its `gh/`), the one read
-#   grant of the router row beyond the dsh row's (`cred_root_grant` read) and a read-and-write deny of the dsh row
-#   (`deny`). The same hold as the state root (state_root_hold): the path is `${dsh_home_phys}/<cred_root>`, opened
-#   relative to the held physical home and resolved exactly once, here, into `cred_root_phys`, which
-#   seat_settings_render renders verbatim and nothing resolves again; one of the pre-launch checks, before the private
-#   tool directory, any link, tool copy or host git call, in a dry run too, and it writes nothing: no symbolic link (a
-#   link into the operator's own `~/.config/gh` would hand the Router another account's login); present, a directory
+# @description Hold the home the Router's credential root lies in (regime-cutover U353d, verdict U353-318f268d P1
+#   `:2383`): every role makes and denies `<home>/router-credentials`, so every role resolves the home exactly once,
+#   here, before anything of the launch is made. The foreground rows take the held physical DSH_HOME (dsh_home_hold).
+#   The omp roles hold no DSH_HOME; their home is the one router-gh resolves, the caller's `DSH_HOME` else `~/.dsh`,
+#   held to a clean path, resolved once (physical_path; a linked home through its target) into a clean physical path
+#   and, present, a directory, each else refused by name. Absent (an omp seat host without the dsh kit), it is noted
+#   (`cred_home_absent`) and made 0700 by cred_root_make with the root, so the omp rows' deny names a directory that
+#   exists.
+# @set cred_home_phys The physical home the credential root lies in.
+# @set cred_home_absent 1 when that home does not exist yet.
+cred_home_hold() {
+    local spelled
+    if [[ ${role_launch} == foreground ]]; then
+        cred_home_phys=${dsh_home_phys}
+        return 0
+    fi
+    spelled=${DSH_HOME:-${HOME}/.dsh}
+    require_clean_path DSH_HOME "${spelled}"
+    cred_home_phys=$(physical_path "${spelled}") || refuse "cannot resolve DSH_HOME ${spelled}, the home of the Router's credential root"
+    require_clean_path DSH_HOME "${cred_home_phys}"
+    if [[ -e ${spelled} || -L ${spelled} ]]; then
+        [[ -d ${cred_home_phys} ]] || refuse "DSH_HOME ${spelled} resolves to ${cred_home_phys}, which is not a directory"
+    else
+        cred_home_absent=1
+    fi
+}
+
+# @description Hold the Router's credential root (regime-cutover U353, U353d): `<home>/router-credentials` (`cred_root`
+#   under the held home of cred_home_hold), the directory the agent account's gh login lives under (`router-gh` sets
+#   `GH_CONFIG_DIR` to its `gh/`): the one read grant of the router row beyond the dsh row's (`cred_root_grant` read)
+#   and a read-and-write deny of every other row (the dsh row's `deny` cell; the omp rows, U353b and U353d). The same
+#   hold as the state root (state_root_hold): the path is opened relative to the held physical home and resolved
+#   exactly once, here, into `cred_root_phys`, which seat_settings_render renders verbatim and nothing resolves again;
+#   one of the pre-launch checks of every role, before the private tool directory, any link, tool copy or host git
+#   call, in a dry run too, and it writes nothing: no symbolic link (a link into the operator's own `~/.config/gh`
+#   would hand the Router another account's login, or an omp seat a deny of another directory); present, a directory
 #   of this user; its physical form inside the held home. Absent, it is noted (`cred_root_absent`) and made 0700 by
-#   cred_root_make for the router row alone, after the judgement and only in a real launch; the dsh row holds it too,
-#   so a link refuses that row before anything is made, and makes nothing.
-# @set cred_root_phys The physical path of the held credential root; empty for a row without the cell.
+#   cred_root_make for every role: srt 0.0.81's Linux backend mounts nothing for a denyRead entry that is not there
+#   (dist/sandbox/linux-sandbox-utils.js:1810-1812: "a tmpfs (directory) or a /dev/null mask on the entry itself;
+#   nothing when it is not there"), so a deny of an absent root held nothing once the Router had made it (verdict
+#   U353-318f268d P1 `:2383`); now the root exists before any role's settings file is written.
+# @set cred_root_phys The physical path of the held credential root.
 # @set cred_root_absent 1 when the held credential root does not exist yet.
 cred_root_hold() {
-    local spelled=${dsh_home_phys}/${cred_root}
+    local spelled=${cred_home_phys}/${cred_root}
     [[ ! -L ${spelled} ]] ||
         refuse "the ${role} role's credential root ${spelled} is a symbolic link; it must be a real directory inside DSH_HOME, or absent"
     if [[ -e ${spelled} ]]; then
@@ -840,31 +873,44 @@ cred_root_hold() {
         cred_root_absent=1
     fi
     cred_root_phys=$(physical_path "${spelled}") || refuse "cannot resolve the ${role} role's credential root ${spelled}"
-    [[ ${cred_root_phys}/ == "${dsh_home_phys}"/* ]] || # lint-comparisons: allow both operands physical (physical_path); the trailing slash makes the prefix a whole component
-        refuse "the ${role} role's credential root ${spelled} resolves to ${cred_root_phys}, outside DSH_HOME ${dsh_home_phys}"
+    [[ ${cred_root_phys}/ == "${cred_home_phys}"/* ]] || # lint-comparisons: allow both operands physical (physical_path); the trailing slash makes the prefix a whole component
+        refuse "the ${role} role's credential root ${spelled} resolves to ${cred_root_phys}, outside DSH_HOME ${cred_home_phys}"
 }
 
-# @description Make the held credential root (cred_root_hold) when it was absent, 0700, for the router row alone, after
-#   the home's deny judgement passed and only in a real launch (regime-cutover U353; the form of state_root_make). A
-#   dry run makes nothing and says what a launch would make. Present or made, the held path is a real directory of
-#   this user, else refused by name. The login inside it is never made here: it is the operator's step.
+# @description Make the held credential root (cred_root_hold) when it was absent, 0700, for every role (regime-cutover
+#   U353; U353d: the dsh and omp rows too, since the deny they render must name a directory that exists when srt reads
+#   it), the home first when it was absent (cred_home_hold, the omp roles alone), in a real launch alone and, for the
+#   foreground rows, after their home has passed the deny judgement (the form of state_root_make). A dry run makes
+#   nothing and says what a launch would make. Two launches at once (the dsh role's normal case; an orchestrator and a
+#   worker started together) may both find the root absent: the loser of the mkdir race takes the directory the winner
+#   made, held to a real directory of this user, while a link planted since the hold fails mkdir and that hold alike.
+#   Present or made, the held path is a real directory of this user, else refused by name. The login inside it is
+#   never made here: it is the operator's step.
 # @arg $1 int 1 for a dry run.
 cred_root_make() {
+    local path
     if ((cred_root_absent)); then
         if (($1)); then
             echo "hcom-seat: the ${role} role's credential root ${cred_root_phys} does not exist; a launch creates it (0700)" >&2
             return 0
         fi
-        # mkdir takes no existing entry, so a link planted since the hold fails it.
-        (umask 077 && /bin/mkdir "${cred_root_phys}") || refuse "cannot create the ${role} role's credential root ${cred_root_phys}"
+        if ((cred_home_absent)); then
+            path=${cred_home_phys}
+            (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} && -O ${path} ]] ||
+                refuse "cannot create DSH_HOME ${path}, the home of the ${role} role's credential root"
+        fi
+        path=${cred_root_phys}
+        (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} && -O ${path} ]] ||
+            refuse "cannot create the ${role} role's credential root ${path}"
     fi
     [[ -d ${cred_root_phys} && ! -L ${cred_root_phys} && -O ${cred_root_phys} ]] ||
         refuse "the ${role} role's credential root ${cred_root_phys} is not a real directory of this user"
 }
-dsh_home_phys='' state_root_phys='' state_root_absent=0 cred_root_phys='' cred_root_absent=0 cred_root_omp=''
+dsh_home_phys='' state_root_phys='' state_root_absent=0 cred_home_phys='' cred_home_absent=0 cred_root_phys='' cred_root_absent=0
 if [[ ${role_launch} == foreground ]]; then dsh_home_hold; fi
 if [[ -n ${state_root} ]]; then state_root_hold; fi
-if [[ -n ${cred_root_grant} ]]; then cred_root_hold; fi
+cred_home_hold
+cred_root_hold
 
 # @description Refuse (exit 2) when the physical path `$2`, or any directory above it, has the identity of a
 #   protected write root (`root_ids`).
@@ -2373,24 +2419,23 @@ seat_settings_render() {
     # worker clones of its own program, which it reviews. The dsh role has no worktree, no bus and no store: it
     # re-opens its scratch cwd and state slot, the shared Claude Code directory, DSH_HOME, its own omp profile, the
     # skills it loads and the pinned tool directory on its PATH, and no git, hcom or record path.
-    # The omp roles' row of the Router's credential root (regime-cutover U353b, verdict U353-8791100f P1 `:430`): srt
-    # allows reads by default, and the U353 head denied the root to the dsh row alone, so a worker or orchestrator seat
-    # read `router-credentials/gh/hosts.yml` once the login was there. The omp roles hold no DSH_HOME; their row is the
-    # kit's root under the home router-gh resolves (the caller's DSH_HOME, else `~/.dsh`), in its physical form (a root
-    # no launch has made yet resolves through its nearest existing ancestor), one denyRead row before the read grants;
-    # a home that cannot be resolved refuses the launch. The foreground rows deny or grant the held root instead.
-    if [[ ${role_launch} == hcom ]]; then
-        cred_root_omp=$(physical_path "${DSH_HOME:-${h}/.dsh}/${cred_root}") ||
-            refuse "cannot resolve the Router's credential root ${DSH_HOME:-${h}/.dsh}/${cred_root} for the ${role} role's deny row"
-    fi
+    # The omp roles' rows of the Router's credential root (regime-cutover U353b, verdict U353-8791100f P1 `:430`; U353d,
+    # verdict U353-318f268d P1 `:2383` and P2 `:2393`): srt allows reads by default, and the U353 head denied the root
+    # to the dsh row alone, so a worker or orchestrator seat read `router-credentials/gh/hosts.yml` once the login was
+    # there; U353b's row named the kit's root whether or not it existed, which srt's Linux backend mounts nothing for,
+    # and denied it for read alone, so a worker under `DSH_HOME=HCOM_DIR` held the root under a write root. The rows
+    # are the held physical root (cred_root_hold, under the home router-gh resolves; made by cred_root_make before this
+    # render): one denyRead row before the read grants, one denyWrite row after the operator's Claude Code paths.
     case ${role} in
     orchestrator)
-        deny_read+=("${cred_root_omp}")
+        deny_read+=("${cred_root_phys}")
+        deny_write+=("${cred_root_phys}")
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
             "${claude_config_real}" "${checkout}/.orchestration/orchestrate" "${seats_real}")
         ;;
     worker)
-        deny_read+=("${checkout}" "${cred_root_omp}")
+        deny_read+=("${checkout}" "${cred_root_phys}")
+        deny_write+=("${cred_root_phys}")
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
             "${claude_config_real}" "${checkout}/.orchestration/orchestrate")
         ;;
@@ -2631,11 +2676,11 @@ if [[ ${role_launch} == foreground ]]; then
     seat_settings_render
     settings_judge ||
         refuse "the dsh role's ${judge_grant} is, contains or lies inside ${judge_deny}; the launch is refused before anything is made"
-    # The router row's state root and credential root are made now, after the home they lie in has passed the
-    # judgement, in a real launch alone (state_root_make, regime-cutover U321d; cred_root_make, U353); a dry run says
-    # what a launch would make and makes nothing.
+    # The router row's state root and both foreground rows' credential root are made now, after the home they lie in
+    # has passed the judgement, in a real launch alone (state_root_make, regime-cutover U321d; cred_root_make, U353,
+    # the dsh row too since U353d); a dry run says what a launch would make and makes nothing.
     if [[ -n ${state_root} ]]; then state_root_make "${dry_run}"; fi
-    if [[ ${cred_root_grant} == read ]]; then cred_root_make "${dry_run}"; fi # lint-comparisons: allow a cell word of the role table (read, deny), not a path
+    cred_root_make "${dry_run}"
     # The dry run's compare of a present profile config runs the helper after the judge's acceptance of the profile
     # boundary and writes nothing (regime-cutover U310c, U310d); a launch compares at the write.
     profile_config_compare
@@ -2753,14 +2798,10 @@ seat_sandbox_write() {
         [[ -d ${state_root_phys} && ! -L ${state_root_phys} && -O ${state_root_phys} ]] ||
             refuse "the ${role} role's state root ${state_root_phys} is not a real directory of this user"
     fi
-    # The credential root (U353): the router row's must be the real directory cred_root_make left, the dsh row's may be
-    # absent but never a link (the deny would then name another directory's physical path).
-    if [[ ${cred_root_grant} == read ]]; then # lint-comparisons: allow a cell word of the role table (read, deny), not a path
-        [[ -d ${cred_root_phys} && ! -L ${cred_root_phys} && -O ${cred_root_phys} ]] ||
-            refuse "the ${role} role's credential root ${cred_root_phys} is not a real directory of this user"
-    elif [[ -n ${cred_root_grant} ]]; then
-        [[ ! -L ${cred_root_phys} ]] || refuse "the ${role} role's credential root ${cred_root_phys} is a symbolic link"
-    fi
+    # The credential root (U353, U353d): every role's must be the real directory of this user cred_root_make left, so
+    # the deny or the grant that names it names a directory that exists when srt reads the settings.
+    [[ -d ${cred_root_phys} && ! -L ${cred_root_phys} && -O ${cred_root_phys} ]] ||
+        refuse "the ${role} role's credential root ${cred_root_phys} is not a real directory of this user"
     for path in "${seats_root}/.state" "${claude_config}" "${seats_root}/.state/${name}" \
         ${scratch_dir:+"${scratch_dir}"} "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do
         if [[ ! -e ${path} && ! -L ${path} ]]; then
@@ -2948,6 +2989,10 @@ hcom_store_ensure() {
 }
 
 hcom_store_ensure "${dry_run}"
+# The omp roles' credential root (regime-cutover U353d): made beside the store, before anything else of the launch is
+# made or rendered, in a real launch; a dry run says what a launch would make. The foreground rows made theirs after
+# the judgement above.
+if [[ ${role_launch} == hcom ]]; then cred_root_make "${dry_run}"; fi
 if ((dry_run)); then
     printf '%q ' "${argv[@]}"
     echo

@@ -825,6 +825,54 @@ class RouterSettingsApplyTest(unittest.TestCase):
             steps.append(cells[0])
         self.assertEqual(steps, ["1", "2", "3"])
 
+    @unittest.skipIf(
+        os.geteuid() == 0, "root reads a file whatever its mode; the case needs a login file the wrapper cannot read"
+    )
+    def test_the_wrapper_refuses_by_name_with_no_gh_run_when_the_login_file_cannot_be_read(self):
+        """U353d (verdict U353-318f268d P2 `tests/unit/test_router_settings_apply.py:828`, standing order 21): the reads
+        the wrapper's decision rests on fail closed by name. A login file of mode 000 is refused by the mode test (gh
+        writes 0600; the wrapper prints the mode `stat` read) before any read; one of mode 200 (owner write alone, so
+        the mode test's `?00` form passes and the read is what fails) is refused by the read, `cannot read <file>`,
+        exit 2; in both gh never runs and no value is printed. The `stat` producers are `/usr/bin/stat` by absolute
+        path, which no PATH shim reaches, so their failure stays uncovered here (stated in the body)."""
+        fake, record = self.fake_gh()
+        dsh_home = self.dir / "dsh-home"
+        root = dsh_home / "router-credentials"
+        root.mkdir(parents=True)
+        hosts = self.place_login(root, hosts_yml_today(HOSTS_OAUTH_VALUE))
+        self.addCleanup(hosts.chmod, 0o600)
+        hosts_phys = root.resolve() / "gh/hosts.yml"
+        env = {**self.env, "PATH": f"{fake}:{self.env['PATH']}", "DSH_HOME": str(dsh_home)}
+        for mode, message in (
+            (0o000, f"router-gh: {hosts_phys} has mode 0; the login must be readable by this user alone (0600)"),
+            (0o200, f"router-gh: cannot read {hosts_phys}"),
+        ):
+            with self.subTest(mode=oct(mode)):
+                hosts.chmod(mode)
+                run = subprocess.run(
+                    [str(WRAPPER), "api", "user"], capture_output=True, text=True, check=False, env=env, timeout=60
+                )
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr, "the refusal names the file")
+                self.assertNotIn(HOSTS_OAUTH_VALUE, run.stderr, "no refusal prints the value")
+                self.assertFalse(record.exists(), "gh did not run")
+
+    def test_the_handout_attributes_the_keychain_boundary_to_router_ghs_token_path_not_to_srt(self):
+        """U353d (verdict U353-318f268d P2 `docs/engagement-handout.md:53`): srt's macOS baseline allows
+        `com.apple.securityd.xpc`, so the Keychain stays reachable to the Router's processes and the sentence that
+        attributed the boundary to srt was false. The handout's Router section names the control that keeps gh off the
+        Keychain, router-gh's file-only token path (`GH_TOKEN` from `hosts.yml`, which gh reads before any stored
+        credential), names srt's deny rows as the omp seats' boundary, and carries the old sentence nowhere."""
+        text = (ROOT / "docs/engagement-handout.md").read_text()
+        heading = "## The Router's agent account"
+        section = text.split(heading, 1)[1].split("\n## ", 1)[0]
+        for stale in ("the Keychain is not readable under srt", "Keychain is not readable", "Keychain unreadable"):
+            self.assertNotIn(stale, text, "the boundary is not attributed to srt")
+        self.assertIn("file-only token path", section)
+        self.assertIn("com.apple.securityd.xpc", section)
+        self.assertIn("`GH_TOKEN`", section)
+        self.assertIn("srt's deny rows are the omp seats' boundary", section)
+
     def test_the_installed_copies_are_the_checkout_bytes_the_pins_are_current_and_an_altered_copy_refuses(self):
         # The lever and the wrapper are pinned like every lever (claude.levers.sha256): the chezmoi copy holds the same
         # bytes, the pin is their sha256, and an installed copy whose bytes differ refuses (exit 2, nothing on stdout)

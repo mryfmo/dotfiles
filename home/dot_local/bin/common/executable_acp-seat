@@ -1,0 +1,265 @@
+#!/usr/bin/env -S python3 -I
+"""The thin client of `acp-broker`, run inside the Router's sandbox by `dsh-subagent-acp` (regime-cutover U343, M-24).
+
+`acp-seat --socket <path> --repo <path> --ref <rev> --name <name>` connects to the broker's Unix socket (the one
+directory the router row's `network.allowUnixSockets` opens, U342), sends the header line `ACP-SEAT v1 repo=<path>
+ref=<rev> name=<name>` (regime-cutover U343e: the Router names a repository and a ref, never a path that becomes a
+grant), then relays its stdin to the socket and the socket to its stdout until either side closes, byte for byte: the
+ACP stream `dsh-subagent-acp` writes reaches the worker's `omp acp` through the broker, and the worker's reaches it
+back. The broker, outside every sandbox, does everything else: it judges the header, clones the ref into a directory
+of its own, renders the worker's settings, runs the canary, starts the worker in a sibling sandbox, logs the launch
+and pushes the worker's HEAD back as `refs/acp-seat/<name>/<stamp>`. This client never starts a sandbox and runs no
+tool of its own; it is the stream and nothing more.
+
+The exit status is the broker's trailer: the last line of the stream, `omp acp exit <status> push=<word>`, is the
+connection's exit status and is not written to stdout; its push word (the ref written, `none`, `failed` or
+`skipped`) is printed as `acp-seat: push=<word>` on stderr, so the Router learns the ref by name and reads it from
+its own repository. Only the last line is the trailer (verdict U343d-136fbe0a P2 `:168`): a trailer-shaped line
+followed by more bytes is payload and is written to stdout in its place, and a stream that ends without a trailer
+as its last line is exit 2. A first line `acp-broker: refused: <reason>` is the broker's refusal, printed on stderr,
+exit 2. Refused before anything is sent (exit 2, the reason on stderr): run outside a seat (`HCOM_SEAT_SANDBOX`
+unset, the marker the hcom-seat shim exports into every seat), a missing or repeated option, a repository path that
+is not an absolute path free of whitespace and control characters, a ref outside `^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$`
+or holding `..`, a name outside `^[a-z0-9][a-z0-9_-]{0,63}$`, a socket that cannot be connected (the dsh row's
+refusal, EPERM, lands here), or a connection the broker closed without a trailer. Stdin reaching EOF half-closes the
+socket so the worker reads EOF; the worker ending closes the socket so this process ends whatever stdin holds. The
+file hashes itself first and refuses to run when its sha256 differs from its `claude.levers.sha256` pin, like every
+lever (U31); `-I` ignores `PYTHON*` variables, the user site and the script directory, and the standard library
+alone is used.
+"""
+
+import hashlib
+import os
+import re
+import socket
+import sys
+import threading
+
+LEVER = "acp-seat"
+MAPPING_KEY = re.compile(r"^(\S+):$")
+LEVER_PIN = re.compile(r"^(\S+): ([0-9a-f]{64})$")
+LEVERS_KEYS = ("claude", "levers", "sha256")
+NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$")
+TRAILER = re.compile(rb"^omp acp exit ([0-9]+) push=(\S+)$")
+REFUSAL = b"acp-broker: refused: "
+CHUNK = 65536
+OPTIONS = ("--socket", "--repo", "--ref", "--name")
+USAGE = "usage: acp-seat --socket <path> --repo <path> --ref <rev> --name <name>"
+
+
+def refuse(reason):
+    """Print the refusal in the shell levers' words on stderr and exit 2; nothing was sent."""
+    print(f"{LEVER}: refused: {reason}", file=sys.stderr)
+    sys.exit(2)
+
+
+def manifest_pin(lines, manifest):
+    """The sha256 pinned for this file under the manifest's `claude.levers.sha256` block, read as text by
+    indentation alone (the rule of `brief-check.py`). None or two pins is a refusal."""
+    depth = 0
+    indents = []
+    pins = []
+    pin_indent = None
+    for line in lines:
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        text = line.strip()
+        while indents and indent <= indents[-1]:
+            indents.pop()
+            depth -= 1
+        if depth == len(LEVERS_KEYS):
+            if pin_indent is None:
+                pin_indent = indent
+            if indent != pin_indent:
+                break
+            match = LEVER_PIN.match(text)
+            if match is None:
+                refuse(f"the levers block of {manifest} holds a line that is no pin: {text!r}")
+            if match.group(1) == LEVER:
+                pins.append(match.group(2))
+            continue
+        match = MAPPING_KEY.match(text)
+        if match is not None and depth < len(LEVERS_KEYS) and match.group(1) == LEVERS_KEYS[depth]:
+            indents.append(indent)
+            depth += 1
+            continue
+        if depth > 0 and indent > indents[-1]:
+            continue
+    if depth < len(LEVERS_KEYS) and not pins:
+        refuse(f"no claude.levers.sha256 block in {manifest}")
+    if len(pins) != 1:
+        refuse(f"no single sha256 pin for {LEVER} in {manifest}")
+    return pins[0]
+
+
+def lever_self_check():
+    """Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31): the
+    deployed `~/.agents/agent-config.yaml` when this file's physical directory is the physical `~/.local/bin/common`,
+    else the checkout's `home/dot_agents/agent-config.yaml` two levels up. Every read is checked."""
+    directory = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
+    self_path = os.path.join(directory, os.path.basename(__file__))
+    home = os.environ.get("HOME", "")
+    if home and os.path.isdir(home) and directory == os.path.realpath(os.path.join(home, ".local/bin/common")):
+        manifest = os.path.join(home, ".agents/agent-config.yaml")
+    else:
+        manifest = os.path.join(directory, "../../home/dot_agents/agent-config.yaml")
+    if not os.access(manifest, os.R_OK):
+        refuse(f"manifest unreadable: {manifest}")
+    try:
+        with open(manifest, "rb") as handle:
+            lines = handle.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        refuse(f"cannot read {manifest}")
+    pin = manifest_pin(lines, manifest)
+    try:
+        with open(self_path, "rb") as handle:
+            digest = hashlib.sha256(handle.read()).hexdigest()
+    except OSError:
+        refuse(f"cannot hash {self_path}")
+    if digest != pin:
+        refuse(f"sha256 {digest} of {self_path} differs from the pin in {manifest}")
+
+
+def parse_options(argv):
+    """The four options, each exactly once, nothing else."""
+    options = {}
+    index = 1
+    while index < len(argv):
+        flag = argv[index]
+        if flag not in OPTIONS or index + 1 >= len(argv):
+            refuse(USAGE)
+        if flag in options:
+            refuse(f"{flag} given twice; {USAGE}")
+        options[flag] = argv[index + 1]
+        index += 2
+    if set(options) != set(OPTIONS):
+        refuse(USAGE)
+    return tuple(options[flag] for flag in OPTIONS)
+
+
+def clean_field(value):
+    """An absolute path the header can carry: no whitespace, no control character, so it stays one field."""
+    return (
+        value.startswith("/") and not re.search(r"[\s\x00-\x1f\x7f]", value)  # lint-comparisons: allow an absolute-path and content test on one header field, no path compare; the broker judges the path physically
+    )
+
+
+def pump_stdin(sock):
+    """Stdin to the socket until EOF, then the half-close the worker reads as EOF; a socket already gone ends it."""
+    try:
+        while True:
+            chunk = os.read(0, CHUNK)
+            if not chunk:
+                break
+            sock.sendall(chunk)
+        sock.shutdown(socket.SHUT_WR)
+    except OSError:
+        pass
+
+
+def relay(sock):
+    """The socket to stdout line by line; the first line may be the refusal, and the last line alone is the trailer:
+    a trailer-shaped line is held until the stream shows whether anything follows it."""
+    out = sys.stdout.buffer
+    buffer = bytearray()
+    first = True
+    pending = None
+
+    def release():
+        # The held line was not last after all: it is payload, written where it stood.
+        nonlocal pending
+        if pending is not None:
+            out.write(pending + b"\n")
+            out.flush()
+            pending = None
+
+    def take(line):
+        nonlocal first, pending
+        if first:
+            first = False
+            if line.startswith(REFUSAL):
+                sys.stderr.write(line.decode("utf-8", "replace") + "\n")
+                sys.stderr.flush()
+                sys.exit(2)
+        release()
+        if TRAILER.match(line) is not None:
+            pending = line
+            return
+        out.write(line + b"\n")
+        out.flush()
+
+    while True:
+        try:
+            chunk = sock.recv(CHUNK)
+        except OSError:
+            break
+        if not chunk:
+            break
+        buffer += chunk
+        while True:
+            cut = buffer.find(b"\n")
+            if cut < 0:
+                break
+            line = bytes(buffer[:cut])
+            del buffer[: cut + 1]
+            take(line)
+    if buffer:
+        tail = bytes(buffer)
+        if first and tail.startswith(REFUSAL):
+            take(tail)
+        release()
+        if TRAILER.match(tail) is not None:
+            pending = tail
+        else:
+            out.write(tail)
+            out.flush()
+    if pending is None:
+        print(f"{LEVER}: the broker closed the connection without an exit trailer", file=sys.stderr)
+        return 2
+    match = TRAILER.match(pending)
+    print(f"{LEVER}: push={match.group(2).decode('utf-8', 'replace')}", file=sys.stderr)
+    return int(match.group(1))
+
+
+def main(argv):
+    lever_self_check()
+    sock_path, repo, ref, name = parse_options(argv)
+    if not os.environ.get("HCOM_SEAT_SANDBOX"):
+        refuse(
+            "refused outside a seat (HCOM_SEAT_SANDBOX is unset): acp-seat is the client dsh-subagent-acp runs inside the Router's sandbox"
+        )
+    if not clean_field(repo):
+        refuse(f"the repository path {repo!r} is not an absolute path free of whitespace and control characters")
+    if REF.match(ref) is None or ".." in ref:
+        refuse(f"the ref {ref!r} is outside ^[A-Za-z0-9][A-Za-z0-9._/-]{{0,255}}$ without '..'")
+    if NAME.match(name) is None:
+        refuse(f"the name {name!r} is outside ^[a-z0-9][a-z0-9_-]{{0,63}}$")
+    if not clean_field(sock_path):
+        refuse(f"the socket path {sock_path!r} is not an absolute path free of whitespace and control characters")
+    # Connected by the socket's name from its own directory: a Unix socket path is capped at 104 bytes on macOS (108
+    # on Linux), and the broker's path under a long HOME or seats root exceeds it. The repository is nothing to this
+    # client beyond the header.
+    directory, base = os.path.split(sock_path)
+    try:
+        os.chdir(directory)
+    except OSError as exc:
+        refuse(f"cannot enter the broker socket's directory {directory}: {exc}")
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        sock.connect(base)
+        sock.sendall(f"ACP-SEAT v1 repo={repo} ref={ref} name={name}\n".encode())
+    except OSError as exc:
+        refuse(f"cannot connect to the broker socket {sock_path}: {exc}")
+    threading.Thread(target=pump_stdin, args=(sock,), daemon=True).start()
+    status = relay(sock)
+    try:
+        sock.close()
+    except OSError:
+        pass
+    return status
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

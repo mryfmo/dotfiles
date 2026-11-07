@@ -408,6 +408,27 @@
       "executable": false
     },
     {
+      "source": "home/dot_local/bin/common/executable_acp-broker",
+      "target": ".local/bin/common/acp-broker",
+      "kind": "file",
+      "executable": true,
+      "sha256": "34bf053c7a77b556696c63b6254cb0bf387728593b4ddc032ddcd8341d13b923"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_acp-relay.py",
+      "target": ".local/bin/common/acp-relay.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "d2b4852980affd6b536666fb46d6caa736def9f48924a608bf6f81440124a6b9"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_acp-seat",
+      "target": ".local/bin/common/acp-seat",
+      "kind": "file",
+      "executable": true,
+      "sha256": "4b1e50a5b7c9464c2b28914961847d49771fbc9bdbaf70e72cecf049a41370dd"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_brief-check.py",
       "target": ".local/bin/common/brief-check.py",
       "kind": "file",
@@ -671,6 +692,21 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "README.md"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "acp-broker"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "acp-relay.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "acp-seat"
     },
     {
       "source": "home/dot_local/bin/common",

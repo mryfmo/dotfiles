@@ -1,0 +1,149 @@
+{
+  "run_id": "dotfiles-sweep-3-run-22",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "fec87e14df7d15258380be8f2f3da4ee4be01b95",
+    "branch": "feat/hcom-seat-router-role",
+    "base": "247d890d753fea2f1ae2bb4b96e3a6f537d88036",
+    "diff_base": "2b2415f6cae8b5d1db8d65a560f7cfb9e48e5ab6",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: git diff 2b2415f6..fec87e14, 32 paths: U321 (247d890d..fec87e14, 8 files: the router role in scripts/orchestrator/hcom-seat and its deployed copy, the lever pins, scripts/orchestrator/README.md, docs/deepseek-harness.md, two test files), and on main U312, U283d, U311, U318 and U301; plus six carried leads; every other path is carried out_of_scope",
+  "scope_note": "The brief's GOAL repeats U318's description and calls the head the U312 head; the head is U321's (commit subject regime-cutover U321, the router role). The brief counts 16 paths; git diff --name-only 2b2415f6 HEAD lists 32. The CHANGE's set to carry, run-21, is carried (its CONTEXT names run-20, superseded). U318 and U301 are merged byte-identical to the heads this seat swept (run-21, run-20), and U311 is new to this seat.",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "docs/deepseek-harness.md",
+    "tests/unit/test_hcom_seat.py",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "install/common/aws_cli.sh",
+    "home/.chezmoiremove",
+    "tests/unit/test_aws_cli_acquisition.py",
+    "tests/unit/test_network_bounds.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, cmp, shasum and grep over the tree; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-21",
+      "source_ref": "e0dd8cc221de0b19477d82c850d1f631042bef4d",
+      "findings": 0,
+      "unvalidated_candidates": 6,
+      "ledger_units": 73,
+      "use": "Base ledger (the brief's set). U318 is merged byte-identical (git diff e0dd8cc2 561511c7 lists only U311's files); its units are re-checked with hcom-seat lines re-mapped through U321; the six leads keep their fingerprints."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-20",
+      "source_ref": "964c6a07251605957a8802360e40ab67f9c1e259",
+      "findings": 0,
+      "unvalidated_candidates": 5,
+      "ledger_units": 68,
+      "use": "U301 is merged byte-identical (git diff 964c6a07 247d890d -- install tests/unit/test_ci_runner.py lists only install/common/aws_cli.sh, U311); run-20's ten covered U301 units, out of scope in run-21, are re-covered from run-20's evidence."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T01:33:24Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and eight leads (two new, six carried) could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "hcom-seat/router:state-root-resolved-through-a-seat-writable-link",
+      "where": "scripts/orchestrator/hcom-seat:1551, :1554-1556, :548-580",
+      "proposed_verdict": "needs_validation",
+      "note": "new; a router write root inside DSH_HOME, rendered through any link a dsh or router seat plants, refused only where it meets a deny row"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:292, :2223",
+      "proposed_verdict": "needs_validation",
+      "note": "new; srt allowLocalBinding true for the whole router seat, bind and inbound on every interface, bounded only by an upstream Host check"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:1285, :1554, :1800-1803, :1859, :1864, :1870",
+      "proposed_verdict": "needs_validation",
+      "note": "carried from run-21; the router role now shares the grant"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "no token variable exists (hcom-seat:159, :2285-2286, :2339)"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "a direct ~/.dsh/bin/dsh run outside the U272 role (scripts/update-agent-assets.sh:2174)",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id (home/dot_dsh/profiles/thak/cordis.patch.yml:9-12)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "bash-sandbox disabled (home/dot_dsh/profiles/thak/cordis.patch.yml:13-14)"
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 2,
+      "reassign_ids": 0,
+      "result": "accepted two units past what the U321 tests render: the router state root as a link, and the reach of the every-interface listener grant; hunted in the same parent pass, now the two new candidates"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 8,
+  "findings_count": 0,
+  "ledger_units": 77,
+  "ledger_counts": {
+    "covered": 23,
+    "candidate": 8,
+    "out_of_scope": 46
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-07T01:39:43Z"
+}

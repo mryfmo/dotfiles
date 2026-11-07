@@ -1,0 +1,104 @@
+{
+  "run_id": "dotfiles-run-21",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "858f053bc781019e5abc870ca3fa9cc495acd77f",
+    "branch": "fix/updater-failure-mark-fails-closed",
+    "parent_of_change": "2b2415f6c",
+    "base_note": "origin/main 2b2415f6 is U306 merged as #707. This head is a sibling of run-20's head e92b4970 (U310), not its descendant: U310's change is absent here.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) the head's own change, U283d (2b2415f6..858f053b: mark_sync_failed returns its failure and update_compactiondb writes the failure mark before rsync; the manifest pruner refuses an unsearchable ~/.agents by name; six failure-injection tests), hunted in two new units; (2) run-20's 62 units carried and re-checked at this head with every cited line re-mapped through the e92b4970..858f053b diff; run-20's four U310 units are not_applicable here because their source is absent.",
+  "scope_paths": [
+    "scripts/lib/asset-manifest.sh",
+    "scripts/update-agent-assets.sh",
+    "tests/unit/test_asset_manifest.py",
+    "tests/unit/test_update_agent_assets.py",
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "docs/deepseek-harness.md",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the lever's blob and sha256 at this head were computed from git.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-20",
+      "source_ref": "e92b49705837d28dc315dd23a5a7aa00f8a607e2",
+      "findings": 0,
+      "ledger_units": 62,
+      "use": "The set to carry: 58 units carried and re-mapped to this head (the lever units back to the 2b2415f6 lever run-19 read, the U227b and U306 units, the carried candidate, 42 out of scope); its four U310 units, the U310 candidate dsh-seat/profile-config-write/tmp-path-link-followed-outside-srt among them, are not_applicable because U310's source is absent at this head; that candidate stays open on the U310 branch."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-06T23:54:25Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: the carried candidate dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt has no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused), so it stays an unvalidated ledger candidate and is not a finding.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh",
+      "record": "agents/parent-hunter/scratch/candidate-pnpm.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-20",
+      "on_default_branch": true
+    }
+  ],
+  "not_carried_candidates": [
+    {
+      "fingerprint": "dsh-seat/profile-config-write/tmp-path-link-followed-outside-srt",
+      "reason": "U310's source (profile_config_write) is absent at this head; the candidate remains open on feat/dsh-role-profile-route (run-20)."
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (1), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work beyond the two U283d units (the mark before the sync, the pruner's unsearchable-directory refusal); every carried unit re-mapped; the U310 units not_applicable"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 1,
+  "findings_count": 0,
+  "finished_at": "2026-11-06T23:59:46Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

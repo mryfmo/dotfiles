@@ -1,0 +1,149 @@
+{
+  "run_id": "dotfiles-sweep-3-run-25",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "2feb04465799aad00f9b8b7a26806c62abbcc304",
+    "branch": "fix/dsh-harness-build-under-srt",
+    "base": "668ba887acf39ff740348d922ac0da7724b96459",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U322 diff (668ba887..2feb0446, 3 paths: scripts/update-agent-assets.sh, tests/unit/test_update_agent_assets.py, docs/deepseek-harness.md), with scripts/orchestrator/hcom-seat's dsh role rows, home/dot_agents/agent-config.yaml's Claude credential denies and the chezmoi age identity's source read as context; plus the carried records re-checked on the base 668ba887 (U318 and U318b on main, U321 not); every other path is carried out_of_scope",
+  "scope_note": "This unit has no earlier swept head. The base holds U318b (#716), which changes seat-login-preflight; the preflight units are rewritten for it. U321 (the router role) is not on this branch, so run-24's four router units and three router leads are out_of_scope here and stay open on the U321 branch.",
+  "scope_paths": [
+    "scripts/update-agent-assets.sh",
+    "tests/unit/test_update_agent_assets.py",
+    "docs/deepseek-harness.md"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, cmp, shasum and grep over the tree; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-24",
+      "source_ref": "b80a4794cbe5cf62f22ce52e860c1e5513829c46",
+      "findings": 0,
+      "unvalidated_candidates": 9,
+      "ledger_units": 78,
+      "use": "Base ledger (the brief's set). U321 router units and leads moved out of scope (no source on this branch); U318-era units take run-21's evidence, since hcom-seat equals e0dd8cc2 here (git diff --quiet e0dd8cc2 HEAD); the preflight units rewritten for U318b; the updater's lines re-mapped by 237 (:2174 to :2411)."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-21",
+      "source_ref": "e0dd8cc221de0b19477d82c850d1f631042bef4d",
+      "findings": 0,
+      "unvalidated_candidates": 6,
+      "ledger_units": 73,
+      "use": "Evidence source for the U318-era units, whose hcom-seat lines equal this head's."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T04:37:13Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and nine leads (three new, six carried) could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2024-2043, :2383-2388; scripts/orchestrator/hcom-seat:1516",
+      "proposed_verdict": "needs_validation",
+      "note": "new; the profile install's allowedDomains come from a lockfile in DSH_HOME, a dsh seat write root"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/orchestrator/hcom-seat:1792-1814; scripts/update-agent-assets.sh:1914-1917; home/dot_agents/agent-config.yaml:1038-1039",
+      "proposed_verdict": "needs_validation",
+      "note": "new; ~/.config/age/key.txt, denied to Claude Code's sandbox, is in neither srt read-deny list"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1872-1879, :1881-1893, :1931",
+      "proposed_verdict": "needs_validation",
+      "note": "new; the store and the profile directory are resolved with pwd -P after their link checks, with no prefix check against DSH_HOME"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:1255, :1521, :1767-1770, :1826, :1831, :1837",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "no token variable exists (hcom-seat:147, :2251-2252, :2305)"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "a direct ~/.dsh/bin/dsh run outside the U272 role (scripts/update-agent-assets.sh:2411)",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id (home/dot_dsh/profiles/thak/cordis.patch.yml:9-12)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "bash-sandbox disabled (home/dot_dsh/profiles/thak/cordis.patch.yml:13-14)"
+    }
+  ],
+  "leads_on_other_branches": [
+    "hcom-seat/router:state-root-resolved-through-a-seat-writable-link (U321, run-24)",
+    "hcom-seat/router:passthrough-launcher-flags-recompose-the-profile (U321, run-24)",
+    "hcom-seat/router:local-binding-every-interface (U321, run-24)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 3,
+      "reassign_ids": 0,
+      "result": "accepted three units past what the U322 tests render: the profile lockfile's origin, the deny list against the kit's own credential table, and the write roots between their link check and their resolution; hunted in the same parent pass, now the three new candidates"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 9,
+  "findings_count": 0,
+  "ledger_units": 83,
+  "ledger_counts": {
+    "covered": 24,
+    "candidate": 9,
+    "out_of_scope": 50
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-07T04:44:58Z"
+}

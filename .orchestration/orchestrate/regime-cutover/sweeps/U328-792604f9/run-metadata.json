@@ -1,0 +1,117 @@
+{
+  "run_id": "dotfiles-run-25",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "792604f91ddd879e13e67e8b85076253a32a508c",
+    "branch": "feat/dsh-role-profile-route",
+    "parent_of_change": "2b2415f6c",
+    "base_note": "U310c (round 3) on U310b 8f393491 (run-22) on U310 e92b4970 (run-20) on origin/main 2b2415f6.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U310 to U310c (2b2415f6..792604f9; round 3 alone 8f393491..792604f9, 5 files: the held-descriptor write of profile_config_tmp, the compare after settings_judge, the slot removal in refuse), hunted in the four U310 units, each re-checked at round 3; (2) run-24's other units carried and re-checked at this head with every cited line re-mapped through the 2b2415f6..792604f9 diff; run-24's three U311 units not_applicable (a sibling branch), the two U283d units likewise.",
+  "carry_note": "The brief names run-24 as the set to carry (and run-20 as this unit's round-1 sweep). run-24 swept a sibling branch, so its four U310 units were not_applicable there; they are re-checked here from source at round 3, informed by run-22's round-2 records (this branch's latest sweep). The brief's GOAL and its insertion counts are round 2's text; round 3 alone is 5 files, 461 insertions, 116 deletions.",
+  "scope_paths": [
+    "docs/deepseek-harness.md",
+    "home/dot_agents/agent-config.yaml",
+    "home/dot_agents/omp/profiles/dsh.yml.tmpl",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "scripts/generate-agent-configs.py",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/hcom-seat",
+    "tests/unit/test_generate_agent_configs.py",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "tests/unit/test_omp_review_security_roles_removed.py",
+    "scripts/update-agent-assets.sh",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Source checks throughout, plus one parent-side observation of /bin/mv's behaviour on a link to a directory, in a scratch fixture inside this seat's srt 0.0.81 containment with no network.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-24",
+      "source_ref": "a1f22ecaf547d6ab5b1a2f787f796d5b61f073a5",
+      "findings": 0,
+      "ledger_units": 67,
+      "use": "The set to carry: its lever, U227b and U306 units and the carried candidate re-mapped from base numbering to this head; its four U310 units re-checked at round 3; its three U311 units and two U283d units not_applicable."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-22",
+      "source_ref": "8f393491e93da77e2b7a89c010ed219d7f157923",
+      "findings": 0,
+      "ledger_units": 64,
+      "use": "This branch's round-2 sweep: its U310 candidate dsh-seat/profile-config-write/tmp-path-link-followed-outside-srt is re-hunted at round 3 and found closed (the write now goes through the held exclusive descriptor), so it is not proposed again."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T01:27:35Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: the carried candidate dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt has no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused), so it stays an unvalidated ledger candidate and is not a finding.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh",
+      "record": "agents/parent-hunter/scratch/candidate-pnpm.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-24",
+      "on_default_branch": true
+    }
+  ],
+  "closed_candidates": [
+    {
+      "fingerprint": "dsh-seat/profile-config-write/tmp-path-link-followed-outside-srt",
+      "last_proposed": "run-22 (8f393491), confirmed/medium, never validated",
+      "status_here": "the route is closed at 792604f9 by the parent's re-hunt (the held exclusive descriptor); not proposed, so no record; a residual same-class rename race with no write to an existing file is a hardening note"
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (1), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work: round 3's new functions (tmp_held, the compare and install steps, profile_config_target_check, profile_config_compare) belong to the write and check units; refuse's slot removal to the carried slots unit"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 1,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T01:32:32Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

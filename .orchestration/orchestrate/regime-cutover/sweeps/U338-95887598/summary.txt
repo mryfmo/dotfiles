@@ -1,0 +1,13 @@
+security-audit sweep 95887598e57b2d51a876fde8da72517791e6ce15: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U318c (seat-login-preflight normalises the seats root's spelling and judges each component only under a searchable parent): no candidate; no spelling survives the normaliser and still follows a link at a judged component (no empty, . or .. component and no trailing / remain, and every test, the mkdir, CLAUDE_CONFIG_DIR and the printed command use the one string); ./x and a literal ~ are refused as not absolute; an unsearchable ancestor refuses by name, and the walk stops at /; pin 7d12ffb0... equals the preflight's sha256; the fake claude and the fake hcom are test fixtures alone
+hardening (new, preflight unit): lexical .. differs from the kernel's through a link (consistent use, operator input only); ancestors above the seats root are not judged; a seat can relink the shared claude directory between the preflight and the operator's login
+unvalidated candidates carried from run-28, all on origin/main (not findings; the Phase 3 verifier launch was refused by policy):
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1516
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:1521
+  dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt	scripts/update-agent-assets.sh:2151
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: U318c (origin/main 668ba887..95887598, 6 files) in the restated preflight unit; run-28's records carried and re-mapped through 55573b7c..95887598 (U330's unit not_applicable); profile standard, source-only plus the auditor's own normaliser harness; ledger 73 units: 23 covered, 3 candidate, 5 not_applicable, 42 out_of_scope
+brief note: step 3 says "hunt on the U330 change"; this run hunted U318c, as the brief's CONTEXT names
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: linemap.cjs, build-ledger.cjs, normalise-harness.sh, candidate-profile-root-relink.json, candidate-shared-claude-dir.json, candidate-pnpm.json in agents/parent-hunter/scratch/)
+wall time: 317s (2026-11-07T04:45:54Z to 2026-11-07T04:51:11Z)

@@ -1,0 +1,17 @@
+security-audit sweep 8791100fa9a3ae5606df893490386385ce183339: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U353 (the Router's credential root <DSH_HOME>/router-credentials, router-gh, router-settings-apply): the credential root is held, made 0700 after the judgement, denied to every writer and to the dsh row, read-granted to the router row; router-gh drops every token variable; router-settings-apply connects to 127.0.0.1 alone, refuses auto and writes no file
+new unvalidated candidate (not a finding; the Phase 3 verifier launch was refused by policy):
+  router-seat/credential-root/agent-token-readable-by-the-router-model	scripts/orchestrator/hcom-seat:2400	the agent account's token, stored in plain text (gh --insecure-storage) under the credential root, is read-granted to the whole router sandbox, where the Router's model holds tool-bash, reads the watched repository's thread text and reaches github.com
+carried unvalidated candidates, on origin/main (not findings):
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:432
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1453
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2399
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2439
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2064
+hardening (new): router-settings-apply takes the Management API port from a session-written profile under DSH_HOME and reads answers unbounded; a dsh session could pre-make an absent credential root on a backend that drops absent-path denies (Linux unread); the asset note still names `hcom-seat dsh --profile router` (U353 fixed the profile header and generator)
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: 6ad1be23..8791100f (16 files) in three new units; run-36's units re-mapped through 1d65d150..8791100f with U354 reversed and U353's lever hunks placed by hand; profile standard, source-only; ledger 84 units: 36 covered, 6 candidate, 42 out_of_scope
+brief notes: the title calls the head U353's merge head and the GOAL and hunt list are U322's text; the CONTEXT names run-37 as the previous run, which does not exist in this seat's state (run-36 carried)
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: linemap.cjs, blobs.cjs, cite-sample.cjs, build-ledger.cjs, fix-profile-cites.cjs and the six candidate records in agents/parent-hunter/scratch/)
+wall time: 386s (2026-11-07T10:38:49Z to 2026-11-07T10:45:15Z)

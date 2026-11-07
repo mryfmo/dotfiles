@@ -1,0 +1,166 @@
+{
+  "run_id": "dotfiles-run-32",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "3a6a22a09d5be8b1b46002691287e355d883461b",
+    "branch": "fix/dsh-harness-build-under-srt",
+    "parent_of_change": "0249e534b482a7b07c24daac6ab83bf7cc0fa361",
+    "base_note": "U322f: a merge of origin/main 0249e534 (U330 #717, U318c #719, U321 #715) into the U322 branch (U322 to U322d, and U322e 85d05d29, which adds the two module hooks to tests/unit/test_sandbox_portability.py). The merge base with origin/main is now 0249e534 itself. Checked: git diff 0249e534..HEAD lists five files (the brief says 3): scripts/update-agent-assets.sh, docs/deepseek-harness.md (U322's paragraph after U321's, the conflict kept both), tests/unit/test_update_agent_assets.py, test_network_bounds.py, test_sandbox_portability.py. The lever is run-30's blob (053617d2), the preflight run-29's (fbfcb137), pr-merge.sh run-28's (a752b4ce), the updater run-31's (6424a363); the pins at agent-config.yaml:861, :870, :880 equal those blobs' sha256 as each run computed.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U322 against main 0249e534 (5 files), re-read at the merge for what U321 changes about it (a router session is a second writer of DSH_HOME) and for the docs merge; (2) run-31's records carried, each unit taken from the run that read its blob and re-mapped from that run's head: run-31's through 39f75cc8..HEAD (run-30's lever overrides), the two U321 units restored from run-30 through d625a7f6..HEAD, the U318c preflight unit from run-29 through 95887598..HEAD, the U330 unit from run-28 through 55573b7c..HEAD.",
+  "carry_note": "The brief names run-31 as the set to carry. At this merge the U321, U318c and U330 surfaces are in the head again, so their units are taken from runs 30, 29 and 28, which read these blobs. The relink and shared-directory records re-mapped from run-31 equal run-30's line for line, and the router record equals run-30's (checked).",
+  "scope_paths": [
+    "scripts/update-agent-assets.sh",
+    "docs/deepseek-harness.md",
+    "tests/unit/test_update_agent_assets.py",
+    "tests/unit/test_network_bounds.py",
+    "tests/unit/test_sandbox_portability.py",
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "scripts/orchestrator/seat-login-preflight",
+    "scripts/orchestrator/pr-merge.sh",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "home/dot_local/bin/common/executable_regime-url-opener",
+    "install/common/aws_cli.sh",
+    "scripts/lib/asset-manifest.sh",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the auditor's own scripts compared blobs across the swept heads (blobs.cjs) and re-mapped the carried records.",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md",
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-31",
+      "source_ref": "39f75cc8ec390bf4ed7aecc256dcc373968e82ef",
+      "findings": 0,
+      "ledger_units": 78,
+      "use": "The set to carry; the updater units and the four U322-era candidates' records, re-mapped through the merge."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-30",
+      "source_ref": "d625a7f695ba6817831e3473f69b7c67b498ecaa",
+      "findings": 0,
+      "ledger_units": 75,
+      "use": "The lever's blob: the two U321 units and the router candidate record."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-29",
+      "source_ref": "95887598e57b2d51a876fde8da72517791e6ce15",
+      "findings": 0,
+      "ledger_units": 73,
+      "use": "The preflight's blob: the U318c preflight unit."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-28",
+      "source_ref": "55573b7c8a85009673349eb505af7574ff21cd9f",
+      "findings": 0,
+      "ledger_units": 73,
+      "use": "pr-merge.sh's blob: the U330 unit."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T06:13:05Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: five candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused): updater/build_under_srt/settings-file-in-session-write-root, updater/build_under_srt/session-lockfile-names-the-build-hosts, router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound, dsh-seat/profile-root-relink/write-grant-follows-session-made-link and seats/shared-claude-config-dir/cross-seat-session-files, all proposed needs_validation, none a finding.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "updater/build_under_srt/settings-file-in-session-write-root",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-settings-file",
+      "record": "agents/parent-hunter/scratch/candidate-settings-in-write-root.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-31",
+      "on_default_branch": false
+    },
+    {
+      "fingerprint": "updater/build_under_srt/session-lockfile-names-the-build-hosts",
+      "ledger_unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "record": "agents/parent-hunter/scratch/candidate-lockfile-hosts.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-31",
+      "on_default_branch": false
+    },
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-30",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-31",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-31",
+      "on_default_branch": true
+    }
+  ],
+  "off_head_candidates": [
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "state": "closed at this head by U322; open on origin/main 0249e534 until this branch merges; record in run-30's scratch",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh (covered here)"
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (5), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted restoring the U321, U318c and U330 units from the runs that read their blobs, and the merge note that a router session also writes DSH_HOME; no new unit"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 5,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T06:18:14Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

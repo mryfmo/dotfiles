@@ -5,12 +5,23 @@
 #   Regime-cutover U28 (ADDENDUM), the orchestrator seat's lever, allowed by the rows
 #   `~/.local/bin/common/records-sync.sh *` and the bare `~/.local/bin/common/records-sync.sh` of
 #   `home/dot_agents/omp/policies/orchestrator.yml` (the seat's own `git push` and `gh pr create` stay denied;
-#   `worker.yml` denies every form, bare included, U28b F3). It runs in the main checkout, where the orchestrator
-#   writes its records (a linked worktree is refused), and `.orchestration` there must be a real directory.
-#   The copy set (U101) is exactly the program store `.orchestration/orchestrate/<program>/`: its files on disk,
-#   tracked or untracked and not ignored (`git ls-files --cached --others --exclude-standard`), compared with the
-#   same paths in `origin/main` by content, so a file the store lacks but `origin/main` holds is deleted and the
-#   checkout's `HEAD`, however stale, is never the base; nothing outside the store is carried. Both listings are
+#   `worker.yml` denies every form, bare included, U28b F3). It runs in the main checkout (a linked worktree is
+#   refused), where it reads origin's URL, the identity and the local branch names. The store it carries has two forms
+#   (regime-cutover U220, store move 4 of 5, handoff/07-store-move-design.md; the `store_resolve` rule U216 gave
+#   pr-merge.sh and pr-close.sh, in this lever's own body): the derived program store `${REGIME_STORE_ROOT}/<program>`
+#   when that path exists, a plain directory of this user outside every checkout under the root the sourced
+#   `regime-env` derives from the physical HOME and the checkout's slug (U215; a link or anything but such a directory
+#   there is refused by name); else, until U221 moves the live store, the checkout subtree
+#   `.orchestration/orchestrate/<program>/`, the pre-move form, where `.orchestration` must be a real directory. The
+#   form chosen is printed once on stderr (`store: derived <dir>`, or `store: checkout <dir> (pre-move form, removed
+#   by U221)`). The copy set (U101) is exactly the program store: in the derived form every entry below the directory
+#   that is not a directory, listed by `find` through `read_listing` (a link, a fifo or a socket is refused by name,
+#   and so is a name beginning with `.`, which the checkout form's ignore rules skip today and no record carries); in
+#   the checkout form its files on disk, tracked or untracked and not ignored (`git ls-files --cached --others
+#   --exclude-standard`). Each listed path is mapped to its published path under `.orchestration/orchestrate/<program>/`
+#   and compared with the same path in `origin/main` by content, in both forms, so a file the store lacks but
+#   `origin/main` holds is deleted and the checkout's `HEAD`, however stale, is never the base; nothing outside the
+#   store is carried. Both listings are
 #   read NUL-delimited from files: a git failure, even after output, or a listing that ends mid-entry refuses the
 #   run before anything is created. The store's `redact-words.txt` (one literal word per line, `#` comments) is
 #   never copied, deleted or published. Every path must lie under `.orchestration/`, hold no control character
@@ -52,7 +63,8 @@
 #   left. No branch, worktree or file of the checkout is created; the scratch directory is removed on every exit.
 #   Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds.
 # @option --base <ref> The start point; only `origin/main` (the default) is accepted.
-# @option --program <name> The program directory under `.orchestration/orchestrate/`; default: the only one.
+# @option --program <name> The program directory, under `${REGIME_STORE_ROOT}` when that root exists, else under
+#   `.orchestration/orchestrate/`; default: the only one there.
 # @option --unit <U<n>> The unit the body's `Program-Unit:` line names; default: U20, the records unit.
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `synced branch=records/sync-<n> files=<n> pr=<url>`.
@@ -139,6 +151,18 @@ git_env_scrub
 # shellcheck source=scripts/orchestrator/read-lib.sh
 . "${LEVER_DIR}/read-lib.sh"
 
+# The store root (regime-cutover U220): the program stores lie under `REGIME_STORE_ROOT`, the root the sourced
+# regime-env derives from the physical HOME and this checkout's slug (U215) and holds component by component; the
+# helper is sourced from the directory this lever runs from and self-checked like a lever (U33), so a rewritten copy
+# stops this lever. The call that derives the root comes after this lever's own checkout checks, below (the pattern
+# of pr-merge.sh, U216).
+[[ -r ${LEVER_DIR}/regime-env ]] || {
+    echo "records-sync.sh: refused: regime-env unreadable beside this script: ${LEVER_DIR}/regime-env" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/regime-env
+. "${LEVER_DIR}/regime-env"
+
 lever='records-sync.sh'
 usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n> (default U20)]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
@@ -200,33 +224,102 @@ check_name() {
     [[ ${path} != *..* ]] || refuse "a path of the copy set holds '..': ${path}" # lint-comparisons: allow refuses a raw git path that holds ..
 }
 
-# @description Refuse a path the store listing names (check_name, then): a symlink component, or, when it exists,
-#   anything but a regular file whose directory resolves inside the store (U28b F2) or a directory. A directory
+# @description Refuse a path the store listing names (check_name, then): a published path outside `${records}/`; in
+#   the derived form a component beginning with `.` (U220: the checkout form's ignore rules skip such a file today,
+#   and a Finder artifact or a repository's own directory is not a record); a symlink at any component below the
+#   chosen store (U28b F2: git lists the files below a linked directory too, and the derived walk is held the same
+#   way; the store's own chain is held by store_resolve and regime-env); or, when the source `<store>/<rel>` exists,
+#   anything but a regular file whose directory resolves (`pwd -P`) inside the store or a directory. A directory
 #   stands where the index still has a file of that name (the file became a directory, U101): its own files are
 #   listed as entries of their own, and the file it replaced is carried as a deletion.
-# @arg $1 string The repository-relative path.
+# @arg $1 string The published path `.orchestration/orchestrate/<program>/<rel>`; its source is `<store>/<rel>`.
 check_path() {
-    local path=$1 prefix='' part rest source_dir
+    local path=$1 rel prefix part rest source_dir
     check_name "${path}"
+    case ${path} in # lint-comparisons: allow a published path, refused unless under the program's prefix
+    "${records}"/?*) ;;
+    *) refuse "a path of the copy set is outside ${records}/: ${path}" ;;
+    esac
+    rel=${path#"${records}/"}
     # Split on `/` by parameter expansion (no here-string, so no temporary file can go missing, U101).
-    rest=${path}
+    prefix=${store}
+    rest=${rel}
     while [[ -n ${rest} ]]; do
         part=${rest%%/*}
-        if [[ ${rest} == */* ]]; then # lint-comparisons: allow splits the raw git path into its components
+        if [[ ${rest} == */* ]]; then # lint-comparisons: allow splits the path into its components
             rest=${rest#*/}
         else
             rest=''
         fi
-        prefix=${prefix:+${prefix}/}${part}
+        [[ ${store_form} != derived || ${part} != .* ]] || # lint-comparisons: allow a name test on one component of the walk
+            refuse "a name of the derived store begins with '.', which the checkout form's ignore rules skip and no record carries: ${path}"
+        prefix=${prefix}/${part}
         [[ ! -L ${prefix} ]] || refuse "a component of a path of the copy set is a symlink: ${prefix} (in ${path})"
     done
-    if [[ -f ${path} ]]; then
-        source_dir=$(cd "${path%/*}" && pwd -P) || refuse "cannot resolve the directory of ${path}"
-        [[ ${source_dir} == "${store_root}" || ${source_dir} == "${store_root}"/* ]] || # lint-comparisons: allow both sides are pwd -P forms
-            refuse "a path of the copy set resolves outside ${store_root}: ${path}"
-    elif [[ -e ${path} && ! -d ${path} ]]; then
+    if [[ -f ${prefix} ]]; then
+        source_dir=$(cd "${prefix%/*}" && pwd -P) || refuse "cannot resolve the directory of ${path}"
+        [[ ${source_dir} == "${store}" || ${source_dir} == "${store}"/* ]] || # lint-comparisons: allow both sides are pwd -P forms
+            refuse "a path of the copy set resolves outside ${store}: ${path}"
+    elif [[ -e ${prefix} && ! -d ${prefix} ]]; then
         refuse "a path of the copy set is not a regular file: ${path}"
     fi
+}
+
+# @description Enter one listed path into the copy set (U220: the one reader of both listings): `redact-words.txt` is
+#   skipped, the path is held by check_path, and an existing regular file is kept once (`files`, `present`).
+# @arg $1 string The published path.
+collect_path() {
+    local path=$1
+    [[ ${path} != "${words}" ]] || return 0 # lint-comparisons: allow both are published paths of the store
+    check_path "${path}"
+    if [[ -f ${store}/${path#"${records}/"} && ${present} != *$'\n'"${path}"$'\n'* ]]; then # lint-comparisons: allow published paths of the store
+        files+=("${path}")
+        present+=${path}$'\n'
+    fi
+}
+
+# @description Choose the program store (regime-cutover U220, store move 4 of 5; the `store_resolve` shape of U216's
+#   pr-merge.sh and pr-close.sh, in this lever's own body: no helper file, standing order 36): the derived store
+#   `${REGIME_STORE_ROOT}/<program>` when that path exists, which must then be a directory of this user and no symlink
+#   (a link is refused by name before anything is read through it; a file or another user's directory is refused by
+#   name too), else the checkout subtree `<toplevel>/.orchestration/orchestrate/<program>`, the pre-move form that
+#   stands until U221 moves the live store, held as before this unit (U28b F2): `.orchestration` a real directory
+#   resolving (`pwd -P`) inside the toplevel, no symlink at `.orchestration/orchestrate` or at the program directory,
+#   which must exist. The root's own components are held by regime-env (`regime_store_root`). Nothing is written. The
+#   form chosen is printed once on stderr (`store: derived <dir>`, or `store: checkout <dir> (pre-move form, removed
+#   by U221)`), the line the coordinator reads after the deploy.
+# @arg $1 string The program name.
+# @set store The chosen store, `pwd -P` form (the root and the toplevel are both physical).
+# @set store_form `derived` or `checkout`.
+store_resolve() {
+    local program=$1 store_derived store_checkout orchestration_real prefix
+    [[ -n ${REGIME_STORE_ROOT:-} ]] ||
+        refuse "regime-env derived no store root for ${toplevel}; the program store is judged under it (U216, U220)"
+    store_derived=${REGIME_STORE_ROOT}/${program}
+    store_checkout=${top_real}/.orchestration/orchestrate/${program}
+    [[ ! -L ${store_derived} ]] ||
+        refuse "${store_derived} is a symlink; the derived program store is a plain directory of this user under the store root ${REGIME_STORE_ROOT}, and nothing is read through a link"
+    if [[ -e ${store_derived} ]]; then
+        [[ -d ${store_derived} && -O ${store_derived} ]] ||
+            refuse "${store_derived} exists but is not a directory of this user; the derived program store under ${REGIME_STORE_ROOT} is read only as one"
+        store=${store_derived}
+        store_form=derived
+        echo "${lever}: store: derived ${store}" >&2
+        return 0
+    fi
+    # The pre-move form (until U221): the holds on the checkout subtree, as before this unit.
+    [[ -d .orchestration && ! -L .orchestration ]] || refuse ".orchestration is missing or a symlink in ${toplevel}"
+    orchestration_real=$(cd .orchestration && pwd -P) || refuse "cannot resolve ${toplevel}/.orchestration"
+    [[ ${orchestration_real} == "${top_real}/.orchestration" ]] || # lint-comparisons: allow both sides are pwd -P forms
+        refuse ".orchestration resolves outside ${top_real}: ${orchestration_real}"
+    # U28b F2: no component of the store directory is a symlink (git would list the files below a linked one too).
+    for prefix in .orchestration/orchestrate "${records}"; do
+        [[ ! -L ${prefix} ]] || refuse "a component of a path of the copy set is a symlink: ${prefix} (in ${records}/)"
+    done
+    [[ -d ${records} ]] || refuse "no program directory ${records}"
+    store=${store_checkout}
+    store_form=checkout
+    echo "${lever}: store: checkout ${store} (pre-move form, removed by U221)" >&2
 }
 
 base=origin/main
@@ -258,35 +351,40 @@ common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_di
 [[ ${git_dir} == "${common_dir}" ]] || # lint-comparisons: allow both sides are pwd -P forms
     refuse "${toplevel} is a linked worktree; run from the main checkout, where the orchestrator writes its records"
 cd "${toplevel}" || refuse "cannot enter ${toplevel}"
-# U28b F2: the store root itself is no symlink, so every canonical path below is measured against the real store.
+# U28b F2: the toplevel is physical, so every canonical path below is measured against the real checkout.
 top_real=$(pwd -P) || refuse "cannot resolve ${toplevel}"
-[[ -d .orchestration && ! -L .orchestration ]] || refuse ".orchestration is missing or a symlink in ${toplevel}"
-store_root=$(cd .orchestration && pwd -P) || refuse "cannot resolve ${toplevel}/.orchestration"
-[[ ${store_root} == "${top_real}/.orchestration" ]] || # lint-comparisons: allow both sides are pwd -P forms
-    refuse ".orchestration resolves outside ${top_real}: ${store_root}"
+# U220: regime-env derives `REGIME_STORE_ROOT` for this checkout (its own refusals name this lever). This lever reads
+# nothing in the hcom store, so the store's `origin` binding is not asked of it (`--unbound-ok`, as pr-merge.sh asks
+# since U216: the dotfiles program runs on the pre-U33 store pair and its derived hcom store carries no `origin`, so
+# the bound form would stop every sync on this host); the collision refusal (an `origin` naming another checkout) and
+# every store-root hold stay. The helper's refusal (return 1) is this lever's refusal status, exit 2.
+regime_env records-sync.sh --unbound-ok || exit 2
 if [[ -z ${program} ]]; then
+    # U220: the program is the one directory under the store root when that root exists (the derived form), else the
+    # one under the checkout's `.orchestration/orchestrate/` as before; several, or none, refuse naming the place.
     programs=()
-    for dir in .orchestration/orchestrate/*/; do
+    programs_dir=.orchestration/orchestrate
+    [[ -z ${REGIME_STORE_ROOT} || ! -d ${REGIME_STORE_ROOT} ]] || programs_dir=${REGIME_STORE_ROOT}
+    for dir in "${programs_dir}"/*/; do
         dir=${dir%/}
         [[ -d ${dir} ]] && programs+=("${dir##*/}")
     done
-    ((${#programs[@]} == 1)) || refuse "name the program with --program; .orchestration/orchestrate/ holds ${#programs[@]}"
+    ((${#programs[@]} == 1)) || refuse "name the program with --program; ${programs_dir}/ holds ${#programs[@]}"
     program=${programs[0]}
 fi
 [[ ${program} =~ ^[a-z0-9][a-z0-9_-]*$ ]] || refuse "the program name is outside [a-z0-9][a-z0-9_-]*: ${program}"
+# The published prefix, where the records lie on origin/main in both forms (U220): the listing of origin/main, the
+# deletions and the copies are at these paths.
 records=.orchestration/orchestrate/${program}
-# U28b F2: no component of the store directory is a symlink (git would list the files below a linked one too).
-for prefix in .orchestration/orchestrate "${records}"; do
-    [[ ! -L ${prefix} ]] || refuse "a component of a path of the copy set is a symlink: ${prefix} (in ${records}/)"
-done
-[[ -d ${records} ]] || refuse "no program directory ${records}"
-# U101: the words no copy may contain; the file itself is never copied, deleted or published.
+store='' store_form=''
+store_resolve "${program}"
+# U101: the words no copy may contain; the file itself is never copied, deleted or published. It lies at the top of
+# the chosen store (U220).
 words=${records}/redact-words.txt
-if [[ -e ${words} || -L ${words} ]]; then
+words_real=${store}/redact-words.txt
+if [[ -e ${words_real} || -L ${words_real} ]]; then
     check_path "${words}"
-    [[ -f ${words} ]] || refuse "${words} is not a regular file"
-    words_real=$(cd "${records}" && pwd -P) || refuse "cannot resolve ${words}"
-    words_real=${words_real}/redact-words.txt
+    [[ -f ${words_real} ]] || refuse "${words} is not a regular file"
 else
     words_real=''
 fi
@@ -340,41 +438,59 @@ listing=${scratch}/listing
 # first (find exits non-zero for a directory it cannot read, and each directory is checked readable and
 # searchable), and any warning of either producer refuses the run as well (read_listing, U112); neither output is
 # shown (a store path may hold a redact word).
-read_listing "${scratch}/dirs" "${scratch}/walk.err" find "${records}" -type d -print0 ||
+read_listing "${scratch}/dirs" "${scratch}/walk.err" find "${store}" -type d -print0 ||
     refuse "a directory under ${records}/ cannot be read or entered; nothing was created"
 dir=''
 while IFS= read -r -d '' dir; do
     [[ -r ${dir} && -x ${dir} ]] || refuse "a directory under ${records}/ cannot be read or entered; nothing was created"
 done < "${scratch}/dirs"
 [[ -z ${dir} ]] || refuse "the walk of ${records}/ ends mid-entry; nothing was created"
-# Audit of 7b3c2718: the listing is the one index read in the checkout, and a `core.fsmonitor` hook set in any
-# configuration the checkout reads would run inside it (and could write into the store before the copy). The isolated
-# git turns it off, with the hooks path and the user and system files; the repository level has no off switch, so the
-# checkout's own ignore rules and the default ignore file still shape the listing, which the stderr test below bounds.
-status=0
-read_listing "${listing}" "${scratch}/listing.err" \
-    git_isolated ls-files -z --cached --others --exclude-standard -- "${records}/" ||
-    status=$?
-case ${status} in
-0 | 1) ;;
-*)
-    [[ ! -s ${scratch}/listing.err ]] ||
-        refuse "git ls-files warned while listing ${records}/ (its output is withheld); nothing was created"
-    fail 'git ls-files failed'
-    ;;
-esac
 files=()
 present=$'\n'
-path=''
-while IFS= read -r -d '' path; do
-    [[ ${path} != "${words}" ]] || continue # lint-comparisons: allow both are repository-relative paths as git prints them
-    check_path "${path}"
-    if [[ -f ${path} && ${present} != *$'\n'"${path}"$'\n'* ]]; then # lint-comparisons: allow repository-relative paths as git prints them
-        files+=("${path}")
-        present+=${path}$'\n'
-    fi
-done < "${listing}"
-[[ -z ${path} ]] || refuse "the listing of ${records}/ ends mid-entry; nothing was created"
+if [[ ${store_form} == derived ]]; then # lint-comparisons: allow the form name store_resolve set, not a path
+    # U220: the derived store is a plain directory outside every repository, so there is no index to list: find lists
+    # every entry below it that is not a directory (`-type f` would skip a symbolic link instead of refusing it), each
+    # mapped to its published path under ${records}/ and held by check_path (collect_path). A failure or a warning of
+    # the walk refuses as the directory walk's does; an empty walk is no failure (a store whose every file is gone
+    # syncs the deletions).
+    status=0
+    read_listing "${listing}" "${scratch}/listing.err" find "${store}" ! -type d -print0 || status=$?
+    case ${status} in
+    0 | 1) ;;
+    *) refuse "the walk of ${records}/ failed or warned (its output is withheld); nothing was created" ;;
+    esac
+    entry=''
+    while IFS= read -r -d '' entry; do
+        case ${entry} in # lint-comparisons: allow a path as find prints it, refused unless below the store
+        "${store}"/?*) collect_path "${records}/${entry#"${store}/"}" ;;
+        *) refuse "the walk of ${records}/ names a path outside the store; nothing was created" ;;
+        esac
+    done < "${listing}"
+    [[ -z ${entry} ]] || refuse "the walk of ${records}/ ends mid-entry; nothing was created"
+else
+    # Audit of 7b3c2718: the listing is the one index read in the checkout, and a `core.fsmonitor` hook set in any
+    # configuration the checkout reads would run inside it (and could write into the store before the copy). The
+    # isolated git turns it off, with the hooks path and the user and system files; the repository level has no off
+    # switch, so the checkout's own ignore rules and the default ignore file still shape the listing, which the stderr
+    # test below bounds.
+    status=0
+    read_listing "${listing}" "${scratch}/listing.err" \
+        git_isolated ls-files -z --cached --others --exclude-standard -- "${records}/" ||
+        status=$?
+    case ${status} in
+    0 | 1) ;;
+    *)
+        [[ ! -s ${scratch}/listing.err ]] ||
+            refuse "git ls-files warned while listing ${records}/ (its output is withheld); nothing was created"
+        fail 'git ls-files failed'
+        ;;
+    esac
+    path=''
+    while IFS= read -r -d '' path; do
+        collect_path "${path}"
+    done < "${listing}"
+    [[ -z ${path} ]] || refuse "the listing of ${records}/ ends mid-entry; nothing was created"
+fi
 # Full entries (`<mode> blob <oid>` TAB path): the deletions come from them, and the expected change set below
 # compares each copy with its entry on main.
 git_scratch ls-tree -r -z "${main}" -- "${records}/" > "${listing}" || fail "git ls-tree ${base} failed"
@@ -411,7 +527,7 @@ copies=${scratch}/copies
 masked=()
 for path in ${files[@]+"${files[@]}"}; do
     mkdir -p "${copies}/${path%/*}" || fail "mkdir for ${path} failed"
-    cp -p "${path}" "${copies}/${path}" || fail "cp ${path} failed"
+    cp -p "${store}/${path#"${records}/"}" "${copies}/${path}" || fail "cp ${path} failed"
     masked+=("${copies}/${path}")
 done
 if ((${#masked[@]})); then
@@ -494,7 +610,7 @@ decisions=$(git_scratch diff --no-ext-diff --no-textconv -U0 "${main_tree}" "${n
     fail 'cannot list the decisions'
 title="chore(records): ${program} sync ${n}"
 message=$(printf '%s\n\n%s\n\n%s\n' "${title}" \
-    "Carries ${count} file(s) of ${records}/ from the main checkout, compared with origin/main (records-sync.sh)." \
+    "Carries ${count} file(s) of ${records}/ from the program store (${store_form} form), compared with origin/main (records-sync.sh)." \
     "${footer}") || fail 'cannot write the commit message'
 # U101: author and committer come only from the environment set here, the identity read at the start.
 commit=$(printf '%s\n' "${message}" |
@@ -504,11 +620,18 @@ commit=$(printf '%s\n' "${message}" |
 git_scratch -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
     push --quiet "${push_url}" "${commit}:refs/heads/${branch}" || fail "git push ${branch} failed; nothing was opened"
 body=${scratch}/body.md
+# U220: the contract's first row names the store's form; the derived store's place is a home-directory path, which no
+# published text names.
+if [[ ${store_form} == derived ]]; then # lint-comparisons: allow the form name store_resolve set, not a path
+    listed="the derived program store \`<store root>/${program}/\` (every regular file below it, \`redact-words.txt\` excluded; U220), published at \`.orchestration/orchestrate/${program}/\`"
+else
+    listed="\`.orchestration/orchestrate/${program}/\`, tracked or untracked and not git-ignored, \`redact-words.txt\` excluded"
+fi
 # U108: the `## Contract` section is what pr-audit.sh judges the pull request against (a body without one is
 # refused), so every records sync gets an orchestrator verdict. Only the program name is interpolated.
 # shellcheck disable=SC2016 # the backticks are Markdown code spans
 contract=(
-    "The changed paths are the store's files (\`.orchestration/orchestrate/${program}/\`, tracked or untracked and not git-ignored, \`redact-words.txt\` excluded) whose masked copy or executable mode differs from origin/main, plus every path origin/main holds under that directory that the listing does not hold as a regular file; the new tree's change set against origin/main is checked to equal exactly that set."
+    "The changed paths are the store's files (${listed}) whose masked copy or executable mode differs from origin/main, plus every path origin/main holds under that directory that the listing does not hold as a regular file; the new tree's change set against origin/main is checked to equal exactly that set."
     'No path lies outside that directory.'
     'Every copy was masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`, with the program'"'"'s `redact-words.txt` when present.'
     'The commit was built in a repository with no user, system or checkout configuration, and pushed over https with no user configuration.'
@@ -516,7 +639,7 @@ contract=(
 )
 {
     # shellcheck disable=SC2016 # the backticks are Markdown code spans
-    printf '## Summary\n\nRecords sync %s of `%s` (%s file(s)), carried by `records-sync.sh` from the main checkout and compared with origin/main; every copy was masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`.\n\n' "${n}" "${program}" "${count}"
+    printf '## Summary\n\nRecords sync %s of `%s` (%s file(s)), carried by `records-sync.sh` from the program store (%s form) and compared with origin/main; every copy was masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`.\n\n' "${n}" "${program}" "${count}" "${store_form}"
     printf -- '- units.tsv rows added or changed: %s\n' "${units:-none}"
     printf -- '- decisions.tsv rows added or changed: %s\n\n' "${decisions:-none}"
     printf '## Contract\n\n'

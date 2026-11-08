@@ -2213,6 +2213,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_regime-store-move/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-store-move
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../home/dot_local/bin/common/executable_regime-url-opener/" class="md-nav__link">
         
   
@@ -6088,7 +6116,7 @@
 <span class="s"># command substitution around a heredoc: bash 3.2 scans the body for quotes and backticks before the heredoc is read,</span>
 <span class="s"># so a row text must keep them balanced as bash counts them (a text holding both kinds of quote is a double-quoted</span>
 <span class="s"># Python string with the inner double quotes escaped), else the lint refuses to start and the enforced-set test fails.</span>
-<span class="s">LEVERS = ("records-sync.sh", "pr-audit.sh", "pr-merge.sh", "pr-threads-check.sh", "pr-body-edit.sh")</span>
+<span class="s">LEVERS = ("records-sync.sh", "pr-audit.sh", "pr-merge.sh", "pr-threads-check.sh", "pr-body-edit.sh", "regime-store-move")</span>
 <span class="s">LIBRARIES = ("read-lib.sh", "git-isolated.sh", "regime-env")</span>
 <span class="s">ACCEPTED_WRITES = (</span>
 <span class="s">    (</span>
@@ -6204,9 +6232,9 @@
 <span class="s">        "an empty IFS for the one `read` of a NUL-separated listing, restored after it",</span>
 <span class="s">    ),</span>
 <span class="s">    (</span>
-<span class="s">        ("records-sync.sh",),</span>
+<span class="s">        ("records-sync.sh", "regime-store-move"),</span>
 <span class="s">        r"""IFS= read -r -d '' entry;""",</span>
-<span class="s">        "an empty IFS for the one `read` of a NUL-separated listing, restored after it",</span>
+<span class="s">        "an empty IFS for the one `read` of a NUL-separated listing, restored after it (regime-store-move: every listing, U221e)",</span>
 <span class="s">    ),</span>
 <span class="s">    (</span>
 <span class="s">        ("pr-audit.sh",),</span>

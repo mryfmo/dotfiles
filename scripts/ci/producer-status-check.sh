@@ -491,7 +491,7 @@ ATTRIBUTE_OPTIONS = {"declare": "in", "typeset": "in", "local": "in"}
 # command substitution around a heredoc: bash 3.2 scans the body for quotes and backticks before the heredoc is read,
 # so a row text must keep them balanced as bash counts them (a text holding both kinds of quote is a double-quoted
 # Python string with the inner double quotes escaped), else the lint refuses to start and the enforced-set test fails.
-LEVERS = ("records-sync.sh", "pr-audit.sh", "pr-merge.sh", "pr-threads-check.sh", "pr-body-edit.sh")
+LEVERS = ("records-sync.sh", "pr-audit.sh", "pr-merge.sh", "pr-threads-check.sh", "pr-body-edit.sh", "regime-store-move")
 LIBRARIES = ("read-lib.sh", "git-isolated.sh", "regime-env")
 ACCEPTED_WRITES = (
     (

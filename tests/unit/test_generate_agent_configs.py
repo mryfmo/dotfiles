@@ -264,6 +264,7 @@ LEVERS = (
     "regime-init",
     "regime-start",
     "regime-stop",
+    "regime-store-move",
     "router-gh",
     "router-settings-apply",
     "seat-login-preflight",

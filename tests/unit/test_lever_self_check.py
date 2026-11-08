@@ -27,6 +27,7 @@ LEVERS = (
     "seat-login-preflight",
     "regime-start",
     "regime-stop",
+    "regime-store-move",
     "pr-thread-reply.sh",
     "pr-thread-resolve.sh",
     "pr-update-branch.sh",

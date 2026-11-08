@@ -245,6 +245,58 @@ class RegimeStartTest(unittest.TestCase):
         self.assertTrue(run.stdout.endswith(f"the store is {program}.\n"), run.stdout)
         self.assertEqual(self.run_lever(START, "Bad/Name").returncode, 2)
 
+    def test_a_program_store_is_the_derived_one_when_it_exists_else_the_checkout_store(self):
+        """U221 (handoff/07-store-move-design.md, store move 5 of 5; the two-form rule U216 gave the levers): the
+        program store is `${REGIME_STORE_ROOT}/<program>` when that directory exists, the root being regime-env's
+        derivation from the physical HOME and the slug (`<HOME>/.local/state/regime-store/pilot` for this fixture's
+        checkout `<temp>/pilot`), and the stderr line says `derived`; with no derived store the checkout's own
+        `.orchestration/orchestrate/<program>` stands as the pre-move form and the line says `checkout`; with neither
+        the refusal names both and nothing starts; a symbolic link or a file at the derived place is refused by name
+        before anything starts, whatever the checkout holds."""
+        derived = self.home / ".local/state/regime-store/pilot/pilot"
+        checkout = self.repo / ".orchestration/orchestrate/pilot"
+        refused = self.run_lever(START, "pilot")
+        self.assertEqual(refused.returncode, 2)
+        for path in (derived, checkout):
+            self.assertIn(str(path), refused.stderr, "the refusal names both forms")
+        self.assertIn("run regime-init pilot first", refused.stderr)
+        self.assertEqual(self.launches(), [])
+        self.assertFalse(self.conf.exists())
+        # The components as regime-init makes them, 0700 (hcom-seat holds the root's components to that mode, U219c).
+        derived.mkdir(parents=True)
+        for component in (derived.parent.parent, derived.parent, derived):
+            component.chmod(0o700)
+        run = self.run_lever(START, "pilot")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"regime-start: store: derived {derived}\n", run.stderr)
+        self.assertTrue(run.stdout.endswith(f"the store is {derived}.\n"), run.stdout)
+        self.assertEqual(self.registration()["program"], "pilot")
+        # The derived store wins over a checkout store that exists beside it (the pre-move copy main holds).
+        checkout.mkdir(parents=True)
+        run = self.run_lever(START, "pilot")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"regime-start: store: derived {derived}\n", run.stderr)
+        self.assertTrue(run.stdout.endswith(f"the store is {derived}.\n"), run.stdout)
+        shutil.rmtree(self.home / ".local/state/regime-store")
+        run = self.run_lever(START, "pilot")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"regime-start: store: checkout {checkout} (pre-move form, removed by U221)\n", run.stderr)
+        self.assertTrue(run.stdout.endswith(f"the store is {checkout}.\n"), run.stdout)
+        self.assertEqual(len(self.launches()), 1, "the one alive orchestrator is reported each time")
+        derived.parent.mkdir(parents=True, exist_ok=True)  # hcom-seat may have made the root 0700 at the launch (U219c)
+        for label, plant in (
+            ("a link", lambda: derived.symlink_to(checkout)),
+            ("a file", lambda: derived.write_text("")),
+        ):
+            with self.subTest(label):
+                plant()
+                refused = self.run_lever(START, "pilot")
+                self.assertEqual(refused.returncode, 2, refused.stdout)
+                self.assertIn(str(derived), refused.stderr)
+                self.assertIn("is a symlink" if label == "a link" else "exists but is not a directory", refused.stderr)
+                derived.unlink()
+        self.assertEqual(len(self.launches()), 1)
+
     def test_the_supervisor_relaunches_a_seat_that_died(self):
         self.assertEqual(self.run_lever(START).returncode, 0)
         for reason in ("process_exit by:system", "exit:shutdown by:session"):

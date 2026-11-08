@@ -559,7 +559,7 @@
       "target": ".local/bin/common/regime-start",
       "kind": "file",
       "executable": true,
-      "sha256": "c7b630d2353020e57c57a01af94fac5f7ed7f503071de9d1a15172eeb057bc6b"
+      "sha256": "978087b6ac9cbe00a3cb4f45dd749a8634d960948b5e2df96a97bbafe9597d17"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-stop",
@@ -567,6 +567,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_regime-store-move",
+      "target": ".local/bin/common/regime-store-move",
+      "kind": "file",
+      "executable": true,
+      "sha256": "243e461786bedad3a975185341eedf7c2e1538206255b88389857a3a3917fc2d"
     },
     {
       "source": "home/dot_local/bin/common/executable_router-gh",
@@ -825,6 +832,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "regime-stop"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "regime-store-move"
     },
     {
       "source": "home/dot_local/bin/common",

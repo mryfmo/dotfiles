@@ -901,7 +901,7 @@ claude:
       seat-login-preflight: 7d12ffb08da39735f6c368ddb9ab4ed10084d755a1f57470edc64d1d78e4ae61
       regime-start: 978087b6ac9cbe00a3cb4f45dd749a8634d960948b5e2df96a97bbafe9597d17
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
-      regime-store-move: 4a636a8ece9380dc11abbb99c925e159d3c617811320bbf6c94888c67fc1055b
+      regime-store-move: 592ed0a7513a072446d1dee5a96b27b96b139eda33cfdc5ac95dd559aa66351a
       pr-thread-reply.sh: a87078136ec916af8d3e46cd907b729d00ae8b3a6ea841c05ad77daefed3087c
       pr-thread-resolve.sh: efd650ad68b47654483e5cb67de7ae5b165e7e0a7a48bd3e00c6cf35aa564c0b
       pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae

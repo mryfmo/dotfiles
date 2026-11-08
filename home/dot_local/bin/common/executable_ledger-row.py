@@ -44,23 +44,29 @@ Two refusals cross rows, before any write (standing order 21): a `pushed` or `re
 `merged` kind is exempt: the merge is the last row of a head); and any cell holding a tab, a newline or a carriage
 return is refused naming the cell, the store argument included. A store whose ledger does not parse is exit 2 naming
 the line. Exit 0 prints one line, `appended <ts> line <n>`; every refusal is exit 2 with one stderr line; a write that
-fails is exit 1 naming the file. Round 2 (U222b, verdicts/U222-9187830e.md): the write is atomic, the whole text plus
-the new line written to `<store>/.ledger.tsv.<pid>.tmp`, fsynced and renamed over `ledger.tsv` by `os.replace`, the
-temporary removed on any failure, so a write that fails leaves the old file whole; every file read under the store
+fails is exit 1 naming the file. Round 2 (U222b, verdicts/U222-9187830e.md): every file read under the store
 (`ledger.tsv`, the verdict file, the findings file) follows one path rule, its `os.path.realpath` under the realpath of
 the store, each component `os.lstat`ed and no link, a regular file at the end; the findings directory name is
 `[A-Za-z0-9._-]` alone (the sweep reader splits the evidence on `;`); the deployed manifest is opened, ENOENT alone
 falling through to the checkout's and any other failure a refusal naming the file; the carried separator class is the
 gate's literal set under `re.ASCII`; and the import of `ledger.py` writes no bytecode (`sys.dont_write_bytecode`).
-Round 3 (U222c, verdicts/U222-0fc41a81.md): the read, the check, the write and the replace run under one exclusive
-lock per store, `fcntl.flock(LOCK_EX)` on `<store>/.ledger.lock` (created 0600 when absent; a regular file of this
-user and no link, by the store's file rule), taken before the ledger is read and released by the descriptor's close
-after `os.replace` has returned, so two levers writing at once never lose each other's row; a lock not taken within
-30 seconds (a non-blocking try in a loop; `--lock-wait <seconds>` before the store shortens it, for tests) is a
-refusal naming the lock file; every argument round-trips through strict UTF-8 before anything is read (Python decodes
-argv with surrogateescape) and a byte that is not UTF-8 is a refusal naming the argument; and the temporary's removal
-runs under `finally` on every exception, its own failure named (`the temporary <path> could not be removed: <error>`)
-with the exit still 1. `ledger.tsv` itself is never locked: a reader opens it without the lock.
+Round 3 (U222c, verdicts/U222-0fc41a81.md): the read, the check and the write run under one exclusive lock, so two
+levers writing at once never lose each other's row, and every argument round-trips through strict UTF-8 before
+anything is read (Python decodes argv with surrogateescape). Round 4 (U222d, verdicts/U222-238f0f55.md): the lever
+makes no file but the ledger (rounds 2 and 3 each wrote a helper file in the store, a temporary and a lock file, and
+the store's own walks refuse a name beginning with `.`). One descriptor, `os.open(ledger, O_RDWR | O_APPEND)`,
+carries the lock, the read and the write: `fcntl.flock(LOCK_EX | LOCK_NB)` tried every 0.1 s for `--lock-wait`
+seconds (default 30), expiry a refusal naming the ledger (advisory: the readers, `ledger.py` and `pr-merge.sh`, open
+the file without a lock and are unaffected); under it `os.fstat` gives the length n0, `os.pread` from 0 until n0 bytes
+gives the text, the row is composed and checked, the text plus the line is parsed, then one `os.write` of the line
+(O_APPEND puts it at the end), its count compared with the line's length, `os.fsync`, and the close, which releases
+the lock. A write that fails or returns short, or a fsync that fails, truncates the file back to n0 (`os.ftruncate`)
+and exits 1 naming the ledger and the error; a truncate that fails is named too (`the ledger <path> may hold a
+partial last line: <error>`), exit 1. Every `OSError` of the sequence is one stderr line, never a traceback: exit 2
+before the write (open, flock, fstat, pread: a read refusal, standing order 21), exit 1 from the write on (write,
+fsync, ftruncate, close). Every element of `sys.argv` passes the one argument rule (strict UTF-8; no tab, newline or
+carriage return) before argparse runs, so an option argparse converts (`--lock-wait`) cannot escape it. No mode of
+any file is changed.
 Installed as `~/.local/bin/common/ledger-row.py` in `brief-check.py`'s form (the generator's copy and pin); it needs
 `ledger.py` beside it wherever it runs.
 """
@@ -85,10 +91,12 @@ sys.dont_write_bytecode = True
 LEVER = "ledger-row"
 HERE = os.path.dirname(os.path.realpath(__file__))
 
-# The store's one lock (round 3): every writer of `ledger.tsv` takes `LOCK_EX` on this file before reading the ledger.
-LOCK_NAME = ".ledger.lock"
-LOCK_WAIT = 30.0  # seconds a lever waits for the lock, tried non-blocking every LOCK_POLL
-LOCK_POLL = 0.05
+# The write's lock (round 4) is `LOCK_EX` on the ledger's own descriptor, tried non-blocking every LOCK_POLL seconds
+# for LOCK_WAIT seconds (`--lock-wait` sets the wait); advisory, so the readers, which take no lock, are unaffected.
+LOCK_WAIT = 30.0
+LOCK_POLL = 0.1
+# The three characters no cell and no argument holds: the ledger is tab-separated lines.
+CONTROL = (("\t", "a tab"), ("\n", "a newline"), ("\r", "a carriage return"))
 
 
 def refuse(reason):
@@ -206,7 +214,7 @@ def manifest_pin(manifest, lines):
 
 def cell_check(name, value):
     """A cell holds neither a tab nor a line break: the ledger is tab-separated lines."""
-    for character, label in (("\t", "a tab"), ("\n", "a newline"), ("\r", "a carriage return")):
+    for character, label in CONTROL:
         if character in value:
             refuse(f"the {name} holds {label}; a cell holds neither a tab nor a newline")
 
@@ -396,7 +404,7 @@ def parser():
         type=float,
         default=LOCK_WAIT,
         metavar="SECONDS",
-        help=f"seconds to wait for the store's .ledger.lock before refusing (default {LOCK_WAIT:g}; tests shorten it)",
+        help=f"seconds to wait for the lock on ledger.tsv before refusing (default {LOCK_WAIT:g}; tests shorten it)",
     )
     kinds = top.add_subparsers(dest="kind", required=True)
 
@@ -461,39 +469,40 @@ def store_file(store, relative, label):
     return current
 
 
-def strict_arguments(argv):
-    """Every argument round-trips through strict UTF-8 before anything is read (round 3 finding 2): Python decodes
-    argv with surrogateescape, so a byte that is not UTF-8 arrives as a lone surrogate that passes `cell_check` and
-    would fail only at the write, outside the write's handler. The refusal names the argument's position and the
-    option before it."""
+def argument_rule(argv):
+    """The one rule every element of argv passes before argparse runs (round 3 finding 2, round 4 finding 4): the
+    element round-trips through strict UTF-8 (Python decodes argv with surrogateescape, so a byte that is not UTF-8
+    arrives as a lone surrogate that would fail only at the write) and holds neither a tab, a newline nor a carriage
+    return (a check of the parsed strings alone let `--lock-wait`, which argparse converts to a float, escape it). The
+    refusal names the element's position and the option before it, or the store and the kind for the first two
+    positional elements."""
+    positional = 0
     for index, value in enumerate(argv):
+        if value.startswith("--"):
+            where = f"argument {index + 1} (the option {value.split('=', 1)[0]})"
+        elif index and argv[index - 1].startswith("--"):
+            where = f"argument {index + 1} (the value of {argv[index - 1]})"
+        else:
+            positional += 1
+            where = f"argument {index + 1}" + {1: " (the store)", 2: " (the kind)"}.get(positional, "")
         try:
             value.encode("utf-8")
         except UnicodeEncodeError as error:
-            option = argv[index - 1] if index and argv[index - 1].startswith("--") else None
-            where = f"argument {index + 1}" + ("" if option is None else f" (the value of {option})")
             refuse(f"{where} holds a byte that is not UTF-8 at offset {error.start}: {value!r}")
+        for character, label in CONTROL:
+            if character in value:
+                refuse(f"{where} holds {label}; a cell holds neither a tab nor a newline")
 
 
-def take_lock(store, wait):
-    """The one exclusive lock of the store, `fcntl.flock(LOCK_EX)` on `<store>/.ledger.lock` (created 0600 when absent),
-    held by the returned descriptor until it is closed (round 3 finding 1: the coordinator runs two levers at once,
-    and a read, check and replace without it loses the other writer's row). The lock file is held to the store's file
-    rule: opened with `O_NOFOLLOW`, a link is a refusal naming it, and the open file must be a regular file of this
-    user. The lock is tried non-blocking in a loop for `wait` seconds; a lock not taken by then is a refusal naming
-    the lock file (standing order 21). `ledger.tsv` itself is never locked: a reader opens it without the lock."""
-    path = os.path.join(store, LOCK_NAME)
+def open_ledger(ledger_path, wait):
+    """The ledger's own descriptor, `O_RDWR | O_APPEND | O_NOFOLLOW`, locked `LOCK_EX` (round 4): the one descriptor
+    the lock, the read and the write go through, released by its close. The lock is tried non-blocking every
+    LOCK_POLL seconds for `wait` seconds; a lock not taken by then is a refusal naming the ledger (standing order 21).
+    Advisory: `ledger.py` and `pr-merge.sh` open the file without a lock and read it during the hold."""
     try:
-        descriptor = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        descriptor = os.open(ledger_path, os.O_RDWR | os.O_APPEND | os.O_NOFOLLOW)
     except OSError as error:
-        if error.errno == errno.ELOOP:
-            refuse(f"the lock file {path} is a symbolic link; the lock is a regular file of this user in the store")
-        refuse(f"cannot open the lock file {path}: {error.strerror}")
-    status = os.fstat(descriptor)
-    if not stat.S_ISREG(status.st_mode):
-        refuse(f"the lock file {path} is not a regular file; the lock is a regular file of this user in the store")
-    if status.st_uid != os.geteuid():
-        refuse(f"the lock file {path} belongs to uid {status.st_uid}, not this user ({os.geteuid()})")
+        refuse(f"cannot open the ledger {ledger_path} for the write: {error.strerror}")
     deadline = time.monotonic() + wait
     while True:
         try:
@@ -501,83 +510,119 @@ def take_lock(store, wait):
             return descriptor
         except OSError as error:
             if error.errno not in (errno.EAGAIN, errno.EWOULDBLOCK):
-                refuse(f"cannot lock the lock file {path}: {error.strerror}")
+                refuse(f"cannot lock the ledger {ledger_path}: {error.strerror}")
             if time.monotonic() >= deadline:
                 refuse(
-                    f"the lock file {path} is held by another writer after {wait:g} second"
+                    f"the ledger {ledger_path} is held by another writer after {wait:g} second"
                     f"{'' if wait == 1 else 's'}; the row is not written (--lock-wait sets the wait)"
                 )
             time.sleep(LOCK_POLL)
 
 
-def remove_temporary(temporary):
-    """The cleanup's one line: the temporary removed, or its removal's own failure named (round 3 finding 3)."""
+def read_ledger(descriptor, ledger_path):
+    """The whole text through the locked descriptor: `os.fstat` for the length n0, `os.pread` from offset 0 looped
+    until n0 bytes (a file shorter than n0 under the lock is a refusal), decoded as the reader decodes it (strict
+    UTF-8). Every failure is a refusal naming the ledger, exit 2: nothing has been written. Returns (n0, text)."""
     try:
-        os.unlink(temporary)
+        status = os.fstat(descriptor)
     except OSError as error:
-        return f"the temporary {temporary} could not be removed: {error.strerror}"
-    return f"{temporary} removed"
-
-
-def write_whole(store, ledger_path, text):
-    """The whole text to `<store>/.ledger.tsv.<pid>.tmp`, fsynced and renamed over `ledger.tsv` by `os.replace`, the
-    one atomic whole-file replace the operating system offers: a write that fails (a size limit, a full disk) leaves
-    the old file whole (round 2 finding 1). The old file's mode is kept. The temporary's removal is attempted under
-    `finally` on every exception, not `OSError` alone, and its own failure is named in the diagnostic (round 3
-    findings 2 and 3). Returns None, or the failure text naming the file."""
-    temporary = os.path.join(store, f".ledger.tsv.{os.getpid()}.tmp")
-    try:
-        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
-    except OSError as error:
-        return f"cannot write {ledger_path}: cannot create {temporary}: {error.strerror}"
-    replaced = False
-    cleanup = None
-    try:
+        refuse(f"cannot read the ledger {ledger_path}: fstat: {error.strerror}")
+    if not stat.S_ISREG(status.st_mode):
+        refuse(f"the ledger {ledger_path} is not a regular file")
+    length = status.st_size
+    chunks = []
+    offset = 0
+    while offset < length:
         try:
-            with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as handle:
-                handle.write(text)
-                handle.flush()
-                os.fchmod(handle.fileno(), stat.S_IMODE(os.stat(ledger_path).st_mode))
-                os.fsync(handle.fileno())
-            os.replace(temporary, ledger_path)
-            replaced = True
-        finally:
-            if not replaced:
-                cleanup = remove_temporary(temporary)
+            chunk = os.pread(descriptor, length - offset, offset)
+        except OSError as error:
+            refuse(f"cannot read the ledger {ledger_path}: pread at offset {offset}: {error.strerror}")
+        if not chunk:
+            refuse(f"the ledger {ledger_path} holds {offset} bytes, fewer than its length {length} under the lock")
+        chunks.append(chunk)
+        offset += len(chunk)
+    try:
+        return length, b"".join(chunks).decode("utf-8")
+    except UnicodeDecodeError as error:
+        refuse(f"{ledger_path}: not UTF-8: {error.reason}")
+
+
+def append_line(descriptor, ledger_path, length, line):
+    """One `os.write` of the line's bytes (O_APPEND puts it at the end), its count compared with the line's length,
+    then `os.fsync`. A write that fails or returns short, or a fsync that fails, truncates the file back to `length`
+    (`os.ftruncate`): the one recovery, which leaves the old text whole. Returns None, or the failure text naming the
+    ledger, the error and the truncate's outcome (exit 1 is the caller's)."""
+    data = line.encode("utf-8")
+    try:
+        # O_APPEND puts the write at the end whatever the offset, but XNU applies RLIMIT_FSIZE to an O_APPEND write at
+        # the descriptor's offset, which pread leaves at 0 (Linux applies it at the end); seating the offset at the end
+        # first makes a size limit cut the write on both kernels, and a cut write is recovered below.
+        os.lseek(descriptor, 0, os.SEEK_END)
+        written = os.write(descriptor, data)
     except OSError as error:
-        return f"cannot write {ledger_path} ({cleanup}): {error.strerror}"
-    except Exception as error:  # the cleanup ran under finally; one diagnostic in place of a traceback
-        return f"cannot write {ledger_path} ({cleanup}): {type(error).__name__}: {error}"
+        return truncate_back(descriptor, ledger_path, length, f"write: {error.strerror}")
+    if written != len(data):
+        return truncate_back(descriptor, ledger_path, length, f"short write, {written} of {len(data)} bytes")
+    try:
+        os.fsync(descriptor)
+    except OSError as error:
+        return truncate_back(descriptor, ledger_path, length, f"fsync: {error.strerror}")
     return None
+
+
+def truncate_back(descriptor, ledger_path, length, cause):
+    """The recovery of a failed write and its one line: the file truncated to `length`, or the truncate's own failure
+    named (`the ledger <path> may hold a partial last line: <error>`)."""
+    try:
+        os.ftruncate(descriptor, length)
+    except OSError as error:
+        return (
+            f"cannot write {ledger_path}: {cause}; the ledger {ledger_path} may hold a partial last line: "
+            f"{error.strerror}"
+        )
+    return f"cannot write {ledger_path}: {cause}; truncated back to {length} bytes"
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else list(argv)
-    strict_arguments(argv)
+    argument_rule(argv)
     args = parser().parse_args(argv)
-    for name, value in sorted(vars(args).items()):
-        if isinstance(value, str):
-            cell_check(name.replace("_", "-") if name != "class_word" else "class", value)
     if not 0 <= args.lock_wait < math.inf:
         refuse(f"--lock-wait {args.lock_wait!r} is not a non-negative number of seconds")
     check_unit(args.unit)
     store = os.path.realpath(args.store)
-    # The lock first, before the ledger is read (round 3 finding 1), released by the descriptor's close after
-    # `os.replace` has returned or the run has failed.
-    lock = take_lock(store, args.lock_wait)
-    try:
-        return write_row(args, store)
-    finally:
-        os.close(lock)
-
-
-def write_row(args, store):
-    """The critical section: the ledger read, the row composed and checked, the whole re-read and replaced."""
-    # The ledger first (standing order 21): a store that does not parse is a refusal naming the line, before the
-    # row is composed and before any file of the store is read for it.
+    # The ledger first (standing order 21): its path by the store's file rule, its descriptor opened and locked
+    # before it is read, before the row is composed and before any file of the store is read for it.
     ledger_path = store_file(store, "ledger.tsv", "ledger")
+    descriptor = open_ledger(ledger_path, args.lock_wait)
     try:
-        text = ledger.read_text(ledger_path)
+        code, text = write_row(args, store, ledger_path, descriptor)
+    except BaseException:  # a refusal (SystemExit) or an unexpected error: the close releases the lock
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        raise
+    try:
+        os.close(descriptor)
+    except OSError as error:
+        if code == 0:
+            text = f"the ledger {ledger_path} was appended ({text}) but its close failed: {error.strerror}"
+        else:
+            text = f"{text}; the close failed too: {error.strerror}"
+        code = 1
+    if code == 0:
+        print(text)
+    else:
+        print(f"{LEVER}: {text}", file=sys.stderr)
+    return code
+
+
+def write_row(args, store, ledger_path, descriptor):
+    """The critical section, under the lock the descriptor holds: the ledger read through it, the row composed and
+    checked, the whole re-read, the one line appended. Returns (0, the stdout receipt) or (1, the failure text)."""
+    length, text = read_ledger(descriptor, ledger_path)
+    try:
         read = ledger.parse_ledger(ledger_path, text)
     except ledger.Malformed as error:
         refuse(str(error))
@@ -605,12 +650,10 @@ def write_row(args, store):
     except ledger.Malformed as error:
         refuse(f"the reader refuses the composed row: {error}")
     number = whole.rows[-1].line
-    failure = write_whole(store, ledger_path, text + lead + line)
+    failure = append_line(descriptor, ledger_path, length, lead + line)
     if failure is not None:
-        print(f"{LEVER}: {failure}", file=sys.stderr)
-        return 1
-    print(f"appended {row.ts_text} line {number}")
-    return 0
+        return 1, failure
+    return 0, f"appended {row.ts_text} line {number}"
 
 
 if __name__ == "__main__":

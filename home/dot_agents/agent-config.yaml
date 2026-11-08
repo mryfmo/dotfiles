@@ -916,7 +916,7 @@ claude:
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
-      ledger-row.py: 6488b9da18f81de5b779f5c14fbfd5515e08eb249d320b0a8b2eeff20e0317b1
+      ledger-row.py: 05502158ec81553ef9d040d489116620e351fea0d59263e2816c7a53acb846f4
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f

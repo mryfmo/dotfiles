@@ -6,11 +6,11 @@ the header and three rows, `verdicts/`, `sweeps/`, a scratch HOME whose `.agents
 a subprocess under `python3 -I -S`, the form the coordinator runs."""
 
 import concurrent.futures
-import fcntl
 import os
 import re
 import resource
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -917,26 +917,6 @@ class LedgerRowTest(unittest.TestCase):
             "0",
         )
 
-    def test_r2a_a_write_that_fails_leaves_the_ledger_byte_identical_and_no_temporary(self):
-        """(a) an RLIMIT_FSIZE of the current size plus 8 bytes, as the auditor set it: exit 1 naming the file, the
-        old file whole, no temporary left in the store."""
-        limit = self.ledger.stat().st_size + 8
-
-        def cap():
-            resource.setrlimit(resource.RLIMIT_FSIZE, (limit, limit))
-
-        before = self.ledger.read_bytes()
-        run = self.run_writer(
-            "pushed", "--pr", "-", "--head", B, "--unit", "U7", "--how", "h", "--what", "w", preexec_fn=cap
-        )
-        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
-        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
-        self.assertIn(str(self.ledger), run.stderr)
-        self.assertEqual(self.ledger.read_bytes(), before, "a failed write leaves the old file whole")
-        self.assertEqual(
-            sorted(os.listdir(self.store)), [".ledger.lock", "ledger.tsv", "sweeps", "verdicts"], "no temporary left"
-        )
-
     def test_r2b_a_findings_path_and_a_verdict_path_through_a_symlinked_parent_refuse_naming_the_component(self):
         """(b) the final component is a regular file, but a parent directory is a link out of the store."""
         outside = Path(self.temp.name).resolve() / "outside"
@@ -1041,7 +1021,8 @@ class LedgerRowTest(unittest.TestCase):
         )
         self.assertEqual(sorted(os.listdir(copy)), ["ledger-row.py", "ledger.py"], "no __pycache__ beside the lever")
 
-    # Round 3 (U222c, verdicts/U222-0fc41a81.md): one lock per store, strict arguments, a named cleanup failure.
+    # Round 3 (U222c, verdicts/U222-0fc41a81.md): the concurrency property and strict arguments (the lock-file
+    # and cleanup tests of that round went with the lock file and the temporary in round 4).
 
     PUSHED = ("pushed", "--pr", "-", "--head", B, "--unit", "U7", "--how", "h")
 
@@ -1084,61 +1065,6 @@ class LedgerRowTest(unittest.TestCase):
             sorted(int(line.split("\t")[6][4:]) for line in lines[1:4001]), list(range(4000)), "the old rows are whole"
         )
 
-    def hold_lock(self):
-        """A subprocess holding `LOCK_EX` on `<store>/.ledger.lock` for the test's duration; returns once it holds."""
-        holder = subprocess.Popen(
-            [
-                sys.executable,
-                "-I",
-                "-S",
-                "-c",
-                "import fcntl, os, sys, time\n"
-                "fd = os.open(sys.argv[1], os.O_RDWR | os.O_CREAT, 0o600)\n"
-                "fcntl.flock(fd, fcntl.LOCK_EX)\n"
-                "print('held', flush=True)\n"
-                "time.sleep(120)\n",
-                str(self.store / ".ledger.lock"),
-            ],
-            stdout=subprocess.PIPE,
-            text=True,
-        )
-        self.addCleanup(holder.wait)
-        self.addCleanup(holder.kill)
-        self.assertEqual(holder.stdout.readline(), "held\n")
-        return holder
-
-    def test_r3b_a_held_lock_makes_the_lever_refuse_after_its_wait_naming_the_lock_file(self):
-        """(b) another process holds `LOCK_EX` on `.ledger.lock`: the lever tries non-blocking in a loop for the wait
-        (`--lock-wait 1`, the option the test alone sets; the coordinator's default is 30 seconds), then refuses
-        naming the lock file, exit 2, one stderr line, the ledger unchanged."""
-        self.hold_lock()
-        before = self.ledger.read_bytes()
-        start = time.monotonic()
-        run = self.run_writer("--lock-wait", "1", *self.PUSHED, "--what", "w")
-        elapsed = time.monotonic() - start
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
-        self.assertTrue(run.stderr.startswith("ledger-row: refused: "), run.stderr)
-        self.assertIn(str(self.store / ".ledger.lock"), run.stderr)
-        self.assertIn("1 second", run.stderr)
-        self.assertGreaterEqual(elapsed, 1.0, "the lever waited for the lock before refusing")
-        self.assertEqual(self.ledger.read_bytes(), before, "nothing was written")
-        self.assertEqual(
-            sorted(os.listdir(self.store)), [".ledger.lock", "ledger.tsv", "sweeps", "verdicts"], "no temporary"
-        )
-
-    def test_r3c_a_symlinked_lock_file_is_refused_by_the_file_rule(self):
-        """(c) `.ledger.lock` is held to the store's file rule: a link (here to a regular file outside the store) is a
-        refusal naming the lock file, and the link's target is not locked, opened or written."""
-        outside = Path(self.temp.name).resolve() / "outside.lock"
-        outside.write_bytes(b"")
-        (self.store / ".ledger.lock").symlink_to(outside)
-        self.assert_refused(self.PUSHED + ("--what", "w"), str(self.store / ".ledger.lock"), "link")
-        self.assertEqual(outside.read_bytes(), b"")
-        self.assertEqual(
-            sorted(os.listdir(self.store)), [".ledger.lock", "ledger.tsv", "sweeps", "verdicts"], "no temporary"
-        )
-
     def test_r3d_a_raw_non_utf8_byte_in_what_is_a_refusal_naming_the_argument_before_anything_is_read(self):
         """(d) the auditor's probe: `--what` holding the byte 0xff, which Python's argv decoding turns into a lone
         surrogate that passes the cell check and failed at the write with a traceback and a temporary left behind;
@@ -1158,53 +1084,148 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(self.ledger.read_bytes(), before, "nothing was written")
         self.assertNotIn(".tmp", "".join(os.listdir(self.store)), "no temporary")
 
-    def test_r3e_a_failed_fsync_then_a_failed_unlink_names_the_temporary_as_not_removed_with_its_error(self):
-        """(e) the auditor's injection in the round-2 fixture's form, by the interpreter's `os` module: `os.fsync`
-        raises EIO and `os.unlink` raises EACCES; exit 1, one stderr line naming `ledger.tsv`, the temporary as not
-        removed and the unlink's error (round 2 said `removed` while the file stayed), the ledger unchanged."""
-        before = self.ledger.read_bytes()
-        injection = (
-            "import errno, os, runpy, sys\n"
-            "def fsync(fd):\n"
-            "    raise OSError(errno.EIO, os.strerror(errno.EIO))\n"
-            "def unlink(path, *args, **kwargs):\n"
-            "    raise PermissionError(errno.EACCES, os.strerror(errno.EACCES), path)\n"
-            "os.fsync = fsync\n"
-            "os.unlink = unlink\n"
-            "sys.argv = sys.argv[1:]\n"
-            "runpy.run_path(sys.argv[0], run_name='__main__')\n"
-        )
-        run = subprocess.run(
+    # Round 4 (U222d, verdicts/U222-238f0f55.md): no file but the ledger; the lock, the read and the write through
+    # the ledger's own descriptor; one argument rule before argparse.
+
+    STORE_ENTRIES = ["ledger.tsv", "sweeps", "sweeps/U9-bbbbbbbb", "sweeps/U9-bbbbbbbb/findings.json", "verdicts"]
+
+    def store_listing(self):
+        """Every entry under the store, recursively, with the ledger's mode and owner: what a write may not change."""
+        names = sorted(str(entry.relative_to(self.store)) for entry in self.store.rglob("*"))
+        status = self.ledger.stat()
+        return names, stat.S_IMODE(status.st_mode), status.st_uid, status.st_gid
+
+    def test_r4a_a_successful_write_adds_no_entry_to_the_store_and_keeps_the_ledger_s_mode_and_owner(self):
+        """(a) the store holds exactly the entries it held before plus nothing (no lock file, no temporary), and the
+        ledger's mode (0600 here, the private form) and owner are unchanged."""
+        self.ledger.chmod(0o600)
+        before = self.store_listing()
+        self.assertEqual(before[0], self.STORE_ENTRIES)
+        self.assertEqual(before[1], 0o600)
+        self.assert_appended(self.PUSHED + ("--what", "w"), "U7", "-", B, "pushed", "coordinator (h)", "w")
+        self.assertEqual(self.store_listing(), before, "the store's names, the ledger's mode and owner are unchanged")
+
+    def hold_ledger_lock(self):
+        """A subprocess holding `LOCK_EX` on `ledger.tsv` itself for the test's duration; returns once it holds."""
+        holder = subprocess.Popen(
             [
                 sys.executable,
                 "-I",
                 "-S",
                 "-c",
-                injection,
-                str(self.writer),
-                str(self.store),
-                *self.PUSHED,
-                "--what",
-                "w",
+                "import fcntl, os, sys, time\n"
+                "fd = os.open(sys.argv[1], os.O_RDWR)\n"
+                "fcntl.flock(fd, fcntl.LOCK_EX)\n"
+                "print('held', flush=True)\n"
+                "time.sleep(120)\n",
+                str(self.ledger),
             ],
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        self.addCleanup(holder.wait)
+        self.addCleanup(holder.kill)
+        self.assertEqual(holder.stdout.readline(), "held\n")
+        return holder
+
+    def test_r4c_a_held_lock_on_the_ledger_makes_the_lever_refuse_after_its_wait_naming_the_ledger_while_ledger_py_reads(
+        self,
+    ):
+        """(c) another process holds `LOCK_EX` on `ledger.tsv`: the lever tries non-blocking in a loop for the wait
+        (`--lock-wait 1`), then refuses naming the ledger, exit 2, one stderr line, the ledger and the store unchanged;
+        `ledger.py <store> verdict ...` run during the hold still reads the ledger (the lock is advisory; the readers
+        take none)."""
+        expected = self.read("verdict", "7", A)
+        self.assertEqual(expected.returncode, 0, expected.stderr)
+        self.assertTrue(expected.stdout.startswith("2026-11-01T02:00:00Z\tU7\tcorrect\t"), expected.stdout)
+        self.hold_ledger_lock()
+        before = self.store_listing()
+        content = self.ledger.read_bytes()
+        during = self.read("verdict", "7", A)
+        self.assertEqual((during.returncode, during.stdout, during.stderr), (0, expected.stdout, ""))
+        start = time.monotonic()
+        run = self.run_writer("--lock-wait", "1", *self.PUSHED, "--what", "w")
+        elapsed = time.monotonic() - start
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertTrue(run.stderr.startswith("ledger-row: refused: "), run.stderr)
+        self.assertIn(str(self.ledger), run.stderr)
+        self.assertIn("1 second", run.stderr)
+        self.assertNotIn(".ledger.lock", run.stderr)
+        self.assertGreaterEqual(elapsed, 1.0, "the lever waited for the lock before refusing")
+        self.assertEqual(self.ledger.read_bytes(), content, "nothing was written")
+        self.assertEqual(self.store_listing(), before, "no file but the ledger")
+        after = self.read("verdict", "7", A)
+        self.assertEqual((after.returncode, after.stdout), (0, expected.stdout), after.stderr)
+
+    def test_r4d_a_write_cut_short_by_a_size_limit_exits_1_naming_the_ledger_and_the_ledger_is_byte_identical(self):
+        """(d) an RLIMIT_FSIZE of the ledger's length plus 8 bytes (the round-2 fixture's form): the one write of the
+        line returns short or fails, the lever truncates the file back to the recorded length, exit 1, one stderr line
+        naming the ledger, the ledger byte-identical, the store unchanged."""
+        limit = self.ledger.stat().st_size + 8
+
+        def cap():
+            resource.setrlimit(resource.RLIMIT_FSIZE, (limit, limit))
+
+        before = self.store_listing()
+        content = self.ledger.read_bytes()
+        run = self.run_writer(*self.PUSHED, "--what", "w", preexec_fn=cap)
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertTrue(run.stderr.startswith(f"ledger-row: cannot write {self.ledger}: "), run.stderr)
+        self.assertIn(f"truncated back to {len(content)} bytes", run.stderr)
+        self.assertNotIn("Traceback", run.stderr)
+        self.assertEqual(self.ledger.read_bytes(), content, "the truncate ran: the old file is whole")
+        self.assertEqual(self.store_listing(), before, "no file but the ledger")
+
+    def inject(self, function, *args):
+        """The lever run through `runpy` under `python3 -I -S` with `os.<function>` replaced by one raising EIO (the
+        round-3 injection form)."""
+        injection = (
+            "import errno, os, runpy, sys\n"
+            "def broken(*args, **kwargs):\n"
+            "    raise OSError(errno.EIO, os.strerror(errno.EIO))\n"
+            f"os.{function} = broken\n"
+            "sys.argv = sys.argv[1:]\n"
+            "runpy.run_path(sys.argv[0], run_name='__main__')\n"
+        )
+        return subprocess.run(
+            [sys.executable, "-I", "-S", "-c", injection, str(self.writer), str(self.store), *args],
             capture_output=True,
             text=True,
             env=self.env,
             timeout=60,
             check=False,
         )
-        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
-        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
-        self.assertTrue(run.stderr.startswith("ledger-row: cannot write " + str(self.ledger)), run.stderr)
-        temporaries = [
-            name for name in os.listdir(self.store) if name.startswith(".ledger.tsv.") and name.endswith(".tmp")
-        ]
-        self.assertEqual(len(temporaries), 1, "the injected unlink left the temporary")
-        self.assertIn(
-            f"the temporary {self.store / temporaries[0]} could not be removed: Permission denied", run.stderr
-        )
-        self.assertIn("Input/output error", run.stderr)
-        self.assertEqual(self.ledger.read_bytes(), before, "the old file is whole")
+
+    def test_r4e_an_injected_fstat_or_pread_failure_is_one_stderr_line_exit_2_and_the_ledger_unchanged(self):
+        """(e) the auditor's injection: `os.fstat` (the length) or `os.pread` (the text) raises EIO under the lock; a
+        read refusal, exit 2, one stderr line naming the ledger and the error, no traceback, the ledger and the store
+        unchanged."""
+        before = self.store_listing()
+        content = self.ledger.read_bytes()
+        for function in ("fstat", "pread"):
+            with self.subTest(function):
+                run = self.inject(function, *self.PUSHED, "--what", "w")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                self.assertTrue(run.stderr.startswith("ledger-row: refused: "), run.stderr)
+                self.assertIn(str(self.ledger), run.stderr)
+                self.assertIn("Input/output error", run.stderr)
+                self.assertNotIn("Traceback", run.stderr)
+                self.assertEqual(self.ledger.read_bytes(), content, "nothing was written")
+                self.assertEqual(self.store_listing(), before, "no file but the ledger")
+
+    def test_r4f_a_tab_a_newline_and_a_carriage_return_inside_lock_wait_refuse_by_the_argument_rule(self):
+        """(f) the auditor's probe: `float()` strips whitespace, so `--lock-wait '1\t'` converted and the row was
+        appended; now every element of argv passes the one rule before argparse runs: exit 2 naming the option and
+        the character, nothing written."""
+        before = self.store_listing()
+        for label, value in (("a tab", "1\t"), ("a newline", "1\n"), ("a carriage return", "\r1")):
+            with self.subTest(label):
+                stderr = self.assert_refused(("--lock-wait", value, *self.PUSHED, "--what", "w"), "--lock-wait", label)
+                self.assertNotIn("usage:", stderr)
+        self.assertEqual(self.store_listing(), before, "no file but the ledger")
 
 
 if __name__ == "__main__":

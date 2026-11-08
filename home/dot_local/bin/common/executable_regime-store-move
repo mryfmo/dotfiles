@@ -5,13 +5,13 @@
 #   Regime-cutover U221, store move 5 of 5 (handoff/07-store-move-design.md; U215 gave regime-env the root, U216 and
 #   U220 gave the levers the two-form rule, U219 the seats' grants), reshaped by U221b, U221c and U221d (verdicts
 #   U221-e82581f3, U221-738e89ca and U221-595a116a, class move-race; the mechanism-change rows of decisions
-#   2026-11-08T05:44:20Z and 2026-11-08T10:26:46Z, form remove). The live store of a program is written unmasked
-#   inside the main checkout's working tree at `.orchestration/orchestrate/<program>/` while `main` holds its masked
-#   copies, so the checkout is never clean after a records sync and nothing fast-forwards it (standing order 40,
-#   struck: no procedure or lever writes the coordinator's live main checkout again; decisions 2026-11-05T23:34:51Z).
-#   The move of the live store to `${REGIME_STORE_ROOT}/<program>` (the root the sourced `regime-env` derives from the
-#   physical HOME and the checkout's slug) is the mechanism that ends that class; this lever is the move's judge, not
-#   its hand.
+#   2026-11-08T05:44:20Z and 2026-11-08T10:26:46Z, form remove) and hardened in its reads by U221e (verdict
+#   U221-af547232, class read-rigor). The live store of a program is written unmasked inside the main checkout's
+#   working tree at `.orchestration/orchestrate/<program>/` while `main` holds its masked copies, so the checkout is
+#   never clean after a records sync and nothing fast-forwards it (standing order 40, struck: no procedure or lever
+#   writes the coordinator's live main checkout again; decisions 2026-11-05T23:34:51Z). The move of the live store to
+#   `${REGIME_STORE_ROOT}/<program>` (the root the sourced `regime-env` derives from the physical HOME and the
+#   checkout's slug) is the mechanism that ends that class; this lever is the move's judge, not its hand.
 #   Why it moves nothing (U221d). Three rounds had the lever copy the live store itself, each under a control meant
 #   to catch a writer during the run: two observations of the source held equal (rounds 1 and 2), then the source
 #   made unwritable by mode before anything was read and a staging directory renamed into place under an identity
@@ -23,43 +23,57 @@
 #   judges and prints the operator's procedure as commands to run from a terminal on a quiescent host.
 #   What it reads. The main checkout (a linked worktree is refused), `regime_env` for the root, the live store's walk
 #   (U220's derived walk, `find ! -type d` through `read_listing`: every entry a regular file below the store with no
-#   symlink component, no control character, no `..`, no name beginning with `.`; `redact-words.txt` included, since
-#   the new root is the live store), and whether the derived store `${REGIME_STORE_ROOT}/<program>` exists (a link or
-#   a file there, or a component whose mode is not 0700, is refused by name).
+#   symlink component, no control character, no `..`, no name beginning with `.`, no name beginning or ending with a
+#   space; `redact-words.txt` included, since the new root is the live store), and whether the derived store
+#   `${REGIME_STORE_ROOT}/<program>` exists (a link or a file there, or a component whose mode is not 0700, is
+#   refused by name).
 #   Before the move (the derived store absent; the store root `${REGIME_STORE_ROOT}` must exist, as hcom-seat makes it
 #   when a seat starts, U219) it checks that a sync is not still due: origin's `main` is fetched into a scratch
 #   repository (`git init --bare --template=` under `$TMPDIR`, every command through `git_isolated`, the https URL
 #   read once from the checkout, the credential helper `!gh auth git-credential` only), its tree is listed at the
-#   published prefix (`ls-tree -r -z`), each live file but `redact-words.txt` is read into a scratch copy (`cat`, the
-#   status read) and masked there with main's `scripts/validate-agent-assets.py --mask-secrets` (the checkout's files
-#   are never changed; the masker's output is withheld), and the masked copy's `<mode> blob <oid>` must equal main's
-#   entry for every path, no live path may be absent from main but `redact-words.txt`, and no path of main may be
-#   absent from the live store (a deletion the sync would carry); otherwise `refused: a records sync is still due
-#   (<n> path(s) differ ...)`, the count and not the paths (a path may hold a redact word). When every path is equal
-#   it prints the verdict `ready: <n> live files equal origin/main's masked copies` and the procedure, seven
-#   numbered lines, each a complete command or one sentence: (1) stop every seat and end every coordinator process
-#   (`regime-stop --all`, the kit's stop); (2) the copy of the checkout store to `${REGIME_STORE_ROOT}/<program>`
-#   with its modes and times kept; (3) the recursive comparison of the two and the count of the copy's files (`<n>`
-#   plus `redact-words.txt`); (4) the checkout's own `checkout -- <prefix>`; (5) its `clean -fd -- <prefix>`; (6) its
-#   `pull --ff-only`; (7) this lever again. The operator runs them by hand, once, after the last records sync from
-#   inside has merged; lines (4) to (6) are the last write to the coordinator's live checkout by anyone.
+#   published prefix (`ls-tree -r -z`), each live file but `redact-words.txt` is read into a scratch copy (`cat`
+#   through `read_listing`) and masked there with main's `scripts/validate-agent-assets.py --mask-secrets` (the
+#   checkout's files are never changed; the masker's output is withheld), and the masked copy's `<mode> blob <oid>`
+#   must equal main's entry for every path, no live path may be absent from main but `redact-words.txt`, and no path
+#   of main may be absent from the live store (a deletion the sync would carry); otherwise `refused: a records sync
+#   is still due (<n> path(s) differ ...)`, the count and not the paths (a path may hold a redact word). When every
+#   path is equal it prints the verdict `ready: <n> live files equal origin/main's masked copies` and the procedure,
+#   seven numbered lines, each a complete command or one sentence: (1) stop every seat and end every coordinator
+#   process (`regime-stop --all`, the kit's stop); (2) the copy of the checkout store to
+#   `${REGIME_STORE_ROOT}/<program>` with its modes and times kept (`cp -a`), then the group and other bits removed
+#   below it (`go-rwx`, recursive, in the same line: `cp -a` keeps the checkout store's 0755, and the post-move check
+#   of line 7 holds the program store to 0700, the mode the kit gives every store it makes; U221e); (3) the recursive
+#   comparison of the two and the count of the copy's files (`<n>` plus `redact-words.txt`); (4) the checkout's own
+#   `checkout -- <prefix>`; (5) its `clean -fd -- <prefix>`; (6) its `pull --ff-only`; (7) this lever again. The
+#   operator runs them by hand, once, after the last records sync from inside has merged; lines (4) to (6) are the
+#   last write to the coordinator's live checkout by anyone.
 #   After the move (the derived store present) it counts the derived store's files (`find ! -type d` through
 #   `read_listing`; a derived store with no file is refused: regime-init's empty directory, not the moved store) and
 #   reads `git status --porcelain` of the checkout's store subtree (under `--no-optional-locks`, so the read refreshes
 #   no index): empty, it prints `moved: the derived store holds <m> files; the checkout store is clean against HEAD`;
 #   else `refused: the checkout store is not clean (<k> entries); finish the step`.
-#   Every producer's status is read (standing order 21): a failed or warning walk, an unreadable `origin` URL, a
-#   failed `git status` or a count that fails refuses (exit 2); a step after the reads that fails (the fetch, a write
-#   under the scratch directory, the masker, a hash) exits 1 naming the step. The lever writes nothing anywhere but
-#   its scratch directory under `$TMPDIR`, which is removed on every exit, changes no mode, and runs no git against
-#   the checkout but `rev-parse` and `status`; the fetched `main` and the masked copies live in the scratch directory
-#   alone.
+#   How it reads (standing order 21; U221e). Every producer whose output this lever decides on (`find`, `tr`, `wc`,
+#   `/usr/bin/stat`, `cat`, `git rev-parse`, `git config`, `git status`, `git ls-tree`, `git cat-file`, `git
+#   hash-object`) runs through read-lib.sh's `read_listing` or `read_config`: its stdout goes to a scratch file and
+#   its stderr to another, and a non-zero status or anything on stderr is a failed read that refuses naming the
+#   producer (a `wc` that warns while printing a valid count is no count; round 4 read the status alone). Every
+#   listing is NUL-delimited and read with `IFS= read -r -d ''`, so every byte of a name reaches the shape check
+#   (round 4's `read` trimmed the trailing space off `units.tsv ` before the check saw it, and the file, or a
+#   dangling link of that name, passed as `ready`). A read that fails refuses (exit 2); a step after the reads that
+#   fails (the fetch, a write under the scratch directory, the masker, `ls-tree`, `cat-file`, `hash-object`) exits 1
+#   naming the step. The lever writes nothing anywhere but its scratch directory under `$TMPDIR`, which holds every
+#   write of the run, uv's cache included (the masker's `uv run` gets `UV_CACHE_DIR=<scratch>/uv-cache`, so
+#   `$HOME/.cache/uv` is never written; round 4 left it behind), changes no mode, and runs no git against the
+#   checkout but `rev-parse` and `status`. The scratch directory is removed on every exit with the removal's status
+#   read: a removal that fails prints `could not remove <dir>` after the verdict line, which stands, and ends a run
+#   that would have exited 0 with exit 1 (a refusal's or a failure's own status is kept; round 4 warned and exited 0
+#   with scratch copies of live records left behind).
 # @arg $1 string The program (`^[a-z0-9][a-z0-9_-]{0,63}$`), whose live store is `<toplevel>/.orchestration/orchestrate/<program>/`; the one argument.
 # @stdout Before the move: `ready: <n> live files equal origin/main's masked copies`, then the procedure, seven numbered lines. After it: `moved: the derived store holds <m> files; the checkout store is clean against HEAD`.
-# @stderr `regime-store-move: live store <dir> (<n> files); derived store <dir>; origin/main <sha> at <prefix>/ equals the live store masked`, or `regime-store-move: derived store <dir> (<m> files); checkout store <dir> clean against HEAD`, or the refusal.
-# @exitcode 0 The verdict is `ready` or `moved`.
-# @exitcode 1 A step after the reads failed (the fetch, a write under the scratch directory, the masker, a hash); nothing is printed on stdout.
-# @exitcode 2 Refused: usage, a linked worktree, no live store, a listed entry outside the derived walk's shape, a destination component that is not a 0700 directory of this user, a store root that does not exist, a derived store with no file, a sync still due, a checkout store not clean after the move, or a failed or warning read (a walk, the origin URL, `git status`, a count).
+# @stderr `regime-store-move: live store <dir> (<n> files); derived store <dir>; origin/main <sha> at <prefix>/ equals the live store masked`, or `regime-store-move: derived store <dir> (<m> files); checkout store <dir> clean against HEAD`, or the refusal; `read_listing: <producer> exited <status>` or `... wrote to its stderr` above a refusal names the producer.
+# @exitcode 0 The verdict is `ready` or `moved` and the scratch directory is removed.
+# @exitcode 1 A step after the reads failed (the fetch, a write under the scratch directory, the masker, `ls-tree`, `cat-file`, `hash-object`; nothing is printed on stdout), or the scratch directory could not be removed after a `ready` or `moved` verdict (the verdict line stands).
+# @exitcode 2 Refused: usage, a linked worktree, no live store, a listed entry outside the derived walk's shape (a symlink component, a control character, `..`, a name beginning with `.`, a name beginning or ending with a space, not a regular file), a destination component that is not a 0700 directory of this user, a store root that does not exist, a derived store with no file, a sync still due, a checkout store not clean after the move, or a failed or warning read (a walk, a count, the mode, the toplevel, the origin URL, `git status`).
 # @example
 #   regime-store-move regime-cutover
 set -euo pipefail
@@ -179,9 +193,17 @@ fail() {
 
 scratch=''
 # @description The EXIT trap: the scratch directory goes, and nothing else; this lever makes nothing anywhere else.
+#   The removal's status is read (U221e): the directory holds scratch copies of live records, so a removal that
+#   fails names the directory on stderr and ends a run that would have exited 0 with exit 1 (the verdict line already
+#   printed stands; the status says the run did not end clean). A refusal's or a failure's own status is kept: it
+#   already says the run did not end clean, and the line names the directory either way.
 cleanup() {
+    local cl_status=$?
     if [[ -n ${scratch} && -d ${scratch} ]]; then
-        rm -r "${scratch}" 2> /dev/null || echo "${lever}: could not remove ${scratch}" >&2
+        if ! rm -r "${scratch}"; then
+            echo "${lever}: could not remove ${scratch}; remove it by hand (it may hold scratch copies of live records)" >&2
+            [[ ${cl_status} != 0 ]] || exit 1
+        fi
     fi
 }
 
@@ -193,32 +215,70 @@ git_scratch() {
     git_isolated --git-dir="${repo}" "$@"
 }
 
-# @description Print the number of entries of a NUL-separated listing: `tr` keeps the NULs alone and `wc -c` counts
-#   them, the status of the pipeline read (`pipefail`), the blanks of wc's output removed.
-# @arg $1 path The listing.
+# @description Set the variable $2 to the one line a producer prints (a path, an object id, a mode), the producer run
+#   through `read_listing` (its status read, its stderr captured to `<prefix>.err`: a non-zero status or anything on
+#   stderr is a failed read naming the producer) and its output read back whole through `read_file`, the one final
+#   newline removed; a producer that prints nothing is a failed read here (no path, no id and no mode is an absence).
+# @arg $1 path The scratch prefix for the output file and the stderr file.
+# @arg $2 string The variable that receives the line.
+# @arg $@ string The producer and its arguments: a command or a function, run as written.
+# @exitcode 0 The variable holds the line.
+# @exitcode 2 The producer failed, warned or printed nothing, or a scratch file could not be written or read.
+read_line() {
+    local ln_prefix=$1 ln_name=$2 ln_value=''
+    shift 2
+    read_listing "${ln_prefix}.out" "${ln_prefix}.err" "$@" || return 2
+    read_file "${ln_prefix}.out" ln_value || return 2
+    ln_value=${ln_value%$'\n'}
+    printf -v "${ln_name}" '%s' "${ln_value}"
+}
+
+# @description Print the number `wc` reports for a file: `wc <flag>` through `read_listing` (a `wc` that warns while
+#   printing a valid count is a failed read, not a count; U221e), the count read back through `read_file`, its blanks
+#   removed and held to digits.
+# @arg $1 path The file to count.
+# @arg $2 path The scratch prefix for wc's output file and stderr file.
+# @arg $3 string wc's flag (`-c`, `-l`).
 # @exitcode 0 The count was printed.
-# @exitcode 2 tr or wc failed, or printed no number.
+# @exitcode 2 wc failed or warned, or printed no number.
+count_with_wc() {
+    local cw_file=$1 cw_prefix=$2 cw_flag=$3 cw_out=''
+    read_listing "${cw_prefix}.count" "${cw_prefix}.wc.err" wc "${cw_flag}" < "${cw_file}" || return 2
+    read_file "${cw_prefix}.count" cw_out || return 2
+    cw_out=${cw_out//[[:space:]]/}
+    [[ ${cw_out} =~ ^[0-9]+$ ]] || return 2
+    printf '%s\n' "${cw_out}"
+}
+
+# @description Print the number of entries of a NUL-separated listing: `tr -cd '\000'` keeps the NULs alone, through
+#   `read_listing` (its status read, its stderr captured; an empty result is zero entries, not a failure), and
+#   `count_with_wc` counts the bytes left.
+# @arg $1 path The listing.
+# @arg $2 path The scratch prefix for the two outputs and the two stderr files.
+# @exitcode 0 The count was printed.
+# @exitcode 2 tr or wc failed or warned, or wc printed no number.
 count_entries() {
-    local ce_out
-    ce_out=$(tr -cd '\000' < "$1" | wc -c) || return 2
-    ce_out=${ce_out//[[:space:]]/}
-    [[ ${ce_out} =~ ^[0-9]+$ ]] || return 2
-    printf '%s\n' "${ce_out}"
+    local ce_listing=$1 ce_prefix=$2 ce_status=0
+    read_listing "${ce_prefix}.nuls" "${ce_prefix}.tr.err" tr -cd '\000' < "${ce_listing}" || ce_status=$?
+    [[ ${ce_status} != 2 ]] || return 2
+    count_with_wc "${ce_prefix}.nuls" "${ce_prefix}" -c || return 2
 }
 
 # @description Print the operator's procedure, seven numbered lines, each a complete command or one sentence, the
 #   paths quoted for the shell: the stop of every seat and every coordinator process (`regime-stop --all`, the kit's
 #   stop, which is `regime-start --stop --all`), the copy of the checkout store to the derived store with its modes
-#   and times kept, the recursive comparison and the count of the copy's files, the checkout's own `checkout --
-#   <prefix>`, `clean -fd -- <prefix>` and `pull --ff-only`, and this lever again, which then reports the moved
-#   state. The procedure is printed, never run: the host is quiescent only under the operator's hand, and the live
-#   checkout is written by the operator's hand alone, once (the struck order 40's successor rule).
+#   and times kept and then the group and other bits removed below it in the same line (`cp -a` keeps the checkout
+#   store's 0755; the post-move check of line 7 holds the program store to 0700, the kit's mode for every store;
+#   U221e, verdict U221-af547232 P1), the recursive comparison and the count of the copy's files, the checkout's own
+#   `checkout -- <prefix>`, `clean -fd -- <prefix>` and `pull --ff-only`, and this lever again, which then reports
+#   the moved state. The procedure is printed, never run: the host is quiescent only under the operator's hand, and
+#   the live checkout is written by the operator's hand alone, once (the struck order 40's successor rule).
 # @arg $1 int The number of files of the live store, the count the copy must show.
 # @arg $2 string What that count is made of (the compared files and `redact-words.txt`), for the note of line 3.
 print_procedure() {
     local pp_total=$1 pp_note=$2
     printf '1. Stop every seat and end every coordinator process: run regime-stop --all in %q (the stop of the kit, regime-start --stop --all), confirm with hcom list -v that no seat of this checkout is alive, and close every session that runs a lever of the kit against it.\n' "${top_real}"
-    printf '2. cp -a %q %q\n' "${live}" "${dest}"
+    printf '2. cp -a %q %q && chmod -R go-rwx %q\n' "${live}" "${dest}" "${dest}"
     printf '3. diff -r %q %q && find %q -type f | wc -l   # expect no line from diff and the count %s (%s)\n' "${live}" "${dest}" "${dest}" "${pp_total}" "${pp_note}"
     printf '4. git -C %q checkout -- %q\n' "${top_real}" "${records}"
     printf '5. git -C %q clean -fd -- %q\n' "${top_real}" "${records}"
@@ -233,25 +293,29 @@ esac
 
 # @description Hold one component of the destination (`regime-store`, the store root `<slug>`, the program directory)
 #   as regime-init holds them (U215b, U215c): a symbolic link refuses by name; present, it must be a real directory of
-#   this user whose mode is 0700, read by `/usr/bin/stat` with its status (a failed read refuses, standing order 21);
-#   absent, nothing. Nothing is written.
+#   this user whose mode is 0700, read by `/usr/bin/stat` (the system's, so a coreutils `stat` first on PATH, whose
+#   flags differ, never steers the read) through `read_line` (its status and its stderr both read; a failed or
+#   warning read refuses, standing order 21); absent, nothing. Nothing is written.
 # @arg $1 path The directory.
 # @arg $2 string What it is, for the refusal.
 store_dir_hold() {
-    local path=$1 what=$2 mode
+    local path=$1 what=$2 mode=''
     [[ ! -L ${path} ]] || refuse "${what} ${path} is a symlink"
     [[ -e ${path} ]] || return 0
     [[ -d ${path} && -O ${path} ]] || refuse "${what} ${path} is not a real directory of this user"
-    mode=$(/usr/bin/stat "${stat_mode[@]}" "${path}") || refuse "cannot read the mode of ${what} ${path}"
+    read_line "${scratch}/mode" mode /usr/bin/stat "${stat_mode[@]}" "${path}" ||
+        refuse "cannot read the mode of ${what} ${path} (/usr/bin/stat failed or warned)"
     [[ ${mode} == 700 ]] || refuse "${what} ${path} has mode ${mode}, not 0700"
 }
 
 # @description Hold one entry of the live store's walk to the derived walk's shape (U220, U28b F2): below the store,
 #   no control character (a newline would hide a component), no `..`, no component beginning with `.` (no record
-#   carries such a name, and the derived form's walk refuses it, so the move does too), no symbolic link at any
-#   component, a regular file whose directory resolves (`pwd -P`) inside the store; then append its relative path to
-#   the file list. A refusal names the entry's relative path, never its text.
-# @arg $1 path The entry as find prints it.
+#   carries such a name, and the derived form's walk refuses it, so the move does too), no component beginning or
+#   ending with a space (no record carries such a name either; `units.tsv ` beside `units.tsv` is a second file the
+#   sync never published, and round 4's `read` trimmed the space off before this check saw it; U221e), no symbolic
+#   link at any component, a regular file whose directory resolves (`pwd -P`) inside the store; then append its
+#   relative path to the file list. A refusal names the entry's relative path, never its text.
+# @arg $1 path The entry as find prints it, every byte kept (the caller reads the listing with `IFS= read -r -d ''`).
 # @arg $2 path The NUL-separated file list the relative path is appended to.
 check_entry() {
     local ce_entry=$1 ce_out=$2 rel prefix part rest entry_dir
@@ -274,6 +338,8 @@ check_entry() {
         fi
         [[ ${part} != .* ]] || # lint-comparisons: allow a name test on one component of the walk
             refuse "a name of the live store begins with '.', which no record carries and the derived walk refuses (U220): ${rel}; remove it by hand, the procedure is not printed"
+        [[ ${part} != ' '* && ${part} != *' ' ]] || # lint-comparisons: allow a name test on one component of the walk
+            refuse "a name of the live store begins or ends with a space: '${rel}'; no record carries such a name; remove it by hand, the procedure is not printed"
         prefix=${prefix}/${part}
         [[ ! -L ${prefix} ]] || refuse "a component of a path of the live store is a symlink: ${prefix}; the derived walk refuses it (U220); remove it by hand, the procedure is not printed"
     done
@@ -287,17 +353,18 @@ check_entry() {
 # @description Walk the live store as U220's derived walk does: the directories first, each readable and searchable
 #   (find exits non-zero for a directory it cannot read, and any warning of either producer refuses the run,
 #   read_listing); then every entry below it that is not a directory (`-type f` would skip a symbolic link instead of
-#   refusing it), each held by check_entry, its relative path appended to the file list. Neither find output is shown
+#   refusing it), each held by check_entry, its relative path appended to the file list. Both listings are
+#   NUL-delimited and read with `IFS= read -r -d ''`, every byte of a name kept (U221e). Neither find output is shown
 #   (a store path may hold a redact word).
 # @arg $1 path The NUL-separated file list this writes, under the scratch directory.
 walk_store() {
-    local ws_out=$1 ws_dir='' ws_entry='' ws_status=0
+    local ws_out=$1 ws_status=0 entry=''
     read_listing "${ws_out}.dirs" "${ws_out}.dirs.err" find "${live}" -type d -print0 ||
         refuse "the directory walk of the live store ${live} failed or warned (find; its output is withheld); the procedure is not printed"
-    while read -r -d '' ws_dir; do
-        [[ -r ${ws_dir} && -x ${ws_dir} ]] || refuse "a directory under ${live} cannot be read or entered; the procedure is not printed"
+    while IFS= read -r -d '' entry; do
+        [[ -r ${entry} && -x ${entry} ]] || refuse "a directory under ${live} cannot be read or entered; the procedure is not printed"
     done < "${ws_out}.dirs"
-    [[ -z ${ws_dir} ]] || refuse "the directory walk of ${live} ends mid-entry; the procedure is not printed"
+    [[ -z ${entry} ]] || refuse "the directory walk of ${live} ends mid-entry; the procedure is not printed"
     read_listing "${ws_out}.listing" "${ws_out}.listing.err" find "${live}" ! -type d -print0 || ws_status=$?
     case ${ws_status} in
     0) ;;
@@ -305,10 +372,11 @@ walk_store() {
     *) refuse "the walk of the live store ${live} failed or warned (find; its output is withheld); the procedure is not printed" ;;
     esac
     : > "${ws_out}" || fail "cannot write the file list ${ws_out}"
-    while read -r -d '' ws_entry; do
-        check_entry "${ws_entry}" "${ws_out}"
+    entry=''
+    while IFS= read -r -d '' entry; do
+        check_entry "${entry}" "${ws_out}"
     done < "${ws_out}.listing"
-    [[ -z ${ws_entry} ]] || refuse "the walk of ${live} ends mid-entry; the procedure is not printed"
+    [[ -z ${entry} ]] || refuse "the walk of ${live} ends mid-entry; the procedure is not printed"
 }
 
 program=''
@@ -324,9 +392,20 @@ done
 [[ -n ${program} ]] || refuse "${usage}"
 [[ ${program} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "program '${program}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
 
-toplevel=$(git_isolated rev-parse --show-toplevel 2> /dev/null) || refuse 'not in a git checkout'
-git_dir=$(git_isolated rev-parse --path-format=absolute --git-dir) || refuse 'cannot read the git directory'
-common_dir=$(git_isolated rev-parse --path-format=absolute --git-common-dir) || refuse 'cannot read the git common directory'
+# The scratch directory comes first: every read below captures its producer's stderr to a file in it (U221e), and it
+# is the one place this lever writes.
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/regime-store-move.XXXXXX") || fail 'mktemp failed'
+trap cleanup EXIT
+
+toplevel=''
+read_line "${scratch}/toplevel" toplevel git_isolated rev-parse --show-toplevel ||
+    refuse 'not in a git checkout (git rev-parse --show-toplevel failed, warned or printed nothing)'
+git_dir=''
+read_line "${scratch}/git-dir" git_dir git_isolated rev-parse --path-format=absolute --git-dir ||
+    refuse 'cannot read the git directory (git rev-parse --git-dir failed or warned)'
+common_dir=''
+read_line "${scratch}/common-dir" common_dir git_isolated rev-parse --path-format=absolute --git-common-dir ||
+    refuse 'cannot read the git common directory (git rev-parse --git-common-dir failed or warned)'
 git_dir=$(cd "${git_dir}" && pwd -P) || refuse "cannot resolve ${git_dir}"
 common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_dir}"
 [[ ${git_dir} == "${common_dir}" ]] || # lint-comparisons: allow both sides are pwd -P forms
@@ -356,9 +435,6 @@ store_root=${REGIME_STORE_ROOT}
 store_parent=${store_root%/*}
 dest=${store_root}/${program}
 
-scratch=$(mktemp -d "${TMPDIR:-/tmp}/regime-store-move.XXXXXX") || fail 'mktemp failed'
-trap cleanup EXIT
-
 # The destination before anything is read from the store: every component held, nothing written. The program store's
 # existence is the state: absent, the move is still to come and the procedure is judged; present, the move ran and
 # the operator's step is judged.
@@ -378,13 +454,12 @@ if [[ -e ${dest} ]]; then
     1) refuse "the derived store ${dest} exists and holds no file: regime-init's empty directory, not the moved store; remove it by hand before the move, nothing printed" ;;
     *) refuse "the walk of the derived store ${dest} failed or warned (find; its output is withheld); nothing printed" ;;
     esac
-    moved=$(count_entries "${scratch}/derived") || refuse "cannot count the files of the derived store ${dest} (tr or wc failed); nothing printed"
+    moved=$(count_entries "${scratch}/derived" "${scratch}/derived-count") || refuse "cannot count the files of the derived store ${dest} (tr or wc failed or warned); nothing printed"
     status_state=0
     read_listing "${scratch}/status" "${scratch}/status.err" git_isolated --no-optional-locks status --porcelain -- "${records}" || status_state=$?
     case ${status_state} in
     0)
-        dirty=$(wc -l < "${scratch}/status") || refuse 'cannot count the entries of git status (wc failed); nothing printed'
-        dirty=${dirty//[[:space:]]/}
+        dirty=$(count_with_wc "${scratch}/status" "${scratch}/dirty" -l) || refuse 'cannot count the entries of git status (wc failed or warned); nothing printed'
         refuse "the checkout store is not clean (${dirty} entries); finish the step"
         ;;
     1) ;;
@@ -402,7 +477,7 @@ fi
 
 # The live store's walk, every entry held to the derived walk's shape; its count is the count the copy must show.
 walk_store "${scratch}/rels"
-total=$(count_entries "${scratch}/rels") || refuse 'cannot count the live store (tr or wc failed); the procedure is not printed'
+total=$(count_entries "${scratch}/rels" "${scratch}/rels-count") || refuse 'cannot count the live store (tr or wc failed or warned; the read_listing line above names it); the procedure is not printed'
 
 # origin's main, fetched into a scratch repository from the https URL read once from the checkout (the shape of
 # records-sync.sh, U101): the checkout's own `refs/remotes/origin/main` may be stale, and its configuration is not
@@ -423,12 +498,16 @@ repo=${scratch}/repo.git
 git_isolated init --quiet --bare --template= "${repo}" || fail 'git init --bare for the comparison failed'
 git_scratch -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
     fetch --quiet --no-tags "${push_url}" refs/heads/main || fail 'git fetch main from origin failed'
-main=$(git_scratch rev-parse --verify 'FETCH_HEAD^{commit}') || fail 'cannot read the fetched main'
-# Full entries (`<mode> blob <oid>` TAB path) of main at the published prefix.
-git_scratch ls-tree -r -z "${main}" -- "${records}/" > "${scratch}/main-listing" || fail "git ls-tree origin/main ${records}/ failed"
+main=''
+read_line "${scratch}/main" main git_scratch rev-parse --verify 'FETCH_HEAD^{commit}' || fail 'cannot read the fetched main (git rev-parse failed or warned)'
+# Full entries (`<mode> blob <oid>` TAB path) of main at the published prefix; an empty listing (main holds nothing at
+# the prefix) is a listing, and every live path then differs.
+status=0
+read_listing "${scratch}/main-listing" "${scratch}/main-listing.err" git_scratch ls-tree -r -z "${main}" -- "${records}/" || status=$?
+[[ ${status} != 2 ]] || fail "git ls-tree origin/main ${records}/ failed or warned; the procedure is not printed"
 base_entries=$'\n'
 entry=''
-while read -r -d '' entry; do
+while IFS= read -r -d '' entry; do
     path=${entry#*$'\t'}
     [[ ${path} != *[[:cntrl:]]* ]] || refuse "a path of origin/main:${records}/ holds a control character" # lint-comparisons: allow a character test on the raw git path
     base_entries+=${path}$'\t'${entry%%$'\t'*}$'\n'
@@ -438,56 +517,64 @@ done < "${scratch}/main-listing"
 # The masker and the comparison: main's validator alone in a tools tree under the scratch directory whose `home/`
 # holds main's top-level entry names (so its home-path pattern skips the repository's own `home/<entry>` paths as in
 # a checkout; empty when main has no `home/`), the directories made by `install -d` with the status read; each live
-# file but `redact-words.txt` read by `cat` into a scratch copy named by `mktemp` (the copy takes the default mode, so
-# the masker can rewrite it in place; the live file's executable bit is read from the live file) and masked there;
-# the masked copy's `<mode> blob <oid>` against main's entry. The checkout's files are never changed.
+# file but `redact-words.txt` read by `cat` through `read_listing` into a scratch copy named by `mktemp` (the copy
+# takes the default mode, so the masker can rewrite it in place; the live file's executable bit is read from the live
+# file) and masked there; the masked copy's `<mode> blob <oid>` against main's entry. The checkout's files are never
+# changed.
 tools=${scratch}/tools
 install -d "${tools}/scripts" "${tools}/home" || fail 'cannot make the tools tree'
-git_scratch cat-file blob "${main}:scripts/validate-agent-assets.py" > "${tools}/scripts/validate-agent-assets.py" ||
-    fail 'cannot read scripts/validate-agent-assets.py of origin/main'
-git_scratch ls-tree -z --name-only "${main}" -- home/ > "${scratch}/home-entries" || fail 'cannot list home/ of origin/main'
+read_listing "${tools}/scripts/validate-agent-assets.py" "${scratch}/cat-file.err" git_scratch cat-file blob "${main}:scripts/validate-agent-assets.py" ||
+    fail 'cannot read scripts/validate-agent-assets.py of origin/main (git cat-file failed, warned or printed nothing)'
+status=0
+read_listing "${scratch}/home-entries" "${scratch}/home-entries.err" git_scratch ls-tree -z --name-only "${main}" -- home/ || status=$?
+[[ ${status} != 2 ]] || fail 'cannot list home/ of origin/main (git ls-tree failed or warned)'
 entry=''
-while read -r -d '' entry; do
+while IFS= read -r -d '' entry; do
     entry=${entry#home/}
     [[ -n ${entry} && ${entry} != *[/[:cntrl:]]* && ${entry} != . && ${entry} != .. ]] || # lint-comparisons: allow a tree entry name as git prints it
         fail 'home/ of origin/main holds an unusable entry name'
     install -d "${tools}/home/${entry}" || fail 'cannot make the tools tree'
 done < "${scratch}/home-entries"
 [[ -z ${entry} ]] || fail 'the listing of home/ of origin/main ends mid-entry'
+# The copy map: `<scratch copy> TAB <relative path>`, one NUL-terminated entry per compared file.
 : > "${scratch}/copy-map" || fail 'cannot write the copy map'
 masked=()
 has_redact=0
-rel=''
-while read -r -d '' rel; do
-    if [[ ${rel} == redact-words.txt ]]; then
+entry=''
+while IFS= read -r -d '' entry; do
+    if [[ ${entry} == redact-words.txt ]]; then
         has_redact=1
         continue
     fi
     copy=$(mktemp "${scratch}/copy.XXXXXX") || fail 'mktemp for a scratch copy failed'
-    cat -- "${live}/${rel}" > "${copy}" || fail 'the read of a live file into its scratch copy failed (cat)'
-    printf '%s\t%s\n' "${copy}" "${rel}" >> "${scratch}/copy-map" || fail 'cannot write the copy map'
+    status=0
+    read_listing "${copy}" "${scratch}/cat.err" cat -- "${live}/${entry}" || status=$?
+    [[ ${status} != 2 ]] || fail 'the read of a live file into its scratch copy failed (cat failed or warned)'
+    printf '%s\t%s\0' "${copy}" "${entry}" >> "${scratch}/copy-map" || fail 'cannot write the copy map'
     masked+=("${copy}")
 done < "${scratch}/rels"
-[[ -z ${rel} ]] || refuse "the file list of ${live} ends mid-entry; the procedure is not printed"
-compared=$(wc -l < "${scratch}/copy-map") || refuse 'cannot count the compared files (wc failed); the procedure is not printed'
-compared=${compared//[[:space:]]/}
+[[ -z ${entry} ]] || refuse "the file list of ${live} ends mid-entry; the procedure is not printed"
+compared=$(count_entries "${scratch}/copy-map" "${scratch}/compared-count") || refuse 'cannot count the compared files (tr or wc failed or warned); the procedure is not printed'
 if [[ -n ${masked[*]:-} ]]; then
     # The masker prints each copy's path and, on a key collision, the original keys; either may hold a redact word or
-    # a secret, so its output goes to a file in the scratch directory and a failure says only that it happened.
+    # a secret, so its output goes to a file in the scratch directory and a failure says only that it happened. uv's
+    # cache goes under the scratch directory too (UV_CACHE_DIR), the one place this lever writes: the default would
+    # be `$HOME/.cache/uv` (U221e; records-sync.sh's form otherwise, `--no-project`, no `--no-cache`).
     status=0
-    uv run --no-project python -I "${tools}/scripts/validate-agent-assets.py" --mask-secrets "${masked[@]}" \
+    UV_CACHE_DIR=${scratch}/uv-cache uv run --no-project python -I "${tools}/scripts/validate-agent-assets.py" --mask-secrets "${masked[@]}" \
         > "${scratch}/mask.log" 2>&1 || status=$?
     [[ ${status} == 0 ]] || fail "masking the copies failed (exit ${status}); its output is withheld, the procedure is not printed"
 fi
 : > "${scratch}/differ" || fail 'cannot write the difference list'
 live_paths=$'\n'
-line=''
-while read -r line; do
-    copy=${line%%$'\t'*}
-    rel=${line#*$'\t'}
+entry=''
+while IFS= read -r -d '' entry; do
+    copy=${entry%%$'\t'*}
+    rel=${entry#*$'\t'}
     path=${records}/${rel}
     live_paths+=${path}$'\n'
-    blob=$(git_scratch hash-object --no-filters -- "${copy}") || fail 'git hash-object of a masked copy failed'
+    blob=''
+    read_line "${scratch}/blob" blob git_scratch hash-object --no-filters -- "${copy}" || fail 'git hash-object of a masked copy failed or warned'
     mode=100644
     if [[ -x ${live}/${rel} ]]; then
         mode=100755
@@ -496,10 +583,10 @@ while read -r line; do
         printf '%s\0' "${path}" >> "${scratch}/differ" || fail 'cannot write the difference list'
     fi
 done < "${scratch}/copy-map"
-[[ -z ${line} ]] || fail 'the copy map ends mid-entry'
+[[ -z ${entry} ]] || fail 'the copy map ends mid-entry'
 # A path main holds that the live store does not is a deletion the sync would carry: a difference too.
 entry=''
-while read -r -d '' entry; do
+while IFS= read -r -d '' entry; do
     path=${entry#*$'\t'}
     [[ ${path} != "${records}/redact-words.txt" ]] || continue # lint-comparisons: allow the one published path the sync never writes
     if [[ ${live_paths} != *$'\n'"${path}"$'\n'* ]]; then      # lint-comparisons: allow published paths as git prints them
@@ -507,7 +594,7 @@ while read -r -d '' entry; do
     fi
 done < "${scratch}/main-listing"
 [[ -z ${entry} ]] || refuse "the listing of origin/main:${records}/ ends mid-entry"
-differ=$(count_entries "${scratch}/differ") || refuse 'cannot count the differences (tr or wc failed); the procedure is not printed'
+differ=$(count_entries "${scratch}/differ" "${scratch}/differ-count") || refuse 'cannot count the differences (tr or wc failed or warned); the procedure is not printed'
 [[ ${differ} == 0 ]] ||
     refuse "a records sync is still due (${differ} path(s) differ between the live store, masked, and origin/main at ${records}/); run records-sync.sh, merge it and run this lever again (a path git ignores never syncs and must be removed from the live store by hand); the procedure is not printed"
 echo "${lever}: live store ${live} (${total} files); derived store ${dest}; origin/main ${main} at ${records}/ equals the live store masked" >&2

@@ -1,4 +1,4 @@
-"""regime-store-move, the read-only judge of a program's store move (regime-cutover U221, U221b, U221c, U221d).
+"""regime-store-move, the read-only judge of a program's store move (regime-cutover U221, U221b, U221c, U221d, U221e).
 
 The fixture is RecordsSyncTest's shape (tests/unit/test_pr_levers.py): a scratch checkout whose committed store
 `.orchestration/orchestrate/prog/` holds origin/main's masked copies, a bare origin behind the git wrapper first on
@@ -14,8 +14,16 @@ nothing. Before the move it judges whether a records sync is still due and print
 after it (the derived store present) it reports the moved state from `git status --porcelain` of the checkout's store
 subtree. Every run is held to have written nothing: the listing, every mode and every mtime under the checkout (its
 `.git` included), the store root's emptiness and the scratch `TMPDIR` are equal before and after. The stubs on PATH
-(`find`, `uv`, `install`, `cat`, `wc`) and the wrapper's `FAKE_GIT_FAIL` inject a failure or a warning at each
-producer and each step.
+(`find`, `uv`, `install`, `cat`, `wc`, `tr`, `rm`) and the wrapper's `FAKE_GIT_FAIL` and `FAKE_GIT_WARN` inject a
+failure or a warning at each producer and each step.
+
+U221e (verdict U221-af547232, class read-rigor): the printed procedure is the operator's contract, so the fixture runs
+its lines as written (`make_derived_store` runs the printed copy line and nothing else; test (a) runs lines 2 to 6 and
+then the lever) and the lever's own post-move check judges the result; a name with a trailing space, as a file or a
+dangling link, is refused by name; a `ready` run leaves nothing under the fixture's HOME (uv's cache lives under the
+scratch directory); a producer that warns while printing a valid value is a failed read; a failed scratch removal ends
+the run with exit 1 after the verdict; and `tr`, `git rev-parse`, `git ls-tree` and `git hash-object` each carry a
+committed injection, with a `stat` planted on PATH shown never to be run (the mode read is `/usr/bin/stat`'s).
 """
 
 import os
@@ -41,12 +49,15 @@ LIVE_FILES = ["briefs/B1.md", "decisions.tsv", "notes.md", "redact-words.txt", "
 # The RecordsSyncTest wrapper's fake network: FAKE_GIT_HTTPS_ORIGIN="<https url>=<bare repository>" maps the https
 # origin onto the local bare repository as a command-line insteadOf, and the local transport is re-opened for every
 # call, as a caller's own `-c protocol.file.allow=always` would (the library's `protocol.allow=never` refuses it).
-# FAKE_GIT_FAIL names a git subcommand the wrapper fails instead of running.
+# FAKE_GIT_FAIL names a git subcommand the wrapper fails instead of running; FAKE_GIT_WARN names one the wrapper runs
+# after one line on stderr (a producer that warns while exiting 0 with its output, the shape read_listing refuses).
 GIT_WRAPPER = """#!/usr/bin/env python3
 import os, subprocess, sys
 if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in sys.argv[1:]:
     print("fake-git: failing as asked", file=sys.stderr)
     sys.exit(1)
+if os.environ.get("FAKE_GIT_WARN") and os.environ["FAKE_GIT_WARN"] in sys.argv[1:]:
+    print("fake-git: warning: injected", file=sys.stderr)
 mapping = ["-c", "protocol.file.allow=always"]
 https_origin = os.environ.get("FAKE_GIT_HTTPS_ORIGIN")
 if https_origin:
@@ -107,7 +118,9 @@ class RegimeStoreMoveTest(unittest.TestCase):
         (self.live / "notes.md").write_text(f"token {PLANTED}\n")
         (self.live / "redact-words.txt").write_text("# words\nwidgetsecret\n")
         self.git("remote", "add", "origin", URL)
-        self.git("push", "-q", "origin", "main")
+        # `-u`: the procedure's line 6 is `git pull --ff-only`, which needs the branch's upstream (the coordinator's
+        # main tracks origin/main).
+        self.git("push", "-q", "-u", "origin", "main")
         self.git("fetch", "-q", "origin")
         # The store root as hcom-seat makes it (U219): `regime-store` and `<slug>` 0700, the program store absent.
         self.store_root = self.home / ".local/state/regime-store/repo"
@@ -120,7 +133,7 @@ class RegimeStoreMoveTest(unittest.TestCase):
             f"1. Stop every seat and end every coordinator process: run regime-stop --all in {self.repo} (the stop of "
             "the kit, regime-start --stop --all), confirm with hcom list -v that no seat of this checkout is alive, "
             "and close every session that runs a lever of the kit against it.\n"
-            f"2. cp -a {self.live} {self.derived}\n"
+            f"2. cp -a {self.live} {self.derived} && chmod -R go-rwx {self.derived}\n"
             f"3. diff -r {self.live} {self.derived} && find {self.derived} -type f | wc -l   # expect no line from "
             "diff and the count 5 (4 compared files and redact-words.txt)\n"
             f"4. git -C {self.repo} checkout -- {PREFIX}\n"
@@ -131,9 +144,11 @@ class RegimeStoreMoveTest(unittest.TestCase):
         self.before = self.snapshot()
 
     def mask(self, path):
+        # The fixture's own uv cache lies under the scratch root, outside HOME: what the lever's run leaves under
+        # HOME is then the lever's alone (test (c)).
         subprocess.run(
             ["uv", "run", "--no-project", "python", "-I", str(MASKER), "--mask-secrets", str(path)],
-            env=self.env,
+            env={**self.env, "UV_CACHE_DIR": str(self.root / "fixture-uv-cache")},
             check=True,
             capture_output=True,
         )
@@ -158,6 +173,32 @@ class RegimeStoreMoveTest(unittest.TestCase):
             timeout=180,
             check=False,
         )
+
+    def run_line(self, command):
+        """One printed line of the procedure, run as written by `sh -c` from the checkout under the fixture's PATH
+        (the git wrapper first), the operator's terminal."""
+        return subprocess.run(
+            ["sh", "-c", command],
+            cwd=self.repo,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+
+    def procedure_lines(self, stdout):
+        """The seven printed lines with their `<n>. ` prefixes removed, after the verdict line: line 1 is a sentence,
+        lines 2 to 6 are commands, line 7 is this lever."""
+        lines = stdout.splitlines()
+        self.assertEqual(lines[0] + "\n", self.ready)
+        self.assertEqual(len(lines), 8, stdout)
+        commands = []
+        for number, line in enumerate(lines[1:], start=1):
+            prefix = f"{number}. "
+            self.assertTrue(line.startswith(prefix), line)
+            commands.append(line[len(prefix) :])
+        return commands
 
     @staticmethod
     def restore_modes(root):
@@ -191,6 +232,10 @@ class RegimeStoreMoveTest(unittest.TestCase):
             )
         return found
 
+    def home_entries(self):
+        """Every entry under the fixture's HOME: what a run may not add to (uv's cache, or anything else)."""
+        return sorted(str(entry.relative_to(self.home)) for entry in self.home.rglob("*"))
+
     def assert_nothing_written(self, run, snapshot=None):
         """The checkout, the store root and the scratch TMPDIR are as they were before the run (the scratch
         directory removed), and origin still holds main alone."""
@@ -215,9 +260,16 @@ class RegimeStoreMoveTest(unittest.TestCase):
             (self.live / extra).unlink(missing_ok=True)
 
     def make_derived_store(self):
-        """The derived store as the operator's copy leaves it: every file of the live store, the directory 0700."""
-        shutil.copytree(self.live, self.derived)
-        self.derived.chmod(0o700)
+        """The derived store as the procedure's copy line leaves it: the line the lever prints (line 2), run as
+        written and nothing more; the fixture adds no chmod of its own (U221e: round 4's fixture did, and hid that
+        `cp -a` alone left the store 0755, which the lever's post-move check refuses)."""
+        run = self.run_lever("prog")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        copy_line = self.procedure_lines(run.stdout)[1]
+        self.assertTrue(copy_line.startswith("cp -a "), copy_line)
+        done = self.run_line(copy_line)
+        self.assertEqual(done.returncode, 0, copy_line + "\n" + done.stdout + done.stderr)
+        self.assertTrue(self.derived.is_dir(), "the printed copy line makes the derived store")
 
     def stub(self, name, body):
         """A tool first on PATH in place of the system's; the body is `sh` text that may exec the real one."""
@@ -270,6 +322,42 @@ class RegimeStoreMoveTest(unittest.TestCase):
                 self.assertFalse(self.derived.exists(), "the lever makes no derived store")
                 self.assert_nothing_written(run)
 
+    def test_the_printed_procedure_run_as_written_ends_with_the_lever_reporting_moved(self):
+        """U221e test (a) (verdict U221-af547232 P1 `:221`): the printed procedure is the operator's contract, so its
+        lines are run as printed: line 1 is a sentence (skipped as text), lines 2 to 6 run by `sh -c` from the
+        checkout (the copy with the group and other bits removed, the comparison and the count, the checkout's own
+        `checkout --`, `clean -fd --` and `pull --ff-only`), each exit 0, line 3 printing the count alone (no line
+        from diff), and line 7, this lever, reports `moved: ...` with exit 0. The derived store is 0700 and every
+        entry below it closed to group and others by the printed copy line alone (round 4's `cp -a` kept the
+        checkout store's 0755 and the post-move check refused it; the fixture's extra chmod hid that), it holds the
+        live bytes (notes.md's token), and the checkout store is clean against HEAD."""
+        run = self.run_lever("prog")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        lines = self.procedure_lines(run.stdout)
+        self.assertTrue(lines[0].startswith("Stop every seat and end every coordinator process"), lines[0])
+        self.assertEqual(lines[6], "regime-store-move prog")
+        outputs = []
+        for command in lines[1:6]:
+            done = self.run_line(command)
+            self.assertEqual(done.returncode, 0, f"{command}\n{done.stdout}{done.stderr}")
+            outputs.append(done.stdout)
+        self.assertEqual(outputs[1].split(), ["5"], "line 3: no line from diff, the count 5")
+        self.assertEqual(stat.S_IMODE(self.derived.lstat().st_mode), 0o700, "the printed copy line leaves 0700")
+        for entry in sorted(self.derived.rglob("*")):
+            self.assertEqual(stat.S_IMODE(entry.lstat().st_mode) & 0o077, 0, f"{entry} is open to group or others")
+        self.assertEqual(
+            sorted(str(entry.relative_to(self.derived)) for entry in self.derived.rglob("*") if entry.is_file()),
+            LIVE_FILES,
+        )
+        self.assertIn(PLANTED, (self.derived / "notes.md").read_text(), "the derived store holds the live bytes")
+        self.assertEqual(self.git("status", "--porcelain", "--", PREFIX), "", "lines 4 and 5 finished the step")
+        moved = self.run_lever("prog")
+        self.assertEqual(moved.returncode, 0, moved.stdout + moved.stderr)
+        self.assertEqual(
+            moved.stdout, "moved: the derived store holds 5 files; the checkout store is clean against HEAD\n"
+        )
+        self.assertEqual(sorted(self.tmp.iterdir()), [], "the scratch directory is removed")
+
     def test_a_live_file_that_differs_from_main_masked_or_a_path_main_lacks_or_holds_alone_refuses(self):
         """U221d test (b): a records sync is still due when a live file's masked form differs from main's blob, when a
         live path is absent from main (`redact-words.txt` aside), or when main holds a path the live store no longer
@@ -299,14 +387,14 @@ class RegimeStoreMoveTest(unittest.TestCase):
         self.restore_live()
 
     def test_a_derived_store_present_reports_moved_when_the_checkout_store_is_clean_and_refuses_when_it_is_not(self):
-        """U221d test (c): with the derived store present (the operator's copy: every live file, the directory 0700)
-        the lever judges the operator's step by `git status --porcelain` of the checkout's store subtree. The
-        fixture's checkout store is dirty (notes.md modified, `redact-words.txt` untracked): `refused: the checkout
-        store is not clean (2 entries); finish the step`, exit 2, no verdict on stdout. After the step (main's copies
-        checked out, `redact-words.txt` gone) it prints `moved: the derived store holds 5 files; the checkout store
-        is clean against HEAD` and exits 0. Either way nothing is written: the derived store's bytes, the checkout
-        and the scratch directory are as before. A `git status` that fails refuses naming it; a derived store with
-        no file, with another mode, a link or a file at the program's place refuses by name."""
+        """U221d test (c): with the derived store present (the printed copy line run as written: every live file,
+        the directory 0700) the lever judges the operator's step by `git status --porcelain` of the checkout's store
+        subtree. The fixture's checkout store is dirty (notes.md modified, `redact-words.txt` untracked): `refused:
+        the checkout store is not clean (2 entries); finish the step`, exit 2, no verdict on stdout. After the step
+        (main's copies checked out, `redact-words.txt` gone) it prints `moved: the derived store holds 5 files; the
+        checkout store is clean against HEAD` and exits 0. Either way nothing is written: the derived store's bytes,
+        the checkout and the scratch directory are as before. A `git status` that fails refuses naming it; a derived
+        store with no file, with another mode, a link or a file at the program's place refuses by name."""
         self.make_derived_store()
         before = self.snapshot()
         run = self.run_lever("prog")
@@ -359,7 +447,10 @@ class RegimeStoreMoveTest(unittest.TestCase):
         """U221d test (d), the live store's shape: every listed entry must be a regular file with no symlink
         component. A link to a file, to a directory or dangling, a fifo and a dot name each refuse by name before
         the fetch, no file of the live store is read through the link (its target's text never appears), no
-        procedure is printed and nothing is written."""
+        procedure is printed and nothing is written. U221e test (b) (verdict U221-af547232 P2 `:308`): a name with a
+        trailing space (`units.tsv ` beside `units.tsv`), as a file or as a dangling link, and one with a leading
+        space, each refuse by name before any comparison: the listing is read with `IFS= read -r -d ''`, so the
+        space reaches the shape check instead of being trimmed off (round 4's `read` passed both as `ready`)."""
         outside = self.root / "outside"
         outside.mkdir()
         (outside / "note.md").write_text("outside the store\n")
@@ -369,49 +460,144 @@ class RegimeStoreMoveTest(unittest.TestCase):
             "a dangling link": ("gone.md", lambda path: path.symlink_to(self.root / "nowhere"), "is a symlink"),
             "a fifo": ("pipe", lambda path: os.mkfifo(path), "is not a regular file"),
             "a dot name": (".DS_Store", lambda path: path.write_text("Bud1\n"), "begins with '.'"),
+            "a trailing space": (
+                "units.tsv ",
+                lambda path: path.write_text("id\ttrack\nU1\tseats\n"),
+                "begins or ends with a space: 'units.tsv '",
+            ),
+            "a dangling link with a trailing space": (
+                "units.tsv ",
+                lambda path: path.symlink_to(self.root / "nowhere"),
+                "begins or ends with a space: 'units.tsv '",
+            ),
+            "a leading space": (" notes.md", lambda path: path.write_text("x\n"), "begins or ends with a space"),
         }
         for label, (name, plant, message) in cases.items():
             with self.subTest(label):
                 path = self.live / name
                 plant(path)
-                before = self.snapshot()
-                run = self.run_lever("prog")
-                self.assert_refused(run, message)
-                self.assertIn("the procedure is not printed", run.stderr)
-                self.assertNotIn("outside the store", run.stdout + run.stderr)
-                self.assertNotIn("a records sync is still due", run.stderr, "refused before the fetch")
-                self.assert_nothing_written(run, before)
-                path.unlink()
+                try:
+                    before = self.snapshot()
+                    run = self.run_lever("prog")
+                    self.assert_refused(run, message)
+                    self.assertIn("the procedure is not printed", run.stderr)
+                    self.assertNotIn("outside the store", run.stdout + run.stderr)
+                    self.assertNotIn("a records sync is still due", run.stderr, "refused before the fetch")
+                    self.assert_nothing_written(run, before)
+                finally:
+                    path.unlink(missing_ok=True)
         self.assertEqual(sorted(self.tmp.iterdir()), [], "the scratch directory is removed")
+
+    def test_a_ready_run_leaves_nothing_under_home_and_no_scratch_directory(self):
+        """U221e test (c) (verdict U221-af547232 P2 `:478`): the masker runs under `uv run` with `UV_CACHE_DIR`
+        under the lever's scratch directory, so a `ready` run writes nothing under HOME: `<HOME>/.cache` does not
+        exist afterwards, HOME holds exactly the entries the fixture made (the store root and its parents), and the
+        scratch directory is gone with uv's cache inside it. Round 4's run left `<HOME>/.cache/uv` behind, outside
+        the one directory the lever may write."""
+        home_before = self.home_entries()
+        self.assertNotIn(".cache", home_before, "the fixture's own masker run wrote nothing under HOME")
+        run = self.run_lever("prog")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, self.ready + self.procedure)
+        self.assertFalse((self.home / ".cache").exists(), "uv's cache was written under HOME")
+        self.assertEqual(self.home_entries(), home_before, "the run added an entry under HOME")
+        self.assert_nothing_written(run)
+
+    def test_a_failed_scratch_removal_ends_the_run_with_exit_1_naming_the_directory_after_the_verdict(self):
+        """U221e test (e) (verdict U221-af547232 P2 `:184`): the scratch directory holds copies of live records, so
+        its removal is a step whose status is read. An `rm` that exits 7 on the scratch directory leaves the verdict
+        line and the procedure on stdout as printed, then one line on stderr naming the directory left behind, and
+        the run exits 1 (round 4 warned and exited 0). The checkout and the store root are untouched; the fixture
+        removes the directory itself."""
+        self.failing_stub("rm", "*/regime-store-move.*")
+        run = self.run_lever("prog")
+        self.unstub("rm")
+        left = sorted(self.tmp.iterdir())
+        self.assertEqual(len(left), 1, left)
+        self.assertTrue(left[0].is_dir() and left[0].name.startswith("regime-store-move."), left)
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertEqual(run.stdout, self.ready + self.procedure, "the verdict and the procedure stand")
+        self.assertIn(f"regime-store-move: could not remove {left[0]}", run.stderr)
+        self.assertTrue(run.stderr.rstrip("\n").endswith(")"), run.stderr)
+        self.assertLess(run.stderr.index("equals the live store masked"), run.stderr.index("could not remove"))
+        shutil.rmtree(left[0])
+        self.assert_nothing_written(run)
 
     def test_a_non_https_origin_an_absent_store_root_and_each_injected_read_or_step_failure_refuse(self):
         """U221d test (d), the producers (standing order 21): a non-https origin URL refuses before the fetch; a store
         root that does not exist refuses naming it (hcom-seat makes it); a read that fails or warns (the live store's
-        walk, the `origin` URL, the counts by `wc`) refuses with exit 2 naming the producer; a step after the reads
-        that fails (the scratch fetch, the tools tree's `install -d`, the `cat` of a live file into its scratch copy,
-        the masker) exits 1 naming the step. Each prints no procedure and writes nothing, and the run without the
-        injection prints the procedure again."""
+        walk, the `origin` URL, the counts by `tr` and `wc`, the checkout's toplevel by `git rev-parse`) refuses with
+        exit 2 naming the producer; a step after the reads that fails or warns (the scratch fetch, the tools tree's
+        `install -d`, the `cat` of a live file into its scratch copy, the masker, `git ls-tree` of origin/main, `git
+        hash-object` of a masked copy) exits 1 naming the step. Each prints no procedure and writes nothing, and the
+        run without the injection prints the procedure again. U221e tests (d) and (f) (verdict U221-af547232 P2
+        `:203` and tests `:396`): a `wc` or a `tr` that prints a valid count and a warning on stderr is a failed
+        read (round 4 read the status alone), and `tr`, `git rev-parse`, `git ls-tree` and `git hash-object` each
+        carry an injection, failing and warning; a `stat` planted on PATH changes nothing, since the mode read is
+        `/usr/bin/stat`'s (the kit's form, so a coreutils `stat` first on PATH never steers it)."""
         live = "*/.orchestration/orchestrate/*"
-        tools = ("find", "uv", "install", "cat", "wc")
+        tools = ("find", "uv", "install", "cat", "wc", "tr", "stat")
         cases = (
             ("the source walk fails", lambda: self.failing_stub("find", live), {}, 2, ("find", "walk of")),
             ("the source walk warns", lambda: self.warning_stub("find", live), {}, 2, ("find", "walk of")),
             ("the origin URL read", lambda: None, {"FAKE_GIT_FAIL": "config"}, 2, ("remote.origin.url",)),
             (
-                "the count of the live store",
+                "the checkout's toplevel fails",
+                lambda: None,
+                {"FAKE_GIT_FAIL": "rev-parse"},
+                2,
+                ("git rev-parse", "not in a git checkout"),
+            ),
+            (
+                "the checkout's toplevel warns",
+                lambda: None,
+                {"FAKE_GIT_WARN": "rev-parse"},
+                2,
+                ("git rev-parse", "wrote to its stderr"),
+            ),
+            (
+                "the count of the live store fails (wc)",
                 lambda: self.failing_stub("wc", "-c"),
                 {},
                 2,
-                ("cannot count the live store",),
+                ("cannot count the live store", "wc -c exited 7"),
             ),
             (
-                "the count of the compared files",
-                lambda: self.failing_stub("wc", "-l"),
+                "the count of the live store warns (wc)",
+                lambda: self.warning_stub("wc", "-c"),
                 {},
                 2,
-                ("cannot count the compared files (wc failed)",),
+                ("cannot count the live store", "wc -c exited 0 and wrote to its stderr"),
+            ),
+            (
+                "the count of the live store fails (tr)",
+                lambda: self.failing_stub("tr", "-cd"),
+                {},
+                2,
+                ("cannot count the live store", "tr -cd exited 7"),
+            ),
+            (
+                "the count of the live store warns (tr)",
+                lambda: self.warning_stub("tr", "-cd"),
+                {},
+                2,
+                ("cannot count the live store", "tr -cd exited 0 and wrote to its stderr"),
             ),
             ("the scratch fetch", lambda: None, {"FAKE_GIT_FAIL": "fetch"}, 1, ("git fetch main from origin failed",)),
+            (
+                "the listing of origin/main fails",
+                lambda: None,
+                {"FAKE_GIT_FAIL": "ls-tree"},
+                1,
+                ("git ls-tree", "ls-tree exited 1"),
+            ),
+            (
+                "the listing of origin/main warns",
+                lambda: None,
+                {"FAKE_GIT_WARN": "ls-tree"},
+                1,
+                ("git ls-tree", "ls-tree exited 0 and wrote to its stderr"),
+            ),
             (
                 "the tools tree",
                 lambda: self.failing_stub("install", "*/tools/*"),
@@ -424,9 +610,23 @@ class RegimeStoreMoveTest(unittest.TestCase):
                 lambda: self.failing_stub("cat", live),
                 {},
                 1,
-                ("the read of a live file into its scratch copy failed (cat)",),
+                ("the read of a live file into its scratch copy failed (cat failed or warned)", "cat -- exited 7"),
             ),
             ("the masker", lambda: self.stub("uv", "exit 7"), {}, 1, ("masking the copies failed (exit 7)",)),
+            (
+                "the hash of a masked copy fails",
+                lambda: None,
+                {"FAKE_GIT_FAIL": "hash-object"},
+                1,
+                ("git hash-object", "hash-object exited 1"),
+            ),
+            (
+                "the hash of a masked copy warns",
+                lambda: None,
+                {"FAKE_GIT_WARN": "hash-object"},
+                1,
+                ("git hash-object", "hash-object exited 0 and wrote to its stderr"),
+            ),
         )
         for label, plant, env, status, messages in cases:
             with self.subTest(label):
@@ -441,6 +641,13 @@ class RegimeStoreMoveTest(unittest.TestCase):
                 self.assertEqual(run.stdout, "", "no verdict and no procedure")
                 self.unstub(*tools)
                 self.assert_nothing_written(run)
+        with self.subTest("a stat planted on PATH is never run"):
+            self.failing_stub("stat", "*")
+            run = self.run_lever("prog")
+            self.unstub("stat")
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            self.assertEqual(run.stdout, self.ready + self.procedure)
+            self.assert_nothing_written(run)
         with self.subTest("a non-https origin"):
             self.git("remote", "set-url", "origin", "git@github.com:acme/widgets.git")
             before = self.snapshot()

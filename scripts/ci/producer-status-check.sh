@@ -607,9 +607,9 @@ done""",
         "an empty IFS for the one `read` of a NUL-separated listing, restored after it",
     ),
     (
-        ("records-sync.sh",),
+        ("records-sync.sh", "regime-store-move"),
         r"""IFS= read -r -d '' entry;""",
-        "an empty IFS for the one `read` of a NUL-separated listing, restored after it",
+        "an empty IFS for the one `read` of a NUL-separated listing, restored after it (regime-store-move: every listing, U221e)",
     ),
     (
         ("pr-audit.sh",),

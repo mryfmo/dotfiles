@@ -1,0 +1,87 @@
+{
+  "run_id": "dotfiles-sweep-3-run-49",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "9187830e612e7fe98533e46b97bd93de2d010b3d",
+    "branch": "feat/ledger-row-writer",
+    "base": "62e682f3dcb821e1914bcfa77d3ae9f1c7603a8a",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U222 change (62e682f3..9187830e, 7 files: scripts/orchestrator/ledger-row.py, its copy, the pin and output entries, scripts/orchestrator/README.md, tests/unit/test_generate_agent_configs.py, tests/unit/test_ledger_row.py) read with scripts/orchestrator/ledger.py and the ledger's readers; plus the run-48 records carried on byte-identical code; main's U393 (regime-store-move) is outside this unit and not swept here; every other path is carried out_of_scope",
+  "scope_note": "The TASK is U398 but names the brief file briefs/U394-security-audit-sweep-u393-head.md, which now holds the U398 brief (its title, head, run-49 and RESULT line match this TASK); it was followed as U398. Its step 3 hunts against 41281b99, which includes U393; U222's own change is 62e682f3..9187830e, hunted here. Its TRUST names run-49 (this run) as the set to carry; run-48 is carried.",
+  "scope_paths": [
+    "scripts/orchestrator/ledger-row.py",
+    "home/dot_local/bin/common/executable_ledger-row.py",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_generate_agent_configs.py",
+    "tests/unit/test_ledger_row.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent read source, ran git, grep and shasum over the lever files, and its own node ledger builder; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-48",
+      "source_ref": "86d6c5b99e2462d45b616bd0d3ea3035b230bfb0",
+      "findings": 0,
+      "unvalidated_candidates": 13,
+      "ledger_units": 135,
+      "use": "Base ledger: every carried path byte-identical at this head; the records unit restated (sync 52 merged with the same tree); the read-exposure unit notes U397 adds no deny; five U222 units added."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-08T15:27:33Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and thirteen carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. U222 produced no new candidate.",
+  "hardening_notes": [
+    "scripts/orchestrator/ledger-row.py: no chezmoi source deploys ledger.py beside ~/.local/bin/common/ledger-row.py, so the installed copy refuses every call (fails closed); tests/unit/test_ledger_row.py:871-874 copies ledger.py beside it by hand.",
+    "scripts/orchestrator/ledger-row.py:250-255, :274-281: the verdict and findings leaves are held to no-link, their parent directories are not."
+  ],
+  "unvalidated_candidates": [
+    {"fingerprint": "regime-store/store-root:dsh-and-router-roles-can-read-the-live-store", "where": "scripts/orchestrator/hcom-seat:2595-2598, :2375-2377, :2387-2420, :2524-2526", "proposed_verdict": "confirmed", "proposed_severity": "low (unverified; live at the store move; no queued unit, U397 included, adds the deny)"},
+    {"fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off", "where": "home/dot_dsh/profiles/router/cordis.patch.yml:57-71, :152-166; scripts/orchestrator/hcom-seat:2605-2607", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link", "where": "scripts/orchestrator/hcom-seat (dsh_home_hold, seat_write_roots)", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable", "where": "scripts/orchestrator/hcom-seat (seat_settings_render deny_read)", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "hcom-seat/router:local-binding-every-interface", "where": "scripts/orchestrator/hcom-seat:450", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file", "where": "scripts/update-agent-assets.sh:2473-2478", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check", "where": "scripts/update-agent-assets.sh:1914-1935", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation", "where": "scripts/orchestrator/hcom-seat (the claude_config row)", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded", "where": "the dsh wrapper line of scripts/update-agent-assets.sh", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "records-sync/redaction/account-identity-residue-in-published-row", "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509", "proposed_verdict": "confirmed", "proposed_severity": "low (unverified)"},
+    {"fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands", "proposed_verdict": "rejected", "proposed_reason": "the token is unset at start and before the seat environment"},
+    {"fingerprint": "dsh-profile:web-search-routes-to-the-official-api", "proposed_verdict": "rejected", "proposed_reason": "both base-bundle web rows disabled by id"},
+    {"fingerprint": "dsh-profile:thak-runs-without-command-sandbox", "proposed_verdict": "rejected", "proposed_reason": "the thak profile runs no shell tool"}
+  ],
+  "leads_on_other_branches": [
+    "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox (U343, run-35)",
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-35)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-35)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder in agents/parent-hunter/scratch/)"
+  },
+  "critic_passes": [
+    {"pass": "post-wave", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "asked whether any argument can add a row or a row claim what its source does not (no) and whether the installed lever runs the reviewed code (it refuses for lack of ledger.py; hardening)"},
+    {"pass": "final-clean", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; no planned unit remains"}
+  ],
+  "candidate_count": 13,
+  "findings_count": 0,
+  "ledger_units": 140,
+  "ledger_counts": {"covered": 69, "candidate": 13, "out_of_scope": 58},
+  "shared_files_written": ["run-metadata.json", "architecture.md", "coverage-ledger.json", "findings.json", "REPORT.md", "FINDINGS-DETAIL.md", "NEEDS-VALIDATION.md"],
+  "finished_at": "2026-11-08T15:30:52Z"
+}

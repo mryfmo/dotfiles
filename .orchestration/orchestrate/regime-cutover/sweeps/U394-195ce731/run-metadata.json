@@ -1,0 +1,184 @@
+{
+  "run_id": "dotfiles-run-53",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "195ce731dd002a6922c4e64d73f62e54ea5924ff",
+    "branch": "fix/regime-store-move-drops-the-sync-gate",
+    "parent_of_change": "41281b991f5ca79bf4ba026262cc977d1887623a",
+    "base_note": "U393: one commit on origin/main 41281b99, where U221 (#737) and records syncs 51 (#736) and 52 (#738) are merged; outside .orchestration main is byte-identical to run-52's head 89a533f0. Checked: git diff 41281b99..HEAD lists 6 files (regime-store-move and its installed copy, the README, the pin and its record, test_regime_store_move.py). The brief's GOAL describes U393 and its CONTEXT names run-52 as the previous run; only step 3 and the TRUST line name run-53, this run's own directory, as the set to carry.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U393 against 41281b99: regime-store-move without its fetch, masking and comparison with origin's main, the pre-move count and verdict, the unchanged procedure; what the removed comparison had gated (a live path main lacks); (2) the carry: run-52's 96 units and eleven candidate records re-mapped through 89a533f0..195ce731, the move unit and the records-sync candidate restated; (3) the brief's U322 hunt list, answered by the carried updater units.",
+  "carry_note": "The brief's CONTEXT names run-52 as the previous run, which is carried; its step 3 and TRUST line name run-53, this run's own directory.",
+  "scope_paths": [
+    "scripts/orchestrator/regime-store-move",
+    "home/dot_local/bin/common/executable_regime-store-move",
+    "scripts/orchestrator/README.md",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "tests/unit/test_regime_store_move.py",
+    "scripts/orchestrator/hcom-seat"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target, any gh call and any read of a credential store. Every check is a source check.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "AI-AND-LLM.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-52",
+      "source_ref": "89a533f0447396dc470766a91ead1cbcbebdcad0",
+      "findings": 0,
+      "ledger_units": 96,
+      "use": "The carry: every unit and its candidate records, re-mapped through 89a533f0..195ce731."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-08T14:33:00Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: 11 carried candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy). All are proposed needs_validation; none is a finding. U393 yields no new candidate; it removes the move's comparison with origin/main, which had gated the records-sync candidate; the regime-store-move candidate stays resolved (U221d).",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "records-sync/derived-store/publishes-what-the-checkout-ignore-rules-withheld",
+      "ledger_unit": "scripts/orchestrator/records-sync.sh#derived-walk-ignore-parity",
+      "record": "agents/parent-hunter/scratch/candidate-derived-sync-drops-ignore-rules.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-52",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/regime-store-root/program-records-outside-the-dsh-and-build-read-denies",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#dsh-deny-row-program-store-root",
+      "record": "agents/parent-hunter/scratch/candidate-store-root-outside-dsh-deny.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-52",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-pnpm-lock-dir",
+      "record": "agents/parent-hunter/scratch/candidate-lock-dir-shared.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-52",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/keychain/model-gh-resolves-the-operators-login",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#router-row-keychain-and-operator-gh-config",
+      "record": "agents/parent-hunter/scratch/candidate-router-keychain.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-52",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/router-credential-root/read-deny-follows-the-launching-callers-home",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#cred_root_omp-deny-row-home",
+      "record": "agents/parent-hunter/scratch/candidate-cred-root-home.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-52",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/credential-root/agent-token-readable-by-the-router-model",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#credential-root-read-by-the-router-model",
+      "record": "agents/parent-hunter/scratch/candidate-agent-token-readable.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-52",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-52",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-52",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/settings-file-in-session-write-root",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-settings-file",
+      "record": "agents/parent-hunter/scratch/candidate-settings-in-write-root.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-52",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/session-lockfile-names-the-build-hosts",
+      "ledger_unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "record": "agents/parent-hunter/scratch/candidate-lockfile-hosts.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-52",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-52",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (11), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the delegation tool is denied by policy on this seat (refused in run-38 and run-39); every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted the regime-store-move unit restated for U393 and the records-sync candidate restated (the move no longer refuses the ignored ledgers); no new unit"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 11,
+  "findings_count": 0,
+  "finished_at": "2026-11-08T14:35:53Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "resolved_candidates": [
+    {
+      "fingerprint": "regime-store-move/copy/follows-links-the-orchestrator-seat-plants-in-the-destination",
+      "resolved_by": "U221d (af547232)",
+      "how": "the lever no longer copies; the operator's printed procedure stops every seat before `cp -a` (scripts/orchestrator/regime-store-move:16-23, :209-227); a hardening note stays on step 2's missing guard"
+    }
+  ]
+}

@@ -461,7 +461,7 @@
       "target": ".local/bin/common/ledger-row.py",
       "kind": "file",
       "executable": true,
-      "sha256": "05502158ec81553ef9d040d489116620e351fea0d59263e2816c7a53acb846f4"
+      "sha256": "8eb2d306b9b4b7708a5ee23d8a7fa00116787b1efebe1d5824357b005f182f2c"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",

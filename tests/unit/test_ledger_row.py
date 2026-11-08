@@ -6,6 +6,7 @@ the header and three rows, `verdicts/`, `sweeps/`, a scratch HOME whose `.agents
 a subprocess under `python3 -I -S`, the form the coordinator runs."""
 
 import concurrent.futures
+import gc
 import os
 import re
 import resource
@@ -16,6 +17,7 @@ import sys
 import tempfile
 import time
 import unittest
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -1106,7 +1108,9 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(self.store_listing(), before, "the store's names, the ledger's mode and owner are unchanged")
 
     def hold_ledger_lock(self):
-        """A subprocess holding `LOCK_EX` on `ledger.tsv` itself for the test's duration; returns once it holds."""
+        """A subprocess holding `LOCK_EX` on `ledger.tsv` itself for the test's duration; returns once it holds. The
+        one cleanup kills it, reaps it and closes the pipe the test opened to it (round 5: an unclosed pipe raised
+        `ResourceWarning` in the holder's finalizer on every run)."""
         holder = subprocess.Popen(
             [
                 sys.executable,
@@ -1123,8 +1127,13 @@ class LedgerRowTest(unittest.TestCase):
             stdout=subprocess.PIPE,
             text=True,
         )
-        self.addCleanup(holder.wait)
-        self.addCleanup(holder.kill)
+
+        def stop():
+            holder.kill()
+            holder.wait()
+            holder.stdout.close()
+
+        self.addCleanup(stop)
         self.assertEqual(holder.stdout.readline(), "held\n")
         return holder
 
@@ -1178,9 +1187,9 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(self.ledger.read_bytes(), content, "the truncate ran: the old file is whole")
         self.assertEqual(self.store_listing(), before, "no file but the ledger")
 
-    def inject(self, function, *args):
+    def inject(self, function, *args, preexec_fn=None):
         """The lever run through `runpy` under `python3 -I -S` with `os.<function>` replaced by one raising EIO (the
-        round-3 injection form)."""
+        round-4 injection form); `preexec_fn` runs in the child before the interpreter starts (the size-limit cap)."""
         injection = (
             "import errno, os, runpy, sys\n"
             "def broken(*args, **kwargs):\n"
@@ -1196,6 +1205,7 @@ class LedgerRowTest(unittest.TestCase):
             env=self.env,
             timeout=60,
             check=False,
+            preexec_fn=preexec_fn,
         )
 
     def test_r4e_an_injected_fstat_or_pread_failure_is_one_stderr_line_exit_2_and_the_ledger_unchanged(self):
@@ -1225,6 +1235,123 @@ class LedgerRowTest(unittest.TestCase):
             with self.subTest(label):
                 stderr = self.assert_refused(("--lock-wait", value, *self.PUSHED, "--what", "w"), "--lock-wait", label)
                 self.assertNotIn("usage:", stderr)
+        self.assertEqual(self.store_listing(), before, "no file but the ledger")
+
+    # Round 5 (U222e, verdicts/U222-60415f10.md, the residual rows of 2026-11-08T17:19:09Z): the write path's four
+    # failure paths carry their injection tests; the held-lock helper closes its pipe; the option name in the argument
+    # rule's refusal is escaped.
+
+    def assert_write_failure(self, run, content, before):
+        """Exit 1, nothing on stdout, one stderr line starting `ledger-row: cannot write <ledger>: `, no traceback,
+        the ledger byte-identical, the store unchanged; returns the stderr line."""
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertTrue(run.stderr.startswith(f"ledger-row: cannot write {self.ledger}: "), run.stderr)
+        self.assertNotIn("Traceback", run.stderr)
+        self.assertEqual(self.ledger.read_bytes(), content, "the truncate ran: the old file is whole")
+        self.assertEqual(self.store_listing(), before, "no file but the ledger")
+        return run.stderr
+
+    def test_r5a_an_injected_lseek_failure_exits_1_naming_the_ledger_and_the_ledger_is_byte_identical(self):
+        """(a) `os.lseek` (the seat of the offset before the one write) raises EIO under the lock: exit 1, one stderr
+        line naming the ledger and the error, the file truncated back to its length, byte-identical."""
+        before = self.store_listing()
+        content = self.ledger.read_bytes()
+        stderr = self.assert_write_failure(self.inject("lseek", *self.PUSHED, "--what", "w"), content, before)
+        self.assertIn("Input/output error", stderr)
+        self.assertIn(f"truncated back to {len(content)} bytes", stderr)
+
+    def test_r5b_an_injected_fsync_failure_exits_1_naming_the_ledger_and_the_ledger_is_byte_identical(self):
+        """(b) `os.fsync` raises EIO after the write landed: exit 1, one stderr line naming the ledger and the error,
+        the written line truncated back, the ledger byte-identical."""
+        before = self.store_listing()
+        content = self.ledger.read_bytes()
+        stderr = self.assert_write_failure(self.inject("fsync", *self.PUSHED, "--what", "w"), content, before)
+        self.assertIn("fsync: Input/output error", stderr)
+        self.assertIn(f"truncated back to {len(content)} bytes", stderr)
+
+    def test_r5c_an_injected_close_failure_after_the_write_exits_1_naming_the_appended_row_which_is_in_the_ledger(
+        self,
+    ):
+        """(c) `os.close` raises EIO after the line was written and synced: exit 1, nothing on stdout, one stderr line
+        naming the ledger, the appended row's receipt (`appended <ts> line <n>`) and the error; the row is in the
+        ledger, one line appended to the old bytes; the store holds no other new entry."""
+        before = self.store_listing()
+        content = self.ledger.read_bytes()
+        run = self.inject("close", *self.PUSHED, "--what", "w")
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertTrue(run.stderr.startswith(f"ledger-row: the ledger {self.ledger} was appended ("), run.stderr)
+        self.assertIn("but its close failed: Input/output error", run.stderr)
+        self.assertNotIn("Traceback", run.stderr)
+        after = self.ledger.read_bytes()
+        self.assertTrue(after.startswith(content), "the file is appended, never rewritten")
+        added = after[len(content) :].decode()
+        self.assertEqual(added.count("\n"), 1, added)
+        cells = added[:-1].split("\t")
+        self.assertRegex(cells[0], TS)
+        self.assertEqual(cells[1:], ["U7", "-", B, "pushed", "coordinator (h)", "w"])
+        line = content.count(b"\n") + 1
+        self.assertIn(f"(appended {cells[0]} line {line}) but its close failed", run.stderr)
+        self.assertEqual(self.store_listing(), before, "no file but the ledger")
+
+    def test_r5d_a_short_write_whose_ftruncate_fails_exits_1_naming_the_ledger_as_possibly_holding_a_partial_line(
+        self,
+    ):
+        """(d) the size-limit fixture of (r4d) cuts the one write short and `os.ftruncate` raises EIO: exit 1, one
+        stderr line starting with `cannot write <ledger>`, naming the short write, then `the ledger <ledger> may hold a
+        partial last line` and the truncate's error; the old bytes are whole at the front of the file and no more than
+        the limit's 8 bytes follow them (the partial line the text names); the store holds no other new entry."""
+        before = self.store_listing()
+        content = self.ledger.read_bytes()
+        limit = len(content) + 8
+
+        def cap():
+            resource.setrlimit(resource.RLIMIT_FSIZE, (limit, limit))
+
+        run = self.inject("ftruncate", *self.PUSHED, "--what", "w", preexec_fn=cap)
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertTrue(run.stderr.startswith(f"ledger-row: cannot write {self.ledger}: "), run.stderr)
+        self.assertIn(f"the ledger {self.ledger} may hold a partial last line: Input/output error", run.stderr)
+        self.assertNotIn("truncated back", run.stderr)
+        self.assertNotIn("Traceback", run.stderr)
+        after = self.ledger.read_bytes()
+        self.assertTrue(after.startswith(content), "the old bytes are whole at the front")
+        self.assertLessEqual(len(after), limit, "at most the limit's bytes follow them")
+        self.assertEqual(self.store_listing(), before, "no file but the ledger")
+
+    def test_r5e_the_held_lock_helper_closes_its_pipe_and_raises_no_resource_warning(self):
+        """(e) the helper of (r4c) runs under `warnings.catch_warnings(record=True)` with `ResourceWarning` an error:
+        the lever refuses during the hold as in (r4c); the helper's cleanups are run and the holder released inside
+        the block; an unclosed pipe would raise the warning in the holder's finalizer, which the interpreter hands to
+        `sys.unraisablehook`, so both the recorded warnings and the hook's list are asserted empty."""
+        unraisable = []
+        hook = sys.unraisablehook
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("error", ResourceWarning)
+            sys.unraisablehook = unraisable.append
+            try:
+                holder = self.hold_ledger_lock()
+                run = self.run_writer("--lock-wait", "0", *self.PUSHED, "--what", "w")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(str(self.ledger), run.stderr)
+                self.doCleanups()
+                self.assertIsNotNone(holder.returncode, "the helper's cleanups reaped the holder")
+                del holder
+                gc.collect()
+            finally:
+                sys.unraisablehook = hook
+        self.assertEqual([str(warning.message) for warning in recorded], [])
+        self.assertEqual([str(entry.exc_value) for entry in unraisable], [], "the helper closed its pipe")
+
+    def test_r5f_an_option_spelled_with_a_newline_refuses_in_one_stderr_line_holding_the_escaped_name(self):
+        """(f) the auditor's probe: `--what` followed by a newline passes the option position of the argument rule,
+        whose refusal interpolated the name as typed and so printed two lines; now the name is written in `repr` form:
+        exit 2, exactly one stderr line holding `'--what\\n'`, the ledger and the store unchanged."""
+        before = self.store_listing()
+        stderr = self.assert_refused((*self.PUSHED, "--what\n", "w"), "the option '--what\\n'", "a newline")
+        self.assertNotIn("usage:", stderr)
         self.assertEqual(self.store_listing(), before, "no file but the ledger")
 
 

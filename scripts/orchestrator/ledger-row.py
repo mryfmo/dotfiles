@@ -479,7 +479,7 @@ def argument_rule(argv):
     positional = 0
     for index, value in enumerate(argv):
         if value.startswith("--"):
-            where = f"argument {index + 1} (the option {value.split('=', 1)[0]})"
+            where = f"argument {index + 1} (the option {value.split('=', 1)[0]!r})"
         elif index and argv[index - 1].startswith("--"):
             where = f"argument {index + 1} (the value of {argv[index - 1]})"
         else:

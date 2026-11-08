@@ -49,3 +49,5 @@ A ledger-row writer (reserved U222, the 2026-11-06T00:18:19Z decisions row) is n
 ## Order
 
 U215 first (every later unit reads the derivation), then U216 and U219 in either order, then U220, then U221. Every unit builds on `main` after U207 (the first-token readers). The move itself is the last step of U221 and is the only moment the live store is in two places; it happens after the records sync that publishes U221's own rows.
+
+Amendment 2026-11-08 (U393): the move lever's equality gate against origin/main is removed. Every sync's own verdict, sweep and merge rows are written after the sync's listing and before or at its merge, so the live store is ahead of main after every sync and the gate could never pass (measured after sync 52: nine paths). The move's controls are the procedure's own: line 3 proves the copy, line 7 the clean checkout store, and the next sync from the derived store publishes the delta.

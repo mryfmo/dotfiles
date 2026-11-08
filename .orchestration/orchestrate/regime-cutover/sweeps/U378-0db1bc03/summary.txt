@@ -1,0 +1,20 @@
+security-audit sweep 0db1bc03022c703a250757ff19e92453cfe58244: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U216 (the merge and close levers read `${REGIME_STORE_ROOT}/<program>` when it exists, else the checkout store until U221; pr-merge.sh:751-822) and U215 on main (regime-env's store root `<physical HOME>/.local/state/regime-store/<slug>`, regime-init's 0700 make; regime-env:133-162, regime-init:171-197): the store's integrity holds (no seat writes the root, every component held); one new candidate (not a finding):
+  seats/regime-store-root/program-records-outside-the-dsh-and-build-read-denies	scripts/orchestrator/hcom-seat:2293	(the dsh and router rows and build_under_srt deny the records only at the checkout's .orchestration; a store made at the new root is readable to them; no derived store exists on this host yet)
+hardening: the store root is derived from the caller's HOME (regime-env:137-145), so the checkout copy of the merge lever run with another HOME reads a store of the caller's making; same principal as the orchestrator's documented raw-gh residual (U88)
+unvalidated candidates carried from run-43, all on main (not findings; no independent verifier on this seat):
+  updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm	scripts/update-agent-assets.sh:2015
+  router-seat/keychain/model-gh-resolves-the-operators-login	scripts/orchestrator/router-gh:168
+  seats/router-credential-root/read-deny-follows-the-launching-callers-home	scripts/orchestrator/hcom-seat:831
+  router-seat/credential-root/agent-token-readable-by-the-router-model	scripts/orchestrator/hcom-seat:2458
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:437
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1501
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2434
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2474
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2112
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: 7b570792..0db1bc03 (8 files) and e7d86188..0db1bc03 outside .orchestration (14 files); run-43's records carried and re-mapped (no carried cite moved); profile standard, source-only; ledger 90 units: 38 covered, 10 candidate, 42 out_of_scope
+brief notes: the title and GOAL are U322's template (branch fix/dsh-harness-build-under-srt, base 668ba887, 3 paths); the CONTEXT and TRUST name run-44, this run's own directory, as the previous run and the carry set; run-43 is this seat's previous run and is carried
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: build-ledger.cjs, overrides.json, write-metadata.cjs, nv-head.md, nv-carried.md and the ten candidate records in agents/parent-hunter/scratch/)
+wall time: 368s (2026-11-07T19:19:06Z to 2026-11-07T19:25:14Z)

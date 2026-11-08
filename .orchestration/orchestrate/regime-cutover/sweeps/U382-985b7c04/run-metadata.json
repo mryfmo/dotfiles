@@ -1,0 +1,86 @@
+{
+  "run_id": "dotfiles-sweep-3-run-44",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "985b7c0487060b5da549b43d2e364998bc2f6dd5",
+    "branch": "(detached; the brief names fix/dsh-harness-build-under-srt)",
+    "base": "7b5707925e31d95c954ce8f41acdeb099ec3e479",
+    "previous_swept_head": "ce7e875e9c6cc6096ab0d70f5e5ff6e632d0bb32",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U219b change (ce7e875e..985b7c04, 9 files: hcom-seat's protected tool roots, checkout-guard.sh's earlier-hook upgrade, their copies and pins, the README, tests/unit/test_checkout_guard.py and tests/unit/test_hcom_seat.py), read with U219 against run-41's read-exposure lead; plus the run-43 records carried with hcom-seat's +3 line map; every other path is carried out_of_scope",
+  "scope_note": "The brief's sha matches the head, but its GOAL and hunt are the U374 text (build_under_srt against 668ba887), which is main's code; the head is U219b on U219 on main 7b570792, which is hunted. The brief carries run-44, this run's own directory; this seat's latest run, run-43, is carried.",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "scripts/orchestrator/checkout-guard.sh",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "home/dot_local/bin/common/executable_checkout-guard.sh",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_checkout_guard.py",
+    "tests/unit/test_hcom_seat.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, grep, shasum over the four lever files and its own node ledger builder; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-43",
+      "source_ref": "ce7e875e9c6cc6096ab0d70f5e5ff6e632d0bb32",
+      "findings": 0,
+      "unvalidated_candidates": 13,
+      "ledger_units": 133,
+      "use": "Base ledger on the same main; carried with hcom-seat's +3 line map after :1207; the read-exposure, store-root-grants, guard-marker and copies units take U219b's facts."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T21:45:40Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and thirteen carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. U219b produced no new candidate.",
+  "unvalidated_candidates": [
+    {"fingerprint": "regime-store/store-root:dsh-and-router-roles-can-read-the-live-store", "where": "scripts/orchestrator/hcom-seat:2477, :2303-2305, :2327-2348, :2450-2452; scripts/orchestrator/regime-env:145", "proposed_verdict": "confirmed", "proposed_severity": "low (unverified; latent until U221; unchanged by U219b, whose protected set judges tool paths, not reads)"},
+    {"fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off", "where": "home/dot_dsh/profiles/router/cordis.patch.yml:57-71, :152-166; scripts/orchestrator/hcom-seat:2514-2516", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link", "where": "scripts/orchestrator/hcom-seat (dsh_home_hold, seat_write_roots)", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable", "where": "scripts/orchestrator/hcom-seat (seat_settings_render deny_read)", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "hcom-seat/router:local-binding-every-interface", "where": "scripts/orchestrator/hcom-seat:445", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file", "where": "scripts/update-agent-assets.sh:2473-2478", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check", "where": "scripts/update-agent-assets.sh:1914-1935", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation", "where": "scripts/orchestrator/hcom-seat (the claude_config row)", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded", "where": "the dsh wrapper line of scripts/update-agent-assets.sh", "proposed_verdict": "needs_validation"},
+    {"fingerprint": "records-sync/redaction/account-identity-residue-in-published-row", "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509", "proposed_verdict": "confirmed", "proposed_severity": "low (unverified)"},
+    {"fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands", "proposed_verdict": "rejected", "proposed_reason": "the token is unset at start and before the seat environment"},
+    {"fingerprint": "dsh-profile:web-search-routes-to-the-official-api", "proposed_verdict": "rejected", "proposed_reason": "both base-bundle web rows disabled by id"},
+    {"fingerprint": "dsh-profile:thak-runs-without-command-sandbox", "proposed_verdict": "rejected", "proposed_reason": "the thak profile runs no shell tool"}
+  ],
+  "leads_on_other_branches": [
+    "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox (U343, run-35)",
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-35)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-35)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder in agents/parent-hunter/scratch/)"
+  },
+  "critic_passes": [
+    {"pass": "post-wave", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "asked whether the round closes the open lead (no; recorded on the lead) and whether the upgrade path overwrites anything but the lever's own earlier bytes (no)"},
+    {"pass": "final-clean", "wave": 1, "independent": false, "missing_units": 0, "reassign_ids": 0, "result": "no accepted work; no planned unit remains"}
+  ],
+  "candidate_count": 13,
+  "findings_count": 0,
+  "ledger_units": 133,
+  "ledger_counts": {"covered": 62, "candidate": 13, "out_of_scope": 58},
+  "shared_files_written": ["run-metadata.json", "architecture.md", "coverage-ledger.json", "findings.json", "REPORT.md", "FINDINGS-DETAIL.md", "NEEDS-VALIDATION.md"],
+  "finished_at": "2026-11-07T21:47:56Z"
+}

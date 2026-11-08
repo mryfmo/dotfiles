@@ -1,0 +1,168 @@
+{
+  "run_id": "dotfiles-run-46",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "e9642bbe6181a3c5442c2f76641075fe0080c7bb",
+    "branch": "feat/pr-levers-anchor-the-store-at-the-derived-root",
+    "parent_of_change": "a7f9ccdb6577eefcf89dd5f9ccb6078596d8b0d9",
+    "base_note": "U216c (round 3 of U216): one commit on run-45's head a7f9ccdb (U216b on U216 0db1bc03). Checked: git diff a7f9ccdb..HEAD lists 6 files (scripts/ci/producer-status-check.sh, scripts/ci/shfmt_json_contract.py, the shfmt-json contract fixture pair, the test module, scripts/orchestrator/README.md). The brief's title and GOAL are U322's template text again (branch fix/dsh-harness-build-under-srt, base 668ba887, 3 paths); its CONTEXT and TRUST name run-46, this run's own output directory, as the previous run and the set to carry; the previous run of this seat is run-45.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U216c against a7f9ccdb: the producer-status lint's `return` terminator narrowed to brace blocks inside a function, rule b judged in the same function context, the shfmt contract's third library literal, the tests, the README rows; (2) the carry: run-45's 91 units and ten candidate records re-mapped through a7f9ccdb..e9642bbe (no carried cite moved), the lint unit restated; (3) the brief's U322 hunt list, answered by the carried updater units.",
+  "carry_note": "The brief names run-46 (this run's own directory) as both the previous run and the set to carry; run-45, this seat's previous run, is carried.",
+  "scope_paths": [
+    "scripts/ci/producer-status-check.sh",
+    "scripts/ci/shfmt_json_contract.py",
+    "tests/fixtures/shfmt-json/contract.sh",
+    "tests/unit/test_producer_status_check.py",
+    "scripts/orchestrator/README.md",
+    "scripts/orchestrator/regime-env"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target, any gh call and any read of a credential store. Every check is a source check.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "AI-AND-LLM.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-45",
+      "source_ref": "a7f9ccdb6577eefcf89dd5f9ccb6078596d8b0d9",
+      "findings": 0,
+      "ledger_units": 91,
+      "use": "The carry: every unit and its ten candidate records, re-mapped through a7f9ccdb..e9642bbe."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T21:25:59Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: ten carried candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy). All are proposed needs_validation; none is a finding. U216c yields no candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "seats/regime-store-root/program-records-outside-the-dsh-and-build-read-denies",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#dsh-deny-row-program-store-root",
+      "record": "agents/parent-hunter/scratch/candidate-store-root-outside-dsh-deny.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-45",
+      "on_default_branch": false
+    },
+    {
+      "fingerprint": "updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-pnpm-lock-dir",
+      "record": "agents/parent-hunter/scratch/candidate-lock-dir-shared.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-45",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/keychain/model-gh-resolves-the-operators-login",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#router-row-keychain-and-operator-gh-config",
+      "record": "agents/parent-hunter/scratch/candidate-router-keychain.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-45",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/router-credential-root/read-deny-follows-the-launching-callers-home",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#cred_root_omp-deny-row-home",
+      "record": "agents/parent-hunter/scratch/candidate-cred-root-home.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-45",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/credential-root/agent-token-readable-by-the-router-model",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#credential-root-read-by-the-router-model",
+      "record": "agents/parent-hunter/scratch/candidate-agent-token-readable.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-45",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-45",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-45",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/settings-file-in-session-write-root",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-settings-file",
+      "record": "agents/parent-hunter/scratch/candidate-settings-in-write-root.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-45",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/session-lockfile-names-the-build-hosts",
+      "ledger_unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "record": "agents/parent-hunter/scratch/candidate-lockfile-hosts.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-45",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-45",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (10), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the delegation tool is denied by policy on this seat (refused in run-38 and run-39); every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted the lint unit restated for U216c; no new unit, no candidate"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 10,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T21:27:19Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

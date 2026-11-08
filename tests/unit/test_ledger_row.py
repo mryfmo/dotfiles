@@ -7,6 +7,7 @@ a subprocess under `python3 -I -S`, the form the coordinator runs."""
 
 import os
 import re
+import resource
 import shutil
 import subprocess
 import sys
@@ -86,7 +87,7 @@ class LedgerRowTest(unittest.TestCase):
         self.env = {"PATH": os.environ["PATH"], "HOME": str(self.home), "LC_ALL": "C"}
         self.writer = WRITER
 
-    def run_writer(self, *args, store=None):
+    def run_writer(self, *args, store=None, preexec_fn=None):
         return subprocess.run(
             [sys.executable, "-I", "-S", str(self.writer), str(store or self.store), *args],
             capture_output=True,
@@ -94,6 +95,7 @@ class LedgerRowTest(unittest.TestCase):
             env=self.env,
             timeout=60,
             check=False,
+            preexec_fn=preexec_fn,
         )
 
     def read(self, *args):
@@ -890,6 +892,149 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("ledger.py", run.stderr)
         self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+
+    # Round 2 (U222b): the seven findings of verdicts/U222-9187830e.md, each with its red test.
+
+    def sweep_args(self, findings="sweeps/U9-bbbbbbbb/findings.json"):
+        return (
+            "sweep",
+            "--head",
+            B,
+            "--unit",
+            "U7",
+            "--seat",
+            "s",
+            "--run",
+            "1",
+            "--task",
+            "U9",
+            "--findings",
+            findings,
+            "--count",
+            "0",
+        )
+
+    def test_r2a_a_write_that_fails_leaves_the_ledger_byte_identical_and_no_temporary(self):
+        """(a) an RLIMIT_FSIZE of the current size plus 8 bytes, as the auditor set it: exit 1 naming the file, the
+        old file whole, no temporary left in the store."""
+        limit = self.ledger.stat().st_size + 8
+
+        def cap():
+            resource.setrlimit(resource.RLIMIT_FSIZE, (limit, limit))
+
+        before = self.ledger.read_bytes()
+        run = self.run_writer(
+            "pushed", "--pr", "-", "--head", B, "--unit", "U7", "--how", "h", "--what", "w", preexec_fn=cap
+        )
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertIn(str(self.ledger), run.stderr)
+        self.assertEqual(self.ledger.read_bytes(), before, "a failed write leaves the old file whole")
+        self.assertEqual(sorted(os.listdir(self.store)), ["ledger.tsv", "sweeps", "verdicts"], "no temporary left")
+
+    def test_r2b_a_findings_path_and_a_verdict_path_through_a_symlinked_parent_refuse_naming_the_component(self):
+        """(b) the final component is a regular file, but a parent directory is a link out of the store."""
+        outside = Path(self.temp.name).resolve() / "outside"
+        (outside / "U9-cccccccc").mkdir(parents=True)
+        (outside / "U9-cccccccc/findings.json").write_text("[]\n")
+        (self.store / "sweeps/U9-cccccccc").symlink_to(outside / "U9-cccccccc")
+        self.assert_refused(
+            self.sweep_args("sweeps/U9-cccccccc/findings.json"), str(self.store / "sweeps/U9-cccccccc"), "link"
+        )
+        (outside / "verdicts").mkdir()
+        (outside / "verdicts/U7-bbbbbbbb.md").write_text(VERDICT_CORRECT)
+        (self.store / "verdicts").rmdir()
+        (self.store / "verdicts").symlink_to(outside / "verdicts")
+        self.assert_refused(
+            (
+                "audit",
+                "--pr",
+                "7",
+                "--head",
+                B,
+                "--unit",
+                "U7",
+                "--verdict-file",
+                "verdicts/U7-bbbbbbbb.md",
+                "--verifier",
+                "pr-audit.sh (round 1)",
+            ),
+            str(self.store / "verdicts"),
+            "link",
+        )
+
+    def test_r2c_a_findings_directory_holding_a_semicolon_refuses_by_the_pattern(self):
+        """(c) the sweep reader splits the evidence on `;`, so the directory name is `[A-Za-z0-9._-]` alone."""
+        (self.store / "sweeps/U9;note").mkdir()
+        (self.store / "sweeps/U9;note/findings.json").write_text("[]\n")
+        self.assert_refused(
+            self.sweep_args("sweeps/U9;note/findings.json"), "sweeps/<dir>/findings.json", "[A-Za-z0-9._-]"
+        )
+
+    def test_r2d_an_unreadable_manifest_directory_refuses_and_an_absent_one_falls_through_to_the_checkout(self):
+        """(d) a failed open of `~/.agents/agent-config.yaml` other than ENOENT is a refusal naming it (standing order
+        21); ENOENT alone falls through to the checkout's manifest."""
+        if os.geteuid() == 0:
+            self.skipTest("root reads a mode-000 directory")
+        agents = self.home / ".agents"
+        agents.chmod(0)
+        self.addCleanup(agents.chmod, 0o700)
+        self.assert_refused(self.sweep_args(), str(self.manifest), "cannot read the manifest")
+        agents.chmod(0o700)
+        self.manifest.unlink()
+        text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        pin = re.search(r"^  security-audit-skill:\n(?:    .*\n)*?    pin: ([0-9a-f]{40})$", text, re.M).group(1)
+        self.assert_appended(
+            self.sweep_args(),
+            "U7",
+            "-",
+            B,
+            "sweep",
+            f"security-audit-skill {pin[:8]} (full audit mode on the srt worker seat s, run-1; TASK U9)",
+            "sweeps/U9-bbbbbbbb/findings.json; pr none; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS",
+        )
+
+    def test_r2e_a_non_breaking_space_before_carried_or_after_the_digest_refuses(self):
+        """(e) the gate's `[[:space:]]` in the C locale is ASCII; a U+00A0 is no separator."""
+        for name, line in (
+            ("before carried", f"\u00a0carried {A} {B} {DIGEST}"),
+            ("after the digest", f"carried {A} {B} {DIGEST}\u00a0note"),
+        ):
+            with self.subTest(name):
+                self.assert_refused(
+                    ("carried", "--pr", "7", "--head", B, "--unit", "U7", "--line", line, "--note", "n"),
+                    "carried <earlier head> <head> <sha256>",
+                )
+
+    def test_r2f_a_store_path_holding_a_newline_refuses(self):
+        """(f) the store argument is checked like every other argument."""
+        store = Path(self.temp.name).resolve() / "regime\ncutover"
+        store.mkdir()
+        shutil.copy2(self.ledger, store / "ledger.tsv")
+        self.assert_refused(
+            ("pushed", "--pr", "-", "--head", B, "--unit", "U7", "--how", "h", "--what", "w"),
+            "store",
+            "newline",
+            store=store,
+        )
+
+    def test_r2g_a_run_under_python3_I_S_leaves_no_pycache_beside_the_lever(self):
+        """(g) `ledger.tsv` is the one file the lever writes: the import of `ledger.py` writes no bytecode."""
+        copy = Path(self.temp.name) / "copied/common"
+        copy.mkdir(parents=True)
+        shutil.copy2(WRITER, copy / "ledger-row.py")
+        shutil.copy2(READER, copy / "ledger.py")
+        self.writer = copy / "ledger-row.py"
+        self.assert_appended(
+            ("pushed", "--pr", "-", "--head", B, "--unit", "U7", "--how", "h", "--what", "w"),
+            "U7",
+            "-",
+            B,
+            "pushed",
+            "coordinator (h)",
+            "w",
+        )
+        self.assertEqual(sorted(os.listdir(copy)), ["ledger-row.py", "ledger.py"], "no __pycache__ beside the lever")
 
 
 if __name__ == "__main__":

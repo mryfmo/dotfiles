@@ -42,10 +42,18 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
 Two refusals cross rows, before any write (standing order 21): a `pushed` or `receipt` row whose head is 40 hex while
 `ledger.already_audited` names an audit row of the same pull request at that head is refused naming that row's ts (the
 `merged` kind is exempt: the merge is the last row of a head); and any cell holding a tab, a newline or a carriage
-return is refused naming the cell. A store whose ledger does not parse is exit 2 naming the line. Exit 0 prints one
-line, `appended <ts> line <n>`; every refusal is exit 2 with one stderr line; a write that fails is exit 1 naming the
-file. Installed as `~/.local/bin/common/ledger-row.py` in `brief-check.py`'s form (the generator's copy and pin); it
-needs `ledger.py` beside it wherever it runs.
+return is refused naming the cell, the store argument included. A store whose ledger does not parse is exit 2 naming
+the line. Exit 0 prints one line, `appended <ts> line <n>`; every refusal is exit 2 with one stderr line; a write that
+fails is exit 1 naming the file. Round 2 (U222b, verdicts/U222-9187830e.md): the write is atomic, the whole text plus
+the new line written to `<store>/.ledger.tsv.<pid>.tmp`, fsynced and renamed over `ledger.tsv` by `os.replace`, the
+temporary removed on any failure, so a write that fails leaves the old file whole; every file read under the store
+(`ledger.tsv`, the verdict file, the findings file) follows one path rule, its `os.path.realpath` under the realpath of
+the store, each component `os.lstat`ed and no link, a regular file at the end; the findings directory name is
+`[A-Za-z0-9._-]` alone (the sweep reader splits the evidence on `;`); the deployed manifest is opened, ENOENT alone
+falling through to the checkout's and any other failure a refusal naming the file; the carried separator class is the
+gate's literal set under `re.ASCII`; and the import of `ledger.py` writes no bytecode (`sys.dont_write_bytecode`).
+Installed as `~/.local/bin/common/ledger-row.py` in `brief-check.py`'s form (the generator's copy and pin); it needs
+`ledger.py` beside it wherever it runs.
 """
 
 from __future__ import annotations
@@ -54,8 +62,12 @@ import argparse
 import importlib.util
 import os
 import re
+import stat
 import sys
 from datetime import datetime, timezone
+
+# `python3 -I -S` still writes `__pycache__` beside an imported module: `ledger.tsv` is the one file this lever writes.
+sys.dont_write_bytecode = True
 
 LEVER = "ledger-row"
 HERE = os.path.dirname(os.path.realpath(__file__))
@@ -69,15 +81,16 @@ def refuse(reason):
 
 def beside(name):
     """The module `<name>.py` beside this file, loaded from that path alone (the lever runs under `python3 -I`, which
-    puts no script directory on sys.path); a missing or unreadable file is a refusal naming it (standing order 21)."""
+    puts no script directory on sys.path); a missing or unreadable file is a refusal naming it (standing order 21),
+    read by the open itself and never by a stat whose failure would pass as absence."""
     path = os.path.join(HERE, f"{name}.py")
-    if not os.path.isfile(path):
-        refuse(f"{path}: no {name}.py beside the lever; the row is composed and judged through it alone")
     try:
         spec = importlib.util.spec_from_file_location(name, path)
         module = importlib.util.module_from_spec(spec)
         sys.modules[name] = module
         spec.loader.exec_module(module)
+    except FileNotFoundError:
+        refuse(f"{path}: no {name}.py beside the lever; the row is composed and judged through it alone")
     except OSError as error:
         refuse(f"{path}: cannot read {name}.py beside the lever: {error.strerror}")
     return module
@@ -91,8 +104,10 @@ DIGITS = re.compile(r"^(0|[1-9][0-9]*)$")
 # The receipt pr-merge.sh prints: `merged pr=<pr> head=<sha> commit=<40 hex>`, then the end or more words.
 MERGE_RECEIPT = re.compile(r"^merged pr=(\S+) head=(\S+) commit=([0-9a-f]{40})(?:$|[\s;,.)])")
 # The line audit-carry.py prints, as pr-merge.sh's carried_evidence_re reads it (U180): the digest is a whole word
-# before the end, whitespace or one of `;`, `,`, `.` and `)`.
-CARRIED_LINE = re.compile(r"(?:^|\s)carried ([0-9a-f]{40}) ([0-9a-f]{40}) ([0-9a-f]{64})(?:$|[\s;,.)])")
+# before the end or one of the gate's literal separators, space, tab, `;`, `,`, `.` and `)`. The gate's `[[:space:]]`
+# runs in the C locale, so the class is ASCII: a non-breaking space is no separator (round 2 finding 5), and a newline
+# or a carriage return never reaches here (cell_check).
+CARRIED_LINE = re.compile(r"(?:^|[ \t])carried ([0-9a-f]{40}) ([0-9a-f]{40}) ([0-9a-f]{64})(?:$|[ \t;,.)])", re.ASCII)
 RECEIPT_LEVERS = ("pr-update-branch.sh", "pr-close.sh", "records-sync.sh")
 AUDIT_VERIFIER = "pr-audit.sh"
 VERDICT_LINE = re.compile(r"^Verdict: (correct|incorrect)$")
@@ -100,33 +115,42 @@ VERDICT_LINE = re.compile(r"^Verdict: (correct|incorrect)$")
 FILED_LINE = re.compile(r"^Filed: (0|[1-9][0-9]*)$", re.MULTILINE)
 BLOCKING_LINE = re.compile(r"^Blocking: (0|[1-9][0-9]*)$", re.MULTILINE)
 CLASS_WORD = re.compile(r"^[A-Za-z0-9_-]+$")
-SWEEP_FINDINGS = re.compile(r"^sweeps/([^/]+)/findings\.json$")
+# The findings file under the store: the sweep reader splits the evidence on `;` and reads the first field as the path,
+# so the directory name is `[A-Za-z0-9._-]` alone (round 2 finding 3).
+SWEEP_FINDINGS = re.compile(r"^sweeps/([A-Za-z0-9._-]+)/findings\.json$")
 SWEEP_SEAT = re.compile(r"^\S+$")
 # The manifest, read as text by one indentation rule (pr-merge.sh `sweep_pin_probe`, brief-check.py `manifest_levers`):
 # a bare `<key>:` line opens a mapping, a line indented no deeper closes it, and the pin is the one `pin: <40 hex>`
 # line at the indentation of the `security-audit-skill` asset's first field under the top-level `assets:`.
 MAPPING_KEY = re.compile(r"^(\S+):$")
 PIN_LINE = re.compile(r"^pin: ([0-9a-f]{40})$")
-ASSET_PATH = ["assets", "security-audit-skill"]
+ASSET_KEYS = ["assets", "security-audit-skill"]
 
 
-def manifest_path():
-    """The deployed manifest `~/.agents/agent-config.yaml` when it exists, else the checkout's
-    `home/dot_agents/agent-config.yaml` two levels above this file."""
+def manifest_lines():
+    """The deployed manifest `~/.agents/agent-config.yaml` as (path, lines), else the checkout's
+    `home/dot_agents/agent-config.yaml` two levels above this file. Each is opened, never stat-ed first: ENOENT on the
+    deployed one alone falls through to the checkout's; any other failure to open or read is a refusal naming the file
+    (standing order 21; round 2 finding 4)."""
     home = os.environ.get("HOME", "")
-    deployed = os.path.join(home, ".agents/agent-config.yaml")
-    if home and os.path.isfile(deployed):
-        return deployed
-    return os.path.normpath(os.path.join(HERE, "../../home/dot_agents/agent-config.yaml"))
+    checkout = os.path.normpath(os.path.join(HERE, "../../home/dot_agents/agent-config.yaml"))
+    manifests = [os.path.join(home, ".agents/agent-config.yaml"), checkout] if home else [checkout]
+    for manifest in manifests:
+        try:
+            with open(manifest, encoding="utf-8") as handle:
+                return manifest, handle.read().splitlines()
+        except FileNotFoundError as error:
+            if manifest != checkout:
+                continue
+            refuse(f"cannot read the manifest {manifest}: {error.strerror}")
+        except OSError as error:
+            refuse(f"cannot read the manifest {manifest}: {error.strerror}")
+        except UnicodeDecodeError as error:
+            refuse(f"cannot read the manifest {manifest}: not UTF-8: {error.reason}")
 
 
-def manifest_pin(manifest):
-    """The one `assets.security-audit-skill.pin` of the manifest, 40 hex, or a refusal naming the file."""
-    try:
-        with open(manifest, encoding="utf-8") as handle:
-            lines = handle.read().splitlines()
-    except (OSError, UnicodeDecodeError) as error:
-        refuse(f"cannot read the manifest {manifest}: {error}")
+def manifest_pin(manifest, lines):
+    """The one `assets.security-audit-skill.pin` of the manifest's lines, 40 hex, or a refusal naming the file."""
     keys = []  # the open mapping keys as (indentation, key), outermost first
     asset = None  # the indentation of the `security-audit-skill:` key while its block is open
     fields = None  # the indentation of the asset's fields, fixed by the first
@@ -152,7 +176,7 @@ def manifest_pin(manifest):
         match = MAPPING_KEY.match(text)
         if match and (keys or indent == 0):
             keys.append((indent, match.group(1)))
-            if [key for _, key in keys] == ASSET_PATH:
+            if [key for _, key in keys] == ASSET_KEYS:
                 asset = indent
     if len(pins) != 1:
         refuse(
@@ -249,12 +273,12 @@ def sweep_row(args, store):
         check_pr(args.pr)
     match = SWEEP_FINDINGS.match(args.findings)
     if match is None or match.group(1) in (".", ".."):
-        refuse(f"the findings path {args.findings!r} is not sweeps/<dir>/findings.json under the store")
-    path = os.path.join(store, args.findings)
-    if os.path.islink(path) or not os.path.isfile(path):
-        refuse(f"the findings path {path} is not a regular file under the store")
-    manifest = manifest_path()
-    pin = manifest_pin(manifest)[:8]
+        refuse(
+            f"the findings path {args.findings!r} is not sweeps/<dir>/findings.json under the store with <dir> of "
+            "[A-Za-z0-9._-] alone (the sweep reader splits the evidence on ';')"
+        )
+    store_file(store, args.findings, "findings path")
+    pin = manifest_pin(*manifest_lines())[:8]
     verifier = (
         f"security-audit-skill {pin} (full audit mode on the srt worker seat {args.seat}, run-{args.run}; "
         f"TASK {args.task})"
@@ -272,13 +296,11 @@ def audit_row(args, store):
     check_pr(args.pr)
     check_head(args.head)
     expected = f"verdicts/{args.unit}-{args.head[:8]}.md"
-    if args.verdict_file != expected:
+    if args.verdict_file != expected:  # lint-comparisons: allow named-text: the unit and sha8 name the file (12:39:21Z)
         refuse(
             f"the verdict file {args.verdict_file!r} is not {expected!r}: the row's unit and the head's first 8 name it"
         )
-    path = os.path.join(store, expected)
-    if os.path.islink(path) or not os.path.isfile(path):
-        refuse(f"the verdict file {path} is not a regular file under the store")
+    path = store_file(store, expected, "verdict file")
     try:
         text = ledger.read_text(path).replace("\r\n", "\n")
     except ledger.Malformed as error:
@@ -390,16 +412,66 @@ def parser():
     return top
 
 
+def store_file(store, relative, label):
+    """The regular file `<store>/<relative>` by the one path rule every read under the store follows (round 2 finding
+    2): `store` is already its own realpath; each component below it is `os.lstat`ed and none is a link (a symlinked
+    parent directory out of the store is named by its component); the end is a regular file; and the file's realpath
+    lies under the store. Any other outcome is a refusal naming the path."""
+    current = store
+    for part in relative.split("/"):
+        current = os.path.join(current, part)
+        try:
+            status = os.lstat(current)
+        except OSError as error:
+            refuse(f"the {label} {current} is not a regular file under the store: {error.strerror}")
+        if stat.S_ISLNK(status.st_mode):
+            refuse(
+                f"the {label}'s component {current} is a symbolic link; a file under the store is read through real "
+                "directories alone"
+            )
+    if not stat.S_ISREG(status.st_mode):
+        refuse(f"the {label} {current} is not a regular file under the store")
+    if not os.path.realpath(current).startswith(store + os.sep):
+        refuse(f"the {label} {current} resolves outside the store {store}")
+    return current
+
+
+def write_whole(store, ledger_path, text):
+    """The whole text to `<store>/.ledger.tsv.<pid>.tmp`, fsynced and renamed over `ledger.tsv` by `os.replace`, the
+    one atomic whole-file replace the operating system offers: a write that fails (a size limit, a full disk) leaves
+    the old file whole and no temporary (round 2 finding 1). The old file's mode is kept. Returns None, or the failure
+    text naming the file."""
+    temporary = os.path.join(store, f".ledger.tsv.{os.getpid()}.tmp")
+    try:
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    except OSError as error:
+        return f"cannot write {ledger_path}: cannot create {temporary}: {error.strerror}"
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fchmod(handle.fileno(), stat.S_IMODE(os.stat(ledger_path).st_mode))
+            os.fsync(handle.fileno())
+        os.replace(temporary, ledger_path)
+    except OSError as error:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        return f"cannot write {ledger_path} ({temporary} removed): {error.strerror}"
+    return None
+
+
 def main(argv=None):
     args = parser().parse_args(argv)
     for name, value in sorted(vars(args).items()):
-        if isinstance(value, str) and name not in ("store", "kind"):
+        if isinstance(value, str):
             cell_check(name.replace("_", "-") if name != "class_word" else "class", value)
     check_unit(args.unit)
-    store = args.store.rstrip("/") or args.store
-    ledger_path = os.path.join(store, "ledger.tsv")
+    store = os.path.realpath(args.store)
     # The ledger first (standing order 21): a store that does not parse is a refusal naming the line, before the
     # row is composed and before any file of the store is read for it.
+    ledger_path = store_file(store, "ledger.tsv", "ledger")
     try:
         text = ledger.read_text(ledger_path)
         read = ledger.parse_ledger(ledger_path, text)
@@ -429,12 +501,9 @@ def main(argv=None):
     except ledger.Malformed as error:
         refuse(f"the reader refuses the composed row: {error}")
     number = whole.rows[-1].line
-    try:
-        with open(ledger_path, "a", encoding="utf-8", newline="") as handle:
-            handle.write(lead + line)
-            handle.flush()
-    except OSError as error:
-        print(f"{LEVER}: cannot write {ledger_path}: {error.strerror}", file=sys.stderr)
+    failure = write_whole(store, ledger_path, text + lead + line)
+    if failure is not None:
+        print(f"{LEVER}: {failure}", file=sys.stderr)
         return 1
     print(f"appended {row.ts_text} line {number}")
     return 0

@@ -573,7 +573,7 @@
       "target": ".local/bin/common/regime-store-move",
       "kind": "file",
       "executable": true,
-      "sha256": "c36654ca8fcb1b86194352663ad175adbe02a299fe304678459af3594f151b06"
+      "sha256": "bb5f035468b1ac0cc18b6407083d9ca63617c640534036f65458267706414c25"
     },
     {
       "source": "home/dot_local/bin/common/executable_router-gh",

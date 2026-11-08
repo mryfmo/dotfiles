@@ -881,10 +881,12 @@ claude:
   # $DSH_HOME/router-credentials, the router role's one read grant beyond the
   # dsh row's; the login inside it is the operator's step). Both installed and
   # pinned the same way.
-  # regime-store-move (U221, store move 5 of 5) copies a program's live store
-  # out of the main checkout into the derived store root and verifies it, run
-  # once by the coordinator or the operator outside every seat; installed and
-  # pinned the same way, with no allow rule and no seat policy row.
+  # regime-store-move (U221, store move 5 of 5; read-only since U221d) judges
+  # whether a program's live store may move out of the main checkout to the
+  # derived store root and prints the operator's procedure, the copy included;
+  # it moves nothing. Run by the coordinator or the operator outside every
+  # seat; installed and pinned the same way, with no allow rule and no seat
+  # policy row.
   levers:
     sha256:
       hcom-seat: aa6d993c9cc51891a3fdda1eaae605833902e98a4d89fc2ca6e15609aaa06d85
@@ -899,7 +901,7 @@ claude:
       seat-login-preflight: 7d12ffb08da39735f6c368ddb9ab4ed10084d755a1f57470edc64d1d78e4ae61
       regime-start: 978087b6ac9cbe00a3cb4f45dd749a8634d960948b5e2df96a97bbafe9597d17
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
-      regime-store-move: c36654ca8fcb1b86194352663ad175adbe02a299fe304678459af3594f151b06
+      regime-store-move: bb5f035468b1ac0cc18b6407083d9ca63617c640534036f65458267706414c25
       pr-thread-reply.sh: a87078136ec916af8d3e46cd907b729d00ae8b3a6ea841c05ad77daefed3087c
       pr-thread-resolve.sh: efd650ad68b47654483e5cb67de7ae5b165e7e0a7a48bd3e00c6cf35aa564c0b
       pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae

@@ -457,6 +457,13 @@
       "sha256": "e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f"
     },
     {
+      "source": "home/dot_local/bin/common/executable_ledger-row.py",
+      "target": ".local/bin/common/ledger-row.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "0f5743b68d77d4e0ffe0a059c9de2dedd8459d121bb1d777efc8985d3e6f72ae"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
       "target": ".local/bin/common/omp-run.sh",
       "kind": "file",
@@ -742,6 +749,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "intake-observe.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "ledger-row.py"
     },
     {
       "source": "home/dot_local/bin/common",

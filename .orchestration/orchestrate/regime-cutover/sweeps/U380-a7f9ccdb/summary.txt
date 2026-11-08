@@ -1,0 +1,19 @@
+security-audit sweep a7f9ccdb6577eefcf89dd5f9ccb6078596d8b0d9: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U216b (round 2 of U216: the producer-status lint reads regime-env as its third library, scripts/ci/producer-status-check.sh:394-395, :490, and accepts `return <1-255>` as a refusal block's terminator inside a function body only, :1284-1288, :1547-1588; README wording): a static CI check that executes nothing it reads, as strict as before for exits; no candidate.
+unvalidated candidates carried from run-44 (not findings; no independent verifier on this seat):
+  seats/regime-store-root/program-records-outside-the-dsh-and-build-read-denies	scripts/orchestrator/hcom-seat:2293
+  updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm	scripts/update-agent-assets.sh:2015
+  router-seat/keychain/model-gh-resolves-the-operators-login	scripts/orchestrator/router-gh:168
+  seats/router-credential-root/read-deny-follows-the-launching-callers-home	scripts/orchestrator/hcom-seat:831
+  router-seat/credential-root/agent-token-readable-by-the-router-model	scripts/orchestrator/hcom-seat:2458
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:437
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1501
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2434
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2474
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2112
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: 0db1bc03..a7f9ccdb (3 files); run-44's records carried (no carried cite moved); profile standard, source-only; ledger 91 units: 39 covered, 10 candidate, 42 out_of_scope
+brief notes: the title and GOAL are U322's template (branch fix/dsh-harness-build-under-srt, base 668ba887, 3 paths); the CONTEXT and TRUST name run-45, this run's own directory, as the previous run and the carry set; run-44 is this seat's previous run and is carried
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: build-ledger.cjs, overrides.json, write-metadata.cjs, nv-carried.md and the ten candidate records in agents/parent-hunter/scratch/)
+wall time: 94s (2026-11-07T20:22:00Z to 2026-11-07T20:23:34Z)

@@ -5,6 +5,8 @@ written, and the four shapes that cost a round refused by name. Every test runs 
 the header and three rows, `verdicts/`, `sweeps/`, a scratch HOME whose `.agents/agent-config.yaml` holds the pin) as
 a subprocess under `python3 -I -S`, the form the coordinator runs."""
 
+import concurrent.futures
+import fcntl
 import os
 import re
 import resource
@@ -12,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -930,7 +933,9 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
         self.assertIn(str(self.ledger), run.stderr)
         self.assertEqual(self.ledger.read_bytes(), before, "a failed write leaves the old file whole")
-        self.assertEqual(sorted(os.listdir(self.store)), ["ledger.tsv", "sweeps", "verdicts"], "no temporary left")
+        self.assertEqual(
+            sorted(os.listdir(self.store)), [".ledger.lock", "ledger.tsv", "sweeps", "verdicts"], "no temporary left"
+        )
 
     def test_r2b_a_findings_path_and_a_verdict_path_through_a_symlinked_parent_refuse_naming_the_component(self):
         """(b) the final component is a regular file, but a parent directory is a link out of the store."""
@@ -1035,6 +1040,171 @@ class LedgerRowTest(unittest.TestCase):
             "w",
         )
         self.assertEqual(sorted(os.listdir(copy)), ["ledger-row.py", "ledger.py"], "no __pycache__ beside the lever")
+
+    # Round 3 (U222c, verdicts/U222-0fc41a81.md): one lock per store, strict arguments, a named cleanup failure.
+
+    PUSHED = ("pushed", "--pr", "-", "--head", B, "--unit", "U7", "--how", "h")
+
+    def write_large_ledger(self, count=4000):
+        """The header plus `count` pushed rows at head A, the auditor's probe size; returns the row texts."""
+        rows = [
+            row(
+                f"2026-10-{1 + i // 86400:02d}T{(i // 3600) % 24:02d}:{(i // 60) % 60:02d}:{i % 60:02d}Z",
+                "U7",
+                "-",
+                A,
+                "pushed",
+                "coordinator (h)",
+                f"row {i}",
+            )
+            for i in range(count)
+        ]
+        self.ledger.write_text(HEADER + "".join(rows))
+        return rows
+
+    def test_r3a_twelve_concurrent_pushed_calls_against_four_thousand_rows_all_land_once(self):
+        """(a) the auditor's probe: a pool of 12 subprocesses, each one `pushed` row against a 4,000-row ledger; every
+        call exits 0 and the ledger holds exactly 4,012 rows afterwards, each new row present once (the round-2
+        write read, checked and replaced the file from an unlocked snapshot and kept four of twelve)."""
+        self.write_large_ledger()
+        whats = [f"concurrent push {i}" for i in range(12)]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+            runs = list(pool.map(lambda what: self.run_writer(*self.PUSHED, "--what", what), whats))
+        for what, run in zip(whats, runs):
+            self.assertEqual((run.returncode, run.stderr), (0, ""), f"{what}: {run.stdout}{run.stderr}")
+            self.assertRegex(run.stdout, r"^appended \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z line \d+\n$")
+        lines = self.ledger.read_text().split("\n")
+        self.assertEqual(lines.pop(), "", "the file ends with a newline")
+        self.assertEqual(lines[0], HEADER[:-1])
+        self.assertEqual(len(lines) - 1, 4012, "4,000 rows plus the twelve")
+        evidence = [line.split("\t")[6] for line in lines[1:]]
+        for what in whats:
+            self.assertEqual(evidence.count(what), 1, f"{what} is present once")
+        self.assertEqual(
+            sorted(int(line.split("\t")[6][4:]) for line in lines[1:4001]), list(range(4000)), "the old rows are whole"
+        )
+
+    def hold_lock(self):
+        """A subprocess holding `LOCK_EX` on `<store>/.ledger.lock` for the test's duration; returns once it holds."""
+        holder = subprocess.Popen(
+            [
+                sys.executable,
+                "-I",
+                "-S",
+                "-c",
+                "import fcntl, os, sys, time\n"
+                "fd = os.open(sys.argv[1], os.O_RDWR | os.O_CREAT, 0o600)\n"
+                "fcntl.flock(fd, fcntl.LOCK_EX)\n"
+                "print('held', flush=True)\n"
+                "time.sleep(120)\n",
+                str(self.store / ".ledger.lock"),
+            ],
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        self.addCleanup(holder.wait)
+        self.addCleanup(holder.kill)
+        self.assertEqual(holder.stdout.readline(), "held\n")
+        return holder
+
+    def test_r3b_a_held_lock_makes_the_lever_refuse_after_its_wait_naming_the_lock_file(self):
+        """(b) another process holds `LOCK_EX` on `.ledger.lock`: the lever tries non-blocking in a loop for the wait
+        (`--lock-wait 1`, the option the test alone sets; the coordinator's default is 30 seconds), then refuses
+        naming the lock file, exit 2, one stderr line, the ledger unchanged."""
+        self.hold_lock()
+        before = self.ledger.read_bytes()
+        start = time.monotonic()
+        run = self.run_writer("--lock-wait", "1", *self.PUSHED, "--what", "w")
+        elapsed = time.monotonic() - start
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertTrue(run.stderr.startswith("ledger-row: refused: "), run.stderr)
+        self.assertIn(str(self.store / ".ledger.lock"), run.stderr)
+        self.assertIn("1 second", run.stderr)
+        self.assertGreaterEqual(elapsed, 1.0, "the lever waited for the lock before refusing")
+        self.assertEqual(self.ledger.read_bytes(), before, "nothing was written")
+        self.assertEqual(
+            sorted(os.listdir(self.store)), [".ledger.lock", "ledger.tsv", "sweeps", "verdicts"], "no temporary"
+        )
+
+    def test_r3c_a_symlinked_lock_file_is_refused_by_the_file_rule(self):
+        """(c) `.ledger.lock` is held to the store's file rule: a link (here to a regular file outside the store) is a
+        refusal naming the lock file, and the link's target is not locked, opened or written."""
+        outside = Path(self.temp.name).resolve() / "outside.lock"
+        outside.write_bytes(b"")
+        (self.store / ".ledger.lock").symlink_to(outside)
+        self.assert_refused(self.PUSHED + ("--what", "w"), str(self.store / ".ledger.lock"), "link")
+        self.assertEqual(outside.read_bytes(), b"")
+        self.assertEqual(
+            sorted(os.listdir(self.store)), [".ledger.lock", "ledger.tsv", "sweeps", "verdicts"], "no temporary"
+        )
+
+    def test_r3d_a_raw_non_utf8_byte_in_what_is_a_refusal_naming_the_argument_before_anything_is_read(self):
+        """(d) the auditor's probe: `--what` holding the byte 0xff, which Python's argv decoding turns into a lone
+        surrogate that passes the cell check and failed at the write with a traceback and a temporary left behind;
+        now every argument round-trips through strict UTF-8 first: exit 2, one stderr line naming the argument, no
+        temporary, the ledger unchanged."""
+        before = self.ledger.read_bytes()
+        argv = [os.fsencode(sys.executable), b"-I", b"-S", os.fsencode(self.writer), os.fsencode(self.store)]
+        argv += [part.encode() for part in self.PUSHED] + [b"--what", b"pushed \xff bytes"]
+        run = subprocess.run(argv, capture_output=True, env=self.env, timeout=60, check=False)
+        stderr = run.stderr.decode("utf-8", errors="surrogateescape")
+        self.assertEqual((run.returncode, run.stdout), (2, b""), stderr)
+        self.assertEqual(stderr.count("\n"), 1, stderr)
+        self.assertTrue(stderr.startswith("ledger-row: refused: "), stderr)
+        self.assertIn("--what", stderr)
+        self.assertIn("UTF-8", stderr)
+        self.assertNotIn("Traceback", stderr)
+        self.assertEqual(self.ledger.read_bytes(), before, "nothing was written")
+        self.assertNotIn(".tmp", "".join(os.listdir(self.store)), "no temporary")
+
+    def test_r3e_a_failed_fsync_then_a_failed_unlink_names_the_temporary_as_not_removed_with_its_error(self):
+        """(e) the auditor's injection in the round-2 fixture's form, by the interpreter's `os` module: `os.fsync`
+        raises EIO and `os.unlink` raises EACCES; exit 1, one stderr line naming `ledger.tsv`, the temporary as not
+        removed and the unlink's error (round 2 said `removed` while the file stayed), the ledger unchanged."""
+        before = self.ledger.read_bytes()
+        injection = (
+            "import errno, os, runpy, sys\n"
+            "def fsync(fd):\n"
+            "    raise OSError(errno.EIO, os.strerror(errno.EIO))\n"
+            "def unlink(path, *args, **kwargs):\n"
+            "    raise PermissionError(errno.EACCES, os.strerror(errno.EACCES), path)\n"
+            "os.fsync = fsync\n"
+            "os.unlink = unlink\n"
+            "sys.argv = sys.argv[1:]\n"
+            "runpy.run_path(sys.argv[0], run_name='__main__')\n"
+        )
+        run = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                "-S",
+                "-c",
+                injection,
+                str(self.writer),
+                str(self.store),
+                *self.PUSHED,
+                "--what",
+                "w",
+            ],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertTrue(run.stderr.startswith("ledger-row: cannot write " + str(self.ledger)), run.stderr)
+        temporaries = [
+            name for name in os.listdir(self.store) if name.startswith(".ledger.tsv.") and name.endswith(".tmp")
+        ]
+        self.assertEqual(len(temporaries), 1, "the injected unlink left the temporary")
+        self.assertIn(
+            f"the temporary {self.store / temporaries[0]} could not be removed: Permission denied", run.stderr
+        )
+        self.assertIn("Input/output error", run.stderr)
+        self.assertEqual(self.ledger.read_bytes(), before, "the old file is whole")
 
 
 if __name__ == "__main__":

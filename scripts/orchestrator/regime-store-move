@@ -1,37 +1,62 @@
 #!/usr/bin/env bash
 # @file regime-store-move
-# @brief Copy a program's live store out of the main checkout into a staging directory under the derived store root, prove the source stood still, rename the staging directory into place, and print the operator's one step that empties the checkout's copy.
+# @brief Make a program's live store unwritable, copy it out of the main checkout into a staging directory under the derived store root, rename the staging directory into place, and print the operator's one step that makes the checkout's copy writable again and empties it.
 # @description
 #   Regime-cutover U221, store move 5 of 5 (handoff/07-store-move-design.md; U215 gave regime-env the root, U216 and
-#   U220 gave the levers the two-form rule, U219 the seats' grants), reshaped by U221b (verdict U221-e82581f3, class
-#   move-race). The live store of a program is written unmasked inside the main checkout's working tree at
+#   U220 gave the levers the two-form rule, U219 the seats' grants), reshaped by U221b (verdict U221-e82581f3) and
+#   U221c (verdict U221-738e89ca; the mechanism-change row of decisions 2026-11-08T05:44:20Z, class move-race, form
+#   remove). The live store of a program is written unmasked inside the main checkout's working tree at
 #   `.orchestration/orchestrate/<program>/` while `main` holds its masked copies, so the checkout is never clean after
 #   a records sync and nothing fast-forwards it (standing order 40, struck: no procedure or lever writes the
 #   coordinator's live main checkout again; decisions 2026-11-05T23:34:51Z). This lever is the mechanism that ends the
 #   class: run once per program by the coordinator or the operator, from a terminal outside every seat, in the main
-#   checkout (a linked worktree is refused), it reads the checkout and writes only under the derived root
-#   `${REGIME_STORE_ROOT}` the sourced `regime-env` derives from the physical HOME and the checkout's slug.
-#   The shape (U221b). One source manifest, taken once at the start: every path of the live store's walk (U220's
-#   derived walk, `find ! -type d` through `read_listing`, every entry a regular file below the store with no symlink
-#   component, no control character, no `..`, no name beginning with `.`; `redact-words.txt` included, since the new
-#   root is the live store) with its size (`wc -c`) and its sha256 (`sha256sum`, else `shasum -a 256`, the status
-#   read), one line per path, sorted, held in the scratch directory. The comparison with `origin/main`, the copy, the
-#   verification and the printed count all read that manifest and nothing else of the source. The copy lands in a
-#   staging directory `${REGIME_STORE_ROOT}/.<program>.moving-<pid>`, made by `mkdir` (never `-p`) under `umask 077`
-#   (an entry of that name fails it, refused by name), filled by `cp -p` of each manifest path and read back by `cmp`;
-#   then the live store is walked again and its second manifest must equal the first byte for byte (else `refused: the
-#   live store changed during the move (<n> paths); nothing moved, rerun`), the staging directory is walked and its
-#   manifest must equal the first too (the count and the bytes of the copy, in one comparison), and the staging
-#   directory is renamed to `${REGIME_STORE_ROOT}/<program>` by one `mv` under `-n`, its status read. The rename's
-#   proof is the identity hold, not mv's status: `mv` of a directory onto a name that exists moves the staging directory
-#   into a directory that took the name (GNU, BSD and uutils mv alike, status 0) and skips a file there (status 0), so
-#   after the rename the final name must be a directory whose device and inode (`/usr/bin/stat`, the status read)
-#   equal the staging directory's before it; else the run refuses, and the staging directory, found again by that
-#   identity wherever the rename left it, is removed with nothing else under the final name touched. A
+#   checkout (a linked worktree is refused), it reads the checkout, writes only under the derived root
+#   `${REGIME_STORE_ROOT}` the sourced `regime-env` derives from the physical HOME and the checkout's slug, and
+#   changes one thing in the checkout: the live store's modes.
+#   The mechanism (U221c). Two rounds observed the live store twice and held the run to the two observations being
+#   equal; a writer between any two observations is unseen. So before anything is read, the default run makes the
+#   live store quiescent by mode: every entry of `<toplevel>/.orchestration/orchestrate/<program>` is listed (`find`
+#   through `read_listing`) and must be this user's and no symbolic link (else refused by name, before any mode
+#   changes), then `chmod -R a-w` runs over the store with its status read and its output withheld (a failure or a
+#   word on its stderr refuses naming the store and the status, and the cleanup gives the modes back). From then on
+#   no writer can add, change or remove a record during the comparison, the copy, the verification or the rename: its
+#   open fails with EACCES. `--check` changes no mode and says so on stderr. The live store stays unwritable after
+#   the move, and the operator's printed step begins with `chmod -R u+w <store>` (git cannot otherwise restore files
+#   into a read-only directory); the copy under the derived root is given `u+w` back by the move (`chmod -R u+w` over
+#   the staging directory after the copy, the status read; `cp -p` carried the quiescent modes), since it is the
+#   store the levers write from then on.
+#   The shape (U221b). One source manifest, taken once after the quiescence: every path of the live store's walk
+#   (U220's derived walk, `find ! -type d` through `read_listing`, every entry a regular file below the store with no
+#   symlink component, no control character, no `..`, no name beginning with `.`; `redact-words.txt` included, since
+#   the new root is the live store) with its size (`wc -c`) and its sha256 (`sha256sum`, else `shasum -a 256`), one
+#   line per path, sorted (`sort`), held in the scratch directory, every producer's status read. The comparison with
+#   `origin/main`, the copy, the verification and the printed count all read that manifest and nothing else of the
+#   source. The copy lands in a staging directory `${REGIME_STORE_ROOT}/.<program>.moving-<pid>`, made by `mkdir`
+#   (never `-p`) under `umask 077` (an entry of that name fails it, refused naming mkdir's status), its identity
+#   (device and inode by `/usr/bin/stat`, the status read) held the moment it is made, filled by `cp -p` of each
+#   manifest path and read back by `cmp`. Then, as the copy's proof, the live store is walked again and its manifest
+#   must equal the first byte for byte (the source the copy read is the manifest's; else `refused: the live store
+#   changed during the move (<n> paths); nothing moved, rerun`), and the staging directory is walked and its manifest
+#   must equal the first too (the count and the bytes of the copy, in one comparison; a count of differing paths by
+#   `comm`, its status read, never a path). Then the staging directory is renamed to `${REGIME_STORE_ROOT}/<program>`
+#   by one `mv` under `-n`, its status read. The rename's proof is the identity hold, not mv's status: `mv` of a
+#   directory onto a name that exists moves the staging directory into a directory that took the name (GNU, BSD and
+#   uutils mv alike, status 0) and skips a file there (status 0), so after the rename the final name must be a
+#   directory whose identity equals the held one; else the run refuses, and the staging directory, found again by
+#   that identity wherever the rename left it, is removed with nothing else under the final name touched. A
 #   `${REGIME_STORE_ROOT}/<program>` that exists at the start refuses before the fetch, populated or empty: no
-#   populated destination is ever written into, and the final name is made by the rename alone. Cleanup on any failure
-#   or refusal removes the staging directory alone, by its own name (or by its identity after a rename that moved it),
-#   never the final name and never another entry of the root.
+#   populated destination is ever written into, and the final name is made by the rename alone.
+#   Two failure phases (U221c). Before the rename, a failure or refusal says `nothing moved`: the cleanup removes the
+#   staging directory by its held identity alone (the pathname under the root, else `<final name>/<staging name>`,
+#   where `mv` puts a directory whose target name a directory took; a pathname whose identity is another, one
+#   another writer recreated after such a collision, or whose identity cannot be read, is left and named; a staging
+#   directory whose identity was never read is removed by `rmdir`, which takes it only empty, as `mkdir` made it the
+#   instant before), gives the live store its modes back (`chmod -R u+w`), and never touches the final name or
+#   another entry of the root. After `mv` returned 0 the run is past the rename: when the final name's identity
+#   cannot be read and the staging pathname no longer holds the staging identity, the run says `moved to <dir>; the
+#   final name could not be verified (<why>); verify by hand before the operator's step`, exits 1 and removes
+#   nothing (the staging directory, the final name and the live store's modes stay as they are); when the staging
+#   pathname still holds the staging identity, mv moved nothing and the run refuses, `nothing moved`.
 #   Before anything is written it checks that a sync is not still due: origin's `main` is fetched into a scratch
 #   repository (`git init --bare --template=` under `$TMPDIR`, every command through `git_isolated`, the https URL read
 #   once from the checkout, the credential helper `!gh auth git-credential` only), its tree is listed at the published
@@ -40,23 +65,26 @@
 #   withheld), and the masked copy's `<mode> blob <oid>` must equal main's entry for every path, no live path may be
 #   absent from main but `redact-words.txt`, and no path of main may be absent from the live store (a deletion the sync
 #   would carry); otherwise `refused: a records sync is still due (<n> path(s) differ ...)`, the count and not the
-#   paths (a path may hold a redact word). `--check` does every read and every comparison and writes nothing (the
-#   scratch directory aside), then prints the step; the default run does the same, then the staging copy, the two
-#   manifests, the rename, `copied <n> files to <dir>` and the step: the three complete commands (the checkout's own
-#   `checkout -- <prefix>`, `clean -fd -- <prefix>` and `pull --ff-only`, run with git's `-C <checkout>`) that are
-#   the only write to the checkout's working tree and the last of its class, to be run only after the last records
-#   sync from inside has merged. The lever itself runs no git against the checkout but `rev-parse` and the scratch
-#   repository's reads. Every producer's status is read (standing order 21): a failed or warning walk, a hash or size
-#   that fails, an unreadable `origin` URL or an identity that cannot be read refuses (exit 2); a step after the reads
-#   that fails (the fetch, the masker, a `cp`, a `cmp`, a `mkdir`, the `mv`) exits 1 naming the step. The scratch
-#   directory is removed on every exit. Nothing under the checkout changes, in either mode.
+#   paths (a path may hold a redact word). `--check` does every read and every comparison, writes nothing (the
+#   scratch directory aside) and changes no mode, then prints the step; the default run does the quiescence, then
+#   the same, then the staging copy, the two manifests, the rename, `copied <n> files to <dir>` and the step: the
+#   four complete commands (`chmod -R u+w <store>`, then the checkout's own `checkout -- <prefix>`, `clean -fd --
+#   <prefix>` and `pull --ff-only`, run with git's `-C <checkout>`) that are the only write to the checkout's
+#   working tree and the last of its class, to be run only after the last records sync from inside has merged. The
+#   lever itself runs no git against the checkout but `rev-parse` and the scratch repository's reads. Every
+#   producer's status is read (standing order 21): a failed or warning walk, a hash, a size, a sort or a count that
+#   fails, an unreadable `origin` URL, a `chmod -R a-w` or a staging `mkdir` that fails, or an identity that cannot
+#   be read refuses (exit 2); a step after the reads that fails (the fetch, the masker, a `cp`, a `cmp`, a `mkdir`
+#   below the staging directory, the `chmod -R u+w` of the staging directory, the `mv`) exits 1 naming the step. The
+#   scratch directory is removed on every exit. Nothing under the checkout changes but the live store's modes, and
+#   in `--check` not those.
 # @arg $1 string The program (`^[a-z0-9][a-z0-9_-]{0,63}$`), whose live store is `<toplevel>/.orchestration/orchestrate/<program>/`.
-# @option --check Every read and every comparison, nothing written; the step printed.
-# @stdout `check: <n> files would be copied to <dir>; nothing written` or `copied <n> files to <dir>`, then the step, three lines.
-# @stderr `regime-store-move: live store <dir> (<n> files); derived store <dir>; origin/main <sha> at <prefix>/ equals the live store masked`, then `regime-store-move: staging <dir> (identity <dev>:<inode>) renamed to <dir>`, or the refusal.
-# @exitcode 0 The check passed, or the copy was made, verified and renamed into place.
-# @exitcode 1 A step failed after the reads (the fetch, the masking, a copy, a read-back, a mkdir, the rename); the staging directory was removed.
-# @exitcode 2 Refused: usage, a linked worktree, no live store, a listed entry outside the derived walk's shape, a destination component that is not a 0700 directory of this user, a program store that already exists, a sync still due, a failed or warning read (a walk, a hash, a size, the origin URL, an identity), the live store changed during the move, the final name taken during the move; nothing stands at the final name that this run made.
+# @option --check Every read and every comparison, nothing written, no mode changed; the step printed.
+# @stdout `check: <n> files would be copied to <dir>; nothing written` or `copied <n> files to <dir>`, then the step, four lines, `chmod -R u+w <store>` first.
+# @stderr `regime-store-move: live store <dir> made unwritable (chmod -R a-w); writable again by the operator's step` (or, under `--check`, that no mode changes), `regime-store-move: live store <dir> (<n> files); derived store <dir>; origin/main <sha> at <prefix>/ equals the live store masked`, then `regime-store-move: staging <dir> (identity <dev>:<inode>) renamed to <dir>`, or the refusal.
+# @exitcode 0 The check passed, or the live store was made unwritable and its copy was made, verified and renamed into place.
+# @exitcode 1 A step failed after the reads (the fetch, the masking, a copy, a read-back, a mkdir below the staging directory, the staging directory's `chmod -R u+w`, the rename): the staging directory was removed by its identity and the live store is writable again, nothing moved. Or, after the rename, the final name could not be verified: nothing was removed and no mode changed.
+# @exitcode 2 Refused: usage, a linked worktree, no live store, an entry of the live store that is not this user's or is a symbolic link, a failed `chmod -R a-w`, a listed entry outside the derived walk's shape, a destination component that is not a 0700 directory of this user, a program store that already exists, a sync still due, a failed or warning read (a walk, a hash, a size, the sort, a count, the origin URL, the staging directory's mkdir, an identity), the live store changed during the move, the final name taken during the move, a rename that moved nothing; nothing stands at the final name that this run made, and the live store is writable again.
 # @example
 #   regime-store-move regime-cutover --check
 #   regime-store-move regime-cutover
@@ -175,29 +203,65 @@ fail() {
     exit 1
 }
 
-scratch='' dest='' staging='' staging_made=0 staging_id='' move_state=''
-# @description Remove this run's scratch directory, and, when the staging directory was made and the rename did not
-#   end verified, the staging directory alone: by its own name when it still stands there, else by its identity at
-#   `<final name>/<staging name>`, where `mv` puts a directory whose target name was taken by another directory
-#   during the move (that entry's own files are never touched). The final name made by a verified rename is never
-#   removed, nor any other entry of the root. Runs from the EXIT trap, so a `fail` or `refuse` at any point leaves no
-#   staging directory.
-cleanup() {
-    local moved id
-    if [[ ${staging_made} == 1 && ${move_state} != renamed ]]; then
+scratch='' dest='' staging='' staging_made=0 staging_id='' move_state='' quiesced=0 live=''
+# @description Remove the staging directory by its held identity alone (U221c), for the cleanup before the rename:
+#   the pathname under the root, else `<final name>/<staging name>`, where `mv` puts a directory whose target name a
+#   directory took during the move; a candidate is removed only while its device and inode, read again here with the
+#   status, equal the identity held when the directory was made, and a pathname whose identity is another (one
+#   another writer recreated after such a collision) or cannot be read is left and named, nothing of its own touched.
+#   A staging directory whose identity was never read is removed by `rmdir`, which takes an empty directory alone, as
+#   `mkdir` made it the instant before. Nothing else under the final name or the root is touched.
+staging_remove() {
+    local sr_path sr_id
+    if [[ -z ${staging_id} ]]; then
         if [[ -d ${staging} && ! -L ${staging} ]]; then
-            rm -rf -- "${staging}" 2> /dev/null || echo "${lever}: could not remove the staging directory ${staging}" >&2
-            echo "${lever}: the staging directory ${staging} was removed; nothing moved, nothing in the checkout changed" >&2
-        fi
-        moved=${dest}/${staging##*/}
-        if [[ -n ${staging_id} && -d ${moved} && ! -L ${moved} ]]; then
-            if id=$(identity_read "${moved}"); then
-                if [[ ${id} == "${staging_id}" ]]; then
-                    rm -rf -- "${moved}" 2> /dev/null || echo "${lever}: could not remove the staging directory at ${moved}" >&2
-                    echo "${lever}: the staging directory, moved to ${moved} by the rename, was removed by its identity; nothing else under ${dest} is touched" >&2
-                fi
+            if rmdir "${staging}" 2> /dev/null; then
+                echo "${lever}: the staging directory ${staging}, empty and its identity never read, was removed; nothing moved" >&2
+            else
+                echo "${lever}: ${staging} is not empty or cannot be removed, and the staging identity was never read; left in place" >&2
             fi
         fi
+        return 0
+    fi
+    for sr_path in "${staging}" "${dest}/${staging##*/}"; do
+        [[ -d ${sr_path} && ! -L ${sr_path} ]] || continue
+        if sr_id=$(identity_read "${sr_path}"); then
+            if [[ ${sr_id} == "${staging_id}" ]]; then
+                if rm -rf -- "${sr_path}" 2> /dev/null; then
+                    echo "${lever}: the staging directory at ${sr_path} was removed by its identity ${staging_id}; nothing moved, nothing else under ${dest} or ${dest%/*} is touched" >&2
+                else
+                    echo "${lever}: could not remove the staging directory at ${sr_path} (identity ${staging_id})" >&2
+                fi
+                return 0
+            fi
+            echo "${lever}: ${sr_path} is not the staging directory (identity ${sr_id}, not ${staging_id}); left in place" >&2
+        else
+            echo "${lever}: cannot read the identity of ${sr_path} (/usr/bin/stat failed); left in place" >&2
+        fi
+    done
+    return 0
+}
+
+# @description The EXIT trap, in three phases (U221c). Before the rename (`move_state` empty): the staging directory,
+#   when it was made, removed by its identity (staging_remove), then the live store's modes given back when the
+#   quiescence ran or was attempted (`chmod -R u+w`, so a partial `a-w` is undone too), so `nothing moved` leaves the
+#   checkout as it was. After a rename whose result could not be verified (`renamed-unverified`): nothing removed, no
+#   mode changed, said so. After a verified rename (`renamed`): nothing but the scratch directory, which goes on every
+#   exit. A `fail` or `refuse` at any point runs this.
+cleanup() {
+    if [[ -z ${move_state} ]]; then
+        if [[ ${staging_made} == 1 ]]; then
+            staging_remove
+        fi
+        if [[ ${quiesced} == 1 ]]; then
+            if chmod -R u+w "${live}" 2> /dev/null; then
+                echo "${lever}: the live store ${live} is writable again; nothing moved" >&2
+            else
+                echo "${lever}: could not give the live store its modes back; run by hand: chmod -R u+w ${live}" >&2
+            fi
+        fi
+    elif [[ ${move_state} == renamed-unverified ]]; then
+        echo "${lever}: nothing is removed and the live store ${live} stays unwritable: the rename ran and its result could not be verified; ${dest}, and ${staging} if it still stands, are left for the verification by hand" >&2
     fi
     if [[ -n ${scratch} && -d ${scratch} ]]; then
         rm -r "${scratch}" 2> /dev/null || echo "${lever}: could not remove ${scratch}" >&2
@@ -212,10 +276,12 @@ git_scratch() {
     git_isolated --git-dir="${repo}" "$@"
 }
 
-# @description Print the operator's step: the three commands that empty the checkout's copy of the store and move the
+# @description Print the operator's step: the four commands that make the checkout's copy of the store writable
+#   again (the move left it `a-w`; git cannot restore files into a read-only directory), empty it and move the
 #   checkout to origin/main, each complete, the paths quoted for the shell. The step is printed, never run: the live
 #   checkout is written by the operator's hand alone, once (the struck order 40's successor rule).
 print_step() {
+    printf 'chmod -R u+w %q\n' "${live}"
     printf 'git -C %q checkout -- %q\n' "${top_real}" "${records}"
     printf 'git -C %q clean -fd -- %q\n' "${top_real}" "${records}"
     printf 'git -C %q pull --ff-only\n' "${top_real}"
@@ -378,7 +444,7 @@ manifest_write() {
         printf '%s\t%s\t%s\n' "${mw_rel}" "${mw_size}" "${mw_sum}" >> "${mw_out}.unsorted" || fail "cannot write the manifest ${mw_out}"
     done < "${mw_rels}"
     [[ -z ${mw_rel} ]] || refuse "the file list of ${mw_root} ends mid-entry; nothing moved"
-    LC_ALL=C sort "${mw_out}.unsorted" > "${mw_out}" || fail "cannot sort the manifest ${mw_out}"
+    LC_ALL=C sort "${mw_out}.unsorted" > "${mw_out}" || refuse "cannot sort the manifest of ${mw_root} (sort failed); nothing moved"
 }
 
 # @description Print the number of distinct paths whose lines differ between two manifests (`comm -3`, the lines of
@@ -460,11 +526,40 @@ store_dir_hold "${dest}" 'the program store'
 [[ ! -e ${dest} ]] ||
     refuse "${dest} already exists; the move renames its staging directory to that name and never writes into a directory that is already there (one that holds the records, or an empty one: remove it by hand first); nothing copied"
 
-# The source manifest, taken once: the live store's walk, each path with its size and sha256, sorted. Every later
-# step reads this manifest; the count is its line count.
+# The quiescence (U221c, the mechanism change): every entry of the live store listed, each this user's and no
+# symbolic link (another user's mode cannot be changed, and `chmod -R` would leave a link's target as it is while the
+# walk refuses the link later; both refused here, before any mode changes), then, in the default run, `chmod -R a-w`
+# over the store with its status read and its output withheld (a path may hold a redact word): a failure or a word on
+# its stderr refuses naming the store and the status, and the cleanup gives the modes back. From here no writer can
+# add, change or remove a record until the operator's step. `--check` changes no mode and says so.
+read_listing "${scratch}/entries" "${scratch}/entries.err" find "${live}" -print0 ||
+    refuse "the walk of the live store ${live} failed or warned (find; its output is withheld); nothing moved"
+entry=''
+while read -r -d '' entry; do
+    [[ ! -L ${entry} ]] ||
+        refuse "an entry of the live store is a symlink: ${entry#"${live}/"}; the derived walk refuses it (U220); remove it by hand, nothing moved"
+    [[ -O ${entry} ]] ||
+        refuse "an entry of the live store is not this user's: ${entry#"${live}/"}; its mode cannot be changed by this user, nothing moved"
+done < "${scratch}/entries"
+[[ -z ${entry} ]] || refuse "the walk of ${live} ends mid-entry; nothing moved"
+if [[ ${check} == 1 ]]; then
+    echo "${lever}: --check: the live store's modes are left as they are; the move makes it unwritable (chmod -R a-w) before its manifest" >&2
+else
+    quiesced=1
+    chmod_status=0
+    chmod -R a-w "${live}" 2> "${scratch}/chmod.err" || chmod_status=$?
+    [[ ${chmod_status} == 0 ]] ||
+        refuse "cannot make the live store ${live} unwritable (chmod -R a-w exited ${chmod_status}; its output is withheld); nothing moved"
+    [[ ! -s ${scratch}/chmod.err ]] ||
+        refuse "cannot make the live store ${live} unwritable (chmod -R a-w exited 0 and wrote to its stderr; its output is withheld); nothing moved"
+    echo "${lever}: live store ${live} made unwritable (chmod -R a-w); writable again by the operator's step" >&2
+fi
+
+# The source manifest, taken once, after the quiescence: the live store's walk, each path with its size and sha256,
+# sorted. Every later step reads this manifest; the count is its line count.
 walk_store "${live}" "${scratch}/rels" 'the live store'
 manifest_write "${live}" "${scratch}/rels" "${scratch}/manifest"
-count=$(wc -l < "${scratch}/manifest") || fail 'cannot count the manifest'
+count=$(wc -l < "${scratch}/manifest") || refuse 'cannot count the manifest (wc failed); nothing moved'
 count=${count//[[:space:]]/}
 
 # origin's main, fetched into a scratch repository from the https URL read once from the checkout (the shape of
@@ -500,7 +595,8 @@ done < "${scratch}/main-listing"
 
 # The masker and the comparison: main's validator alone in a tools tree whose `home/` holds main's top-level entry
 # names (so its home-path pattern skips the repository's own `home/<entry>` paths as in a checkout; empty when main has
-# no `home/`); each manifest path but `redact-words.txt` copied into the scratch directory and masked there; the masked
+# no `home/`); each manifest path but `redact-words.txt` copied into the scratch directory (`cp -p`, then `u+w` given
+# back: the copy carries the quiescent mode, and the masker rewrites it in place) and masked there; the masked
 # copy's `<mode> blob <oid>` against main's entry. The checkout's files are never changed.
 tools=${scratch}/tools
 mkdir -p "${tools}/scripts" "${tools}/home" || fail 'cannot make the tools tree'
@@ -526,6 +622,7 @@ while read -r line; do
     *) mkdir -p "${copies}/${records}" || fail "mkdir for ${rel} failed" ;;
     esac
     cp -p "${live}/${rel}" "${copies}/${records}/${rel}" || fail "cp of ${rel} into the scratch copies failed"
+    chmod u+w "${copies}/${records}/${rel}" || fail "chmod u+w of the scratch copy of ${rel} failed"
     masked+=("${copies}/${records}/${rel}")
 done < "${scratch}/manifest"
 [[ -z ${line} ]] || fail 'the manifest ends mid-entry'
@@ -580,15 +677,19 @@ fi
 # The move. The components above the program store made as regime-init makes them (`.local/state` is a shared XDG
 # directory, held absent or a real directory of this user by regime-env, made with its parent when a fresh host lacks
 # it and not held to a mode; `regime-store` and `<slug>` each 0700). Then the staging directory under the root, by its
-# own `mkdir` under `umask 077` (an entry of that name fails it), its identity read; every manifest path copied into
-# it with `cp -p` (the directories below it made under `umask 077`) and read back with `cmp`.
+# own `mkdir` under `umask 077` (an entry of that name fails it), its identity held at once; every manifest path copied
+# into it with `cp -p` (the directories below it made under `umask 077`) and read back with `cmp`; then the copy
+# given `u+w` back (`cp -p` carried the quiescent modes, and the derived store is the one written from now on).
 if [[ ! -e ${state_dir} ]]; then
     mkdir -p "${state_dir}" || refuse "cannot create ${state_dir}"
 fi
 store_dir_make "${store_parent}" 'the store parent'
 store_dir_make "${store_root}" 'the store root'
 staging=${store_root}/.${program}.moving-$$
-(umask 077 && mkdir "${staging}") || refuse "cannot create the staging directory ${staging} (an entry of that name exists, or ${store_root} is not writable); nothing moved"
+mkdir_status=0
+(umask 077 && mkdir "${staging}") || mkdir_status=$?
+[[ ${mkdir_status} == 0 ]] ||
+    refuse "cannot create the staging directory ${staging} (mkdir exited ${mkdir_status}: an entry of that name exists, or ${store_root} is not writable); nothing moved"
 staging_made=1
 staging_id=$(identity_read "${staging}") || refuse "cannot read the identity of the staging directory ${staging} (/usr/bin/stat failed); nothing moved"
 line=''
@@ -601,22 +702,26 @@ while read -r line; do
     cmp -s "${live}/${rel}" "${staging}/${rel}" || fail "cmp of ${rel} exited $? (the read-back step)"
 done < "${scratch}/manifest"
 [[ -z ${line} ]] || fail 'the manifest ends mid-entry (the copy step)'
+chmod_status=0
+chmod -R u+w "${staging}" 2> "${scratch}/chmod-staging.err" || chmod_status=$?
+[[ ${chmod_status} == 0 ]] || fail "chmod -R u+w of ${staging} exited ${chmod_status} (the copy step; its output is withheld)"
+[[ ! -s ${scratch}/chmod-staging.err ]] || fail "chmod -R u+w of ${staging} wrote to its stderr (the copy step; its output is withheld)"
 
-# The source stood still: the live store walked again, its second manifest equal to the first byte for byte; else
-# the refusal names the count of changed paths and the staging directory goes (the EXIT trap).
+# The copy's proof (U221c: the quiescence is the control; these two comparisons prove the copy). The live store
+# walked again, its manifest equal to the first byte for byte (the source the copy read is the manifest's); the
+# staging directory walked to the same shape, its manifest equal to the first (the count and every file's size and
+# digest, in one comparison). A difference names its count, never a path, and the staging directory goes (the trap).
 walk_store "${live}" "${scratch}/rels-after" 'the live store'
 manifest_write "${live}" "${scratch}/rels-after" "${scratch}/manifest-after"
 if ! cmp -s "${scratch}/manifest" "${scratch}/manifest-after"; then
-    changed=$(manifest_diff_count "${scratch}/manifest" "${scratch}/manifest-after") || fail 'cannot count the changed paths (comm failed)'
+    changed=$(manifest_diff_count "${scratch}/manifest" "${scratch}/manifest-after") || refuse 'cannot count the changed paths (comm failed); nothing moved'
     changed=${changed//[[:space:]]/}
-    refuse "the live store changed during the move (${changed} paths); nothing moved, rerun"
+    refuse "the live store changed during the move (${changed} paths) although it was made unwritable; nothing moved, rerun"
 fi
-# The copy is whole: the staging directory walked to the same shape, its manifest equal to the first (the count and
-# every file's size and digest, in one comparison).
 walk_store "${staging}" "${scratch}/rels-staging" 'the staging directory'
 manifest_write "${staging}" "${scratch}/rels-staging" "${scratch}/manifest-staging"
 if ! cmp -s "${scratch}/manifest" "${scratch}/manifest-staging"; then
-    changed=$(manifest_diff_count "${scratch}/manifest" "${scratch}/manifest-staging") || fail 'cannot count the differing paths (comm failed)'
+    changed=$(manifest_diff_count "${scratch}/manifest" "${scratch}/manifest-staging") || refuse 'cannot count the differing paths (comm failed); nothing moved'
     changed=${changed//[[:space:]]/}
     fail "the copy under ${staging} differs from the live store's manifest (${changed} paths) (the read-back step)"
 fi
@@ -624,16 +729,33 @@ fi
 # The rename: the final name must still be absent (a directory or a link that took it during the move refuses by
 # name, untouched), then one `mv` under `-n`, its status read, and the identity hold that is the rename's proof: `mv`
 # of a directory onto a name that exists moves the staging directory into a directory there and skips a file there, each
-# with status 0, so the final name must now be a directory whose device and inode are the staging directory's.
+# with status 0, so the final name must now be a directory whose device and inode are the staging directory's. Once
+# `mv` returned 0 the run is past the rename (U221c): a final name whose identity cannot be read while the staging
+# pathname still holds the staging identity means mv moved nothing (`nothing moved`, exit 2); one whose identity
+# cannot be read while the staging pathname no longer holds it is the `moved to` phase (exit 1, nothing removed, the
+# verification by hand); one whose identity is another's means a directory took the name and mv moved the staging
+# directory into it, or a file took it and mv skipped it (`nothing moved`, exit 2, the staging directory removed by
+# its identity wherever it stands).
 [[ ! -e ${dest} && ! -L ${dest} ]] ||
     refuse "${dest} appeared during the move; the staging directory is removed and nothing under ${dest} is touched; nothing moved, rerun after moving or removing it by hand"
 mv -n "${staging}" "${dest}" || fail "mv -n of ${staging} to ${dest} exited $? (the rename step)"
-final_id=$(identity_read "${dest}") ||
-    refuse "cannot read the identity of ${dest} after the rename (/usr/bin/stat failed, or mv moved nothing and the name is absent); the staging directory is removed, nothing moved"
-[[ ${final_id} == "${staging_id}" ]] ||
+move_state=renamed-unverified
+final_id=''
+if ! final_id=$(identity_read "${dest}"); then
+    staging_now=''
+    if staging_now=$(identity_read "${staging}"); then
+        if [[ ${staging_now} == "${staging_id}" ]]; then
+            move_state=''
+            refuse "cannot read the identity of ${dest} after the rename (/usr/bin/stat failed), and the staging directory still stands at ${staging}: mv moved nothing; the staging directory is removed by its identity, nothing moved"
+        fi
+    fi
+    fail "moved to ${dest}; the final name could not be verified (cannot read the identity of ${dest}: /usr/bin/stat failed, and ${staging} no longer holds the staging identity ${staging_id}); verify by hand before the operator's step"
+fi
+if [[ ${final_id} != "${staging_id}" ]]; then
+    move_state=''
     refuse "${dest} is not the staging directory after the rename (an entry took the name during the move, and mv moved the staging directory into it or skipped it); the staging directory is removed by its identity and nothing else under ${dest} is touched; nothing moved, rerun"
+fi
 move_state=renamed
-store_dir_hold "${dest}" 'the program store'
 echo "${lever}: staging ${staging} (identity ${staging_id}) renamed to ${dest}" >&2
 echo "copied ${count} files to ${dest}"
 print_step

@@ -1,0 +1,24 @@
+security-audit sweep e82581f37d9a322afa084c45e68b7885ba255dbf: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U221 (store move 5 of 5: regime-store-move copies the live store to `${REGIME_STORE_ROOT}/<program>`; regime-start takes the two-form rule) and U219 on main (hcom-seat holds and makes the store root, the orchestrator writes it, the worker, dsh and router rows are denied writing it; the checkout guard's marker): one new candidate (not a finding):
+  regime-store-move/copy/follows-links-the-orchestrator-seat-plants-in-the-destination	scripts/orchestrator/regime-store-move:490	(the unsandboxed copy's mkdir -p and cp follow a link planted in the destination after its one-time emptiness check, during the fetch-and-mask window; U219 makes that directory the orchestrator seat's write root; links are looked for only after the copy)
+restated: seats/regime-store-root/program-records-outside-the-dsh-and-build-read-denies (U219 denies the root for write, never for read; U221's move makes the store live there)
+live with the move: records-sync/derived-store/publishes-what-the-checkout-ignore-rules-withheld (the move copies the 153 ignored coverage ledgers into the derived store)
+unvalidated candidates carried from run-47, all on main (not findings; no independent verifier on this seat):
+  seats/regime-store-root/program-records-outside-the-dsh-and-build-read-denies	scripts/orchestrator/hcom-seat:2420
+  records-sync/derived-store/publishes-what-the-checkout-ignore-rules-withheld	scripts/orchestrator/records-sync.sh:457
+  updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm	scripts/update-agent-assets.sh:2015
+  router-seat/keychain/model-gh-resolves-the-operators-login	scripts/orchestrator/router-gh:168
+  seats/router-credential-root/read-deny-follows-the-launching-callers-home	scripts/orchestrator/hcom-seat:844
+  router-seat/credential-root/agent-token-readable-by-the-router-model	scripts/orchestrator/hcom-seat:2605
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:450
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1517
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2434
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2474
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2238
+hardening: after the move the orchestrator seat writes the ledger its own merge lever reads (hcom-seat:2566); the policy's account of the merge gate no longer names who writes its input (same principal as the raw-gh residual U88)
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: 9eea8658..e82581f3 (12 files) and 1a2aefd8..9eea8658 outside .orchestration (11 files); run-47's records carried and re-mapped through U219's hcom-seat; profile standard, source-only; ledger 96 units: 42 covered, 12 candidate, 42 out_of_scope
+brief notes: the title and GOAL are U322's template (branch fix/dsh-harness-build-under-srt, base 668ba887, 3 paths); the CONTEXT and TRUST name run-48, this run's own directory, as the previous run and the carry set; run-47 is this seat's previous run and is carried
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: build-ledger.cjs, overrides.json, write-metadata.cjs, nv-head.md, nv-carried.md and the twelve candidate records in agents/parent-hunter/scratch/)
+wall time: 370s (2026-11-08T04:42:20Z to 2026-11-08T04:48:30Z)

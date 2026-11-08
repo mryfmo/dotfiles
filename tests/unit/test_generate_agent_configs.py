@@ -248,6 +248,7 @@ LEVERS = (
     "hcom-dispatch",
     "hcom-seat",
     "intake-observe.py",
+    "ledger-row.py",
     "omp-run.sh",
     "pr-audit.sh",
     "pr-body-edit.sh",

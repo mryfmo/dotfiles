@@ -6135,7 +6135,7 @@ def<span class="w"> </span>argument_rule<span class="o">(</span>argv<span class=
 <span class="w">    </span><span class="nv">positional</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>index,<span class="w"> </span>value<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>argv<span class="o">)</span>:
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>value.startswith<span class="o">(</span><span class="s2">"--"</span><span class="o">)</span>:
-<span class="w">            </span><span class="nv">where</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>f<span class="s2">"argument {index + 1} (the option {value.split('=', 1)[0]})"</span>
+<span class="w">            </span><span class="nv">where</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>f<span class="s2">"argument {index + 1} (the option {value.split('=', 1)[0]!r})"</span>
 <span class="w">        </span><span class="k">elif</span><span class="w"> </span>index<span class="w"> </span>and<span class="w"> </span>argv<span class="o">[</span>index<span class="w"> </span>-<span class="w"> </span><span class="m">1</span><span class="o">]</span>.startswith<span class="o">(</span><span class="s2">"--"</span><span class="o">)</span>:
 <span class="w">            </span><span class="nv">where</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>f<span class="s2">"argument {index + 1} (the value of {argv[index - 1]})"</span>
 <span class="w">        </span><span class="k">else</span>:

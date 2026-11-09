@@ -1,0 +1,22 @@
+security-audit sweep ea28db72f76649042732d4fc88f089b35eae4f90: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+records sync 53 (unit U20; 46 files, 1749 added lines under .orchestration/orchestrate/regime-cutover): every added line scanned for an absolute home directory, the user name, credential shapes and the 5 words of the store's redact-words.txt: 0 hits; no coverage ledger published (a checkout-form sync); the store-move handout matches regime-store-move's printed procedure (handouts/store-move-procedure.md:21-27). No candidate.
+restated: records-sync/derived-store/publishes-what-the-checkout-ignore-rules-withheld (162 coverage ledgers in the live store now; the handout plans the derived-form syncs and sets aside the ignored dot-name drafts, not the ledgers, :44-47)
+out of scope: U222's ledger-row.py, new on main (#740), swept on another seat (U398 to U401)
+unvalidated candidates carried from run-53 (not findings; no independent verifier on this seat):
+  seats/regime-store-root/program-records-outside-the-dsh-and-build-read-denies	scripts/orchestrator/hcom-seat:2420
+  records-sync/derived-store/publishes-what-the-checkout-ignore-rules-withheld	scripts/orchestrator/records-sync.sh:457
+  updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm	scripts/update-agent-assets.sh:2015
+  router-seat/keychain/model-gh-resolves-the-operators-login	scripts/orchestrator/router-gh:168
+  seats/router-credential-root/read-deny-follows-the-launching-callers-home	scripts/orchestrator/hcom-seat:844
+  router-seat/credential-root/agent-token-readable-by-the-router-model	scripts/orchestrator/hcom-seat:2605
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:450
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1517
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2434
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2474
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2238
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: 1f9f31f9..ea28db72 (46 records files) and 195ce731..1f9f31f9 outside .orchestration (U222, recorded out of scope); run-53's records carried and re-mapped; profile standard, source-only; ledger 98 units: 44 covered, 11 candidate, 43 out_of_scope
+brief notes: the CONTEXT says this seat has no earlier run (carry the store's U20-2256b56c) and names a one-file diff from c4195463; step 3 names run-53, which is carried, and TRUST names run-54, this run's own directory
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: build-ledger.cjs, overrides.json, write-metadata.cjs, scan-records.cjs, nv-carried.md and the eleven candidate records in agents/parent-hunter/scratch/)
+wall time: 197s (2026-11-08T17:45:28Z to 2026-11-08T17:48:45Z)

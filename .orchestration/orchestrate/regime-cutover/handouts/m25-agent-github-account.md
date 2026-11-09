@@ -54,3 +54,15 @@ Which login is "the operator's login" that alone may update main. Default: the c
 
 - M-18 asks the operator for one word only: after the GitHub Source has run a week in observe mode (M-26 task 15), whether it moves to auto (T-M-18-04). Keeping observe is a recorded skip, not a failure.
 - M-27 asks the operator for two credentials, each placed in the Router credential root with mode 0600, after M-26 and M-18 land: a Slack app with Socket Mode, an app-level token with `connections:write` and a bot token (`slack.env`, T-M-27-01); a Microsoft tenant app registration with the Graph application permissions the Teams and Outlook Sources read with, and its client secret (`msgraph.env`, T-M-27-14), with admin consent in the tenant. The kit generates the app manifest JSON and the redirect URI before that step (08-purpose-and-goal.md, the human-steps table).
+
+
+## Staged form applied 2026-11-09 (decisions 02:31:16Z and 04:10:56Z)
+
+For M-26 observe mode the Router's credential is a fine-grained token of the operator's own login (repository `mryfmo/dotfiles` alone, Pull requests read and Contents read), placed by the operator with
+
+```sh
+mkdir -p ~/.dsh/router-credentials/gh && chmod 700 ~/.dsh/router-credentials ~/.dsh/router-credentials/gh
+GH_CONFIG_DIR=~/.dsh/router-credentials/gh gh auth login --hostname github.com --git-protocol https --with-token --insecure-storage
+```
+
+`--insecure-storage` is required: without it gh on macOS stores the token in the shared keychain entry `gh:github.com` and replaces the coordinator's own gh login (measured 2026-11-09 03:33Z, repaired 04:10Z). The token lives in `~/.dsh/router-credentials/gh/hosts.yml` (mode 0600). Steps 1 and 2 above (the dedicated account and the update-only ruleset) are deferred to the M-18 step that gives the Router or a seat a write right; a GitHub App (bypass actor type Integration) is the alternative then. The sync 48 P2 that said user bypass actors are unsupported is answered by the current REST docs (`bypass_actors.actor_type` includes `User`; only `OrganizationAdmin` is excluded for personal repositories).

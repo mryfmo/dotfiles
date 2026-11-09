@@ -914,7 +914,7 @@ claude:
       records-sync.sh: c832fe80d70a760370bac021691dc470d8d118dc596884f60c9f696984871a97
       pr-merge.sh: 6c7f3ff20bbaad62855e177afe38499547aba5519d164f9a0a9faf579f3a3028
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
-      pr-audit.sh: af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0
+      pr-audit.sh: 3049a6c2877d9c1560d55aedbb4231d7f0fdf1f8472ed1252bd1995e1a7adfe6
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
       ledger-row.py: 8eb2d306b9b4b7708a5ee23d8a7fa00116787b1efebe1d5824357b005f182f2c
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014

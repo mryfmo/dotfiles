@@ -269,6 +269,7 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual([c["argv"][0] for c in calls], ["sandbox", "sandbox", "exec"])
         work = rundir / "work"
         exec_argv = ["exec", "--strict-config", "--skip-git-repo-check", "--ephemeral", "--ignore-rules"]
+        exec_argv += ["--cyber-access-program", "standard"]
         exec_argv += ["-C", str(work / "cwd"), "--output-schema", str(rundir / "verdict.schema.json")]
         self.assertEqual(calls[2]["argv"], [*exec_argv, "-o", str(rundir / "verdict.json"), "-"])
         self.assertNotIn("--ignore-user-config", calls[2]["argv"], "it would skip the scratch config.toml")
@@ -299,6 +300,7 @@ class PrAuditTest(unittest.TestCase):
             )
             if call["argv"][0] == "sandbox":
                 self.assertEqual(call["argv"][:4], ["sandbox", "--", "/bin/sh", "-c"])
+                self.assertNotIn("--cyber-access-program", call["argv"], "a probe is no turn and names no program")
             self.assertEqual(call["cwd"], str(work / "cwd"))
             self.assertEqual(call["env"]["HOME"], str(work / "home"))
             self.assertEqual(call["env"]["CODEX_HOME"], str(work / "codex-home"))

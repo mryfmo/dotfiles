@@ -69,11 +69,14 @@
 #   (`cat` and `ls` in the head's tree, `mkdir` in the scratch TMPDIR) succeeded. Either probe failing, an unproven
 #   denial, any other curl status (0, a timeout, 126/127), or a probe that cannot run, is a refusal: the measured
 #   property is a precondition of every run. Then
-#   `codex exec --strict-config --skip-git-repo-check --ephemeral --ignore-rules -C <empty cwd> --output-schema <schema>
-#   -o <verdict JSON> -` reads the prompt, bounded by PR_AUDIT_TIMEOUT seconds. `--ignore-rules` loads no execpolicy
-#   `.rules` file of the caller or the head; `--ignore-user-config` is not passed, since codex-cli 0.164.0 documents it
-#   as "Do not load `$CODEX_HOME/config.toml`", which is the scratch config that selects the audit profile (regime-cutover
-#   U106). Every codex call runs in a session and process group of its own under one
+#   `codex exec --strict-config --skip-git-repo-check --ephemeral --ignore-rules --cyber-access-program standard
+#   -C <empty cwd> --output-schema <schema> -o <verdict JSON> -` reads the prompt, bounded by PR_AUDIT_TIMEOUT seconds.
+#   `--ignore-rules` loads no execpolicy `.rules` file of the caller or the head; `--ignore-user-config` is not passed,
+#   since codex-cli 0.164.0 documents it as "Do not load `$CODEX_HOME/config.toml`", which is the scratch config that
+#   selects the audit profile (regime-cutover U106). The standard cyber access program is requested for the turn
+#   (`--cyber-access-program`, codex-cli 0.166.0), so an account approved for Daybreak is not gated on a hardware-key
+#   session for a turn that needs no Daybreak (it reads a diff and writes a verdict; measured 2026-11-09, regime-cutover
+#   U407). Every codex call runs in a session and process group of its own under one
 #   Python supervisor (`python3 -I -S`, from PATH; none is a refusal) that stops the whole group on its deadline and
 #   on INT, TERM or HUP; the lever forwards those signals to it and exits 128 + the signal's number. The deadline stops
 #   codex's process group on both OSes and every descendant on Linux (the supervisor is the child subreaper); on macOS
@@ -1614,7 +1617,8 @@ verdict=${run}/verdict.md
 codex_started=1
 status=0
 codex_scratch "${audit_timeout}" "${prompt}" "${run}/codex.log" exec --strict-config --skip-git-repo-check --ephemeral \
-    --ignore-rules -C "${work}/cwd" --output-schema "${schema}" -o "${verdict_json}" - || status=$?
+    --ignore-rules --cyber-access-program standard -C "${work}/cwd" --output-schema "${schema}" -o "${verdict_json}" - ||
+    status=$?
 ((status == 0)) || fail "codex exec exited ${status}; its log is ${run}/codex.log"
 [[ -s ${verdict_json} ]] || fail "codex exec wrote no final message to ${verdict_json}; its log is ${run}/codex.log"
 # The reader's status decides (standing order 21): a reader that failed or refused yields no verdict, never a default.

@@ -179,11 +179,13 @@ DSH_HOOKS_SETTINGS = "~/.claude/settings.json"
 # --no-open` and never by the archive's own launcher. Its rows come from the pinned archive: the webserver's loopback
 # bind and the plugin's one required key (examples/profile.cordis.patch.yml, src/deployment.ts:15-16) and the bundles of
 # a Web profile (docs/006-deployment.md "What runs"). Unlike thak, the router keeps the base bundle's bash-sandbox row on
-# (U406): upstream's permission presets refuse a shell executor that does not confine (permission-presets
-# lib/index.js:177, no sandboxMode), and srt stays the seat's outer boundary, so the sandbox runs inside it. The GitHub
-# Source's repository and the accept mode live in the Router's settings store, saved through its Management API
-# (docs/006-deployment.md "Settings"), not in a plugin row (src/deployment.ts:40 refuses unknown keys), so the patch
-# carries them as the data rows a save reads.
+# (U406, U406b): it is the base bundle's only shell provider whose executor carries a sandboxMode, which upstream's
+# permission presets require to activate (permission-presets lib/index.js:177). Under the superagent's presets it runs
+# in `danger-full-access`, the mode that skips sandbox-exec (bash-sandbox lib/index.js), and sandbox-exec cannot apply
+# inside srt on macOS in any case (sandbox_apply refused, measured 2026-11-09), so the seat's one boundary is srt, the
+# 2026-11-06 decision unchanged. The GitHub Source's repository and the accept mode live in the Router's settings store,
+# saved through its Management API (docs/006-deployment.md "Settings"), not in a plugin row (src/deployment.ts:40
+# refuses unknown keys), so the patch carries them as the data rows a save reads.
 DSH_ROUTER_PROFILE = "router"
 DSH_SUPERAGENT_ASSET = "dsh-superagent"
 DSH_SUPERAGENT_PLUGIN = "dsh-superagent"

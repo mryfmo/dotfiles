@@ -201,8 +201,8 @@ ROUTER_DIR = ROOT / "home/dot_dsh/profiles/router"
 
 class DshRouterProfileTest(unittest.TestCase):
     """The router profile: the thak-form rows, the loopback bind, the stateDir under the Router state root, the base
-    bundle's bash-sandbox row left on and no preset restated, no API key, the GitHub Source row as data, and the
-    accept-mode allowlist."""
+    bundle's bash-sandbox row left on as the shell provider the presets require (srt the one boundary) and no preset
+    restated, no API key, the GitHub Source row as data, and the accept-mode allowlist."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -259,11 +259,12 @@ class DshRouterProfileTest(unittest.TestCase):
         self.assertNotIn("hooks-claude-code", self.patch, "the Router mounts no Claude Code hooks")
 
     def test_the_router_keeps_the_base_bundles_bash_sandbox_row_on(self) -> None:
-        """The inverse of the thak profile's `test_the_harness_sandbox_row_is_disabled_by_id` (d15): upstream's
-        permission presets refuse a shell executor that does not confine (`permission-presets` lib/index.js:177, no
-        `sandboxMode`), so the Router's shell needs the confining `bash-sandbox` the base bundle ships enabled off win32;
-        srt stays the seat's outer boundary and the sandbox runs inside it (U406, decisions row 2026-11-09T03:52:16Z).
-        The thak profile's own row (its turn needs no shell) is unchanged."""
+        """The inverse of the thak profile's `test_the_harness_sandbox_row_is_disabled_by_id` (d15): `bash-sandbox` is
+        the base bundle's only shell provider whose executor carries a `sandboxMode`, which upstream's permission
+        presets require to activate (`permission-presets` lib/index.js:177), so the Router keeps it mounted. Under the
+        superagent's presets it runs in `danger-full-access`, the mode without sandbox-exec, and sandbox-exec cannot
+        apply inside srt on macOS anyway (measured 2026-11-09), so the seat's one boundary is srt (U406, U406b). The
+        thak profile's own row (its turn needs no shell) is unchanged."""
         self.assertNotIn("id: bash-sandbox", self.rows, sorted(self.rows))
         self.assertNotIn("bash-sandbox", self.patch)
         self.assertNotIn("dsh-bash-sandbox", self.patch)

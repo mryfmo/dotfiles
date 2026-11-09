@@ -1,0 +1,207 @@
+{
+  "run_id": "dotfiles-sweep-3-run-58",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "1c9dceec3b4e01cef06f6e61391b72ae17279c1a",
+    "branch": "fix/router-profile-bash-sandbox-on",
+    "base": "57e5345a1 (main 49891b8f merged in)",
+    "previous_swept_head": "c19788fe80581834e18583e224e394522f3c1a7b",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U406 change at round 3 (U406c, 1c9dceec: main 49891b8f, where U404 merged as #743 with run-54's code, merged into U406b c19788fe; the comment-block conflict resolved; 57e5345a1..1c9dceec touches home/dot_dsh/profiles/router/cordis.patch.yml, home/dot_dsh/profiles/router/package.json, scripts/generate-agent-configs.py, tests/unit/test_dsh_profile.py), hunted for what the merged tree admits: the plugin as a bundle layer with upstream's presets composed as shipped and bash-sandbox on, under the router row of scripts/orchestrator/hcom-seat; plus the run-57 records carried and re-checked with their lines re-mapped, the two U404 units of run-54 returned",
+  "scope_note": "This is the merged U404 plus U406 tree that runs 54 to 57 named as unswept. Outside .orchestration it equals run-57's c19788fe but in U404's lines (49891b8f equals run-54's 63ce5ded outside .orchestration). The brief names 3 paths for the diff against 57e5345a1; with U404 merged it is 4 (the package.json). The brief's CHANGE carries run-57 while its TRUST names run-53; run-57, which carries run-53's set, is carried.",
+  "scope_paths": [
+    "home/dot_dsh/profiles/router/cordis.patch.yml",
+    "home/dot_dsh/profiles/router/package.json",
+    "scripts/generate-agent-configs.py",
+    "tests/unit/test_dsh_profile.py",
+    "scripts/orchestrator/hcom-seat",
+    "scripts/orchestrator/router-gh",
+    "scripts/orchestrator/router-settings-apply",
+    "scripts/update-agent-assets.sh",
+    "docs/deepseek-harness.md"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent read source, ran git (diff, log, ls-tree), grep and sed over the target, and its own node scripts (ledger builder, output scan) in agents/parent-hunter/scratch/; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-57",
+      "source_ref": "c19788fe80581834e18583e224e394522f3c1a7b",
+      "findings": 0,
+      "unvalidated_candidates": 16,
+      "ledger_units": 148,
+      "use": "Base ledger (U406b); lines re-mapped for the merged comment (+3 after generate-agent-configs.py:188); the shell and Management API leads re-checked on the composed path."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-54",
+      "source_ref": "63ce5ded23145a7da2fef1c84378bdbe1457d25d",
+      "findings": 0,
+      "unvalidated_candidates": 14,
+      "ledger_units": 142,
+      "use": "U404's sweep: its bundle unit (blocked) and test unit return at this head."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-09T05:43:03Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat (probed in run-54 this session; the policy is unchanged), so every phase ran in the parent and sixteen leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. One unit is blocked on the plugin's own patch, outside the repository. The merge produced no new candidate.",
+  "hardening_notes": [
+    "scripts/generate-agent-configs.py:187-188 states that bash-sandbox runs in danger-full-access under the superagent's presets, but no repository source sets that mode (no sandbox-policy row in the router patch, no DSH_PERMISSION_MODE in any file); if the presets do not set it, every Router shell command fails at sandbox_apply (closed).",
+    "scripts/generate-agent-configs.py:182-183, the merged comment, still says the plugin's patch inserts the five superagent entries the patch's rows address; after U406 the rows address one (the plugin row), and four compose unrestated.",
+    "docs/deepseek-harness.md:149-150 still describes the router presets as restated with their sandbox rows disabled (understates confinement).",
+    "scripts/orchestrator/ledger-row.py: the installed copy refuses every call (fails closed; unchanged since run-49)."
+  ],
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-profile/shell:github-input-reaches-a-live-shell-whose-outer-bound-reads-the-agent-token",
+      "where": "home/dot_dsh/profiles/router/package.json:6-12; home/dot_dsh/profiles/router/cordis.patch.yml:9-43; scripts/generate-agent-configs.py:178-191, :2503-2505; scripts/orchestrator/hcom-seat:2216-2220, :2604-2608, :3017-3023",
+      "proposed_verdict": "needs_validation",
+      "u406c": "first head with both halves: the plugin as a bundle layer and the presets with a shell provider"
+    },
+    {
+      "fingerprint": "router-profile/management-api:settings-write-guarded-by-a-fixed-header-alone",
+      "where": "scripts/orchestrator/router-settings-apply:15-16, :73; home/dot_dsh/profiles/router/cordis.patch.yml:24-30",
+      "proposed_verdict": "needs_validation",
+      "u406c": "the API is served at this head"
+    },
+    {
+      "fingerprint": "router-profile/bash-sandbox:nested-seatbelt-refused-under-srt-so-the-confinement-premise-is-unmet",
+      "where": "scripts/generate-agent-configs.py:178-191",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "claim changed at U406b: srt documented as the one boundary"
+    },
+    {
+      "fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off",
+      "where": "home/dot_dsh/profiles/router/cordis.patch.yml:9-43",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "claim changed: no router row disables the harness sandbox"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:450, :3011-3023",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "regime-store/store-root:dsh-and-router-roles-can-read-the-live-store",
+      "where": "scripts/orchestrator/hcom-seat:2594-2598",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "where": "scripts/orchestrator/hcom-seat:774, :2216-2220",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/orchestrator/hcom-seat:2519, :2387-2420; scripts/update-agent-assets.sh:1985",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2473-2478, :2818-2819, :2888-2889",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1914-1935",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:2213, :2238",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "scripts/update-agent-assets.sh:2501",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the token is unset at start (hcom-seat:201) and before the seat environment (:3086)"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the thak profile runs no shell tool (tests/unit/test_dsh_profile.py:169, :271)"
+    }
+  ],
+  "blocked_units": [
+    {
+      "surface": "home/dot_dsh/profiles/router/package.json#dsh.profile.bundles",
+      "blocker": "the plugin's own cordis.patch.yml at pin 8c32a9dc names the four of five entries that compose unrestated at this head (upstream's two presets and two more); outside the repository and this hunt"
+    }
+  ],
+  "leads_on_other_branches": [
+    "U407 (run-56): three covered units, no lead; out_of_scope here (not merged into main 49891b8f)",
+    "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox (U343, run-35)",
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-35)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-35)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; scripts in agents/parent-hunter/scratch/)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "asked whether the merge composes anything neither branch did alone (yes: the presets with a shell provider and the served API, both on existing leads), whether the conflict resolution dropped either unit's row or test (no: both constants, the patch and every test stand), and how many plugin entries now go unreviewed (four of five; the blocked unit records it)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 16,
+  "findings_count": 0,
+  "ledger_units": 148,
+  "ledger_counts": {
+    "covered": 72,
+    "candidate": 16,
+    "blocked": 1,
+    "out_of_scope": 59
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-09T05:46:41Z"
+}

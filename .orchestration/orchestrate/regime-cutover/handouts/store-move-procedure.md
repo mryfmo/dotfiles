@@ -27,17 +27,17 @@ Expected: the first line `ready: <n> live files; the derived store is absent` (a
 7. regime-store-move regime-cutover
 ```
 
-What each line should show:
+What each line should show, where its behaviour is defined (`source`) and how it was run before you run it (`dry-run`; standing order 5):
 
-| line | expected | if not |
-| --- | --- | --- |
-| 1 | `regime-stop --all` exits 0; `hcom list -v` lists no seat as listening or active | stop the remaining seat by name (`hcom kill <name> --go`) before line 2 |
-| 2 | no output, exit 0 | do not continue; the destination is removed with `rm -rf ~/.local/state/regime-store/dotfiles/regime-cutover` and the live store is untouched |
-| 3 | no diff line; the count equals `<n>` from step 0 | the copy is incomplete: remove the destination as above and rerun line 2 |
-| 4 | no output; `git -C ~/Workspace/dotfiles status --porcelain -- .orchestration/orchestrate/regime-cutover` shows only `??` lines | a modified tracked file left means line 4 failed; rerun it |
-| 5 | one `Removing ...` line per untracked record; the status above is then empty | rerun line 5 |
-| 6 | `Updating ba051b0d..62e682f3` (or a later main) and `Fast-forward`; 58 or more commits | a refusal names local changes; paste it to the next session, nothing is lost (the derived store holds every record) |
-| 7 | `moved: the derived store holds <n> files; the checkout store is clean against HEAD` | paste the message to the next session |
+| line | expected | if not | source | dry-run |
+| --- | --- | --- | --- | --- |
+| 1 | `regime-stop --all` exits 0; `hcom list -v` lists no seat as listening or active | stop the remaining seat by name (`hcom kill <name> --go`) before line 2 | `scripts/orchestrator/regime-store-move:270` prints the line; `regime-stop` (`regime-start --stop --all`) stops every seat of the store | operator-only: the line ends every coordinator process, this session included, so no agent can run it and observe the result; `hcom kill zilu --go` was run by the coordinator at 15:05Z on the idle seat (exit 0, `hcom list` then showed two seats) |
+| 2 | no output, exit 0 | do not continue; the destination is removed with `rm -rf ~/.local/state/regime-store/dotfiles/regime-cutover` and the live store is untouched | `regime-store-move:271` prints the line; `cp -a` keeps modes and times, `chmod -R go-rwx` leaves the kit's 0700 (U221e, verdict U221-af547232 P1) | `tests/unit/test_regime_store_move.py:404` (`test_the_printed_procedure_run_as_written_ends_with_the_lever_reporting_moved`) runs lines 2 to 6 by `sh -c` against a scratch checkout under a scratch HOME and asserts exit 0 each; green at 62e682f3 (the U393 report: Ran 10 tests OK) and in CI at that head |
+| 3 | no diff line; the count equals `<n>` from step 0 | the copy is incomplete: remove the destination as above and rerun line 2 | `regime-store-move:272` prints the line with the count it walked (`find -type f`, the same walk) | the same test asserts line 3's output is the fixture's count alone (`:423`, `["6"]`) |
+| 4 | no output; `git -C ~/Workspace/dotfiles status --porcelain -- .orchestration/orchestrate/regime-cutover` shows only `??` lines | a modified tracked file left means line 4 failed; rerun it | `regime-store-move:273`; `git checkout -- <path>` restores tracked files to HEAD (git-checkout(1)) | the same test runs it against the fixture's dirtied store and the post-move run then reads the subtree clean |
+| 5 | one `Removing ...` line per untracked record; the status above is then empty | rerun line 5 | `regime-store-move:274`; `git clean -fd -- <path>` removes untracked files and directories under the path alone (git-clean(1)) | the same test runs it against the fixture's untracked `redact-words.txt` |
+| 6 | `Updating ba051b0d..62e682f3` (or a later main) and `Fast-forward`; 58 or more commits | a refusal names local changes; paste it to the next session, nothing is lost (the derived store holds every record) | `regime-store-move:275`; `git pull --ff-only` refuses anything but a fast-forward (git-pull(1)); the checkout guard admits a move to a commit origin holds (U219) | the same test runs it against the fixture's bare origin; on this host `git merge-base --is-ancestor HEAD origin/main` was true at 15:03Z and the tree outside the store held untracked agent directories only (no tracked change), read by the coordinator |
+| 7 | `moved: the derived store holds <n> files; the checkout store is clean against HEAD` | paste the message to the next session | `regime-store-move:276`; the post-move branch of the lever judges `git status --porcelain` of the store subtree (U221d test (c), `test_regime_store_move.py:440`) | the same test's final assertion, and `test_a_derived_store_present_reports_moved_when_the_checkout_store_is_clean_and_refuses_when_it_is_not` for the dirty case |
 
 ## After line 7 (the coordinator's next session does these; nothing for you)
 

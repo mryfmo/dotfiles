@@ -178,19 +178,22 @@ DSH_HOOKS_SETTINGS = "~/.claude/settings.json"
 # The kit's second harness profile (regime-cutover U317): the dsh-superagent Router, started by `hcom-seat router --
 # --no-open` and never by the archive's own launcher. Its rows come from the pinned archive: the webserver's loopback
 # bind and the plugin's one required key (examples/profile.cordis.patch.yml, src/deployment.ts:15-16) and the bundles of
-# a Web profile (docs/006-deployment.md "What runs"). Unlike thak, the router keeps the base bundle's bash-sandbox row on
-# (U406, U406b): it is the base bundle's only shell provider whose executor carries a sandboxMode, which upstream's
-# permission presets require to activate (permission-presets lib/index.js:177). Under the superagent's presets it runs
-# in `danger-full-access`, the mode that skips sandbox-exec (bash-sandbox lib/index.js), and sandbox-exec cannot apply
-# inside srt on macOS in any case (sandbox_apply refused, measured 2026-11-09), so the seat's one boundary is srt, the
-# 2026-11-06 decision unchanged. The GitHub Source's repository and the accept mode live in the Router's settings store,
-# saved through its Management API (docs/006-deployment.md "Settings"), not in a plugin row (src/deployment.ts:40
-# refuses unknown keys), so the patch carries them as the data rows a save reads.
+# a Web profile (docs/006-deployment.md "What runs"). The superagent plugin is listed as a bundle as well as a `link:`
+# dependency (U404): dsh composes the bundle layers in `dsh.profile.bundles` order before the profile patch, so the
+# plugin's own cordis.patch.yml inserts the five superagent entries the patch's rows address; `dsh plugin add` writes
+# both the dependency and the bundle, and so does this renderer. Unlike thak, the router keeps the base bundle's
+# bash-sandbox row on (U406, U406b): it is the base bundle's only shell provider whose executor carries a sandboxMode,
+# which upstream's permission presets require to activate (permission-presets lib/index.js:177). Under the superagent's
+# presets it runs in `danger-full-access`, the mode that skips sandbox-exec (bash-sandbox lib/index.js), and
+# sandbox-exec cannot apply inside srt on macOS in any case (sandbox_apply refused, measured 2026-11-09), so the seat's
+# one boundary is srt, the 2026-11-06 decision unchanged. The GitHub Source's repository and the accept mode live in the
+# Router's settings store, saved through its Management API (docs/006-deployment.md "Settings"), not in a plugin row
+# (src/deployment.ts:40 refuses unknown keys), so the patch carries them as the data rows a save reads.
 DSH_ROUTER_PROFILE = "router"
 DSH_SUPERAGENT_ASSET = "dsh-superagent"
 DSH_SUPERAGENT_PLUGIN = "dsh-superagent"
 DSH_SUPERAGENT_LINK = "link:../../plugins/dsh-superagent"
-DSH_ROUTER_BUNDLES = ("@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app")
+DSH_ROUTER_BUNDLES = ("@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", DSH_SUPERAGENT_PLUGIN)
 DSH_ROUTER_WEBSERVER = {"host": "127.0.0.1", "port": 3082}
 # The Router's state root (regime-cutover U317b): `$DSH_HOME/router-state`, inside the dsh role's one write root
 # (hcom-seat seat_write_roots: DSH_HOME, exported into the dsh child as DSH_HOME), so the sandboxed launch can create

@@ -327,13 +327,17 @@ class DshRouterProfileTest(unittest.TestCase):
     def test_the_package_links_the_bundle_and_the_gateway_over_the_web_profiles_bundles(self) -> None:
         self.assertEqual("router", self.package["name"])
         self.assertIs(True, self.package["private"])
-        self.assertEqual(
-            {"manifestVersion": 1, "profile": {"bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"]}},
-            self.package["dsh"],
-        )
+        # U404: the composed tree holds the superagent entries only when the plugin is a bundle layer, so the bundle
+        # list carries the plugin's name after the Web profile's two, and that name is a key of the package's
+        # dependencies (the bundle the profile composes is the one the updater installs).
+        bundles = ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-superagent"]
+        self.assertEqual({"manifestVersion": 1, "profile": {"bundles": bundles}}, self.package["dsh"])
         self.assertEqual(
             {"dsh-superagent": "link:../../plugins/dsh-superagent", GATEWAY_PLUGIN: "link:../../plugins/omp-gateway"},
             self.package["dependencies"],
+        )
+        self.assertIn(
+            bundles[2], self.package["dependencies"], "the third bundle is the link: dependency the updater installs"
         )
         self.assertEqual("~/.dsh/plugins/dsh-superagent", self.asset["install_path"])
         self.assertEqual("scripts/update-agent-assets.sh#update_dsh_superagent", self.asset["installer"])

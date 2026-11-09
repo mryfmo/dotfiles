@@ -175,19 +175,20 @@ DSH_GATEWAY_LINK = "link:../../plugins/omp-gateway"
 # The DeepSeek harness plan's names: the kit's one profile and the Claude Code settings file whose hooks it mounts.
 DSH_PROFILE = "thak"
 DSH_HOOKS_SETTINGS = "~/.claude/settings.json"
-# The kit's second harness profile (regime-cutover U317): the dsh-superagent Router, started by `hcom-seat dsh --profile
-# router` and never by the archive's own launcher. Its rows come from the pinned archive: the webserver's loopback bind
-# and the plugin's one required key (examples/profile.cordis.patch.yml, src/deployment.ts:15-16), the bundles of a Web
-# profile (docs/006-deployment.md "What runs"), and the two agent presets the bundle inserts, restated whole with their
-# bash-sandbox rows disabled: the include's patch dialect replaces a row's config and addresses no row inside a
-# preset's plugin list (@deepseek-ai/cordis-plugin-include src/index.ts:66-73,120-123), so a sandbox row inside a
-# preset can be turned off only by restating the preset. The GitHub Source's repository and the accept mode live in
-# the Router's settings store, saved through its Management API (docs/006-deployment.md "Settings"), not in a plugin
-# row (src/deployment.ts:40 refuses unknown keys), so the patch carries them as the data rows a save reads. The
-# superagent plugin is listed as a bundle as well as a `link:` dependency (U404): dsh composes the bundle layers in
-# `dsh.profile.bundles` order before the profile patch, so the plugin's own cordis.patch.yml inserts the five superagent
-# entries the patch's rows address; `dsh plugin add` writes both the dependency and the bundle, and so does this
-# renderer.
+# The kit's second harness profile (regime-cutover U317): the dsh-superagent Router, started by `hcom-seat router --
+# --no-open` and never by the archive's own launcher. Its rows come from the pinned archive: the webserver's loopback
+# bind and the plugin's one required key (examples/profile.cordis.patch.yml, src/deployment.ts:15-16) and the bundles of
+# a Web profile (docs/006-deployment.md "What runs"). The superagent plugin is listed as a bundle as well as a `link:`
+# dependency (U404): dsh composes the bundle layers in `dsh.profile.bundles` order before the profile patch, so the
+# plugin's own cordis.patch.yml inserts the five superagent entries the patch's rows address; `dsh plugin add` writes
+# both the dependency and the bundle, and so does this renderer. Unlike thak, the router keeps the base bundle's
+# bash-sandbox row on (U406, U406b): it is the base bundle's only shell provider whose executor carries a sandboxMode,
+# which upstream's permission presets require to activate (permission-presets lib/index.js:177). Under the superagent's
+# presets it runs in `danger-full-access`, the mode that skips sandbox-exec (bash-sandbox lib/index.js), and
+# sandbox-exec cannot apply inside srt on macOS in any case (sandbox_apply refused, measured 2026-11-09), so the seat's
+# one boundary is srt, the 2026-11-06 decision unchanged. The GitHub Source's repository and the accept mode live in the
+# Router's settings store, saved through its Management API (docs/006-deployment.md "Settings"), not in a plugin row
+# (src/deployment.ts:40 refuses unknown keys), so the patch carries them as the data rows a save reads.
 DSH_ROUTER_PROFILE = "router"
 DSH_SUPERAGENT_ASSET = "dsh-superagent"
 DSH_SUPERAGENT_PLUGIN = "dsh-superagent"
@@ -201,9 +202,6 @@ DSH_ROUTER_STATE_DIR = "router-state"
 DSH_ACCEPT_MODES = ("off", "observe", "auto")
 DSH_SOURCE_REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 DSH_LADDER_ROW_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
-DSH_PRESET_PLUGIN = "@deepseek-ai/dsh-agent-preset"
-DSH_WORKER_PRESET = "dsh-superagent-worker-preset"
-DSH_ROUTER_PRESET = "dsh-superagent-router-preset"
 # The plan's base profile: the shipped bundle whose patch already turns the HMR, credentials and account rows off.
 DSH_BASE_PROFILE = "headless"
 OMP_RETIRED_ROUTES = ("openai-codex",)
@@ -2415,182 +2413,6 @@ def dsh_gateway_insert(dsh: dict[str, dict[str, Any]]) -> list[str]:
     ]
 
 
-class Js:
-    """A `!!js` scalar of the include's entry-list dialect (cordis-plugin-include `entryListSchema`): the expression
-    text, printed verbatim and evaluated by the Loader at entry activation."""
-
-    def __init__(self, expression: str) -> None:
-        self.expression = expression
-
-
-YAML_PLAIN_SCALAR = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_./-]*$")
-
-
-def patch_scalar(value: Any) -> str:
-    if isinstance(value, Js):
-        return f"!!js {value.expression}"
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, str) and YAML_PLAIN_SCALAR.fullmatch(value):
-        return value
-    if isinstance(value, str):
-        return "'" + value.replace("'", "''") + "'"
-    fail(f"unsupported patch scalar: {value!r}")
-
-
-def patch_block(value: Any, indent: int) -> list[str]:
-    """`value` as block YAML at `indent` columns: a mapping one key per line, a sequence one `- ` per item, a nested
-    mapping or sequence under its key two columns deeper (the layout the archive's cordis.patch.yml uses)."""
-    pad = " " * indent
-    lines: list[str] = []
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if isinstance(item, (dict, list)):
-                if not item:
-                    fail(f"empty patch value under {key}")
-                lines.append(f"{pad}{key}:")
-                lines += patch_block(item, indent + 2)
-            else:
-                lines.append(f"{pad}{key}: {patch_scalar(item)}")
-        return lines
-    if isinstance(value, list):
-        for item in value:
-            if isinstance(item, dict):
-                nested = patch_block(item, indent + 2)
-                lines.append(f"{pad}- {nested[0][indent + 2 :]}")
-                lines += nested[1:]
-            else:
-                lines.append(f"{pad}- {patch_scalar(item)}")
-        return lines
-    fail(f"unsupported patch value: {value!r}")
-
-
-def dsh_superagent_shell_group() -> dict[str, Any]:
-    """The presets' shell group as the archive's cordis.patch.yml defines it (a foreground command moves to a background
-    job after 5 s), with the bash-sandbox row disabled: the seat boundary is srt, and a second sandbox inside it is the
-    row the thak profile already turns off."""
-    limits = {"timeoutMs": 5000, "maxTimeoutMs": 5000}
-    return {
-        "id": "shell",
-        "name": "cordis:group",
-        "group": True,
-        "isolate": {"shell": True},
-        "config": [
-            {"id": "bash-sandbox", "name": "@deepseek-ai/dsh-bash-sandbox", "disabled": True, "config": dict(limits)},
-            {
-                "id": "pwsh-sandbox",
-                "name": "@deepseek-ai/dsh-pwsh-sandbox",
-                "disabled": Js("process.platform !== 'win32'"),
-                "config": dict(limits),
-            },
-            {"id": "tool-bash", "name": "@deepseek-ai/dsh-tool-bash", "disabled": Js("process.platform === 'win32'")},
-            {"id": "tool-pwsh", "name": "@deepseek-ai/dsh-tool-pwsh", "disabled": Js("process.platform !== 'win32'")},
-        ],
-    }
-
-
-def dsh_superagent_compaction_group() -> dict[str, Any]:
-    return {
-        "id": "compaction",
-        "name": "cordis:group",
-        "group": True,
-        "isolate": {"compaction": True, "toolResultPruner": True},
-        "config": [
-            {"id": "compaction-basic", "name": "@deepseek-ai/dsh-compaction-basic"},
-            {"id": "command-compact", "name": "@deepseek-ai/dsh-command-compact"},
-            {
-                "id": "tool-result-pruner",
-                "name": "@deepseek-ai/dsh-compaction-tool-result-pruner",
-                "config": {"thresholdChars": 8192, "headChars": 4096, "tailChars": 1024},
-            },
-        ],
-    }
-
-
-def dsh_superagent_presets() -> dict[str, dict[str, Any]]:
-    """The two agent presets of the pinned archive's cordis.patch.yml (WORKER_PRESET and ROUTER_PRESET of its
-    src/app/sessions.ts), row for row, with the shell group above. A pin bump re-reads them from the new archive."""
-    worker = {
-        "id": "dsh-superagent-worker",
-        "name": "dsh-superagent 执行器",
-        "description": "dsh-superagent 的执行器 Session 专用，不供手动选择。前台命令超 5 秒转入后台，只含执行工作所需的工具。",
-        "order": 90,
-        "plugins": [
-            {
-                "id": "persona",
-                "name": "@deepseek-ai/dsh-persona",
-                "config": {"prefix": "You are a coding agent powered by the {{model}} model."},
-            },
-            {"id": "agent-instructions", "name": "@deepseek-ai/dsh-agent-instructions", "config": {"maxBytes": 65536}},
-            {"id": "time-context", "name": "@deepseek-ai/dsh-time-context"},
-            dsh_superagent_shell_group(),
-            {"id": "tool-fs", "name": "@deepseek-ai/dsh-tool-fs"},
-            {
-                "id": "tool-fs-search",
-                "name": "@deepseek-ai/dsh-tool-fs-search",
-                "config": {"sampleOverCapGlobResults": False},
-            },
-            {
-                "id": "tool-jobs",
-                "name": "@deepseek-ai/dsh-tool-jobs",
-                "config": {"waitTimeoutMs": 5000, "maxWaitTimeoutMs": 5000},
-            },
-            {"id": "skill-filesystem", "name": "@deepseek-ai/dsh-skill-filesystem"},
-            {"id": "tool-skill", "name": "@deepseek-ai/dsh-tool-skill"},
-            dsh_superagent_compaction_group(),
-            {
-                "id": "delegation",
-                "name": "cordis:group",
-                "group": True,
-                "isolate": {"workflowEngine": True},
-                "config": [
-                    {"id": "tool-subagent-control", "name": "@deepseek-ai/dsh-tool-subagent-control"},
-                    {
-                        "id": "tool-subagent",
-                        "name": "@deepseek-ai/dsh-tool-subagent",
-                        "config": {
-                            "provider": "spawn",
-                            "toolName": "subagent",
-                            "modelSelection": True,
-                            "modelDiscovery": True,
-                            "agentPreset": "standard",
-                        },
-                    },
-                ],
-            },
-            {"id": "tool-todo", "name": "@deepseek-ai/dsh-tool-todo", "config": {"allowParallelInProgress": True}},
-            {
-                "id": "tool-web",
-                "name": "@deepseek-ai/dsh-tool-web",
-                "config": {"fetch": False, "searchTimeoutMs": 60000},
-            },
-        ],
-    }
-    router = {
-        "id": "dsh-superagent-router",
-        "name": "dsh-superagent 主 Session",
-        "description": "dsh-superagent 的主 Session 专用，不供手动选择。前台命令和任务等待超 5 秒转入后台，只含路由所需的工具。",
-        "order": 91,
-        "plugins": [
-            {"id": "agent-instructions", "name": "@deepseek-ai/dsh-agent-instructions", "config": {"maxBytes": 65536}},
-            {"id": "time-context", "name": "@deepseek-ai/dsh-time-context"},
-            dsh_superagent_shell_group(),
-            {"id": "tool-fs", "name": "@deepseek-ai/dsh-tool-fs", "config": {"write": False, "edit": False}},
-            {
-                "id": "tool-jobs",
-                "name": "@deepseek-ai/dsh-tool-jobs",
-                "config": {"waitTimeoutMs": 5000, "maxWaitTimeoutMs": 5000},
-            },
-            {"id": "skill-filesystem", "name": "@deepseek-ai/dsh-skill-filesystem"},
-            {"id": "tool-skill", "name": "@deepseek-ai/dsh-tool-skill"},
-            dsh_superagent_compaction_group(),
-        ],
-    }
-    return {DSH_WORKER_PRESET: worker, DSH_ROUTER_PRESET: router}
-
-
 def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
     """The superagent asset's GitHub Source row, each value compared with its fixed set: the repository against
     `owner/name`, the accept mode against the three the upstream Policy knows (src/policy.ts:84), `auto` only with the
@@ -2622,11 +2444,12 @@ def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
 
 def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
     """The dsh-superagent Router profile (U317): its package.json (the Web profile's bundles, the superagent bundle and
-    the omp-gateway plugin as link: dependencies the updater installs) and its cordis patch: the thak rows (the session
-    log upload off, the official API and API-key rows disabled, the base sandbox row disabled, the default model on the
-    gateway provider), the webserver's loopback bind, the plugin's stateDir under $DSH_HOME (the dsh write root), the two
-    presets restated with their sandbox rows disabled, the GitHub Source row as data, and the gateway insert. A
-    manifest whose profiles name no dsh model renders no profile, like the thak renderer."""
+    the omp-gateway plugin as link: dependencies the updater installs) and its cordis patch: the thak-form rows (the
+    session log upload off, the official API and API-key rows disabled, the default model on the gateway provider),
+    the webserver's loopback bind, the plugin's stateDir under $DSH_HOME (the dsh write root), the GitHub Source row as
+    data, and the gateway insert. Unlike thak, the router keeps the base bundle's bash-sandbox row on (U406): upstream's
+    permission presets need a confining executor, and srt stays the seat's outer boundary. A manifest whose profiles
+    name no dsh model renders no profile, like the thak renderer."""
     dsh = {name: profile["dsh"] for name, profile in model_profiles(manifest).items() if "dsh" in profile}
     if not dsh:
         return {}
@@ -2666,8 +2489,6 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
         "  disabled: true",
         "- id: web-deepseek-api",
         "  disabled: true",
-        "- id: bash-sandbox",
-        "  disabled: true",
         "- id: agent-default-model",
         "  config:",
         f"    provider: {DSH_GATEWAY_PROVIDER}",
@@ -2680,8 +2501,8 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
         "  config:",
         f"    stateDir: !!js process.env.DSH_HOME + '/{DSH_ROUTER_STATE_DIR}'",
     ]
-    for preset_id, preset in dsh_superagent_presets().items():
-        lines += [f"- id: {preset_id}", f"  name: '{DSH_PRESET_PLUGIN}'", "  config:", *patch_block(preset, 4)]
+    # No bash-sandbox row and no preset row (U406): the base bundle's sandbox stays on, and upstream's bundle layer
+    # inserts the two agent presets as shipped.
     lines += ["- insert:", *dsh_gateway_insert(dsh)]
     profile_dir = ROOT / "home/dot_dsh/profiles" / DSH_ROUTER_PROFILE
     return {

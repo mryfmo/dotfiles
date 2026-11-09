@@ -199,28 +199,10 @@ class DshProfileTest(unittest.TestCase):
 ROUTER_DIR = ROOT / "home/dot_dsh/profiles/router"
 
 
-def sandbox_rows(patch: str) -> list[list[str]]:
-    """Every `- id: bash-sandbox` row of the patch, at any depth, with the lines of its block (until the next item at
-    the same indentation or a shallower line)."""
-    lines = patch.splitlines()
-    found: list[list[str]] = []
-    for index, line in enumerate(lines):
-        if line.strip() != "- id: bash-sandbox":
-            continue
-        indent = len(line) - len(line.lstrip())
-        block = [line]
-        for later in lines[index + 1 :]:
-            depth = len(later) - len(later.lstrip())
-            if depth < indent or (depth == indent and later.lstrip().startswith("- ")):
-                break
-            block.append(later)
-        found.append(block)
-    return found
-
-
 class DshRouterProfileTest(unittest.TestCase):
-    """The router profile: the thak rows, the loopback bind, the stateDir under the Router state root, every
-    bash-sandbox row disabled, no API key, the GitHub Source row as data, and the accept-mode allowlist."""
+    """The router profile: the thak-form rows, the loopback bind, the stateDir under the Router state root, the base
+    bundle's bash-sandbox row left on as the shell provider the presets require (srt the one boundary) and no preset
+    restated, no API key, the GitHub Source row as data, and the accept-mode allowlist."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -276,15 +258,41 @@ class DshRouterProfileTest(unittest.TestCase):
         self.assertEqual(inserted(rows(self.thak)["insert:"])["omp-gateway"], self.plugins["omp-gateway"])
         self.assertNotIn("hooks-claude-code", self.patch, "the Router mounts no Claude Code hooks")
 
-    def test_every_bash_sandbox_row_is_disabled(self) -> None:
-        blocks = sandbox_rows(self.patch)
-        # The base row and one inside each of the two presets (the shell groups).
-        self.assertEqual(3, len(blocks), [block[0] for block in blocks])
-        for block in blocks:
-            self.assertIn("disabled: true", [line.strip() for line in block], block)
-        self.assertEqual(2, self.patch.count("name: '@deepseek-ai/dsh-bash-sandbox'"))
+    def test_the_router_keeps_the_base_bundles_bash_sandbox_row_on(self) -> None:
+        """The inverse of the thak profile's `test_the_harness_sandbox_row_is_disabled_by_id` (d15): `bash-sandbox` is
+        the base bundle's only shell provider whose executor carries a `sandboxMode`, which upstream's permission
+        presets require to activate (`permission-presets` lib/index.js:177), so the Router keeps it mounted. Under the
+        superagent's presets it runs in `danger-full-access`, the mode without sandbox-exec, and sandbox-exec cannot
+        apply inside srt on macOS anyway (measured 2026-11-09), so the seat's one boundary is srt (U406, U406b). The
+        thak profile's own row (its turn needs no shell) is unchanged."""
+        self.assertNotIn("id: bash-sandbox", self.rows, sorted(self.rows))
+        self.assertNotIn("bash-sandbox", self.patch)
+        self.assertNotIn("dsh-bash-sandbox", self.patch)
+        self.assertIn("- id: bash-sandbox\n  disabled: true\n", self.thak, "d15's thak row stands")
+
+    def test_no_preset_row_is_restated(self) -> None:
+        # Upstream's bundle layer (~/.dsh/plugins/dsh-superagent/cordis.patch.yml) inserts the two agent presets with
+        # their bash-sandbox rows disabled on win32 alone; the kit restated them (U317) only to turn those rows off,
+        # so once the sandbox stays on no preset row of any kind remains and the composed tree carries upstream's.
         for preset in ("dsh-superagent-worker-preset", "dsh-superagent-router-preset"):
-            self.assertIn(f"- id: {preset}\n  name: '@deepseek-ai/dsh-agent-preset'\n  config:\n", self.patch)
+            self.assertNotIn(f"id: {preset}", self.rows, sorted(self.rows))
+        self.assertNotIn("preset", self.patch)
+
+    def test_the_rows_are_the_thak_form_rows_the_webserver_the_state_dir_and_the_gateway_insert_in_order(self) -> None:
+        self.assertEqual(
+            [
+                "id: session-log-deepseek",
+                "id: llm-deepseek",
+                "id: llm-deepseek-account",
+                "id: web-search-deepseek",
+                "id: web-deepseek-api",
+                "id: agent-default-model",
+                "id: webserver",
+                "id: dsh-superagent",
+                "insert:",
+            ],
+            list(self.rows),
+        )
 
     def test_no_api_key_row_is_enabled_and_no_model_id_outside_model_profiles(self) -> None:
         for name, text in (("cordis.patch.yml", self.patch), ("package.json", json.dumps(self.package))):
@@ -333,46 +341,6 @@ class DshRouterProfileTest(unittest.TestCase):
         )
         self.assertEqual("~/.dsh/plugins/dsh-superagent", self.asset["install_path"])
         self.assertEqual("scripts/update-agent-assets.sh#update_dsh_superagent", self.asset["installer"])
-
-    def test_the_presets_restate_the_archives_rows_with_the_sandbox_off(self) -> None:
-        # The names upstream's tests/bundle-patch.spec.ts asserts for each preset, and the ones it refuses.
-        generator = load_generator()
-        presets = generator.dsh_superagent_presets()
-
-        def flat(entries: list[dict]) -> list[dict]:
-            return [row for entry in entries for row in [entry, *(flat(entry["config"]) if entry.get("group") else [])]]
-
-        worker = flat(presets["dsh-superagent-worker-preset"]["plugins"])
-        router = flat(presets["dsh-superagent-router-preset"]["plugins"])
-        names = lambda entries: [row["name"] for row in entries]  # noqa: E731
-        for name in (
-            "@deepseek-ai/dsh-tool-fs",
-            "@deepseek-ai/dsh-tool-fs-search",
-            "@deepseek-ai/dsh-tool-bash",
-            "@deepseek-ai/dsh-tool-skill",
-            "@deepseek-ai/dsh-tool-todo",
-            "@deepseek-ai/dsh-tool-subagent",
-            "@deepseek-ai/dsh-tool-subagent-control",
-            "@deepseek-ai/dsh-compaction-basic",
-            "@deepseek-ai/dsh-compaction-tool-result-pruner",
-            "@deepseek-ai/dsh-agent-instructions",
-        ):
-            self.assertIn(name, names(worker))
-        for name in ("@deepseek-ai/dsh-tool-subagent", "@deepseek-ai/dsh-tool-web", "@deepseek-ai/dsh-tool-fs-search"):
-            self.assertNotIn(name, names(router))
-        self.assertEqual(
-            [{"write": False, "edit": False}], [r["config"] for r in router if r["name"] == "@deepseek-ai/dsh-tool-fs"]
-        )
-        for entries in (worker, router):
-            sandbox = [row for row in entries if row["name"] == "@deepseek-ai/dsh-bash-sandbox"]
-            self.assertEqual([True], [row["disabled"] for row in sandbox])
-            self.assertEqual([{"timeoutMs": 5000, "maxTimeoutMs": 5000}], [row["config"] for row in sandbox])
-            pwsh = [row for row in entries if row["name"] == "@deepseek-ai/dsh-pwsh-sandbox"]
-            self.assertEqual(["process.platform !== 'win32'"], [row["disabled"].expression for row in pwsh])
-        self.assertEqual(
-            (90, 91),
-            (presets["dsh-superagent-worker-preset"]["order"], presets["dsh-superagent-router-preset"]["order"]),
-        )
 
     def test_the_accept_mode_allowlist_refuses_auto_without_its_row_and_unknown_keys_by_name(self) -> None:
         generator = load_generator()

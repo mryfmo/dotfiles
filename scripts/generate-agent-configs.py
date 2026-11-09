@@ -183,12 +183,16 @@ DSH_HOOKS_SETTINGS = "~/.claude/settings.json"
 # preset's plugin list (@deepseek-ai/cordis-plugin-include src/index.ts:66-73,120-123), so a sandbox row inside a
 # preset can be turned off only by restating the preset. The GitHub Source's repository and the accept mode live in
 # the Router's settings store, saved through its Management API (docs/006-deployment.md "Settings"), not in a plugin
-# row (src/deployment.ts:40 refuses unknown keys), so the patch carries them as the data rows a save reads.
+# row (src/deployment.ts:40 refuses unknown keys), so the patch carries them as the data rows a save reads. The
+# superagent plugin is listed as a bundle as well as a `link:` dependency (U404): dsh composes the bundle layers in
+# `dsh.profile.bundles` order before the profile patch, so the plugin's own cordis.patch.yml inserts the five superagent
+# entries the patch's rows address; `dsh plugin add` writes both the dependency and the bundle, and so does this
+# renderer.
 DSH_ROUTER_PROFILE = "router"
 DSH_SUPERAGENT_ASSET = "dsh-superagent"
 DSH_SUPERAGENT_PLUGIN = "dsh-superagent"
 DSH_SUPERAGENT_LINK = "link:../../plugins/dsh-superagent"
-DSH_ROUTER_BUNDLES = ("@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app")
+DSH_ROUTER_BUNDLES = ("@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", DSH_SUPERAGENT_PLUGIN)
 DSH_ROUTER_WEBSERVER = {"host": "127.0.0.1", "port": 3082}
 # The Router's state root (regime-cutover U317b): `$DSH_HOME/router-state`, inside the dsh role's one write root
 # (hcom-seat seat_write_roots: DSH_HOME, exported into the dsh child as DSH_HOME), so the sandboxed launch can create

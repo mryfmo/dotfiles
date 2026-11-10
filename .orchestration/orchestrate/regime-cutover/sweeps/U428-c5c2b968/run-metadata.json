@@ -1,0 +1,267 @@
+{
+  "run_id": "dotfiles-sweep-3-run-71",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "c5c2b968a38958a12b5de097a43da274f0afd343",
+    "branch": "feat/acp-broker-lever",
+    "pull_request": 720,
+    "base": "fd3db1b339e930848f004f8404ad358f244fbe76",
+    "previous_swept_head": "fd3db1b339e930848f004f8404ad358f244fbe76",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: unit U343o (PR 720, round 12 of U343 on the round-11 head fd3db1b3; fd3db1b3..c5c2b968, one commit, 6 paths, +505 -180: scripts/orchestrator/acp-broker and its copy home/dot_local/bin/common/executable_acp-broker, the pin in home/dot_agents/agent-config.yaml and scripts/generated-agent-outputs.json, scripts/orchestrator/README.md, tests/unit/test_acp_broker.py). Hunted: the new connection lifecycle (the control and ready FIFOs made and opened before the fork, the reaper forked the moment the slot exists and the remover of the slot in every path of its own, the bounded ready read, what a handler death at each point leaves behind), the new launch-log directory <seats-root>/.state/broker-logs (its mode, its parent, whether any seat's settings can reach it, the header-name refusal), and whether any carried record cites a changed or shifted line. Every record of run-70 (fd3db1b3) is carried and re-checked at this head with the cites of the changed paths re-mapped; every other path is out of scope at this head.",
+  "scope_paths": [
+    "scripts/orchestrator/acp-broker",
+    "home/dot_local/bin/common/executable_acp-broker",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_acp_broker.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-70",
+      "source_ref": "fd3db1b339e930848f004f8404ad358f244fbe76",
+      "findings": 0,
+      "unvalidated_candidates": 20,
+      "ledger_units": 197,
+      "run_status": "incomplete",
+      "use": "Base ledger: this branch, the previous swept head of PR 720 (U427, sweeps/U427-fd3db1b3) and this seat's previous run; every unit carried, the cites of the six changed paths re-mapped through U343o."
+    },
+    {
+      "path": "~/.local/state/regime-store/dotfiles/regime-cutover/verdicts/U343n-fd3db1b3.md",
+      "source_ref": "fd3db1b339e930848f004f8404ad358f244fbe76",
+      "use": "The review verdict at the round-11 head (the brief names verdicts/U343j-fd3db1b3.md, which does not exist; U343n-fd3db1b3.md, byte-equal to U343-fd3db1b3.md, is the verdict at fd3db1b3): nine filed rows, three of them the P1 rows U343o answers, each re-checked at this head."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-10T14:33:28Z",
+  "run_status": "incomplete",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent read source, records and verdict U343n-fd3db1b3. It ran read-only git (rev-parse, log, diff --no-ext-diff, diff --stat, show, status), grep, sed, awk, cmp and shasum over the target, and its own node scripts in agents/parent-hunter/scratch/ (line map, re-mapper, ledger builder, metadata and report builders, output scan). Every ledger check is a source check. Only the scanner reads the redact list, and it prints counts.",
+  "scope_note": "Carry: run-70 is this seat's previous run (U427) and swept fd3db1b3, the previous swept head of PR 720. Every run-70 unit is carried. The cites of the six changed paths are re-mapped by a git diff -U0 line map (agents/parent-hunter/scratch/analyze.cjs, remap.cjs) that checks each mapped line has the same text at both heads and refuses a line past a file's end: 496 cites moved in the ledger build. 38 cites in 15 units name a line U343o changed; they are kept as written with \"at fd3db1b3\", and each of those units has a parent re-check at c5c2b968 stating the current lines. The parent read every bare cite the re-mapper gave a changed file after prose or a closed parenthesis naming another file (remap-suspect.out): 21 are kept as written (remap.cjs HOLD): 20 name lines of hcom-seat, acp-relay.py or acp-seat, and one is a line literal quoted in a test docstring; 6 bare cites in two README units name acp-broker lines of an older head, past the README's end, and are kept as written (remap-past.out). Earlier runs' parent re-check lines are kept as run-70 left them, their cites at fd3db1b3. run-70's U343m unit cites test lines at 3e25e940 and CPython's subprocess.py lines by label, so it is carried verbatim with a computed table of its 3e25e940 lines at c5c2b968. The four U343o units are new. The out_of_scope units stay out_of_scope; where one reads a changed path, U343o changed one line of it outside the unit's subject.",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat. Probed in this run at 2026-11-10T14:34Z: eval returned 'Tool \"eval\" is blocked by user policy' and task (a one-agent probe) returned 'Tool \"task\" is blocked by user policy'. So every phase ran in the parent. The twenty leads carried from run-70 and the one new U343o lead could not get Phase 3 and Phase 5 independent verifiers, and the coverage critics could not run. The leads stay unvalidated candidates in the ledger and are not in findings.json.",
+  "agents_spent": 0,
+  "agents_planned": "one hunter per U343o unit (four), twenty-one Phase 3 verifiers, one post-wave and one final-clean critic, and one Phase 5 verifier per retained record; none could start",
+  "finished_at": "2026-11-10T14:52:16Z",
+  "ledger_units": 201,
+  "ledger_counts": {
+    "out_of_scope": 94,
+    "candidate": 21,
+    "covered": 86
+  },
+  "findings": 0,
+  "candidate_count": 21,
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "acp-broker/broker-dir-take:deny-row-not-read-from-the-router-settings",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (U343i hunt)))), re-checked at this head",
+      "proposed_verdict": "needs_validation",
+      "location": "scripts/orchestrator/acp-broker:1123",
+      "title": "The listener takes a broker directory of the right shape without reading the deny row its premise rests on; a seat whose settings lack the row can pre-make it"
+    },
+    {
+      "fingerprint": "acp-broker/broker_cleanup:removal-by-path-through-a-router-swapped-broker-directory",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66, run-65's U343h hunt)))), re-checked at this head",
+      "proposed_verdict": "rejected (premise removed by U343i)",
+      "location": "scripts/orchestrator/acp-broker:1052",
+      "title": "broker_cleanup removes acp-* by path, and no longer sock (U343j); the Router can no longer swap the directory"
+    },
+    {
+      "fingerprint": "acp-broker/handler:running-form-gate-accepts-a-router-made-entry",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66, run-65's U343h hunt)))), re-checked at this head",
+      "proposed_verdict": "rejected (premise removed by U343i; the gate itself removed by U343o)",
+      "location": "scripts/orchestrator/acp-broker:1661",
+      "title": "The handler started omp once an entry existed at <id>; at this head it proceeds only on the reaper's `ready <pid>` line, written after the running form was placed"
+    },
+    {
+      "fingerprint": "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "rejected (premise removed by U343o)",
+      "location": "scripts/orchestrator/acp-broker:1218",
+      "title": "A header naming another seat made the broker append to a log in that seat's slot; the log is now <seats-root>/.state/broker-logs/<name>.log and the header name broker-logs is refused (the residual is the U343o lead on the seat name)"
+    },
+    {
+      "fingerprint": "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "rejected",
+      "location": "scripts/orchestrator/acp-broker:1364",
+      "title": "The push reads the worker's clone inside the worker's settings"
+    },
+    {
+      "fingerprint": "acp-broker/record:reaper-writes-the-record-by-path-in-a-router-writable-directory",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "rejected",
+      "location": "scripts/orchestrator/acp-broker:1520",
+      "title": "The record is written by the pinned helper on a held descriptor, in a directory the Router cannot write"
+    },
+    {
+      "fingerprint": "acp-broker/relay:no-cap-on-concurrent-workers",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "needs_validation",
+      "location": "scripts/orchestrator/acp-relay.py:240",
+      "title": "The relay starts a clone, a reaper, two helper runs and a full omp worker for every connection, with no ceiling"
+    },
+    {
+      "fingerprint": "acp-seat/relay:worker-complete-trailer-line-accepted-when-the-broker-ends-without-its-own",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "rejected",
+      "location": "scripts/orchestrator/acp-seat:205",
+      "title": "The trailer is removed; no byte after the first line is read"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "needs_validation",
+      "location": "scripts/update-agent-assets.sh:2501",
+      "title": "A direct ~/.dsh/bin/dsh run from a checkout lets the thak file tool write the checkout's .git"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "rejected",
+      "location": "home/dot_dsh/profiles/thak/cordis.patch.yml:13",
+      "title": "The thak profile runs no shell tool"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "rejected",
+      "location": "home/dot_dsh/profiles/thak/cordis.patch.yml:9",
+      "title": "Both base-bundle web rows are disabled by id"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "needs_validation",
+      "location": "scripts/orchestrator/hcom-seat:1554",
+      "title": "DSH_HOME and ~/.omp/profiles/dsh are resolved through a session-made link"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "needs_validation",
+      "location": "scripts/orchestrator/hcom-seat:1961",
+      "title": "Every role reads and writes one Claude Code directory"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "needs_validation",
+      "location": "scripts/orchestrator/hcom-seat:461",
+      "title": "srt 0.0.81 grants the router role bind and inbound on every interface"
+    },
+    {
+      "fingerprint": "hcom-seat/seat-name:broker-logs-state-slot-is-the-broker-log-directory",
+      "origin": "new from the U343o hunt (unit scripts/orchestrator/hcom-seat#seat-name-broker-logs#U343o)",
+      "proposed_verdict": "needs_validation",
+      "location": "scripts/orchestrator/hcom-seat:506",
+      "title": "hcom-seat accepts the seat name broker-logs and grants that seat's state slot, the broker's new log directory, for write; a seat so named can plant a hard link the unsandboxed broker appends to"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "rejected",
+      "location": "scripts/orchestrator/hcom-seat:207",
+      "title": "The token is unset at start and before the seat environment"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "confirmed (low, unverified)",
+      "location": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "title": "The decisions row publishes the logged-in account's email residue, organisation UUID and organisation name"
+    },
+    {
+      "fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67))), re-checked at this head",
+      "proposed_verdict": "rejected (claim changed: no router row disables the harness sandbox since U406)",
+      "location": "scripts/generate-agent-configs.py:2522",
+      "title": "No router row disables the harness sandbox at this head; the residue is main's lead router-profile/shell (srt the one bound), in main's sweep records"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "needs_validation",
+      "location": "scripts/orchestrator/hcom-seat:2556",
+      "title": "~/.config/age, ~/.config/gh and ~/.local/share/gh are in no dsh or router deny row"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "needs_validation",
+      "location": "scripts/update-agent-assets.sh:2473",
+      "title": "The profile install takes its hosts from a lockfile in a seat write root"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "origin": "carried from run-70 (there: carried from run-69 (there: carried from run-68 (there: carried from run-67 (from run-66)))), re-checked at this head",
+      "proposed_verdict": "needs_validation",
+      "location": "scripts/update-agent-assets.sh:1923",
+      "title": "The store and the build directory are resolved after their link check"
+    }
+  ],
+  "verdict_U343n_fd3db1b3": {
+    "P1 acp-broker:1581 (TERM after the slot's making and before the reaper's fork strands the slot; reproduced during the clone)": "answered at this head: the reaper is forked right after the slot and its two FIFOs (scripts/orchestrator/acp-broker:1638-1653), before the settings write and the clone, and removes the slot on EOF; refuse leaves the slot to it (:396-403); test_a (tests/unit/test_acp_broker.py:1248) asserts it. Residual: two mkfifo runs and two opens between the mkdir and the fork, reachable only by the relay's stop (hardening note, U343o unit)",
+    "P1 acp-broker:1657 (a record-helper failure after the rename leaves a visible record, so omp starts without a reaper)": "answered at this head: the handler proceeds only on the reaper's `ready <its pid>` line read within 10 s from the ready FIFO (:1658-1661), written only after record_place returned 0 (:1567-1572); a failed placement removes the slot and exits 1 with no line; test_b (:1299) asserts it",
+    "P1 acp-broker:1264 (a header name selects another seat's writable state directory; a hard-linked launch log redirects the unsandboxed append)": "answered for the header at this head: the log is <seats-root>/.state/broker-logs/<name>.log (:1217-1218) and the header name broker-logs is refused (:1198); test_c (:1349) asserts both. Residual, a new unvalidated lead: hcom-seat accepts a seat named broker-logs (scripts/orchestrator/hcom-seat:503-506) and grants its state slot, the log directory, for write (:2275); the `-L` test alone still guards the append (:1293)",
+    "P2 acp-seat:234 (after the final record's rename an fsync failure makes the handler exit 2 while the client trusts the status=0 record)": "unchanged at this head (scripts/orchestrator/acp-seat and acp-record-place.py are not in U343o; acp-seat:228-238); outside this unit's change, carried as the verdict filed it",
+    "P2 tests/unit/test_acp_broker.py:831 (the threat table marks termination cleanup closed on a test that signals only after the reaper starts)": "answered at this head: test_a_a_term_during_the_clone_leaves_no_slot_and_a_skipped_record (tests/unit/test_acp_broker.py:1248) signals the handler inside the clone, before the window the verdict reproduced closed; the original test is now :843",
+    "P2 tests/unit/test_acp_broker.py:1154 (the helper-failure test injects a pin mismatch, never a post-rename failure)": "answered at this head: test_b (tests/unit/test_acp_broker.py:1299) pins a helper copy that raises right after its rename; the pin-mismatch test is now :1166",
+    "P2 acp-broker:1156 (the header-field read discards its exit status)": "unchanged at this head (scripts/orchestrator/acp-broker:1182, the here-string read; U343o shifts it only); hardening note, carried",
+    "P3 acp-broker:1028 (a failed record unlink is logged and broker_cleanup still returns success)": "unchanged at this head (scripts/orchestrator/acp-broker:1054); hardening note, carried",
+    "P3 acp-broker:26 (the header says the Router can connect to the socket while allowUnixSockets renders empty)": "unchanged at this head (scripts/orchestrator/acp-broker:26); documentation only"
+  },
+  "hardening_notes": [
+    "(new, U343o) scripts/orchestrator/acp-broker:1638-1652: the slot exists from its mkdir (:1638) and the reaper from the fork (:1652); between them run two mkfifo and two opens, and a TERM to the handler there still strands the slot (no trap; refuse is not reached). Only the relay's stop on a broker shutdown signals a handler (scripts/orchestrator/acp-relay.py:263-276), and the window is two execs long; making the FIFOs in a directory the reaper is forked over, or forking before the mkfifo runs with the reaper making them, would close it (noted only).",
+    "(new, U343o) scripts/orchestrator/acp-broker:396-403, :1616-1623: from the fork on, every refusal of the handler (a failed clone, canary, version read or log append) ends with the reaper's final record `status=2 push=skipped` in the broker directory; no client reads it (acp-seat reads the record only after the record line, which a refused connection never sends), and it stays until the broker's end sweeps `acp-*` (broker_cleanup :1045-1056). Before U343o a refusal before the fork left no record. Small files in the Router's own directory, one per refused connection, with no ceiling (carried lead acp-broker/relay:no-cap-on-concurrent-workers); accounting, not a crossing.",
+    "(new, U343o) scripts/orchestrator/acp-broker:1651, :1659: the handler holds fd 5 open read-write itself, so a reaper that dies before its line gives no EOF and the refusal comes only after the whole 10 s; and on a slow host a placement over 10 s (the python3 start, the copy, the hash, :1426-1526) refuses a connection whose reaper then finishes the record and tears down on EOF. Bounded and fail-closed; availability only.",
+    "(new, U343o) scripts/orchestrator/acp-broker:1620, :1675-1690: a TERM to the handler during the clone ends the handler, not the git it is waiting on (router_git under srt, or slot_git); the reaper's `rm -rf` of the slot (:383) can then race a git that still makes entries in the slot (index-pack under `task/.git`), and the slot remains, named on stderr, the record final 2 (:1622). Fails closed; the fixture's fake srt (test_a, tests/unit/test_acp_broker.py:1248) does not exercise a real git outliving the handler (noted only).",
+    "(new, U343o) scripts/orchestrator/acp-broker:1292: ensure_own_dir holds an existing log directory to a real directory of this user but not to its mode, so a `.state/broker-logs` made 0755 by another of the operator's processes is taken as is; require the mode the broker makes (0700), as the take requires of the broker directory.",
+    "(new, U343o) tests/unit/test_acp_broker.py:1349-1395: test_c plants the link in another seat's slot, the old premise; no test checks the new premise, that no seat can write `.state/broker-logs` (see the U343o lead hcom-seat/seat-name:broker-logs-state-slot-is-the-broker-log-directory); an hcom-seat test that `--name broker-logs` is refused would hold it.",
+    "(new, U343o) tests/unit/test_acp_broker.py:1328-1329: test_b bounds the slot's removal by GRACE + 2 and the whole refusal by GRACE + 32 s, while the handler's ready read alone may take 10 s (scripts/orchestrator/acp-broker:1659); the loose outer bound cannot hide a missing reaper (the slot and omp assertions decide), test robustness only.",
+    "(carried from run-70, new there from U343n) tests/unit/test_acp_broker.py:863, :887: the slack has no ceiling of its own, so on a runner whose setup took S seconds a teardown regression of less than S - 2 s over the grace passes; a cap (for example min(setup, GRACE)) would keep the bound meaningful on a pathologically slow runner (test robustness, no crossing).",
+    "(carried from run-70, new there from U343n) tests/unit/test_acp_broker.py:854: the docstring cites acp-broker `:1506` (a literal in the test's text, kept as written), which at c5c2b968 is a line of record_place's description (scripts/orchestrator/acp-broker:1500-1510); the grace loop it describes is :1600-1603 (a line cite that drifts; documentation only).",
+    "(carried from run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:816-821: the comment says DSH_HOME is \"the Router's home as hcom-seat set it in the sandbox environment this process runs in\" and the refusal says \"the broker runs inside the Router's sandbox, whose environment hcom-seat sets\"; the lever's own header (:7) and marker refusal (:416-418) say it runs outside every seat, and hcom-seat's seat_env (scripts/orchestrator/hcom-seat:3199) reaches only processes inside the sandbox, where the broker refuses. scripts/orchestrator/README.md:217 and the fixture docstring (tests/unit/test_acp_broker.py:332-333) repeat it. The value is the broker starter's; the security property rests on the denyWrite cross-check, not on who sets it. Documentation only: \"the environment the broker is started with (U344: hcom-seat passes the Router launch's held DSH_HOME)\".",
+    "(carried from run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:824-826: `! -L ${cred_root_real}` tests the resolved path, which physical_clean has already made link-free, so it never fails; and nothing checks that the resolved root lies inside the resolved home (the comment at :818 says \"under the physical home\"). A `router-credentials` link is refused only because its target is not the Router's denyWrite row (:1019-1023; the test at tests/unit/test_acp_broker.py:2628-2640 shows exactly that). Testing `-L \"${cred_home_real}/router-credentials\"` before resolving, and the prefix test hcom-seat uses (scripts/orchestrator/hcom-seat:916-917, :926-927), would make the hold refuse by its own name.",
+    "(carried from run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:904, :954, :1029, :1182: the four here-string reads verdict U343j-62c10228 filed as P2 (`:1154` there, \"like those at lines 859, 909 and 975\") are unchanged by U343l; a here-string whose backing file cannot be created fails the read under set -e and exits before a refusal line (the verdict's RLIMIT_FSIZE=0 injection). Operator-side, fail-closed; a robustness residual of the unit, not a crossing.",
+    "(carried from run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1054: broker_cleanup's `rm -f` of a record prints on failure and the function still returns 0 with the record present (verdict U343j-62c10228 P3 `:1000`); unchanged by U343l. The record lies in a directory the Router cannot write; the effect is a stale record on the operator's own launch.",
+    "(carried from run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:26: the header still says the Router connects to the socket, while hcom-seat renders `allowUnixSockets` `[]` for every role at this head (scripts/orchestrator/hcom-seat:3082) until U344 (verdict U343j-62c10228 P3 `:26`); documentation only, the empty grant denies more.",
+    "(carried from run-67, lines re-mapped via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1047-1055: the socket check and the record sweep are two steps, so a listener that binds and writes a record between them (a third broker of the same Router launch, started by the operator just as this one ends) can lose that record; same principal, millisecond window. Re-reading the presence after the glob would close it.",
+    "(carried from run-67, lines re-mapped via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1049: the line names \"another broker's listener, or one the relay could not remove\" for any standing socket; a relay ended by SIGKILL prints nothing (acp-relay.py:287-291 never runs), so the operator meets a stale socket and records with no relay line; the next take refuses on it (:1128).",
+    "(carried from run-67, lines re-mapped via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1134-1135: the glob honours an inherited GLOBIGNORE (bash imports it; the parent's probe: GLOBIGNORE=* gives count 0 for a directory with an entry), so a broker started with it set would take a non-empty directory; only the operator, or the lever that starts the broker (U344), sets that environment. `unset GLOBIGNORE` before the glob removes the dependence.",
+    "(carried from run-67, lines re-mapped via run-68 via run-69 via run-70) scripts/orchestrator/acp-relay.py:15-17 and scripts/orchestrator/acp-seat:21-22: the relay's docstring still calls the directory acp-broker's to remove, and the client's header still says the Router's settings grant the socket directory for write (verdict U343i-76a5c83b P3 :11 and P3 :21; unchanged at this head, documentation only).",
+    "(carried from run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/hcom-seat:2643-2644: the comment says the broker deny's `slot` tag pairs it with the state-slot grant \"and with nothing else\"; the tag word also exempts it against allowRead and allowWrite rows 0 (the cwd) and 2 (the shared Claude Code directory), neither of which can lie at or under `<slot>/broker` (no effect today; a per-row tag pair would make the comment exact).",
+    "(carried from run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/hcom-seat:866: broker_dir_make's refusal names one cause (an entry stands at the name) for any mkdir failure; the launch still fails closed.",
+    "(carried from run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-seat:241-244: the client's unlink of the record now always fails under the Router's deny and prints one line per connection (the header says so, until U344); records accumulate, one per connection, until the broker's end removes them.",
+    "(carried from run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1114-1120 and :23-29: the comment reads the take's shape checks (own, 0700, empty) as proof that the directory is hcom-seat's; a directory of that shape made by a seat without the deny row passes them (the new lead acp-broker/broker-dir-take:deny-row-not-read-from-the-router-settings).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1476, :1484-1488: the helper's pin check runs sed and sha256sum or shasum by name from the connection's PATH, as the relay check does (:1102-1109); the PATH is the operator's, so no crossing (new, U343h).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1418-1419: the comment says no seat's settings grant a write under ~/.local/state; each seat's own slot and the hcom store are under it. The header's narrower claim (:161-162, ~/.local/state/hcom-seat) is the one that holds (new, U343h).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-record-place.py:220: a Router entry swapped in for <id>.tmp between the write and the rename is installed at <id>; only the Router's own client reads it (self-impact, new, U343h).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/README.md:233, acp-broker:165-166: the U343h row and the header close the record's write but name neither the cleanup by path nor the running-form gate (new, U343h).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1732-1735: a handler that dies between omp's fork and its `start` line leaves the reaper without a group to end (carried, U343g).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1744, :1582-1592: a handler ended during update-ref leaves the ref written while the record says push=skipped (carried, U343g).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1598-1605: group id reuse window between the kill -0 probe and the signal (carried, noted only).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:368-369, :379: path_presence ends the reaper with exit 2 before the record's final line; fails closed (carried).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-seat:217: the client follows a link at the record's name inside the Router's own sandbox (carried).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-relay.py:15, :253: the docstrings still say the handler's trap ends omp (carried).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:113-114, :124-127, :130: three header-contract statements stale since U343f (carried; at this head the first reads \"then `omp acp exit <status> push=<word>`, the reaper's line, written only when omp ran; a log line that cannot be appended refuses by name\", while exit_line never refuses, :1304-1312).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1381-1385: the pack has no size bound; capacity, not a crossing (carried).",
+    "(carried from run-65 via run-66, lines re-mapped via run-67 via run-68 via run-69 via run-70) scripts/orchestrator/acp-broker:1686: the checkout of the Router-chosen tree runs outside the sandbox on git's default path protections (carried)."
+  ]
+}

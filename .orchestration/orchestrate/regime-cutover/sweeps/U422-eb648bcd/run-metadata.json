@@ -1,0 +1,234 @@
+{
+  "run_id": "dotfiles-sweep-3-run-65",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "eb648bcda56a4f3bb43d79bd9f9b44151f1d1c90",
+    "branch": "feat/acp-broker-lever",
+    "pull_request": 720,
+    "base": "8a0495616f792081240439165ea041609c7a385a",
+    "merge_base_with_main": "6ad1be2304d8cdef975136e44e5cde5c86219374",
+    "previous_swept_head": "8a0495616f792081240439165ea041609c7a385a",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: unit U343h (PR 720, round 6 of U343, 8a049561..eb648bcd, 1 commit, 10 paths, +1489 -46: the reaper writes the exit record through the pinned helper scripts/orchestrator/acp-record-place.py, which opens the broker directory once with O_NOFOLLOW, holds it to the device and inode the listener read (ACP_BROKER_DIR_ID) and unlinks, creates O_EXCL|O_NOFOLLOW, writes, syncs and renames relative to that descriptor; the broker holds the helper by path check, private copy and pin; the copy, the pins, the README paragraph and row, the tests), hunted at the helper's descriptor discipline, the broker's hold of it, the identity's travel and every remaining by-path use of the broker directory; plus the run-64 records (this branch, 8a049561) carried and re-checked at this head with their lines re-mapped",
+  "scope_note": "Carry: run-64 is this seat's previous run and swept 8a049561, this head's parent (git diff --name-only 8a049561 eb648bcd lists the brief's ten paths). Every run-64 unit is carried. The cites of the six changed files that existed at 8a049561 are re-mapped by a git diff -U0 line map (agents/parent-hunter/scratch/analyze.cjs, remap.cjs); the four statements whose lines U343h replaced (record_write and the reaper's two record writes) are mapped by hand to record_place (:1408-1421, :1455, :1496); the acp units whose claim U343h touches are rewritten. Three non-acp records cited agent-config.yaml lines an earlier head had moved (hcom-seat#helper_copy_make :901 and :878, seat_settings_render-deny_read :1044 and :1057, claude_config-row :1014-1015); they now cite the lines that hold the same statements here (:912, :889, :1059, :1072, :1047-1049). run-64's run-63 main-only units stay out of scope with their reason.",
+  "scope_paths": [
+    "home/dot_agents/agent-config.yaml",
+    "home/dot_local/bin/common/executable_acp-broker",
+    "home/dot_local/bin/common/executable_acp-record-place.py",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "scripts/orchestrator/acp-broker",
+    "scripts/orchestrator/acp-record-place.py",
+    "tests/unit/test_acp_broker.py",
+    "tests/unit/test_acp_record_place.py",
+    "tests/unit/test_generate_agent_configs.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent read source, records and the verdict U343g-8a049561, ran git (diff, log, show, rev-parse, status), grep, sed, wc, cmp and shasum over the target, and ran its own node scripts in agents/parent-hunter/scratch/ (line map, re-mapper, ledger builder, metadata and summary builders, output scan). Every ledger check is a source check. Only the scanner reads the redact list, and it prints counts.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-64",
+      "source_ref": "8a0495616f792081240439165ea041609c7a385a",
+      "findings": 0,
+      "unvalidated_candidates": 17,
+      "ledger_units": 171,
+      "use": "Base ledger: this branch, the unit's earlier swept head and this seat's previous run. Every unit is carried with its changed-file lines re-mapped; its acp units are re-checked at this head."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-10T06:05:37Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat. Probed again in this run, both calls returned \"blocked by user policy\". So every phase ran in the parent, and the nineteen leads (seventeen carried from run-64, two new from the U343h hunt) could not get their Phase 3 and Phase 5 independent verifiers. They stay unvalidated candidates in the ledger and are not in findings.json.",
+  "verdict_U343g_8a049561": {
+    "P1 acp-broker:1262": "answered for the record write: record_place runs the pinned helper on a held descriptor of the broker directory (acp-broker:1408-1421, :1455, :1496; acp-record-place.py:111-143, :146-170, :205-232); a link at <id>.tmp or <id> is removed or replaced as an entry. The same premise remains in broker_cleanup's removals by path (:959-983) and the relay's socket unlink (acp-relay.py:284), and the handler's running-form test (:1583-1588) accepts a Router-made entry (two new leads)",
+    "P2 executable_acp-relay.py:1 and test_sandbox_portability.py:64 (PR threat table)": "outside the repository (the PR body); the README threat table (scripts/orchestrator/README.md:217-230) has rows for the relay (:224) and the record's write (:227)"
+  },
+  "hardening_notes": [
+    "scripts/orchestrator/acp-broker:1371, :1379-1383: the helper's pin check runs sed and sha256sum or shasum by name from the connection's PATH, as the relay check does (:1028-1035); the PATH is the operator's, so no crossing (new, U343h).",
+    "scripts/orchestrator/acp-broker:1313-1314: the comment says no seat's settings grant a write under ~/.local/state; each seat's own slot and the hcom store are under it. The header's narrower claim (:130-131, ~/.local/state/hcom-seat) is the one that holds (new, U343h).",
+    "scripts/orchestrator/acp-record-place.py:220: a Router entry swapped in for <id>.tmp between the write and the rename is installed at <id>; only the Router's own client reads it (self-impact, new, U343h).",
+    "scripts/orchestrator/README.md:227, acp-broker:134-135: the U343h row and the header close the record's write but name neither the cleanup by path nor the running-form gate (new, U343h).",
+    "scripts/orchestrator/acp-broker:1596-1599: a handler that dies between omp's fork and its `start` line leaves the reaper without a group to end (carried, U343g).",
+    "scripts/orchestrator/acp-broker:1608, :1462-1472: a handler ended during update-ref leaves the ref written while the record says push=skipped (carried, U343g).",
+    "scripts/orchestrator/acp-broker:1478-1485: group id reuse window between the kill -0 probe and the signal (carried, noted only).",
+    "scripts/orchestrator/acp-broker:315-316, :326: path_presence ends the reaper with exit 2 before the record's final line; fails closed (carried).",
+    "scripts/orchestrator/acp-seat:217: the client follows a link at the record's name inside the Router's own sandbox (carried).",
+    "scripts/orchestrator/acp-relay.py:15, :253: the docstrings still say the handler's trap ends omp (carried).",
+    "scripts/orchestrator/acp-broker:82, :93-96, :99: three header-contract statements stale since U343f (carried).",
+    "scripts/orchestrator/acp-broker:1276-1280: the pack has no size bound; capacity, not a crossing (carried).",
+    "scripts/orchestrator/acp-broker:1535: the checkout of the Router-chosen tree runs outside the sandbox on git's default path protections (carried)."
+  ],
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "unit": ".orchestration/orchestrate/regime-cutover#records-sync-43-copies",
+      "proposed_verdict": "confirmed (low, unverified)",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off",
+      "unit": "home/dot_dsh/profiles/router/cordis.patch.yml#dsh-superagent-router-preset#shell",
+      "proposed_verdict": "needs_validation",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "unit": "home/dot_dsh/profiles/thak/cordis.patch.yml#bash-sandbox-and-the-shell-tool",
+      "proposed_verdict": "rejected",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "unit": "home/dot_dsh/profiles/thak/cordis.patch.yml#tool-fs-workspace-writes",
+      "proposed_verdict": "needs_validation",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "unit": "home/dot_dsh/profiles/thak/cordis.patch.yml#web-search-deepseek-and-web-deepseek-api",
+      "proposed_verdict": "rejected",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "acp-broker/broker_cleanup:removal-by-path-through-a-router-swapped-broker-directory",
+      "unit": "scripts/orchestrator/acp-broker#broker_cleanup#records",
+      "proposed_verdict": "needs_validation",
+      "origin": "new, U343h hunt"
+    },
+    {
+      "fingerprint": "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to",
+      "unit": "scripts/orchestrator/acp-broker#log_line",
+      "proposed_verdict": "needs_validation",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox",
+      "unit": "scripts/orchestrator/acp-broker#push_back",
+      "proposed_verdict": "rejected",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "acp-broker/handler:running-form-gate-accepts-a-router-made-entry",
+      "unit": "scripts/orchestrator/acp-broker#reaper-running-form-gate",
+      "proposed_verdict": "needs_validation",
+      "origin": "new, U343h hunt"
+    },
+    {
+      "fingerprint": "acp-broker/record:reaper-writes-the-record-by-path-in-a-router-writable-directory",
+      "unit": "scripts/orchestrator/acp-broker#record_write",
+      "proposed_verdict": "rejected",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "acp-broker/relay:no-cap-on-concurrent-workers",
+      "unit": "scripts/orchestrator/acp-relay.py#Relay.run",
+      "proposed_verdict": "needs_validation",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "acp-seat/relay:worker-complete-trailer-line-accepted-when-the-broker-ends-without-its-own",
+      "unit": "scripts/orchestrator/acp-seat#relay#trailer",
+      "proposed_verdict": "rejected",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "unit": "scripts/orchestrator/hcom-seat#claude_config-row",
+      "proposed_verdict": "needs_validation",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "unit": "scripts/orchestrator/hcom-seat#dsh-profile-root",
+      "proposed_verdict": "needs_validation",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "unit": "scripts/orchestrator/hcom-seat#router-role-allowLocalBinding",
+      "proposed_verdict": "needs_validation",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "unit": "scripts/orchestrator/hcom-seat#seat_settings_render-deny_read",
+      "proposed_verdict": "needs_validation",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "unit": "scripts/orchestrator/hcom-seat#shim-exec-environment",
+      "proposed_verdict": "rejected",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "unit": "scripts/update-agent-assets.sh#build_under_srt#pnpm-store-and-profile-dir",
+      "proposed_verdict": "needs_validation",
+      "origin": "carried from run-64, re-checked at this head"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "proposed_verdict": "needs_validation",
+      "origin": "carried from run-64, re-checked at this head"
+    }
+  ],
+  "blocked_units": [],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; scripts in agents/parent-hunter/scratch/)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "Questions asked, each answered from source. Does any record write of the reaper still open or rename by a path the Router can redirect? No: both forms go through the helper, every call relative to the held descriptor, O_EXCL|O_NOFOLLOW on create, dir_fd on rename. Does any bash of the broker still name a path under the broker directory? Yes, for removal and a read: broker_cleanup's rm and the relay's socket unlink follow a swapped directory name (new lead), and the handler's -e test of the running form accepts a Router-made entry while the reaper has exited (new lead). Can the Router or the worker set ACP_BROKER_DIR_ID? No: the listener sets it on the relay's command line and a connection gets the header line alone; the worker runs under env -i. Do the bytes run equal the bytes hashed? Yes: the reaper's copy in a 0700 directory under ~/.local/state/hcom-seat is hashed and run. Do carried units cite moved lines? The six changed files' cites are re-mapped; three stale agent-config cites from an earlier head are corrected."
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "No accepted work, and no planned unit remains. Both passes ran in the parent, so this is a single-reviewer coverage statement."
+    }
+  ],
+  "candidate_count": 19,
+  "findings_count": 0,
+  "ledger_units": 177,
+  "ledger_counts": {
+    "out_of_scope": 94,
+    "candidate": 19,
+    "covered": 64
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-10T06:25:02Z"
+}

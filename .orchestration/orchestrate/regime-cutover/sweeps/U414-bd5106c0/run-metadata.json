@@ -1,0 +1,210 @@
+{
+  "run_id": "dotfiles-sweep-3-run-60",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "bd5106c06ea2343faa920c7a3a0600219e55b4e9",
+    "branch": "feat/pr-audit-daybreak-program-option",
+    "base": "305d4f53b",
+    "previous_swept_head": null,
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: unit U413 (305d4f53b..bd5106c0, 6 files, +132 -11: --cyber-program <standard|daybreak_blue> on scripts/orchestrator/pr-audit.sh and its copy home/dot_local/bin/common/executable_pr-audit.sh, the regenerated pin in home/dot_agents/agent-config.yaml and scripts/generated-agent-outputs.json, one README sentence, two tests in tests/unit/test_pr_audit.py), hunted for what the option admits: the parse and the two-row table, the daybreak_blue turn under reduced model-side cyber safeguards inside the same read-only profile, and the probes; plus the run-59 records carried and re-checked at this head with their lines re-mapped",
+  "scope_note": "Base: the brief names 57e5345a1 and says `git diff --name-only 57e5345a1 HEAD` gives 6 paths; at this head it gives 63 (U404 #743, U406 #744, U407 #745 and records sync 54 #746 lie between). The 6-path change is against the head's parent, main 305d4f53b, whose tree equals run-59's swept b73151a6 (git diff b73151a6 305d4f53b is empty); that is the change hunted. Carry: the brief's CHANGE names run-59 and its TRUST run-53; run-59, which carries run-53 through runs 54 to 58, is carried. The brief's CONTEXT names run-55 as this seat's previous run; this seat's latest is run-59.",
+  "scope_paths": [
+    "scripts/orchestrator/pr-audit.sh",
+    "home/dot_local/bin/common/executable_pr-audit.sh",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_pr_audit.py",
+    "home/dot_agents/codex-audit/config.toml"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent read source, ran git (diff, log, ls-tree), grep, sed, cmp and shasum over the target, and its own node scripts (ledger builder, metadata builder, output scan) in agents/parent-hunter/scratch/; every ledger check is a source check.",
+  "selected_companions": [
+    "AI-AND-LLM.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-59",
+      "source_ref": "b73151a6e492cc4b663170f931baf6ecc4fb80c3",
+      "findings": 0,
+      "unvalidated_candidates": 16,
+      "ledger_units": 148,
+      "use": "Base ledger: its tree equals this head's parent 305d4f53b; every unit carried, the three U407 pr-audit.sh units re-checked at this head, four U413 units added."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-10T01:38:37Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat (probed again in this run: both calls returned \"blocked by user policy\"), so every phase ran in the parent and sixteen carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. One unit is blocked on the plugin's own patch. The U413 hunt produced no new candidate.",
+  "hardening_notes": [
+    "scripts/orchestrator/README.md:338: the residual \"codex sandbox and codex exec resolving the profile alike\" names the shared config only; since U413 the turn's argv also differs from the probes' by the program flag and, under daybreak_blue, the model override (new, U413).",
+    "scripts/orchestrator/pr-audit.sh:1647-1654: neither the lever's stdout nor verdict.md names the program the turn ran under, so a stored verdict does not record whether it came from a daybreak_blue turn (provenance; new, U413).",
+    "scripts/generate-agent-configs.py:187-188 states that bash-sandbox runs in danger-full-access under the superagent's presets, but no repository source sets that mode; if the presets do not set it, every Router shell command fails at sandbox_apply (closed). On main since #744.",
+    "scripts/generate-agent-configs.py:182-183 still says the patch's rows address five superagent entries; they address one. On main since #744.",
+    "docs/deepseek-harness.md:149-150 still describes the router presets as restated with their sandbox rows disabled.",
+    "scripts/orchestrator/ledger-row.py: the installed copy refuses every call (fails closed; unchanged since run-49)."
+  ],
+  "u413_hunt": {
+    "parse": "scripts/orchestrator/pr-audit.sh:830-835 (non-empty value, once; usage refusal otherwise)",
+    "table": "scripts/orchestrator/pr-audit.sh:849-853 (two literal rows; any other word refused, exit 2, before any call)",
+    "turn": "scripts/orchestrator/pr-audit.sh:1647-1648 (the row's array expanded as words)",
+    "config": "home/dot_agents/codex-audit/config.toml:5-57 (audit profile, web_search disabled, network disabled; model pin gpt-6.1-sol kept)",
+    "probes": "scripts/orchestrator/pr-audit.sh:1250-1271 (codex sandbox, neither argument)",
+    "copy_and_pin": "cmp equal; sha256 7024bdaec07f2b545d511ad71ca5756f39123dff20776dbec12fea9c89c56786 = home/dot_agents/agent-config.yaml:917 = scripts/generated-agent-outputs.json:478",
+    "candidates": 0
+  },
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-profile/shell:github-input-reaches-a-live-shell-whose-outer-bound-reads-the-agent-token",
+      "where": "home/dot_dsh/profiles/router/package.json:6-12; home/dot_dsh/profiles/router/cordis.patch.yml:9-43; scripts/generate-agent-configs.py:178-191; scripts/orchestrator/hcom-seat:2216-2220, :2604-2608, :3017-3023",
+      "proposed_verdict": "needs_validation",
+      "note": "on main since #744"
+    },
+    {
+      "fingerprint": "router-profile/management-api:settings-write-guarded-by-a-fixed-header-alone",
+      "where": "scripts/orchestrator/router-settings-apply:15-16, :73; home/dot_dsh/profiles/router/cordis.patch.yml:24-30",
+      "proposed_verdict": "needs_validation",
+      "note": "served on main since #744"
+    },
+    {
+      "fingerprint": "router-profile/bash-sandbox:nested-seatbelt-refused-under-srt-so-the-confinement-premise-is-unmet",
+      "where": "scripts/generate-agent-configs.py:178-191",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "claim changed at U406b"
+    },
+    {
+      "fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off",
+      "where": "home/dot_dsh/profiles/router/cordis.patch.yml:9-43",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "claim changed: no router row disables the harness sandbox"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:450, :3011-3023",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "regime-store/store-root:dsh-and-router-roles-can-read-the-live-store",
+      "where": "scripts/orchestrator/hcom-seat:2594-2598",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "where": "scripts/orchestrator/hcom-seat:774, :2216-2220",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/orchestrator/hcom-seat:2519, :2387-2420; scripts/update-agent-assets.sh:1985",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2473-2478, :2818-2819, :2888-2889",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1914-1935",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:2213, :2238",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "scripts/update-agent-assets.sh:2501",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)",
+      "note": "sync 54 adds no new residue"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the token is unset at start (hcom-seat:201) and before the seat environment (:3086)"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the thak profile runs no shell tool"
+    }
+  ],
+  "blocked_units": [
+    {
+      "surface": "home/dot_dsh/profiles/router/package.json#dsh.profile.bundles",
+      "blocker": "four of the five superagent entries compose unrestated from the plugin's own patch at pin 8c32a9dc; outside the repository"
+    }
+  ],
+  "leads_on_other_branches": [
+    "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox (U343, run-35)",
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-35)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-35)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; scripts in agents/parent-hunter/scratch/)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "asked whether any lower-trust input can select the program (no: argv alone; the environment is not read, no script forwards pull-request text to the lever), whether the override reaches the config or the permission profile (no: -c sets model alone; the config is the probe's and keeps its pin, web search and network disabled), whether the probes see the arguments (no), whether a glob in the value can match a row (no: only the patterns are patterns), and whether U413's one-line swaps in the manifest, the output record and the README move a line a carried unit cites (no)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 16,
+  "findings_count": 0,
+  "ledger_units": 152,
+  "ledger_counts": {
+    "out_of_scope": 56,
+    "covered": 79,
+    "candidate": 16,
+    "blocked": 1
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-10T01:45:30Z"
+}

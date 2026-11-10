@@ -11,6 +11,7 @@ settings `hcom-seat` renders) is written by hand in the dsh row's shape for most
 router` launch for the settings compare. Nothing real starts; nothing outside the scratch is written.
 """
 
+import difflib
 import hashlib
 import importlib.machinery
 import importlib.util
@@ -1218,17 +1219,22 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
 
     # --- U343o, round 12: the reaper owns the slot from its making, omp starts on its ready line, the log moves ---
 
-    def pin_helper(self, broker, helper):
-        """Pin the scratch checkout's helper as it stands: its sha256 written over the `acp-record-place.py` line of
-        the scratch manifest two levels above the broker's copy, so an altered helper passes record_helper_pin_check
-        and runs (the pinned form of U343h test (c)'s tampered copy)."""
+    def pin_lever(self, broker, lever):
+        """Pin a lever of the scratch checkout as it stands: its sha256 written over its own line of the scratch
+        manifest two levels above the broker's copy, so an altered copy passes the pin check that reads it
+        (lever_self_check for the broker itself, record_helper_pin_check for the record helper)."""
         manifest = broker.parents[2] / "home/dot_agents/agent-config.yaml"
-        digest = hashlib.sha256(helper.read_bytes()).hexdigest()
+        digest = hashlib.sha256(lever.read_bytes()).hexdigest()
         text, count = re.subn(
-            r"(?m)^(      acp-record-place\.py: )[0-9a-f]{64}$", rf"\g<1>{digest}", manifest.read_text()
+            rf"(?m)^(      {re.escape(lever.name)}: )[0-9a-f]{{64}}$", rf"\g<1>{digest}", manifest.read_text()
         )
-        self.assertEqual(count, 1, "one pin line for the helper in the scratch manifest")
+        self.assertEqual(count, 1, f"one pin line for {lever.name} in the scratch manifest")
         manifest.write_text(text)
+
+    def pin_helper(self, broker, helper):
+        """Pin the scratch checkout's helper as it stands (pin_lever), so an altered helper passes
+        record_helper_pin_check and runs (the pinned form of U343h test (c)'s tampered copy)."""
+        self.pin_lever(broker, helper)
 
     def held_in_the_clone(self, sock, repo, name, client=False):
         """A connection held inside the clone's pack step by the fixture's `clone-sleep`: the raw connection (or the
@@ -1393,6 +1399,63 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.acp_slots(), [], "nothing made for the refused name")
         self.assertEqual(sorted(p.name for p in log_dir.iterdir()), ["w1.log"], "no log for the refused name")
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_a_a_term_while_the_slot_is_made_leaves_no_slot(self):
+        """U343p (verdict U343o-c5c2b968 P1 `acp-broker:1648`, class handler-window, the second strike; the
+        mechanism-change row of 2026-11-10T14:56:12Z, form remove): round 12 forked the reaper the moment the slot
+        existed, and a TERM to the handler between the slot's `mkdir` and that fork (the two `mkfifo`, the two `exec`)
+        still ended a process with no trap and stranded the slot; a shorter window is a window. The slot has an owner
+        at every instant: one trap for HUP, INT and TERM, armed before the `mkdir` and disarmed after the reaper's
+        ready line, removes the slot and exits 2 (both removers run the idempotent slot_remove). A scratch copy of
+        the lever with one line `/bin/sleep 3` right after `slot_made=1` (the window held open; the copy differs from
+        the source by that line alone, and is pinned in the scratch manifest so it runs): a TERM to the handler pid
+        once the slot exists leaves the slot gone within 5 s, the client exits 2 with nothing on stdout and no record
+        line, the broker's stderr carries the one line, no record exists for the slot (the trap ran before the fork;
+        had the reaper been forked, one ending `status=2 push=skipped` that the broker's end sweeps), omp never ran,
+        and the next connection on the same broker is served. At c5c2b968 the same copy of that head's lever leaves
+        the slot standing."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        broker, _helper = self.scratch_checkout()
+        source = BROKER.read_text()
+        made = "slot_made=1\n"
+        self.assertEqual(source.count(made), 1, "the one line that marks the slot as made")
+        broker.write_text(source.replace(made, made + "/bin/sleep 3\n"))
+        changed = [
+            line
+            for line in difflib.unified_diff(source.splitlines(), broker.read_text().splitlines(), lineterm="", n=0)
+            if line[:1] in "+-" and line[:3] not in ("+++", "---")
+        ]
+        self.assertEqual(changed, ["+/bin/sleep 3"], "the copy differs from the source by that one line")
+        self.pin_lever(broker, broker)
+        proc, sock = self.start_broker(name, cwd, broker=broker)
+        self.addCleanup(self.remove_slots)
+        client = self.client_popen(sock, repo, "w1")
+        self.addCleanup(lambda: client.poll() is None and client.kill())
+        self.wait_for(lambda: self.acp_slots() != [], "the slot's making", seconds=30)
+        (slot,) = self.acp_slots()
+        pid = int(slot.rsplit("-", 1)[1])
+        started = time.monotonic()
+        os.kill(pid, signal.SIGTERM)
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal", seconds=5)
+        elapsed = time.monotonic() - started
+        self.assertLessEqual(elapsed, 5, f"the slot went in {elapsed:.1f} s")
+        out, err = client.communicate(timeout=120)
+        self.assertEqual((client.returncode, out), (2, b""), err)
+        self.assertIn(b"the broker closed the connection before its first line", err)
+        lines = self.record_lines(slot)
+        if lines is not None:
+            self.assertEqual((len(lines), lines[-1]), (3, "status=2 push=skipped"), lines)
+        self.assertEqual(self.calls_of("omp"), [], "omp never started")
+        self.assertEqual(self.log_lines("w1"), [], "no canary line and no exit line: omp never ran")
+        conn, slot2, _task = self.held_connection(sock, repo, "w1")
+        self.assertEqual(self.finish(conn, slot2), (b"", "status=0 push=none"))
+        self.wait_for(lambda: self.acp_slots() == [], "the second slot's removal")
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        signal_line = "acp-broker: the connection ended by a signal before omp started; the slot removed"
+        self.assertEqual(err.count(signal_line), 1, err)
+        self.assert_broker_dir_stands_empty(sock)
 
     def push_calls(self, slot):
         """The fake srt's calls after the launch (the push's), as (settings file, the git arguments after the

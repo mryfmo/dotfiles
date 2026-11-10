@@ -487,8 +487,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
     # --- the tests ---
 
     def test_a_broker_inside_a_seat_is_refused_before_anything_is_made(self):
-        """The three markers (hcom's two and the shim's) each refuse before the broker directory exists; a seat, the
-        Router included, never starts a broker."""
+        """The three markers (hcom's two and the shim's) each refuse before anything is made in the broker directory
+        (hcom-seat's, pre-made empty by the fixture as the router launch makes it, U343i); a seat, the Router included,
+        never starts a broker."""
         name, cwd = self.make_router()
         for marker in ("HCOM_LAUNCHED", "HCOM_PROCESS_ID", "HCOM_SEAT_SANDBOX"):
             with self.subTest(marker=marker):
@@ -498,7 +499,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 )  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(f"acp-broker: refused: refused inside a seat ({marker} is set)", run.stderr)
-                self.assertFalse((self.seats_path / ".state" / name / "broker").exists())
+                self.assertEqual(
+                    sorted(p.name for p in (self.seats_path / ".state" / name / "broker").iterdir()),
+                    [],
+                    "the refused broker made nothing in the directory",
+                )
         self.assertEqual(self.calls_of("srt"), [])
 
     def test_a_bad_header_is_refused_with_one_line_and_nothing_made(self):
@@ -657,9 +662,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         """U343e test (b) (the U343c shape rewritten): the settings read from the slot while omp runs. `allowWrite`
         is the slot's task, then the role's own rows (the shared Claude Code directory, `~/.omp/profiles/dsh`,
         `~/.omp/run`, srt's own paths); `allowRead` the task, the shared directory, the profile, the skills and the
-        tool directory; no row of any list lies under the Router's scratch cwd or its state slot, and the Router's
-        project-file denies are re-rooted under the task. The slot is 0700 under `.state`, its settings 0600, the
-        task a detached checkout of the ref; the slot is gone when the connection ends."""
+        tool directory; no grant row lies under the Router's scratch cwd or its state slot, no deny row under the
+        scratch cwd (the Router's project-file denies are re-rooted under the task), and the one deny row under the
+        state slot is the Router's broker deny `<state>/broker` (U343i), carried as every Router deny is. The slot is
+        0700 under `.state`, its settings 0600, the task a detached checkout of the ref; the slot is gone when the
+        connection ends."""
         name, cwd = self.make_router()
         repo, base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
@@ -684,10 +691,16 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                     row == str(cwd) or row.startswith(f"{cwd}/"),
                     f"{kind} row {row} lies under the Router's scratch cwd",
                 )
-                self.assertFalse(
-                    row == str(state) or row.startswith(f"{state}/"),
-                    f"{kind} row {row} lies under the Router's state slot",
-                )
+                if kind != "denyWrite":
+                    self.assertFalse(
+                        row == str(state) or row.startswith(f"{state}/"),
+                        f"{kind} row {row} lies under the Router's state slot",
+                    )
+        self.assertEqual(
+            [r for r in fs["denyWrite"] if r == str(state) or r.startswith(f"{state}/")],
+            [f"{state}/broker"],
+            "the one deny row under the Router's state slot is the broker deny",
+        )
         self.assertEqual(
             [r for r in fs["denyWrite"] if r.startswith(f"{task}/")], [f"{task}/{p}" for p in PROJECT_FILES]
         )

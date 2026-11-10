@@ -11,20 +11,26 @@ of its own, renders the worker's settings, runs the canary, starts the worker in
 and pushes the worker's HEAD back as `refs/acp-seat/<name>/<stamp>`. This client never starts a sandbox and runs no
 tool of its own; it is the stream and nothing more.
 
-The exit status is the broker's trailer: the last line of the stream, `omp acp exit <status> push=<word>`, is the
-connection's exit status and is not written to stdout; its push word (the ref written, `none`, `failed` or
-`skipped`) is printed as `acp-seat: push=<word>` on stderr, so the Router learns the ref by name and reads it from
-its own repository. Only the last line is the trailer (verdict U343d-136fbe0a P2 `:168`), and only a complete one
-(verdict U343e-fd94feae P2 `:213`): the broker writes its trailer with its newline, so a trailer-shaped line followed
-by more bytes is payload and is written to stdout in its place, a tail without a newline is payload whatever its
-shape, and a stream that ends without a newline-terminated trailer as its last line is exit 2. A first line
-`acp-broker: refused: <reason>` is the broker's refusal, printed on stderr,
-exit 2. Refused before anything is sent (exit 2, the reason on stderr): run outside a seat (`HCOM_SEAT_SANDBOX`
-unset, the marker the hcom-seat shim exports into every seat), a missing or repeated option, a repository path that
-is not an absolute path free of whitespace and control characters, a ref outside `^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$`
-or holding `..`, a name outside `^[a-z0-9][a-z0-9_-]{0,63}$`, a socket that cannot be connected (the dsh row's
-refusal, EPERM, lands here), or a connection the broker closed without a trailer. Stdin reaching EOF half-closes the
-socket so the worker reads EOF; the worker ending closes the socket so this process ends whatever stdin holds. The
+The stream carries exactly one broker line, the first (regime-cutover U343g, the mechanism-change row of
+2026-11-10T04:18:01Z, form remove; verdict U343f-22a81500 P1 `acp-broker:1347` and P2 `acp-seat:190`): `acp-broker:
+refused: <reason>`, the broker's refusal, printed on stderr, exit 2; or `acp-broker: record <id>`, `<id>` the
+broker's slot name `acp-<name>-<stamp>-<pid>`, which names the connection's exit record. Every byte after that
+line is the worker's and is written to stdout unread: no line, no tail and no shape of the stream is ever taken
+as the broker's report, so a worker that prints `omp acp exit 0 push=none`, with or without a newline, prints
+payload. The exit report is the record `<socket directory>/<id>`, written by the broker's reaper alone (the
+Router's settings grant its state slot, whose socket directory this is, for read and write; no worker setting
+reaches it); its last line `status=<n> push=<word>` is read only after the socket has closed, which the reaper
+does only after the record is complete. The client exits with `<n>` and prints the push word (the ref written,
+`none`, `failed` or `skipped`) as `acp-seat: push=<word>` on stderr, so the Router learns the ref by name and reads
+it from its own repository, and unlinks the record. A record that is missing or incomplete (the reaper was lost)
+is exit 2 naming `<id>`, the stream already written out; a first line that is neither, or a stream that ends
+before its first newline, is exit 2 with nothing on stdout. Refused before anything is sent (exit 2, the reason on
+stderr): run outside a seat (`HCOM_SEAT_SANDBOX` unset, the marker the hcom-seat shim exports into every seat), a
+missing or repeated option, a repository path that is not an absolute path free of whitespace and control
+characters, a ref outside `^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$` or holding `..`, a name outside
+`^[a-z0-9][a-z0-9_-]{0,63}$`, or a socket that cannot be connected (the dsh row's refusal, EPERM, lands here).
+Stdin reaching EOF half-closes the socket so the worker reads EOF; the worker ending closes the socket so this
+process ends whatever stdin holds. The
 file hashes itself first and refuses to run when its sha256 differs from its `claude.levers.sha256` pin, like every
 lever (U31); `-I` ignores `PYTHON*` variables, the user site and the script directory, and the standard library
 alone is used.
@@ -43,8 +49,12 @@ LEVER_PIN = re.compile(r"^(\S+): ([0-9a-f]{64})$")
 LEVERS_KEYS = ("claude", "levers", "sha256")
 NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}\Z")  # `\Z`, not `$`: a value ending in a newline is outside (verdict U343e-fd94feae P3 `:235`)
 REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}\Z")
-TRAILER = re.compile(rb"^omp acp exit ([0-9]+) push=(\S+)$")
 REFUSAL = b"acp-broker: refused: "
+RECORD = b"acp-broker: record "
+# The broker's slot name, the record's name: the broker's own first line, never a worker byte.
+RECORD_ID = re.compile(rb"\Aacp-[a-z0-9][a-z0-9_-]{0,63}-[0-9]{8}-[0-9]{6}-[0-9]+\Z")
+STATUS_LINE = re.compile(r"\Astatus=([0-9]+) push=([A-Za-z0-9./_-]+)\Z")
+FIRST_LINE_LIMIT = 4096
 CHUNK = 65536
 OPTIONS = ("--socket", "--repo", "--ref", "--name")
 USAGE = "usage: acp-seat --socket <path> --repo <path> --ref <rev> --name <name>"
@@ -161,38 +171,40 @@ def pump_stdin(sock):
         pass
 
 
-def relay(sock):
-    """The socket to stdout line by line; the first line may be the refusal, and the last complete line alone is the
-    trailer: a trailer-shaped line is held until the stream shows whether anything follows it, and a tail without a
-    newline is payload (the broker's trailer always carries its newline), never the trailer."""
+def relay(sock, directory):
+    """The socket to stdout: the first line decides the connection (the broker's refusal, exit 2 on stderr; or the
+    record line, whose id names the record), and every byte after it is the worker's, written out as it comes and
+    never read; after EOF the record under `directory` gives the exit status and the push word."""
     out = sys.stdout.buffer
     buffer = bytearray()
-    first = True
-    pending = None
-
-    def release():
-        # The held line was not last after all: it is payload, written where it stood.
-        nonlocal pending
-        if pending is not None:
-            out.write(pending + b"\n")
-            out.flush()
-            pending = None
-
-    def take(line):
-        nonlocal first, pending
-        if first:
-            first = False
-            if line.startswith(REFUSAL):
-                sys.stderr.write(line.decode("utf-8", "replace") + "\n")
-                sys.stderr.flush()
-                sys.exit(2)
-        release()
-        if TRAILER.match(line) is not None:
-            pending = line
-            return
-        out.write(line + b"\n")
+    while True:
+        try:
+            chunk = sock.recv(CHUNK)
+        except OSError:
+            chunk = b""
+        if not chunk:
+            print(f"{LEVER}: the broker closed the connection before its first line", file=sys.stderr)
+            return 2
+        buffer += chunk
+        cut = buffer.find(b"\n")
+        if cut >= 0:
+            break
+        if len(buffer) > FIRST_LINE_LIMIT:
+            print(f"{LEVER}: the broker's first line did not end within {FIRST_LINE_LIMIT} bytes", file=sys.stderr)
+            return 2
+    line = bytes(buffer[:cut])
+    rest = bytes(buffer[cut + 1 :])
+    if line.startswith(REFUSAL):
+        sys.stderr.write(line.decode("utf-8", "replace") + "\n")
+        sys.stderr.flush()
+        return 2
+    if not line.startswith(RECORD) or RECORD_ID.match(line[len(RECORD) :]) is None:
+        print(f"{LEVER}: the broker's first line is neither a refusal nor a record line: {line!r}", file=sys.stderr)
+        return 2
+    record_id = line[len(RECORD) :].decode()
+    if rest:
+        out.write(rest)
         out.flush()
-
     while True:
         try:
             chunk = sock.recv(CHUNK)
@@ -200,26 +212,37 @@ def relay(sock):
             break
         if not chunk:
             break
-        buffer += chunk
-        while True:
-            cut = buffer.find(b"\n")
-            if cut < 0:
-                break
-            line = bytes(buffer[:cut])
-            del buffer[: cut + 1]
-            take(line)
-    if buffer:
-        tail = bytes(buffer)
-        if first and tail.startswith(REFUSAL):
-            take(tail)
-        release()
-        out.write(tail)
+        out.write(chunk)
         out.flush()
-    if pending is None:
-        print(f"{LEVER}: the broker closed the connection without an exit trailer", file=sys.stderr)
+    return read_record(os.path.join(directory, record_id), record_id)
+
+
+def read_record(path, record_id):
+    """The record after the socket closed: three lines, `ref=<ref>`, `reaper=<pid>` and `status=<n> push=<word>`, each
+    newline-terminated; the last gives the exit status and the push word, printed as `acp-seat: push=<word>` on
+    stderr, and the record is unlinked. A record that is missing, unreadable or without its status line (the reaper
+    was lost) is exit 2 naming the id and the path; the stream is already written out."""
+    try:
+        with open(path, "rb") as handle:
+            lines = handle.read().decode("utf-8", "replace").split("\n")
+    except OSError as exc:
+        print(
+            f"{LEVER}: the broker closed the connection without a complete record {record_id} ({path}: {exc})",
+            file=sys.stderr,
+        )
         return 2
-    match = TRAILER.match(pending)
-    print(f"{LEVER}: push={match.group(2).decode('utf-8', 'replace')}", file=sys.stderr)
+    match = STATUS_LINE.match(lines[2]) if len(lines) == 4 and lines[3] == "" else None
+    if match is None or not lines[0].startswith("ref=") or not lines[1].startswith("reaper="):
+        print(
+            f"{LEVER}: the broker closed the connection without a complete record {record_id} ({path}: no status line)",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        os.unlink(path)
+    except OSError as exc:
+        print(f"{LEVER}: cannot remove the record {path}: {exc}", file=sys.stderr)
+    print(f"{LEVER}: push={match.group(2)}", file=sys.stderr)
     return int(match.group(1))
 
 
@@ -253,7 +276,7 @@ def main(argv):
     except OSError as exc:
         refuse(f"cannot connect to the broker socket {sock_path}: {exc}")
     threading.Thread(target=pump_stdin, args=(sock,), daemon=True).start()
-    status = relay(sock)
+    status = relay(sock, directory)
     try:
         sock.close()
     except OSError:

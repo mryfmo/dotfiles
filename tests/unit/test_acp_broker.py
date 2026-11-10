@@ -16,6 +16,7 @@ import importlib.util
 import json
 import os
 import re
+import select
 import signal
 import socket
 import stat
@@ -38,7 +39,11 @@ CLIENT = ROOT / "scripts/orchestrator/acp-seat"
 SYSTEM_PATH = test_hcom_seat.SYSTEM_PATH
 BASH_OWN_NAMES = test_hcom_seat_dsh.BASH_OWN_NAMES
 FOUR_WORDS = "write-denied read-denied ssh-denied debug-denied"
-TRAILER = re.compile(rb"\nomp acp exit (\d+) push=(\S+)\n$")
+# The connection's first line (U343g): the broker names the slot, whose name is the record's under `<state>/broker/`.
+RECORD_LINE = re.compile(rb"\Aacp-broker: record (acp-[a-z0-9][a-z0-9_-]*-\d{8}-\d{6}-\d+)\n\Z")
+SLOT_PARTS = re.compile(r"^acp-(.+)-(\d{8}-\d{6}-\d+)$")
+# The reaper's grace between TERM and KILL to omp's process group, `reaper_grace` in the broker (seconds).
+GRACE = 5
 PUSHED_REF = re.compile(r"^refs/acp-seat/([a-z0-9][a-z0-9_-]*)/(\d{8}-\d{6}-\d+)$")
 PROJECT_FILES = (".claude/settings.json", ".claude/settings.local.json", ".claude/hooks", ".claude/contextdb", ".omp",
                  ".codex", ".envrc", ".mcp.json")  # fmt: skip
@@ -116,13 +121,15 @@ FAKE_SRT = textwrap.dedent(
     """
 )
 # The fake omp: records argv, argv0, cwd and the whole environment; `--version` prints 18.12.6 (exit `omp-version-
-# status` when that file exists); `acp` starts a sleeping descendant when `omp-child` exists (its pid written to
-# `omp-child-pid`, the tool child of the verdict's P2 at acp-broker:1079), echoes stdin line by line until EOF and
-# exits `omp-status` when that file exists.
+# status` when that file exists); `acp` writes its pid to `omp-pid`, ignores TERM when `omp-ignore-term` exists (the
+# TERM-ignoring worker of verdict U343f-22a81500 P1 :1233), starts a sleeping descendant when `omp-child` exists (its
+# pid written to `omp-child-pid`, the tool child of the verdict's P2 at acp-broker:1079), echoes stdin line by line
+# until EOF, then writes the bytes of `omp-tail` when that file exists (a worker's unterminated last output, P1
+# :1347) and exits `omp-status` when that file exists.
 FAKE_OMP = textwrap.dedent(
     """\
     #!/usr/bin/env python3
-    import json, os, subprocess, sys
+    import json, os, signal, subprocess, sys
     conf = json.load(open(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), "omp.json")))
     calls = conf["calls"]
     with open(os.path.join(calls, "omp"), "a") as record:
@@ -134,6 +141,10 @@ FAKE_OMP = textwrap.dedent(
             sys.exit(int(open(status).read()))
         print("18.12.6")
         sys.exit(0)
+    with open(os.path.join(calls, "omp-pid"), "w") as handle:
+        handle.write(str(os.getpid()))
+    if os.path.exists(os.path.join(calls, "omp-ignore-term")):
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
     if os.path.exists(os.path.join(calls, "omp-child")):
         child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(600)"])
         with open(os.path.join(calls, "omp-child-pid"), "w") as handle:
@@ -143,6 +154,10 @@ FAKE_OMP = textwrap.dedent(
         if not line:
             break
         sys.stdout.buffer.write(line)
+        sys.stdout.buffer.flush()
+    tail = os.path.join(calls, "omp-tail")
+    if os.path.exists(tail):
+        sys.stdout.buffer.write(open(tail, "rb").read())
         sys.stdout.buffer.flush()
     status = os.path.join(calls, "omp-status")
     sys.exit(int(open(status).read()) if os.path.exists(status) else 0)
@@ -258,6 +273,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         )  # fmt: skip
         self.brokers.append(proc)
+        self.router = name
         sock = self.seats_path / ".state" / name / "broker/sock"
         deadline = time.monotonic() + 60
         while not sock.exists():
@@ -339,6 +355,92 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             env=self.broker_env(**{"HCOM_SEAT_SANDBOX": "/scratch/sandbox", **overrides}), capture_output=True, check=False,
         )  # fmt: skip
 
+    def client_popen(self, sock, repo, name, ref="HEAD"):
+        """The client with its stdin held open, for a session the test drives line by line while the worker runs."""
+        return subprocess.Popen(
+            [str(CLIENT), "--socket", str(sock), "--repo", str(repo), "--ref", ref, "--name", name],
+            env=self.broker_env(HCOM_SEAT_SANDBOX="/scratch/sandbox"), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )  # fmt: skip
+
+    # --- the record (U343g): `<state>/broker/<slot>`, the reaper's exit report, read after the socket closes ---
+
+    def record_path(self, slot):
+        return self.seats_path / ".state" / self.router / "broker" / slot
+
+    def record_lines(self, slot):
+        """The record's lines, or None when no record exists."""
+        path = self.record_path(slot)
+        return path.read_text().splitlines() if path.exists() else None
+
+    def record_line(self, conn):
+        """The connection's first line, `acp-broker: record <slot>`, read byte by byte so no worker byte is taken with
+        it; the slot name."""
+        data = bytearray()
+        conn.settimeout(30)
+        try:
+            while not data.endswith(b"\n"):
+                chunk = conn.recv(1)
+                if not chunk:
+                    break
+                data += chunk
+        except socket.timeout:
+            self.fail(f"no record line within 30 s (received {bytes(data)!r})")
+        finally:
+            conn.settimeout(120)
+        match = RECORD_LINE.match(bytes(data))
+        self.assertIsNotNone(match, f"the first line is not the record line: {bytes(data)!r}")
+        return match.group(1).decode()
+
+    def finish(self, conn, slot):
+        """Half-close the connection, read the stream to its end and then the record, complete once the socket has
+        closed: (the bytes after the record line, the record's last line `status=<n> push=<word>`). The record's
+        running lines are checked here: `ref=refs/acp-seat/<name>/<stamp>-<pid>` from the slot's parts, `reaper=<pid>`."""
+        try:
+            conn.shutdown(socket.SHUT_WR)
+        except OSError:
+            pass
+        rest = self.recv_all(conn)
+        lines = self.record_lines(slot)
+        self.assertIsNotNone(lines, f"no record {self.record_path(slot)} after the socket closed")
+        self.assertEqual(len(lines), 3, lines)
+        name, suffix = SLOT_PARTS.match(slot).groups()
+        self.assertEqual(lines[0], f"ref=refs/acp-seat/{name}/{suffix}")
+        self.assertRegex(lines[1], r"^reaper=\d+$")
+        self.assertRegex(lines[2], r"^status=\d+ push=\S+$")
+        return rest, lines[2]
+
+    def exchange_record(self, sock, repo, name, payload, ref="HEAD"):
+        """One connection: the header, `payload`, EOF; (the bytes after the record line, the record's last line)."""
+        conn = self.connect(sock, repo, name, ref=ref)
+        conn.sendall(payload)
+        slot = self.record_line(conn)
+        return self.finish(conn, slot)
+
+    @staticmethod
+    def alive(pid):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        return True
+
+    def kill_fake_omp(self):
+        """End a fake omp that ignores TERM (the cleanup of test (a), so a red run leaves no process behind)."""
+        pid_file = self.calls / "omp-pid"
+        if pid_file.exists():
+            try:
+                os.kill(int(pid_file.read_text()), signal.SIGKILL)
+            except (ProcessLookupError, ValueError):
+                pass
+
+    def remove_slots(self):
+        """Remove every per-connection slot left behind (the cleanup of a red run of test (b))."""
+        for slot in self.acp_slots():
+            path = self.seats_path / ".state" / slot
+            subprocess.run(["chmod", "-R", "u+rwX", str(path)], check=False)
+            subprocess.run(["rm", "-rf", str(path)], check=False)
+
     def acp_slots(self):
         """The per-connection slots, `acp-<name>-<stamp>-<pid>` under `.state` (U343e: a broker-owned root no seat
         may write; a write root under `.sandbox` would be denied by the Router's `.sandbox` deny row, which srt's
@@ -368,12 +470,13 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         return path.read_text().splitlines() if path.exists() else []
 
     def held_connection(self, sock, repo, name, ref="HEAD"):
-        """A connection with one line echoed back, so the worker is running and its slot exists; returns the
-        connection, the slot name and the worker's tree."""
+        """A connection whose record line has arrived and with one line echoed back, so the worker is running and
+        its slot exists; returns the connection, the slot name (the record line's) and the worker's tree."""
         conn = self.connect(sock, repo, name, ref=ref)
+        slot = self.record_line(conn)
         conn.sendall(PING)
         self.assertEqual(self.recv_line(conn), PING)
-        (slot,) = self.acp_slots()
+        self.assertIn(slot, self.acp_slots())
         return conn, slot, self.slot_task(slot)
 
     # --- the tests ---
@@ -431,8 +534,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.calls_of("omp"), [])
         # A good header after the bad ones still works: the broker refused connections, not itself; a name of 64
         # characters, the grammar's longest, launches (verdict P2 `:980`: the limit was applied to the slot name).
-        self.assertEqual(self.exchange(sock, repo, "w1", PING), PING + b"omp acp exit 0 push=none\n")
-        self.assertEqual(self.exchange(sock, repo, "a" * 64, PING), PING + b"omp acp exit 0 push=none\n")
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
+        self.assertEqual(self.exchange_record(sock, repo, "a" * 64, PING), (PING, "status=0 push=none"))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def test_a_repository_that_does_not_read_or_a_ref_that_does_not_resolve_refuses_with_the_slot_removed(self):
@@ -512,8 +615,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 self.assertEqual((task / "a.txt").read_text(), "hello\n")
                 self.assertEqual(self.scratch_git("rev-parse", "HEAD", cwd=task), base)
                 self.assertEqual(self.calls_of("omp")[-1]["cwd"], str(task))
-                conn.shutdown(socket.SHUT_WR)
-                self.assertEqual(self.recv_all(conn), b"omp acp exit 0 push=none\n")
+                self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
                 self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
                 if link:
                     self.assertTrue(work.is_symlink())
@@ -588,27 +690,30 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.scratch_git("rev-parse", "HEAD", cwd=task), base)
         self.assertEqual(self.scratch_git("status", "--porcelain", cwd=task), "")
         self.assertEqual(self.scratch_git("rev-parse", "--abbrev-ref", "HEAD", cwd=task), "HEAD", "detached")
-        self.assertEqual(sorted(p.name for p in slot_path.iterdir()), ["settings.json", "task"], "no pack left behind")
-        conn.shutdown(socket.SHUT_WR)
-        self.assertEqual(self.recv_all(conn), b"omp acp exit 0 push=none\n")
+        self.assertEqual(
+            sorted(p.name for p in slot_path.iterdir()), ["control", "settings.json", "task"], "no pack left behind"
+        )
+        self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
         self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
-    def test_c_the_end_of_session_push_lands_the_worker_head_at_refs_acp_seat_and_the_trailer_names_it(self):
-        """U343e test (c): a commit the worker made lands in the repository at `refs/acp-seat/<name>/<stamp>` when
-        omp exits, written inside the Router's settings, and the trailer (and the log's exit line) names the ref;
-        a worker whose HEAD is the ref pushes nothing (`push=none`); a repository made read-only after the clone
-        gives `push=failed`, the reason on the broker's stderr; the trailer follows the slot's removal."""
+    def test_c_the_end_of_session_push_lands_the_worker_head_at_refs_acp_seat_and_the_record_names_it(self):
+        """U343e test (c), the record form (U343g): a commit the worker made lands in the repository at
+        `refs/acp-seat/<name>/<stamp>` when omp exits, written inside the Router's settings, and the record's last
+        line (and the log's exit line) names the ref, which the record's first line named before the push began; a
+        worker whose HEAD is the ref pushes nothing (`push=none`); a repository made read-only after the clone gives
+        `push=failed`, the reason on the broker's stderr; the record's last line follows the slot's removal."""
         name, cwd = self.make_router()
         repo, base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
         conn, slot, task = self.held_connection(sock, repo, "w1")
         head = self.commit_in(task)
-        conn.shutdown(socket.SHUT_WR)
-        data = self.recv_all(conn)
-        match = re.fullmatch(rb"omp acp exit 0 push=(refs/acp-seat/w1/\d{8}-\d{6}-\d+)\n", data)
-        self.assertIsNotNone(match, data)
-        ref = match.group(1).decode()
+        rest, last = self.finish(conn, slot)
+        self.assertEqual(rest, b"", "nothing of the broker's on the stream after the record line")
+        match = re.fullmatch(r"status=0 push=(refs/acp-seat/w1/\d{8}-\d{6}-\d+)", last)
+        self.assertIsNotNone(match, last)
+        ref = match.group(1)
+        self.assertEqual(self.record_lines(slot)[0], f"ref={ref}", "the record named the ref before the push")
         self.assertEqual(ref.rsplit("/", 1)[1], slot[len("acp-w1-") :], "the stamp of the slot")
         self.assertEqual(self.scratch_git("rev-parse", "--verify", ref, cwd=repo), head)
         self.assertEqual(self.scratch_git("show", f"{ref}:b.txt", cwd=repo), "world")
@@ -616,27 +721,24 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.log_lines("w1")[2].split(" acp-broker: ")[1], f"omp acp exit 0 push={ref}")
         self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
         with self.subTest(case="HEAD equal to the ref"):
-            self.assertEqual(self.exchange(sock, repo, "w1", PING), PING + b"omp acp exit 0 push=none\n")
+            self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
             self.assertEqual(self.scratch_git("for-each-ref", "--format=%(refname)", "refs/acp-seat/", cwd=repo), ref)
         with self.subTest(case="the ref the worker started from"):
             conn, slot, task = self.held_connection(sock, repo, "w1", ref=ref)
             self.assertEqual(self.scratch_git("rev-parse", "HEAD", cwd=task), head)
             head2 = self.commit_in(task, "c.txt")
-            conn.shutdown(socket.SHUT_WR)
-            data = self.recv_all(conn)
-            match = re.fullmatch(rb"omp acp exit 0 push=(refs/acp-seat/w1/\S+)\n", data)
-            self.assertIsNotNone(match, data)
-            self.assertEqual(self.scratch_git("rev-parse", "--verify", match.group(1).decode(), cwd=repo), head2)
+            _rest, last = self.finish(conn, slot)
+            match = re.fullmatch(r"status=0 push=(refs/acp-seat/w1/\S+)", last)
+            self.assertIsNotNone(match, last)
+            self.assertEqual(self.scratch_git("rev-parse", "--verify", match.group(1), cwd=repo), head2)
         with self.subTest(case="a repository made read-only after the clone"):
             conn, slot, task = self.held_connection(sock, repo, "w1")
             self.commit_in(task, "d.txt")
             subprocess.run(["chmod", "-R", "a-w", str(repo / ".git")], check=True)
             try:
-                conn.shutdown(socket.SHUT_WR)
-                data = self.recv_all(conn)
+                self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=failed"))
             finally:
                 subprocess.run(["chmod", "-R", "u+w", str(repo / ".git")], check=True)
-            self.assertEqual(data, b"omp acp exit 0 push=failed\n")
             self.assertEqual(self.log_lines("w1")[-1].split(" acp-broker: ")[1], "omp acp exit 0 push=failed")
             self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
         with self.subTest(case="through the client"):
@@ -646,6 +748,204 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(status, -signal.SIGTERM, err)
         self.assertIn("acp-broker: the push of ", err)
         self.assertIn("failed", err)
+
+    # --- U343g, round 5: the exit report is the reaper's record, the teardown is the reaper ---
+
+    def test_a_a_term_ignoring_worker_is_ended_by_the_reaper_and_holds_neither_the_slot_nor_the_record(self):
+        """U343g test (a) (verdict U343f-22a81500 P1 `:1233`): the handler's trap waited on omp before the KILL, so a
+        worker that ignored TERM held the trap, the slot and the connection open. The teardown is the reaper, not a
+        trap, and the reaper polls the group with `kill -0` for the grace, then KILLs: with a TERM-ignoring fake omp,
+        a TERM to the handler pid leaves the slot gone and the record complete, `status=2 push=skipped`, within the
+        grace plus two seconds, the worker dead and one exit line in the log; then the same worker under
+        `stop_broker`: the broker ends by its signal within the grace plus two seconds with the slot gone."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        (self.calls / "omp-ignore-term").touch()
+        self.addCleanup(self.kill_fake_omp)
+        conn, slot, _task = self.held_connection(sock, repo, "w1")
+        pid = int(slot.rsplit("-", 1)[1])
+        omp_pid = int((self.calls / "omp-pid").read_text())
+        started = time.monotonic()
+        os.kill(pid, signal.SIGTERM)
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal", seconds=GRACE + 2)
+        rest = self.recv_all(conn)
+        self.assertLessEqual(time.monotonic() - started, GRACE + 2)
+        self.assertEqual(rest, b"", "nothing of the broker's on the stream after the record line")
+        self.assertEqual(self.record_lines(slot)[2], "status=2 push=skipped")
+        self.assertEqual(len(self.record_lines(slot)), 3)
+        self.wait_for(lambda: not self.alive(omp_pid), "the TERM-ignoring worker's end by KILL", seconds=5)
+        exits = [line for line in self.log_lines("w1") if " acp-broker: omp acp exit " in line]
+        self.assertEqual(len(exits), 1, self.log_lines("w1"))
+        self.assertRegex(exits[0], r" acp-broker: omp acp exit 2 push=skipped$")
+        (self.calls / "omp-pid").unlink()
+        conn, slot, _task = self.held_connection(sock, repo, "w1")
+        omp_pid = int((self.calls / "omp-pid").read_text())
+        started = time.monotonic()
+        status, _out, err = self.stop_broker(proc)
+        elapsed = time.monotonic() - started
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertEqual(self.acp_slots(), [], "the slot went with the broker")
+        self.assertLessEqual(elapsed, GRACE + 2, f"the broker took {elapsed:.1f} s to end")
+        self.assertFalse(self.alive(omp_pid))
+        self.assertFalse(sock.parent.exists(), "the records went with the broker directory")
+        conn.close()
+
+    def test_b_a_termination_during_the_slot_removal_cannot_strand_the_slot(self):
+        """U343g test (b) (verdict U343f-22a81500 P1 `:1339`): `trap - HUP INT TERM` ran before `slot_remove`, so a
+        TERM during the recursive removal of a large task killed the handler and stranded the slot. The removal runs
+        in the reaper, which no signal to the handler reaches (`trap ''` on HUP INT TERM, and the relay signals the
+        handler pid alone): with 16,000 files in `task`, TERM to the handler pid in a loop for as long as the slot
+        exists leaves no slot, a complete record (`push=skipped`, or `push=none` when the handler had finished) and
+        exactly one exit line in the log."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        self.addCleanup(self.remove_slots)
+        conn, slot, task = self.held_connection(sock, repo, "w1")
+        pid = int(slot.rsplit("-", 1)[1])
+        big = task / "big"
+        big.mkdir()
+        for i in range(16000):
+            os.close(os.open(big / f"f{i}", os.O_CREAT | os.O_WRONLY, 0o600))
+        conn.shutdown(socket.SHUT_WR)
+        deadline = time.monotonic() + 90
+        while self.acp_slots() and time.monotonic() < deadline:
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            time.sleep(0.01)
+        self.assertEqual(self.acp_slots(), [], "the slot remains after the terminations")
+        rest = self.recv_all(conn)
+        self.assertEqual(rest, b"")
+        lines = self.record_lines(slot)
+        self.assertIsNotNone(lines, "no record")
+        self.assertEqual(len(lines), 3, lines)
+        self.assertRegex(lines[2], r"^status=\d+ push=(skipped|none)$")
+        exits = [line for line in self.log_lines("w1") if " acp-broker: omp acp exit " in line]
+        self.assertEqual(len(exits), 1, self.log_lines("w1"))
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_c_a_worker_tail_without_a_newline_is_payload_and_the_client_learns_the_ref_from_the_record(self):
+        """U343g test (c) (verdict U343f-22a81500 P1 `:1347`): the trailer was one more `printf` on the stream omp
+        wrote, so a worker's unterminated last bytes joined it on one line, the client's anchor missed it, and the
+        client exited 2 without the push word after `update-ref` had written the ref. No byte of the stream is read
+        as a report: the fake omp prints an unterminated `omp acp exit 0 push=none` after the worker's commit; the
+        client exits 0, its stdout ends with those bytes, its stderr names the pushed ref, the ref resolves in the
+        repository to the worker's commit, the record is gone (the client unlinked it) and the slot is gone."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        client = self.client_popen(sock, repo, "w1")
+        client.stdin.write(PING)
+        client.stdin.flush()
+        self.assertEqual(client.stdout.readline(), PING)
+        (slot,) = self.acp_slots()
+        head = self.commit_in(self.slot_task(slot))
+        (self.calls / "omp-tail").write_bytes(b"omp acp exit 0 push=none")
+        client.stdin.close()
+        out, err = client.communicate(timeout=120)
+        (self.calls / "omp-tail").unlink()
+        self.assertEqual(out, b"omp acp exit 0 push=none", "the stdout after the echoed ping ends with the tail")
+        match = re.fullmatch(rb"acp-seat: push=(refs/acp-seat/w1/\d{8}-\d{6}-\d+)\n", err)
+        self.assertIsNotNone(match, err)
+        self.assertEqual(client.returncode, 0, err)
+        ref = match.group(1).decode()
+        self.assertEqual(self.scratch_git("rev-parse", "--verify", ref, cwd=repo), head)
+        self.assertEqual(self.log_lines("w1")[-1].split(" acp-broker: ")[1], f"omp acp exit 0 push={ref}")
+        self.assertFalse(self.record_path(slot).exists(), "the client unlinked the record")
+        self.assertEqual(self.acp_slots(), [])
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_d_a_trailer_shaped_worker_line_then_handler_loss_is_payload_and_the_record_says_skipped(self):
+        """U343g test (d) (verdict U343f-22a81500 P2 `acp-seat:190`): any complete line in the trailer's shape was
+        held as the trailer, so a worker line in that shape followed by the handler's loss was accepted as the
+        broker's status and push word. The worker (the fake omp's echo) prints the complete line `omp acp exit 0
+        push=none`, then the handler gets SIGKILL: the client exits 2 with that line on its stdout, its stderr says
+        `push=skipped` (the record the reaper wrote), no ref exists in the repository, the slot and the record are
+        gone. Against a scratch server in the broker's place, a record line and that line with no record behind
+        them exit 2 naming the id, the line on stdout."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        client = self.client_popen(sock, repo, "w1")
+        client.stdin.write(PING)
+        client.stdin.flush()
+        self.assertEqual(client.stdout.readline(), PING)
+        (slot,) = self.acp_slots()
+        pid = int(slot.rsplit("-", 1)[1])
+        line = b"omp acp exit 0 push=none\n"
+        client.stdin.write(line)
+        client.stdin.flush()
+        # The echoed line reaches the client's stdout only when the client writes worker bytes as they come (a client
+        # that holds a trailer-shaped line reads nothing here within the wait, and the stdout is judged whole below).
+        ready, _, _ = select.select([client.stdout], [], [], 10)
+        echoed = client.stdout.readline() if ready else b""
+        os.kill(pid, signal.SIGKILL)
+        client.stdin.close()
+        out, err = client.communicate(timeout=120)
+        self.assertEqual((client.returncode, echoed + out, err), (2, line, b"acp-seat: push=skipped\n"))
+        self.assertEqual(self.scratch_git("for-each-ref", "refs/acp-seat/", cwd=repo), "")
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
+        self.assertFalse(self.record_path(slot).exists(), "the client unlinked the record")
+        exits = [entry for entry in self.log_lines("w1") if " acp-broker: omp acp exit " in entry]
+        self.assertEqual(len(exits), 1, self.log_lines("w1"))
+        self.assertRegex(exits[0], r" acp-broker: omp acp exit 2 push=skipped$")
+        run = self.client_against_stream(b"acp-broker: record acp-w1-20260101-000000-1\n" + line)
+        self.assertEqual((run.returncode, run.stdout), (2, line), run.stderr)
+        self.assertIn(b"without a complete record acp-w1-20260101-000000-1", run.stderr)
+        self.assertNotIn(b"acp-seat: push=", run.stderr)
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_e_the_first_line_is_the_record_line_before_any_worker_byte_and_a_refusal_is_unchanged(self):
+        """U343g test (e): the stream carries exactly one broker line, the first, before omp starts: `acp-broker: record
+        acp-<name>-<stamp>-<pid>` names the slot, and at that moment the record exists under `<state>/broker/` with its
+        two running lines, `ref=refs/acp-seat/<name>/<stamp>-<pid>` and `reaper=<pid>` of a live process that is not
+        the handler; every later byte is the worker's (the echoed ping, then nothing), and the record's last line
+        follows the socket's close. A refusal's first line keeps its shape, one line and nothing made."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        conn = self.connect(sock, repo, "w1")
+        slot = self.record_line(conn)
+        self.assertEqual(self.acp_slots(), [slot])
+        lines = self.record_lines(slot)
+        self.assertEqual(len(lines), 2, lines)
+        self.assertEqual(lines[0], f"ref=refs/acp-seat/w1/{slot[len('acp-w1-') :]}")
+        self.assertRegex(lines[1], r"^reaper=\d+$")
+        reaper = int(lines[1][len("reaper=") :])
+        self.assertTrue(self.alive(reaper), "the reaper runs")
+        self.assertNotEqual(reaper, int(slot.rsplit("-", 1)[1]), "the reaper is not the handler")
+        self.assertEqual(stat.S_IMODE(os.lstat(self.record_path(slot)).st_mode), 0o600)
+        conn.sendall(PING)
+        self.assertEqual(self.recv_line(conn), PING)
+        self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
+        self.assertEqual(self.record_lines(slot)[:2], lines, "the running lines are kept")
+        self.wait_for(lambda: not self.alive(reaper), "the reaper's end", seconds=10)
+        self.assertEqual(sorted(p.name for p in sock.parent.iterdir()), [slot, "sock"], "one record, no temporary file")
+        data = self.recv_all(self.connect(sock, header="ACP-SEAT v2 x\n")).decode()
+        self.assertTrue(data.startswith("acp-broker: refused: "), data)
+        self.assertEqual(data.count("\n"), 1, data)
+        self.assertEqual(sorted(p.name for p in sock.parent.iterdir()), [slot, "sock"], "a refusal makes no record")
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_f_the_broker_end_removes_leftover_records_before_its_directory(self):
+        """U343g test (f): a record no client read (a raw connection's) and a planted record-named file stay in the
+        broker directory; `broker_cleanup` removes the records before its `rmdir`, so the directory is gone and the
+        broker ends by its signal with nothing named on stderr."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
+        leftover = sorted(p.name for p in sock.parent.iterdir() if p.name != "sock")
+        self.assertEqual(len(leftover), 1, leftover)
+        (sock.parent / "acp-w9-20260101-000000-1").write_text("ref=refs/acp-seat/w9/20260101-000000-1\n")
+        (sock.parent / "acp-w9-20260101-000000-1.tmp").write_text("")
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertFalse(sock.parent.exists(), "the broker directory remains")
+        self.assertNotIn("cannot remove", err)
 
     def push_calls(self, slot):
         """The fake srt's calls after the launch (the push's), as (settings file, the git arguments after the
@@ -676,11 +976,10 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         proc, sock = self.start_broker(name, cwd)
         conn, slot, task = self.held_connection(sock, repo, "w1")
         head = self.commit_in(task)
-        conn.shutdown(socket.SHUT_WR)
-        data = self.recv_all(conn)
-        match = re.fullmatch(rb"omp acp exit 0 push=(refs/acp-seat/w1/\S+)\n", data)
-        self.assertIsNotNone(match, data)
-        ref = match.group(1).decode()
+        _rest, last = self.finish(conn, slot)
+        match = re.fullmatch(r"status=0 push=(refs/acp-seat/w1/\S+)", last)
+        self.assertIsNotNone(match, last)
+        ref = match.group(1)
         settings = str(self.seats_path / ".state" / slot / "settings.json")
         template = str(self.seats_path / ".sandbox" / name / "srt-settings.json")
         self.assertEqual(
@@ -727,9 +1026,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.scratch_git("rev-parse", "HEAD", cwd=task), secret, "outside any sandbox the plant resolves"
         )
         (self.calls / "deny-paths").write_text(f"{self.home_real}/.aws\n")
-        conn.shutdown(socket.SHUT_WR)
-        data = self.recv_all(conn)
-        self.assertEqual(data, b"omp acp exit 0 push=failed\n")
+        self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=failed"))
         held = subprocess.run(
             ["git", "cat-file", "-e", secret], cwd=repo, env=self.env, capture_output=True, text=True, check=False
         )
@@ -747,9 +1044,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertIn(f"failed at rev-parse on {task} inside the worker's settings {settings}", err)
 
     def test_c_the_exit_line_after_a_written_ref_never_refuses(self):
-        """U343f test (c) (verdict U343e-fd94feae P2 `:1284`): the exit log's append failed after the ref was written
-        and the handler refused, so the client read no trailer and learned no ref. The launch log and its directory
-        are made unwritable while the worker runs: the trailer carries the pushed ref and the connection holds it,
+        """U343f test (c) (verdict U343e-fd94feae P2 `:1284`), the record form (U343g): the exit log's append failed
+        after the ref was written and the handler refused, so the client read no report and learned no ref. The
+        launch log and its directory are made unwritable while the worker runs: the record carries the pushed ref,
         the slot is removed, the log keeps its two lines, and the broker's stderr names the log and the line."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
@@ -763,14 +1060,13 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         log.chmod(0o400)
         log_dir.chmod(0o500)
         try:
-            conn.shutdown(socket.SHUT_WR)
-            data = self.recv_all(conn)
+            _rest, last = self.finish(conn, slot)
         finally:
             log_dir.chmod(0o700)
             log.chmod(0o600)
-        match = re.fullmatch(rb"omp acp exit 0 push=(refs/acp-seat/w1/\S+)\n", data)
-        self.assertIsNotNone(match, data)
-        ref = match.group(1).decode()
+        match = re.fullmatch(r"status=0 push=(refs/acp-seat/w1/\S+)", last)
+        self.assertIsNotNone(match, last)
+        ref = match.group(1)
         self.assertEqual(self.scratch_git("rev-parse", "--verify", ref, cwd=repo), head)
         self.assertEqual(self.log_lines("w1"), before, "the exit line could not be appended")
         self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
@@ -781,10 +1077,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         )
 
     def test_d_a_hangup_during_the_push_removes_the_slot_and_logs_one_exit_line(self):
-        """U343f test (d) (verdict U343e-fd94feae P2 `:1282`): the traps were dropped before the push, so a hangup
-        during it ended the handler at once with its slot in place and no exit line. The traps stay armed through
-        the push and the exit line: a HUP while the fake srt's `pack-objects` sleeps ends the connection with the
-        slot removed and exactly one exit line, `push=skipped` (the push had not finished) or the pushed ref."""
+        """U343f test (d) (verdict U343e-fd94feae P2 `:1282`), the reaper form (U343g): the traps were dropped before
+        the push, so a hangup during it ended the handler at once with its slot in place and no exit line. The
+        handler has no trap and the reaper has the teardown: a HUP while the fake srt's `pack-objects` sleeps ends
+        the handler, and the connection ends with the slot removed, exactly one exit line and a complete record,
+        `push=skipped` (the push had not finished) or the pushed ref, omp's own status in both."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
@@ -799,19 +1096,21 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             seconds=15,
         )
         os.kill(pid, signal.SIGHUP)
-        data = self.recv_all(conn)
+        rest, last = self.finish(conn, slot)
         self.wait_for(lambda: self.acp_slots() == [], "the slot's removal", seconds=30)
         exits = [line for line in self.log_lines("w1") if " acp-broker: omp acp exit " in line]
         self.assertEqual(len(exits), 1, self.log_lines("w1"))
         self.assertRegex(exits[0], r" acp-broker: omp acp exit 0 push=(skipped|refs/acp-seat/w1/\S+)$")
-        self.assertEqual(data, b"", "ended by the signal: no trailer")
+        self.assertRegex(last, r"^status=0 push=(skipped|refs/acp-seat/w1/\S+)$")
+        self.assertEqual(rest, b"", "ended by the signal: nothing of the broker's on the stream")
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
-    def test_a_slot_that_cannot_be_removed_gives_a_trailer_of_exit_2_after_the_removal(self):
-        """Verdict U343d-136fbe0a P2 `:1157`: the success trailer preceded the slot's removal, so a slot left behind
-        exited the handler 2 while the client read exit 0. The removal comes first and the trailer carries the
-        connection's status: `.state` made read-only while the worker runs keeps the slot's entry in place, the
-        trailer reads `omp acp exit 2 push=none`, the log keeps omp's own status, the client exits 2."""
+    def test_a_slot_that_cannot_be_removed_gives_a_record_of_status_2_after_the_removal(self):
+        """Verdict U343d-136fbe0a P2 `:1157`, the record form (U343g): the success report preceded the slot's
+        removal, so a slot left behind exited the handler 2 while the client read exit 0. The reaper removes the slot
+        first and the record's last line carries the connection's status: `.state` made read-only while the worker
+        runs keeps the slot's entry in place, the record reads `status=2 push=none`, the log keeps omp's own status,
+        the client exits 2."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
@@ -819,11 +1118,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         conn, slot, _task = self.held_connection(sock, repo, "w1")
         state.chmod(0o500)
         try:
-            conn.shutdown(socket.SHUT_WR)
-            data = self.recv_all(conn)
+            self.assertEqual(self.finish(conn, slot), (b"", "status=2 push=none"))
         finally:
             state.chmod(0o700)
-        self.assertEqual(data, b"omp acp exit 2 push=none\n")
         self.assertEqual(self.acp_slots(), [slot], "the slot's entry stayed in the read-only directory")
         self.assertEqual(self.log_lines("w1")[-1].split(" acp-broker: ")[1], "omp acp exit 0 push=none")
         subprocess.run(["chmod", "-R", "u+rwX", str(state / slot)], check=True)
@@ -834,8 +1131,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
 
     def test_a_termination_ends_omp_and_its_descendants(self):
         """Verdict U343d-136fbe0a P2 `:1079`: the trap ended the immediate child alone and an omp tool descendant
-        outlived the handler. The launch runs in its own process group and the trap ends the group: the fake omp's
-        sleeping child is gone when the broker has exited."""
+        outlived the handler. The launch runs in its own process group and the reaper ends the group (U343g): the
+        fake omp's sleeping child is gone when the broker has exited."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
@@ -899,21 +1196,21 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.state_names(), ["claude", name], "no state slot and no log for a refused launch")
         self.assertEqual(len(self.canaries()), 5, "one canary per connection, nothing after it")
         self.assertEqual(len(self.calls_of("srt")), 15, "the clone's two reads and the canary per connection")
-        self.assertEqual(self.exchange(sock, repo, "w1", PING), PING + b"omp acp exit 0 push=none\n")
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def test_a_1mib_json_rpc_line_is_relayed_equal_through_the_socket_and_back(self):
         """The U342 relay measurement as a test: a 1 MiB JSON-RPC line through the socket to the fake `omp acp` echo and
-        back, equal, the trailer last; the same through the client, whose stdout is the line alone, whose stderr is
-        the trailer's push word and whose exit status is the trailer's."""
+        back, equal after the record line, the record `status=0 push=none`; the same through the client, whose
+        stdout is the line alone, whose stderr is the record's push word and whose exit status is the record's."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
         line = one_mib_line()
-        data = self.exchange(sock, repo, "w1", line)
-        self.assertEqual(len(data), len(line) + len(b"omp acp exit 0 push=none\n"))
-        self.assertEqual(data[: len(line)], line)
-        self.assertEqual(data[len(line) :], b"omp acp exit 0 push=none\n")
+        rest, last = self.exchange_record(sock, repo, "w1", line)
+        self.assertEqual(len(rest), len(line))
+        self.assertEqual(rest, line)
+        self.assertEqual(last, "status=0 push=none")
         run = self.client(sock, repo, "w1", line)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(len(run.stdout), len(line))
@@ -933,9 +1230,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         repo, base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
         line = b'{"jsonrpc":"2.0","id":1,"method":"initialize"}\n'
-        self.assertEqual(self.exchange(sock, repo, "w1", line), line + b"omp acp exit 0 push=none\n")
+        self.assertEqual(self.exchange_record(sock, repo, "w1", line), (line, "status=0 push=none"))
         (self.calls / "omp-status").write_text("7")
-        self.assertEqual(self.exchange(sock, repo, "w1", line, ref=base), line + b"omp acp exit 7 push=none\n")
+        self.assertEqual(self.exchange_record(sock, repo, "w1", line, ref=base), (line, "status=7 push=none"))
         (self.calls / "omp-status").unlink()
         stamp = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"
         task = rf"{re.escape(str(self.seats_path))}/\.state/acp-w1-\d{{8}}-\d{{6}}-\d+/task"
@@ -972,7 +1269,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         (links / "git").symlink_to(git_real)
         path = f"{links}:{self.bindir}:{SYSTEM_PATH}"
         proc, sock = self.start_broker(name, cwd, PATH=path, USER="u343", LANG="C.UTF-8", SECRET_OF_THE_CALLER="x")
-        self.assertEqual(self.exchange(sock, repo, "w1", PING), PING + b"omp acp exit 0 push=none\n")
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
         version, launch = self.calls_of("omp")
         self.assertEqual(version["argv"], ["--version"])
         self.assertEqual(launch["argv"], ["acp", "--profile", "dsh"])
@@ -1047,12 +1344,14 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         proc, sock = self.start_broker(name, cwd)
         c1 = self.connect(sock, repo, "w1")
         c2 = self.connect(sock, repo, "w2")
+        s1 = self.record_line(c1)
+        s2 = self.record_line(c2)
         c1.sendall(PING)
         c2.sendall(PING)
         self.assertEqual(self.recv_line(c1), PING)
         self.assertEqual(self.recv_line(c2), PING)
         slots = self.acp_slots()
-        self.assertEqual(len(slots), 2, slots)
+        self.assertEqual(slots, sorted([s1, s2]), "the record lines name the two slots")
         self.assertEqual([s.split("-")[1] for s in slots], ["w1", "w2"])
         for slot in slots:
             path = self.seats_path / ".state" / slot
@@ -1063,26 +1362,26 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         settings = [json.loads((self.seats_path / ".state" / s / "settings.json").read_text()) for s in slots]
         self.assertEqual([s["filesystem"]["allowWrite"][0] for s in settings], [str(self.slot_task(s)) for s in slots])
         self.assertEqual(self.state_names(), ["claude", name, "w1", "w2"])
-        c1.shutdown(socket.SHUT_WR)
-        c2.shutdown(socket.SHUT_WR)
-        self.assertEqual(self.recv_all(c1), b"omp acp exit 0 push=none\n")
-        self.assertEqual(self.recv_all(c2), b"omp acp exit 0 push=none\n")
+        self.assertEqual(self.finish(c1, s1), (b"", "status=0 push=none"))
+        self.assertEqual(self.finish(c2, s2), (b"", "status=0 push=none"))
+        records = sorted(p.name for p in sock.parent.iterdir() if p.name != "sock")
+        self.assertEqual(records, slots, "two records, one per connection, until a client reads them")
         self.wait_for(lambda: self.acp_slots() == [], "the two slots' removal")
-        self.assertEqual(self.exchange(sock, repo, "w3", PING), PING + b"omp acp exit 0 push=none\n")
+        self.assertEqual(self.exchange_record(sock, repo, "w3", PING), (PING, "status=0 push=none"))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def test_the_socket_and_its_directory_are_gone_after_the_broker_exits(self):
-        """A termination while a worker runs: the handler's trap ends omp, logs the exit and removes the slot, the relay
-        removes the socket, the broker its directory, and the broker ends by the signal."""
+        """A termination while a worker runs: the relay ends the handler, the handler's reaper ends omp, logs the exit,
+        writes the record and removes the slot (U343g), the relay removes the socket, the broker the records and its
+        directory, and the broker ends by the signal."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
         broker_dir = sock.parent
         self.assertEqual(stat.S_IMODE(os.lstat(broker_dir).st_mode), 0o700)
         self.assertEqual(stat.S_IMODE(os.lstat(sock).st_mode), 0o600)
-        conn = self.connect(sock, repo, "w1")
-        conn.sendall(PING)
-        self.assertEqual(self.recv_line(conn), PING)
+        conn, slot, _task = self.held_connection(sock, repo, "w1")
+        self.assertEqual(stat.S_IMODE(os.lstat(self.record_path(slot)).st_mode), 0o600)
         self.assertEqual(len(self.acp_slots()), 1)
         status, out, err = self.stop_broker(proc)
         self.assertEqual(status, -signal.SIGTERM, err)
@@ -1090,8 +1389,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertFalse(sock.exists())
         self.assertFalse(broker_dir.exists())
         self.assertEqual(self.acp_slots(), [], "the live worker's slot went with the broker")
-        rest = self.recv_all(conn)
-        self.assertRegex(rest, rb"^(omp acp exit \d+ push=\S+\n)?$")
+        self.assertEqual(self.recv_all(conn), b"", "nothing of the broker's on the stream after the record line")
         lines = self.log_lines("w1")
         self.assertEqual(len(lines), 3, lines)
         self.assertRegex(lines[2], r" acp-broker: omp acp exit \d+ push=skipped$")
@@ -1120,7 +1418,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         )
         self.assertTrue(sock.exists(), "the first broker's socket stays")
         self.assertIsNone(proc.poll())
-        self.assertEqual(self.exchange(sock, repo, "w1", PING), PING + b"omp acp exit 0 push=none\n")
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
         self.assertFalse(sock.parent.exists())
         # A stale directory (a crashed broker's, or another's between its mkdir and its bind) refuses and stays.
@@ -1172,17 +1470,20 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         )  # fmt: skip
         self.assertEqual((run.returncode, run.stdout), (2, b""), run.stderr)
         self.assertEqual(self.calls_of("omp"), [])
-        # The exit status is the trailer's, and the trailer is never printed on stdout.
+        # The exit status is the record's, and nothing of the broker's reaches stdout after the first line.
         (self.calls / "omp-status").write_text("9")
         run = self.client(sock, repo, "w1", PING)
         self.assertEqual((run.returncode, run.stdout, run.stderr), (9, PING, b"acp-seat: push=none\n"))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
-    def client_against_stream(self, stream):
+    def client_against_stream(self, stream, record=None):
         """The client run against a scratch server in the broker's place that answers the header with `stream` and
-        closes; the completed run."""
+        closes, with the record `record` (name, text) planted in the socket's directory when given; the completed
+        run, with `record_left` set to whether the planted record is still there."""
         sock = Path(self.temp.name).resolve() / "s" / "sock"
         sock.parent.mkdir(exist_ok=True)
+        if record is not None:
+            (sock.parent / record[0]).write_text(record[1])
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         here = os.getcwd()
         os.chdir(sock.parent)
@@ -1208,41 +1509,84 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         thread.join(timeout=30)
         server.close()
         sock.unlink()
+        if record is not None:
+            run.record_left = (sock.parent / record[0]).exists()
+            if run.record_left:
+                (sock.parent / record[0]).unlink()
         return run
 
-    def test_the_client_takes_the_trailer_from_the_last_line_alone(self):
-        """Verdict U343d-136fbe0a P2 `acp-seat:168`: any matching line was taken as the trailer, so a stream `omp acp
-        exit 0`, payload, EOF returned 0 without a final trailer. Against a scratch server in the broker's place:
-        a trailer-shaped line followed by payload is payload (written to stdout, in order) and the stream ends
-        without a trailer (exit 2); the same line last is the trailer; a refusal first line is exit 2 on stderr."""
+    def test_the_client_copies_every_byte_after_the_first_line_and_reads_no_report_from_the_stream(self):
+        """U343g (the round-3 and round-4 client tests of verdicts U343d-136fbe0a P2 `acp-seat:168` and U343e-fd94feae
+        P2 `acp-seat:213`, rewritten for the record; verdict U343f-22a81500 P2 `acp-seat:190`): the first line decides
+        the connection and no later byte is read. Against a scratch server in the broker's place: a refusal first
+        line is exit 2 on stderr with nothing on stdout; a record line followed by anything (a trailer-shaped line
+        then payload, payload then a trailer-shaped line, a trailer-shaped tail without a newline, two trailer-shaped
+        lines, nothing) writes every byte after the first line to stdout and, with no record in the socket's
+        directory, exits 2 naming the id; a first line that is neither, or a stream that ends before its first
+        newline, is exit 2 with nothing on stdout."""
+        rec = b"acp-broker: record acp-w1-20260101-000000-1\n"
+        trailer_like = b"omp acp exit 0 push=none\n"
         streams = {
-            "a trailer-shaped line, then payload": (b"omp acp exit 0 push=none\n" + PING, 2, b"omp acp exit 0 push=none\n" + PING, b"acp-seat: the broker closed the connection without an exit trailer\n"),
-            "payload, then the trailer last": (PING + b"omp acp exit 5 push=refs/acp-seat/w1/x\n", 5, PING, b"acp-seat: push=refs/acp-seat/w1/x\n"),
-            "two trailer-shaped lines": (b"omp acp exit 0 push=none\nomp acp exit 3 push=failed\n", 3, b"omp acp exit 0 push=none\n", b"acp-seat: push=failed\n"),
-            "a refusal first": (b"acp-broker: refused: no\n" + PING, 2, b"", b"acp-broker: refused: no\n"),
+            "a refusal first": (b"acp-broker: refused: no\n" + PING, b"", b"acp-broker: refused: no\n"),
+            "a trailer-shaped line, then payload": (rec + trailer_like + PING, trailer_like + PING, b"without a complete record acp-w1-20260101-000000-1"),
+            "payload, then a trailer-shaped line last": (rec + PING + b"omp acp exit 5 push=refs/acp-seat/w1/x\n", PING + b"omp acp exit 5 push=refs/acp-seat/w1/x\n", b"without a complete record acp-w1-20260101-000000-1"),
+            "a trailer-shaped tail without a newline": (rec + PING + b"omp acp exit 4 push=none", PING + b"omp acp exit 4 push=none", b"without a complete record acp-w1-20260101-000000-1"),
+            "two trailer-shaped lines": (rec + trailer_like + b"omp acp exit 3 push=failed\n", trailer_like + b"omp acp exit 3 push=failed\n", b"without a complete record acp-w1-20260101-000000-1"),
+            "the record line alone": (rec, b"", b"without a complete record acp-w1-20260101-000000-1"),
+            "a first line that is neither": (b"hello\n" + PING, b"", b"neither a refusal nor a record line"),
+            "no first line": (b"acp-broker: record acp-w1", b"", b"closed the connection before its first line"),
         }  # fmt: skip
-        for label, (stream, status, stdout, stderr) in streams.items():
+        for label, (stream, stdout, stderr) in streams.items():
             with self.subTest(case=label):
                 run = self.client_against_stream(stream)
-                self.assertEqual((run.returncode, run.stdout, run.stderr), (status, stdout, stderr))
+                self.assertEqual((run.returncode, run.stdout), (2, stdout), run.stderr)
+                self.assertIn(stderr, run.stderr)
+                self.assertNotIn(b"acp-seat: push=", run.stderr)
 
-    def test_e_the_client_takes_only_a_newline_terminated_last_line_as_the_trailer(self):
-        """U343f test (e) (verdict U343e-fd94feae P2 `acp-seat:213`): a tail without a newline was taken as the
-        trailer when it had the shape, so a worker's trailer-shaped last bytes on a connection that ended before
-        the broker's trailer read as the broker's exit. The broker writes its trailer with its newline, always: the
-        trailer is the stream's last complete line, a tail without a newline is payload (written to stdout, exit 2
-        with `closed the connection without an exit trailer`), and a complete trailer line last is the trailer."""
-        closed = b"acp-seat: the broker closed the connection without an exit trailer\n"
-        streams = {
-            "a trailer-shaped tail without a newline": (PING + b"omp acp exit 4 push=none", 2, PING + b"omp acp exit 4 push=none", closed),
-            "a trailer-shaped tail alone": (b"omp acp exit 0 push=refs/acp-seat/w1/x", 2, b"omp acp exit 0 push=refs/acp-seat/w1/x", closed),
-            "a trailer line, then a tail without a newline": (PING + b"omp acp exit 0 push=none\nomp", 2, PING + b"omp acp exit 0 push=none\nomp", closed),
-            "the trailer last, with its newline": (PING + b"omp acp exit 4 push=refs/acp-seat/w1/x\n", 4, PING, b"acp-seat: push=refs/acp-seat/w1/x\n"),
-        }  # fmt: skip
-        for label, (stream, status, stdout, stderr) in streams.items():
-            with self.subTest(case=label):
-                run = self.client_against_stream(stream)
-                self.assertEqual((run.returncode, run.stdout, run.stderr), (status, stdout, stderr))
+    def test_the_client_exits_with_the_record_status_and_unlinks_the_record(self):
+        """U343g: the record alone is the report. Against a scratch server in the broker's place with a record planted in
+        the socket's directory: a complete record gives the client the record's status and its push word on stderr,
+        the stream's bytes after the first line on stdout, and the record is unlinked; an incomplete record (the two
+        running lines alone) and a record whose status is no number are exit 2 naming the id, the record left for the
+        broker's cleanup; a record line naming another id reads no planted record."""
+        name = "acp-w1-20260101-000000-1"
+        rec = f"acp-broker: record {name}\n".encode()
+        running = f"ref=refs/acp-seat/w1/20260101-000000-1\nreaper=4242\n"
+        with self.subTest(case="a complete record with the pushed ref"):
+            run = self.client_against_stream(
+                rec + PING, (name, running + "status=5 push=refs/acp-seat/w1/20260101-000000-1\n")
+            )
+            self.assertEqual(
+                (run.returncode, run.stdout, run.stderr),
+                (5, PING, b"acp-seat: push=refs/acp-seat/w1/20260101-000000-1\n"),
+            )
+            self.assertFalse(run.record_left, "the client unlinked the record")
+        with self.subTest(case="a complete record, status 0, push=none, a worker tail in the trailer's shape"):
+            run = self.client_against_stream(
+                rec + PING + b"omp acp exit 7 push=failed", (name, running + "status=0 push=none\n")
+            )
+            self.assertEqual(
+                (run.returncode, run.stdout, run.stderr),
+                (0, PING + b"omp acp exit 7 push=failed", b"acp-seat: push=none\n"),
+            )
+            self.assertFalse(run.record_left)
+        with self.subTest(case="an incomplete record"):
+            run = self.client_against_stream(rec + PING, (name, running))
+            self.assertEqual((run.returncode, run.stdout), (2, PING), run.stderr)
+            self.assertIn(f"without a complete record {name}".encode(), run.stderr)
+            self.assertTrue(run.record_left, "an incomplete record is left for the broker's cleanup")
+        with self.subTest(case="a record whose status is no number"):
+            run = self.client_against_stream(rec + PING, (name, running + "status=x push=none\n"))
+            self.assertEqual((run.returncode, run.stdout), (2, PING), run.stderr)
+            self.assertIn(f"without a complete record {name}".encode(), run.stderr)
+            self.assertTrue(run.record_left)
+        with self.subTest(case="a record line naming another id"):
+            run = self.client_against_stream(
+                b"acp-broker: record acp-w1-20260101-000000-2\n" + PING, (name, running + "status=0 push=none\n")
+            )
+            self.assertEqual((run.returncode, run.stdout), (2, PING), run.stderr)
+            self.assertIn(b"without a complete record acp-w1-20260101-000000-2", run.stderr)
+            self.assertTrue(run.record_left, "another connection's record is not read")
 
     def test_f_the_client_anchors_refuse_a_trailing_newline(self):
         """U343f test (f) (verdict U343e-fd94feae P3 `acp-seat:235`): Python's `$` matches before a final newline, so
@@ -1268,7 +1612,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
     def test_every_producer_injection_refuses_by_name(self):
         """Each producer the launch reads fails in turn: the slot mkdir, a physical resolution, the Router settings
         read (a malformed file, an unclean row), the settings write (a file size limit on the broker), the canary,
-        srt's exit (the trailer and the log carry omp's status), the omp version read and the log append. Each refuses
+        srt's exit (the record and the log carry omp's status), the omp version read and the log append. Each refuses
         with one line naming what failed, starts no omp and leaves no slot."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
@@ -1351,10 +1695,10 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 w2.chmod(0o700)
             self.assertEqual([c["argv"] for c in self.calls_of("omp")], [["--version"]], "omp acp never started")
             self.assertEqual(self.log_lines("w2"), [])
-        with self.subTest(producer="srt's exit, as the trailer and the log"):
+        with self.subTest(producer="srt's exit, as the record and the log"):
             (self.calls / "omp-status").write_text("5")
             try:
-                self.assertEqual(self.exchange(sock, repo, "w1", PING), PING + b"omp acp exit 5 push=none\n")
+                self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=5 push=none"))
             finally:
                 (self.calls / "omp-status").unlink()
             self.assertRegex(self.log_lines("w1")[-1], r" acp-broker: omp acp exit 5 push=none$")
@@ -1414,8 +1758,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 proc, sock = self.start_broker(seat_name, scratch)
                 conn, slot, task = self.held_connection(sock, repo, "w1")
                 rendered["worker"] = (self.seats_path / ".state" / slot / "settings.json").read_bytes()
-                conn.shutdown(socket.SHUT_WR)
-                self.assertEqual(self.recv_all(conn), b"omp acp exit 0 push=none\n")
+                self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
                 self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
                 rendered["task"] = str(task)
                 rendered["router_cwd"] = str(scratch)
@@ -1529,7 +1872,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(sorted(p.name for p in (home / ".aws").iterdir()), [])
         self.assertEqual(sorted(p.name for p in (home / ".omp/profiles/orchestrator").iterdir()), [])
         profile.unlink()
-        self.assertEqual(self.exchange(sock, repo, "w1", PING), PING + b"omp acp exit 0 push=none\n")
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
         self.assertTrue(profile.is_dir() and not profile.is_symlink())
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 

@@ -166,6 +166,55 @@ FAKE_OMP = textwrap.dedent(
     sys.exit(int(open(status).read()) if os.path.exists(status) else 0)
     """
 )
+# The bind-race winner (U343j test (a), verdict U343i-76a5c83b P1 `acp-broker:1061`): a listener of the test's that
+# stands for a broker which bound `sock` first, with one record no client read yet and one reaper temporary beside
+# it; it writes its pid to `winner-pid`, then `winner-ready`, and answers every connection with one line.
+BIND_WINNER = textwrap.dedent(
+    """\
+    import os, socket, sys
+    sock, calls = sys.argv[1], sys.argv[2]
+    directory, base = os.path.split(sock)
+    os.chdir(directory)
+    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    listener.bind(base)
+    os.chmod(base, 0o600)
+    listener.listen(4)
+    with open(os.path.join(directory, "acp-w9-20260101-000000-1"), "w") as record:
+        record.write("ref=refs/acp-seat/w9/20260101-000000-1\\nreaper=1\\n")
+    with open(os.path.join(directory, "acp-w9-20260101-000000-1.tmp"), "w") as temp:
+        temp.write("")
+    with open(os.path.join(calls, "winner-pid"), "w") as handle:
+        handle.write(str(os.getpid()))
+    with open(os.path.join(calls, "winner-ready"), "w") as handle:
+        handle.write("")
+    while True:
+        conn, _ = listener.accept()
+        conn.sendall(b"winner\\n")
+        conn.close()
+    """
+)
+# The fake python3 of the bind-race tests: a `#!/bin/sh` wrapper the broker pins as `/bin/sh <file>`; when
+# `bind-loser` exists beside the calls and the relay is what it is asked to run, it starts the winner on the socket
+# the relay was given (`$4`) and waits for it, then runs the real interpreter with the same arguments, so the real
+# relay's bind fails exactly as a second broker's does after both passed the take; every other run (the record
+# helper's) goes straight to the real interpreter. The winner's stdio is detached, so it holds no pipe of the broker's.
+FAKE_PYTHON3 = textwrap.dedent(
+    """\
+    #!/bin/sh
+    real={python}
+    calls={calls}
+    case $3 in
+    */acp-relay.py)
+        if [ -e "$calls/bind-loser" ]; then
+            rm -f "$calls/bind-loser"
+            "$real" {winner} "$4" "$calls" > /dev/null 2>&1 < /dev/null &
+            while [ ! -e "$calls/winner-ready" ]; do sleep 0.02; done
+        fi
+        ;;
+    esac
+    exec "$real" "$@"
+    """
+)
 
 
 def one_mib_line():
@@ -952,7 +1001,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
 
     def test_f_the_broker_end_removes_leftover_records_and_leaves_the_directory_standing(self):
         """U343g test (f), the U343i form: a record no client read (a raw connection's) and a planted record-named
-        file stay in the broker directory; `broker_cleanup` removes the socket and the records and leaves the
+        file stay in the broker directory; the relay removes its socket at its end and `broker_cleanup` the records
+        once the socket is gone (U343j: the socket is the relay's alone) and leaves the
         directory, hcom-seat's, standing empty (no `rmdir`), and the broker ends by its signal with nothing named on
         stderr."""
         name, cwd = self.make_router()
@@ -1705,6 +1755,123 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         proc, sock = self.start_broker(name, cwd)
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
         self.assert_broker_dir_stands_empty(sock)
+
+    # --- U343j, round 8: the bind decides between two brokers, and the take's emptiness is read by a glob ---
+
+    def plant_bind_winner(self):
+        """The fake python3 on PATH becomes the `#!/bin/sh` wrapper that, for the relay's start alone, first binds
+        the broker socket from a listener of the test's (the winner: a broker that bound first, with one record no
+        client read and one reaper temporary beside its socket) and then runs the real relay, whose bind fails as the
+        loser's does; returns the names of the winner's two records."""
+        winner = self.bindir / "bind-winner.py"
+        # The fakes' `#!/usr/bin/env python3` would now resolve to the wrapper, a script the broker refuses as an
+        # interpreter, so they name the real interpreter by its absolute path for these tests.
+        for tool in ("srt", "omp"):
+            path = self.bindir / tool
+            path.write_text(path.read_text().replace("#!/usr/bin/env python3\n", f"#!{self.python}\n", 1))
+        winner.write_text(BIND_WINNER)
+        fake = self.bindir / "python3"
+        fake.unlink()
+        fake.write_text(FAKE_PYTHON3.format(python=self.python, calls=self.calls, winner=winner))
+        fake.chmod(0o755)
+        (self.calls / "bind-loser").write_text("")
+        self.addCleanup(self.kill_winner)
+        return ["acp-w9-20260101-000000-1", "acp-w9-20260101-000000-1.tmp"]
+
+    def kill_winner(self):
+        pid_file = self.calls / "winner-pid"
+        if pid_file.exists():
+            try:
+                os.kill(int(pid_file.read_text()), signal.SIGKILL)
+            except (ProcessLookupError, ValueError):
+                pass
+
+    def losing_broker(self, name, cwd):
+        """The broker started on a slot whose relay loses the bind: `(status, stdout, stderr)` once it has exited."""
+        proc = subprocess.Popen(
+            [str(BROKER), self.seats, name, str(cwd)], cwd=self.repo, env=self.broker_env(),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )  # fmt: skip
+        try:
+            out, err = proc.communicate(timeout=120)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            out, err = proc.communicate()
+            self.fail(f"the losing broker did not exit: {out!r} {err!r}")
+        return proc.returncode, out, err
+
+    def connect_raw(self, sock):
+        """One raw connection to `sock` by its name from its directory, no header; what came back."""
+        conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        conn.settimeout(30)
+        here = os.getcwd()
+        os.chdir(sock.parent)
+        try:
+            conn.connect(sock.name)
+        finally:
+            os.chdir(here)
+        return self.recv_all(conn)
+
+    def test_a_a_broker_whose_relay_loses_the_bind_removes_nothing_and_leaves_the_winners_socket_standing(self):
+        """U343j test (a) (verdict U343i-76a5c83b P1 `acp-broker:1061`): the take is a check before the bind, so two
+        brokers started together can both pass it and the bind decides; the relay that loses it refuses `cannot bind
+        the broker socket` and exits 2, and the loser's broker, whose cleanup used to `rm -f` the socket whatever
+        bound it, removes nothing when the socket stands after its relay's end: the winner's socket (bound here by a
+        listener of the test's right before the real relay runs) stands, 0600, and still accepts; the loser exits 2
+        with one line naming the socket and the relay's status, nothing on stdout, no `cannot remove` line."""
+        name, cwd = self.make_router()
+        self.plant_bind_winner()
+        sock = self.seats_path / ".state" / name / "broker/sock"
+        status, out, err = self.losing_broker(name, cwd)
+        self.assertEqual((status, out), (2, ""), err)
+        self.assertIn(f"acp-relay.py: refused: cannot bind the broker socket {sock}", err)
+        self.assertIn(f"acp-broker: the socket {sock} stands after the relay's end", err)
+        self.assertIn(
+            "acp-broker: the relay exited 2; the broker exits 2 because the socket stands and nothing was removed", err
+        )
+        self.assertNotIn("cannot remove", err)
+        self.assertTrue(sock.exists(), "the winner's socket stands")
+        self.assertEqual(stat.S_IMODE(os.lstat(sock).st_mode), 0o600)
+        self.assertTrue(self.alive(int((self.calls / "winner-pid").read_text())), "the winner runs")
+        self.assertEqual(self.connect_raw(sock), b"winner\n", "the winner still listens on its socket")
+
+    def test_b_an_entry_named_by_a_newline_alone_refuses_the_take_as_not_empty(self):
+        """U343j test (b) (verdict U343i-76a5c83b P2 `acp-broker:1062`): the take read the entries through
+        `$(/bin/ls -A …)`, and command substitution strips trailing newlines, so an entry named by one newline alone
+        read as an empty directory and the broker listened beside it, and a name ending in a newline lost its last
+        character; the emptiness is now a glob (dot names included, no match an empty list), so an entry of any name
+        refuses, shown `%q`-quoted in the refusal, and stays in place with no socket beside it and no srt run."""
+        name, cwd = self.make_router()
+        broker_dir = self.seats_path / ".state" / name / "broker"
+        cases = (("a newline alone", "\n", "$'\\n'"), ("a name ending in a newline", "note\n", "$'note\\n'"))
+        for label, entry, shown in cases:
+            with self.subTest(case=label):
+                (broker_dir / entry).write_text("")
+                status, out, err = self.broker_refusal(name, cwd)
+                self.assertEqual((status, out), (2, ""), err)
+                self.assertIn(
+                    f"acp-broker: refused: the broker directory {broker_dir} is not empty ({shown}); hcom-seat makes"
+                    " it empty",
+                    err,
+                )
+                self.assertEqual(sorted(p.name for p in broker_dir.iterdir()), [entry], "the entry stays, no socket")
+                self.assertEqual(self.calls_of("srt"), [], "nothing ran")
+                (broker_dir / entry).unlink()
+
+    def test_c_a_broker_whose_relay_loses_the_bind_leaves_the_winners_records_standing(self):
+        """U343j test (c): the records beside a standing socket are the winner's (a connection's exit report no client
+        read yet, and a reaper's temporary in flight), so the loser's cleanup, which used to sweep `acp-*` before it
+        looked at the socket, leaves them: after the loser's exit the directory holds exactly the winner's socket and
+        its two records, the record's bytes unchanged."""
+        name, cwd = self.make_router()
+        names = self.plant_bind_winner()
+        sock = self.seats_path / ".state" / name / "broker/sock"
+        status, out, err = self.losing_broker(name, cwd)
+        self.assertEqual((status, out), (2, ""), err)
+        self.assertNotIn("cannot remove", err)
+        self.assertEqual(self.broker_dir_entries(sock), sorted([*names, "sock"]))
+        self.assertEqual((sock.parent / names[0]).read_text(), "ref=refs/acp-seat/w9/20260101-000000-1\nreaper=1\n")
+        self.assertEqual((sock.parent / names[1]).read_text(), "")
 
     def test_the_client_refuses_outside_a_seat_on_a_refusal_line_and_without_a_socket(self):
         """acp-seat: exit 2 with nothing on stdout outside a seat (no marker), on the broker's refusal line (printed on

@@ -412,7 +412,7 @@
       "target": ".local/bin/common/acp-broker",
       "kind": "file",
       "executable": true,
-      "sha256": "91c5b642cdd3a4f9ec3595e65dcbbc358da6ad313d55a31cd3337cee29a131b3"
+      "sha256": "4c69ae99c3beacfdb4010784c1e0e96ef1597afedc2f6d6a7b1744423e410c77"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-record-place.py",

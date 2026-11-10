@@ -192,10 +192,14 @@
 #   slot's `mkdir` and the fork, during the two `mkfifo` and the two `exec`, still ended a process with no trap and
 #   stranded the slot; a window shorter than round 11's is a window). One trap for HUP, INT and TERM (slot_trap),
 #   armed right before the slot's `mkdir` and disarmed right after the ready line is read, for the making of the slot
-#   and the reaper's start alone, removes the slot (slot_remove, idempotent: the reaper's own removal beside it is
-#   safe) and exits 2, and touches neither omp nor the record nor the report; from the fork to the ready line both
-#   it and the reaper may remove the slot, after that line the reaper alone, and no trap on HUP, INT or TERM exists
-#   in a connection once the reaper has reported ready: the relay's terminate and kill target the handler pid alone,
+#   and the reaper's start alone, removes the slot as the state it is in says and exits 2, and touches neither omp
+#   nor the record nor the report: before `slot_made=1` (a trap runs right after the simple command the signal
+#   arrived in, so the `mkdir` and the flag are two steps; regime-cutover U343q, verdict U343p-901e096a P1 :1669)
+#   the slot is at most the empty directory a bare `mkdir` leaves and `/bin/rmdir` takes exactly that (nothing
+#   non-empty, no file, no link), after the flag slot_remove takes whatever this connection made (idempotent: the
+#   reaper's own removal beside it is safe); from the fork to the ready line both it and the reaper may remove the
+#   slot, after that line the reaper alone, and no trap on HUP, INT or TERM exists in a connection once the reaper
+#   has reported ready: the relay's terminate and kill target the handler pid alone,
 #   so no signal that ends the handler reaches omp's end, the removal or the report. What the reaper cannot end, the
 #   two residuals of the body's threat table: a worker descendant that made
 #   a process group of its own (setsid, a daemonised tool), which stays inside the worker's sandbox and, when it
@@ -413,15 +417,28 @@ refuse() {
 
 # @description The handler's one trap, armed for the making of the slot and the reaper's start alone (regime-cutover
 #   U343p, verdict U343o-c5c2b968 P1 :1648, class handler-window, form remove): a hangup, interrupt or termination
-#   from right before the slot's `mkdir` to right after the reaper's ready line is read removes the slot (slot_remove,
-#   idempotent, so a reaper already forked may remove it too) and exits 2, one line on stderr and nothing on the
-#   stream; it waits on, signals and inspects neither omp nor the reaper nor the record nor the report (U343g's trap
-#   waited on omp). A slot that remains names itself through slot_remove.
+#   from right before the slot's `mkdir` to right after the reaper's ready line is read removes the slot and exits 2,
+#   one line on stderr and nothing on the stream; it waits on, signals and inspects neither omp nor the reaper nor
+#   the record nor the report (U343g's trap waited on omp). What it removes follows the state the slot is in, not the
+#   flag alone (regime-cutover U343q, verdict U343p-901e096a P1 :1669: a trap runs right after the simple command
+#   the signal arrived in, so a TERM between the `mkdir` and `slot_made=1` ran slot_remove with the flag at 0 and
+#   the fresh slot stood). With slot_made at 1 the slot may hold anything this connection made (the FIFOs), and
+#   slot_remove takes it (idempotent, so a reaper already forked may remove it too; a slot that remains names
+#   itself). With slot_made at 0 the only state the slot can have is the one a bare `mkdir` leaves, an empty
+#   directory of this user, and `/bin/rmdir` takes exactly that and nothing else: not a non-empty directory, not a
+#   file, not a link (it follows none), so a pre-existing entry at the name is never taken; its failure (nothing
+#   made, or an entry that is not this connection's) is ignored. The stderr line names which removal happened.
 # shellcheck disable=SC2329 # invoked by the trap armed before the slot's mkdir
 slot_trap() {
     trap - HUP INT TERM
-    if slot_remove; then
-        echo "acp-broker: the connection ended by a signal before omp started; the slot removed" >&2
+    if ((slot_made)); then
+        if slot_remove; then
+            echo "acp-broker: the connection ended by a signal before omp started; the slot removed" >&2
+        fi
+    else
+        if /bin/rmdir -- "${slot}" 2> /dev/null; then
+            echo "acp-broker: the connection ended by a signal as the slot was made; the empty slot removed" >&2
+        fi
     fi
     exit 2
 }
@@ -1656,12 +1673,17 @@ connection_reaper() {
 # the reaper the moment the slot existed, and a signal between the `mkdir` and the fork, during the two `mkfifo` and
 # the two `exec`, still ended a process with no trap and stranded the slot; a window shorter than before is a
 # window). One trap for HUP, INT and TERM (slot_trap) is armed right before the `mkdir` and disarmed right after the
-# reaper's ready line is read: through the making the trap removes the slot, from the fork to the ready line the trap
-# and the reaper both may (each runs the idempotent slot_remove), and after that line the reaper alone, in every path
-# of its own, and this process never touches the slot again (refuse leaves it: this process's exit closes fd 4 and
-# the reaper reads EOF). The trap touches neither omp nor the record nor the report (U343g's trap waited on omp). A
-# signal that arrives while a child runs (mkdir, mkfifo) runs the trap when the child returns, during a builtin
-# (exec) at once, and during the ready read it interrupts the read.
+# reaper's ready line is read: through the making the trap removes the slot as the state it is in says (regime-cutover
+# U343q, verdict U343p-901e096a P1 :1669: a trap runs right after the simple command the signal arrived in, before
+# the next command of the same list, so the `mkdir` and `slot_made=1` are two steps and a TERM between them ran
+# slot_remove with the flag at 0 over a fresh slot; before the flag the slot is at most the empty directory a bare
+# `mkdir` leaves and `/bin/rmdir` takes exactly that, nothing non-empty, no file, no link, so an entry that is not
+# this connection's stays; after the flag slot_remove takes whatever this connection made), from the fork to the
+# ready line the trap and the reaper both may (each runs the idempotent slot_remove), and after that line the reaper
+# alone, in every path of its own, and this process never touches the slot again (refuse leaves it: this process's
+# exit closes fd 4 and the reaper reads EOF). The trap touches neither omp nor the record nor the report (U343g's
+# trap waited on omp). A signal that arrives while a child runs (mkdir, mkfifo) runs the trap when the child
+# returns, during a builtin (exec) at once, and during the ready read it interrupts the read.
 # The record helper beside this file is held before the slot exists (regime-cutover U343h): a helper that is a link,
 # another user's or writable by others refuses here, with nothing made.
 record_helper_path_check

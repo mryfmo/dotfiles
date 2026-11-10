@@ -249,6 +249,7 @@ LEVERS = (
     "hcom-seat",
     "intake-observe.py",
     "ledger-row.py",
+    "ledger.py",
     "omp-run.sh",
     "pr-audit.sh",
     "pr-body-edit.sh",
@@ -1093,16 +1094,38 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         for name in LEVERS:
             with self.subTest(lever=name):
                 source = (ROOT / "scripts/orchestrator" / name).read_bytes()
-                installed = ROOT / "home/dot_local/bin/common" / f"executable_{name}"
+                install_name = self.module.lever_install_name(name)
+                installed = ROOT / "home/dot_local/bin/common" / install_name
                 self.assertEqual(installs[installed], source.decode())
                 self.assertEqual(installed.read_bytes(), source)
-                self.assertTrue(os.access(installed, os.X_OK))
+                # A module another lever imports is installed under its bare name and never executable (U418).
+                self.assertEqual(os.access(installed, os.X_OK), install_name.startswith("executable_"))
                 pin = hashlib.sha256(source).hexdigest()
                 self.assertEqual(manifest["claude"]["levers"]["sha256"][name], pin)
                 self.assertIn(f"\n      {name}: {pin}\n", text)
         self.assertEqual(self.module.refresh_lever_pins(text), text, "the committed pins are current")
         stale = text.replace(manifest["claude"]["levers"]["sha256"]["hcom-seat"], "0" * 64)
         self.assertEqual(self.module.refresh_lever_pins(stale), text, "a stale pin is refreshed and nothing else moves")
+
+    def test_the_ledger_reader_installs_beside_the_row_writer_under_its_bare_name_and_pinned(self) -> None:
+        """`ledger-row.py` imports `ledger.py` from its own directory, so the deployed writer needs the reader deployed
+        beside it (regime-cutover U418: every run of `~/.local/bin/common/ledger-row.py` refused, `no ledger.py beside
+        the lever`). The copy is byte-identical to the checkout's reader, pinned like every lever, and carries no
+        `executable_` prefix: chezmoi installs it at mode 0644, a module that is imported and never run."""
+        self.module.ROOT = ROOT
+        source = ROOT / "scripts/orchestrator/ledger.py"
+        installed = ROOT / "home/dot_local/bin/common/ledger.py"
+        self.assertTrue(
+            installed.is_file(), f"{installed.relative_to(ROOT)} is missing: the deployed row writer imports it"
+        )
+        self.assertEqual(installed.read_bytes(), source.read_bytes())
+        self.assertFalse((ROOT / "home/dot_local/bin/common/executable_ledger.py").exists())
+        self.assertFalse(os.access(installed, os.X_OK), "the reader is imported, never run")
+        manifest = load_manifest_fixture(self.temp_dir)
+        pin = hashlib.sha256(source.read_bytes()).hexdigest()
+        self.assertEqual(manifest["claude"]["levers"]["sha256"].get("ledger.py"), pin)
+        self.assertIn(f"\n      ledger.py: {pin}\n", (ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        self.assertEqual(installed, next(path for path in self.module.lever_pins(manifest) if path.name == "ledger.py"))
 
     def test_check_reports_a_stale_lever_pin_and_a_run_refreshes_it(self) -> None:
         (self.temp_dir / "scripts/orchestrator").mkdir(parents=True)

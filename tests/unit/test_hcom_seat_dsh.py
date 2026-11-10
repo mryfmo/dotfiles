@@ -407,7 +407,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         # counterpart (no worktree); the credential root (U353; the worker's own row of it under `~/.dsh`, U353d, is
         # taken out) and the deny row (U272d: the git common directory, the worker clone's `.git` entry, it being a
         # linked worktree, the hcom store, the records and the other seat's directory) follow the worker's denies; the
-        # macOS worktree patterns and every other deny are the same.
+        # macOS worktree patterns and every other deny are the same. In denyRead the credential root's row stands
+        # last, after the deny row (U343l: the router row's denyRead is a prefix of the dsh row's).
         cred = str(self.dsh_home / "router-credentials")
         row = [common, clone + "/.git", store, str(self.repo.resolve() / ".orchestration"), clone]
         deny_w = [entry for entry in worker["filesystem"]["denyWrite"]
@@ -420,7 +421,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             [entry[len(clone) :] for entry in worker["filesystem"]["denyWrite"] if entry.startswith(clone + "/") and entry != clone + "/.git"],
         )  # fmt: skip
         worker_deny_read = [e for e in worker["filesystem"]["denyRead"] if e != self.omp_credential_root()]
-        self.assertEqual(dsh["filesystem"]["denyRead"], worker_deny_read + [cred] + row)
+        self.assertEqual(dsh["filesystem"]["denyRead"], worker_deny_read + row + [cred])
         self.assertEqual(dsh["network"], worker["network"])
         self.assertEqual({k: v for k, v in dsh.items() if k not in ("filesystem", "network")},
                          {k: v for k, v in worker.items() if k not in ("filesystem", "network")})  # fmt: skip
@@ -1518,7 +1519,12 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             with self.subTest(path=path):
                 self.assertIn(path, dsh["denyRead"])
                 self.assertIn(path, dsh["denyWrite"])
-        self.assertEqual(dsh["denyRead"][-len(row) :], row, "the row in the lever's order, after the worker's denies")
+        self.assertEqual(
+            dsh["denyRead"][-len(row) - 1 : -1], row, "the row in the lever's order, after the worker's denies"
+        )
+        self.assertEqual(
+            dsh["denyRead"][-1], f"{self.dsh_home}/router-credentials", "the credential root's row last (U343l)"
+        )
         for path in (str(self.tools.parent), str(state / "hcom-note")):
             self.assertNotIn(path, dsh["denyRead"], path)
         self.assertIn(str(self.tools), dsh["allowRead"], "the lever's own state directory is no store")

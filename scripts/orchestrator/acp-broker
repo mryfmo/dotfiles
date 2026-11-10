@@ -75,14 +75,17 @@
 #   root, checkout, store and host): every row must be a clean path (the macOS worktree patterns, a clean prefix and
 #   the fixed `worktrees/*/<file>` suffix, are the one exception, as in `hcom-seat`), the rows under the Router's
 #   scratch cwd (its project-file denies) are re-rooted under the slot's task, and `denyRead` gains the Router's
-#   credential root `~/.local/state/dsh-router/credentials`. The grants are the role's own and the broker's: `allowWrite`
-#   the slot's task, the shared Claude Code directory `<seats-root>/.state/claude` (the worker's bridge child keeps
-#   the seats root's one login there, U318), `~/.omp/profiles/dsh` (the worker's omp profile, `OMP_PROFILE=dsh`),
-#   `~/.omp/run`, and srt 0.0.81's own writable paths (`/tmp/claude`, `/private/tmp/claude` on macOS,
-#   `~/.npm/_logs`), every one physical; `allowRead` the slot's task, the shared Claude Code directory, that profile,
-#   `~/.agents/skills` and the private tool directory `~/.local/state/hcom-seat/tools`. No row names the Router's
-#   scratch cwd, its state slot or the repository. No DSH_HOME and no state slot: the worker is omp, not dsh, and the
-#   launch log is this lever's to write. `allowLocalBinding` false, `allowUnixSockets` empty, the domain list
+#   credential root `<DSH_HOME>/router-credentials` (regime-cutover U353, U343l: held from `DSH_HOME` in this
+#   process's environment in `hcom-seat`'s form, cred_root_hold, checked against the Router's own `denyWrite` row of
+#   it so the two levers name one root, and appended last, where the dsh row renders it). The grants are the role's
+#   own and the broker's: `allowWrite` the slot's task, the shared Claude Code directory `<seats-root>/.state/claude`
+#   (the worker's bridge child keeps the seats root's one login there, U318), `~/.omp/profiles/dsh` (the worker's
+#   omp profile, `OMP_PROFILE=dsh`), `~/.omp/run`, and srt 0.0.81's own writable paths (`/tmp/claude`,
+#   `/private/tmp/claude` on macOS, `~/.npm/_logs`), every one physical; `allowRead` the slot's task, the shared
+#   Claude Code directory, that profile, `~/.agents/skills` and the private tool directory
+#   `~/.local/state/hcom-seat/tools`. No row names the Router's scratch cwd, its state slot or the repository. No
+#   DSH_HOME grant and no state slot: the worker is omp, not dsh, and the launch log is this lever's to write.
+#   `allowLocalBinding` false, `allowUnixSockets` empty, the domain list
 #   `hcom-seat`'s. This copy of the dsh row's shape is interim: U344 extracts one writer for both levers, and
 #   tests/unit/test_acp_broker.py holds the two renderings together until then.
 #   The judgement (regime-cutover U343c; hcom-seat's settings_judge, U272f and U272g). Before anything is made, every
@@ -197,7 +200,8 @@
 # @arg $3 string The Router's scratch cwd, `<seats-root>/.state/<router seat>/cwd`, checked to lie in the state slot; neither read nor granted.
 # @option --connection Serve one connection on stdin and stdout (run by acp-relay.py per accepted connection).
 # @env HOME The user's home; the private tool directory, the omp profile and the credential denies derive from it.
-# @env DSH_HOME Not read: the worker is omp, and nothing of the Router's home reaches it.
+# @env DSH_HOME The Router's home (hcom-seat's seat_env); its credential root `<DSH_HOME>/router-credentials` is the
+#   one deny of the worker beyond the Router's table (U343l). Nothing else of the home reaches the worker.
 # @stdout `acp-broker: listening on <sock>` once the socket accepts; in a connection, the one line `acp-broker: record
 #   <id>` (or the refusal), then omp's stdout and nothing else of the broker's.
 # @exitcode 0 The listener ended on its own with the socket gone (the relay's removal), the records removed and the
@@ -780,6 +784,21 @@ srt_tmp_roots=(/tmp/claude /private/tmp/claude)
 if [[ ${os} != Darwin && ! -e ${srt_tmp_roots[1]} ]]; then srt_tmp_roots=("${srt_tmp_roots[0]}"); fi
 
 h=$(physical_clean "${HOME}") || unresolved HOME "${HOME}"
+# The Router's credential root (regime-cutover U353; U343l): `<DSH_HOME>/router-credentials`, the directory the agent
+# account's gh login lives under, which the Router reads (its allowRead row) and no worker may (srt allows reads by
+# default, hcom-seat's U353b comment). Held once, here, in hcom-seat's form (cred_home_hold, cred_root_hold):
+# DSH_HOME is the Router's home as hcom-seat set it in the sandbox environment this process runs in (the listener,
+# and every connection through the relay), set and non-empty else refused by name; the root is its physical path
+# under the physical home, a clean path, a real directory of this user and no link, else refused by name. Nothing
+# resolves it again: the worker's denyRead carries `cred_root_real` verbatim, and the Router's own denyWrite must
+# carry the same row (checked once the template is read).
+[[ -n ${DSH_HOME:-} ]] || refuse "DSH_HOME did not reach this connection; the broker runs inside the Router's sandbox, whose environment hcom-seat sets"
+require_clean_path DSH_HOME "${DSH_HOME}"
+cred_home_real=$(physical_clean "${DSH_HOME}") || unresolved DSH_HOME "${DSH_HOME}"
+cred_root_real=$(physical_clean "${cred_home_real}/router-credentials") || unresolved "the Router's credential root" "${cred_home_real}/router-credentials"
+require_clean_path "the Router's credential root" "${cred_root_real}"
+[[ -d ${cred_root_real} && ! -L ${cred_root_real} && -O ${cred_root_real} ]] ||
+    refuse "the Router's credential root ${cred_root_real} is not a real directory of this user"
 seats_real=$(physical_clean "${seats_root}") || unresolved 'the seats root' "${seats_root}"
 require_own_dir 'the seats root' "${seats_real}"
 state_dir=${seats_real}/.state/${router}
@@ -967,6 +986,15 @@ template_rows denyRead
 template_deny_read=("${rows[@]}")
 template_rows denyWrite
 template_deny_write=(${rows[@]+"${rows[@]}"})
+# The two levers name one root (regime-cutover U343l): hcom-seat's router row denies writing the credential root it
+# held (U353), so the Router's denyWrite carries the root this process held, or the two disagree (another DSH_HOME
+# reached this process than the Router's launch, or another hcom-seat rendered the settings) and the connection
+# refuses before anything is made.
+cred_root_denied=0
+for row in ${template_deny_write[@]+"${template_deny_write[@]}"}; do
+    if [[ ${row} == "${cred_root_real}" ]]; then cred_root_denied=1; fi # lint-comparisons: allow both operands physical (hcom-seat renders its rows physical, cred_root_real is physical_clean); an identity test of one row
+done
+((cred_root_denied)) || refuse "the Router's settings deny no write of its credential root ${cred_root_real}; hcom-seat and this lever disagree on the root"
 
 # The worker's PATH inside the sandbox: the private tool directory and the system directories, then the caller's
 # absolute entries (hcom-seat's seat path); outside, srt itself runs with the first two alone.
@@ -1160,12 +1188,13 @@ log_dir=${seats_real}/.state/${name}
 log=${log_dir}/acp-launch.log
 
 # The worker's settings: the deny table from the Router's settings, the project-file rows re-rooted under the slot's
-# task and the credential root added; the grants the role's own and the broker's (the file header), each with the
+# task and the held credential root appended last (where the dsh row renders it, U343l); the grants the role's own
+# and the broker's (the file header), each with the
 # path the role spells and its structural tag for the judgement (settings_judge). Every row physical, every list
 # rendered and judged before anything is made. The task does not exist yet; its ancestors under the seats root do,
 # and the identity table reads an absent path by its deepest existing ancestor.
 deny_read=("${template_deny_read[@]}")
-deny_read+=("${h}/.local/state/dsh-router/credentials")
+deny_read+=("${cred_root_real}")
 deny_write=()
 for row in ${template_deny_write[@]+"${template_deny_write[@]}"}; do
     if [[ ${row}/ == "${scratch_real}"/?* ]]; then # lint-comparisons: allow both operands physical (hcom-seat renders its rows physical, scratch_real is physical_path); the trailing slash makes the prefix a whole component

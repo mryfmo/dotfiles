@@ -2619,14 +2619,17 @@ seat_settings_render() {
         ;;
     dsh | router)
         # The deny row (U272d): the role's own denies for read and for write, after the worker's. The credential root
-        # (U353, `cred_root_grant`) stands before them: the dsh row denies it for read, both rows for write, and each of
-        # its rows carries the `credential` tag that pairs it with the DSH_HOME grant it lies inside by construction.
+        # (U353, `cred_root_grant`): the dsh row denies it for read, both rows for write, and each of its rows carries
+        # the `credential` tag that pairs it with the DSH_HOME grant it lies inside by construction. The read deny
+        # stands last, after the dsh denies, so the router row's denyRead is a prefix of the dsh row's and the row
+        # acp-broker appends to its workers' copy of the Router's table makes the same list (regime-cutover U343l);
+        # the write deny keeps its place, before the dsh denies.
         deny_read+=("${checkout}")
+        deny_read+=(${dsh_deny[@]+"${dsh_deny[@]}"})
         if [[ ${cred_root_grant} == deny ]]; then # lint-comparisons: allow a cell word of the role table (read, deny), not a path
             tag_row credential denyRead ${#deny_read[@]} "${cred_root_phys}"
             deny_read+=("${cred_root_phys}")
         fi
-        deny_read+=(${dsh_deny[@]+"${dsh_deny[@]}"})
         # The program store's root (U219c): denied for write by the dsh and router rows as by the worker, right before
         # the credential root's row; the rows carry no grant of it, for read or for write.
         if [[ -n ${store_root_phys} ]]; then

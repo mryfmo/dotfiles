@@ -248,8 +248,10 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
     def make_router(self, name="router-20261107-000000-1"):
         """A Router slot in the shape `hcom-seat router` leaves: the state slot with its scratch cwd, the shared Claude
         Code directory, the broker directory `<state>/broker` made 0700 and empty before the settings (U343i: hcom-seat
-        makes it; the broker takes it as made), and the settings file in the dsh row's shape with the router cells (the
-        loopback grant, the state root, the broker directory in allowUnixSockets and, U343i, in denyWrite)."""
+        makes it; the broker takes it as made), the Router's credential root `<dsh-home>/router-credentials` made 0700
+        (U353's cred_root_make; the broker holds it from `DSH_HOME`, which broker_env passes, U343l), and the settings
+        file in the dsh row's shape with the router cells (the loopback grant, the state root, the broker directory in
+        allowUnixSockets and, U343i, in denyWrite; the credential root in allowRead row 7 and in denyWrite, U353)."""
         seats = self.seats_path
         seats.mkdir(mode=0o700, exist_ok=True)
         state = seats / ".state" / name
@@ -259,7 +261,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         (state / "broker").chmod(0o700)
         home, repo, store = self.home_real, self.repo.resolve(), self.store.resolve()
         cwd = state / "cwd"
-        dsh_home = home / "dsh-home"
+        dsh_home = self.dsh_home_of_the_fixture()
+        (dsh_home / "router-credentials").mkdir(mode=0o700, parents=True, exist_ok=True)
         deny_read = [f"{home}/.ssh", f"{home}/.gnupg", f"{home}/.aws", f"{home}/.netrc", f"{home}/.docker",
                      f"{home}/.kube", f"{home}/.config/gcloud", f"{home}/.codex", f"{home}/.omp/agent",
                      f"{home}/.omp/profiles", f"{home}/.hcom", f"{home}/.local/state/hcom",
@@ -273,14 +276,14 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                       f"{repo}/.git/worktrees/*/config.worktree", f"{repo}/.git/worktrees/*/info",
                       f"{repo}/.git/worktrees/*/commondir", f"{repo}/.git/worktrees/*/gitdir",
                       f"{store}/config.toml", f"{home}/.claude", f"{home}/.claude.json", f"{repo}/.git", str(store),
-                      f"{repo}/.orchestration", f"{state}/broker"]  # fmt: skip
+                      f"{dsh_home}/router-credentials", f"{repo}/.orchestration", f"{state}/broker"]  # fmt: skip
         settings = {
             "network": {"allowedDomains": DOMAINS, "deniedDomains": [], "allowUnixSockets": [f"{state}/broker"],
                         "allowMachLookup": ["com.apple.trustd.agent"], "allowLocalBinding": True},
             "filesystem": {
                 "denyRead": deny_read,
                 "allowRead": [str(cwd), str(state), f"{seats}/.state/claude", str(dsh_home), f"{home}/.omp/profiles/dsh",
-                              f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools"],
+                              f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools", f"{dsh_home}/router-credentials"],
                 "allowWrite": [str(cwd), str(state), f"{seats}/.state/claude", str(dsh_home), f"{home}/.omp/profiles/dsh",
                                f"{home}/.omp/run", f"{dsh_home}/router-state", "/tmp/claude", "/private/tmp/claude",
                                f"{home}/.npm/_logs"],
@@ -313,8 +316,15 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.scratch_git("commit", "-q", "-m", "two", cwd=task)
         return self.scratch_git("rev-parse", "HEAD", cwd=task)
 
+    def dsh_home_of_the_fixture(self):
+        """The Router's home the scratch Router (make_router) grants and the broker holds its credential root under."""
+        return self.home_real / "dsh-home"
+
     def broker_env(self, **overrides):
-        env = {**self.env, **{k: v for k, v in overrides.items() if v is not None}}
+        """The broker's environment: the fixture's, `DSH_HOME` the scratch Router's home (hcom-seat sets it in the
+        Router's sandbox environment, where the broker runs; U343l) unless a test overrides it (`None` removes a key)."""
+        env = {**self.env, "DSH_HOME": str(self.dsh_home_of_the_fixture()),
+               **{k: v for k, v in overrides.items() if v is not None}}  # fmt: skip
         for key in (k for k, v in overrides.items() if v is None):
             env.pop(key, None)
         return env
@@ -2191,7 +2201,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 # The broker against the live Router slot: one connection held open while the settings are read.
                 scratch = self.seats_path / ".state" / seat_name / "cwd"
                 repo, _base = self.make_repo(scratch / "repo")
-                proc, sock = self.start_broker(seat_name, scratch)
+                proc, sock = self.start_broker(seat_name, scratch, DSH_HOME=str(dsh_home))
                 conn, slot, task = self.held_connection(sock, repo, "w1")
                 rendered["worker"] = (self.seats_path / ".state" / slot / "settings.json").read_bytes()
                 self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
@@ -2209,7 +2219,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         home = self.home_real
         task, router_cwd = rendered["task"], rendered["router_cwd"]
         dsh_cwd = str(self.seats_path / ".state" / rendered["dsh_name"] / "cwd")
-        credentials = f"{home}/.local/state/dsh-router/credentials"
+        credentials = f"{dsh_home}/router-credentials"
 
         def reroot(row, old, new):
             return new + row[len(old) :] if row.startswith(old + "/") else row
@@ -2237,7 +2247,13 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         broker_n = str(self.seats_path.resolve() / ".state/<launch>/broker")
         self.assertEqual(worker_n["filesystem"]["denyWrite"].count(broker_n), 1)
         worker_deny_write = [r for r in worker_n["filesystem"]["denyWrite"] if r != broker_n]
-        self.assertEqual(worker_n["filesystem"]["denyRead"], dsh_n["filesystem"]["denyRead"] + [credentials])
+        self.assertEqual(worker_n["filesystem"]["denyRead"], dsh_n["filesystem"]["denyRead"])
+        self.assertEqual(
+            json.dumps(worker_n["filesystem"]["denyRead"]).encode(),
+            json.dumps(dsh_n["filesystem"]["denyRead"]).encode(),
+            "byte-identical denyRead: the dsh row's credential-root deny is its last row, the broker's appended one",
+        )
+        self.assertEqual(worker["filesystem"]["denyRead"][-1], credentials)
         self.assertEqual(worker_deny_write, dsh_n["filesystem"]["denyWrite"])
         self.assertEqual(
             json.dumps(worker_deny_write).encode(),
@@ -2253,7 +2269,13 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(worker["filesystem"]["allowWrite"], [task, dsh_write[2], *dsh_write[4:]])
         self.assertEqual(worker["filesystem"]["allowRead"][1], str(self.seats_path / ".state/claude"))
         self.assertEqual(worker["filesystem"]["allowWrite"][2:4], [f"{home}/.omp/profiles/dsh", f"{home}/.omp/run"])
-        self.assertNotIn(str(dsh_home), json.dumps(worker))
+        # DSH_HOME reaches the worker's settings as the credential root alone (U343l): once in denyRead, once in
+        # denyWrite (the Router's row, copied), and in no grant.
+        self.assertEqual(json.dumps(worker).count(str(dsh_home)), 2, json.dumps(worker))
+        self.assertEqual(worker["filesystem"]["denyRead"].count(credentials), 1)
+        self.assertEqual(worker["filesystem"]["denyWrite"].count(credentials), 1)
+        self.assertNotIn(credentials, worker["filesystem"]["allowRead"] + worker["filesystem"]["allowWrite"])
+        self.assertEqual(router["filesystem"]["allowRead"][7], credentials, "the Router reads what the worker may not")
         self.assertNotIn(f"{dsh_home}/router-state", worker["filesystem"]["allowWrite"])
         self.assertNotIn(router_cwd, json.dumps(worker), "no Router-named path")
         # The network block and everything else: the dsh row's, byte for byte.
@@ -2318,6 +2340,114 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         profile.unlink()
         self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
         self.assertTrue(profile.is_dir() and not profile.is_symlink())
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_the_credential_root_is_held_from_dsh_home_and_checked_against_the_routers_write_deny(self):
+        """U343l: the worker's one deny beyond the Router's table is the Router's credential root
+        `<DSH_HOME>/router-credentials`, held from the broker's own environment in hcom-seat's form. Without `DSH_HOME`
+        (unset or empty) the listener refuses at its start and a connection run by hand refuses on its stream, each
+        with the line naming the variable and hcom-seat's sandbox environment; with the Router's settings denying no
+        write of that root, the two levers disagree and the connection refuses by that line; a root that is a link,
+        a file or absent refuses by name. Nothing is made and no tool runs. The listener holds the same root, so a
+        broker started with the Router's environment serves connections (make_router's fixture)."""
+        name, cwd = self.make_router()
+        dsh_home = self.dsh_home_of_the_fixture()
+        cred = f"{dsh_home}/router-credentials"
+        sock = self.seats_path / ".state" / name / "broker/sock"
+        template = self.seats_path / ".sandbox" / name / "srt-settings.json"
+        good = template.read_text()
+        header = "ACP-SEAT v1 repo=/x ref=HEAD name=w1\n"
+        dsh_home_line = (
+            "acp-broker: refused: DSH_HOME did not reach this connection; the broker runs inside the Router's sandbox,"
+            " whose environment hcom-seat sets"
+        )
+        disagree_line = (
+            f"acp-broker: refused: the Router's settings deny no write of its credential root {cred}; hcom-seat and"
+            " this lever disagree on the root"
+        )
+
+        def listener(**overrides):
+            run = subprocess.run(
+                [str(BROKER), self.seats, name, str(cwd)], cwd=self.repo, env=self.broker_env(**overrides),
+                capture_output=True, text=True, check=False, timeout=60,
+            )  # fmt: skip
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertFalse(sock.exists(), "no socket: the listener refused before it listened")
+            return run.stderr
+
+        def connection(**overrides):
+            run = subprocess.run(
+                [str(BROKER), "--connection", self.seats, name, str(cwd)], cwd=self.repo, input=header,
+                env=self.broker_env(**overrides), capture_output=True, text=True, check=False, timeout=60,
+            )  # fmt: skip
+            self.assertEqual(run.returncode, 2, run.stderr)
+            self.assertEqual(run.stdout.count("\n"), 1, run.stdout)
+            self.assertEqual(self.acp_slots(), [])
+            return run.stdout
+
+        with self.subTest(case="DSH_HOME unset"):
+            self.assertIn(dsh_home_line, listener(DSH_HOME=None))
+            self.assertEqual(connection(DSH_HOME=None), dsh_home_line + "\n")
+        with self.subTest(case="DSH_HOME empty"):
+            self.assertIn(dsh_home_line, listener(DSH_HOME=""))
+            self.assertEqual(connection(DSH_HOME=""), dsh_home_line + "\n")
+        with self.subTest(case="DSH_HOME not a clean path"):
+            self.assertIn("DSH_HOME 'relative/dsh' is not a clean absolute path", connection(DSH_HOME="relative/dsh"))
+        with self.subTest(case="the Router's settings deny no write of the root"):
+            settings = json.loads(good)
+            settings["filesystem"]["denyWrite"].remove(cred)
+            template.write_text(json.dumps(settings, separators=(",", ":")) + "\n")
+            try:
+                self.assertIn(disagree_line, listener())
+                self.assertEqual(connection(), disagree_line + "\n")
+            finally:
+                template.write_text(good)
+        with self.subTest(case="another DSH_HOME than the Router's"):
+            other = Path(self.temp.name).resolve() / "other-dsh-home"
+            (other / "router-credentials").mkdir(parents=True)
+            self.assertIn(
+                f"the Router's settings deny no write of its credential root {other}/router-credentials;",
+                connection(DSH_HOME=str(other)),
+            )
+        root = dsh_home / "router-credentials"
+        with self.subTest(case="the root is a link"):
+            outside = self.home / ".config/gh"
+            outside.mkdir(parents=True)
+            root.rmdir()
+            root.symlink_to(outside)
+            try:
+                # The physical form of a link is its target, outside DSH_HOME; the Router's row names the spelled
+                # path, so the two disagree (the broker never denies the link's target in the Router's name).
+                self.assertIn(
+                    f"the Router's settings deny no write of its credential root {outside.resolve()};", connection()
+                )
+                self.assertEqual(list(outside.iterdir()), [], "nothing written at the link's target")
+            finally:
+                root.unlink()
+        with self.subTest(case="the root is a file"):
+            root.write_text("")
+            try:
+                self.assertIn(f"the Router's credential root {root} is not a real directory of this user", connection())
+            finally:
+                root.unlink()
+        with self.subTest(case="the root is absent"):
+            # physical_clean resolves an absent leaf through its nearest existing ancestor (hcom-seat's U353d note),
+            # so the directory test refuses, not the resolution.
+            self.assertIn(f"the Router's credential root {root} is not a real directory of this user", connection())
+        self.assertEqual(self.calls_of("srt"), [], "nothing ran")
+        self.assertEqual(self.calls_of("omp"), [])
+        self.assertEqual(self.state_names(), ["claude", name], "no slot and no log for a refused launch")
+        # Made again, the broker started with the Router's environment serves a connection: the worker's denyRead
+        # ends with the held root and its denyWrite carries the Router's row of it.
+        root.mkdir(mode=0o700)
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        conn, slot, task = self.held_connection(sock, repo, "w1")
+        rendered = json.loads((self.seats_path / ".state" / slot / "settings.json").read_text())
+        self.assertEqual(rendered["filesystem"]["denyRead"][-1], cred)
+        self.assertEqual(rendered["filesystem"]["denyWrite"].count(cred), 1)
+        self.assertEqual(json.dumps(rendered).count(str(dsh_home)), 2)
+        self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
 

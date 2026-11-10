@@ -61,13 +61,20 @@ TMP = re.compile(r"/tmp(/|\b)")
 # whatever the policy says and hands the child TMPDIR=/tmp/claude (@anthropic-ai/sandbox-runtime 0.0.81,
 # dist/sandbox/sandbox-utils.js:499-508 `SANDBOX_OWN_WRITE_PATHS`, 687-691 `generateProxyEnvVars`); hcom-seat lists both
 # as srt's implicit write roots so that no seat write root and no tool may overlap them. It writes nothing there.
+# acp-broker renders the same two words into each worker's `allowWrite` as srt's own paths, in the dsh row's shape
+# (regime-cutover U343, allowed here by U343c), and writes nothing there either.
 # build_under_srt in the asset updater names `/tmp/claude` once (regime-cutover U322b; allowed here by U322c), as the
 # first row of the `denyWrite` it hands srt, and derives the second spelling from it by `pwd -P`; it writes nothing there
 # either.
 SRT_OWN_WRITE_PATHS = "srt's built-in writable directories (sandbox-runtime 0.0.81 sandbox-utils.js:499-508, 687-691)"
 ALLOWED_TMP = {
     (rel, word): SRT_OWN_WRITE_PATHS
-    for rel in ("scripts/orchestrator/hcom-seat", "home/dot_local/bin/common/executable_hcom-seat")
+    for rel in (
+        "scripts/orchestrator/hcom-seat",
+        "home/dot_local/bin/common/executable_hcom-seat",
+        "scripts/orchestrator/acp-broker",
+        "home/dot_local/bin/common/executable_acp-broker",
+    )
     for word in ("/tmp/claude", "/private/tmp/claude")
 } | {("scripts/update-agent-assets.sh", "/tmp/claude"): SRT_OWN_WRITE_PATHS + ", denied for write by build_under_srt"}
 

@@ -241,6 +241,10 @@ MANAGED_ALLOW = [
     "Bash(hcom list *)",
 ]
 LEVERS = (
+    "acp-broker",
+    "acp-record-place.py",
+    "acp-relay.py",
+    "acp-seat",
     "brief-check.py",
     "bus-history.sh",
     "checkout-guard.sh",

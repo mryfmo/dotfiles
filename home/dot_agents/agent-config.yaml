@@ -886,7 +886,7 @@ claude:
   # broker directory through one held directory descriptor and nothing else.
   levers:
     sha256:
-      hcom-seat: 34db7b4aa8954eac4e7e9a5fcd28cfe6f54350108bd7d0bee34e8861c95c4993
+      hcom-seat: 07977f3b0c049897de607a8b2ba90fb4a0ff1e97270205b96532d6c985c92a54
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -911,7 +911,7 @@ claude:
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
-      acp-broker: 57a7d80ac3718b58da8619b2b62a8b0f1bc8da80291a9e214c9b2099561f9fde
+      acp-broker: de617c17e8b3384b10f00071065f31055b8f6bd7414bfd13030c1e8afa55b0c8
       acp-relay.py: d2b4852980affd6b536666fb46d6caa736def9f48924a608bf6f81440124a6b9
       acp-seat: b48f7bbe3c27934d67dc5f92e18640ec7b7f9e42f12cbc6858f3050a65a79c69
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431

@@ -615,11 +615,13 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
 
     def test_the_router_settings_are_the_dsh_settings_but_the_loopback_grant_and_the_state_root(self):
         """U321: the router role is one more row of the role table, the dsh row with the loopback grant and the Router's
-        state root. Its rendered settings, the per-launch name aside, equal the dsh role's with exactly two changes:
-        `allowLocalBinding` true and `<DSH_HOME>/router-state` as allowWrite row 6, after `~/.omp/run`; every other row
-        (the shared omp profile `~/.omp/profiles/dsh` among them, so the tagged positions hold), every deny, the domain
-        list and the rest are equal, and the dsh role's own settings keep the binding false. dsh receives the fixed
-        profile and the shared `OMP_PROFILE`; both roles' slots go when dsh exits."""
+        state root. Its rendered settings, the per-launch name aside, equal the dsh role's with exactly three changes:
+        `allowLocalBinding` true, `<DSH_HOME>/router-state` as allowWrite row 6, after `~/.omp/run`, and (U343i) the
+        broker directory `<state slot>/broker` as one more `denyWrite` row, after every deny the dsh row renders and
+        before the macOS patterns, in no grant list; every other row (the shared omp profile `~/.omp/profiles/dsh`
+        among them, so the tagged positions hold), every deny, the domain list and the rest are equal, and the dsh
+        role's own settings keep the binding false and no broker row. dsh receives the fixed profile and the shared
+        `OMP_PROFILE`; both roles' slots go when dsh exits."""
         rendered = {}
         for role in ("dsh", "router"):
             procs = self.held_launch("--", "--version", role=role)
@@ -632,20 +634,29 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         dsh, router = rendered["dsh"], rendered["router"]
         home = self.home.resolve()
         state_root = f"{self.dsh_home}/router-state"
+        broker_dir = f"{Path(self.seats).resolve()}/.state/<launch>/broker"
+        patterns = [row for row in dsh["filesystem"]["denyWrite"] if "*" in row]
+        broker_at = len(dsh["filesystem"]["denyWrite"]) - len(patterns)
         expected = copy.deepcopy(dsh)
         expected["network"]["allowLocalBinding"] = True
         expected["filesystem"]["allowWrite"].insert(6, state_root)
+        expected["filesystem"]["denyWrite"].insert(broker_at, broker_dir)
         self.assertEqual(router, expected)
         self.assertIs(dsh["network"]["allowLocalBinding"], False)
         self.assertNotIn(state_root, json.dumps(dsh))
+        self.assertNotIn("/broker", json.dumps(dsh), "the dsh row renders no broker row")
         self.assertEqual(
             router["filesystem"]["allowWrite"][3:7],
             [str(self.dsh_home), str(home / ".omp/profiles/dsh"), str(home / ".omp/run"), state_root],
         )
         self.assertNotIn(state_root, router["filesystem"]["allowRead"], "DSH_HOME, read row 3, already reads it")
-        # The flattened diff, the inserted row taken out, is the one binding value and nothing else.
+        self.assertEqual(router["filesystem"]["denyWrite"].count(broker_dir), 1, "the broker row once, in denyWrite")
+        for kind in ("allowRead", "allowWrite", "denyRead"):
+            self.assertNotIn(broker_dir, router["filesystem"][kind], f"the broker row is in no {kind} list")
+        # The flattened diff, the inserted rows taken out, is the one binding value and nothing else.
         trimmed = copy.deepcopy(router)
         del trimmed["filesystem"]["allowWrite"][6]
+        del trimmed["filesystem"]["denyWrite"][broker_at]
         flat_dsh, flat_router = flatten(dsh), flatten(trimmed)
         diff = {
             key: (flat_dsh.get(key), flat_router.get(key))
@@ -1089,9 +1100,12 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def test_a_router_dry_run_with_an_absent_state_root_makes_nothing_and_prints_the_would_make_line(self):
         """U321d: a dry run of the router role with a valid, absent state root makes nothing (no `router-state`, no
         seats root, no slot; DSH_HOME keeps its one entry), prints the launch line, exit 0, and says on stderr what a
-        launch would make: the state root, 0700. A launch then makes exactly that directory, 0700, inside the held
-        home, after the judgement, and says nothing of the kind."""
+        launch would make: the state root, 0700, and (U343i) the broker directory `<state slot>/broker`, 0700. A
+        launch then makes exactly those directories, 0700, the state root inside the held home after the judgement
+        and the broker directory inside the per-launch state slot before the settings are written (so it stands,
+        empty, while dsh runs and goes with the slot), and says nothing of the kind."""
         state_root = self.dsh_home / "router-state"
+        seats = Path(self.seats).resolve()
         run = self.seat(
             "router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run", "--", "--version"
         )
@@ -1099,6 +1113,11 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertIn(
             f"hcom-seat: the router role's state root {state_root} does not exist; a launch creates it (0700)",
             run.stderr,
+        )
+        self.assertRegex(
+            run.stderr,
+            rf"hcom-seat: the router role's broker directory {re.escape(str(seats))}/\.state/router-\d{{8}}-\d{{6}}-\d+/broker"
+            r" does not exist; a launch creates it \(0700\)",
         )
         self.assertRegex(
             run.stdout, rf" {re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh --profile router "
@@ -1110,13 +1129,95 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         procs = self.held_launch("--", "--version", role="router")
         (name,) = self.slots()[0]
         settings = self.settings_of(name)
+        broker_dir = seats / ".state" / name / "broker"
+        self.assertTrue(broker_dir.is_dir() and not broker_dir.is_symlink(), "a launch makes the broker directory")
+        self.assertEqual(stat.S_IMODE(broker_dir.stat().st_mode), 0o700)
+        self.assertEqual(sorted(broker_dir.iterdir()), [], "empty: hcom-seat makes it and puts nothing in it")
         ((status, out, err),) = self.release(procs)
         self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
         self.assertNotIn("does not exist; a launch creates it", err)
         self.assertEqual(settings["filesystem"]["allowWrite"][6], str(state_root))
+        self.assertIn(str(broker_dir), settings["filesystem"]["denyWrite"])
         self.assertTrue(state_root.is_dir() and not state_root.is_symlink(), "a launch makes the held state root")
         self.assertEqual(stat.S_IMODE(state_root.stat().st_mode), 0o700)
+        self.assertEqual(self.slots(), ([], []), "the broker directory went with the state slot")
+
+    def test_the_router_row_denies_its_broker_directory_for_write_as_a_tagged_row_and_the_judge_passes(self):
+        """U343i (verdicts U343g-8a049561 P1 `acp-broker:1262` and U343h-eb648bcd P1 `acp-relay.py:284`, `acp-broker:963`;
+        the mechanism-change row of 2026-11-10T06:20:28Z, form remove): the Router's write grant on the broker
+        directory ceases to exist. The router row renders `<state slot>/broker` as one `denyWrite` row, after the
+        project-file denies of its own directory and in no grant list, tagged `slot` like those denies (it lies inside
+        allowWrite row 1 and allowRead row 1, the state slot, as the project-file denies lie inside row 0), so the
+        lever's own judge passes the rendered tables with the tag (the structural-tags count of the dsh role, 27,
+        grows by one for the router role) and hits with the tag absent, naming the state-slot grant and the broker
+        deny; the dsh row renders no such row."""
+        rendered = {}
+        for role in ("dsh", "router"):
+            procs = self.held_launch("--", "--version", role=role)
+            (name,) = self.slots()[0]
+            rendered[role] = (name, self.settings_of(name)["filesystem"])
+            ((status, out, err),) = self.release(procs)
+            self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        name, router = rendered["router"]
+        home = self.home.resolve()
+        seats = Path(self.seats).resolve()
+        cwd, slot = str(seats / ".state" / name / "cwd"), str(seats / ".state" / name)
+        broker = f"{slot}/broker"
+        profile, profiles = str(home / ".omp/profiles/dsh"), str(home / ".omp/profiles")
+        shared = str(seats / ".state/claude")
+        deny_read = router["denyRead"]
+        deny_write = [row for row in router["denyWrite"] if "*" not in row]
+        self.assertEqual(deny_write.count(broker), 1, deny_write)
+        for kind in ("allowRead", "allowWrite", "denyRead"):
+            self.assertNotIn(broker, router[kind], kind)
+        project_rows = [ix for ix, row in enumerate(deny_write) if row.startswith(cwd + "/")]
+        self.assertEqual(len(project_rows), 8)
+        self.assertGreater(deny_write.index(broker), max(project_rows), "after the project-file denies")
+        self.assertEqual([row for row in rendered["dsh"][1]["denyWrite"] if row.endswith("/broker")], [])
+        tags = [(tag, kind, ix, path) for kind in ("allowRead", "allowWrite")
+                for tag, ix, path in (("slot", 0, cwd), ("slot", 1, slot), ("slot", 2, shared), ("profile", 4, profile))]  # fmt: skip
+        tags += [("slot", "denyWrite", ix, row) for ix, row in enumerate(deny_write) if row.startswith(cwd + "/")]
+        tags += [("slot", "denyWrite", ix, row) for ix, row in enumerate(deny_write) if row.startswith(shared + "/")]
+        tags += [
+            ("slot", "denyRead", deny_read.index(row), row)
+            for row in (str(home / ".local/state/omp-seats"), str(seats))
+        ]
+        tags += [("profile", "denyRead", deny_read.index(profiles), profiles)]
+        self.assertEqual(len(tags), 27, "the dsh role's structural tags")
+        without = list(tags)
+        tags.append(("slot", "denyWrite", deny_write.index(broker), broker))
+        self.assertEqual(len(tags), 27 + 1, "the router role's one more tag, the broker deny")
+        clear = self.judge_run(tags, router["allowRead"], router["allowWrite"], deny_read, deny_write)
+        self.assertEqual((clear.returncode, clear.stdout), (0, ""), clear.stderr)
+        hit = self.judge_run(without, router["allowRead"], router["allowWrite"], deny_read, deny_write)
+        self.assertEqual(hit.returncode, 3, hit.stdout + hit.stderr)
+        self.assertEqual(
+            hit.stdout.splitlines(),
+            [f"grant=allowRead row {slot}", f"deny={broker}, a row of its denyWrite list"],
+            "without the tag the state slot's grant contains the broker deny",
+        )
         self.assertEqual(self.slots(), ([], []))
+
+    def judge_run(self, tags, allow_read, write, deny_read, deny_write):
+        """Run the lever's own `settings_judge` (its text and the functions it reads) over the four lists with `tags`
+        as the structural tags, each `(tag, kind, ix, path)` in the form `tag_row` takes: exit 0 and no output when
+        every grant keeps clear of every deny it is not paired with; exit 3 with `grant=` and `deny=` lines on a hit."""
+        text = test_hcom_seat.SEAT.read_text()
+        names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_each", "ancestors_of")
+        names += ("identity_table", "ascii_lower", "within_ix", "tag_row", "row_tag", "settings_judge")
+        functions = "\n".join(
+            text[text.index(f"\n{fn}() {{") : text.index("\n}\n", text.index(f"\n{fn}() {{")) + 3] for fn in names
+        )
+        stat_args = "stat_args=(-L -f '%d:%i')" if sys.platform == "darwin" else "stat_args=(-L -c '%d:%i')"
+        lists = "\n".join(
+            f"{var}=({' '.join(shlex.quote(row) for row in rows)})"
+            for var, rows in (("allow_read", allow_read), ("write", write), ("deny_read", deny_read), ("deny_write", deny_write))
+        )  # fmt: skip
+        tagged = "\n".join(f"tag_row {tag} {kind} {ix} {shlex.quote(path)}" for tag, kind, ix, path in tags)
+        script = f"set -euo pipefail\n{stat_args}\n{functions}\n{lists}\n"
+        script += f"row_tags=() row_tag_kinds=() row_tag_ixs=() row_tag_paths=()\n{tagged}\n"
+        script += 'settings_judge || { printf "grant=%s\\ndeny=%s\\n" "${judge_grant}" "${judge_deny}"; exit 3; }\n'
+        return subprocess.run(["/bin/bash", "-c", script], capture_output=True, text=True, check=False, timeout=60)
 
     def test_the_dsh_settings_deny_every_git_hcom_and_record_path_for_read_and_write(self):
         """U272c P1 `hcom-seat:1876`: srt reads everything an explicit deny does not name, so removing a grant denied
@@ -1440,24 +1541,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         ]
         tags += [("profile", "denyRead", deny_read.index(profiles), profiles)]
         self.assertEqual(len(tags), 8 + 8 + 8 + 2 + 1, tags)
-        text = test_hcom_seat.SEAT.read_text()
-        names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_each", "ancestors_of")
-        names += ("identity_table", "ascii_lower", "within_ix", "tag_row", "row_tag", "settings_judge")
-        functions = "\n".join(
-            text[text.index(f"\n{fn}() {{") : text.index("\n}\n", text.index(f"\n{fn}() {{")) + 3] for fn in names
-        )
-        stat_args = "stat_args=(-L -f '%d:%i')" if sys.platform == "darwin" else "stat_args=(-L -c '%d:%i')"
 
         def judge(allow_read, write, deny_read, deny_write):
-            lists = "\n".join(
-                f"{var}=({' '.join(shlex.quote(row) for row in rows)})"
-                for var, rows in (("allow_read", allow_read), ("write", write), ("deny_read", deny_read), ("deny_write", deny_write))
-            )  # fmt: skip
-            tagged = "\n".join(f"tag_row {tag} {kind} {ix} {shlex.quote(path)}" for tag, kind, ix, path in tags)
-            script = f"set -euo pipefail\n{stat_args}\n{functions}\n{lists}\n"
-            script += f"row_tags=() row_tag_kinds=() row_tag_ixs=() row_tag_paths=()\n{tagged}\n"
-            script += 'settings_judge || { printf "grant=%s\\ndeny=%s\\n" "${judge_grant}" "${judge_deny}"; exit 3; }\n'
-            return subprocess.run(["/bin/bash", "-c", script], capture_output=True, text=True, check=False, timeout=60)
+            return self.judge_run(tags, allow_read, write, deny_read, deny_write)
 
         clear = judge(rendered["allowRead"], rendered["allowWrite"], deny_read, deny_write)
         self.assertEqual((clear.returncode, clear.stdout), (0, ""), clear.stderr)

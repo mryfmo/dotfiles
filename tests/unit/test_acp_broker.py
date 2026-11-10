@@ -198,14 +198,16 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
 
     def make_router(self, name="router-20261107-000000-1"):
         """A Router slot in the shape `hcom-seat router` leaves: the state slot with its scratch cwd, the shared Claude
-        Code directory, and the settings file in the dsh row's shape with the router cells (the loopback grant, the
-        state root, the broker directory in allowUnixSockets)."""
+        Code directory, the broker directory `<state>/broker` made 0700 and empty before the settings (U343i: hcom-seat
+        makes it; the broker takes it as made), and the settings file in the dsh row's shape with the router cells (the
+        loopback grant, the state root, the broker directory in allowUnixSockets and, U343i, in denyWrite)."""
         seats = self.seats_path
         seats.mkdir(mode=0o700, exist_ok=True)
         state = seats / ".state" / name
         for path in (seats / ".state", state, state / "cwd", seats / ".state/claude", seats / ".sandbox",
-                     seats / ".sandbox" / name):  # fmt: skip
+                     seats / ".sandbox" / name, state / "broker"):  # fmt: skip
             path.mkdir(mode=0o700, exist_ok=True)
+        (state / "broker").chmod(0o700)
         home, repo, store = self.home_real, self.repo.resolve(), self.store.resolve()
         cwd = state / "cwd"
         dsh_home = home / "dsh-home"
@@ -222,7 +224,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                       f"{repo}/.git/worktrees/*/config.worktree", f"{repo}/.git/worktrees/*/info",
                       f"{repo}/.git/worktrees/*/commondir", f"{repo}/.git/worktrees/*/gitdir",
                       f"{store}/config.toml", f"{home}/.claude", f"{home}/.claude.json", f"{repo}/.git", str(store),
-                      f"{repo}/.orchestration"]  # fmt: skip
+                      f"{repo}/.orchestration", f"{state}/broker"]  # fmt: skip
         settings = {
             "network": {"allowedDomains": DOMAINS, "deniedDomains": [], "allowUnixSockets": [f"{state}/broker"],
                         "allowMachLookup": ["com.apple.trustd.agent"], "allowLocalBinding": True},
@@ -791,7 +793,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.acp_slots(), [], "the slot went with the broker")
         self.assertLessEqual(elapsed, GRACE + 2, f"the broker took {elapsed:.1f} s to end")
         self.assertFalse(self.alive(omp_pid))
-        self.assertFalse(sock.parent.exists(), "the records went with the broker directory")
+        self.assertEqual(
+            self.broker_dir_entries(sock), [], "the records went at the broker's end; the directory stands"
+        )
         conn.close()
 
     def test_b_a_termination_during_the_slot_removal_cannot_strand_the_slot(self):
@@ -933,10 +937,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(sorted(p.name for p in sock.parent.iterdir()), [slot, "sock"], "a refusal makes no record")
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
-    def test_f_the_broker_end_removes_leftover_records_before_its_directory(self):
-        """U343g test (f): a record no client read (a raw connection's) and a planted record-named file stay in the
-        broker directory; `broker_cleanup` removes the records before its `rmdir`, so the directory is gone and the
-        broker ends by its signal with nothing named on stderr."""
+    def test_f_the_broker_end_removes_leftover_records_and_leaves_the_directory_standing(self):
+        """U343g test (f), the U343i form: a record no client read (a raw connection's) and a planted record-named
+        file stay in the broker directory; `broker_cleanup` removes the socket and the records and leaves the
+        directory, hcom-seat's, standing empty (no `rmdir`), and the broker ends by its signal with nothing named on
+        stderr."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
@@ -947,8 +952,20 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         (sock.parent / "acp-w9-20260101-000000-1.tmp").write_text("")
         status, _out, err = self.stop_broker(proc)
         self.assertEqual(status, -signal.SIGTERM, err)
-        self.assertFalse(sock.parent.exists(), "the broker directory remains")
+        self.assert_broker_dir_stands_empty(sock)
         self.assertNotIn("cannot remove", err)
+
+    def broker_dir_entries(self, sock):
+        """The entries of the broker directory, dot names included; the test fails when the directory is gone."""
+        self.assertTrue(sock.parent.is_dir() and not sock.parent.is_symlink(), f"{sock.parent} is not a directory")
+        return sorted(p.name for p in sock.parent.iterdir())
+
+    def assert_broker_dir_stands_empty(self, sock):
+        """After the broker's end (U343i): the socket and every record are gone, and the directory hcom-seat made
+        stands, 0700 and empty."""
+        self.assertFalse(sock.exists() or sock.is_symlink(), "the socket is gone")
+        self.assertEqual(self.broker_dir_entries(sock), [], "the records are gone and nothing else is there")
+        self.assertEqual(stat.S_IMODE(os.lstat(sock.parent).st_mode), 0o700)
 
     # --- U343h, round 6: the record is written through the pinned helper on a held directory descriptor ---
 
@@ -1096,7 +1113,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         status, _out, err = self.stop_broker(proc)
         self.assertEqual(status, -signal.SIGTERM, err)
         self.assertEqual(err.count(f" of {helper} differs from the pin in "), 4, err)
-        self.assertFalse(sock.parent.exists(), "the incomplete records went with the broker directory")
+        self.assert_broker_dir_stands_empty(sock)
 
     def push_calls(self, slot):
         """The fake srt's calls after the launch (the push's), as (settings file, the git arguments after the
@@ -1521,10 +1538,10 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.exchange_record(sock, repo, "w3", PING), (PING, "status=0 push=none"))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
-    def test_the_socket_and_its_directory_are_gone_after_the_broker_exits(self):
+    def test_the_socket_and_the_records_are_gone_after_the_broker_exits_and_the_directory_stands(self):
         """A termination while a worker runs: the relay ends the handler, the handler's reaper ends omp, logs the exit,
-        writes the record and removes the slot (U343g), the relay removes the socket, the broker the records and its
-        directory, and the broker ends by the signal."""
+        writes the record and removes the slot (U343g), the relay removes the socket, the broker the records, the
+        directory hcom-seat made stands empty (U343i), and the broker ends by the signal."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
@@ -1537,31 +1554,45 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         status, out, err = self.stop_broker(proc)
         self.assertEqual(status, -signal.SIGTERM, err)
         self.assertEqual(out, f"acp-broker: listening on {sock}\n")
-        self.assertFalse(sock.exists())
-        self.assertFalse(broker_dir.exists())
+        self.assert_broker_dir_stands_empty(sock)
         self.assertEqual(self.acp_slots(), [], "the live worker's slot went with the broker")
         self.assertEqual(self.recv_all(conn), b"", "nothing of the broker's on the stream after the record line")
         lines = self.log_lines("w1")
         self.assertEqual(len(lines), 3, lines)
         self.assertRegex(lines[2], r" acp-broker: omp acp exit \d+ push=skipped$")
-        # A hangup and an interrupt do the same, each ending the broker by its own signal.
+        # A hangup and an interrupt do the same, each ending the broker by its own signal, on the standing directory.
         for sig in (signal.SIGHUP, signal.SIGINT):
             with self.subTest(signal=sig.name):
                 proc, sock = self.start_broker(name, cwd)
                 self.assertEqual(self.stop_broker(proc, sig)[0], -sig)
-                self.assertFalse(sock.exists())
-                self.assertFalse(sock.parent.exists())
+                self.assert_broker_dir_stands_empty(sock)
+
+    def broker_refusal(self, name, cwd):
+        """The broker started for a refusal: `(status, stdout, stderr)` once it has exited. One that listens instead
+        (a red run, where the lever takes a directory it should refuse) is ended by TERM and fails the test."""
+        proc = subprocess.Popen(
+            [str(BROKER), self.seats, name, str(cwd)], cwd=self.repo, env=self.broker_env(),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )  # fmt: skip
+        try:
+            out, err = proc.communicate(timeout=30)
+        except subprocess.TimeoutExpired:
+            proc.send_signal(signal.SIGTERM)
+            out, err = proc.communicate(timeout=60)
+            self.fail(f"the broker listened instead of refusing; ended by TERM: {proc.returncode} {out!r} {err!r}")
+        return proc.returncode, out, err
 
     def test_a_second_broker_on_the_same_slot_refuses(self):
-        """While a broker listens for a Router, a second one for the same slot refuses by name and touches nothing;
-        a broker directory that exists without its socket refuses too and is left in place (verdict U343d-136fbe0a
-        P2 `:854`: the broker directory is made by this process alone, so a loser never removes a winner's socket)."""
+        """While a broker listens for a Router, a second one for the same slot refuses by name and touches nothing
+        (verdict U343d-136fbe0a P2 `:854`: a loser never removes a winner's socket); after the first ends, the
+        directory stands empty and a new broker takes it (U343i); a directory holding any entry (a crashed broker's
+        leftovers) refuses by name and is left in place, and an absent one refuses naming hcom-seat, which makes it."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
         run = subprocess.run(
             [str(BROKER), self.seats, name, str(cwd)], cwd=self.repo, env=self.broker_env(),
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, check=False, timeout=60,
         )  # fmt: skip
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(
@@ -1571,22 +1602,96 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertIsNone(proc.poll())
         self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
-        self.assertFalse(sock.parent.exists())
-        # A stale directory (a crashed broker's, or another's between its mkdir and its bind) refuses and stays.
-        sock.parent.mkdir(mode=0o700)
+        self.assert_broker_dir_stands_empty(sock)
+        # A directory with an entry (a crashed broker's, or another's between its take and its bind) refuses and stays.
         (sock.parent / "note").write_text("x\n")
-        run = subprocess.run(
-            [str(BROKER), self.seats, name, str(cwd)], cwd=self.repo, env=self.broker_env(),
-            capture_output=True, text=True, check=False,
-        )  # fmt: skip
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn(f"acp-broker: refused: the broker directory {sock.parent} exists without its socket", run.stderr)
+        status, out, err = self.broker_refusal(name, cwd)
+        self.assertEqual((status, out), (2, ""), err)
+        self.assertIn(f"acp-broker: refused: the broker directory {sock.parent} is not empty (note)", err)
         self.assertTrue((sock.parent / "note").exists(), "the refusing broker removed nothing")
         sock.parent.joinpath("note").unlink()
+        # Absent: the broker makes nothing and names the lever that does.
         sock.parent.rmdir()
-        # After it is gone, a new broker takes the slot again.
+        status, out, err = self.broker_refusal(name, cwd)
+        self.assertEqual((status, out), (2, ""), err)
+        self.assertIn(f"acp-broker: refused: the broker directory {sock.parent} is absent; hcom-seat", err)
+        self.assertFalse(sock.parent.exists() or sock.parent.is_symlink(), "the broker made no directory")
+        # Made again as hcom-seat makes it, a new broker takes the slot.
+        sock.parent.mkdir(mode=0o700)
         proc, sock = self.start_broker(name, cwd)
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+        self.assert_broker_dir_stands_empty(sock)
+
+    def test_b_the_listener_takes_the_directory_hcom_seat_made_and_refuses_any_other_state(self):
+        """U343i test (b) (verdict U343h-eb648bcd P1 `acp-relay.py:284` and `acp-broker:963`, class record-path; the
+        mechanism-change row of 2026-11-10T06:20:28Z, form remove): the broker directory is hcom-seat's, made 0700
+        before the Router's settings are written and denied to the Router for write by them, so the listener makes
+        nothing there and takes the directory as it finds it: no link, a directory of this user, mode 0700, empty.
+        Absent, it refuses naming hcom-seat; a link (to an empty directory elsewhere, nothing made through it), a
+        regular file, an entry inside (a dot name included) or another mode each refuse by name, exit 2, with nothing
+        made and no srt run; present and empty, it listens, and at its end the socket and every record (a raw
+        connection's, never read) are gone and the directory stands, 0700 and empty, for the next broker of the
+        launch."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        broker_dir = self.seats_path / ".state" / name / "broker"
+        elsewhere = Path(self.temp.name).resolve() / "elsewhere"
+        elsewhere.mkdir(mode=0o700)
+
+        def run():
+            return self.broker_refusal(name, cwd)
+
+        def reset():
+            if broker_dir.is_symlink() or broker_dir.is_file():
+                broker_dir.unlink()
+            elif broker_dir.is_dir():
+                broker_dir.chmod(0o700)
+                for entry in broker_dir.iterdir():
+                    entry.unlink()
+                broker_dir.rmdir()
+            broker_dir.mkdir(mode=0o700)
+
+        cases = (
+            ("absent", broker_dir.rmdir,
+             f"the broker directory {broker_dir} is absent; hcom-seat's router launch makes it (0700) before the"
+             " Router's settings are written, and this lever makes nothing there"),
+            ("a link to a directory", lambda: (broker_dir.rmdir(), broker_dir.symlink_to(elsewhere)),
+             f"the broker directory {broker_dir} is a symbolic link; it must be a real directory"),
+            ("a regular file", lambda: (broker_dir.rmdir(), broker_dir.write_text("")),
+             f"the broker directory {broker_dir} is not a directory"),
+            ("an entry inside", lambda: (broker_dir / "note").write_text("x\n"),
+             f"the broker directory {broker_dir} is not empty (note)"),
+            ("a dot entry inside", lambda: (broker_dir / ".hidden").write_text(""),
+             f"the broker directory {broker_dir} is not empty (.hidden)"),
+            ("mode 0755", lambda: broker_dir.chmod(0o755),
+             f"the broker directory {broker_dir} has mode 755, not 0700 (hcom-seat makes it 0700)"),
+        )  # fmt: skip
+        for label, arrange, message in cases:
+            with self.subTest(case=label):
+                reset()
+                arrange()
+                status, out, err = run()
+                self.assertEqual((status, out), (2, ""), err)
+                self.assertIn(f"acp-broker: refused: {message}", err)
+                self.assertEqual(self.calls_of("srt"), [], "nothing ran")
+                self.assertFalse((self.seats_path / ".state" / name / "broker" / "sock").exists(), "no socket")
+        self.assertEqual(sorted(elsewhere.iterdir()), [], "nothing made through the link")
+        reset()
+        self.assertEqual(sorted(broker_dir.iterdir()), [])
+        proc, sock = self.start_broker(name, cwd)
+        self.assertEqual(sock.parent, broker_dir)
+        self.assertEqual(stat.S_IMODE(os.lstat(sock).st_mode), 0o600)
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
+        (record,) = [p.name for p in broker_dir.iterdir() if p.name != "sock"]
+        self.assertTrue(record.startswith("acp-w1-"), record)
+        status, out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertEqual(out, f"acp-broker: listening on {sock}\n")
+        self.assertNotIn("cannot remove", err)
+        self.assert_broker_dir_stands_empty(sock)
+        proc, sock = self.start_broker(name, cwd)
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+        self.assert_broker_dir_stands_empty(sock)
 
     def test_the_client_refuses_outside_a_seat_on_a_refusal_line_and_without_a_socket(self):
         """acp-seat: exit 2 with nothing on stdout outside a seat (no marker), on the broker's refusal line (printed on
@@ -1929,7 +2034,10 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         def reroot(row, old, new):
             return new + row[len(old) :] if row.startswith(old + "/") else row
 
-        # The deny table: the Router's, byte for byte, but the re-rooted project-file rows and the credential root.
+        # The deny table: the Router's, byte for byte, but the re-rooted project-file rows and the credential root;
+        # the Router's table holds the broker-directory row of U343i, which the worker carries as any Router deny.
+        broker_row = str(self.seats_path.resolve() / ".state" / rendered["router_name"] / "broker")
+        self.assertEqual(router["filesystem"]["denyWrite"].count(broker_row), 1, "the router row's broker deny")
         self.assertEqual(worker["filesystem"]["denyRead"], router["filesystem"]["denyRead"] + [credentials])
         self.assertEqual(
             worker["filesystem"]["denyWrite"], [reroot(r, router_cwd, task) for r in router["filesystem"]["denyWrite"]]
@@ -1938,20 +2046,25 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             len([r for r in worker["filesystem"]["denyWrite"] if r.startswith(task + "/")]), len(PROJECT_FILES)
         )
 
-        # And the dsh row's, once the per-launch names and the cwd are normalised: the one shape, rendered twice.
+        # And the dsh row's, once the per-launch names and the cwd are normalised: the one shape, rendered twice; the
+        # one row the dsh row has not is the router row's broker deny (U343i).
         def normalised(settings, cwd, launch_name):
             text = json.dumps(settings, separators=(",", ":")).replace(cwd, "<cwd>").replace(launch_name, "<launch>")
             return json.loads(text)
 
         dsh_n = normalised(dsh, dsh_cwd, rendered["dsh_name"])
         worker_n = normalised(worker, task, rendered["router_name"])
+        broker_n = str(self.seats_path.resolve() / ".state/<launch>/broker")
+        self.assertEqual(worker_n["filesystem"]["denyWrite"].count(broker_n), 1)
+        worker_deny_write = [r for r in worker_n["filesystem"]["denyWrite"] if r != broker_n]
         self.assertEqual(worker_n["filesystem"]["denyRead"], dsh_n["filesystem"]["denyRead"] + [credentials])
-        self.assertEqual(worker_n["filesystem"]["denyWrite"], dsh_n["filesystem"]["denyWrite"])
+        self.assertEqual(worker_deny_write, dsh_n["filesystem"]["denyWrite"])
         self.assertEqual(
-            json.dumps(worker_n["filesystem"]["denyWrite"]).encode(),
+            json.dumps(worker_deny_write).encode(),
             json.dumps(dsh_n["filesystem"]["denyWrite"]).encode(),
-            "byte-identical deny tables",
+            "byte-identical deny tables but the broker row",
         )
+        self.assertNotIn("/broker", json.dumps(dsh), "the dsh row has no broker row")
         # The grants: the dsh row's rows 0, 2, 4.. with the slot's task as row 0 (no state slot, no DSH_HOME).
         dsh_read, dsh_write = dsh["filesystem"]["allowRead"], dsh["filesystem"]["allowWrite"]
         self.assertEqual(dsh_read[1], str(self.seats_path / ".state" / rendered["dsh_name"]))

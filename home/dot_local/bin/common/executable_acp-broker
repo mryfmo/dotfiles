@@ -12,15 +12,29 @@
 #   directory of its own and pipes the connection to it. The Router and every worker are separate srt processes
 #   started outside both (R-45), the worker never inherits the Router's settings, and the Router cannot name the
 #   settings file.
-#   The socket. `acp-broker <seats-root> <router seat> <router scratch cwd>` makes `<seats-root>/.state/<router seat>/
-#   broker/` 0700 by one `mkdir` of its own (an entry that exists, a socket inside it or not, refuses: the directory
-#   is this process's alone, so a broker that lost the race never removes another's socket) and listens on `sock`
-#   there (mode 0600), one listener per Router launch. The listener and the byte relay are the one non-bash part,
+#   The socket and its directory (regime-cutover U343i, the mechanism-change row of 2026-11-10T06:20:28Z, form remove;
+#   verdicts U343g-8a049561 P1 :1262 and U343h-eb648bcd P1 `acp-relay.py:284`, P1 :963, P2 `acp-relay.py:232`, class
+#   record-path). The broker directory `<seats-root>/.state/<router seat>/broker/` lies in the Router's own state
+#   slot, and until this round the Router's settings granted that slot for write whole, so every path an unsandboxed
+#   process named inside the directory followed whatever the Router had planted there (round 5's `printf > <id>.tmp`,
+#   then, once that write sat on a held descriptor, the relay's `unlink` of the socket and its `chmod`, and this
+#   lever's `rm -f` of the socket and the records after the Router renamed the directory away and planted a link at
+#   its name), however each operation was hardened, because the Router owned the directory entry itself. The premise
+#   is gone: `hcom-seat`'s router row renders `<state slot>/broker` as a `denyWrite` row of the Router's own settings
+#   (tagged `slot` inside the state-slot grant; srt's later deny wins on macOS and on Linux the path must exist when
+#   the settings are written) and makes the directory 0700 before it writes them (hcom-seat's broker_dir_make), so
+#   the Router reads it and connects to its socket and can plant, rename or unlink nothing in it. `acp-broker
+#   <seats-root> <router seat> <router scratch cwd>` makes nothing there: it takes the directory as hcom-seat made it,
+#   present (absent refuses naming hcom-seat), no link, a directory of this user, mode 0700 and empty (no entry of any
+#   kind: a socket inside is another broker's, one listener per Router launch; anything else is a crashed broker's
+#   leftover or a directory that is not hcom-seat's), each refused by name with nothing made, and listens on `sock`
+#   there (mode 0600). The listener and the byte relay are the one non-bash part,
 #   `acp-relay.py` beside this file, run as `python3 -I -S` by its pinned physical argv after its own
 #   `claude.levers.sha256` pin was checked here; per connection it starts `acp-broker --connection <the same three
 #   arguments>` with the connection as its stdin and stdout and copies bytes both ways until either side closes. The
-#   socket and its directory are removed when the listener ends, and by the trap a hangup, interrupt or termination
-#   runs before this process ends by that signal.
+#   socket and the records no client read are removed when the listener ends, and by the trap a hangup, interrupt or
+#   termination runs before this process ends by that signal; the directory is hcom-seat's and stands (no `rmdir`
+#   here): the launch's slot removal takes it with the Router's state slot.
 #   The header (regime-cutover U343e, the mechanism-change row of 2026-11-07T09:41:47Z: the Router names no path
 #   that becomes a grant). The first line of a connection is `ACP-SEAT v1 repo=<path> ref=<rev> name=<name>`: the
 #   repository a clean absolute path (clean_path) the Router may read, the ref a revision in
@@ -103,24 +117,24 @@
 #   written before omp starts: `acp-broker: refused: <reason>` or `acp-broker: record <id>`, `<id>` the slot name
 #   `acp-<name>-<stamp>-<pid>`; every later byte is the worker's and reaches the client unread, so neither a
 #   worker's unterminated tail nor a worker line in any shape can become the broker's report. The report is a
-#   record file `<seats-root>/.state/<router seat>/broker/<id>`, in the Router's own socket directory: the Router's
-#   settings grant its state slot for read and write (hcom-seat's router row; the test's rendering holds it in
-#   `allowRead` and `allowWrite`), and no worker setting reaches it (the worker's `denyRead` is the Router's table
-#   with the seats root, its grants are the slot's task, the shared Claude Code directory, the profile and
-#   `~/.omp/run`, its `allowUnixSockets` empty; measured on this host for U343g: `srt --settings <the Router's
+#   record file `<seats-root>/.state/<router seat>/broker/<id>`, in the broker directory: the Router's settings grant
+#   its state slot for read (hcom-seat's router row; the test's rendering holds it in `allowRead`) and deny the broker
+#   directory for write (U343i, the paragraph above), and no worker setting reaches it (the worker's `denyRead` is the
+#   Router's table with the seats root, its grants are the slot's task, the shared Claude Code directory, the profile
+#   and `~/.omp/run`, its `allowUnixSockets` empty; measured on this host for U343g: `srt --settings <the Router's
 #   settings> -- /bin/cat <record>` exits 0 with the content, the same read under a slot's settings fails with
 #   `Operation not permitted`). The shared Claude Code directory is worker-writable and never holds a record. The
 #   record is written by the reaper alone, never by the handler: its running form, present before omp starts, is
 #   `ref=refs/acp-seat/<name>/<stamp>-<pid>` and `reaper=<pid>`; its final form adds one line `status=<omp's status
 #   when the handler reported it, else 2; 2 when the slot remains> push=<ref|none|failed|skipped>`.
 #   The record's write (regime-cutover U343h; verdict U343g-8a049561 P1 :1262, class record-path). The broker
-#   directory lies in the Router's own state slot, which the Router's settings grant for write, and the Router learns
-#   `<id>` from the first line, so a path under that directory opened for write by this unsandboxed process followed
-#   whatever the Router had planted there: round 5's `printf > <id>.tmp` and its `mv -f` did. No bash of this lever
-#   redirects into, moves, copies or links a path under the broker directory any more. Both forms are written by the
-#   pinned helper `acp-record-place.py` beside this file (the form of hcom-seat's profile-config-place.py, U310d and
-#   U310f), run by the reaper as `<pinned python3> -I -S <private copy>` with the record's lines on its stdin: the
-#   listener reads the directory's device and inode once, right after its mkdir (`broker_dir_id`, carried to each
+#   directory lies in the Router's own state slot, which the Router's settings granted for write until U343i, and the
+#   Router learns `<id>` from the first line, so a path under that directory opened for write by this unsandboxed
+#   process followed whatever the Router had planted there: round 5's `printf > <id>.tmp` and its `mv -f` did. No bash
+#   of this lever redirects into, moves, copies or links a path under the broker directory. Both forms are written by
+#   the pinned helper `acp-record-place.py` beside this file (the form of hcom-seat's profile-config-place.py, U310d
+#   and U310f), run by the reaper as `<pinned python3> -I -S <private copy>` with the record's lines on its stdin: the
+#   listener reads the directory's device and inode once, right after its take (`broker_dir_id`, carried to each
 #   connection in ACP_BROKER_DIR_ID), and the helper opens the directory once with `O_NOFOLLOW`, refuses unless
 #   `fstat` gives that identity, this user and no group or other write bit, then unlinks `<id>.tmp`, creates it
 #   `O_EXCL | O_NOFOLLOW` 0600, writes, syncs and renames it onto `<id>`, every call relative to that descriptor
@@ -150,7 +164,8 @@
 #   naming the record). The client reads the first line, copies the rest to its stdout and, after EOF, reads the
 #   record from the socket directory, prints `acp-seat: push=<word>` on stderr, unlinks the record and exits with
 #   `status`; a missing or incomplete record is exit 2 naming `<id>`. The broker's own end removes the records no
-#   client read before its directory.
+#   client read and leaves the directory, hcom-seat's, standing (the client's own unlink of the record is refused by
+#   the deny row and prints one line until U344 removes it).
 #   Tools. srt, omp, python3 and git (and bwrap, socat, rg on Linux, which srt runs by path and which must be
 #   binaries) are taken from the private tool directory `~/.local/state/hcom-seat/tools` that `hcom-seat` links on
 #   every launch, else from this process's caller's PATH, and run by their physical argv (pin_tool: every link
@@ -164,10 +179,11 @@
 #   unresolvable path, a Router state slot or settings file that is absent, a link or another user's, a scratch cwd
 #   outside the Router's state slot, a template row that is no clean path, a grant that overlaps a deny, a ref that
 #   does not resolve in the repository as the Router reads it, a pack that does not index, a tool that cannot be
-#   pinned, a broker directory that exists, and every failed producer (mkdir, a physical resolution, the template
-#   read, the identity reads, the settings write, the clone's reads, the canary, srt's version read, the log append)
-#   is exit 2 with the reason on stderr; in a connection the same line goes to the client first. Every producer's
-#   status is read (standing order 21); a failed read is never an absence.
+#   pinned, a broker directory that is absent, a link, not this user's, not 0700 or not empty (U343i), and every
+#   failed producer (mkdir, a physical resolution, the template read, the identity, mode and listing reads, the
+#   settings write, the clone's reads, the canary, srt's version read, the log append) is exit 2 with the reason on
+#   stderr; in a connection the same line goes to the client first. Every producer's status is read (standing order
+#   21); a failed read is never an absence.
 # @arg $1 string The seats root `hcom-seat` runs the Router in (its `--seats-root`).
 # @arg $2 string The Router's per-launch seat name (`router-<utc stamp>-<pid>`), whose state slot and settings exist.
 # @arg $3 string The Router's scratch cwd, `<seats-root>/.state/<router seat>/cwd`, checked to lie in the state slot; neither read nor granted.
@@ -176,9 +192,9 @@
 # @env DSH_HOME Not read: the worker is omp, and nothing of the Router's home reaches it.
 # @stdout `acp-broker: listening on <sock>` once the socket accepts; in a connection, the one line `acp-broker: record
 #   <id>` (or the refusal), then omp's stdout and nothing else of the broker's.
-# @exitcode 0 The listener ended on its own with the socket and its directory removed; in a connection, omp exited 0
-#   and the reaper removed the slot.
-# @exitcode 2 A refusal; a slot or the socket directory that remains after its removal; a reaper that did not end 0.
+# @exitcode 0 The listener ended on its own with the socket and the records removed and the directory standing; in a
+#   connection, omp exited 0 and the reaper removed the slot.
+# @exitcode 2 A refusal; a slot or the socket that remains after its removal; a reaper that did not end 0.
 # @exitcode * In a connection, omp's own exit status, also the record's.
 # @example
 #   acp-broker ~/.local/state/omp-seats/dotfiles router-20261107-120000-4242 ~/.local/state/omp-seats/dotfiles/.state/router-20261107-120000-4242/cwd
@@ -271,8 +287,9 @@ child=''
 push_word=''
 # The reaper's grace in seconds between TERM to omp's process group and KILL (regime-cutover U343g), named once.
 reaper_grace=5
-# The broker directory's identity (`<device>:<inode>`, regime-cutover U343h): read once by the listener after its
-# mkdir, carried to each connection in ACP_BROKER_DIR_ID, and the identity the record helper holds every write to.
+# The broker directory's identity (`<device>:<inode>`, regime-cutover U343h): read once by the listener after its take
+# of the directory hcom-seat made (U343i), carried to each connection in ACP_BROKER_DIR_ID, and the identity the record
+# helper holds every write to.
 broker_dir_id=''
 record_helper='' helper_copy_dir='' helper_copy=''
 
@@ -950,12 +967,13 @@ for caller_dir in ${caller_dirs[@]+"${caller_dirs[@]}"}; do
     if [[ ${caller_dir} == /* && ${caller_dir} != *[[:cntrl:]]* ]]; then seat_path+=:${caller_dir}; fi # lint-comparisons: allow an absolute-path and content test
 done
 
-# @description Remove the socket, the leftover records and the broker directory after the listener ended (the normal
-#   end and the trap): the socket when present, then every record left by a connection whose client never read it
-#   (a reaper's temporary file included; regime-cutover U343g), then the directory, each failure named; a directory
-#   that remains fails the function.
-# @exitcode 0 Both are gone.
-# @exitcode 1 One remains, named on stderr.
+# @description Remove the socket and the leftover records after the listener ended (the normal end and the trap): the
+#   socket when present, then every record left by a connection whose client never read it (a reaper's temporary file
+#   included; regime-cutover U343g), each failure named; the directory is hcom-seat's and stands (regime-cutover U343i:
+#   no `rmdir`; the Router's settings deny it for write, so no link and no rename of it can stand at these names, and
+#   the launch's slot removal takes it with the Router's state slot). A socket that remains fails the function.
+# @exitcode 0 The socket is gone.
+# @exitcode 1 The socket remains, named on stderr.
 broker_cleanup() {
     local entry
     path_presence "${sock}"
@@ -966,25 +984,16 @@ broker_cleanup() {
         [[ -e ${entry} || -L ${entry} ]] || continue
         /bin/rm -f -- "${entry}" || echo "acp-broker: cannot remove the exit record ${entry}" >&2
     done
-    path_presence "${broker_dir}"
-    if ((slot_present)); then
-        /bin/rmdir -- "${broker_dir}" || echo "acp-broker: cannot remove the broker directory ${broker_dir}" >&2
-    fi
     path_presence "${sock}"
     ((! slot_present)) || {
         echo "acp-broker: the socket ${sock} remains after its removal; remove it by hand" >&2
         return 1
     }
-    path_presence "${broker_dir}"
-    ((! slot_present)) || {
-        echo "acp-broker: the broker directory ${broker_dir} remains after its removal; remove it by hand" >&2
-        return 1
-    }
 }
 
 # @description The listener's signal trap: a hangup, interrupt or termination ends the relay (and, through it, every
-#   worker it started), removes the socket and its directory and then ends this process by the same signal, its
-#   disposition restored; a directory that remains is exit 2 whatever the signal.
+#   worker it started), removes the socket and the records and then ends this process by the same signal, its
+#   disposition restored; a socket that remains is exit 2 whatever the signal.
 # @arg $1 string The signal name.
 # shellcheck disable=SC2329 # invoked by the trap installed below
 broker_signal() {
@@ -996,7 +1005,7 @@ broker_signal() {
     fi
     broker_cleanup || removed=$?
     ((removed == 0)) || {
-        echo "acp-broker: ended by SIG$1; the broker exits 2 because the socket or its directory remains" >&2
+        echo "acp-broker: ended by SIG$1; the broker exits 2 because the socket remains" >&2
         exit 2
     }
     kill -s "$1" $$
@@ -1037,23 +1046,30 @@ if ((! connection)); then
     [[ ${helper_digest} == "${helper_pin}" ]] || refuse "sha256 ${helper_digest} of ${helper} differs from the pin in ${LEVER_MANIFEST}"
     self_file=${LEVER_DIR}/${BASH_SOURCE[0]##*/}
     [[ -r ${self_file} ]] || refuse "cannot read ${self_file}"
-    # The broker directory is this process's own, made by one mkdir (verdict U343d-136fbe0a P2 :854): an entry that
-    # exists refuses, with its socket named when there is one, so two brokers can never both reach the bind and the
-    # loser never removes the winner's socket at its cleanup.
-    if [[ -e ${broker_dir} || -L ${broker_dir} ]]; then
-        [[ ! -e ${sock} && ! -L ${sock} ]] || refuse "a broker already listens for the Router ${router} (${sock} exists); one listener per Router launch"
-        refuse "the broker directory ${broker_dir} exists without its socket (a broker between its mkdir and its bind, or one that crashed); remove it by hand when no broker runs"
-    fi
-    /bin/mkdir "${broker_dir}" || refuse "cannot create the broker directory ${broker_dir} (another broker may have made it this moment)"
+    # The broker directory is hcom-seat's (regime-cutover U343i; the header's first paragraph): the router launch made
+    # `<state slot>/broker` 0700 before the Router's settings were written, and those settings deny the Router every
+    # write under it, so this process makes nothing there and takes the directory as made: present, no link, a directory
+    # of this user (require_own_dir), mode 0700 and empty, every read status-checked (standing order 21). Anything else
+    # refuses by name and makes nothing: absent (no router launch of hcom-seat made it); a socket inside (another broker
+    # listens: one listener per Router launch, and the loser never removes the winner's socket, verdict U343d-136fbe0a
+    # P2 :854); any other entry (a crashed broker's leftovers, or a directory that is not hcom-seat's, left in place).
+    [[ -e ${broker_dir} || -L ${broker_dir} ]] ||
+        refuse "the broker directory ${broker_dir} is absent; hcom-seat's router launch makes it (0700) before the Router's settings are written, and this lever makes nothing there"
     require_own_dir 'the broker directory' "${broker_dir}"
-    # The directory's identity, read once (regime-cutover U343h): the device and inode the record helper holds every
-    # record write to; no connection reads it again, and a directory of another identity at the name is refused there.
+    broker_dir_mode=$(/usr/bin/stat "${mode_args[@]}" -- "${broker_dir}") || refuse "cannot read the mode of the broker directory ${broker_dir}"
+    [[ ${broker_dir_mode} == 700 ]] || refuse "the broker directory ${broker_dir} has mode ${broker_dir_mode}, not 0700 (hcom-seat makes it 0700)" # lint-comparisons: allow a mode word from stat, no path compare
+    [[ ! -e ${sock} && ! -L ${sock} ]] || refuse "a broker already listens for the Router ${router} (${sock} exists); one listener per Router launch"
+    broker_dir_entries=$(/bin/ls -A -- "${broker_dir}") || refuse "cannot list the broker directory ${broker_dir}"
+    [[ -z ${broker_dir_entries} ]] || refuse "the broker directory ${broker_dir} is not empty (${broker_dir_entries//$'\n'/, }); hcom-seat makes it empty, and a broker's end leaves it so; remove the leftovers by hand when no broker runs"
+    # The directory's identity, read once after the take (regime-cutover U343h): the device and inode the record helper
+    # holds every record write to; no connection reads it again, and a directory of another identity at the name is
+    # refused there.
     broker_dir_id=$(/usr/bin/stat "${lstat_args[@]}" -- "${broker_dir}") || refuse "cannot read the identity of the broker directory ${broker_dir}"
     [[ ${broker_dir_id} =~ ^[0-9]+:[0-9]+$ ]] || refuse "the identity of the broker directory ${broker_dir} read as '${broker_dir_id}', not <device>:<inode>"
     # Installed before the relay starts, so a signal while it listens removes what it made.
     # shellcheck disable=SC2064 # expanded now on purpose: the handler needs the signal's name
     for sig in HUP INT TERM; do trap "broker_signal ${sig}" "${sig}"; done
-    # The relay runs as a child, so the socket and its directory can go when it ends; every connection it accepts
+    # The relay runs as a child, so the socket and the records can go when it ends; every connection it accepts
     # re-enters this lever by its physical path under /bin/bash (the interpreter line), with the same three arguments
     # and the caller's PATH, from which each connection resolves the tools as this process did; the broker directory's
     # identity travels in its environment (regime-cutover U343h).
@@ -1063,7 +1079,7 @@ if ((! connection)); then
     status=${child_status}
     trap - HUP INT TERM
     broker_cleanup || {
-        echo "acp-broker: the relay exited ${status}; the broker exits 2 because the socket or its directory remains" >&2
+        echo "acp-broker: the relay exited ${status}; the broker exits 2 because the socket remains" >&2
         exit 2
     }
     exit "${status}"

@@ -1,6 +1,6 @@
 #!/usr/bin/env -S python3 -I
-"""Make the dsh-superagent Router's settings store equal to the kit's GitHub Source row and accept mode (regime-cutover
-U353, M-26 stage B).
+"""Make the dsh-superagent Router's settings store equal to the kit's GitHub Source row, accept mode and observe
+admission cell (regime-cutover U353, M-26 stage B; U416).
 
 `router-settings-apply [--manifest <agent-config.yaml>] [--profile <cordis.patch.yml>] [--wait <seconds>]` is run by the
 coordinator outside every sandbox, as the operator's user, after `hcom-seat router -- --no-open` has printed its ready
@@ -8,15 +8,15 @@ line. The Router learns its Sources from the settings store under `stateDir`, ne
 `src/deployment.ts:33-44` refuses `repository` there, naming the Source as where it moved), so the values the kit renders
 as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the Router through this lever alone:
 
-- The manifest's `assets.dsh-superagent.sources.github` row gives `repository` (`owner/name`) and `accept_mode`; the
-  rendered router profile's `webserver` row gives the port (its host must be `127.0.0.1`, the only host this lever ever
-  connects to). The Source's `cli` is the physical path of `router-gh` beside this file, the `gh` wrapper whose
+- The manifest's `assets.dsh-superagent.sources.github` row gives `repository` (`owner/name`), `accept_mode` and
+  `observe_admission` (`inferred` or `ignore`); the rendered router profile's `webserver` row gives the port (its host
+  must be `127.0.0.1`, the only host this lever ever connects to). The Source's `cli` is the physical path of `router-gh` beside this file, the `gh` wrapper whose
   `GH_CONFIG_DIR` is `<DSH_HOME>/router-credentials/gh` (upstream docs/006-deployment.md "Agent GitHub account").
 - `GET settings` at `http://127.0.0.1:<port>/orchestrator/api/settings` with the `x-orchestrator-request: 1` header
   (upstream `src/app/http.ts:75-78`: the host `127.0.0.1:<port>` and that header, else 403) gives each block's current
   `value` and `revision`. For a block whose value differs from the kit's, `PUT settings/<block>` carries
   `{"value": <the whole block>, "revision": <the revision read>}` (upstream `src/app/http.ts:196-202`, `src/app/settings.ts:148-151`:
-  a stale revision is 409). The two blocks:
+  a stale revision is 409). The three blocks, written in the order `eval`, `policy`, `source:github`:
   - `source:github`: `{"enabled": true, "config": {<the current config>, "repository": <repository>, "cli": <router-gh>,
     "observePulls": true}}` (`src/sources/github.ts:25-28`, the Source's config keys). `observePulls` is the observe
     path: the notifications poll (`src/sources/github.ts:304`, `notifications?all=true`) needs a classic token with the
@@ -25,13 +25,22 @@ as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the Router 
     request with the token's `Pull requests` permission and runs whether or not the notifications poll fails (`:282-286`).
   - `eval`: the current eval block with `mode` set to the accept mode (`src/policy.ts:83-87`). `auto` is refused here:
     the M-18 ladder's second rung is the operator's row, and this unit applies `off` or `observe` alone.
+  - `policy`: the current block with the github Source's admission cell `sources.github.admission.pulls.unlistedUnaddressed`
+    set to the manifest's `observe_admission` (`src/policy.ts:76-84`, `src/admission.ts:13`), its `rules`, the github
+    `allowed` list (empty when absent) and every other row, cell and Source carried as read. Without this cell the
+    observe rung records nothing: the kit's allowed list is empty and upstream's default for the cell is `ignore`, so
+    every unlisted human's pull request falls to `not_a_member` before any assessment (`src/policy.ts:192-210`; measured
+    on the i2 probes, decisions 2026-11-10T04:08:19Z), while `inferred` makes it a candidate that observe mode can only
+    record as an ignore Decision with `audit.would_accept` (`src/policy.ts:55-57`), never accept. The allowed list is
+    the auto rung's lever (a listed login's mention is `explicit`, accepted even in observe mode) and stays untouched.
 - A block already equal to the kit's is not written: a second run PUTs nothing (`unchanged`). After a save the Router
   answers `restarting: true` while setup is pending or a setup field changed (`src/app/settings.ts:176`), and the API is
   unavailable for a moment; before the next PUT this lever polls `GET settings` until it answers again, for at most
   `--wait` seconds (default 60).
 - `eval` is saved before `source:github` (regime-cutover U353b, verdict U353-8791100f P2 `:401`): a store whose mode is
   `auto` would otherwise poll under `auto` from the Source's restart until the mode is written, so the safe mode is in
-  place before the Source is enabled or its setup fields change.
+  place before the Source is enabled or its setup fields change. `policy` goes between them: its save changes
+  `policyVersion` and restarts nothing (measured 2026-11-10T03:03Z, `restarting: false`), so no wait precedes the Source.
 - Saving `source:github` runs the Router's account probe first (`src/app/settings.ts:167`, `src/app/setup.ts:61-66`,
   `src/deployment.ts:87-105`: `<cli> api user`, then `repos/<name>` for push); without the agent account's login in the
   credential root the Router answers 400 with `setup.code` `agentCliSignedOut` and saves nothing. This lever names that
@@ -39,11 +48,12 @@ as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the Router 
   which the coordinator runs this lever again.
 
 Output: one line per block on stdout, `<block> saved (revision <n>[, restarting])` or `<block> unchanged (revision <n>)`.
-Exit 0 when both blocks hold the kit's values. Every refusal is one line on stderr, `router-settings-apply: <reason>`, and
-exit 2: a manifest or profile that cannot be read or lacks its row, `auto`, a wrapper that is no executable file, a port
+Exit 0 when the three blocks hold the kit's values. Every refusal is one line on stderr, `router-settings-apply: <reason>`,
+and exit 2: a manifest or profile that cannot be read or lacks its row, `auto`, an `observe_admission` outside its two
+words, a wrapper that is no executable file, a port
 that answers nothing (`unreachable`, naming `127.0.0.1:<port>`), a 403 (naming the header), a 409 (naming the revision), a
 400 with `setup` (naming the code and its text), a 3xx (naming its Location; never followed), any other status, or a
-settings view without the `github` Source or the `eval` block. Nothing is written to any file; the only network peer is
+settings view without the `github` Source, the `eval` block or the `policy` block. Nothing is written to any file; the only network peer is
 `127.0.0.1:<port>`: the opener is built by hand (U353b, verdict P2 `:268`) with an empty proxy table, so a proxy named in
 the environment or the system settings is not consulted, and without a redirect handler, so a 3xx is a refusal and no
 request leaves the loopback port.
@@ -75,6 +85,13 @@ API = "/orchestrator/api/"
 SOURCE_BLOCK = "source:github"
 EVAL_BLOCK = "eval"
 ACCEPT_MODES_APPLIED = ("off", "observe")
+POLICY_BLOCK = "policy"
+# The one policy cell this lever writes (U416): the pulls row's unlistedUnaddressed cell of the github Source's admission
+# table (src/admission.ts), from the manifest's observe_admission, whose two words are the cell's values short of explicit.
+ADMISSION_SOURCE = "github"
+ADMISSION_ROW = "pulls"
+ADMISSION_CELL = "unlistedUnaddressed"
+OBSERVE_ADMISSIONS_APPLIED = ("inferred", "ignore")
 # The levers block of the manifest, read as text by indentation alone, never parsed as YAML (brief-check.py's reader):
 # a mapping key is a bare `<key>:` line; a pin is `<name>: <64 hex>` at the one indentation the first pin fixes.
 MAPPING_KEY = re.compile(r"^(\S+):$")
@@ -212,13 +229,14 @@ def read_lines(path: str, what: str) -> list[str]:
         raise Refusal(f"{what} {path} could not be read: {error}") from None
 
 
-def source_row(manifest: str) -> tuple[str, str]:
-    """The manifest's repository and accept mode, each held to its form; `auto` is refused here."""
+def source_row(manifest: str) -> tuple[str, str, str]:
+    """The manifest's repository, accept mode and observe admission, each held to its form; `auto` and a third word for
+    the cell are refused here."""
     row = manifest_scalars(read_lines(manifest, "the manifest"), SOURCE_KEYS)
     label = ".".join(SOURCE_KEYS)
     if row is None:
         raise Refusal(f"the manifest {manifest} names no {label} mapping")
-    for key in ("repository", "accept_mode"):
+    for key in ("repository", "accept_mode", "observe_admission"):
         if not row.get(key):
             raise Refusal(f"the manifest {manifest} names no {label}.{key}")
     if not REPOSITORY.fullmatch(row["repository"]):
@@ -228,7 +246,13 @@ def source_row(manifest: str) -> tuple[str, str]:
             f"{label}.accept_mode {row['accept_mode']!r} in {manifest} is not applied by this lever; it applies "
             f"{' or '.join(ACCEPT_MODES_APPLIED)} alone, and the M-18 ladder's second rung is the operator's row"
         )
-    return row["repository"], row["accept_mode"]
+    if row["observe_admission"] not in OBSERVE_ADMISSIONS_APPLIED:
+        raise Refusal(
+            f"{label}.observe_admission {row['observe_admission']!r} in {manifest} is not "
+            f"{' or '.join(OBSERVE_ADMISSIONS_APPLIED)}; the {ADMISSION_ROW} row's {ADMISSION_CELL} cell takes those two "
+            "words alone (explicit would accept an unlisted sender's pull request in observe mode)"
+        )
+    return row["repository"], row["accept_mode"], row["observe_admission"]
 
 
 def webserver_port(profile: str) -> int:
@@ -353,8 +377,9 @@ class Api:
                 time.sleep(1)
 
 
-def block_views(settings: dict, where: str) -> tuple[tuple[dict, int], tuple[dict, int]]:
-    """The github Source's and the eval block's (value, revision) from a settings view, each refused when absent."""
+def block_views(settings: dict, where: str) -> tuple[tuple[dict, int], tuple[dict, int], tuple[dict, int]]:
+    """The github Source's, the eval block's and the policy block's (value, revision) from a settings view, each
+    refused when absent."""
     sources = settings.get("sources")
     github = (
         next((s for s in sources if isinstance(s, dict) and s.get("id") == "github"), None)
@@ -364,14 +389,13 @@ def block_views(settings: dict, where: str) -> tuple[tuple[dict, int], tuple[dic
     if github is None or not isinstance(github.get("value"), dict) or not isinstance(github.get("revision"), int):
         raise Refusal(f"{where} answered GET settings without the Source github (its value and revision)")
     blocks = settings.get("blocks")
-    eval_block = blocks.get(EVAL_BLOCK) if isinstance(blocks, dict) else None
-    if (
-        not isinstance(eval_block, dict)
-        or not isinstance(eval_block.get("value"), dict)
-        or not isinstance(eval_block.get("revision"), int)
-    ):
-        raise Refusal(f"{where} answered GET settings without the eval block (its value and revision)")
-    return (github["value"], github["revision"]), (eval_block["value"], eval_block["revision"])
+    views: list[tuple[dict, int]] = []
+    for name in (EVAL_BLOCK, POLICY_BLOCK):
+        block = blocks.get(name) if isinstance(blocks, dict) else None
+        if not isinstance(block, dict) or not isinstance(block.get("value"), dict) or not isinstance(block.get("revision"), int):
+            raise Refusal(f"{where} answered GET settings without the {name} block (its value and revision)")
+        views.append((block["value"], block["revision"]))
+    return (github["value"], github["revision"]), views[0], views[1]
 
 
 def desired_source(current: dict, repository: str, cli: str) -> dict:
@@ -381,6 +405,22 @@ def desired_source(current: dict, repository: str, cli: str) -> dict:
 
 def desired_eval(current: dict, mode: str) -> dict:
     return {**current, "mode": mode}
+
+
+def desired_policy(current: dict, cell: str) -> dict:
+    """The policy block as read with the github Source's `pulls.unlistedUnaddressed` cell set to `cell`: the rules, the
+    allowed list (empty when absent), the other rows and cells and every other Source's entry unchanged."""
+    sources = current.get("sources") if isinstance(current.get("sources"), dict) else {}
+    github = sources.get(ADMISSION_SOURCE) if isinstance(sources.get(ADMISSION_SOURCE), dict) else {}
+    admission = github.get("admission") if isinstance(github.get("admission"), dict) else {}
+    row = admission.get(ADMISSION_ROW) if isinstance(admission.get(ADMISSION_ROW), dict) else {}
+    allowed = github.get("allowed") if isinstance(github.get("allowed"), list) else []
+    entry = {
+        **github,
+        "allowed": allowed,
+        "admission": {**admission, ADMISSION_ROW: {**row, ADMISSION_CELL: cell}},
+    }
+    return {**current, "rules": current.get("rules", []), "sources": {**sources, ADMISSION_SOURCE: entry}}
 
 
 def apply_block(api: Api, block: str, current: dict, desired: dict, revision: int) -> bool:
@@ -397,7 +437,7 @@ def apply_block(api: Api, block: str, current: dict, desired: dict, revision: in
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
-        prog=LEVER, description="write the kit's GitHub Source row and accept mode into the Router's settings store"
+        prog=LEVER, description="write the kit's GitHub Source row, accept mode and observe admission cell into the Router's settings store"
     )
     directory = lever_directory()
     parser.add_argument(
@@ -422,16 +462,20 @@ def main(argv: list[str]) -> int:
         dsh_home = os.environ.get("DSH_HOME") or os.path.join(os.environ.get("HOME", ""), ".dsh")
         profile = os.path.join(dsh_home, "profiles/router/cordis.patch.yml")
     try:
-        repository, mode = source_row(args.manifest)
+        repository, mode, cell = source_row(args.manifest)
         port = webserver_port(profile)
         cli = wrapper_path(directory)
         api = Api(port, args.wait)
-        (source, source_revision), (evaluation, eval_revision) = block_views(api.settings(), api.where())
+        (source, source_revision), (evaluation, eval_revision), (policy, policy_revision) = block_views(
+            api.settings(), api.where()
+        )
         # The mode first (U353b): the Source restarts into polling under whatever mode the store holds.
         restarting = apply_block(api, EVAL_BLOCK, evaluation, desired_eval(evaluation, mode), eval_revision)
         if restarting:
             api.settings_after_restart()
-            (source, source_revision), (_, _) = block_views(api.settings(), api.where())
+            (source, source_revision), (_, _), (policy, policy_revision) = block_views(api.settings(), api.where())
+        # The admission cell next (U416): a policy save changes policyVersion and restarts nothing, so no wait here.
+        apply_block(api, POLICY_BLOCK, policy, desired_policy(policy, cell), policy_revision)
         refusals: list[str] = []
         try:
             apply_block(api, SOURCE_BLOCK, source, desired_source(source, repository, cli), source_revision)

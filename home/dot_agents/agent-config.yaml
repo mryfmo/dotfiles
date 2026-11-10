@@ -920,7 +920,7 @@ claude:
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f
-      router-settings-apply: 377279c02c876cc32c774aac229d9d4bf670b2c0e54f9fb33b256f5697302db7
+      router-settings-apply: 105865474f5c52d552f53b86764fab2b25d6699851ab30ca8a24e7ac579d39f5
       router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
@@ -1454,6 +1454,11 @@ assets:
         repository: mryfmo/dotfiles
         accept_mode: observe
         accept_mode_row: "2026-11-06T23:24:00Z"
+        # observe_admission is the one policy cell router-settings-apply writes (sources.github.admission.pulls
+        # .unlistedUnaddressed, U416): the M-18 observe rung records a would-accept Decision only through this cell
+        # (inferred; upstream's default ignore sends every unlisted human's pull request to not_a_member before any
+        # assessment, measured 2026-11-10T04:08:19Z), while the allowed list is the auto rung's lever and stays empty.
+        observe_admission: inferred
   graphifyy:
     source: github-release
     upstream: Graphify-Labs/graphify

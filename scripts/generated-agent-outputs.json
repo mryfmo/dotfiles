@@ -594,7 +594,7 @@
       "target": ".local/bin/common/router-settings-apply",
       "kind": "file",
       "executable": true,
-      "sha256": "377279c02c876cc32c774aac229d9d4bf670b2c0e54f9fb33b256f5697302db7"
+      "sha256": "105865474f5c52d552f53b86764fab2b25d6699851ab30ca8a24e7ac579d39f5"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-login-preflight",

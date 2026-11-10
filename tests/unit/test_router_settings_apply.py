@@ -2,7 +2,7 @@
 scripts/orchestrator/router-gh the Router's `cli` names (regime-cutover U353, M-26 stage B).
 
 The fake API speaks the grammar of the pinned dsh-superagent archive (8c32a9dc): `GET settings` answers the settings view
-(`src/app/views/settings.ts:23-41`: `blocks.eval` and each Source with its `value` and `revision`), `PUT settings/<block>`
+(`src/app/views/settings.ts:23-41`: `blocks.eval`, `blocks.policy` and each Source with its `value` and `revision`), `PUT settings/<block>`
 takes `{"value", "revision"}` (`src/app/http.ts:149, :196-202`), a stale revision is 409 (`src/app/settings.ts:151`), a
 request without the `x-orchestrator-request: 1` header or from another host is 403 (`src/app/http.ts:75-78, :237`), and
 a `source:github` save while the agent CLI is signed out is 400 with `setup.code` `agentCliSignedOut`
@@ -86,6 +86,11 @@ PROFILE = ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"
 API = "/orchestrator/api/"
 # The eval block as the archive defaults it (src/policy.ts:83-87) with the mode the kit must change.
 EVAL_DEFAULT = {"mode": "off", "timeoutSeconds": 120, "model": None}
+# The policy block as the archive defaults it (src/policy.ts:76-84) and the one cell the lever writes into it (U416): the
+# pulls row's unlistedUnaddressed cell of the github Source's admission table, from the manifest's observe_admission.
+POLICY_DEFAULT = {"rules": [], "sources": {}}
+ADMISSION_CELL = {"github": {"allowed": [], "admission": {"pulls": {"unlistedUnaddressed": "inferred"}}}}
+POLICY_PUT = {"value": {"rules": [], "sources": ADMISSION_CELL}, "revision": 0}
 SIGNED_OUT = {
     "place": "github",
     "code": "agentCliSignedOut",
@@ -105,18 +110,21 @@ class FakeApi(http.server.ThreadingHTTPServer):
         self.source_revision = 0
         self.eval = copy.deepcopy(EVAL_DEFAULT)
         self.eval_revision = 0
+        self.policy = copy.deepcopy(POLICY_DEFAULT)
+        self.policy_revision = 0
         self.reject_header = False  # answer 403 to everything, as the host check does for a wrong header
         self.stale = False  # answer 409 to every PUT, as a revision raced by the panel would
+        self.stale_policy = False  # answer 409 to the policy PUT alone (U416 test d)
         self.signed_out = True  # the agent CLI has no login: a source:github save with new setup fields is 400
         self.setup_pending = True  # every save restarts the Router while setup is pending
-        self.view_without = None  # drop one key from the settings view: "github" or "eval"
+        self.view_without = None  # drop one key from the settings view: "github", "eval" or "policy"
         self.redirect = None  # answer 302 with this Location to GET settings, as a rewritten Router or a hop would
 
     def view(self) -> dict:
         view = {
             "policyVersion": "mandate-v3:0",
             "blocks": {
-                "policy": {"value": {"rules": [], "sources": {}}, "revision": 0},
+                "policy": {"value": copy.deepcopy(self.policy), "revision": self.policy_revision},
                 "eval": {"value": copy.deepcopy(self.eval), "revision": self.eval_revision},
                 "executor": {"value": {"model": None, "maxWorkers": 3, "directory": "", "prepare": "", "blockedCommands": []}, "revision": 0},
             },
@@ -130,6 +138,8 @@ class FakeApi(http.server.ThreadingHTTPServer):
             view["sources"] = []
         if self.view_without == "eval":
             del view["blocks"]["eval"]
+        if self.view_without == "policy":
+            del view["blocks"]["policy"]
         return view
 
 
@@ -191,10 +201,11 @@ class FakeHandler(http.server.BaseHTTPRequestHandler):
             return self.answer(403, {"error": "Same-origin management request required"})
         block = self.path.removeprefix(API + "settings/")
         body = entry["body"] if isinstance(entry["body"], dict) else {}
-        if block not in ("source:github", "eval"):
+        if block not in ("source:github", "eval", "policy"):
             return self.answer(404, {"error": "Source not found"})
-        current = self.server.source_revision if block == "source:github" else self.server.eval_revision
-        if self.server.stale or body.get("revision") != current:
+        current = {"source:github": self.server.source_revision, "eval": self.server.eval_revision,
+                   "policy": self.server.policy_revision}[block]  # fmt: skip
+        if self.server.stale or body.get("revision") != current or (block == "policy" and self.server.stale_policy):
             return self.answer(409, {"error": "Settings changed. Reload before saving."})
         if block == "source:github":
             config = body["value"].get("config", {})
@@ -205,6 +216,13 @@ class FakeHandler(http.server.BaseHTTPRequestHandler):
             self.server.source = body["value"]
             self.server.source_revision += 1
             revision = self.server.source_revision
+        elif block == "policy":
+            # A saved policy changes policyVersion and restarts nothing (measured 2026-11-10T03:03Z:
+            # {"saved":true,"revision":1,"policy_changed":true,"restarting":false}).
+            self.server.policy = body["value"]
+            self.server.policy_revision += 1
+            return self.answer(200, {"saved": True, "revision": self.server.policy_revision, "policy_changed": True,
+                                     "restarting": False, "context_delivery": "pending"})  # fmt: skip
         else:
             self.server.eval = body["value"]
             self.server.eval_revision += 1
@@ -295,7 +313,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
             with self.subTest(request=(entry["method"], entry["path"])):
                 self.assertEqual(entry["headers"]["x-orchestrator-request"], "1")
                 self.assertEqual(entry["headers"]["host"], f"127.0.0.1:{self.api.port}")
-        evaluation, source = self.puts()
+        evaluation, policy, source = self.puts()
         self.assertEqual(source["path"], API + "settings/source:github")
         self.assertEqual(source["headers"]["content-type"], "application/json")
         self.assertEqual(
@@ -312,6 +330,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(evaluation["body"], {"value": {**EVAL_DEFAULT, "mode": "observe"}, "revision": 0})
         # The Router restarts after a save while setup is pending: the lever reads the settings again before the next PUT.
         # The mode is saved first (U353b): a store at `auto` must hold the requested mode before the Source restarts.
+        # The policy block goes between them (U416): it restarts nothing, so no re-read before the Source.
         methods = [(entry["method"], entry["path"].removeprefix(API)) for entry in self.api.requests]
         self.assertEqual(
             methods,
@@ -320,12 +339,14 @@ class RouterSettingsApplyTest(unittest.TestCase):
                 ("PUT", "settings/eval"),
                 ("GET", "settings"),
                 ("GET", "settings"),
+                ("PUT", "settings/policy"),
                 ("PUT", "settings/source:github"),
             ],
         )
+        self.assertEqual(policy["path"], API + "settings/policy")
         self.assertEqual(
             run.stdout,
-            "eval saved (revision 1, restarting)\nsource:github saved (revision 1, restarting)\n",
+            "eval saved (revision 1, restarting)\npolicy saved (revision 1)\nsource:github saved (revision 1, restarting)\n",
         )
         self.assertEqual(
             self.api.source["config"], {"repository": "mryfmo/dotfiles", "cli": str(WRAPPER), "observePulls": True}
@@ -338,7 +359,10 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
         self.assertEqual(self.puts(), [])
         self.assertEqual([entry["method"] for entry in self.api.requests], ["GET"])
-        self.assertEqual(run.stdout, "eval unchanged (revision 1)\nsource:github unchanged (revision 1)\n")
+        self.assertEqual(
+            run.stdout,
+            "eval unchanged (revision 1)\npolicy unchanged (revision 1)\nsource:github unchanged (revision 1)\n",
+        )
         # A panel setting beside the kit's rows (pollSeconds) is carried, not reset.
         self.api.source["config"]["pollSeconds"] = 120
         self.api.source["config"]["repository"] = "someone/else"
@@ -351,6 +375,142 @@ class RouterSettingsApplyTest(unittest.TestCase):
             {"repository": "mryfmo/dotfiles", "cli": str(WRAPPER), "observePulls": True, "pollSeconds": 120},
         )
         self.assertEqual(source["body"]["revision"], 1)
+
+    def test_the_policy_put_writes_the_pulls_admission_cell_between_eval_and_source_and_a_second_run_puts_nothing(self):
+        """U416 test (a): with the manifest scalar `observe_admission: inferred`, the lever PUTs `settings/policy` with the
+        rules as served and the github Source's `pulls.unlistedUnaddressed` cell `inferred` (the allowed list empty), after
+        the eval PUT and before the source PUT; the store then holds the kit's policy, so a second run PUTs no policy."""
+        self.api.signed_out = False
+        text = MANIFEST.read_text()
+        self.assertIn("        observe_admission: inferred\n", text, "the manifest's Source row names the cell")
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        paths = [entry["path"].removeprefix(API) for entry in self.puts()]
+        self.assertEqual(paths, ["settings/eval", "settings/policy", "settings/source:github"])
+        policy = self.puts()[1]
+        self.assertEqual(policy["headers"]["content-type"], "application/json")
+        self.assertEqual(policy["body"], POLICY_PUT)
+        self.assertEqual(self.api.policy, POLICY_PUT["value"])
+        self.assertEqual(
+            run.stdout,
+            "eval saved (revision 1, restarting)\npolicy saved (revision 1)\nsource:github saved (revision 1, restarting)\n",
+        )
+        # The second run: the view holds the cell, so no policy PUT and its revision is named as read.
+        self.api.requests.clear()
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(self.puts(), [])
+        self.assertIn("policy unchanged (revision 1)\n", run.stdout)
+        # The other word, `ignore`: upstream's default made explicit, written the same way.
+        ignore = self.dir / "ignore.yaml"
+        ignore.write_text(text.replace("        observe_admission: inferred\n", "        observe_admission: ignore\n"))
+        self.api.requests.clear()
+        run = self.run_lever("--manifest", str(ignore))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        (policy,) = self.puts()
+        self.assertEqual(
+            policy["body"],
+            {"value": {"rules": [], "sources": {"github": {"allowed": [], "admission": {"pulls": {"unlistedUnaddressed": "ignore"}}}}}, "revision": 1},
+        )  # fmt: skip
+        self.assertEqual(
+            run.stdout, "eval unchanged (revision 1)\npolicy saved (revision 2)\nsource:github unchanged (revision 1)\n"
+        )
+
+    def test_a_policy_holding_the_cell_other_rows_and_another_source_is_unchanged_and_a_put_changes_the_one_cell(self):
+        """U416 test (b): a view whose policy already holds `inferred` beside other admission rows, other cells of the
+        pulls row, an allowed list, rules and another Source's entry is not written; when the cell differs, the PUT
+        keeps every one of them and changes the one cell."""
+        self.api.signed_out = False
+        rules = [{"id": "copy", "text": "Explicit requests to correct a typo."}]
+        github = {
+            "allowed": [{"id": "someone"}],
+            "bots": ["dependabot[bot]"],
+            "admission": {
+                "pulls": {"unlistedUnaddressed": "inferred", "listedAddressed": "explicit"},
+                "comments": {"unlistedUnaddressed": "ignore"},
+            },
+        }
+        slack = {"allowed": [{"id": "U123"}], "admission": {"messages": {"listedAddressed": "explicit"}}}
+        self.api.policy = copy.deepcopy({"rules": rules, "sources": {"github": github, "slack": slack}})
+        self.api.policy_revision = 4
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(
+            [entry["path"].removeprefix(API) for entry in self.puts()], ["settings/eval", "settings/source:github"]
+        )
+        self.assertIn("policy unchanged (revision 4)\n", run.stdout)
+        # The one cell differs: the PUT carries everything else as read and changes that cell alone.
+        self.api.policy["sources"]["github"]["admission"]["pulls"]["unlistedUnaddressed"] = "ignore"
+        self.api.requests.clear()
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        (policy,) = self.puts()
+        self.assertEqual(policy["path"], API + "settings/policy")
+        self.assertEqual(
+            policy["body"],
+            {"value": {"rules": rules, "sources": {"github": github, "slack": slack}}, "revision": 4},
+            "the rules, the allowed list, the bots, the other rows and cells and the other Source are kept",
+        )
+        self.assertEqual(
+            run.stdout, "eval unchanged (revision 1)\npolicy saved (revision 5)\nsource:github unchanged (revision 1)\n"
+        )
+        # A github entry with no admission table and no allowed list at all gets both, nothing else.
+        self.api.policy = {"rules": rules, "sources": {"slack": slack}}
+        self.api.requests.clear()
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        (policy,) = self.puts()
+        self.assertEqual(policy["body"]["value"], {"rules": rules, "sources": {"slack": slack, **ADMISSION_CELL}})
+
+    def test_a_manifest_without_the_observe_admission_scalar_or_with_a_third_word_refuses_before_any_request(self):
+        """U416 test (c): the scalar takes `inferred` or `ignore`; absent or any other word (`explicit`: an unlisted
+        sender's pull request accepted in observe mode) is one refusal naming the key, exit 2, and the FakeApi records
+        no request."""
+        self.api.signed_out = False
+        text = MANIFEST.read_text()
+        line = "        observe_admission: inferred\n"
+        self.assertIn(line, text, "the manifest's Source row as this test knows it")
+        manifests = {
+            "no-cell": text.replace(line, ""),
+            "explicit": text.replace(line, "        observe_admission: explicit\n"),
+            "auto-word": text.replace(line, "        observe_admission: auto\n"),
+        }
+        expected = {
+            "no-cell": "the manifest {path} names no assets.dsh-superagent.sources.github.observe_admission",
+            "explicit": "assets.dsh-superagent.sources.github.observe_admission 'explicit' in {path} is not inferred or ignore; "
+            "the pulls row's unlistedUnaddressed cell takes those two words alone (explicit would accept an unlisted sender's pull request in observe mode)",
+            "auto-word": "assets.dsh-superagent.sources.github.observe_admission 'auto' in {path} is not inferred or ignore; "
+            "the pulls row's unlistedUnaddressed cell takes those two words alone (explicit would accept an unlisted sender's pull request in observe mode)",
+        }
+        for case, altered in manifests.items():
+            with self.subTest(case=case):
+                self.assertNotEqual(altered, text, "the fixture changed the manifest")
+                path = self.dir / f"{case}.yaml"
+                path.write_text(altered)
+                run = self.run_lever("--manifest", str(path))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, "router-settings-apply: " + expected[case].format(path=path) + "\n")
+                self.assertEqual(self.api.requests, [], "no request before the manifest is read whole")
+        self.assertEqual(self.api.policy, POLICY_DEFAULT, "nothing was written")
+
+    def test_a_stale_revision_on_the_policy_put_is_the_refusal_naming_the_block_and_the_source_is_not_written(self):
+        """U416 test (d): a 409 on the policy PUT is the existing stale-revision refusal, naming `PUT settings/policy`;
+        eval is saved before it, nothing after it, exit 2."""
+        self.api.signed_out = False
+        self.api.stale_policy = True
+        run = self.run_lever()
+        self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+        self.assertEqual(run.stdout, "eval saved (revision 1, restarting)\n")
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: the Management API at 127.0.0.1:{self.api.port} answered 409 to PUT settings/policy: "
+            "the revision read was stale (Settings changed. Reload before saving.)\n",
+        )
+        paths = [(entry["method"], entry["path"].removeprefix(API)) for entry in self.api.requests]
+        self.assertEqual(paths[-1], ("PUT", "settings/policy"), "nothing was written after the refusal")
+        self.assertEqual(self.api.source, {"enabled": True, "config": {}}, "the Source was not written")
+        self.assertEqual(self.api.policy, POLICY_DEFAULT)
+        self.assertEqual(self.api.eval["mode"], "observe")
 
     def test_a_stale_revision_a_rejected_header_and_an_unreachable_port_are_each_a_refusal_naming_it(self):
         self.api.signed_out = False
@@ -398,7 +558,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         # 400 with setup agentCliSignedOut and nothing is saved. The lever names it, still saves eval, and exits 2.
         run = self.run_lever()
         self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
-        self.assertEqual(run.stdout, "eval saved (revision 1, restarting)\n")
+        self.assertEqual(run.stdout, "eval saved (revision 1, restarting)\npolicy saved (revision 1)\n")
         self.assertIn(
             f"router-settings-apply: the Management API at 127.0.0.1:{self.api.port} answered 400 to PUT settings/source:github: "
             "setup agentCliSignedOut: The agent GitHub CLI cannot read its account.; the agent account's gh login under the "
@@ -412,7 +572,10 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.api.requests.clear()
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
-        self.assertEqual(run.stdout, "eval unchanged (revision 1)\nsource:github saved (revision 1, restarting)\n")
+        self.assertEqual(
+            run.stdout,
+            "eval unchanged (revision 1)\npolicy unchanged (revision 1)\nsource:github saved (revision 1, restarting)\n",
+        )
         self.assertEqual(self.api.source["config"]["repository"], "mryfmo/dotfiles")
 
     def test_auto_an_absent_row_a_missing_port_a_foreign_host_and_a_missing_block_each_refuse(self):
@@ -423,7 +586,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         manifests = {
             "auto": text.replace(row, "        accept_mode: auto\n        accept_mode_row: \"2026-11-06T23:24:00Z\"\n        accept_mode_auto_row: \"2026-11-07T00:00:00Z\"\n"),
             "no-row": text.replace(row, "        accept_mode_row: \"2026-11-06T23:24:00Z\"\n"),
-            "no-mapping": text.replace("    sources:\n      github:\n        repository: mryfmo/dotfiles\n" + row, ""),
+            "no-mapping": text.replace("    sources:\n      github:\n        repository: mryfmo/dotfiles\n" + row, "").replace("        observe_admission: inferred\n", ""),
             "bad-repository": text.replace("        repository: mryfmo/dotfiles\n", "        repository: mryfmo\n"),
         }  # fmt: skip
         expected = {
@@ -466,14 +629,15 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(self.api.requests, [])
         # A settings view without the github Source or the eval block is a refusal naming the block, and nothing is PUT.
         self.profile.write_text(PROFILE.read_text().replace("    port: 3082\n", f"    port: {self.api.port}\n"))
-        for missing in ("github", "eval"):
+        for missing in ("github", "eval", "policy"):
             with self.subTest(missing=missing):
                 self.api.view_without = missing
                 self.api.requests.clear()
                 run = self.run_lever()
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                block = {"github": "Source github", "eval": "eval block", "policy": "policy block"}[missing]
                 self.assertIn(
-                    f"answered GET settings without the {'Source github' if missing == 'github' else 'eval block'}",
+                    f"answered GET settings without the {block}",
                     run.stderr,
                 )
                 self.assertEqual(self.puts(), [])
@@ -497,11 +661,12 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(proxy.connections, [], "the proxy the environment names saw no connection")
         self.assertEqual(
             [entry["path"] for entry in self.puts()],
-            [API + "settings/eval", API + "settings/source:github"],
-            "the mode is saved before the Source",
+            [API + "settings/eval", API + "settings/policy", API + "settings/source:github"],
+            "the mode is saved before the policy and the Source",
         )
         self.assertEqual(
-            run.stdout, "eval saved (revision 1, restarting)\nsource:github saved (revision 1, restarting)\n"
+            run.stdout,
+            "eval saved (revision 1, restarting)\npolicy saved (revision 1)\nsource:github saved (revision 1, restarting)\n",
         )
         self.assertEqual(self.api.eval["mode"], "observe")
         # The redirect: named with its Location, not followed, nothing written.

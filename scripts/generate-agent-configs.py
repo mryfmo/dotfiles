@@ -200,6 +200,9 @@ DSH_ROUTER_WEBSERVER = {"host": "127.0.0.1", "port": 3082}
 # the store; the plugin requires an absolute path, and a launch without DSH_HOME gets a relative one it refuses.
 DSH_ROUTER_STATE_DIR = "router-state"
 DSH_ACCEPT_MODES = ("off", "observe", "auto")
+# The two words of the policy cell router-settings-apply writes (U416): the pulls row's unlistedUnaddressed cell of the
+# github Source's admission table; `explicit` is not admitted (it would accept an unlisted sender in observe mode).
+DSH_OBSERVE_ADMISSIONS = ("inferred", "ignore")
 DSH_SOURCE_REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 DSH_LADDER_ROW_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 # The plan's base profile: the shipped bundle whose patch already turns the HMR, credentials and account rows off.
@@ -2416,7 +2419,8 @@ def dsh_gateway_insert(dsh: dict[str, dict[str, Any]]) -> list[str]:
 def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
     """The superagent asset's GitHub Source row, each value compared with its fixed set: the repository against
     `owner/name`, the accept mode against the three the upstream Policy knows (src/policy.ts:84), `auto` only with the
-    second M-18 row timestamp beside the first. An unknown key is refused by name."""
+    second M-18 row timestamp beside the first, `observe_admission` against the two words router-settings-apply writes
+    into the pulls row's unlistedUnaddressed cell (U416). An unknown key is refused by name."""
     sources = asset.get("sources")
     if not isinstance(sources, dict) or not isinstance(sources.get("github"), dict):
         fail(
@@ -2424,7 +2428,9 @@ def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
         )
     row = sources["github"]
     label = f"assets.{DSH_SUPERAGENT_ASSET}.sources.github"
-    unknown = sorted(set(row) - {"repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row"})
+    unknown = sorted(
+        set(row) - {"repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission"}
+    )
     if unknown:
         fail(f"{label} has unknown key(s) {unknown}")
     for key in ("repository", "accept_mode", "accept_mode_row"):
@@ -2439,6 +2445,8 @@ def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
             fail(f"{label}.{key} {row[key]!r} is not a decisions.tsv timestamp")
     if row["accept_mode"] == "auto" and "accept_mode_auto_row" not in row:
         fail(f"{label}.accept_mode auto needs accept_mode_auto_row beside accept_mode_row (the M-18 ladder's two rows)")
+    if "observe_admission" in row and row["observe_admission"] not in DSH_OBSERVE_ADMISSIONS:
+        fail(f"{label}.observe_admission {row['observe_admission']!r} is not one of {list(DSH_OBSERVE_ADMISSIONS)}")
     return {key: str(value) for key, value in row.items()}
 
 

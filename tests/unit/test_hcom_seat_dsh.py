@@ -1354,7 +1354,11 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         broker_dir = seats / ".state" / name / "broker"
         self.assertTrue(broker_dir.is_dir() and not broker_dir.is_symlink(), "a launch makes the broker directory")
         self.assertEqual(stat.S_IMODE(broker_dir.stat().st_mode), 0o700)
-        self.assertEqual(sorted(broker_dir.iterdir()), [], "empty: hcom-seat makes it and puts nothing in it")
+        self.assertEqual(
+            [p.name for p in broker_dir.iterdir()],
+            ["sock"],
+            "the launch's broker socket alone (U344): hcom-seat puts nothing in it",
+        )
         ((status, out, err),) = self.release(procs)
         self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
         self.assertNotIn("does not exist; a launch creates it", err)
@@ -2508,7 +2512,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         tree = Path(self.temp.name).resolve() / "tree"
         (tree / "scripts/orchestrator").mkdir(parents=True)
         (tree / "home/dot_agents").mkdir(parents=True)
-        for name in ("hcom-seat", "regime-env", "seat-login-preflight"):
+        for name in ("hcom-seat", "regime-env", "seat-login-preflight", "seat-settings-render.sh"):
             shutil.copy2(test_hcom_seat.ROOT / "scripts/orchestrator" / name, tree / "scripts/orchestrator" / name)
         manifest = (test_hcom_seat.ROOT / "home/dot_agents/agent-config.yaml").read_text()
         pin_line = next(line for line in manifest.splitlines() if line.startswith(f"      {helper_name}: "))
@@ -2786,7 +2790,13 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         (tree / "scripts/orchestrator").mkdir(parents=True)
         (tree / "home/dot_agents").mkdir(parents=True)
         lever_dir = Path(self.lever).resolve().parent
-        for name in ("hcom-seat", "regime-env", "seat-login-preflight", "profile-config-place.py"):
+        for name in (
+            "hcom-seat",
+            "regime-env",
+            "seat-login-preflight",
+            "profile-config-place.py",
+            "seat-settings-render.sh",
+        ):
             shutil.copy2(lever_dir / name, tree / "scripts/orchestrator" / name)
         shutil.copy2(lever_dir.parent.parent / "home/dot_agents/agent-config.yaml", tree / "home/dot_agents")
         return tree

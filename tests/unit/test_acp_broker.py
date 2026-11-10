@@ -1093,7 +1093,13 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         checkout = Path(self.temp.name).resolve() / "checkout"
         (checkout / "scripts/orchestrator").mkdir(parents=True)
         (checkout / "home/dot_agents").mkdir(parents=True)
-        for lever in ("acp-broker", "acp-relay.py", "git-isolated.sh", "acp-record-place.py"):
+        for lever in (
+            "acp-broker",
+            "acp-relay.py",
+            "git-isolated.sh",
+            "acp-record-place.py",
+            "seat-settings-render.sh",
+        ):
             shutil.copy2(ROOT / "scripts/orchestrator" / lever, checkout / "scripts/orchestrator" / lever)
         shutil.copy2(ROOT / "home/dot_agents/agent-config.yaml", checkout / "home/dot_agents/agent-config.yaml")
         return checkout / "scripts/orchestrator/acp-broker", checkout / "scripts/orchestrator/acp-record-place.py"
@@ -2503,14 +2509,16 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             (seat_name,) = [p.name for p in (self.seats_path / ".sandbox").iterdir() if p.name.startswith(role + "-")]
             settings_path = self.seats_path / ".sandbox" / seat_name / "srt-settings.json"
             if role == "router":
-                # The broker against the live Router slot: one connection held open while the settings are read.
+                # The broker the router launch started (U344), on the socket the Router's settings open: one
+                # connection held open while the settings are read.
                 scratch = self.seats_path / ".state" / seat_name / "cwd"
                 repo, _base = self.make_repo(scratch / "repo")
-                proc, sock = self.start_broker(seat_name, scratch, DSH_HOME=str(dsh_home))
+                sock = self.seats_path / ".state" / seat_name / "broker/sock"
+                self.assertTrue(sock.is_socket(), f"hcom-seat started the broker before dsh: {self.state_names()}")
+                self.router = seat_name
                 conn, slot, task = self.held_connection(sock, repo, "w1")
                 rendered["worker"] = (self.seats_path / ".state" / slot / "settings.json").read_bytes()
                 self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
-                self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
                 rendered["task"] = str(task)
                 rendered["router_cwd"] = str(scratch)
             rendered[role] = settings_path.read_bytes()

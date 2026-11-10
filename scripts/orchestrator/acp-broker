@@ -216,6 +216,10 @@ connection=0
 slot=''
 slot_made=0
 child=''
+# `launched` once omp has been started, `push_done` once push_back has returned: the connection's trap reads both.
+launched=0
+push_word=''
+push_done=0
 
 # @description Print the UTC time, `YYYY-MM-DDTHH:MM:SSZ` for a log line or `YYYYMMDD-HHMMSS` for a slot name, from
 #   `/bin/date` read status first (standing order 21); the caller refuses (exit 2) when this fails, so a failed read
@@ -1113,6 +1117,23 @@ log_line() {
     printf '%s acp-broker: %s\n' "${when}" "$*" >> "${log}" || refuse "cannot append to the launch log ${log}"
 }
 
+# @description Append the exit line `omp acp exit <status> push=<word>` to the launch log without refusing (verdict
+#   U343e-fd94feae P2 :1284: the append's failure after a written ref refused, so the client read no trailer and
+#   learned no ref). A log that cannot be appended (or is a link) is one stderr line naming the line and the log;
+#   the slot's removal and the trailer follow in the caller. The one form of the exit line, for the connection's
+#   end and for its trap.
+# @arg $1 string omp's exit status.
+# @arg $2 string The push word.
+exit_line() {
+    local when line
+    when=$(utc_stamp log) || when=unknown-time
+    line="omp acp exit $1 push=$2"
+    if [[ -L ${log} ]] || ! printf '%s acp-broker: %s\n' "${when}" "${line}" 2> /dev/null >> "${log}"; then
+        echo "acp-broker: cannot append the exit line '${line}' to the launch log ${log}; the slot's removal and the trailer follow" >&2
+    fi
+    return 0
+}
+
 # @description Run git on the repository the header named, inside the Router's own sandbox: `srt --settings <the
 #   Router's rendered settings>` around `/usr/bin/env` with the isolated library's environment, the pinned physical
 #   git and the library's flag arrays before the arguments (regime-cutover U343e). The sandboxed git reads and writes
@@ -1124,9 +1145,24 @@ router_git() {
     /usr/bin/env -i "${router_env[@]}" "${srt_cmd[@]}" --settings "${template}" -- /usr/bin/env "${GIT_ISOLATED_ENV[@]}" "${git_cmd[@]}" "${GIT_ISOLATED_ARGS[@]}" "$@" # git-isolated: allow srt runs the pinned git under the library's own arrays; a shell function cannot cross the sandbox
 }
 
+# @description Run git on the worker's clone after omp has started, inside the worker's own sandbox: `srt --settings
+#   <the slot's settings.json>` around `/usr/bin/env` with the isolated library's environment, the pinned physical
+#   git and the library's flag arrays, under the environment omp itself had (regime-cutover U343f, verdict
+#   U343e-fd94feae P1 :1146). The worker may write everything under `task`, `.git` included, so a git that read it
+#   outside every sandbox reached whatever this process may read: an alternates file, a gitfile or a HEAD naming an
+#   object store under a denied path made the push read that store and import it into the Router's repository.
+#   Inside the worker's settings such a plant reaches only what the worker may read, and the step fails. The
+#   worker's repository is read here and nowhere else once omp runs; its stdout is this process's descriptor in the
+#   slot (the pack), which the sandbox does not revoke. The status is srt's, git's own through it.
+# @arg $@ string git's arguments.
+worker_git() {
+    /usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env "${GIT_ISOLATED_ENV[@]}" "${git_cmd[@]}" "${GIT_ISOLATED_ARGS[@]}" "$@" # git-isolated: allow srt runs the pinned git under the library's own arrays inside the worker's settings; a shell function cannot cross the sandbox
+}
+
 # @description Run the isolated git outside every sandbox on the slot's own repository (`git_isolated` of the
 #   library, which runs `git` by name: the pinned git's directory leads PATH for the call, the system directories
-#   after it). Never on the Router's repository.
+#   after it), before omp starts, when the worker has written nothing. Never on the Router's repository; never on
+#   the worker's once omp runs (worker_git).
 # @arg $@ string git's arguments.
 slot_git() {
     PATH=${git_dir}:${system_path} git_isolated "$@"
@@ -1134,17 +1170,19 @@ slot_git() {
 
 # @description Push the worker's HEAD back into the repository as `pushed_ref` (regime-cutover U343e) and set
 #   `push_word`: the ref when it was written; `none` when HEAD is the base the worker started from; `failed` when a
-#   step failed, the step named on stderr (never silent). The commits above the base are packed outside, on the
-#   slot (`pack-objects --revs --stdout`, `HEAD ^<base>`), and indexed and the ref written inside the Router's own
-#   sandbox (router_git: `index-pack --strict --stdin` from the pack's descriptor, `update-ref` with the empty old
-#   value, so an existing ref is never moved). Every status is read; this function itself never fails, so the exit
-#   line, the slot's removal and the trailer always follow.
+#   step failed, the step named on stderr (never silent). Two git boundaries, one per repository, and the pack
+#   between them on descriptors this process opened in the slot: the worker's clone is read inside the worker's own
+#   sandbox (worker_git, verdict U343e-fd94feae P1 :1146: `rev-parse --verify 'HEAD^{commit}'`, then the commits
+#   above the base packed onto `${slot}/out.pack` by `pack-objects --revs --stdout`, `HEAD ^<base>`), and the
+#   Router's repository is written inside the Router's own sandbox (router_git: `index-pack --strict --stdin` from
+#   the pack's descriptor, `update-ref` with the empty old value, so an existing ref is never moved). Every status
+#   is read; this function itself never fails, so the exit line, the slot's removal and the trailer always follow.
 # @set push_word The word of the exit line and the trailer.
 push_back() {
     local head
     push_word=failed
-    if ! head=$(slot_git -C "${task}" rev-parse --verify 'HEAD^{commit}'); then
-        echo "acp-broker: the push of the worker's HEAD to ${pushed_ref} in ${repo} failed: cannot read HEAD of ${task}" >&2
+    if ! head=$(worker_git -C "${task}" rev-parse --verify 'HEAD^{commit}'); then
+        echo "acp-broker: the push of the worker's HEAD to ${pushed_ref} in ${repo} failed at rev-parse on ${task} inside the worker's settings ${settings}" >&2
         return 0
     fi
     head=${head%%$'\n'*}
@@ -1160,8 +1198,8 @@ push_back() {
         echo "acp-broker: the push of ${head} to ${pushed_ref} in ${repo} failed: cannot write ${slot}/revs" >&2
         return 0
     fi
-    if ! slot_git -C "${task}" pack-objects --revs --stdout -q < "${slot}/revs" > "${slot}/out.pack"; then
-        echo "acp-broker: the push of ${head} to ${pushed_ref} in ${repo} failed at pack-objects on ${task}" >&2
+    if ! worker_git -C "${task}" pack-objects --revs --stdout -q < "${slot}/revs" > "${slot}/out.pack"; then
+        echo "acp-broker: the push of ${head} to ${pushed_ref} in ${repo} failed at pack-objects on ${task} inside the worker's settings ${settings}" >&2
         return 0
     fi
     if ! router_git -C "${repo}" index-pack --strict --stdin < "${slot}/out.pack" > /dev/null; then
@@ -1175,20 +1213,32 @@ push_back() {
     push_word=${pushed_ref}
 }
 
-# @description The connection's signal trap: a hangup, interrupt or termination ends the worker's process group (omp
-#   and every descendant, verdict U343d-136fbe0a P2 :1079), logs its exit with `push=skipped` (no push on a
-#   teardown), removes the slot and ends this process by the same signal; a slot that remains is exit 2 whatever the
-#   signal.
+# @description The connection's signal trap, armed from the slot's making through the exit line (verdict
+#   U343e-fd94feae P2 :1282: dropped before the push, a signal during it ended the handler at once, the slot in
+#   place and no exit line). A hangup, interrupt or termination: while omp runs (`child` set) it ends the worker's
+#   process group, TERM to the group, the wait for omp, then KILL to the group when a member remains (a descendant
+#   that ignored TERM; verdict U343d-136fbe0a P2 :1079 and U343e-fd94feae P2 :1188); with `child` empty (omp has
+#   exited; the push or the exit line is under way) it ends no process. When omp had started it writes the exit
+#   line, `push=skipped` while the push had not finished, else the push's word; then it removes the slot and ends
+#   this process by the same signal; a slot that remains is exit 2 whatever the signal. What the group signal ends
+#   is omp's process group and nothing outside it: a descendant that made a process group of its own (setsid, a
+#   daemonised tool) is not reached, and the body's threat table carries that as the residual.
 # @arg $1 string The signal name.
 # shellcheck disable=SC2329 # invoked by the trap installed below
 connection_signal() {
-    local removed=0 when
+    local removed=0 word
     trap - HUP INT TERM
     if [[ -n ${child} ]]; then
         if kill -TERM -- "-${child}" 2> /dev/null; then :; elif kill -TERM "${child}" 2> /dev/null; then :; fi
         wait_child "${child}"
-        when=$(utc_stamp log) || when=unknown-time
-        if printf '%s acp-broker: omp acp exit %s push=skipped\n' "${when}" "${child_status}" >> "${log}"; then :; fi
+        if kill -0 -- "-${child}" 2> /dev/null; then
+            if kill -KILL -- "-${child}" 2> /dev/null; then :; fi
+        fi
+    fi
+    if ((launched)); then
+        word=skipped
+        if ((push_done)); then word=${push_word}; fi
+        exit_line "${child_status}" "${word}"
     fi
     slot_remove || removed=$?
     ((removed == 0)) || {
@@ -1271,17 +1321,22 @@ log_line "omp acp start omp ${version} cwd ${task} repo ${repo} ref ${ref} base 
 # omp runs as a child, not an exec, so the exit line, the push and the trailer can follow and the slot be removed;
 # the explicit `<&0` keeps the connection as its stdin (a background command gets /dev/null otherwise), and its
 # stdout is the connection. Job control is on for the one start, so the job gets a process group of its own and
-# the trap can end omp with every descendant by one signal to the group (verdict U343d-136fbe0a P2 :1079).
+# the trap can end omp with every descendant in that group by one signal (verdict U343d-136fbe0a P2 :1079).
 set -m
 /usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${omp_cmd[@]}" acp --profile dsh <&0 &
 child=$!
+launched=1
 set +m
 wait_child "${child}"
 status=${child_status}
 child=''
-trap - HUP INT TERM
+# The traps stay armed through the push and the exit line (verdict U343e-fd94feae P2 :1282): a signal now ends no
+# process and writes the exit line itself, `push=skipped` until push_back has returned. The exit line never refuses
+# (verdict P2 :1284): a ref the push wrote reaches the client by the trailer whatever the log did.
 push_back
-log_line "omp acp exit ${status} push=${push_word}"
+push_done=1
+exit_line "${status}" "${push_word}"
+trap - HUP INT TERM
 # The slot goes first, then the trailer, the connection's last line, carries the connection's status: omp's, or 2
 # when the slot remains (verdict U343d-136fbe0a P2 :1157: a client no longer reads exit 0 over a slot left behind).
 final=${status}

@@ -14,9 +14,11 @@ tool of its own; it is the stream and nothing more.
 The exit status is the broker's trailer: the last line of the stream, `omp acp exit <status> push=<word>`, is the
 connection's exit status and is not written to stdout; its push word (the ref written, `none`, `failed` or
 `skipped`) is printed as `acp-seat: push=<word>` on stderr, so the Router learns the ref by name and reads it from
-its own repository. Only the last line is the trailer (verdict U343d-136fbe0a P2 `:168`): a trailer-shaped line
-followed by more bytes is payload and is written to stdout in its place, and a stream that ends without a trailer
-as its last line is exit 2. A first line `acp-broker: refused: <reason>` is the broker's refusal, printed on stderr,
+its own repository. Only the last line is the trailer (verdict U343d-136fbe0a P2 `:168`), and only a complete one
+(verdict U343e-fd94feae P2 `:213`): the broker writes its trailer with its newline, so a trailer-shaped line followed
+by more bytes is payload and is written to stdout in its place, a tail without a newline is payload whatever its
+shape, and a stream that ends without a newline-terminated trailer as its last line is exit 2. A first line
+`acp-broker: refused: <reason>` is the broker's refusal, printed on stderr,
 exit 2. Refused before anything is sent (exit 2, the reason on stderr): run outside a seat (`HCOM_SEAT_SANDBOX`
 unset, the marker the hcom-seat shim exports into every seat), a missing or repeated option, a repository path that
 is not an absolute path free of whitespace and control characters, a ref outside `^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$`
@@ -39,8 +41,8 @@ LEVER = "acp-seat"
 MAPPING_KEY = re.compile(r"^(\S+):$")
 LEVER_PIN = re.compile(r"^(\S+): ([0-9a-f]{64})$")
 LEVERS_KEYS = ("claude", "levers", "sha256")
-NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
-REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$")
+NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}\Z")  # `\Z`, not `$`: a value ending in a newline is outside (verdict U343e-fd94feae P3 `:235`)
+REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}\Z")
 TRAILER = re.compile(rb"^omp acp exit ([0-9]+) push=(\S+)$")
 REFUSAL = b"acp-broker: refused: "
 CHUNK = 65536
@@ -160,8 +162,9 @@ def pump_stdin(sock):
 
 
 def relay(sock):
-    """The socket to stdout line by line; the first line may be the refusal, and the last line alone is the trailer:
-    a trailer-shaped line is held until the stream shows whether anything follows it."""
+    """The socket to stdout line by line; the first line may be the refusal, and the last complete line alone is the
+    trailer: a trailer-shaped line is held until the stream shows whether anything follows it, and a tail without a
+    newline is payload (the broker's trailer always carries its newline), never the trailer."""
     out = sys.stdout.buffer
     buffer = bytearray()
     first = True
@@ -210,11 +213,8 @@ def relay(sock):
         if first and tail.startswith(REFUSAL):
             take(tail)
         release()
-        if TRAILER.match(tail) is not None:
-            pending = tail
-        else:
-            out.write(tail)
-            out.flush()
+        out.write(tail)
+        out.flush()
     if pending is None:
         print(f"{LEVER}: the broker closed the connection without an exit trailer", file=sys.stderr)
         return 2

@@ -11,6 +11,8 @@ settings `hcom-seat` renders) is written by hand in the dsh row's shape for most
 router` launch for the settings compare. Nothing real starts; nothing outside the scratch is written.
 """
 
+import importlib.machinery
+import importlib.util
 import json
 import os
 import re
@@ -56,11 +58,15 @@ PING = b'{"jsonrpc":"2.0","id":1,"method":"ping"}\n'
 # file first when `canary-write` exists (a sandbox that lets the write probe succeed), exits 3 when `srt-fail`
 # exists (a canary that did not run), else runs the script with the four paths swapped for ones under a directory
 # that does not exist, so the probes fail as the sandbox makes them fail; any other command (omp, the isolated git
-# the broker runs inside the Router's settings) is executed.
+# the broker runs inside the Router's settings or the worker's) is executed. Two instructions apply to a command
+# under a slot's `settings.json` (the worker's settings; the Router's file is `srt-settings.json`), the way the real
+# sandbox would act on it (U343f): `pack-sleep` holds a number of seconds a `pack-objects` sleeps before it runs (a
+# push in flight for the signal test), and `deny-paths` lists paths made unreadable (mode 0) for the span of the
+# command and restored after it (the paths the worker's settings deny; a store named by a planted alternates file).
 FAKE_SRT = textwrap.dedent(
     """\
     #!/usr/bin/env python3
-    import json, os, subprocess, sys
+    import json, os, subprocess, sys, time
     conf = json.load(open(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), "srt.json")))
     argv = sys.argv[1:]
     with open(os.path.join(conf["calls"], "srt"), "a") as calls:
@@ -70,6 +76,7 @@ FAKE_SRT = textwrap.dedent(
         sys.exit(0)
     command = argv[argv.index("--") + 1 :]
     canary = command[:2] == ["/bin/sh", "-c"]
+    worker = argv[:1] == ["--settings"] and argv[1].endswith("/settings.json")
     swap = os.path.join(conf["calls"], "swap-ancestor")
     if os.path.exists(swap):
         plan = json.load(open(swap))
@@ -90,6 +97,21 @@ FAKE_SRT = textwrap.dedent(
         denied = ["/nonexistent-u343/canary", "/nonexistent-u343/settings", "/nonexistent-u343/.ssh",
                   "/nonexistent-u343/.claude/debug/canary"]
         sys.exit(subprocess.run(["/bin/sh", "-c", command[2], command[3], *denied], check=False).returncode)
+    sleep = os.path.join(conf["calls"], "pack-sleep")
+    if worker and "pack-objects" in command and os.path.exists(sleep):
+        with open(os.path.join(conf["calls"], "pack-sleeping"), "w") as marker:
+            marker.write(str(os.getpid()))
+        time.sleep(float(open(sleep).read()))
+    deny = os.path.join(conf["calls"], "deny-paths")
+    if worker and os.path.exists(deny):
+        paths = open(deny).read().split()
+        for path in paths:
+            os.chmod(path, 0)
+        try:
+            sys.exit(subprocess.run(command, check=False).returncode)
+        finally:
+            for path in paths:
+                os.chmod(path, 0o700)
     os.execvp(command[0], command)
     """
 )
@@ -625,6 +647,166 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertIn("acp-broker: the push of ", err)
         self.assertIn("failed", err)
 
+    def push_calls(self, slot):
+        """The fake srt's calls after the launch (the push's), as (settings file, the git arguments after the
+        library's flags) pairs: the worker's settings for a read of the worker's clone, the Router's for a write of
+        the repository."""
+        calls = self.calls_of("srt")
+        launch = next(i for i, c in enumerate(calls) if c["argv"][-3:] == ["acp", "--profile", "dsh"])
+        pairs = []
+        for call in calls[launch + 1 :]:
+            argv = call["argv"]
+            self.assertEqual(argv[0], "--settings", argv)
+            self.assertEqual(argv[2:4], ["--", "/usr/bin/env"], argv)
+            self.assertIn("GIT_CONFIG_GLOBAL=/dev/null", argv)
+            self.assertIn("core.hooksPath=/dev/null", argv)
+            self.assertEqual(call["cwd"], str(self.slot_task(slot)), "the handler stays in the task")
+            pairs.append((argv[1], argv[argv.index("-C") :]))
+        return pairs
+
+    def test_a_the_push_reads_the_worker_repository_inside_the_worker_settings(self):
+        """U343f test (a) (verdict U343e-fd94feae P1 `:1146`, class broker-boundary): the push's `rev-parse` and
+        `pack-objects` on the worker's clone ran through the isolated git outside every sandbox, so a `.git` the
+        worker had written (an alternates file, a gitfile, HEAD) was read with the broker's own reach. They run
+        through srt under the slot's `settings.json` (the worker's own sandbox, the form the clone already has on
+        the Router's side), in the environment the launch had; `index-pack` and `update-ref` under the Router's
+        settings, as before. The fake srt records every argv."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        conn, slot, task = self.held_connection(sock, repo, "w1")
+        head = self.commit_in(task)
+        conn.shutdown(socket.SHUT_WR)
+        data = self.recv_all(conn)
+        match = re.fullmatch(rb"omp acp exit 0 push=(refs/acp-seat/w1/\S+)\n", data)
+        self.assertIsNotNone(match, data)
+        ref = match.group(1).decode()
+        settings = str(self.seats_path / ".state" / slot / "settings.json")
+        template = str(self.seats_path / ".sandbox" / name / "srt-settings.json")
+        self.assertEqual(
+            self.push_calls(slot),
+            [
+                (settings, ["-C", str(task), "rev-parse", "--verify", "HEAD^{commit}"]),
+                (settings, ["-C", str(task), "pack-objects", "--revs", "--stdout", "-q"]),
+                (template, ["-C", str(repo), "index-pack", "--strict", "--stdin"]),
+                (template, ["-C", str(repo), "update-ref", ref, head, ""]),
+            ],
+        )
+        calls = self.calls_of("srt")
+        launch = next(c for c in calls if c["argv"][-3:] == ["acp", "--profile", "dsh"])
+        reads = [c for c in calls if c["argv"][1] == settings and "-C" in c["argv"]]
+        self.assertEqual(len(reads), 2)
+        for call in reads:
+            self.assertEqual(call["env"], launch["env"], "the worker's git runs in the launch's environment")
+        self.assertEqual(self.scratch_git("rev-parse", "--verify", ref, cwd=repo), head)
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_b_an_alternates_file_the_worker_planted_reaches_nothing_the_worker_may_not_read(self):
+        """U343f test (b) (verdict U343e-fd94feae P1 `:1146`, Codex's reproduction): the worker writes
+        `task/.git/objects/info/alternates` naming an object store under a path its settings deny (a scratch
+        repository under `~/.aws` with one commit holding `private.txt`) and points HEAD at that store's commit.
+        Outside any sandbox the plant resolves, and the push imported the store's objects into the Router's
+        repository. Read inside the worker's own settings the store is unreadable (the fake srt denies the listed
+        paths for the span of a command under a slot's settings): the push ends `push=failed` with the step named
+        on stderr, the Router's repository holds no object of the store and no new ref, the slot is removed."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        store, _one = self.make_repo(self.home / ".aws" / "store")
+        (store / "private.txt").write_text("the operator's secret\n")
+        self.scratch_git("add", "private.txt", cwd=store)
+        self.scratch_git("commit", "-q", "-m", "secret", cwd=store)
+        secret = self.scratch_git("rev-parse", "HEAD", cwd=store)
+        proc, sock = self.start_broker(name, cwd)
+        conn, slot, task = self.held_connection(sock, repo, "w1")
+        rendered = json.loads((self.seats_path / ".state" / slot / "settings.json").read_text())
+        self.assertIn(f"{self.home_real}/.aws", rendered["filesystem"]["denyRead"], "the store's root is denied")
+        (task / ".git/objects/info").mkdir(exist_ok=True)
+        (task / ".git/objects/info/alternates").write_text(f"{store}/.git/objects\n")
+        (task / ".git/HEAD").write_text(secret + "\n")
+        self.assertEqual(
+            self.scratch_git("rev-parse", "HEAD", cwd=task), secret, "outside any sandbox the plant resolves"
+        )
+        (self.calls / "deny-paths").write_text(f"{self.home_real}/.aws\n")
+        conn.shutdown(socket.SHUT_WR)
+        data = self.recv_all(conn)
+        self.assertEqual(data, b"omp acp exit 0 push=failed\n")
+        held = subprocess.run(
+            ["git", "cat-file", "-e", secret], cwd=repo, env=self.env, capture_output=True, text=True, check=False
+        )
+        self.assertNotEqual(held.returncode, 0, "the store's commit reached the Router's repository")
+        self.assertEqual(self.scratch_git("for-each-ref", "refs/acp-seat/", cwd=repo), "")
+        self.assertEqual(self.log_lines("w1")[-1].split(" acp-broker: ")[1], "omp acp exit 0 push=failed")
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
+        self.assertEqual(stat.S_IMODE(os.stat(self.home / ".aws").st_mode), 0o700, "the fake restored the path")
+        settings = str(self.seats_path / ".state" / slot / "settings.json")
+        self.assertEqual(
+            [s for s, _args in self.push_calls(slot)], [settings], "one read under the worker's settings, no write"
+        )
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertIn(f"failed at rev-parse on {task} inside the worker's settings {settings}", err)
+
+    def test_c_the_exit_line_after_a_written_ref_never_refuses(self):
+        """U343f test (c) (verdict U343e-fd94feae P2 `:1284`): the exit log's append failed after the ref was written
+        and the handler refused, so the client read no trailer and learned no ref. The launch log and its directory
+        are made unwritable while the worker runs: the trailer carries the pushed ref and the connection holds it,
+        the slot is removed, the log keeps its two lines, and the broker's stderr names the log and the line."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        conn, slot, task = self.held_connection(sock, repo, "w1")
+        head = self.commit_in(task)
+        log_dir = self.seats_path / ".state/w1"
+        log = log_dir / "acp-launch.log"
+        before = self.log_lines("w1")
+        self.assertEqual(len(before), 2, before)
+        log.chmod(0o400)
+        log_dir.chmod(0o500)
+        try:
+            conn.shutdown(socket.SHUT_WR)
+            data = self.recv_all(conn)
+        finally:
+            log_dir.chmod(0o700)
+            log.chmod(0o600)
+        match = re.fullmatch(rb"omp acp exit 0 push=(refs/acp-seat/w1/\S+)\n", data)
+        self.assertIsNotNone(match, data)
+        ref = match.group(1).decode()
+        self.assertEqual(self.scratch_git("rev-parse", "--verify", ref, cwd=repo), head)
+        self.assertEqual(self.log_lines("w1"), before, "the exit line could not be appended")
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertIn(
+            f"acp-broker: cannot append the exit line 'omp acp exit 0 push={ref}' to the launch log {log}", err
+        )
+
+    def test_d_a_hangup_during_the_push_removes_the_slot_and_logs_one_exit_line(self):
+        """U343f test (d) (verdict U343e-fd94feae P2 `:1282`): the traps were dropped before the push, so a hangup
+        during it ended the handler at once with its slot in place and no exit line. The traps stay armed through
+        the push and the exit line: a HUP while the fake srt's `pack-objects` sleeps ends the connection with the
+        slot removed and exactly one exit line, `push=skipped` (the push had not finished) or the pushed ref."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        (self.calls / "pack-sleep").write_text("3")
+        conn, slot, task = self.held_connection(sock, repo, "w1")
+        pid = int(slot.rsplit("-", 1)[1])
+        self.commit_in(task)
+        conn.shutdown(socket.SHUT_WR)
+        self.wait_for(
+            lambda: (self.calls / "pack-sleeping").exists(),
+            "the push's pack-objects under the worker's settings",
+            seconds=15,
+        )
+        os.kill(pid, signal.SIGHUP)
+        data = self.recv_all(conn)
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal", seconds=30)
+        exits = [line for line in self.log_lines("w1") if " acp-broker: omp acp exit " in line]
+        self.assertEqual(len(exits), 1, self.log_lines("w1"))
+        self.assertRegex(exits[0], r" acp-broker: omp acp exit 0 push=(skipped|refs/acp-seat/w1/\S+)$")
+        self.assertEqual(data, b"", "ended by the signal: no trailer")
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
     def test_a_slot_that_cannot_be_removed_gives_a_trailer_of_exit_2_after_the_removal(self):
         """Verdict U343d-136fbe0a P2 `:1157`: the success trailer preceded the slot's removal, so a slot left behind
         exited the handler 2 while the client read exit 0. The removal comes first and the trailer carries the
@@ -778,7 +960,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         """srt, omp and git are found through a link directory first on the caller's PATH and run by their physical
         files (the fake records argv0); omp's environment holds exactly the listed names; the srt argv is `--settings
         <slot settings> -- /usr/bin/env PATH=<seat path> <omp argv> acp --profile dsh` in the slot's task; the clone's
-        two git runs and the canary run under the Router's own settings file."""
+        two git runs and the canary run under the Router's own settings file, the push's read of the worker's HEAD
+        under the slot's (U343f)."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         links = Path(self.temp.name).resolve() / "links"
@@ -817,7 +1000,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                   "USER": "u343", "LANG": "C.UTF-8"}  # fmt: skip
         self.assertEqual({k: v for k, v in launch["env"].items() if k not in own}, listed)
         self.assertEqual(set(launch["env"]) - own, set(listed))
-        resolve, pack, canary, version_call, launch_call = self.calls_of("srt")
+        resolve, pack, canary, version_call, launch_call, head_read = self.calls_of("srt")
         router_settings = str(self.seats_path / ".sandbox" / name / "srt-settings.json")
         for call in (resolve, pack):
             self.assertEqual(
@@ -841,6 +1024,17 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(launch_call["argv"], ["--settings", settings, "--", "/usr/bin/env", f"PATH={seat_path}",
                                                str(self.python), str(self.bindir / "omp"), "acp", "--profile", "dsh"])  # fmt: skip
         self.assertEqual(launch_call["cwd"], task)
+        self.assertEqual(
+            head_read["argv"][:4],
+            ["--settings", settings, "--", "/usr/bin/env"],
+            "the push reads inside the worker's settings",
+        )
+        self.assertIn(str(git_real), head_read["argv"], "git by its physical file")
+        self.assertIn("GIT_CONFIG_GLOBAL=/dev/null", head_read["argv"])
+        self.assertIn("core.hooksPath=/dev/null", head_read["argv"])
+        self.assertEqual(head_read["argv"][-5:], ["-C", task, "rev-parse", "--verify", "HEAD^{commit}"])
+        self.assertEqual(head_read["cwd"], task)
+        self.assertEqual(set(head_read["env"]) - own, set(listed), "the worker's git sees the launch's names")
         # srt itself saw the listed names and nothing of the caller's (the outer PATH is the system directories).
         self.assertEqual(set(canary["env"]) - own, set(listed))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
@@ -984,45 +1178,92 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual((run.returncode, run.stdout, run.stderr), (9, PING, b"acp-seat: push=none\n"))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
+    def client_against_stream(self, stream):
+        """The client run against a scratch server in the broker's place that answers the header with `stream` and
+        closes; the completed run."""
+        sock = Path(self.temp.name).resolve() / "s" / "sock"
+        sock.parent.mkdir(exist_ok=True)
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        here = os.getcwd()
+        os.chdir(sock.parent)
+        try:
+            server.bind(sock.name)
+        finally:
+            os.chdir(here)
+        server.listen(1)
+
+        def serve():
+            conn, _ = server.accept()
+            conn.recv(4096)  # the header
+            conn.sendall(stream)
+            try:
+                conn.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass  # the client has already closed its side
+            conn.close()
+
+        thread = threading.Thread(target=serve, daemon=True)
+        thread.start()
+        run = self.client(sock, "/repo", "w1", b"")
+        thread.join(timeout=30)
+        server.close()
+        sock.unlink()
+        return run
+
     def test_the_client_takes_the_trailer_from_the_last_line_alone(self):
         """Verdict U343d-136fbe0a P2 `acp-seat:168`: any matching line was taken as the trailer, so a stream `omp acp
         exit 0`, payload, EOF returned 0 without a final trailer. Against a scratch server in the broker's place:
         a trailer-shaped line followed by payload is payload (written to stdout, in order) and the stream ends
         without a trailer (exit 2); the same line last is the trailer; a refusal first line is exit 2 on stderr."""
-        sock = Path(self.temp.name).resolve() / "s" / "sock"
-        sock.parent.mkdir()
         streams = {
             "a trailer-shaped line, then payload": (b"omp acp exit 0 push=none\n" + PING, 2, b"omp acp exit 0 push=none\n" + PING, b"acp-seat: the broker closed the connection without an exit trailer\n"),
             "payload, then the trailer last": (PING + b"omp acp exit 5 push=refs/acp-seat/w1/x\n", 5, PING, b"acp-seat: push=refs/acp-seat/w1/x\n"),
             "two trailer-shaped lines": (b"omp acp exit 0 push=none\nomp acp exit 3 push=failed\n", 3, b"omp acp exit 0 push=none\n", b"acp-seat: push=failed\n"),
             "a refusal first": (b"acp-broker: refused: no\n" + PING, 2, b"", b"acp-broker: refused: no\n"),
-            "a trailer without a newline": (PING + b"omp acp exit 4 push=none", 4, PING, b"acp-seat: push=none\n"),
         }  # fmt: skip
         for label, (stream, status, stdout, stderr) in streams.items():
             with self.subTest(case=label):
-                server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                here = os.getcwd()
-                os.chdir(sock.parent)
-                try:
-                    server.bind(sock.name)
-                finally:
-                    os.chdir(here)
-                server.listen(1)
-
-                def serve(server=server, stream=stream):
-                    conn, _ = server.accept()
-                    conn.recv(4096)  # the header
-                    conn.sendall(stream)
-                    conn.shutdown(socket.SHUT_RDWR)
-                    conn.close()
-
-                thread = threading.Thread(target=serve, daemon=True)
-                thread.start()
-                run = self.client(sock, "/repo", "w1", b"")
-                thread.join(timeout=30)
-                server.close()
-                sock.unlink()
+                run = self.client_against_stream(stream)
                 self.assertEqual((run.returncode, run.stdout, run.stderr), (status, stdout, stderr))
+
+    def test_e_the_client_takes_only_a_newline_terminated_last_line_as_the_trailer(self):
+        """U343f test (e) (verdict U343e-fd94feae P2 `acp-seat:213`): a tail without a newline was taken as the
+        trailer when it had the shape, so a worker's trailer-shaped last bytes on a connection that ended before
+        the broker's trailer read as the broker's exit. The broker writes its trailer with its newline, always: the
+        trailer is the stream's last complete line, a tail without a newline is payload (written to stdout, exit 2
+        with `closed the connection without an exit trailer`), and a complete trailer line last is the trailer."""
+        closed = b"acp-seat: the broker closed the connection without an exit trailer\n"
+        streams = {
+            "a trailer-shaped tail without a newline": (PING + b"omp acp exit 4 push=none", 2, PING + b"omp acp exit 4 push=none", closed),
+            "a trailer-shaped tail alone": (b"omp acp exit 0 push=refs/acp-seat/w1/x", 2, b"omp acp exit 0 push=refs/acp-seat/w1/x", closed),
+            "a trailer line, then a tail without a newline": (PING + b"omp acp exit 0 push=none\nomp", 2, PING + b"omp acp exit 0 push=none\nomp", closed),
+            "the trailer last, with its newline": (PING + b"omp acp exit 4 push=refs/acp-seat/w1/x\n", 4, PING, b"acp-seat: push=refs/acp-seat/w1/x\n"),
+        }  # fmt: skip
+        for label, (stream, status, stdout, stderr) in streams.items():
+            with self.subTest(case=label):
+                run = self.client_against_stream(stream)
+                self.assertEqual((run.returncode, run.stdout, run.stderr), (status, stdout, stderr))
+
+    def test_f_the_client_anchors_refuse_a_trailing_newline(self):
+        """U343f test (f) (verdict U343e-fd94feae P3 `acp-seat:235`): Python's `$` matches before a final newline, so
+        `REF.match("HEAD\\n")` and `NAME.match("w1\\n")` succeeded and the header would have carried a second line.
+        The anchors are `\\Z`: both are None, the plain words match, and the client refuses such a ref or name
+        before it connects (no socket exists here)."""
+        loader = importlib.machinery.SourceFileLoader("acp_seat", str(CLIENT))
+        spec = importlib.util.spec_from_loader("acp_seat", loader)
+        module = importlib.util.module_from_spec(spec)
+        loader.exec_module(module)
+        self.assertIsNone(module.REF.match("HEAD\n"))
+        self.assertIsNone(module.NAME.match("w1\n"))
+        self.assertIsNotNone(module.REF.match("HEAD"))
+        self.assertIsNotNone(module.NAME.match("w1"))
+        nowhere = Path(self.temp.name).resolve() / "nowhere" / "sock"
+        run = self.client(nowhere, "/repo", "w1\n", PING)
+        self.assertEqual((run.returncode, run.stdout), (2, b""), run.stderr)
+        self.assertIn(b"acp-seat: refused: the name 'w1\\n' is outside", run.stderr)
+        run = self.client(nowhere, "/repo", "w1", PING, ref="HEAD\n")
+        self.assertEqual((run.returncode, run.stdout), (2, b""), run.stderr)
+        self.assertIn(b"acp-seat: refused: the ref 'HEAD\\n' is outside", run.stderr)
 
     def test_every_producer_injection_refuses_by_name(self):
         """Each producer the launch reads fails in turn: the slot mkdir, a physical resolution, the Router settings

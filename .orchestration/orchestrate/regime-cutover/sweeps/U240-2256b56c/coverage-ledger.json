@@ -1,0 +1,2770 @@
+[
+  {
+    "coverage_id": ".claude%23unchanged-paths::scope%23outside-U226-diff::.claude::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": ".claude#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": ".claude",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": ".claude: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": ".claude",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      ".claude"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": ".github%23unchanged-paths::scope%23outside-U226-diff::.github::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": ".github#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": ".github",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": ".github: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": ".github",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      ".github"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": ".orchestration%23unchanged-paths::scope%23outside-U226-diff::.orchestration::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": ".orchestration#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": ".orchestration",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": ".orchestration: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": ".orchestration",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      ".orchestration"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": ".ua%23unchanged-paths::scope%23outside-U226-diff::.ua::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": ".ua#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": ".ua",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": ".ua: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": ".ua",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      ".ua"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": "docs%23unchanged-paths::scope%23outside-U226-diff::docs::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "docs#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "docs",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "docs: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "docs",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "docs"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": "home%23unchanged-paths::scope%23outside-U226-diff::home::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "home#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "home",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "home: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "home",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "home"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fagent-config.yaml%23assets.deepseek-harness.ref_commit::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness%2Farchive-sha256-and-DSH_COMMIT::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+    "canonical_refs": {
+      "surface": "home/dot_agents/agent-config.yaml#assets.deepseek-harness.ref_commit",
+      "boundary": "scripts/update-agent-assets.sh#update_deepseek_harness/archive-sha256-and-DSH_COMMIT",
+      "subsystem": "scripts/update-agent-assets.sh#update_deepseek_harness",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    },
+    "surface": "Reviewed manifest field ref_commit rendered to DSH_COMMIT and exported as DSH_CLIENT_COMMIT_HASH into the upstream build",
+    "boundary": "Pull-request author to the operator's host build: review, CI render and validator checks, the archive sha256 check, the DSH_COMMIT refusal",
+    "subsystem": "update_deepseek_harness (scripts/update-agent-assets.sh)",
+    "attack_class": "Mutable and unbound build inputs (supply chain)",
+    "starting_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "scripts/lib/installer-pins.sh",
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Update metadata and rollback confusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the injection units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the updater control-flow unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the test-module unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Dependency source and namespace confusion",
+        "reason": "the diff changes no resolver configuration; pnpm install --frozen-lockfile is unchanged and reads the sha256-pinned archive's own lockfile"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps",
+        "reason": "covered by the render unit (scripts/generate-agent-configs.py render of ref_commit), not by this unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Build-context inclusion",
+        "reason": "nothing is packaged or published from the target; the build output stays in the operator's install tree"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Untrusted code in a privileged workflow",
+        "reason": "no workflow file changed; the CI gates that run on pull_request are read as controls only"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Workflow command and expression confusion",
+        "reason": "no workflow file changed"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Cache, artifact, and workspace trust mixing",
+        "reason": "no CI cache or artifact is produced or consumed by the change"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+        "reason": "no CI permission or token changed"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Build-to-promotion substitution",
+        "reason": "nothing is promoted or released"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Release authorization and signing-policy gaps",
+        "reason": "upstream publishes no signature or attestation; the reviewed sha256 is the stated check and is unchanged"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion",
+        "reason": "the profile plugin install is unchanged by the diff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1 (U226 he"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fplugins%2Fomp-gateway%23chezmoi-deploy-and-profile-loading::home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Findex.mjs%23profile-dependency-and-patch-row::home%2Fdot_dsh%2Fplugins%2Fomp-gateway::SUPPLY-CHAIN-AND-RELEASE.md%23Plugin%20and%20extension%20trust%20expansion",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/plugins/omp-gateway#chezmoi-deploy-and-profile-loading",
+      "boundary": "home/dot_dsh/plugins/omp-gateway/index.mjs#profile-dependency-and-patch-row",
+      "subsystem": "home/dot_dsh/plugins/omp-gateway",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    },
+    "surface": "Deployment of the plugin directory to ~/.dsh/plugins/omp-gateway by chezmoi, and its loading into DSH",
+    "boundary": "Explicit profile dependency (link:) plus a patch row; no profile at this head loads it",
+    "subsystem": "home/dot_dsh/plugins/omp-gateway (U240 DSH LlmAdapter plugin)",
+    "attack_class": "Plugin and extension trust expansion (supply chain)",
+    "starting_paths": [
+      "home/dot_dsh/plugins/omp-gateway/index.mjs",
+      "home/dot_dsh/plugins/omp-gateway/package.json",
+      "home/.chezmoiignore"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the spawn and line-framing units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "assigned to the proof-runner unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "assigned to the error-text unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the lifecycle unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the plugin"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the translation unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the 15-file change is small enough that each file belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the stub, fixtures and tests unit"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the unit's path carries no model content or tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the unit has no local process or file boundary of its own"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "the unit has no wire framing or reply correlation of its own"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP server, session or identity flow: the /v1/messages path is a JSON field on a private pipe"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the plugin"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud, container or IAM configuration"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or other user's work: the child and its pending requests belong to the operator's own DSH process"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code or binary parser"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "home/dot_dsh/plugins/omp-gateway/index.mjs",
+      "home/dot_dsh/plugins/omp-gateway/package.json",
+      "home/.chezmoiignore"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "home/dot_dsh/plugins/omp-gateway/index.mjs",
+          "home/dot_dsh/plugins/omp-gateway/package.json",
+          "home/.chezmoiignore"
+        ],
+        "invariant": "Deploying the plugin does not by itself give it DSH authority, and loading it grants no capability beyond the llm adapter seam",
+        "method": "source",
+        "result": "chezmoi deploys the directory (nothing in home/.chezmoiignore excludes it). DSH loads it only through a profile package.json link: dependency and a patch row (index.mjs:9-10). The installed upstream tree, read as context, shows no automatic loading from DSH_HOME/plugins. A repository search for omp-gateway finds only the plugin's own files, so no deployed profile loads it at this head. Loaded, it injects only llm (index.mjs:19) and registers an adapter for the configured provider routes (:77). package.json is private, has no install scripts and only a peer dependency (package.json:1-21); the deployed .mjs files are not executable.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": []
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Fconfig.mjs%23config-rows::home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Fgateway-client.mjs%23spawn-argv-env-allowlist::home%2Fdot_dsh%2Fplugins%2Fomp-gateway::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/plugins/omp-gateway/config.mjs#config-rows",
+      "boundary": "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs#spawn-argv-env-allowlist",
+      "subsystem": "home/dot_dsh/plugins/omp-gateway",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "Patch-row config (command, args, env names, cwd) flowing into the gateway child's spawn",
+    "boundary": "argv spawn without a shell, the env-name allowlist, config row validation",
+    "subsystem": "home/dot_dsh/plugins/omp-gateway (U240 DSH LlmAdapter plugin)",
+    "attack_class": "Injection (command construction)",
+    "starting_paths": [
+      "home/dot_dsh/plugins/omp-gateway/config.mjs",
+      "home/dot_dsh/plugins/omp-gateway/index.mjs",
+      "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Privileged helper as confused deputy",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "assigned to the plugin-loading unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "assigned to the proof-runner unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "assigned to the error-text unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the lifecycle unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the plugin"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the translation unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the 15-file change is small enough that each file belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the stub, fixtures and tests unit"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the unit's path carries no model content or tool call"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "the unit has no wire framing or reply correlation of its own"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no dependency, build or plugin-loading handoff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP server, session or identity flow: the /v1/messages path is a JSON field on a private pipe"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the plugin"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud, container or IAM configuration"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or other user's work: the child and its pending requests belong to the operator's own DSH process"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code or binary parser"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "home/dot_dsh/plugins/omp-gateway/config.mjs",
+      "home/dot_dsh/plugins/omp-gateway/index.mjs",
+      "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "home/dot_dsh/plugins/omp-gateway/config.mjs",
+          "home/dot_dsh/plugins/omp-gateway/index.mjs",
+          "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs"
+        ],
+        "invariant": "No value reaching spawn is interpreted by a shell, and the child receives only named environment variables",
+        "method": "source",
+        "result": "resolveConfig (config.mjs:25-50) accepts command as a non-empty string and args/env as string lists (:52-72). apply (index.mjs:68-79) passes pickEnv(config.env) (gateway-client.mjs:26-33), which copies only the named variables (defaults HOME, PATH, user/locale/XDG names, config.mjs:4-7; no credential variable), and cwd defaults to homedir(). spawn(command, args, {cwd, env, stdio: pipes}) (gateway-client.mjs:132) uses no shell option, so args are argv entries. The rows come from a DSH profile patch the operator writes; a row author already controls which code DSH loads, so the configurable command is the operator's own authority, not a boundary crossing.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": []
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Fgateway-client.mjs%23abort-exit-timeout-close::home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Fgateway-client.mjs%23fail-and-kill::home%2Fdot_dsh%2Fplugins%2Fomp-gateway::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs#abort-exit-timeout-close",
+      "boundary": "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs#fail-and-kill",
+      "subsystem": "home/dot_dsh/plugins/omp-gateway",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "Request lifecycle: abort, ready timeout, child exit, spawn error and close()",
+    "boundary": "#fail rejecting every pending request, #kill, #forget and respawn",
+    "subsystem": "home/dot_dsh/plugins/omp-gateway (U240 DSH LlmAdapter plugin)",
+    "attack_class": "Business logic (lifecycle)",
+    "starting_paths": [
+      "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs",
+      "home/dot_dsh/plugins/omp-gateway/index.mjs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the spawn and line-framing units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "assigned to the plugin-loading unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "assigned to the proof-runner unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "assigned to the error-text unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the plugin"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the translation unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the 15-file change is small enough that each file belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the stub, fixtures and tests unit"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the unit's path carries no model content or tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the unit has no local process or file boundary of its own"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "the unit has no wire framing or reply correlation of its own"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no dependency, build or plugin-loading handoff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP server, session or identity flow: the /v1/messages path is a JSON field on a private pipe"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the plugin"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud, container or IAM configuration"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or other user's work: the child and its pending requests belong to the operator's own DSH process"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code or binary parser"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs",
+      "home/dot_dsh/plugins/omp-gateway/index.mjs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs",
+          "home/dot_dsh/plugins/omp-gateway/index.mjs"
+        ],
+        "invariant": "No failure path leaves a request pending forever with a live writer, delivers a reply to the wrong request, or reuses a dead child",
+        "method": "source",
+        "result": "An already-aborted signal rejects before spawning (gateway-client.mjs:80-84). Abort fails every pending request, then kills the child (:91-94, :219-224). Round 3 makes #kill forget the child before sending SIGTERM (:226-233): #forget clears the child, ready promise and gate (:235-240), so a request arriving before the old child's close event spawns a fresh child (:131) instead of being written to the dying one. Every #kill call (the ready timer :143-147, abort :91-94, protocol failure :214-217) runs after a #fail that has already rejected the pending requests and the open gate, which clears the ready timer (:155-158). The old child's error, close and stdout handlers are guarded on identity (:161, :167, :178), so once it is forgotten its late events reject nothing that belongs to the new child. A request settles once (:85-90) and removes its abort listener. close() ends stdin and waits for close (:121-128). The adapter registers it as the cordis effect's cleanup (index.mjs:78). Round-3 tests drive in-process fake children through abort, protocol failure and a reply before the ready line (test/gateway-client.test.mjs:53-86, :142-203). Every effect stays inside the operator's own DSH process.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "Aborting one request kills the shared child and rejects every concurrent request of the same client (gateway-client.mjs:91-94, :219-224); concurrent DSH turns in one process lose their in-flight replies. Same-principal availability only.",
+      "close() waits for the child's close event with no deadline (gateway-client.mjs:121-128), and since round 3 it returns at once when the child was killed and forgotten (:226-233), without waiting for that child to exit: a gateway that ignores stdin EOF would hang plugin disposal, and one that ignores SIGTERM outlives it. A bounded wait followed by SIGKILL would close both.",
+      "The stderr data handler is the one child handler not guarded on identity (gateway-client.mjs:174-176): after a kill and respawn, the forgotten child's late stderr is appended to the tail that #ensureChild reset for the new child (:134), so the new child's GATEWAY_EXIT message can quote the old child's output. Diagnostic mixing within the operator's own process; a `this.#child === child` guard there, as on stdout (:178), would close it."
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Fgateway-client.mjs%23error-text::home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Findex.mjs%23LlmError-wrapping::home%2Fdot_dsh%2Fplugins%2Fomp-gateway::ATTACK-CLASSES.md%23Cryptography%20and%20secrets",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs#error-text",
+      "boundary": "home/dot_dsh/plugins/omp-gateway/index.mjs#LlmError-wrapping",
+      "subsystem": "home/dot_dsh/plugins/omp-gateway",
+      "attack_class": "ATTACK-CLASSES.md#Cryptography and secrets"
+    },
+    "surface": "Error messages that carry the child's stderr tail or a prefix of an unparseable stdout line into DSH's LlmError",
+    "boundary": "The 4096-byte stderr tail, the 200-character line prefix, LlmError wrapping",
+    "subsystem": "home/dot_dsh/plugins/omp-gateway (U240 DSH LlmAdapter plugin)",
+    "attack_class": "Cryptography and secrets (secrets in errors)",
+    "starting_paths": [
+      "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs",
+      "home/dot_dsh/plugins/omp-gateway/index.mjs",
+      "home/dot_dsh/plugins/omp-gateway/translate.mjs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Cryptography and secrets",
+    "selected_companion_blocks": [
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Credential-store and local-secret boundary mismatch",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules",
+      "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+      "PROTOCOLS-RPC-AND-MESSAGING.md#Dead-letter, retry, and diagnostic disclosure",
+      "PROTOCOLS-RPC-AND-MESSAGING.md#Universal moves",
+      "PROTOCOLS-RPC-AND-MESSAGING.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the spawn and line-framing units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "assigned to the plugin-loading unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "assigned to the proof-runner unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the lifecycle unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the plugin"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the translation unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the 15-file change is small enough that each file belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the stub, fixtures and tests unit"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the unit's path carries no model content or tool call"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no dependency, build or plugin-loading handoff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP server, session or identity flow: the /v1/messages path is a JSON field on a private pipe"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the plugin"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud, container or IAM configuration"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or other user's work: the child and its pending requests belong to the operator's own DSH process"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code or binary parser"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs",
+      "home/dot_dsh/plugins/omp-gateway/index.mjs",
+      "home/dot_dsh/plugins/omp-gateway/translate.mjs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs",
+          "home/dot_dsh/plugins/omp-gateway/index.mjs",
+          "home/dot_dsh/plugins/omp-gateway/translate.mjs"
+        ],
+        "invariant": "The adapter does not move credential material from the gateway into a sink a lower-trust reader can see",
+        "method": "source",
+        "result": "The plugin itself reads and forwards no credential: the child's environment is the allowlist (gateway-client.mjs:26-33; config.mjs:4-7), and requests carry only model, messages, tools and limits (translate.mjs:18-60). Error text carries at most the last 4096 bytes of the child's stderr (gateway-client.mjs:9, :174-176, :168, :242-245), the first 200 characters of an unparseable stdout line (:189), and the gateway's own error detail (translate.mjs:111-120); index.mjs:49 and :53 wrap them into LlmError. Whether that text ever holds secret material depends on what omp prints, and whether an LlmError reaches a sink outside the operator's account depends on the loading profile. At this head no profile loads the plugin (a repository search for omp-gateway finds only the plugin's own files), and the proof runner's scratch profile disables session-log upload (proof/run-proof.mjs:43). No reachable lower-trust reader exists at this head.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "Error messages forward the gateway child's stderr tail and a prefix of an unparseable stdout line (gateway-client.mjs:168, :189). Before a profile that uploads session logs loads this plugin, drop the tail from the message (keep it in a local debug channel) or bound it to known-safe fields."
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Fgateway-client.mjs%23json-line-protocol::home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Fgateway-client.mjs%23onLine-ready-gate-and-id-correlation::home%2Fdot_dsh%2Fplugins%2Fomp-gateway::PROTOCOLS-RPC-AND-MESSAGING.md%23Callback%20and%20reply-correlation%20confusion",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs#json-line-protocol",
+      "boundary": "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs#onLine-ready-gate-and-id-correlation",
+      "subsystem": "home/dot_dsh/plugins/omp-gateway",
+      "attack_class": "PROTOCOLS-RPC-AND-MESSAGING.md#Callback and reply-correlation confusion"
+    },
+    "surface": "The JSON-line request/reply protocol over the child's stdin/stdout",
+    "boundary": "JSON.stringify framing, the ready gate, integer id/status checks and pending-id correlation",
+    "subsystem": "home/dot_dsh/plugins/omp-gateway (U240 DSH LlmAdapter plugin)",
+    "attack_class": "Message framing and reply correlation (protocols)",
+    "starting_paths": [
+      "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs",
+      "home/dot_dsh/plugins/omp-gateway/translate.mjs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+      "PROTOCOLS-RPC-AND-MESSAGING.md#Message boundary and canonicalization disagreement",
+      "PROTOCOLS-RPC-AND-MESSAGING.md#Callback and reply-correlation confusion",
+      "PROTOCOLS-RPC-AND-MESSAGING.md#Universal moves",
+      "PROTOCOLS-RPC-AND-MESSAGING.md#Validation rules",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#IPC peer-authentication gaps",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#IPC lifecycle and correlation confusion",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "assigned to the plugin-loading unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "assigned to the proof-runner unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "assigned to the error-text unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the lifecycle unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the plugin"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the translation unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the 15-file change is small enough that each file belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the stub, fixtures and tests unit"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the unit's path carries no model content or tool call"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no dependency, build or plugin-loading handoff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP server, session or identity flow: the /v1/messages path is a JSON field on a private pipe"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the plugin"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud, container or IAM configuration"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or other user's work: the child and its pending requests belong to the operator's own DSH process"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code or binary parser"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs",
+      "home/dot_dsh/plugins/omp-gateway/translate.mjs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs",
+          "home/dot_dsh/plugins/omp-gateway/translate.mjs"
+        ],
+        "invariant": "Model or user content cannot split or forge a request line, and a reply can satisfy only the request it names on the channel it came from",
+        "method": "source",
+        "result": "Each request is one JSON.stringify({id, path, body}) line (gateway-client.mjs:107); JSON.stringify escapes newline and carriage return inside strings, so no message text, tool schema or model id from toMessagesBody (translate.mjs:18-60) can end the line or add a second request. path is the constant /v1/messages (index.mjs:47). Replies arrive only on the stdout pipe of the child this client spawned (:132, :177-179); the pipes are private to that process pair, so no other local peer can write a reply. #onLine (:183-212) requires a JSON object, the ready line first, integer id and status, and an id that is pending; anything else is a protocol failure that rejects all pending requests and kills the child (:214-217). Request ids increase per client (:103). Lines from a replaced child are ignored (:178).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "readline imposes no line-length bound on the child's stdout (gateway-client.mjs:177); the child is the operator's own omp process, so this is robustness, not a boundary."
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Fproof%2Frun-proof.mjs%23scratch-home-writes::home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Fproof%2Frun-proof.mjs%23mkdtemp-or-operator-home::home%2Fdot_dsh%2Fplugins%2Fomp-gateway::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/plugins/omp-gateway/proof/run-proof.mjs#scratch-home-writes",
+      "boundary": "home/dot_dsh/plugins/omp-gateway/proof/run-proof.mjs#mkdtemp-or-operator-home",
+      "subsystem": "home/dot_dsh/plugins/omp-gateway",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": "What the proof runner writes and where: scratch DSH_HOME, profile, patch, symlinks, stub log, turn transcripts",
+    "boundary": "mkdtemp scratch home (or the operator's --home), rmSync without recursion, symlinkSync",
+    "subsystem": "home/dot_dsh/plugins/omp-gateway (U240 DSH LlmAdapter plugin)",
+    "attack_class": "Resource and file handling",
+    "starting_paths": [
+      "home/dot_dsh/plugins/omp-gateway/proof/run-proof.mjs",
+      "home/dot_dsh/plugins/omp-gateway/proof/ping-tool.patch.yml",
+      "home/dot_dsh/plugins/omp-gateway/proof/ping-tool/index.mjs",
+      "home/dot_dsh/plugins/omp-gateway/proof/ping-tool/package.json"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Local file ownership and TOCTOU",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the spawn and line-framing units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "assigned to the plugin-loading unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "assigned to the error-text unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the lifecycle unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the plugin"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the translation unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the 15-file change is small enough that each file belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the stub, fixtures and tests unit"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the unit's path carries no model content or tool call"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "the unit has no wire framing or reply correlation of its own"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no dependency, build or plugin-loading handoff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP server, session or identity flow: the /v1/messages path is a JSON field on a private pipe"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the plugin"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud, container or IAM configuration"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or other user's work: the child and its pending requests belong to the operator's own DSH process"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code or binary parser"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "home/dot_dsh/plugins/omp-gateway/proof/run-proof.mjs",
+      "home/dot_dsh/plugins/omp-gateway/proof/ping-tool.patch.yml",
+      "home/dot_dsh/plugins/omp-gateway/proof/ping-tool/index.mjs",
+      "home/dot_dsh/plugins/omp-gateway/proof/ping-tool/package.json"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "home/dot_dsh/plugins/omp-gateway/proof/run-proof.mjs",
+          "home/dot_dsh/plugins/omp-gateway/proof/ping-tool.patch.yml",
+          "home/dot_dsh/plugins/omp-gateway/proof/ping-tool/index.mjs",
+          "home/dot_dsh/plugins/omp-gateway/proof/ping-tool/package.json"
+        ],
+        "invariant": "The proof writes only inside its own home, never outside it through a link or a name",
+        "method": "source",
+        "result": "Round 2 removed only the shebang line (the file is not executable); round 3 drops the patch row's env override, so the gateway child gets the plugin's default allowlist (config.mjs:4-7: HOME, PATH, USER, LOGNAME, SHELL, locale, TERM, TMPDIR, XDG dirs; no credential variable) (proof/run-proof.mjs:44). home is a fresh mkdtemp directory (proof/run-proof.mjs:18; created 0700 by Node) unless the operator passes --home. Every write is join(home, fixed names): the profile dir and node_modules (:26-27), the package.json and cordis.patch.yml (:31-46), stub.log (:21, removed with force at :28), and the turn transcripts named from fixed titles (:64-65). link() removes a path with rmSync(path, {force: true}) without recursion and then symlinks it (:74-77), so an existing directory makes the run fail rather than delete it. The ping tool returns the word and hostname() only (proof/ping-tool/index.mjs). The runner is an operator command and nothing in the repository runs it.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "The proof's scratch profile disables DSH's bash-sandbox (proof/run-proof.mjs:41) and passes dsh the full environment (:63); with --command omp it drives the real model through headless turns with no command sandbox. The two prompts are fixed, so this is the operator's own proof run; keeping bash-sandbox on, or allowing real-gateway runs only with the stub's fixed replies, would narrow it."
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Fstub-gateway.mjs%23stub-fixtures-tests::home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Ftest%23mkdtemp-scratch::home%2Fdot_dsh%2Fplugins%2Fomp-gateway::ATTACK-CLASSES.md%23Obvious%20things",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/plugins/omp-gateway/stub-gateway.mjs#stub-fixtures-tests",
+      "boundary": "home/dot_dsh/plugins/omp-gateway/test#mkdtemp-scratch",
+      "subsystem": "home/dot_dsh/plugins/omp-gateway",
+      "attack_class": "ATTACK-CLASSES.md#Obvious things"
+    },
+    "surface": "The stub gateway, fixtures.json and the node tests",
+    "boundary": "Fixture-only replies, mkdtemp scratch, no credential material",
+    "subsystem": "home/dot_dsh/plugins/omp-gateway (U240 DSH LlmAdapter plugin)",
+    "attack_class": "Obvious things",
+    "starting_paths": [
+      "home/dot_dsh/plugins/omp-gateway/stub-gateway.mjs",
+      "home/dot_dsh/plugins/omp-gateway/fixtures.json",
+      "home/dot_dsh/plugins/omp-gateway/test/config.test.mjs",
+      "home/dot_dsh/plugins/omp-gateway/test/gateway-client.test.mjs",
+      "home/dot_dsh/plugins/omp-gateway/test/stub-gateway.test.mjs",
+      "home/dot_dsh/plugins/omp-gateway/test/translate.test.mjs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the spawn and line-framing units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "assigned to the plugin-loading unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "assigned to the proof-runner unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "assigned to the error-text unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the lifecycle unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the plugin"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the translation unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the 15-file change is small enough that each file belongs to an assigned unit"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the unit's path carries no model content or tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the unit has no local process or file boundary of its own"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "the unit has no wire framing or reply correlation of its own"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no dependency, build or plugin-loading handoff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP server, session or identity flow: the /v1/messages path is a JSON field on a private pipe"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the plugin"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud, container or IAM configuration"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or other user's work: the child and its pending requests belong to the operator's own DSH process"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code or binary parser"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "home/dot_dsh/plugins/omp-gateway/stub-gateway.mjs",
+      "home/dot_dsh/plugins/omp-gateway/fixtures.json",
+      "home/dot_dsh/plugins/omp-gateway/test/config.test.mjs",
+      "home/dot_dsh/plugins/omp-gateway/test/gateway-client.test.mjs",
+      "home/dot_dsh/plugins/omp-gateway/test/stub-gateway.test.mjs",
+      "home/dot_dsh/plugins/omp-gateway/test/translate.test.mjs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "home/dot_dsh/plugins/omp-gateway/stub-gateway.mjs",
+          "home/dot_dsh/plugins/omp-gateway/fixtures.json",
+          "home/dot_dsh/plugins/omp-gateway/test/config.test.mjs",
+          "home/dot_dsh/plugins/omp-gateway/test/gateway-client.test.mjs",
+          "home/dot_dsh/plugins/omp-gateway/test/stub-gateway.test.mjs",
+          "home/dot_dsh/plugins/omp-gateway/test/translate.test.mjs"
+        ],
+        "invariant": "The fixtures and tests hold no secret, reach no network, and write only to scratch",
+        "method": "source",
+        "result": "fixtures.json holds measured message bodies and model ids (message and tool-use ids, token counts), and no credential or token. A search for token, secret, api key, bearer, password and key headers finds only token-count fields. The stub (round 2 removed only its shebang) answers from fixtures and appends its log only to the path given by --log, or writes to stderr. The gateway-client tests write under mkdtempSync(tmpdir()) (test/gateway-client.test.mjs:15) and spawn only the stub through process.execPath, or in-process EventEmitter fakes that spawn nothing (:53-86). The translate tests, including the forged-tag and EMPTY_RESPONSE tests, are pure function calls over in-memory objects (test/translate.test.mjs:64-153, :201-207).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": []
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Ftranslate.mjs%23foldSystem-dsh-system-block::home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Ftranslate.mjs%23system-text-provenance::home%2Fdot_dsh%2Fplugins%2Fomp-gateway::AI-AND-LLM.md%23Prompt%20role%20and%20provenance%20confusion",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/plugins/omp-gateway/translate.mjs#foldSystem-dsh-system-block",
+      "boundary": "home/dot_dsh/plugins/omp-gateway/translate.mjs#system-text-provenance",
+      "subsystem": "home/dot_dsh/plugins/omp-gateway",
+      "attack_class": "AI-AND-LLM.md#Prompt role and provenance confusion"
+    },
+    "surface": "The <dsh-system> tagged text block that carries DSH's system text inside the first user turn (round 2)",
+    "boundary": "The block is built from options.system and system-role rows only; no code reads the tag",
+    "subsystem": "home/dot_dsh/plugins/omp-gateway (U240 DSH LlmAdapter plugin)",
+    "attack_class": "Prompt role and provenance confusion (AI/LLM)",
+    "starting_paths": [
+      "home/dot_dsh/plugins/omp-gateway/translate.mjs",
+      "home/dot_dsh/plugins/omp-gateway/stub-gateway.mjs",
+      "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs",
+      "home/dot_dsh/plugins/omp-gateway/test/translate.test.mjs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Prompt role and provenance confusion",
+      "AI-AND-LLM.md#Indirect injection through retrieved or ingested content",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the spawn and line-framing units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "assigned to the plugin-loading unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "assigned to the proof-runner unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "assigned to the error-text unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the lifecycle unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the plugin"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the 15-file change is small enough that each file belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the stub, fixtures and tests unit"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the unit has no local process or file boundary of its own"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "the unit has no wire framing or reply correlation of its own"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no dependency, build or plugin-loading handoff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP server, session or identity flow: the /v1/messages path is a JSON field on a private pipe"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the plugin"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud, container or IAM configuration"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or other user's work: the child and its pending requests belong to the operator's own DSH process"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code or binary parser"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "home/dot_dsh/plugins/omp-gateway/translate.mjs",
+      "home/dot_dsh/plugins/omp-gateway/test/translate.test.mjs",
+      "home/dot_dsh/plugins/omp-gateway/stub-gateway.mjs",
+      "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "home/dot_dsh/plugins/omp-gateway/translate.mjs",
+          "home/dot_dsh/plugins/omp-gateway/test/translate.test.mjs"
+        ],
+        "invariant": "User content cannot enter or escape the <dsh-system> block, and a forged block gains no authority a user turn lacks",
+        "method": "source",
+        "result": "foldSystem (translate.mjs:185-190) builds one separate {type: 'text'} block from the collected system text only: options.system (:20) and system-role rows (:24-28); user, assistant and tool rows never contribute (:29-38). It unshifts that block in front of the first user message's own content array, or inserts a user message holding it alone (:188-189), so user text blocks stay separate JSON blocks and cannot end or extend the system block's text. The arrays it mutates are built inside toMessagesBody (append :170-175, userContent :199-206), not DSH's history objects. Since round 2 sends no system field (:49), the block is itself user-turn text: a user or tool-result text that spells <dsh-system>...</dsh-system> carries exactly the provenance the folded block has, user-turn text, and no more. System text that contains </dsh-system> ends the tag early. That moves the rest of the text down to plain user-turn text, never up. The tests pin the shapes, and two round-3 tests pass a user text holding a forged <dsh-system>...</dsh-system> with and without system text and assert it stays the user block it was (test/translate.test.mjs:64-153).",
+        "artifact": null
+      },
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "home/dot_dsh/plugins/omp-gateway/stub-gateway.mjs",
+          "home/dot_dsh/plugins/omp-gateway/gateway-client.mjs"
+        ],
+        "invariant": "No code makes a deterministic trust decision on the tag",
+        "method": "source",
+        "result": "SYSTEM_BLOCK_TAG is defined at translate.mjs:10 and used only by foldSystem (:186) and the test (test/translate.test.mjs:4, :62, :71, :130, :145). A search for dsh-system and SYSTEM_BLOCK_TAG across the plugin finds no reader; the stub selects replies by path, model and the last message's text (stub-gateway.mjs:23-35), and the client writes the body as one JSON line without inspecting it (gateway-client.mjs:107). The model's interpretation of the tag is the only consumer, and the AI companion's core discipline does not count model persuasion without a deterministic control as a boundary failure.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "The <dsh-system> tag is a model-visible convention, not a trust boundary: since no system field is sent, DSH's own instructions (and any project instruction text DSH folds into its system prompt) reach the model with user-turn provenance under the gateway's preset prompt. If a later reader ever treats a <dsh-system> block as authoritative, it must take the block only from the leading position the adapter writes, and the adapter would then need to escape the tag in user and tool text."
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Ftranslate.mjs%23messages-and-chunks::home%2Fdot_dsh%2Fplugins%2Fomp-gateway%2Ftranslate.mjs%23toMessagesBody-toChunks::home%2Fdot_dsh%2Fplugins%2Fomp-gateway::AI-AND-LLM.md%23Tool-argument%20injection%20into%20a%20downstream%20sink",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/plugins/omp-gateway/translate.mjs#messages-and-chunks",
+      "boundary": "home/dot_dsh/plugins/omp-gateway/translate.mjs#toMessagesBody-toChunks",
+      "subsystem": "home/dot_dsh/plugins/omp-gateway",
+      "attack_class": "AI-AND-LLM.md#Tool-argument injection into a downstream sink"
+    },
+    "surface": "Translation of DSH requests into Anthropic bodies and of model replies into DSH chunks, including tool calls",
+    "boundary": "Role mapping, tool-call and tool-result translation, the dropped unknown block kinds",
+    "subsystem": "home/dot_dsh/plugins/omp-gateway (U240 DSH LlmAdapter plugin)",
+    "attack_class": "Model output to tool calls (AI/LLM)",
+    "starting_paths": [
+      "home/dot_dsh/plugins/omp-gateway/translate.mjs",
+      "home/dot_dsh/plugins/omp-gateway/index.mjs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Tool-argument injection into a downstream sink",
+      "AI-AND-LLM.md#Prompt role and provenance confusion",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the spawn and line-framing units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "assigned to the plugin-loading unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "assigned to the proof-runner unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "assigned to the error-text unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the lifecycle unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the plugin"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the 15-file change is small enough that each file belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the stub, fixtures and tests unit"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the unit has no local process or file boundary of its own"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "the unit has no wire framing or reply correlation of its own"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no dependency, build or plugin-loading handoff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP server, session or identity flow: the /v1/messages path is a JSON field on a private pipe"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the plugin"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud, container or IAM configuration"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or other user's work: the child and its pending requests belong to the operator's own DSH process"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code or binary parser"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "home/dot_dsh/plugins/omp-gateway/translate.mjs",
+      "home/dot_dsh/plugins/omp-gateway/index.mjs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "home/dot_dsh/plugins/omp-gateway/translate.mjs",
+          "home/dot_dsh/plugins/omp-gateway/index.mjs"
+        ],
+        "invariant": "The adapter neither widens a tool call's authority nor lets content change its role or provenance",
+        "method": "source",
+        "result": "toMessagesBody (translate.mjs:18-60) keeps DSH's typed roles: system rows (:24-28) and options.system (:20) are collected and folded into one leading tagged block of the first user turn (:49, :185-190; covered by its own unit), user and assistant rows map to their roles, tool rows become tool_result blocks with the DSH toolCallId (:228-232), and developer rows are dropped; text is never parsed for role markers. toChunks (:68-103; an empty content array throws EMPTY_RESPONSE at :74-76) yields a tool-call chunk with the model's id, name and JSON.stringify(input) (:89-94) and drops unknown block kinds; it executes nothing. Tool lookup, argument validation, approval and sandboxing are DSH's own (outside the target); the adapter passes the same call any other LlmAdapter would. Attachments are replaced by a placeholder (:199-206), so no file content is read here.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": []
+  },
+  {
+    "coverage_id": "home%2Fdot_local%2Fbin%2Fcommon%2Fexecutable_brief-check.py%23deployed-copy-and-pin::home%2Fdot_agents%2Fagent-config.yaml%23claude.levers.sha256.brief-check.py::scripts%2Forchestrator%2Fbrief-check.py::SUPPLY-CHAIN-AND-RELEASE.md%23Generated-source%20and%20codegen%20provenance%20gaps",
+    "canonical_refs": {
+      "surface": "home/dot_local/bin/common/executable_brief-check.py#deployed-copy-and-pin",
+      "boundary": "home/dot_agents/agent-config.yaml#claude.levers.sha256.brief-check.py",
+      "subsystem": "scripts/orchestrator/brief-check.py",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    },
+    "surface": "The deployed copy executable_brief-check.py, its sha256 pin in the manifest and the generated-outputs record",
+    "boundary": "The lever self-check against claude.levers.sha256 and the generator's byte-identical copy",
+    "subsystem": "scripts/orchestrator/brief-check.py and its deployed copy (U249 lever change)",
+    "attack_class": "Generated-source and codegen provenance gaps (supply chain)",
+    "starting_paths": [
+      "scripts/orchestrator/brief-check.py",
+      "home/dot_local/bin/common/executable_brief-check.py",
+      "home/dot_agents/agent-config.yaml",
+      "scripts/generated-agent-outputs.json"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "the brief text reaches no shell, query or template sink: it is matched by compiled regexes and printed in reason lines"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "the checker decides no principal's authority; the coordinator writes and reads briefs"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the checker opens the named brief and its own manifest read-only and writes nothing"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the sha256 self-check is unchanged in mechanism; only the pin value moved (assigned to the pin unit)"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the gate-rule and scope-detection units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or disclosure feature"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "assigned to the exit-code unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the tests and README unit"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the checker is a deterministic parser over brief text; no model, prompt or tool call is in the change"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC, helper or privileged local file operation: the checker reads one brief and the manifest and writes nothing"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no wire protocol or message broker"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP or identity flow"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser surface"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud or CI configuration change"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "the patterns are fixed alternations of literal terms, linear in the brief's length, run once per brief by the coordinator"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no data store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "pure Python; no native parser"
+      }
+    ],
+    "prior_status": "prior_covered_changed_source",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4 (U249 head effff558), where it was covered with no candidate. This head (U240, 2256b56c) descends from d1ecd495 without U249, so the brief-check change it covered is absent here; outside the U240 change and out of scope for this run."
+    ]
+  },
+  {
+    "coverage_id": "install%23unchanged-paths::scope%23outside-U226-diff::install::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "install#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "install",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "install: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "install",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "install"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": "plans%23unchanged-paths::scope%23outside-U226-diff::plans::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "plans#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "plans",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "plans: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "plans",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "plans"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": "repository-root-files%23unchanged-paths::scope%23outside-U226-diff::repository-root-files::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "repository-root-files#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "repository-root-files",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "repository-root-files: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "repository-root-files",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "Dockerfile",
+      "Makefile",
+      "README.md",
+      "setup.sh",
+      "mise.toml",
+      "renovate.json",
+      "ruff.toml",
+      "mkdocs.yml",
+      "codecov.yml",
+      ".gitignore",
+      ".shellcheckrc",
+      ".coderabbit.yaml",
+      ".chezmoiroot",
+      ".editorconfig",
+      ".prettierignore",
+      ".simplecov",
+      "LICENSE"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": "scripts%23unchanged-paths::scope%23outside-U226-diff::scripts::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "scripts#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "scripts",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "scripts: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "scripts",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "scripts"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fgenerate-agent-configs.py%23--set-asset::scripts%2Fgenerate-agent-configs.py%23set_asset_field::scripts%2Fgenerate-agent-configs.py::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "scripts/generate-agent-configs.py#--set-asset",
+      "boundary": "scripts/generate-agent-configs.py#set_asset_field",
+      "subsystem": "scripts/generate-agent-configs.py",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "generate-agent-configs.py --set-asset NAME.ref_commit=VALUE (operator CLI) rewriting the manifest text",
+    "boundary": "SETTABLE_ASSET_FIELD, COMMIT_VALUE, PLAIN_PIN_VALUE, the indented-line rewrite and the parse-back equality check",
+    "subsystem": "scripts/generate-agent-configs.py",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "scripts/generate-agent-configs.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the updater control-flow unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the supply-chain build-input unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the test-module unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit's sinks are shell and JSON encoding inside the updater or generator, with no build-input or release handoff of their own"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1 (U226 he"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fgenerate-agent-configs.py%23render_asset_constants%2FDSH_COMMIT::scripts%2Fgenerate-agent-configs.py%23render_asset_constants%2FPLAIN_PIN_VALUE-and-check::scripts%2Fgenerate-agent-configs.py::SUPPLY-CHAIN-AND-RELEASE.md%23Generated-source%20and%20codegen%20provenance%20gaps",
+    "canonical_refs": {
+      "surface": "scripts/generate-agent-configs.py#render_asset_constants/DSH_COMMIT",
+      "boundary": "scripts/generate-agent-configs.py#render_asset_constants/PLAIN_PIN_VALUE-and-check",
+      "subsystem": "scripts/generate-agent-configs.py",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    },
+    "surface": "Render of assets.deepseek-harness.ref_commit into the tracked constant DSH_COMMIT in scripts/lib/installer-pins.sh",
+    "boundary": "render_asset_constants' value rule and quoted-assignment rewrite, plus CI's --check drift gate",
+    "subsystem": "scripts/generate-agent-configs.py",
+    "attack_class": "Generated-source and codegen provenance gaps (supply chain)",
+    "starting_paths": [
+      "scripts/generate-agent-configs.py",
+      "scripts/lib/installer-pins.sh",
+      "scripts/validate-agent-assets.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the updater control-flow unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the supply-chain build-input unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the test-module unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Dependency source and namespace confusion",
+        "reason": "the diff changes no resolver configuration; pnpm install --frozen-lockfile is unchanged and reads the sha256-pinned archive's own lockfile"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Build-context inclusion",
+        "reason": "nothing is packaged or published from the target; the build output stays in the operator's install tree"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Untrusted code in a privileged workflow",
+        "reason": "no workflow file changed; the CI gates that run on pull_request are read as controls only"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Workflow command and expression confusion",
+        "reason": "no workflow file changed"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Cache, artifact, and workspace trust mixing",
+        "reason": "no CI cache or artifact is produced or consumed by the change"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+        "reason": "no CI permission or token changed"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Build-to-promotion substitution",
+        "reason": "nothing is promoted or released"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Release authorization and signing-policy gaps",
+        "reason": "upstream publishes no signature or attestation; the reviewed sha256 is the stated check and is unchanged"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Update metadata and rollback confusion",
+        "reason": "covered by the supply-chain build-input unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+        "reason": "covered by the supply-chain build-input unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion",
+        "reason": "the profile plugin install is unchanged by the diff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1 (U226 he"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fbrief-check.py%23ACCEPTANCE-gate-terms::scripts%2Forchestrator%2Fbrief-check.py%23gates-GATE_WORDS::scripts%2Forchestrator%2Fbrief-check.py::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/brief-check.py#ACCEPTANCE-gate-terms",
+      "boundary": "scripts/orchestrator/brief-check.py#gates-GATE_WORDS",
+      "subsystem": "scripts/orchestrator/brief-check.py",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "A brief's ACCEPTANCE text matched against the GATES table",
+    "boundary": "gates() and GATE_WORDS: one whole-word term of each class lint and test",
+    "subsystem": "scripts/orchestrator/brief-check.py and its deployed copy (U249 lever change)",
+    "attack_class": "Business logic (rule satisfiable without the control)",
+    "starting_paths": [
+      "scripts/orchestrator/brief-check.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "the brief text reaches no shell, query or template sink: it is matched by compiled regexes and printed in reason lines"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "the checker decides no principal's authority; the coordinator writes and reads briefs"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the checker opens the named brief and its own manifest read-only and writes nothing"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the sha256 self-check is unchanged in mechanism; only the pin value moved (assigned to the pin unit)"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or disclosure feature"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the pin and deployed-copy unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "assigned to the exit-code unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the tests and README unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no build, generated-copy or release handoff of its own"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the checker is a deterministic parser over brief text; no model, prompt or tool call is in the change"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC, helper or privileged local file operation: the checker reads one brief and the manifest and writes nothing"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no wire protocol or message broker"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP or identity flow"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser surface"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud or CI configuration change"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "the patterns are fixed alternations of literal terms, linear in the brief's length, run once per brief by the coordinator"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no data store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "pure Python; no native parser"
+      }
+    ],
+    "prior_status": "prior_covered_changed_source",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4 (U249 head effff558), where it was covered with no candidate. This head (U240, 2256b56c) descends from d1ecd495 without U249, so the brief-check change it covered is absent here; outside the U240 change and out of scope for this run."
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fbrief-check.py%23SCOPE-repository-paths::scripts%2Forchestrator%2Fbrief-check.py%23scope_paths-in_repository::scripts%2Forchestrator%2Fbrief-check.py::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/brief-check.py#SCOPE-repository-paths",
+      "boundary": "scripts/orchestrator/brief-check.py#scope_paths-in_repository",
+      "subsystem": "scripts/orchestrator/brief-check.py",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "A brief's SCOPE text read for repository paths that switch the gate rule on",
+    "boundary": "scope_paths() and in_repository(): backticked whitespace-free spans that are relative and more than a bare word",
+    "subsystem": "scripts/orchestrator/brief-check.py and its deployed copy (U249 lever change)",
+    "attack_class": "Business logic (rule trigger detection)",
+    "starting_paths": [
+      "scripts/orchestrator/brief-check.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "the brief text reaches no shell, query or template sink: it is matched by compiled regexes and printed in reason lines"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "the checker decides no principal's authority; the coordinator writes and reads briefs"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the checker opens the named brief and its own manifest read-only and writes nothing"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the sha256 self-check is unchanged in mechanism; only the pin value moved (assigned to the pin unit)"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or disclosure feature"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the pin and deployed-copy unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "assigned to the exit-code unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the tests and README unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no build, generated-copy or release handoff of its own"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the checker is a deterministic parser over brief text; no model, prompt or tool call is in the change"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC, helper or privileged local file operation: the checker reads one brief and the manifest and writes nothing"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no wire protocol or message broker"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP or identity flow"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser surface"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud or CI configuration change"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "the patterns are fixed alternations of literal terms, linear in the brief's length, run once per brief by the coordinator"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no data store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "pure Python; no native parser"
+      }
+    ],
+    "prior_status": "prior_covered_changed_source",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4 (U249 head effff558), where it was covered with no candidate. This head (U240, 2256b56c) descends from d1ecd495 without U249, so the brief-check change it covered is absent here; outside the U240 change and out of scope for this run."
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fbrief-check.py%23malformed-brief-exit-codes::scripts%2Forchestrator%2Fbrief-check.py%23main-exit-0-1-2::scripts%2Forchestrator%2Fbrief-check.py::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/brief-check.py#malformed-brief-exit-codes",
+      "boundary": "scripts/orchestrator/brief-check.py#main-exit-0-1-2",
+      "subsystem": "scripts/orchestrator/brief-check.py",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "Brief text that could crash the checker into an exit code the levers misread",
+    "boundary": "main(): 0 passes, 1 refuses with reason lines, 2 cannot read or not a brief; the lever self-check exits 2",
+    "subsystem": "scripts/orchestrator/brief-check.py and its deployed copy (U249 lever change)",
+    "attack_class": "Wildcard (failure-path exit codes)",
+    "starting_paths": [
+      "scripts/orchestrator/brief-check.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "the brief text reaches no shell, query or template sink: it is matched by compiled regexes and printed in reason lines"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "the checker decides no principal's authority; the coordinator writes and reads briefs"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the checker opens the named brief and its own manifest read-only and writes nothing"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the sha256 self-check is unchanged in mechanism; only the pin value moved (assigned to the pin unit)"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the gate-rule and scope-detection units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or disclosure feature"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the pin and deployed-copy unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the tests and README unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no build, generated-copy or release handoff of its own"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the checker is a deterministic parser over brief text; no model, prompt or tool call is in the change"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC, helper or privileged local file operation: the checker reads one brief and the manifest and writes nothing"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no wire protocol or message broker"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP or identity flow"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser surface"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud or CI configuration change"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "the patterns are fixed alternations of literal terms, linear in the brief's length, run once per brief by the coordinator"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no data store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "pure Python; no native parser"
+      }
+    ],
+    "prior_status": "prior_covered_changed_source",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4 (U249 head effff558), where it was covered with no candidate. This head (U240, 2256b56c) descends from d1ecd495 without U249, so the brief-check change it covered is absent here; outside the U240 change and out of scope for this run."
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23DSH_COMMIT-sinks::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness%2FDSH_COMMIT-refusal::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#DSH_COMMIT-sinks",
+      "boundary": "scripts/update-agent-assets.sh#update_deepseek_harness/DSH_COMMIT-refusal",
+      "subsystem": "scripts/update-agent-assets.sh#update_deepseek_harness",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "The DSH_COMMIT value at its shell and receipt sinks: the refusal printf, the prefix assignment on the build, dsh_record's command string",
+    "boundary": "The 40-lowercase-hex refusal and the receipt's JSON encoding",
+    "subsystem": "update_deepseek_harness (scripts/update-agent-assets.sh)",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/lib/asset-manifest.sh",
+      "home/dot_local/bin/common/executable_remove-agent-asset"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the updater control-flow unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the supply-chain build-input unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the test-module unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit's sinks are shell and JSON encoding inside the updater or generator, with no build-input or release handoff of their own"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1 (U226 he"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness%2Fbuild-environment-inheritance::scope%23outside-U226-diff::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#update_deepseek_harness/build-environment-inheritance",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "scripts/update-agent-assets.sh#update_deepseek_harness",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    },
+    "surface": "The full inherited environment of the upstream build (every DSH_CLIENT_* variable reaches the client artifacts)",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "update_deepseek_harness (scripts/update-agent-assets.sh)",
+    "attack_class": "Mutable and unbound build inputs (supply chain)",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness%2Fcontrol-flow::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness%2Ffail-closed-ordering::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#update_deepseek_harness/control-flow",
+      "boundary": "scripts/update-agent-assets.sh#update_deepseek_harness/fail-closed-ordering",
+      "subsystem": "scripts/update-agent-assets.sh#update_deepseek_harness",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "update_deepseek_harness control flow around the new refusal: opt-in, already-installed exit, repair mode, fresh install",
+    "boundary": "Fail-closed ordering: the refusal runs before any read, download, build or record",
+    "subsystem": "update_deepseek_harness (scripts/update-agent-assets.sh)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the injection units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the supply-chain build-input unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the test-module unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit's sinks are shell and JSON encoding inside the updater or generator, with no build-input or release handoff of their own"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1 (U226 he"
+    ]
+  },
+  {
+    "coverage_id": "tests%23unchanged-paths::scope%23outside-U226-diff::tests::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "tests#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "tests",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "tests: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "tests",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "tests"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  },
+  {
+    "coverage_id": "tests%2Funit%23U226-changed-test-modules::tests%2Funit%23scratch-HOME-and-stubs::tests%2Funit::ATTACK-CLASSES.md%23Obvious%20things",
+    "canonical_refs": {
+      "surface": "tests/unit#U226-changed-test-modules",
+      "boundary": "tests/unit#scratch-HOME-and-stubs",
+      "subsystem": "tests/unit",
+      "attack_class": "ATTACK-CLASSES.md#Obvious things"
+    },
+    "surface": "The three changed test modules: DSH stubs and fixtures, generator set-asset fixtures, the network-bounds exemption",
+    "boundary": "Test isolation (temporary HOME, stubbed curl and mise) and the exact-line exemption table",
+    "subsystem": "tests/unit",
+    "attack_class": "Obvious things",
+    "starting_paths": [
+      "tests/unit/test_update_agent_assets.py",
+      "tests/unit/test_generate_agent_configs.py",
+      "tests/unit/test_network_bounds.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the injection units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the updater control-flow unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the supply-chain build-input unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit's sinks are shell and JSON encoding inside the updater or generator, with no build-input or release handoff of their own"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1 (U226 he"
+    ]
+  },
+  {
+    "coverage_id": "tests%2Funit%2Ftest_brief_check.py%23U249-tests-and-README::tests%2Funit%2Ftest_brief_check.py%23TemporaryDirectory-scratch::scripts%2Forchestrator%2Fbrief-check.py::ATTACK-CLASSES.md%23Obvious%20things",
+    "canonical_refs": {
+      "surface": "tests/unit/test_brief_check.py#U249-tests-and-README",
+      "boundary": "tests/unit/test_brief_check.py#TemporaryDirectory-scratch",
+      "subsystem": "scripts/orchestrator/brief-check.py",
+      "attack_class": "ATTACK-CLASSES.md#Obvious things"
+    },
+    "surface": "The new and changed brief-check tests and the README sentence",
+    "boundary": "Scratch TemporaryDirectory, python -I subprocesses, no secret",
+    "subsystem": "scripts/orchestrator/brief-check.py and its deployed copy (U249 lever change)",
+    "attack_class": "Obvious things",
+    "starting_paths": [
+      "tests/unit/test_brief_check.py",
+      "scripts/orchestrator/README.md"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "the brief text reaches no shell, query or template sink: it is matched by compiled regexes and printed in reason lines"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "the checker decides no principal's authority; the coordinator writes and reads briefs"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the checker opens the named brief and its own manifest read-only and writes nothing"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the sha256 self-check is unchanged in mechanism; only the pin value moved (assigned to the pin unit)"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the gate-rule and scope-detection units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or disclosure feature"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the pin and deployed-copy unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "assigned to the exit-code unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit has no build, generated-copy or release handoff of its own"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the checker is a deterministic parser over brief text; no model, prompt or tool call is in the change"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC, helper or privileged local file operation: the checker reads one brief and the manifest and writes nothing"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no wire protocol or message broker"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP or identity flow"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser surface"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no cloud or CI configuration change"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "the patterns are fixed alternations of literal terms, linear in the brief's length, run once per brief by the coordinator"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no data store"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "pure Python; no native parser"
+      }
+    ],
+    "prior_status": "prior_covered_changed_source",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4 (U249 head effff558), where it was covered with no candidate. This head (U240, 2256b56c) descends from d1ecd495 without U249, so the brief-check change it covered is absent here; outside the U240 change and out of scope for this run."
+    ]
+  },
+  {
+    "coverage_id": "vendor%23unchanged-paths::scope%23outside-U226-diff::vendor::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "vendor#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "vendor",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "vendor: every path outside the U240 plugin directory",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "vendor",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "vendor"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "prior_out_of_scope",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Carried from run-4, where it was out of scope. Outside the U240 change (d1ecd495..2256b56c); no coverage claim. run-4 reason: Carried from run-3, where it was out of scope. Outside the U249 change (b49be338..effff558); no coverage claim. run-3 reason: Carried from run-2 (U240 head dc336b67), where it was out of scope. Outside the U240 change (d1ecd495..6531a212); no coverage claim. run-2 reason: Carried from run-1, where i"
+    ]
+  }
+]

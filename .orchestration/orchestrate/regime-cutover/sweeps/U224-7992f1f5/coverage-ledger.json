@@ -1,0 +1,1332 @@
+[
+  {
+    "coverage_id": ".claude::.claude::.claude::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": ".claude",
+      "boundary": ".claude",
+      "subsystem": ".claude",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": ".claude",
+    "boundary": ".claude",
+    "subsystem": ".claude",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      ".claude"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 27 paths of git diff c4195463..7992f1f5 are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": ".github::.github::.github::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": ".github",
+      "boundary": ".github",
+      "subsystem": ".github",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": ".github",
+    "boundary": ".github",
+    "subsystem": ".github",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      ".github"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 27 paths of git diff c4195463..7992f1f5 are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": ".orchestration::.orchestration::.orchestration::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": ".orchestration",
+      "boundary": ".orchestration",
+      "subsystem": ".orchestration",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": ".orchestration",
+    "boundary": ".orchestration",
+    "subsystem": ".orchestration",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      ".orchestration"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 27 paths of git diff c4195463..7992f1f5 are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": ".ua::.ua::.ua::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": ".ua",
+      "boundary": ".ua",
+      "subsystem": ".ua",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": ".ua",
+    "boundary": ".ua",
+    "subsystem": ".ua",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      ".ua"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 27 paths of git diff c4195463..7992f1f5 are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "docs::docs::docs::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "docs",
+      "boundary": "docs",
+      "subsystem": "docs",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "docs",
+    "boundary": "docs",
+    "subsystem": "docs",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "docs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 27 paths of git diff c4195463..7992f1f5 are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "git-diff%23c4195463..7992f1f5::git-diff%23c4195463..7992f1f5::scoped-diff::ATTACK-CLASSES.md%23Obvious%20things",
+    "canonical_refs": {
+      "surface": "git-diff#c4195463..7992f1f5",
+      "boundary": "git-diff#c4195463..7992f1f5",
+      "subsystem": "scoped-diff",
+      "attack_class": "ATTACK-CLASSES.md#Obvious things"
+    },
+    "surface": "the 27 changed paths",
+    "boundary": "repository content",
+    "subsystem": "scoped diff",
+    "attack_class": "Obvious things",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "home/.chezmoiremove",
+      "home/dot_agents/agent-config.yaml",
+      "README.md"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "README.md",
+      "home/.chezmoiremove",
+      "home/dot_agents/agent-config.yaml",
+      "home/dot_claude/rules/understand-anything.md.tmpl",
+      "home/dot_config/claude/rules/project-map.md",
+      "home/dot_config/claude/rules/understand-anything.md",
+      "home/dot_local/bin/common/executable_ua-symbol-coverage",
+      "home/dot_mise/config.toml",
+      "scripts/check-agent-runtime.py",
+      "scripts/update-agent-assets.sh",
+      "scripts/validate-agent-assets.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "scripts/update-agent-assets.sh",
+          "home/.chezmoiremove",
+          "home/dot_agents/agent-config.yaml",
+          "README.md",
+          "scripts/check-agent-runtime.py",
+          "scripts/validate-agent-assets.py",
+          "home/dot_config/claude/rules/project-map.md",
+          "home/dot_mise/config.toml",
+          "home/dot_claude/rules/understand-anything.md.tmpl",
+          "home/dot_config/claude/rules/understand-anything.md",
+          "home/dot_local/bin/common/executable_ua-symbol-coverage"
+        ],
+        "invariant": "no secret, credential file, debug switch, eval or new download is added",
+        "method": "source",
+        "result": "a scan of every added line of the diff for password, secret, api key, token, bearer, private-key headers, eval, curl, wget and rm -rf found none; no credential file is added.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "home%23unchanged-paths::home::home::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "home#unchanged-paths",
+      "boundary": "home",
+      "subsystem": "home",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "home (paths outside the diff)",
+    "boundary": "home",
+    "subsystem": "home",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "home"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: the changed paths of home are covered by the in-scope units; every other path under home is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "home%2F.chezmoiremove::home%2F.chezmoiremove%23chezmoi-apply-removal::home::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "home/.chezmoiremove",
+      "boundary": "home/.chezmoiremove#chezmoi-apply-removal",
+      "subsystem": "home",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": ".chezmoiremove retirement rows",
+    "boundary": "chezmoi apply removal of listed targets",
+    "subsystem": "home (chezmoi source)",
+    "attack_class": "Resource and file handling",
+    "starting_paths": [
+      "home/.chezmoiremove"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "home/.chezmoiremove"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "home/.chezmoiremove"
+        ],
+        "invariant": "each added row removes only the retired target",
+        "method": "source",
+        "result": "the 14 added rows (.chezmoiremove:37-50) are literal relative paths with no glob characters, all under the operator's home and all owned by the retired installer or the deleted sources; the generated block adds .claude/rules/understand-anything.md. No row matches a neighbour (for example .agents/skills/understand is exact and does not match understand-chat).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fagent-config.yaml%23assets.claude-plugins.plugins::scripts%2Fupdate-agent-assets.sh%23converge_claude_plugins::home%2Fdot_agents::SUPPLY-CHAIN-AND-RELEASE.md%23Plugin%20and%20extension%20trust%20expansion",
+    "canonical_refs": {
+      "surface": "home/dot_agents/agent-config.yaml#assets.claude-plugins.plugins",
+      "boundary": "scripts/update-agent-assets.sh#converge_claude_plugins",
+      "subsystem": "home/dot_agents",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    },
+    "surface": "Claude plugin pin list (understand-anything removed)",
+    "boundary": "pin convergence and disable of off-pin plugins",
+    "subsystem": "home/dot_agents (manifest)",
+    "attack_class": "Plugin and extension trust expansion",
+    "starting_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "scripts/plugin-pins.json",
+      "scripts/update-agent-assets.sh",
+      "scripts/check-agent-runtime.py"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "scripts/check-agent-runtime.py",
+      "scripts/plugin-pins.json",
+      "scripts/update-agent-assets.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "home/dot_agents/agent-config.yaml",
+          "scripts/plugin-pins.json",
+          "scripts/update-agent-assets.sh",
+          "scripts/check-agent-runtime.py"
+        ],
+        "invariant": "a plugin that leaves the pin list is not left enabled and unreviewed on a converged host",
+        "method": "source",
+        "result": "the pin row is gone (agent-config.yaml:1494-1500, plugin-pins.json), so converge_claude_plugins no longer checks or disables understand-anything; retire_understand_anything uninstalls every recorded installation and removes the marketplace (update-agent-assets.sh:2380-2445); make doctor still warns for an enabled third-party plugin without a pin (check-agent-runtime.py:928-929). No reachable path leaves it enabled after a successful run.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "If retire_understand_anything fails or is skipped (no claude), nothing disables the plugin any more; disabling it at user scope before the uninstall would keep the fail-closed property the pin convergence had."
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fagent-config.yaml%23skills.audience::scripts%2Fgenerate-agent-configs.py%23--check::home%2Fdot_agents::SUPPLY-CHAIN-AND-RELEASE.md%23Generated-source%20and%20codegen%20provenance%20gaps",
+    "canonical_refs": {
+      "surface": "home/dot_agents/agent-config.yaml#skills.audience",
+      "boundary": "scripts/generate-agent-configs.py#--check",
+      "subsystem": "home/dot_agents",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    },
+    "surface": "skills audience and standing rules (manifest)",
+    "boundary": "generator render-check",
+    "subsystem": "home/dot_agents (manifest)",
+    "attack_class": "Generated-source and codegen provenance gaps",
+    "starting_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "scripts/generated-agent-outputs.json",
+      "home/dot_codex/AGENTS.md.tmpl",
+      "home/.chezmoiremove",
+      "scripts/plugin-pins.json"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "home/.chezmoiremove",
+      "home/dot_agents/agent-config.yaml",
+      "home/dot_codex/AGENTS.md.tmpl",
+      "scripts/generated-agent-outputs.json",
+      "scripts/plugin-pins.json"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "home/dot_agents/agent-config.yaml",
+          "scripts/generated-agent-outputs.json",
+          "home/dot_codex/AGENTS.md.tmpl",
+          "home/.chezmoiremove",
+          "scripts/plugin-pins.json"
+        ],
+        "invariant": "every generated output follows the manifest edit",
+        "method": "source",
+        "result": "the manifest drops the standing rule, nine audience lines and the plugin pin (agent-config.yaml:30-40, 70-103, 1494-1500); the generated include list (AGENTS.md.tmpl:2-5), the generated .chezmoiremove block, plugin-pins.json and generated-agent-outputs.json are the generator's output for that manifest, and make render-check enforces equality. No hand-edited generated content.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "home%2Fdot_local%2Fbin%2Fcommon%2Fexecutable_remove-agent-asset%23path_is_in_safe_root::home%2Fdot_local%2Fbin%2Fcommon%2Fexecutable_remove-agent-asset%23path_is_in_safe_root::home%2Fdot_local%2Fbin::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "home/dot_local/bin/common/executable_remove-agent-asset#path_is_in_safe_root",
+      "boundary": "home/dot_local/bin/common/executable_remove-agent-asset#path_is_in_safe_root",
+      "subsystem": "home/dot_local/bin",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": "remove-agent-asset",
+    "boundary": "removable-root allowlist",
+    "subsystem": "home/dot_local/bin (levers)",
+    "attack_class": "Resource and file handling",
+    "starting_paths": [
+      "home/dot_local/bin/common/executable_remove-agent-asset"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "home/dot_local/bin/common/executable_remove-agent-asset"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "home/dot_local/bin/common/executable_remove-agent-asset"
+        ],
+        "invariant": "the change only narrows what the lever may delete",
+        "method": "source",
+        "result": "the ~/.understand-anything/repo root is dropped and the one-item loop becomes a direct normalize_root_path + path_has_prefix check with the same non-strict semantics (executable_remove-agent-asset:107-110); the allowlist shrinks, nothing is added.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "install::install::install::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "install",
+      "boundary": "install",
+      "subsystem": "install",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "install",
+    "boundary": "install",
+    "subsystem": "install",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "install"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 27 paths of git diff c4195463..7992f1f5 are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "plans::plans::plans::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "plans",
+      "boundary": "plans",
+      "subsystem": "plans",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "plans",
+    "boundary": "plans",
+    "subsystem": "plans",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "plans"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 27 paths of git diff c4195463..7992f1f5 are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "repository-root-files::repository-root-files::repository-root-files::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "repository-root-files",
+      "boundary": "repository-root-files",
+      "subsystem": "repository-root-files",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "root files (Makefile, setup.sh, Dockerfile, AGENTS.md and the rest)",
+    "boundary": "repository root",
+    "subsystem": "repository root",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "Makefile"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: README.md is covered by the in-scope units; the other root files are unchanged by the unit (Makefile was read only to establish make update order)"
+    ]
+  },
+  {
+    "coverage_id": "scripts%23unchanged-paths::scripts::scripts::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "scripts#unchanged-paths",
+      "boundary": "scripts",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "scripts (paths outside the diff)",
+    "boundary": "scripts",
+    "subsystem": "scripts",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "scripts"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: the changed paths of scripts are covered by the in-scope units; every other path under scripts is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fcheck-agent-runtime.py%23installer_owned_skill_names::scripts%2Fcheck-agent-runtime.py%23compare_shared_skills::scripts::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/check-agent-runtime.py#installer_owned_skill_names",
+      "boundary": "scripts/check-agent-runtime.py#compare_shared_skills",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "make doctor skill ownership",
+    "boundary": "unmanaged-skill and orphan reporting",
+    "subsystem": "scripts (doctor)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "scripts/check-agent-runtime.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "scripts/check-agent-runtime.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "scripts/check-agent-runtime.py"
+        ],
+        "invariant": "removing the allowlist does not hide a stale or foreign skill",
+        "method": "source",
+        "result": "UNDERSTAND_SKILL_ALLOWLIST is gone, so installer_owned_skill_names (check-agent-runtime.py:523-540) no longer exempts understand*; a leftover link is now reported as unmanaged or orphaned. The removed core-build warning and step names concern only the retired component. Detection widens; nothing is hidden.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23main::scripts%2Fupdate-agent-assets.sh%23main::scripts::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#main",
+      "boundary": "scripts/update-agent-assets.sh#main",
+      "subsystem": "scripts",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    },
+    "surface": "make update step list",
+    "boundary": "installers run by main",
+    "subsystem": "scripts (updater)",
+    "attack_class": "Mutable and unbound build inputs",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "scripts/update-agent-assets.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "scripts/update-agent-assets.sh"
+        ],
+        "invariant": "the change adds no unpinned input to the update path",
+        "method": "source",
+        "result": "the removed steps fetched a pinned upstream install script by commit and sha256 and ran it; the change deletes that fetch and adds only retire_understand_anything, which fetches nothing (update-agent-assets.sh:2380-2445). Four removed curl lines, no added network call in the diff.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23retire_understand_anything::scripts%2Fpin_records.py%23claude_marketplace_state::scripts::SUPPLY-CHAIN-AND-RELEASE.md%23Plugin%20and%20extension%20trust%20expansion",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#retire_understand_anything",
+      "boundary": "scripts/pin_records.py#claude_marketplace_state",
+      "subsystem": "scripts",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    },
+    "surface": "retire_understand_anything (make update step)",
+    "boundary": "marketplace identity check before removal",
+    "subsystem": "scripts (updater)",
+    "attack_class": "Plugin and extension trust expansion",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/pin_records.py"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "scripts/pin_records.py",
+      "scripts/update-agent-assets.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "scripts/update-agent-assets.sh",
+          "scripts/pin_records.py"
+        ],
+        "invariant": "the step removes only the marketplace registered from the recorded source",
+        "method": "source",
+        "result": "state comes from claude_marketplace_state (pin_records.py:619-635): registered only for a github source whose repo equals Egonex-AI/Understand-Anything; foreign is left with a WARN (update-agent-assets.sh:2426-2443). No removal of another publisher's marketplace.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "`claude plugin marketplace remove` also uninstalls every other plugin the operator installed from the same marketplace by hand; the step names only understand-anything in its output."
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23retire_understand_anything::scripts%2Fpin_records.py%23load_claude_installs::scripts::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#retire_understand_anything",
+      "boundary": "scripts/pin_records.py#load_claude_installs",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "retire_understand_anything (make update step)",
+    "boundary": "strict installed_plugins.json reader",
+    "subsystem": "scripts (updater)",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/pin_records.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "scripts/pin_records.py",
+      "scripts/update-agent-assets.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "scripts/update-agent-assets.sh",
+          "scripts/pin_records.py"
+        ],
+        "invariant": "no value read from installed_plugins.json or the marketplace list reaches a shell or an argument position other than as one quoted word",
+        "method": "source",
+        "result": "plugin id and marketplace name are constants (update-agent-assets.sh:2381-2382); scope is restricted to CLAUDE_SCOPES by the reader (pin_records.py:60, 573-575) and to user|project|local by the case (2395-2417); projectPath is one quoted cd operand (2408); count is jq length over pin_records' json.dumps list (pin_records.py:1130-1142, update-agent-assets.sh:2392) so the arithmetic loop sees an integer; jq filters interpolate only the loop index (2394, 2404); the listing goes through the strict claude_marketplace_state parser (pin_records.py:619-635, update-agent-assets.sh:2425). No injection path.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23retire_understand_anything::scripts%2Fupdate-agent-assets.sh%23claude_outside_projects::scripts::ATTACK-CLASSES.md%23Chained%20vulnerabilities%20and%20trust%20boundaries",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#retire_understand_anything",
+      "boundary": "scripts/update-agent-assets.sh#claude_outside_projects",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries"
+    },
+    "surface": "retire_understand_anything (make update step)",
+    "boundary": "claude runs outside any project (claude_outside_projects) and user-scope-only management",
+    "subsystem": "scripts (updater)",
+    "attack_class": "Chained vulnerabilities and trust boundaries",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/pin_records.py",
+      "home/dot_agents/agent-config.yaml",
+      "README.md"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "README.md",
+      "home/dot_agents/agent-config.yaml",
+      "scripts/pin_records.py",
+      "scripts/update-agent-assets.sh",
+      "tests/unit/test_update_agent_assets.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "scripts/update-agent-assets.sh",
+          "scripts/pin_records.py"
+        ],
+        "invariant": "every claude invocation of the updater runs from a fresh empty directory so no project's .claude settings take part (update-agent-assets.sh:349-361), and make update manages user-scope installations only (update-agent-assets.sh:566-567, 594-596)",
+        "method": "source",
+        "result": "retire_understand_anything runs `claude plugin uninstall understand-anything@understand-anything --scope project|local` with cwd set to the projectPath recorded in installed_plugins.json (update-agent-assets.sh:2403-2408), outside claude_outside_projects; pin_records accepts any non-empty projectPath string (pin_records.py:582-584). Whether that CLI call evaluates a code-running setting of the project's .claude/settings.json or settings.local.json is not source-visible.",
+        "artifact": null
+      },
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "home/dot_agents/agent-config.yaml",
+          "README.md"
+        ],
+        "invariant": "the documented management boundary: only the user-scope installation is managed; project and local installations belong to their project",
+        "method": "source",
+        "result": "agent-config.yaml:1461-1463 and README.md:1253-1257 state the boundary; the new step acts on project and local installations and edits the project's own plugin settings through the CLI.",
+        "artifact": null
+      },
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "tests/unit/test_update_agent_assets.py"
+        ],
+        "invariant": "regression coverage of the project-scope branch",
+        "method": "source",
+        "result": "test_retire_understand_anything_uninstalls_a_project_scope_from_its_project (test_update_agent_assets.py:4083-4087) asserts the call runs in the project directory with a fake claude; it does not model project settings.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "retire-understand-anything:project-scope-cwd"
+    ],
+    "unresolved": [
+      "independent candidate validation unavailable: the seat's tool policy denies the Task tool (tools.approval.task: deny), so no fresh verifier could run; the candidate stays unvalidated in the ledger and is not in findings.json",
+      "decisive fact not source-visible: whether `claude plugin uninstall --scope project|local` run inside a project directory reads and executes any project-controlled setting (for example apiKeyHelper, hooks, statusLine, env) without the workspace-trust prompt"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23retire_understand_anything::scripts%2Fupdate-agent-assets.sh%23main::scripts::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#retire_understand_anything",
+      "boundary": "scripts/update-agent-assets.sh#main",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "retire_understand_anything (make update step)",
+    "boundary": "set -Eeuo pipefail ordering in main",
+    "subsystem": "scripts (updater)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/pin_records.py",
+      "Makefile",
+      "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "Makefile",
+      "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl",
+      "scripts/pin_records.py",
+      "scripts/update-agent-assets.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "scripts/update-agent-assets.sh",
+          "scripts/pin_records.py"
+        ],
+        "invariant": "a failed record read or claude command stops the step (fail closed) and cannot skip the Claude plugin pin convergence",
+        "method": "source",
+        "result": "every read and command is checked (update-agent-assets.sh:2388-2443); main calls the step after converge_claude_plugins (2636-2637) under set -Eeuo pipefail (11), so a failure ends the run non-zero after the Claude pin checks; later steps (Codex plugins, manifest prune, hook-trust refresh) are skipped, the same effect any earlier failing step already has; a skipped hook-trust refresh leaves Codex hooks untrusted (fail closed).",
+        "artifact": null
+      },
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "Makefile",
+          "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl"
+        ],
+        "invariant": "order of chezmoi removals and the updater on make update",
+        "method": "source",
+        "result": "make update runs chezmoi apply (Makefile:124) before scripts/update-agent-assets.sh (133); the updater is also rendered into a run_once_after chezmoi script (run_once_after_06-install-agent-assets.sh.tmpl:3-4), so the cache and marketplace clone are removed before the uninstall runs. Robustness only: same principal.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "A `managed`-scope record (pin_records.py:60 accepts it) makes the step fail with `unexpected installation scope` on every make update until the record changes; consider reporting managed scope as not ours instead of failing.",
+      "make update deletes the plugin cache and marketplace clone (chezmoi apply) before `claude plugin uninstall` runs; if the CLI refuses to uninstall a plugin whose files are gone, every make update fails on that host. The coordinator's host proof after merge observes this."
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23retire_understand_anything::tests%2Funit%2Ftest_update_agent_assets.py%23RetireUnderstandAnythingTest::tests::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#retire_understand_anything",
+      "boundary": "tests/unit/test_update_agent_assets.py#RetireUnderstandAnythingTest",
+      "subsystem": "tests",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "retire_understand_anything tests",
+    "boundary": "regression coverage",
+    "subsystem": "tests (unit)",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "tests/unit/test_update_agent_assets.py",
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "scripts/update-agent-assets.sh",
+      "tests/unit/test_update_agent_assets.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "tests/unit/test_update_agent_assets.py",
+          "scripts/update-agent-assets.sh"
+        ],
+        "invariant": "the untested edges of the new step hold no security consequence",
+        "method": "source",
+        "result": "the seven tests (test_update_agent_assets.py:3978-4094) cover user scope, nothing present, unreadable record, failed uninstall, no claude, project scope and a foreign marketplace; untested: managed scope (fails closed), a failed marketplace list (fails closed), a failed marketplace remove (fails closed). No untested path proceeds after a failure.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "scripts%2Fvalidate-agent-assets.py%23main::scripts%2Fvalidate-agent-assets.py%23main::scripts::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/validate-agent-assets.py#main",
+      "boundary": "scripts/validate-agent-assets.py#main",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "make validate-agent-assets",
+    "boundary": "asset validation gate",
+    "subsystem": "scripts (validator)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "scripts/validate-agent-assets.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "scripts/validate-agent-assets.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "scripts/validate-agent-assets.py"
+        ],
+        "invariant": "the removed checks guarded only the removed assets",
+        "method": "source",
+        "result": "validate_understand_anything_assets and its call are gone (validate-agent-assets.py:2660-2663 now calls the remaining validators); every token it required belonged to the removed installer, rule or README text. No check of a remaining asset was removed.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "tests%23changed-tests-and-lint-data::tests%2Funit%2Ftest_network_bounds.py%23EXEMPT::tests::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "tests#changed-tests-and-lint-data",
+      "boundary": "tests/unit/test_network_bounds.py#EXEMPT",
+      "subsystem": "tests",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "changed tests and lint data",
+    "boundary": "network-bound exemptions, comparison baseline and retired-term list",
+    "subsystem": "tests and lint data",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "tests/unit/test_network_bounds.py",
+      "scripts/lint-comparisons-baseline.tsv",
+      "scripts/retired-terms.tsv",
+      "tests/install/common/lifecycle.bats"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the change edits agent configuration and a plugin retirement step; it adds no prompt assembly, model context, or model-controlled action"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no local daemon, socket, IPC endpoint, or privileged helper is added or changed"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP surface, session, or identity protocol is in the changed paths"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunt-w1",
+    "reviewed_paths": [
+      "scripts/lint-comparisons-baseline.tsv",
+      "scripts/retired-terms.tsv",
+      "tests/install/common/lifecycle.bats",
+      "tests/unit/test_asset_manifest.py",
+      "tests/unit/test_check_agent_runtime.py",
+      "tests/unit/test_ci_workflows.py",
+      "tests/unit/test_graphify_asset.py",
+      "tests/unit/test_network_bounds.py",
+      "tests/unit/test_runtime_health.py",
+      "tests/unit/test_ua_symbol_coverage.py",
+      "tests/unit/test_update_agent_assets_ua_core.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-w1",
+        "reviewed_paths": [
+          "tests/unit/test_network_bounds.py",
+          "scripts/lint-comparisons-baseline.tsv",
+          "scripts/retired-terms.tsv",
+          "tests/install/common/lifecycle.bats",
+          "tests/unit/test_asset_manifest.py",
+          "tests/unit/test_check_agent_runtime.py",
+          "tests/unit/test_ci_workflows.py",
+          "tests/unit/test_graphify_asset.py",
+          "tests/unit/test_runtime_health.py",
+          "tests/unit/test_ua_symbol_coverage.py",
+          "tests/unit/test_update_agent_assets_ua_core.py"
+        ],
+        "invariant": "no removed exemption, baseline row, list row or test hides a check of code that remains",
+        "method": "source",
+        "result": "the removed network-bound exemptions named only the deleted curl and manifest_record lines; the removed comparison-baseline rows named only the deleted ua-symbol-coverage file; the retired-terms row keeps its `skip .ua/` key and changes prose only; every removed test or case exercised only removed code (the lifecycle.bats test, the two deleted modules, and the cases in the other modules). Removals make the lints stricter, not weaker.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "tests%23unchanged-paths::tests::tests::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "tests#unchanged-paths",
+      "boundary": "tests",
+      "subsystem": "tests",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "tests (paths outside the diff)",
+    "boundary": "tests",
+    "subsystem": "tests",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "tests"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: the changed paths of tests are covered by the in-scope units; every other path under tests is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "vendor::vendor::vendor::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "vendor",
+      "boundary": "vendor",
+      "subsystem": "vendor",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "vendor",
+    "boundary": "vendor",
+    "subsystem": "vendor",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "vendor"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 27 paths of git diff c4195463..7992f1f5 are in scope; this area is unchanged by the unit"
+    ]
+  }
+]

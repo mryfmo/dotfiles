@@ -1,0 +1,1248 @@
+[
+  {
+    "coverage_id": ".claude%23unchanged-paths::scope%23outside-U226-diff::.claude::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": ".claude#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": ".claude",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": ".claude: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": ".claude",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      ".claude"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it"
+    ]
+  },
+  {
+    "coverage_id": ".github%23unchanged-paths::scope%23outside-U226-diff::.github::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": ".github#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": ".github",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": ".github: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": ".github",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      ".github"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it; read only as the CI controls the in-scope units rely on (agent-assets.yml); no workflow changed"
+    ]
+  },
+  {
+    "coverage_id": ".orchestration%23unchanged-paths::scope%23outside-U226-diff::.orchestration::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": ".orchestration#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": ".orchestration",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": ".orchestration: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": ".orchestration",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      ".orchestration"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it"
+    ]
+  },
+  {
+    "coverage_id": ".ua%23unchanged-paths::scope%23outside-U226-diff::.ua::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": ".ua#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": ".ua",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": ".ua: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": ".ua",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      ".ua"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it"
+    ]
+  },
+  {
+    "coverage_id": "docs%23unchanged-paths::scope%23outside-U226-diff::docs::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "docs#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "docs",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "docs: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "docs",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "docs"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it"
+    ]
+  },
+  {
+    "coverage_id": "home%23unchanged-paths::scope%23outside-U226-diff::home::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "home#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "home",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "home: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "home",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "home"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it; home/dot_agents/agent-config.yaml's assets.deepseek-harness entry is in scope through its own units; every other path under home/ is not"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fagent-config.yaml%23assets.deepseek-harness.ref_commit::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness%2Farchive-sha256-and-DSH_COMMIT::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+    "canonical_refs": {
+      "surface": "home/dot_agents/agent-config.yaml#assets.deepseek-harness.ref_commit",
+      "boundary": "scripts/update-agent-assets.sh#update_deepseek_harness/archive-sha256-and-DSH_COMMIT",
+      "subsystem": "scripts/update-agent-assets.sh#update_deepseek_harness",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    },
+    "surface": "Reviewed manifest field ref_commit rendered to DSH_COMMIT and exported as DSH_CLIENT_COMMIT_HASH into the upstream build",
+    "boundary": "Pull-request author to the operator's host build: review, CI render and validator checks, the archive sha256 check, the DSH_COMMIT refusal",
+    "subsystem": "update_deepseek_harness (scripts/update-agent-assets.sh)",
+    "attack_class": "Mutable and unbound build inputs (supply chain)",
+    "starting_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "scripts/lib/installer-pins.sh",
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Update metadata and rollback confusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the injection units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the updater control-flow unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the test-module unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Dependency source and namespace confusion",
+        "reason": "the diff changes no resolver configuration; pnpm install --frozen-lockfile is unchanged and reads the sha256-pinned archive's own lockfile"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps",
+        "reason": "covered by the render unit (scripts/generate-agent-configs.py render of ref_commit), not by this unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Build-context inclusion",
+        "reason": "nothing is packaged or published from the target; the build output stays in the operator's install tree"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Untrusted code in a privileged workflow",
+        "reason": "no workflow file changed; the CI gates that run on pull_request are read as controls only"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Workflow command and expression confusion",
+        "reason": "no workflow file changed"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Cache, artifact, and workspace trust mixing",
+        "reason": "no CI cache or artifact is produced or consumed by the change"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+        "reason": "no CI permission or token changed"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Build-to-promotion substitution",
+        "reason": "nothing is promoted or released"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Release authorization and signing-policy gaps",
+        "reason": "upstream publishes no signature or attestation; the reviewed sha256 is the stated check and is unchanged"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion",
+        "reason": "the profile plugin install is unchanged by the diff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "scripts/lib/installer-pins.sh",
+      "scripts/update-agent-assets.sh",
+      "scripts/validate-agent-assets.py",
+      ".github/workflows/agent-assets.yml"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "home/dot_agents/agent-config.yaml",
+          "scripts/lib/installer-pins.sh",
+          "scripts/update-agent-assets.sh",
+          "scripts/validate-agent-assets.py",
+          ".github/workflows/agent-assets.yml"
+        ],
+        "invariant": "A value that reaches the host build from the manifest is a reviewed pin, gated by CI drift checks, and cannot replace or alter the verified archive",
+        "method": "source",
+        "result": "ref_commit (agent-config.yaml:1369) renders to installer-pins.sh:37, which CI checks for drift (agent-assets.yml:70 runs validate-agent-assets.py, whose validate_generated_agent_configs runs generate-agent-configs.py --check at :2101-2103). The updater sources installer-pins.sh at update-agent-assets.sh:51, refuses anything but 40 lowercase hex at :1967-1970 before any read or download, verifies the archive against DSH_ARCHIVE_SHA256 at :2141-2148 before unpacking at :2160, and only then exports the commit for the build at :2169. The commit selects no input: the archive URL derives from DSH_PIN_TAG (:97) and the bytes from the sha256 pin. No unbound input reaches the build through this change.",
+        "artifact": null
+      },
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "scripts/update-agent-assets.sh"
+        ],
+        "invariant": "What the upstream build does with DSH_CLIENT_COMMIT_HASH (read from the operator's installed upstream tree, outside the target, as context)",
+        "method": "source",
+        "result": "In the installed upstream tree, scripts/client-build-environment.ts:52-63 accepts the variable only when it matches /^[0-9a-f]{7,40}$/i and keeps the first 7 characters, lowercased, as public client build metadata (:13-14, :25-26); no download, path or code is selected by it. A wrong but well-formed commit mislabels the build and changes no integrity decision; the sha256 pin at update-agent-assets.sh:2145 remains the integrity check. Without the variable the build runs git rev-parse HEAD in the tree, which would read a parent repository's HEAD if one enclosed the install tree; the change removes that dependency.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "ref_commit is not bound to pin by any check: a tag bump that moves pin and sha256 but not ref_commit builds with the old commit as its label (metadata only; the sha256 still binds the bytes). A validator rule, or the bump procedure in the manifest reason, could require ref_commit to change whenever pin changes.",
+      "The build inherits the operator's whole environment, and upstream embeds every DSH_CLIENT_* variable it sees into the browser artifacts (installed tree client-build-environment.ts:13-14, :122). That passthrough existed before U226; running the build under an allowlisted environment would bound it."
+    ]
+  },
+  {
+    "coverage_id": "install%23unchanged-paths::scope%23outside-U226-diff::install::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "install#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "install",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "install: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "install",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "install"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it"
+    ]
+  },
+  {
+    "coverage_id": "plans%23unchanged-paths::scope%23outside-U226-diff::plans::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "plans#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "plans",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "plans: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "plans",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "plans"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it"
+    ]
+  },
+  {
+    "coverage_id": "repository-root-files%23unchanged-paths::scope%23outside-U226-diff::repository-root-files::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "repository-root-files#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "repository-root-files",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "repository-root-files: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "repository-root-files",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "Dockerfile",
+      "Makefile",
+      "README.md",
+      "setup.sh",
+      "mise.toml",
+      "renovate.json",
+      "ruff.toml",
+      "mkdocs.yml",
+      "codecov.yml",
+      ".gitignore",
+      ".shellcheckrc",
+      ".coderabbit.yaml",
+      ".chezmoiroot",
+      ".editorconfig",
+      ".prettierignore",
+      ".simplecov",
+      "LICENSE"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it; Makefile is read only for the render-check target"
+    ]
+  },
+  {
+    "coverage_id": "scripts%23unchanged-paths::scope%23outside-U226-diff::scripts::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "scripts#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "scripts",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "scripts: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "scripts",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "scripts"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it; the four changed scripts are in scope through their own units; every other path under scripts/ is not"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fgenerate-agent-configs.py%23--set-asset::scripts%2Fgenerate-agent-configs.py%23set_asset_field::scripts%2Fgenerate-agent-configs.py::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "scripts/generate-agent-configs.py#--set-asset",
+      "boundary": "scripts/generate-agent-configs.py#set_asset_field",
+      "subsystem": "scripts/generate-agent-configs.py",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "generate-agent-configs.py --set-asset NAME.ref_commit=VALUE (operator CLI) rewriting the manifest text",
+    "boundary": "SETTABLE_ASSET_FIELD, COMMIT_VALUE, PLAIN_PIN_VALUE, the indented-line rewrite and the parse-back equality check",
+    "subsystem": "scripts/generate-agent-configs.py",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "scripts/generate-agent-configs.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the updater control-flow unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the supply-chain build-input unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the test-module unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit's sinks are shell and JSON encoding inside the updater or generator, with no build-input or release handoff of their own"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "scripts/generate-agent-configs.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "scripts/generate-agent-configs.py"
+        ],
+        "invariant": "A --set-asset value cannot add YAML structure, reach another field, or carry shell metacharacters into a rendered constant",
+        "method": "source",
+        "result": "The field must fullmatch SETTABLE_ASSET_FIELD (generate-agent-configs.py:294, :300); ref_commit is admitted only at the asset's top level. A ref_commit value must fullmatch [0-9a-f]{40} (:295, :305-306), and every value must fullmatch [A-Za-z0-9._+-]+ (:293, :307), so no newline, colon-space, quote, $ or backtick is possible. set_asset_field rewrites the one line at the field's indent inside the named asset (:315-328). main() re-parses and requires the field to read back as the same string (:2847-2857); an all-digit 40-character value that YAML would read as an integer is refused there. The CLI caller is the repository maintainer, the same principal who can edit the manifest directly.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": []
+  },
+  {
+    "coverage_id": "scripts%2Fgenerate-agent-configs.py%23render_asset_constants%2FDSH_COMMIT::scripts%2Fgenerate-agent-configs.py%23render_asset_constants%2FPLAIN_PIN_VALUE-and-check::scripts%2Fgenerate-agent-configs.py::SUPPLY-CHAIN-AND-RELEASE.md%23Generated-source%20and%20codegen%20provenance%20gaps",
+    "canonical_refs": {
+      "surface": "scripts/generate-agent-configs.py#render_asset_constants/DSH_COMMIT",
+      "boundary": "scripts/generate-agent-configs.py#render_asset_constants/PLAIN_PIN_VALUE-and-check",
+      "subsystem": "scripts/generate-agent-configs.py",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    },
+    "surface": "Render of assets.deepseek-harness.ref_commit into the tracked constant DSH_COMMIT in scripts/lib/installer-pins.sh",
+    "boundary": "render_asset_constants' value rule and quoted-assignment rewrite, plus CI's --check drift gate",
+    "subsystem": "scripts/generate-agent-configs.py",
+    "attack_class": "Generated-source and codegen provenance gaps (supply chain)",
+    "starting_paths": [
+      "scripts/generate-agent-configs.py",
+      "scripts/lib/installer-pins.sh",
+      "scripts/validate-agent-assets.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the updater control-flow unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the supply-chain build-input unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the test-module unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Dependency source and namespace confusion",
+        "reason": "the diff changes no resolver configuration; pnpm install --frozen-lockfile is unchanged and reads the sha256-pinned archive's own lockfile"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Build-context inclusion",
+        "reason": "nothing is packaged or published from the target; the build output stays in the operator's install tree"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Untrusted code in a privileged workflow",
+        "reason": "no workflow file changed; the CI gates that run on pull_request are read as controls only"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Workflow command and expression confusion",
+        "reason": "no workflow file changed"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Cache, artifact, and workspace trust mixing",
+        "reason": "no CI cache or artifact is produced or consumed by the change"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+        "reason": "no CI permission or token changed"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Build-to-promotion substitution",
+        "reason": "nothing is promoted or released"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Release authorization and signing-policy gaps",
+        "reason": "upstream publishes no signature or attestation; the reviewed sha256 is the stated check and is unchanged"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Update metadata and rollback confusion",
+        "reason": "covered by the supply-chain build-input unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+        "reason": "covered by the supply-chain build-input unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion",
+        "reason": "the profile plugin install is unchanged by the diff"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "scripts/generate-agent-configs.py",
+      "scripts/lib/installer-pins.sh",
+      "scripts/validate-agent-assets.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "scripts/generate-agent-configs.py",
+          "scripts/lib/installer-pins.sh",
+          "scripts/validate-agent-assets.py"
+        ],
+        "invariant": "The tracked shell constant equals the reviewed manifest value and cannot carry shell syntax",
+        "method": "source",
+        "result": "render_asset_constants (generate-agent-configs.py:331-359) refuses a value outside PLAIN_PIN_VALUE (:353-354) and replaces only an existing NAME=\"...\" assignment whose old value holds no quote, $, backtick or backslash, exactly once per constant (:351, :355-357). installer-pins.sh:37 is that assignment. CI's validator runs the generator with --check (validate-agent-assets.py:2101-2103), so a hand edit of installer-pins.sh that disagrees with the manifest fails CI. No path lets the tracked constant differ from the reviewed field.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "The render path checks ref_commit only against the plain-value rule, not the 40-hex rule that --set-asset and the updater apply; a hand-edited non-hex ref_commit passes CI and is refused only on the host at install time (fail closed, exit 1). A validator rule for ref_commit's shape would move that failure into CI."
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23DSH_COMMIT-sinks::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness%2FDSH_COMMIT-refusal::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#DSH_COMMIT-sinks",
+      "boundary": "scripts/update-agent-assets.sh#update_deepseek_harness/DSH_COMMIT-refusal",
+      "subsystem": "scripts/update-agent-assets.sh#update_deepseek_harness",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "The DSH_COMMIT value at its shell and receipt sinks: the refusal printf, the prefix assignment on the build, dsh_record's command string",
+    "boundary": "The 40-lowercase-hex refusal and the receipt's JSON encoding",
+    "subsystem": "update_deepseek_harness (scripts/update-agent-assets.sh)",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/lib/asset-manifest.sh",
+      "home/dot_local/bin/common/executable_remove-agent-asset"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the updater control-flow unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the supply-chain build-input unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the test-module unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit's sinks are shell and JSON encoding inside the updater or generator, with no build-input or release handoff of their own"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/lib/asset-manifest.sh",
+      "home/dot_local/bin/common/executable_remove-agent-asset"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "scripts/update-agent-assets.sh"
+        ],
+        "invariant": "DSH_COMMIT is never parsed as shell code or a format string",
+        "method": "source",
+        "result": "Before the shape check the only sink is printf's %s argument (update-agent-assets.sh:1968), so the value is data. After the check at :1967 it is 40 lowercase hex. At :2169 it is a quoted prefix assignment (an environment value for mise and its children). At :1958 it is interpolated into a quoted argument of manifest_record. No eval, no unquoted expansion, no format-string position.",
+        "artifact": null
+      },
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "scripts/lib/asset-manifest.sh",
+          "home/dot_local/bin/common/executable_remove-agent-asset"
+        ],
+        "invariant": "The receipt stores the recorded build command as data, and no reader executes it",
+        "method": "source",
+        "result": "_manifest_record encodes the command list with jq -cn --args $ARGS.positional (asset-manifest.sh:74-75) and writes it with --argjson (:91) through a 0600 temporary file and mv (:80-122). The one reader of .commands, executable_remove-agent-asset:444-450, matches commands against fixed prefixes (claude/codex plugin, crit, brew install, herdr integration at :260-290, :325, :354) and runs none of them; 'DSH_CLIENT_COMMIT_HASH=<hex> pnpm run build' matches no prefix.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": []
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness%2Fbuild-environment-inheritance::scope%23outside-U226-diff::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#update_deepseek_harness/build-environment-inheritance",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "scripts/update-agent-assets.sh#update_deepseek_harness",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    },
+    "surface": "The full inherited environment of the upstream build (every DSH_CLIENT_* variable reaches the client artifacts)",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "update_deepseek_harness (scripts/update-agent-assets.sh)",
+    "attack_class": "Mutable and unbound build inputs (supply chain)",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Raised by the post-wave coverage critic: the build has inherited the operator's whole environment since before U226 (the diff only adds the commit's prefix assignment), so this scoped run records it out_of_scope; the in-scope build-input unit carries it as a hardening note for a later full run."
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness%2Fcontrol-flow::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness%2Ffail-closed-ordering::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#update_deepseek_harness/control-flow",
+      "boundary": "scripts/update-agent-assets.sh#update_deepseek_harness/fail-closed-ordering",
+      "subsystem": "scripts/update-agent-assets.sh#update_deepseek_harness",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "update_deepseek_harness control flow around the new refusal: opt-in, already-installed exit, repair mode, fresh install",
+    "boundary": "Fail-closed ordering: the refusal runs before any read, download, build or record",
+    "subsystem": "update_deepseek_harness (scripts/update-agent-assets.sh)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the injection units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the supply-chain build-input unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Obvious things",
+        "reason": "assigned to the test-module unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit's sinks are shell and JSON encoding inside the updater or generator, with no build-input or release handoff of their own"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "scripts/update-agent-assets.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "scripts/update-agent-assets.sh"
+        ],
+        "invariant": "Every path to the build passes the DSH_COMMIT refusal, and a refusal leaves no partial state",
+        "method": "source",
+        "result": "The refusal at update-agent-assets.sh:1967-1970 follows only the opt-in skip (:1961-1964) and precedes every producer read, the already-installed exit, repair mode (repair=1 at :2123) and the download (:2137). It returns 1 before anything is created or recorded. The only pnpm run build in the updater is :2169 (no parallel build path). The installer-pins.sh source at :51 overwrites an inherited DSH_COMMIT, and the prefix assignment at :2169 overrides an inherited DSH_CLIENT_COMMIT_HASH, so the operator's environment cannot substitute the pinned value on the make update path.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": []
+  },
+  {
+    "coverage_id": "tests%23unchanged-paths::scope%23outside-U226-diff::tests::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "tests#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "tests",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "tests: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "tests",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "tests"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it; the three changed test modules are in scope through their own unit; every other path under tests/ is not"
+    ]
+  },
+  {
+    "coverage_id": "tests%2Funit%23U226-changed-test-modules::tests%2Funit%23scratch-HOME-and-stubs::tests%2Funit::ATTACK-CLASSES.md%23Obvious%20things",
+    "canonical_refs": {
+      "surface": "tests/unit#U226-changed-test-modules",
+      "boundary": "tests/unit#scratch-HOME-and-stubs",
+      "subsystem": "tests/unit",
+      "attack_class": "ATTACK-CLASSES.md#Obvious things"
+    },
+    "surface": "The three changed test modules: DSH stubs and fixtures, generator set-asset fixtures, the network-bounds exemption",
+    "boundary": "Test isolation (temporary HOME, stubbed curl and mise) and the exact-line exemption table",
+    "subsystem": "tests/unit",
+    "attack_class": "Obvious things",
+    "starting_paths": [
+      "tests/unit/test_update_agent_assets.py",
+      "tests/unit/test_generate_agent_configs.py",
+      "tests/unit/test_network_bounds.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "assigned to the injection units"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "no caller-to-resource authorization decision in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Resource and file handling",
+        "reason": "the diff adds no path, archive or temp-file handling; the unchanged unpack and layout checks are outside the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "the commit is public metadata, not a secret or key; the sha256 check is unchanged"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Business logic",
+        "reason": "assigned to the updater control-flow unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+        "reason": "no export, search or preview feature in the diff"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+        "reason": "assigned to the supply-chain build-input unit"
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Wildcard",
+        "reason": "the scoped diff is small enough that each changed line belongs to an assigned unit"
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "the unit's sinks are shell and JSON encoding inside the updater or generator, with no build-input or release handoff of their own"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "no HTTP, session or identity surface in the diff"
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "no browser or DOM surface in the target diff; the upstream client artifacts are built outside the target"
+      },
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "no model context, tool call or prompt assembly in the diff"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, container or cloud configuration in the diff"
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "no RPC, queue or wire protocol in the diff"
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "no shared service or untrusted input-to-cost path; the updater runs once per operator command"
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "no multi-tenant store; the receipt is the operator's own file"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "no IPC endpoint, URI handler or privileged helper in the diff"
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "no native code, parser or loader in the diff"
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent-hunter",
+    "reviewed_paths": [
+      "tests/unit/test_update_agent_assets.py",
+      "tests/unit/test_generate_agent_configs.py",
+      "tests/unit/test_network_bounds.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "tests/unit/test_update_agent_assets.py",
+          "tests/unit/test_generate_agent_configs.py"
+        ],
+        "invariant": "The new tests hold no secret, reach no network, and write only inside their temporary directories",
+        "method": "source",
+        "result": "The DSH tests run update_deepseek_harness under a tempfile HOME with curl and mise as logging shell functions (test_update_agent_assets.py run_step and its stubs); the new mise stub writes only $HOME/build-commit inside that temporary HOME. The generator tests write the manifest and installer-pins.sh under self.temp_dir. The only commit literal is the public tag commit b830ec95..., which is not a secret.",
+        "artifact": null
+      },
+      {
+        "agent_id": "parent-hunter",
+        "reviewed_paths": [
+          "tests/unit/test_network_bounds.py"
+        ],
+        "invariant": "The changed exemption cannot exempt a line other than the reviewed manifest_record line",
+        "method": "source",
+        "result": "EXEMPT is keyed by (file, the whole stripped line, exactly) (test_network_bounds.py:103-106, lookup at :540), and a line that gains a command substitution is no longer exempt (:666-670). The edited key at :402 is the new dsh_record line only.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": []
+  },
+  {
+    "coverage_id": "vendor%23unchanged-paths::scope%23outside-U226-diff::vendor::scope%23all-attack-classes",
+    "canonical_refs": {
+      "surface": "vendor#unchanged-paths",
+      "boundary": "scope#outside-U226-diff",
+      "subsystem": "vendor",
+      "attack_class": "scope#all-attack-classes"
+    },
+    "surface": "vendor: every path not changed by U226",
+    "boundary": "Outside the scoped diff",
+    "subsystem": "vendor",
+    "attack_class": "All attack classes (scoped-run exclusion)",
+    "starting_paths": [
+      "vendor"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "outside the U226 diff (c4195463..0b475694); this scoped run seeds it out_of_scope and records no coverage claim for it"
+    ]
+  }
+]

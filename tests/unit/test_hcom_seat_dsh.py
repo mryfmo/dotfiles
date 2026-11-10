@@ -14,8 +14,9 @@ import json
 import os
 import re
 import shlex
-import signal
 import shutil
+import signal
+import socket
 import stat
 import subprocess
 import sys
@@ -120,6 +121,8 @@ FAKE_SRT = textwrap.dedent(
     os.execvp(command[0], command)
     """
 )
+# The fake dsh records its argv, cwd and environment, and whether the broker socket of its own state slot
+# (`<seats-root>/.state/<name>/broker/sock`, the parent of its scratch cwd; U344) exists when it starts.
 FAKE_DSH = textwrap.dedent(
     """\
     #!/usr/bin/env python3
@@ -128,6 +131,7 @@ FAKE_DSH = textwrap.dedent(
     with open(os.path.join(calls, "dsh"), "a") as record:
         record.write(json.dumps({{"argv": sys.argv[1:], "argv0": sys.argv[0], "cwd": os.getcwd(),
                                  "env": dict(os.environ),
+                                 "broker_sock": os.path.exists(os.path.join(os.path.dirname(os.getcwd()), "broker", "sock")),
                                  "cred_root_dir": os.path.isdir(os.path.join(os.environ.get("DSH_HOME", "/nonexistent"),
                                                                              "router-credentials"))}}) + "\\n")
     if os.path.exists(os.path.join(calls, "leave-locked")):
@@ -703,6 +707,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         cred = f"{self.dsh_home}/router-credentials"
         expected = copy.deepcopy(dsh)
         expected["network"]["allowLocalBinding"] = True
+        expected["network"]["allowUnixSockets"] = [broker_dir]
         expected["filesystem"]["allowWrite"].insert(6, state_root)
         expected["filesystem"]["allowRead"].append(cred)
         expected["filesystem"]["denyRead"].remove(cred)
@@ -719,8 +724,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual(router["filesystem"]["denyWrite"].count(broker_dir), 1, "the broker row once, in denyWrite")
         for kind in ("allowRead", "allowWrite", "denyRead"):
             self.assertNotIn(broker_dir, router["filesystem"][kind], f"the broker row is in no {kind} list")
-        # The flattened diff, U321's inserted row, U353's two rows and U343i's broker row taken out, is the one binding
-        # value and nothing else.
+        # The flattened diff, U321's inserted row, U353's two rows and U343i's broker row taken out, is the binding
+        # value and the broker's socket directory (U344) and nothing else.
         trimmed = copy.deepcopy(router)
         del trimmed["filesystem"]["allowWrite"][6]
         del trimmed["filesystem"]["allowRead"][7]
@@ -732,12 +737,275 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             for key in sorted(set(flat_dsh) | set(flat_router))
             if flat_dsh.get(key) != flat_router.get(key)
         }
-        self.assertEqual(diff, {"/network/allowLocalBinding": (False, True)})
+        self.assertEqual(
+            diff, {"/network/allowLocalBinding": (False, True), "/network/allowUnixSockets/0": (None, broker_dir)}
+        )
         dsh_call, router_call = self.dsh_calls()
         self.assertEqual(dsh_call["argv"], ["--version"])
         self.assertEqual(router_call["argv"], ["--profile", "router", "--version"])
         self.assertEqual((dsh_call["env"]["OMP_PROFILE"], router_call["env"]["OMP_PROFILE"]), ("dsh", "dsh"))
         self.assertEqual((dsh_call["env"]["DSH_HOME"], router_call["env"]["DSH_HOME"]), (str(self.dsh_home),) * 2)
+
+    def broker_answer(self, sock, header):
+        """What the broker listening on `sock` answers one connection that sends `header` and closes: connected by name
+        from the socket's directory, as the client does (the scratch path exceeds the 104-byte cap)."""
+        conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        conn.settimeout(60)
+        here = os.getcwd()
+        os.chdir(sock.parent)
+        try:
+            conn.connect(sock.name)
+        finally:
+            os.chdir(here)
+        conn.sendall(header.encode())
+        conn.shutdown(socket.SHUT_WR)
+        data = bytearray()
+        while chunk := conn.recv(1 << 16):
+            data += chunk
+        conn.close()
+        return bytes(data)
+
+    def test_the_router_settings_open_the_broker_directory_alone_and_the_other_roles_open_no_socket(self):
+        """U344 (M-24 part 2, test a): `network.allowUnixSockets` names exactly `<seats-root>/.state/<router seat>/
+        broker`, the directory the broker's socket lives in (U342 measured that srt opens the sockets under that
+        directory and nothing else), for the router row alone; the dsh row and the omp roles keep `[]`. A router dry
+        run prints the broker start a launch would make, the lever beside hcom-seat with the seats root, the seat
+        name and the scratch cwd, and makes nothing; a dsh dry run prints no such line."""
+        rendered = {}
+        for role in ("dsh", "router"):
+            procs = self.held_launch("--", "--version", role=role)
+            (name,) = self.slots()[0]
+            rendered[role] = (name, self.settings_of(name)["network"]["allowUnixSockets"])
+            ((status, out, err),) = self.release(procs)
+            self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        router_name, router_sockets = rendered["router"]
+        self.assertEqual(router_sockets, [f"{self.seats}/.state/{router_name}/broker"])
+        self.assertEqual(rendered["dsh"][1], [])
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.settings_of("worker")["network"]["allowUnixSockets"], [])
+        broker = test_hcom_seat.SEAT.parent / "acp-broker"
+        for role, count in (("router", 1), ("dsh", 0)):
+            with self.subTest(role=role):
+                before = self.slots()
+                run = self.seat(
+                    role, "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run", "--", "--version"
+                )
+                self.assertEqual(run.returncode, 0, run.stderr)
+                lines = [line for line in run.stderr.splitlines() if "starts the ACP broker" in line]
+                self.assertEqual(len(lines), count, run.stderr)
+                if count:
+                    self.assertRegex(
+                        lines[0],
+                        rf"^hcom-seat: a launch starts the ACP broker {re.escape(str(broker))} {re.escape(self.seats)} "
+                        rf"(router-\d{{8}}-\d{{6}}-\d+) {re.escape(self.seats)}/\.state/\1/cwd beside dsh and stops it when dsh exits$",
+                    )
+                self.assertEqual(self.slots(), before, "the dry run makes no slot")
+                self.assertFalse(list(Path(self.seats, ".state").glob("*/broker")), "the dry run starts no broker")
+
+    def test_a_router_launch_starts_the_broker_before_dsh_and_stops_it_when_dsh_exits_or_on_a_termination(self):
+        """U344 (M-24 part 2, test b): the router row starts `acp-broker`, the lever beside hcom-seat held to its pin,
+        after the settings are written and before the shim, so dsh finds `<seats-root>/.state/<name>/broker/sock`
+        at its start and a live broker answers on it (a bad header is one refusal line). When dsh exits the launch
+        stops the broker and reads its status: the socket, its directory and every process of the launch are gone
+        before the launch returns dsh's status. A SIGTERM to the launch's process group does the same through the
+        trap, the launch ending by the signal. The dsh row starts no broker and its dsh finds no socket.
+        U344c (verdict U344-a8adad11 P1 `hcom-seat:3414`, P2 `:3416`, P2 `test_hcom_seat_dsh.py:806`): the broker runs
+        from a private per-launch copy of its lever set, each file hashed against its pin before the first byte runs,
+        and the launch reads the broker's own listening line as the readiness sign; the failure paths, each from a
+        scratch tree laid out as the checkout: a manifest without the broker's pin refuses by name with nothing
+        started; a broker whose source was altered refuses by name, the digest the copy's, and the altered file printed
+        nothing; a stand-in broker that reports listening without a socket and exits 3 on TERM starts dsh (the line
+        is the sign) and the launch reports `exit 3`, exits 2, and the slots and the copy directory still go; the
+        renderer altered before either lever sources it refuses by name from both levers, and the altered file's first
+        line never ran (the auditor's reproduction inverted)."""
+        for sig in (None, signal.SIGTERM):
+            with self.subTest(signal=sig.name if sig else "dsh exits"):
+                (proc,) = self.held_launch("--", "--version", role="router", new_session=True)
+                (name,) = self.slots()[0]
+                sock = Path(self.seats, ".state", name, "broker/sock")
+                self.assertTrue(sock.is_socket(), f"the broker listens before dsh starts: {self.slots()}")
+                dsh_call = self.dsh_calls()[-1]
+                self.assertEqual(dsh_call["argv"], ["--profile", "router", "--version"])
+                self.assertTrue(dsh_call["broker_sock"], "dsh found the broker socket at its start")
+                answer = self.broker_answer(sock, "ACP-SEAT v0 cwd=/x name=w1\n")
+                self.assertRegex(
+                    answer,
+                    rb"^acp-broker: refused: the header 'ACP-SEAT v0 cwd=/x name=w1' does not begin 'ACP-SEAT v1'\n$",
+                )
+                self.assertTrue(sock.is_socket(), "the refusal leaves the listener up")
+                if sig is None:
+                    ((status, out, err),) = self.release([proc])
+                    self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+                else:
+                    os.killpg(proc.pid, sig)
+                    out, err = proc.communicate(timeout=60)
+                    (self.calls / "hold").unlink()
+                    self.assertEqual((proc.returncode, out), (-sig, ""), err)
+                self.assertFalse(sock.exists(), err)
+                self.assertFalse(sock.parent.exists(), err)
+                self.assertEqual(self.slots(), ([], []), err)
+                self.assertIn(f"acp-broker: listening on {sock}", err)
+                # No process of the launch outlives it: the broker, its relay and every handler were in its group.
+                deadline = time.monotonic() + 60
+                while True:
+                    try:
+                        os.killpg(proc.pid, 0)
+                    except ProcessLookupError:
+                        break
+                    if time.monotonic() > deadline:
+                        self.fail("a process of the launch (the broker or its relay) outlived it")
+                    time.sleep(0.05)
+        (proc,) = self.held_launch("--", "--version")
+        (name,) = self.slots()[0]
+        self.assertFalse(Path(self.seats, ".state", name, "broker").exists(), "the dsh row starts no broker")
+        self.assertFalse(self.dsh_calls()[-1]["broker_sock"])
+        ((status, out, err),) = self.release([proc])
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        self.assertNotIn("acp-broker", err)
+        # U344c: the failure paths, from scratch trees (the broker's lever set beside hcom-seat, the manifest two
+        # levels up), so a file or a pin can be altered without touching the tree the suite runs from.
+        marker = "U344C-ALTERED-FILE-RAN"
+
+        def nothing_started(run, before):
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertEqual(len(self.dsh_calls()), before, "dsh never started")
+            self.assertEqual(self.slots(), ([], []), run.stderr)
+            self.assertEqual(self.helper_copy_directories(), [], "no copy directory remains")
+            self.assertFalse(list(Path(self.seats, ".state").glob("*/broker/sock")), "no broker listens")
+            self.assertEqual(self.relay_processes(), [], "no relay of this seats root runs")
+            self.assertNotIn(marker, run.stderr + run.stdout, "the altered file printed nothing")
+
+        with self.subTest(case="a manifest without the broker's pin"):
+            tree = self.scratch_tree("tree-no-broker-pin")
+            self.tree_unpin(tree, "acp-broker")
+            before = len(self.dsh_calls())
+            run = self.tree_router(tree)
+            nothing_started(run, before)
+            self.assertIn("hcom-seat: no single sha256 pin for acp-broker in ", run.stderr)
+            self.assertIn("/home/dot_agents/agent-config.yaml; dsh not started\n", run.stderr)
+        with self.subTest(case="a broker whose source was altered"):
+            tree = self.scratch_tree("tree-altered-broker")
+            broker = tree / "scripts/orchestrator/acp-broker"
+            self.alter_first_line(broker, marker)
+            before = len(self.dsh_calls())
+            run = self.tree_router(tree)
+            nothing_started(run, before)
+            self.assertRegex(
+                run.stderr,
+                rf"hcom-seat: sha256 [0-9a-f]{{64}} of {re.escape(str(broker))} differs from the pin in "
+                rf"{re.escape(str(tree))}/scripts/orchestrator/\.\./\.\./home/dot_agents/agent-config\.yaml; "
+                r"the ACP broker's acp-broker is not the pinned one \(the digest is of the launch's copy "
+                rf"{re.escape(str(self.home))}/\.local/state/hcom-seat/acp-broker\.router-\d{{8}}-\d{{6}}-\d+/"
+                r"scripts/orchestrator/acp-broker\); dsh not started\n",
+            )
+        with self.subTest(case="a broker whose stop status is abnormal"):
+            tree = self.scratch_tree("tree-broker-exit-3")
+            broker = tree / "scripts/orchestrator/acp-broker"
+            broker.write_text(
+                "#!/bin/bash\n"
+                "# A stand-in broker: it reports listening without making a socket (the line is the sign, U344c) and\n"
+                "# exits 3 on TERM.\n"
+                "trap 'exit 3' TERM\n"
+                'printf "acp-broker: listening on %s/.state/%s/broker/sock\\n" "$1" "$2"\n'
+                "while :; do sleep 1; done\n"
+            )
+            self.tree_pin(tree, "acp-broker", broker)
+            before = len(self.dsh_calls())
+            run = self.tree_router(tree)
+            self.assertEqual((run.returncode, run.stdout), (2, "0.2.1-rc.5\n"), run.stderr)
+            self.assertEqual(len(self.dsh_calls()), before + 1, "dsh started once the listening line was read")
+            self.assertFalse(self.dsh_calls()[-1]["broker_sock"], "the stand-in made no socket; the line was the sign")
+            self.assertIn(
+                f"acp-broker: listening on {self.seats}/.state/{self.slot_name_of(run.stderr)}/broker/sock\n",
+                run.stderr,
+            )
+            self.assertIn("hcom-seat: the ACP broker exited 3 at its stop; its socket directory ", run.stderr)
+            self.assertIn(
+                "hcom-seat: dsh exited 0; the launch exits 2 because the ACP broker did not stop cleanly\n", run.stderr
+            )
+            self.assertEqual(self.slots(), ([], []), "the slots still go")
+            self.assertEqual(self.helper_copy_directories(), [], "the copy directory went after the broker's end")
+            self.assertEqual(self.relay_processes(), [])
+        with self.subTest(case="the renderer altered before the lever sources it"):
+            tree = self.scratch_tree("tree-altered-renderer")
+            renderer = tree / "scripts/orchestrator/seat-settings-render.sh"
+            self.alter_first_line(renderer, marker)
+            refusal = (
+                rf"sha256 [0-9a-f]{{64}} of {re.escape(str(renderer))} differs from the pin in "
+                rf"{re.escape(str(tree))}/scripts/orchestrator/\.\./\.\./home/dot_agents/agent-config\.yaml; "
+            )
+            for args in (["--dry-run"], []):
+                before = len(self.dsh_calls())
+                run = self.tree_router(tree, *args)
+                nothing_started(run, before)
+                self.assertRegex(
+                    run.stderr,
+                    "hcom-seat: " + refusal + r"the helper is not the pinned one \(the digest is of the lever's copy "
+                    rf"{re.escape(str(self.home))}/\.local/state/hcom-seat/seat-settings-render\.\d+/seat-settings-render\.sh\)\n",
+                )
+            # The broker from the same tree: its own self-check and the isolated git library pass (their bytes are
+            # the checkout's), and the renderer refuses by name before anything of it ran.
+            name = "router-20260101-000000-1"
+            run = subprocess.run(
+                ["/bin/bash", str(tree / "scripts/orchestrator/acp-broker"), self.seats, name, f"{self.seats}/.state/{name}/cwd"],
+                cwd=self.repo, env={**self.env, "DSH_HOME": str(self.dsh_home)}, capture_output=True, text=True, check=False,
+            )  # fmt: skip
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertRegex(
+                run.stderr,
+                "^acp-broker: refused: " + refusal + r"the settings writer is not the pinned one \(the digest is of "
+                rf"this process's copy {re.escape(str(self.home))}/\.local/state/hcom-seat/seat-settings-render\.\d+/"
+                r"seat-settings-render\.sh\)\n$",
+            )
+            self.assertNotIn(marker, run.stderr, "the altered file printed nothing")
+            self.assertEqual(self.helper_copy_directories(), [], "the broker's copy directory went with the refusal")
+            self.assertEqual(self.slots(), ([], []))
+
+    def tree_router(self, tree, *args, **overrides):
+        """A router launch of the scratch tree's hcom-seat (scratch_tree) run to its end, dsh `--version`."""
+        env = {**self.env, **overrides}
+        argv = [str(tree / "scripts/orchestrator/hcom-seat"), "router", "--seats-root", self.seats, "--home",
+                str(self.dsh_home), *args, "--", "--version"]  # fmt: skip
+        return subprocess.run(argv, cwd=self.repo, env=env, capture_output=True, text=True, check=False)
+
+    def tree_pin(self, tree, name, path):
+        """Pin `name` in the scratch tree's manifest to the sha256 of `path` (test_acp_broker's pin_lever form), so a
+        stand-in or altered lever passes the pin check that reads it."""
+        manifest = tree / "home/dot_agents/agent-config.yaml"
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        text, count = re.subn(
+            rf"(?m)^(      {re.escape(name)}: )[0-9a-f]{{64}}$", rf"\g<1>{digest}", manifest.read_text()
+        )
+        self.assertEqual(count, 1, f"one pin line for {name} in the scratch manifest")
+        manifest.write_text(text)
+
+    def tree_unpin(self, tree, name):
+        """Remove `name`'s pin line from the scratch tree's manifest."""
+        manifest = tree / "home/dot_agents/agent-config.yaml"
+        text, count = re.subn(rf"(?m)^      {re.escape(name)}: [0-9a-f]{{64}}\n", "", manifest.read_text())
+        self.assertEqual(count, 1, f"one pin line for {name} in the scratch manifest")
+        manifest.write_text(text)
+
+    def alter_first_line(self, path, marker):
+        """Insert `echo <marker> >&2` as the first line after the interpreter line of `path`, so a run of the altered
+        file before its digest is checked shows on stderr."""
+        lines = path.read_text().splitlines(keepends=True)
+        self.assertTrue(lines[0].startswith("#!"), lines[0])
+        path.write_text(lines[0] + f"echo {marker} >&2\n" + "".join(lines[1:]))
+
+    def slot_name_of(self, stderr):
+        """The router launch's per-launch seat name as its stderr names it (the one `router-<stamp>-<pid>` word)."""
+        names = sorted(set(re.findall(r"router-\d{8}-\d{6}-\d+", stderr)))
+        self.assertEqual(len(names), 1, names)
+        return names[0]
+
+    def relay_processes(self):
+        """The pids of relays listening for this test's seats root (`acp-relay.py <seats-root>/...`), by `pgrep -f`."""
+        run = subprocess.run(
+            ["pgrep", "-f", f"acp-relay.py {self.seats}/"], capture_output=True, text=True, check=False
+        )
+        return run.stdout.split()
 
     def test_the_router_role_runs_the_router_profile_alone(self):
         """U321: the router role's grants exist for the Router, so the role accepts the DSH profile `router` alone
@@ -1179,7 +1447,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         refused the denied home, where the dsh role refused without a write. Now the hold writes nothing and the make
         runs after the judgement, in a real launch alone: the router role refuses `~/.ssh` by the judge's name, exit 2,
         in a dry run and in a launch, as the dsh role does, nothing appears under `~/.ssh`, no seats root exists, and
-        the DEBUG-trap recorder shows the private tool directory's mkdir alone."""
+        the DEBUG-trap recorder shows the mkdirs of the lever's own state directory alone (the private tool directory
+        and, U344c, the settings writer's copy directory, removed once the writer is sourced)."""
         home = self.home.resolve()
         ssh = home / ".ssh"
         ssh.mkdir()
@@ -1198,7 +1467,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 commands = trace.read_text().split("\0")[:-1]
                 self.assertIn("settings_judge", " ".join(commands), "the refusal is the judge's")
                 mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
-                self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
+                self.assertTrue(mkdirs and all("tools_dir" in c or "renderer_slot" in c for c in mkdirs), mkdirs)
+                self.assertEqual(
+                    sorted(p.name for p in self.tools.parent.iterdir()), ["tools"], "the copy directory is gone"
+                )
                 self.assertEqual(sorted(ssh.iterdir()), [], "nothing is made under the denied home")
         self.assertFalse(Path(self.seats).exists())
         self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
@@ -1238,7 +1510,11 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         broker_dir = seats / ".state" / name / "broker"
         self.assertTrue(broker_dir.is_dir() and not broker_dir.is_symlink(), "a launch makes the broker directory")
         self.assertEqual(stat.S_IMODE(broker_dir.stat().st_mode), 0o700)
-        self.assertEqual(sorted(broker_dir.iterdir()), [], "empty: hcom-seat makes it and puts nothing in it")
+        self.assertEqual(
+            [p.name for p in broker_dir.iterdir()],
+            ["sock"],
+            "the launch's broker socket alone (U344): hcom-seat puts nothing in it",
+        )
         ((status, out, err),) = self.release(procs)
         self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
         self.assertNotIn("does not exist; a launch creates it", err)
@@ -1549,7 +1825,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         own-`.git` exemption admits it as a write root, so dsh could alter objects and refs; the judge names it by the
         first deny row it lies inside, the checkout), a directory inside it (the overlap invariant's own refusal,
         which runs first) and a directory holding the hcom store. bash's DEBUG trap records every command the launch
-        ran; the only mkdir is the private tool directory's."""
+        ran; the only mkdirs are the lever's own state directory's (the private tool directory and, U344c, the settings
+        writer's copy directory, removed once the writer is sourced)."""
         checkout = self.repo.resolve()
         common = checkout / ".git"
         holder = self.store.parent.resolve()
@@ -1577,7 +1854,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 commands = trace.read_text().split("\0")[:-1]
                 self.assertIn(check, " ".join(commands), "the refusal is the named check's, recorded")
                 mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
-                self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
+                self.assertTrue(mkdirs and all("tools_dir" in c or "renderer_slot" in c for c in mkdirs), mkdirs)
+                self.assertEqual(
+                    sorted(p.name for p in self.tools.parent.iterdir()), ["tools"], "the copy directory is gone"
+                )
         self.assertFalse(Path(self.seats).exists())
         self.assertFalse((self.home / ".omp").exists())
         self.assertEqual(self.dsh_calls(), [])
@@ -1638,8 +1918,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         denies among its rows), not the role's own deny row. A DSH_HOME at the scratch HOME's `.aws` or `.omp/agent`,
         inside `.aws`, or at a directory that holds what a linked deny path (`~/.kube -> <elsewhere>/aws`) physically
         names refuses (exit 2) naming the deny path, in a dry run too, before any directory is made (the DEBUG-trap
-        recorder shows the tool directory's mkdir alone); each path named is a row of the settings a launch that goes
-        through renders. Round 5 (U272f): the judge names the grant as the role's `allowRead` row."""
+        recorder shows the tool directory's and the settings writer's copy directory's mkdirs alone, U344c); each path
+        named is a row of the settings a launch that goes through renders. Round 5 (U272f): the judge names the grant
+        as the role's `allowRead` row."""
         home = self.home.resolve()
         for rel in (".aws/deeper", ".omp/agent"):
             (home / rel).mkdir(parents=True)
@@ -1670,7 +1951,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 commands = trace.read_text().split("\0")[:-1]
                 self.assertIn("settings_judge", " ".join(commands), "the refusal is the judge's")
                 mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
-                self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
+                self.assertTrue(mkdirs and all("tools_dir" in c or "renderer_slot" in c for c in mkdirs), mkdirs)
+                self.assertEqual(
+                    sorted(p.name for p in self.tools.parent.iterdir()), ["tools"], "the copy directory is gone"
+                )
         self.assertFalse(Path(self.seats).exists())
         self.assertFalse((home / ".omp/profiles").exists())
         self.assertEqual(self.dsh_calls(), [])
@@ -1740,9 +2024,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         refusal judged three inputs that did not include it, so a profile root linked to `~/.aws` was granted write.
         The judge reads every rendered grant: a profile root that is a link to the scratch HOME's `.aws` refuses
         (exit 2) naming the row, its physical path and the deny, in a dry run too, before any directory is made (the
-        DEBUG-trap recorder shows the tool directory's mkdir alone); a link to another omp profile refuses as well
-        (the `profile` tag carries only while the grant lies where it is rendered); a real profile directory goes
-        through."""
+        DEBUG-trap recorder shows the tool directory's and the settings writer's copy directory's mkdirs alone, U344c);
+        a link to another omp profile refuses as well (the `profile` tag carries only while the grant lies where it is
+        rendered); a real profile directory goes through."""
         home = self.home.resolve()
         (home / ".aws").mkdir()
         (home / ".omp/profiles/orchestrator").mkdir(parents=True)
@@ -1771,7 +2055,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 commands = trace.read_text().split("\0")[:-1]
                 self.assertIn("settings_judge", " ".join(commands), "the refusal is the judge's")
                 mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
-                self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
+                self.assertTrue(mkdirs and all("tools_dir" in c or "renderer_slot" in c for c in mkdirs), mkdirs)
+                self.assertEqual(
+                    sorted(p.name for p in self.tools.parent.iterdir()), ["tools"], "the copy directory is gone"
+                )
         self.assertFalse(Path(self.seats).exists())
         self.assertTrue(profile.is_symlink(), "the launch neither removed nor replaced the link")
         self.assertEqual(sorted(p.name for p in (home / ".aws").iterdir()), [])
@@ -1901,7 +2188,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         position: a DSH_HOME at the scratch HOME's `.omp/profiles` (holding a working `bin/dsh`), a DSH_HOME equal to
         the own profile `~/.omp/profiles/dsh` (the exempted row's own spelling, at another position) and a `~/.omp/run`
         linked to the profiles directory each refuse (exit 2) naming the profiles deny, before any directory is made
-        (the DEBUG-trap recorder shows the tool directory's mkdir alone); the own profile row still passes."""
+        (the DEBUG-trap recorder shows the tool directory's and the settings writer's copy directory's mkdirs alone,
+        U344c); the own profile row still passes."""
         home = self.home.resolve()
         profiles = home / ".omp/profiles"
         (profiles / "bin").mkdir(parents=True)
@@ -1936,7 +2224,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 commands = trace.read_text().split("\0")[:-1]
                 self.assertIn("settings_judge", " ".join(commands), "the refusal is the judge's")
                 mkdirs = [c for c in commands if re.match(r"(/bin/)?mkdir\b", c)]
-                self.assertTrue(mkdirs and all("tools_dir" in c for c in mkdirs), mkdirs)
+                self.assertTrue(mkdirs and all("tools_dir" in c or "renderer_slot" in c for c in mkdirs), mkdirs)
+                self.assertEqual(
+                    sorted(p.name for p in self.tools.parent.iterdir()), ["tools"], "the copy directory is gone"
+                )
         self.assertFalse(Path(self.seats).exists())
         self.assertTrue(run_root.is_symlink(), "the launch neither removed nor replaced the link")
         self.assertEqual(self.dsh_calls(), [])
@@ -2392,7 +2683,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         tree = Path(self.temp.name).resolve() / "tree"
         (tree / "scripts/orchestrator").mkdir(parents=True)
         (tree / "home/dot_agents").mkdir(parents=True)
-        for name in ("hcom-seat", "regime-env", "seat-login-preflight"):
+        for name in ("hcom-seat", "regime-env", "seat-login-preflight", "seat-settings-render.sh"):
             shutil.copy2(test_hcom_seat.ROOT / "scripts/orchestrator" / name, tree / "scripts/orchestrator" / name)
         manifest = (test_hcom_seat.ROOT / "home/dot_agents/agent-config.yaml").read_text()
         pin_line = next(line for line in manifest.splitlines() if line.startswith(f"      {helper_name}: "))
@@ -2662,16 +2953,26 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual(yaml_extensions(text), [str(real)])
         self.assertEqual(len(self.dsh_calls()), 1)
 
-    def scratch_tree(self):
-        """A copy of the lever under test laid out as the checkout is (its helper, regime-env and seat-login-preflight
-        beside it, the manifest two levels up), so a test may rewrite the helper's entry without touching the tree it
-        runs from; the pins hold, since the bytes are the same."""
-        tree = Path(self.temp.name).resolve() / "tree"
+    def scratch_tree(self, name="tree"):
+        """A copy of the lever under test laid out as the checkout is (its helper, regime-env, seat-login-preflight and
+        the broker's lever set beside it, the manifest two levels up), so a test may rewrite the helper's entry or a
+        lever's bytes without touching the tree it runs from; the pins hold, since the bytes are the same."""
+        tree = Path(self.temp.name).resolve() / name
         (tree / "scripts/orchestrator").mkdir(parents=True)
         (tree / "home/dot_agents").mkdir(parents=True)
         lever_dir = Path(self.lever).resolve().parent
-        for name in ("hcom-seat", "regime-env", "seat-login-preflight", "profile-config-place.py"):
-            shutil.copy2(lever_dir / name, tree / "scripts/orchestrator" / name)
+        for lever in (
+            "hcom-seat",
+            "regime-env",
+            "seat-login-preflight",
+            "profile-config-place.py",
+            "seat-settings-render.sh",
+            "acp-broker",
+            "acp-relay.py",
+            "acp-record-place.py",
+            "git-isolated.sh",
+        ):
+            shutil.copy2(lever_dir / lever, tree / "scripts/orchestrator" / lever)
         shutil.copy2(lever_dir.parent.parent / "home/dot_agents/agent-config.yaml", tree / "home/dot_agents")
         return tree
 

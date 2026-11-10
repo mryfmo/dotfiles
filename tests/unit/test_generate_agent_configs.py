@@ -274,6 +274,7 @@ LEVERS = (
     "router-gh",
     "router-settings-apply",
     "seat-login-preflight",
+    "seat-settings-render.sh",
     "worker-worktree.sh",
     "worktree-gc.sh",
 )

@@ -23,7 +23,9 @@
 #   is gone: `hcom-seat`'s router row renders `<state slot>/broker` as a `denyWrite` row of the Router's own settings
 #   (tagged `slot` inside the state-slot grant; srt's later deny wins on macOS and on Linux the path must exist when
 #   the settings are written) and makes the directory 0700 before it writes them (hcom-seat's broker_dir_make), so
-#   the Router reads it and connects to its socket and can plant, rename or unlink nothing in it. `acp-broker
+#   the Router reads it and connects to its socket (the router row's `network.allowUnixSockets` names this directory
+#   and nothing else since regime-cutover U344, so the connect is granted and this sentence holds at this head) and
+#   can plant, rename or unlink nothing in it. `acp-broker
 #   <seats-root> <router seat> <router scratch cwd>` makes nothing there: it takes the directory as hcom-seat made it,
 #   present (absent refuses naming hcom-seat), no link, a directory of this user, mode 0700 and empty (no entry of any
 #   kind: a socket inside is another broker's, one listener per Router launch; anything else is a crashed broker's
@@ -87,8 +89,12 @@
 #   `~/.local/state/hcom-seat/tools`. No row names the Router's scratch cwd, its state slot or the repository. No
 #   DSH_HOME grant and no state slot: the worker is omp, not dsh, and the launch log is this lever's to write.
 #   `allowLocalBinding` false, `allowUnixSockets` empty, the domain list
-#   `hcom-seat`'s. This copy of the dsh row's shape is interim: U344 extracts one writer for both levers, and
-#   tests/unit/test_acp_broker.py holds the two renderings together until then.
+#   `hcom-seat`'s. The settings text is the one writer's: both levers source `seat-settings-render.sh`
+#   (regime-cutover U344: the path rule every row obeys, the domain list and the JSON text; the rows are each
+#   lever's own and no root is baked in) from a private copy hashed against its pin (renderer_source, U344c), so the
+#   worker's file is the dsh row's file with the worker's rows,
+#   byte for byte (tests/unit/test_acp_broker.py `test_the_worker_settings_are_the_dsh_row_but_the_named_rows`
+#   and `test_one_settings_writer_renders_the_worker_and_the_dsh_row_byte_for_byte`).
 #   The judgement (regime-cutover U343c; hcom-seat's settings_judge, U272f and U272g). Before anything is made, every
 #   grant row is judged against every deny row, by identity for what exists and by the absent components below one
 #   shared ancestor otherwise (identity_table, within_ix: one stat for every row); a grant that is, contains or lies
@@ -326,6 +332,87 @@ lever_self_check
 # shellcheck disable=SC2119 # no name is kept on purpose: the worker's and the Router-side git's environments are built below
 git_env_scrub
 
+# @description Refuse (exit 2) from renderer_source, before this lever's own `refuse` exists: one line on stderr, the
+#   copy directory `$1` removed when one was made (a removal that fails is named), nothing on the stream (no connection
+#   has read its header yet).
+# @arg $1 string The copy directory made so far, or empty.
+# @arg $@ string The reason, after it.
+renderer_refuse() {
+    local dir=$1
+    shift
+    echo "acp-broker: refused: $*" >&2
+    if [[ -n ${dir} ]]; then
+        /bin/rm -rf -- "${dir}" || echo "acp-broker: the settings writer's copy directory ${dir} remains after its removal; remove it by hand" >&2
+    fi
+    exit 2
+}
+
+# @description Source the one settings writer `seat-settings-render.sh` from a private copy hashed against its pin
+#   (regime-cutover U344c; verdict U344-a8adad11 P1 `seat-settings-render.sh:76`, class pin-then-run: this lever
+#   sourced the file by path and the file checked its own pin at its line 76, so every line before it of a replaced
+#   file ran unpinned, and the auditor's altered copy printed before it refused). The form of record_helper_path_check,
+#   record_helper_copy_make and record_helper_pin_check (U343h; hcom-seat's helper_copy_make, U310f), run here before
+#   anything else of this lever (`refuse`, the OS table and the physical home are defined below, so each step names
+#   its own failure through renderer_refuse): the path beside this file is no link, a readable regular file of this
+#   user whose mode grants no group or other write (`stat`, read with its status, the flag chosen by `uname -s`);
+#   HOME is a clean absolute path (the writer's clean_path rule, spelled here once more because the writer is what is
+#   being sourced); the state directory `<HOME>/.local/state/hcom-seat` is made 0700 when absent and held to a real
+#   directory of this user; the copy directory `<state>/seat-settings-render.<pid>` is made now with `mkdir` (no
+#   `-p`: an entry of any kind at the name fails it), 0700; the file is read once into a copy 0600 there; the copy is
+#   hashed against the `claude.levers.sha256.seat-settings-render.sh` pin of the manifest lever_self_check read (the
+#   sed and hash readers of that check); the copy is sourced; the directory is removed at once (the functions and
+#   tables stay defined). A step that fails exits 2 naming it, and nothing of the file runs before its digest equals
+#   the pin; the path beside this file is never read again.
+renderer_source() {
+    local writer=seat-settings-render.sh path=${LEVER_DIR}/seat-settings-render.sh os state dir='' copy mode err pin digest
+    [[ ! -L ${path} ]] || renderer_refuse '' "${writer} beside this script is a symbolic link: ${path}; the settings writer is sourced from the lever's own directory only"
+    [[ -r ${path} ]] || renderer_refuse '' "${writer} unreadable beside this script: ${path}"
+    [[ -f ${path} ]] || renderer_refuse '' "${writer} beside this script is not a regular file: ${path}"
+    [[ -O ${path} ]] || renderer_refuse '' "${writer} beside this script is not this user's own file: ${path}"
+    os=$(/usr/bin/uname -s) || renderer_refuse '' 'cannot read the operating system name (uname -s)'
+    case ${os} in
+    Darwin) mode=$(/usr/bin/stat -L -f '%Lp' -- "${path}") || renderer_refuse '' "cannot read the mode of ${path}" ;;
+    Linux) mode=$(/usr/bin/stat -L -c '%a' -- "${path}") || renderer_refuse '' "cannot read the mode of ${path}" ;;
+    *) renderer_refuse '' "no worker sandbox for ${os}; srt supports macOS and Linux" ;;
+    esac
+    [[ ${mode} =~ ^[0-7]+[0145][0145]$ ]] ||
+        renderer_refuse '' "${writer} beside this script is writable by its group or by others (mode '${mode}'): ${path}; the settings writer is sourced from the lever's own directory only"
+    [[ ${HOME:-} =~ ^(/[A-Za-z0-9._@+-]+)+$ && /${HOME}/ != */./* && /${HOME}/ != */../* ]] || # lint-comparisons: allow the clean-path rule on one path, no path compare
+        renderer_refuse '' "HOME '${HOME:-}' is not a clean absolute path"
+    state=${HOME}/.local/state/hcom-seat
+    if [[ ! -e ${state} && ! -L ${state} ]]; then
+        err=$( (umask 077 && /bin/mkdir -p "${state}") 2>&1) ||
+            renderer_refuse '' "cannot create hcom-seat's state directory ${state} for the settings writer's copy: ${err:-the umask set or the mkdir failed with no message}"
+    fi
+    [[ ! -L ${state} && -d ${state} && -O ${state} ]] ||
+        renderer_refuse '' "hcom-seat's state directory ${state} is a symbolic link, not a directory or not this user's; the settings writer is not sourced"
+    dir=${state}/seat-settings-render.$$
+    err=$( (umask 077 && /bin/mkdir "${dir}") 2>&1) ||
+        renderer_refuse '' "cannot create the settings writer's copy directory ${dir}: ${err:-the umask set or the mkdir failed with no message}"
+    copy=${dir}/${writer}
+    err=$( (umask 077 && /bin/cat -- "${path}" > "${copy}") 2>&1) ||
+        renderer_refuse "${dir}" "cannot copy ${path} into ${dir}: ${err:-the umask set or the copy failed with no message}"
+    pin=$(sed -n -E 's/^      seat-settings-render\.sh: ([0-9a-f]{64})$/\1/p' "${LEVER_MANIFEST}") ||
+        renderer_refuse "${dir}" "cannot read ${LEVER_MANIFEST} for the ${writer} pin"
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || renderer_refuse "${dir}" "no single sha256 pin for ${writer} in ${LEVER_MANIFEST}"
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${copy}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${copy}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || renderer_refuse "${dir}" "cannot hash ${path} (its copy ${copy})"
+    [[ ${digest} == "${pin}" ]] ||
+        renderer_refuse "${dir}" "sha256 ${digest} of ${path} differs from the pin in ${LEVER_MANIFEST}; the settings writer is not the pinned one (the digest is of this process's copy ${copy})"
+    # shellcheck source=scripts/orchestrator/seat-settings-render.sh
+    . "${copy}"
+    /bin/rm -rf -- "${dir}" || echo "acp-broker: the settings writer's copy directory ${dir} remains after its removal; remove it by hand" >&2
+}
+# The one settings writer (regime-cutover U344; U344c), sourced before any row is checked or rendered, from the private
+# copy renderer_source makes, hashes and removes: what is hashed is what is sourced, and a rewritten writer stops the
+# broker before its first line.
+renderer_source
+
 usage='usage: acp-broker [--connection] <seats-root> <router-seat-name> <router-scratch-cwd>'
 connection=0
 slot=''
@@ -426,8 +513,13 @@ refuse() {
 #   slot_remove takes it (idempotent, so a reaper already forked may remove it too; a slot that remains names
 #   itself). With slot_made at 0 the only state the slot can have is the one a bare `mkdir` leaves, an empty
 #   directory of this user, and `/bin/rmdir` takes exactly that and nothing else: not a non-empty directory, not a
-#   file, not a link (it follows none), so a pre-existing entry at the name is never taken; its failure (nothing
-#   made, or an entry that is not this connection's) is ignored. The stderr line names which removal happened.
+#   file, not a link (it follows none). The guarantee as it is (regime-cutover U344b, verdict U343q-668a020e P3
+#   :439): a signal between the trap's arming and the `mkdir` may remove an empty directory at the slot's name that
+#   this connection did not make, which no seat can plant, since `.state` is the broker's own root and the slot
+#   name carries this pid. A `rmdir` that fails with nothing at the name is the signal before the `mkdir`, and
+#   nothing is said; one that fails with an entry at the name (verdict U343q-668a020e P2 :439: silent until this
+#   head) prints one stderr line naming the entry, which the operator removes by hand, and the exit is 2 as for
+#   every path of this trap. The stderr line names which removal happened.
 # shellcheck disable=SC2329 # invoked by the trap armed before the slot's mkdir
 slot_trap() {
     trap - HUP INT TERM
@@ -435,10 +527,10 @@ slot_trap() {
         if slot_remove; then
             echo "acp-broker: the connection ended by a signal before omp started; the slot removed" >&2
         fi
-    else
-        if /bin/rmdir -- "${slot}" 2> /dev/null; then
-            echo "acp-broker: the connection ended by a signal as the slot was made; the empty slot removed" >&2
-        fi
+    elif /bin/rmdir -- "${slot}" 2> /dev/null; then
+        echo "acp-broker: the connection ended by a signal as the slot was made; the empty slot removed" >&2
+    elif [[ -e ${slot} || -L ${slot} ]]; then
+        echo "acp-broker: the connection ended by a signal as the slot was made; the entry at ${slot} could not be removed (rmdir failed with the entry present); remove it by hand" >&2
     fi
     exit 2
 }
@@ -458,15 +550,7 @@ for marker in HCOM_LAUNCHED HCOM_PROCESS_ID HCOM_SEAT_SANDBOX; do
     [[ -z ${!marker:-} ]] || refuse "refused inside a seat (${marker} is set): the broker runs outside every seat, started by hcom-seat beside the Router"
 done
 
-# @description Succeed when `$1` is a clean absolute path that srt cannot read as a pattern: `/` followed by
-#   components of `[A-Za-z0-9._@+-]` only, none of them empty, `.` or `..`, and no trailing `/` (the rule of
-#   `hcom-seat`; srt 0.0.81 turns a settings path into a Seatbelt regex or a glob).
-# @arg $1 string The path.
-# @exitcode 1 The path is not clean.
-clean_path() {
-    [[ $1 =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || return 1
-    [[ /$1/ != */./* && /$1/ != */../* ]] # lint-comparisons: allow a component test on one path, no path compare
-}
+# The path rule every settings row obeys, clean_path and clean_row, is the one writer's (seat-settings-render.sh).
 
 # @description Refuse (exit 2) unless `$2` is a clean absolute path (clean_path).
 # @arg $1 string What the path is, for the refusal.
@@ -474,18 +558,6 @@ clean_path() {
 require_clean_path() {
     clean_path "$2" ||
         refuse "$1 '$2' is not a clean absolute path: every component must be [A-Za-z0-9._@+-] and neither '.' nor '..', with no trailing '/'"
-}
-
-# @description Succeed when `$1` is a row the settings may carry: a clean path, or (for `denyWrite`, `$2` = 1) one of
-#   the macOS worktree patterns `hcom-seat` renders, a clean prefix and the fixed `worktrees/*/<file>` suffix.
-# @arg $1 string The row.
-# @arg $2 int 1 when the pattern form is allowed.
-# @exitcode 1 The row is neither.
-clean_row() {
-    clean_path "$1" && return 0
-    (($2)) || return 1
-    [[ $1 =~ ^(/[A-Za-z0-9._@+-]+)+/worktrees/\*/(config\.worktree|info|commondir|gitdir)$ ]] || return 1
-    [[ /${1%/worktrees/*}/ != */./* && /${1%/worktrees/*}/ != */../* ]] # lint-comparisons: allow a component test on one pattern's clean prefix, no path compare
 }
 
 # @description Refuse (exit 2) unless every row `$@` is one the settings may carry (clean_row); run in the main
@@ -499,18 +571,6 @@ check_rows() {
     for row in "$@"; do
         clean_row "${row}" "${patterns}" || refuse "${what} '${row}' is not a clean absolute path"
     done
-}
-
-# @description Print a JSON array of the rows `$@`, each already checked (check_rows), so no JSON escaping is needed
-#   and no settings tool runs.
-# @arg $@ string The rows.
-json_list() {
-    local row out='' sep=''
-    for row in "$@"; do
-        out+=${sep}\"${row}\"
-        sep=,
-    done
-    printf '[%s]' "${out}"
 }
 
 # @description Print the physical form of the absolute path `$1`: every symlink followed (at most 40 hops in all) and
@@ -936,13 +996,14 @@ template_rows() {
 # @arg $1 string The command name.
 # @stdout The path, symlinks not yet followed.
 # @exitcode 1 None found.
+# @exitcode 2 The caller's PATH could not be split into directories (the `read` failed; standing order 21).
 find_tool() {
     local path_dir path_dirs=()
     if [[ -n ${tools_real} && -x ${tools_real}/$1 && ! -d ${tools_real}/$1 ]]; then
         printf '%s\n' "${tools_real}/$1"
         return 0
     fi
-    IFS=: read -r -a path_dirs <<< "${caller_path}"
+    IFS=: read -r -a path_dirs <<< "${caller_path}" || return 2
     for path_dir in ${path_dirs[@]+"${path_dirs[@]}"}; do
         [[ ${path_dir} == /* && ${path_dir} != *[[:cntrl:]]* ]] || continue # lint-comparisons: allow an absolute-path and content test
         [[ -x ${path_dir}/$1 && ! -d ${path_dir}/$1 ]] || continue
@@ -976,8 +1037,11 @@ tool_place_check() {
 # @arg $1 string The tool's name.
 # @set pinned The argv.
 pin_tool() {
-    local label=$1 found file first magic interp name extra interp_path
-    found=$(find_tool "$1") || refuse "${label} not found in the private tool directory ${tools_dir} or on the caller's PATH; run hcom-seat once (make update)"
+    local label=$1 found file first magic interp name extra interp_path status=0
+    # The lookup's status is read (standing order 21): 2 is a failed split of the caller's PATH, 1 is none found.
+    found=$(find_tool "$1") || status=$?
+    ((status != 2)) || refuse "cannot split the caller's PATH into directories while resolving ${label}"
+    ((status == 0)) || refuse "${label} not found in the private tool directory ${tools_dir} or on the caller's PATH; run hcom-seat once (make update)"
     file=$(physical_path "${found}") || refuse "cannot resolve ${label} to a physical file: ${found}"
     [[ -f ${file} && -x ${file} && -r ${file} ]] || refuse "${label} ${found} resolves to ${file}, not a readable executable file"
     tool_place_check "${label}" "${found}" "${file}"
@@ -992,11 +1056,14 @@ pin_tool() {
     case ${first} in
     '#!'*)
         extra=''
-        read -r interp name extra <<< "${first#??}"
+        read -r interp name extra <<< "${first#??}" || refuse "cannot split the interpreter line of ${label}: ${file}"
         if [[ ${interp} == /usr/bin/env ]]; then # lint-comparisons: allow the literal interpreter line, no path compare
             [[ -n ${name} && -z ${extra} && ${name} != -* ]] ||
                 refuse "${label}: unsupported interpreter line '${first}' in ${file}"
-            interp_path=$(find_tool "${name}") || refuse "${label}: interpreter ${name} not found in the private tool directory or on the caller's PATH"
+            status=0
+            interp_path=$(find_tool "${name}") || status=$?
+            ((status != 2)) || refuse "cannot split the caller's PATH into directories while resolving the interpreter ${name} of ${label}"
+            ((status == 0)) || refuse "${label}: interpreter ${name} not found in the private tool directory or on the caller's PATH"
         else
             [[ -z ${name} ]] || refuse "${label}: unsupported interpreter line '${first}' in ${file}"
             [[ ${interp} == /* ]] || # lint-comparisons: allow an absolute-path test
@@ -1067,7 +1134,7 @@ done
 # absolute entries (hcom-seat's seat path); outside, srt itself runs with the first two alone.
 outer_path=${tools_real:+${tools_real}:}${system_path}
 seat_path=${outer_path}
-IFS=: read -r -a caller_dirs <<< "${caller_path}"
+IFS=: read -r -a caller_dirs <<< "${caller_path}" || refuse "cannot split the caller's PATH into directories for the worker's seat path"
 for caller_dir in ${caller_dirs[@]+"${caller_dirs[@]}"}; do
     if [[ ${caller_dir} == /* && ${caller_dir} != *[[:cntrl:]]* ]]; then seat_path+=:${caller_dir}; fi # lint-comparisons: allow an absolute-path and content test
 done
@@ -1081,10 +1148,13 @@ done
 #   it are that broker's; then nothing is removed, the socket is named and the function fails. The directory is
 #   hcom-seat's and stands (regime-cutover U343i: no `rmdir`; the Router's settings deny it for write, so no link and
 #   no rename of it can stand at these names, and the launch's slot removal takes it with the Router's state slot).
-# @exitcode 0 The socket is gone and the records are removed, each failure named.
+# @exitcode 0 The socket is gone and every record is removed.
 # @exitcode 1 The socket stands, named on stderr; nothing was removed.
+# @exitcode 2 The socket is gone and a record could not be removed (regime-cutover U344b, verdicts U343j-62c10228 P3
+#   :1000 and U343l-426188c6 P3 :1028: until this head the failure was named and the function returned 0), each named
+#   on stderr as `cannot remove the exit record <path>` and the remaining records named once more at the end.
 broker_cleanup() {
-    local entry
+    local entry remaining=()
     path_presence "${sock}"
     ((! slot_present)) || {
         echo "acp-broker: the socket ${sock} stands after the relay's end (another broker's listener, or one the relay could not remove); this broker removes nothing in ${broker_dir}" >&2
@@ -1092,14 +1162,21 @@ broker_cleanup() {
     }
     for entry in "${broker_dir}"/acp-*; do
         [[ -e ${entry} || -L ${entry} ]] || continue
-        /bin/rm -f -- "${entry}" || echo "acp-broker: cannot remove the exit record ${entry}" >&2
+        /bin/rm -f -- "${entry}" || {
+            echo "acp-broker: cannot remove the exit record ${entry}" >&2
+            remaining+=("${entry}")
+        }
     done
+    ((${#remaining[@]} == 0)) || {
+        echo "acp-broker: ${#remaining[@]} exit record(s) remain in ${broker_dir} after the removal (${remaining[*]}); remove them by hand" >&2
+        return 2
+    }
 }
 
 # @description The listener's signal trap: a hangup, interrupt or termination ends the relay (and, through it, every
 #   worker it started; the relay removes its socket), removes the records once the socket is gone and then ends this
-#   process by the same signal, its disposition restored; a socket that stands is exit 2 whatever the signal, nothing
-#   removed.
+#   process by the same signal, its disposition restored; a socket that stands, or a record that could not be
+#   removed, is exit 2 whatever the signal, each named by broker_cleanup and told apart by its status.
 # @arg $1 string The signal name.
 # shellcheck disable=SC2329 # invoked by the trap installed below
 broker_signal() {
@@ -1110,8 +1187,12 @@ broker_signal() {
         if wait "${child}"; then :; fi
     fi
     broker_cleanup || removed=$?
-    ((removed == 0)) || {
+    ((removed != 1)) || {
         echo "acp-broker: ended by SIG$1; the broker exits 2 because the socket stands and nothing was removed" >&2
+        exit 2
+    }
+    ((removed == 0)) || {
+        echo "acp-broker: ended by SIG$1; the broker exits 2 because an exit record remains (named above)" >&2
         exit 2
     }
     kill -s "$1" $$
@@ -1201,8 +1282,14 @@ if ((! connection)); then
     wait_child "${child}"
     status=${child_status}
     trap - HUP INT TERM
-    broker_cleanup || {
+    removed=0
+    broker_cleanup || removed=$?
+    ((removed != 1)) || {
         echo "acp-broker: the relay exited ${status}; the broker exits 2 because the socket stands and nothing was removed" >&2
+        exit 2
+    }
+    ((removed == 0)) || {
+        echo "acp-broker: the relay exited ${status}; the broker exits 2 because an exit record remains (named above)" >&2
         exit 2
     }
     exit "${status}"
@@ -1220,7 +1307,7 @@ header=''
 IFS= read -r -n 1025 header || refuse 'no header line arrived before the connection closed'
 ((${#header} <= 1024)) || refuse 'the header exceeds 1024 characters, or its newline did not arrive within them'
 f1='' f2='' f3='' f4='' f5='' extra=''
-read -r f1 f2 f3 f4 f5 extra <<< "${header}"
+read -r f1 f2 f3 f4 f5 extra <<< "${header}" || refuse 'cannot split the header line into its fields'
 [[ ${f1} == ACP-SEAT && ${f2} == v1 ]] || refuse "the header '${header}' does not begin 'ACP-SEAT v1'"
 [[ ${f3} == repo=?* ]] || refuse "the header '${header}' has no 'repo=<path>' third field"
 [[ ${f4} == ref=?* ]] || refuse "the header '${header}' has no 'ref=<rev>' fourth field"
@@ -1298,19 +1385,16 @@ check_rows 'a worker write root' 0 "${allow_write[@]}"
 # or anything else of this connection exists.
 settings_judge ||
     refuse "the worker's ${judge_grant} is, contains or lies inside ${judge_deny}; the launch is refused before anything is made"
-# Each list's producer is read (verdict U343d-136fbe0a P2 :1023): a json_list that fails refuses by name.
-deny_read_json=$(json_list "${deny_read[@]}") || refuse "cannot render the worker's denyRead list"
-deny_write_json=$(json_list ${deny_write[@]+"${deny_write[@]}"}) || refuse "cannot render the worker's denyWrite list"
-allow_read_json=$(json_list "${allow_read[@]}") || refuse "cannot render the worker's allowRead list"
-allow_write_json=$(json_list "${allow_write[@]}") || refuse "cannot render the worker's allowWrite list"
-domains='"github.com","api.github.com","uploads.github.com","codeload.github.com","objects.githubusercontent.com"'
-domains+=',"raw.githubusercontent.com","release-assets.githubusercontent.com","pypi.org","files.pythonhosted.org"'
-domains+=',"api.anthropic.com","claude.ai","platform.claude.com","console.anthropic.com"'
-domains+=',"chatgpt.com","auth.openai.com","api.openai.com"'
-json="{\"network\":{\"allowedDomains\":[${domains}],\"deniedDomains\":[],\"allowUnixSockets\":[]"
-json+=",\"allowMachLookup\":[\"com.apple.trustd.agent\"],\"allowLocalBinding\":false}"
-json+=",\"filesystem\":{\"denyRead\":${deny_read_json},\"allowRead\":${allow_read_json}"
-json+=",\"allowWrite\":${allow_write_json},\"denyWrite\":${deny_write_json}},\"allowPty\":true${linux_tools}}"
+# The four lists and the file's text through the one writer (seat-settings-render.sh, U344), each producer's status
+# read (verdict U343d-136fbe0a P2 :1023; verdict U343b-cae04852 P2 `:750`): a writer that fails refuses by name with no
+# slot made. The rows were held to clean_row by check_rows above; the writer holds them again and escapes nothing.
+deny_read_json=$(seat_settings_rows_json 0 "${deny_read[@]}") || refuse "cannot render the worker's denyRead list (seat_settings_rows_json failed)"
+deny_write_json=$(seat_settings_rows_json 1 ${deny_write[@]+"${deny_write[@]}"}) || refuse "cannot render the worker's denyWrite list (seat_settings_rows_json failed)"
+allow_read_json=$(seat_settings_rows_json 0 "${allow_read[@]}") || refuse "cannot render the worker's allowRead list (seat_settings_rows_json failed)"
+allow_write_json=$(seat_settings_rows_json 0 "${allow_write[@]}") || refuse "cannot render the worker's allowWrite list (seat_settings_rows_json failed)"
+seat_settings_json false '[]' "${deny_read_json}" "${allow_read_json}" "${allow_write_json}" "${deny_write_json}" "${linux_tools}" ||
+    refuse 'cannot render the worker settings text (seat_settings_json failed)'
+json=${settings_json}
 
 # The worker's environment, built and never inherited (hcom-seat's dsh launch): HOME, the outer PATH, the profile,
 # the shared Claude Code directory, the AWS file names omp's Bedrock discovery stats (an EPERM there ends omp), the

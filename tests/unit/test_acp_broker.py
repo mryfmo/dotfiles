@@ -1059,6 +1059,33 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assert_broker_dir_stands_empty(sock)
         self.assertNotIn("cannot remove", err)
 
+    def test_g_a_record_that_cannot_be_removed_at_the_brokers_end_is_named_and_the_broker_exits_2(self):
+        """U344b (verdicts U343j-62c10228 P3 `acp-broker:1000` and U343l-426188c6 P3 `:1028`): until this head
+        `broker_cleanup` named a record it could not remove and returned 0, so the broker ended by its signal as if
+        the directory were clean. A planted non-empty directory at a record's name (`rm -f` takes no directory)
+        stands in for a record the broker cannot remove: the end names the record, names what remains, and the
+        broker exits 2 instead of ending by SIGTERM; the socket is gone, the record no client read is gone, and the
+        directory stands with the leftover alone."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
+        stuck = sock.parent / "acp-w9-20260101-000000-1"
+        stuck.mkdir()
+        (stuck / "inner").write_text("")
+        self.addCleanup(lambda: shutil.rmtree(stuck, ignore_errors=True))
+        stuck_real, dir_real = stuck.resolve(), sock.parent.resolve()
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, 2, err)
+        self.assertIn(f"acp-broker: cannot remove the exit record {stuck_real}", err)
+        self.assertIn(
+            f"acp-broker: 1 exit record(s) remain in {dir_real} after the removal ({stuck_real}); remove them by hand",
+            err,
+        )
+        self.assertIn("ended by SIGTERM; the broker exits 2 because an exit record remains (named above)", err)
+        self.assertFalse(sock.exists() or sock.is_symlink(), "the socket is gone")
+        self.assertEqual(self.broker_dir_entries(sock), [stuck.name], "the read record went; the leftover stands")
+
     def broker_dir_entries(self, sock):
         """The entries of the broker directory, dot names included; the test fails when the directory is gone."""
         self.assertTrue(sock.parent.is_dir() and not sock.parent.is_symlink(), f"{sock.parent} is not a directory")
@@ -1086,14 +1113,20 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
         self.assertEqual(sorted(p.name for p in victim.parent.iterdir()), ["credentials"], "nothing landed beside it")
 
-    def scratch_checkout(self):
-        """A copy of the levers the broker runs beside itself (the broker, the relay, the isolated git library and the
-        record helper) under a scratch checkout with the manifest two levels up, so a test can alter the helper's
-        bytes without touching the repository; returns the broker's path and the helper's."""
-        checkout = Path(self.temp.name).resolve() / "checkout"
+    def scratch_checkout(self, name="checkout"):
+        """A copy of the levers the broker runs beside itself (the broker, the relay, the isolated git library, the
+        record helper and the settings writer) under a scratch checkout with the manifest two levels up, so a test can
+        alter a lever's bytes without touching the repository; returns the broker's path and the helper's."""
+        checkout = Path(self.temp.name).resolve() / name
         (checkout / "scripts/orchestrator").mkdir(parents=True)
         (checkout / "home/dot_agents").mkdir(parents=True)
-        for lever in ("acp-broker", "acp-relay.py", "git-isolated.sh", "acp-record-place.py"):
+        for lever in (
+            "acp-broker",
+            "acp-relay.py",
+            "git-isolated.sh",
+            "acp-record-place.py",
+            "seat-settings-render.sh",
+        ):
             shutil.copy2(ROOT / "scripts/orchestrator" / lever, checkout / "scripts/orchestrator" / lever)
         shutil.copy2(ROOT / "home/dot_agents/agent-config.yaml", checkout / "home/dot_agents/agent-config.yaml")
         return checkout / "scripts/orchestrator/acp-broker", checkout / "scripts/orchestrator/acp-record-place.py"
@@ -1400,17 +1433,27 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(sorted(p.name for p in log_dir.iterdir()), ["w1.log"], "no log for the refused name")
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
+    def sleeping_child(self, pid):
+        """Whether the handler `pid` has the injected `/bin/sleep 1` as a child now (`pgrep` by parent and argv), so
+        a test's signal lands inside the window the sleep holds open (U344c: CI at a8adad11 sent TERM as soon as the
+        slot appeared, which on a loaded runner landed between the `mkdir` and `slot_made=1` for the variant whose
+        sleep follows the flag)."""
+        run = subprocess.run(["pgrep", "-P", str(pid), "-f", "/bin/sleep 1"], capture_output=True, check=False)
+        return run.returncode == 0
+
     def term_while_the_slot_is_made(self, after, signal_line):
         """The body of the two handler-window tests: a scratch copy of the lever with one line `/bin/sleep 1` right
         after the line `after` (the copy differs from the source by that line alone, asserted with difflib, and is
-        pinned in the scratch manifest so it runs); a TERM to the handler pid once the slot exists leaves the slot
-        gone within the budget, the client exits 2 with nothing on stdout and no record line, no record exists for
-        the slot (had the reaper been forked, one ending `status=2 push=skipped` that the broker's end sweeps), omp
-        never ran, the next connection on the same broker is served, and the broker's stderr carries `signal_line`
-        once. The budget is the sleep plus a slack measured on the same machine, `max(2.0, 2 * setup)` where `setup`
-        is the wall time from the client's start to the slot's appearance (the handler's start: bash parsing the
-        lever, the header read, the template reads, the holds; CHANGE 2b of U343q: the fixed 5 s around a 3 s sleep
-        failed on the ubuntu-24.04 runners while ubuntu-26.04 passed). Returns (setup, elapsed, budget)."""
+        pinned in the scratch manifest so it runs); a TERM to the handler pid once the slot exists and the injected
+        sleep is its child (sleeping_child, so the signal lands where the sleep sits: after the flag in variant (a),
+        between the `mkdir` and the flag in variant (b)) leaves the slot gone within the budget, the client exits 2
+        with nothing on stdout and no record line, no record exists for the slot (had the reaper been forked, one
+        ending `status=2 push=skipped` that the broker's end sweeps), omp never ran, the next connection on the same
+        broker is served, and the broker's stderr carries `signal_line` once. The budget is the sleep plus a slack
+        measured on the same machine, `max(2.0, 2 * setup)` where `setup` is the wall time from the client's start to
+        the slot's appearance (the handler's start: bash parsing the lever, the header read, the template reads, the
+        holds; CHANGE 2b of U343q: the fixed 5 s around a 3 s sleep failed on the ubuntu-24.04 runners while
+        ubuntu-26.04 passed). Returns (setup, elapsed, budget)."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         broker, _helper = self.scratch_checkout()
@@ -1434,6 +1477,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         budget = 1.0 + max(2.0, 2 * setup)
         (slot,) = self.acp_slots()
         pid = int(slot.rsplit("-", 1)[1])
+        self.wait_for(lambda: self.sleeping_child(pid), "the injected sleep under the handler", seconds=30)
         started = time.monotonic()
         os.kill(pid, signal.SIGTERM)
         self.wait_for(lambda: self.acp_slots() == [], "the slot's removal", seconds=budget)
@@ -1483,6 +1527,53 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             '/bin/mkdir "${slot}" || refuse "cannot create the per-connection slot ${slot}"\n',
             "acp-broker: the connection ended by a signal as the slot was made; the empty slot removed",
         )
+
+    def test_a_c_a_rmdir_that_fails_with_an_entry_present_between_the_mkdir_and_the_flag_is_named(self):
+        """U344b (verdict U343q-668a020e P2 `acp-broker:439`): the pre-flag branch of the trap ran `/bin/rmdir` and
+        said nothing when it failed, so an entry it could not take stood unnamed. With the sleep between the `mkdir`
+        and `slot_made=1`, a file planted in the fresh slot during the sleep (the one state `rmdir` refuses that a
+        test can reach) and a TERM to the handler: the slot stands with the planted file, the broker's stderr names
+        the entry once and asks for a removal by hand, the client exits 2 with nothing on stdout, omp never ran, and
+        once the slot is removed by hand the next connection on the same broker is served."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        broker, _helper = self.scratch_checkout()
+        after = '/bin/mkdir "${slot}" || refuse "cannot create the per-connection slot ${slot}"\n'
+        source = BROKER.read_text()
+        self.assertEqual(source.count(after), 1, f"the one line the sleep follows: {after!r}")
+        broker.write_text(source.replace(after, after + "/bin/sleep 1\n"))
+        self.pin_lever(broker, broker)
+        proc, sock = self.start_broker(name, cwd, broker=broker)
+        self.addCleanup(self.remove_slots)
+        client = self.client_popen(sock, repo, "w1")
+        self.addCleanup(lambda: client.poll() is None and client.kill())
+        self.wait_for(lambda: self.acp_slots() != [], "the slot's making", seconds=30)
+        (slot,) = self.acp_slots()
+        slot_path = self.seats_path / ".state" / slot
+        pid = int(slot.rsplit("-", 1)[1])
+        self.wait_for(lambda: self.sleeping_child(pid), "the injected sleep under the handler", seconds=30)
+        (slot_path / "planted").write_text("")
+        os.kill(pid, signal.SIGTERM)
+        out, err = client.communicate(timeout=120)
+        self.assertEqual((client.returncode, out), (2, b""), err)
+        self.assertIn(b"the broker closed the connection before its first line", err)
+        self.assertTrue((slot_path / "planted").exists(), "the slot stands with the planted entry")
+        self.assertEqual(self.acp_slots(), [slot])
+        self.assertEqual(self.calls_of("omp"), [], "omp never started")
+        self.assertEqual(self.log_lines("w1"), [], "no canary line and no exit line: omp never ran")
+        self.remove_slots()
+        self.assertEqual(self.acp_slots(), [])
+        conn, slot2, _task = self.held_connection(sock, repo, "w1")
+        self.assertEqual(self.finish(conn, slot2), (b"", "status=0 push=none"))
+        self.wait_for(lambda: self.acp_slots() == [], "the second slot's removal")
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        line = (
+            f"acp-broker: the connection ended by a signal as the slot was made; the entry at {slot_path.resolve()} "
+            "could not be removed (rmdir failed with the entry present); remove it by hand"
+        )
+        self.assertEqual(err.count(line), 1, err)
+        self.assert_broker_dir_stands_empty(sock)
 
     def push_calls(self, slot):
         """The fake srt's calls after the launch (the push's), as (settings file, the git arguments after the
@@ -2355,8 +2446,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         """Each producer the launch reads fails in turn: the slot mkdir, a physical resolution, the Router settings
         read (a malformed file, an unclean row), the reaper's placement (a file size limit on the broker, which the
         record helper's copy hits before the settings write, U343o), the canary, srt's exit (the record and the log
-        carry omp's status), the omp version read and the log append. Each refuses with one line naming what
-        failed, starts no omp and leaves no slot."""
+        carry omp's status), the omp version read, the log append and, U344c (verdict U344-a8adad11 P2
+        `test_acp_broker.py:2432`), the settings writer's two functions under the module's injection form (a scratch
+        copy of the lever with one line inserted after the judgement, pinned so it runs): a row that is not clean
+        reaching `seat_settings_rows_json`, and `seat_settings_json` failing. Each refuses with one line naming what
+        failed, starts no omp, writes nothing and leaves no slot."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
@@ -2448,18 +2542,19 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.assertEqual(self.acp_slots(), [])
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
         with self.subTest(producer="the reaper's placement, under a file size limit"):
-            # A file size limit of 1 KiB on the broker (inherited by every handler and its reaper). The reaper is
-            # forked as soon as the slot exists (U343o), before the settings write, and its first write is the record
-            # helper's private copy (13 KiB), which fails with EFBIG: the reaper removes the slot and writes no ready
-            # line, so the handler refuses with the ready line and the settings (8 KiB, the producer this limit
-            # reached until round 12) are never written. SIGXFSZ is ignored so a write fails instead of ending the
-            # shell.
+            # A file size limit of 12 KiB on the broker (inherited by every handler and its reaper): above the
+            # settings writer's private copy (8.2 KiB, which the listener and every handler make before anything
+            # else, U344c) and the settings (8 KiB, the producer this limit reached until round 12), below the
+            # record helper's private copy (13.3 KiB). The reaper is forked as soon as the slot exists (U343o),
+            # before the settings write, and its first write is that copy, which fails with EFBIG: the reaper
+            # removes the slot and writes no ready line, so the handler refuses with the ready line and the settings
+            # are never written. SIGXFSZ is ignored so a write fails instead of ending the shell.
             limit = [
                 sys.executable, "-c",
                 (
                     "import os, resource, signal, sys\n"
                     "signal.signal(signal.SIGXFSZ, signal.SIG_IGN)\n"
-                    "resource.setrlimit(resource.RLIMIT_FSIZE, (1024, 1024))\n"
+                    "resource.setrlimit(resource.RLIMIT_FSIZE, (12288, 12288))\n"
                     "os.execv(sys.argv[1], sys.argv[1:])\n"
                 ),
             ]  # fmt: skip
@@ -2468,8 +2563,42 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.assertIn("did not report ready within 10 s; omp acp not started", data)
             status, _out, err = self.stop_broker(proc)
             self.assertEqual(status, -signal.SIGTERM, err)
-            self.assertIn("acp-broker: cannot copy ", err)
+            self.assertIn(f"acp-broker: cannot copy {ROOT}/scripts/orchestrator/acp-record-place.py into ", err)
+            self.assertNotIn("seat-settings-render", err, "the settings writer's copies were made under the limit")
             self.assertNotIn("cannot write the worker settings", err, "the settings write was never reached")
+        source = BROKER.read_text()
+        anchor = (
+            "# The four lists and the file's text through the one writer (seat-settings-render.sh, U344), each "
+            "producer's status\n"
+        )
+        self.assertEqual(source.count(anchor), 1, "the one line the injection follows")
+        cases = (
+            (
+                "a row that is not clean reaches seat_settings_rows_json",
+                'deny_read+=("${h}/a b")\n',
+                "cannot render the worker's denyRead list (seat_settings_rows_json failed)",
+            ),
+            (
+                "seat_settings_json fails",
+                "seat_settings_json() { return 1; }\n",
+                "cannot render the worker settings text (seat_settings_json failed)",
+            ),
+        )
+        for index, (label, injected, message) in enumerate(cases):
+            with self.subTest(producer=label):
+                broker, _helper = self.scratch_checkout(f"checkout-renderer-{index}")
+                broker.write_text(source.replace(anchor, anchor + injected))
+                self.pin_lever(broker, broker)
+                srt_before, omp_before = len(self.calls_of("srt")), len(self.calls_of("omp"))
+                log_before = self.log_lines("w1")
+                proc, sock = self.start_broker(name, cwd, broker=broker)
+                refused(message)
+                self.assertEqual(list(state.glob("acp-*")), [], "no slot and no settings file were made")
+                self.assertEqual(
+                    (len(self.calls_of("srt")), len(self.calls_of("omp"))), (srt_before, omp_before), "nothing ran"
+                )
+                self.assertEqual(self.log_lines("w1"), log_before, "no canary line: the launch log gained nothing")
+                self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def test_the_worker_settings_are_the_dsh_row_but_the_named_rows(self):
         """The byte-identical compare (U343 ACCEPTANCE 6): the Router's settings come from a real held `hcom-seat
@@ -2503,14 +2632,16 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             (seat_name,) = [p.name for p in (self.seats_path / ".sandbox").iterdir() if p.name.startswith(role + "-")]
             settings_path = self.seats_path / ".sandbox" / seat_name / "srt-settings.json"
             if role == "router":
-                # The broker against the live Router slot: one connection held open while the settings are read.
+                # The broker the router launch started (U344), on the socket the Router's settings open: one
+                # connection held open while the settings are read.
                 scratch = self.seats_path / ".state" / seat_name / "cwd"
                 repo, _base = self.make_repo(scratch / "repo")
-                proc, sock = self.start_broker(seat_name, scratch, DSH_HOME=str(dsh_home))
+                sock = self.seats_path / ".state" / seat_name / "broker/sock"
+                self.assertTrue(sock.is_socket(), f"hcom-seat started the broker before dsh: {self.state_names()}")
+                self.router = seat_name
                 conn, slot, task = self.held_connection(sock, repo, "w1")
                 rendered["worker"] = (self.seats_path / ".state" / slot / "settings.json").read_bytes()
                 self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
-                self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
                 rendered["task"] = str(task)
                 rendered["router_cwd"] = str(scratch)
             rendered[role] = settings_path.read_bytes()
@@ -2597,6 +2728,111 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             shape.sub(b'""', rendered["dsh"]).replace(b'"",', b"").replace(b'""', b""),
         )
         self.assertTrue(rendered["worker"].endswith(b"}\n"))
+        self.assertEqual(self.acp_slots(), [])
+
+    def test_one_settings_writer_renders_the_worker_and_the_dsh_row_byte_for_byte(self):
+        """The shared-writer compare (U344, test c; the U343 compare above made byte-exact): the Router's settings come
+        from a real held `hcom-seat router` launch on the fixture, which starts the broker itself (U344), the dsh row's
+        from a real held `hcom-seat dsh` launch, and the worker's from a connection to that launch's broker. Both
+        levers source `seat-settings-render.sh`, so the worker's file is, byte for byte, the dsh row's file with the
+        worker's rows in the role's positions: the deny lists the Router's (the project-file rows re-rooted under the
+        slot's task, the credential root last in denyRead, the router row's broker deny carried), the grant lists the
+        dsh row's minus its state slot (row 1) and DSH_HOME (row 3) with the slot's task as row 0, the network block
+        the dsh row's (no binding, no socket), and the shape canonical compact JSON so the three files re-serialise
+        to themselves. The launch's broker is gone with its directory once the launch has returned."""
+        dsh_home = Path(self.temp.name).resolve() / "dsh-home"
+        (dsh_home / "bin").mkdir(parents=True)
+        (dsh_home / "bin/dsh").write_text(test_hcom_seat_dsh.FAKE_DSH.format(calls=str(self.calls)))
+        (dsh_home / "bin/dsh").chmod(0o755)
+        (self.profiles / "dsh.yml").write_text(test_hcom_seat_dsh.DSH_OVERLAY.format(extension=self.bridge))
+        rendered = {}
+        for role in ("dsh", "router"):
+            (self.calls / "hold").touch()
+            before = len(self.calls_of("dsh"))
+            launch = subprocess.Popen(
+                [str(test_hcom_seat.SEAT), role, "--seats-root", self.seats, "--home", str(dsh_home), "--", "--version"],
+                cwd=self.repo, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )  # fmt: skip
+            self.wait_for(
+                lambda before=before, launch=launch: len(self.calls_of("dsh")) > before or launch.poll() is not None,
+                f"the {role} launch",
+            )
+            if launch.poll() is not None:
+                self.fail(f"the {role} launch ended early: {launch.communicate()}")
+            (seat_name,) = [p.name for p in (self.seats_path / ".sandbox").iterdir() if p.name.startswith(role + "-")]
+            settings_path = self.seats_path / ".sandbox" / seat_name / "srt-settings.json"
+            if role == "router":
+                # The broker the launch started, on the socket the Router's settings open: one connection held open
+                # while the worker's settings are read.
+                scratch = self.seats_path / ".state" / seat_name / "cwd"
+                repo, _base = self.make_repo(scratch / "repo")
+                sock = self.seats_path / ".state" / seat_name / "broker/sock"
+                self.assertTrue(sock.is_socket(), f"hcom-seat started the broker before dsh: {self.state_names()}")
+                self.router = seat_name
+                conn, slot, task = self.held_connection(sock, repo, "w1")
+                rendered["worker"] = (self.seats_path / ".state" / slot / "settings.json").read_bytes()
+                self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
+                rendered["task"] = str(task)
+                rendered["router_cwd"] = str(scratch)
+            rendered[role] = settings_path.read_bytes()
+            rendered[role + "_name"] = seat_name
+            (self.calls / "release").touch()
+            out, err = launch.communicate(timeout=120)
+            (self.calls / "hold").unlink()
+            (self.calls / "release").unlink()
+            self.assertEqual((launch.returncode, out), (0, "0.2.1-rc.5\n"), err)
+            if role == "router":
+                self.assertIn(f"acp-broker: listening on {sock}", err)
+                self.assertFalse(sock.parent.exists(), "the launch stopped its broker and its slot took the directory")
+        dsh, router, worker = (json.loads(rendered[k]) for k in ("dsh", "router", "worker"))
+        task, router_cwd = rendered["task"], rendered["router_cwd"]
+        dsh_cwd = str(self.seats_path / ".state" / rendered["dsh_name"] / "cwd")
+        credentials = f"{dsh_home}/router-credentials"
+
+        def canonical(settings):
+            return json.dumps(settings, separators=(",", ":")).encode() + b"\n"
+
+        # The writer renders canonical compact JSON: each file re-serialises to its own bytes.
+        for key in ("dsh", "router", "worker"):
+            self.assertEqual(canonical(json.loads(rendered[key])), rendered[key], key)
+
+        def normalised(settings, cwd, launch_name):
+            text = json.dumps(settings, separators=(",", ":")).replace(cwd, "<cwd>").replace(launch_name, "<launch>")
+            return json.loads(text)
+
+        dsh_n = normalised(dsh, dsh_cwd, rendered["dsh_name"])
+        worker_n = normalised(worker, task, rendered["router_name"])
+        broker_n = str(self.seats_path.resolve() / ".state/<launch>/broker")
+        # The deny table: the dsh row's, byte for byte, but the router row's broker deny the worker carries (U343i).
+        self.assertEqual(worker_n["filesystem"]["denyRead"], dsh_n["filesystem"]["denyRead"])
+        self.assertEqual(worker_n["filesystem"]["denyRead"][-1], credentials)
+        self.assertEqual(worker_n["filesystem"]["denyWrite"].count(broker_n), 1)
+        self.assertEqual(
+            [r for r in worker_n["filesystem"]["denyWrite"] if r != broker_n], dsh_n["filesystem"]["denyWrite"]
+        )
+        self.assertNotIn(router_cwd, json.dumps(worker), "no Router-named path")
+        # The whole file, byte for byte: the dsh row's file with the worker's rows in the role's positions (the slot's
+        # task as row 0, no state slot, no DSH_HOME, the broker deny where the Router renders it) and nothing else.
+        dsh_read, dsh_write = dsh["filesystem"]["allowRead"], dsh["filesystem"]["allowWrite"]
+        self.assertEqual(dsh_read[1], str(self.seats_path / ".state" / rendered["dsh_name"]))
+        self.assertEqual(dsh_read[3], str(dsh_home))
+        expected = normalised(dsh, dsh_cwd, rendered["dsh_name"])
+        expected["filesystem"]["denyWrite"] = worker_n["filesystem"]["denyWrite"]
+        expected["filesystem"]["allowRead"] = [task, dsh_read[2], *dsh_read[4:]]
+        expected["filesystem"]["allowWrite"] = [task, dsh_write[2], *dsh_write[4:]]
+        expected_text = (
+            json.dumps(expected, separators=(",", ":"))
+            .replace("<cwd>", task)
+            .replace("<launch>", rendered["router_name"])
+        )
+        self.assertEqual(rendered["worker"], expected_text.encode() + b"\n", "one writer, two renderings")
+        self.assertEqual(worker["network"], dsh["network"])
+        self.assertEqual(worker["network"]["allowUnixSockets"], [])
+        self.assertEqual(router["network"]["allowLocalBinding"], True)
+        self.assertEqual(
+            router["network"]["allowUnixSockets"],
+            [str(self.seats_path.resolve() / ".state" / rendered["router_name"] / "broker")],
+        )
         self.assertEqual(self.acp_slots(), [])
 
     def test_a_dsh_profile_linked_into_the_orchestrator_profile_is_refused_before_any_settings_file_is_written(self):

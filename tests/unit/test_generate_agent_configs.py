@@ -242,6 +242,7 @@ MANAGED_ALLOW = [
 ]
 LEVERS = (
     "acp-broker",
+    "acp-record-place.py",
     "acp-relay.py",
     "acp-seat",
     "brief-check.py",

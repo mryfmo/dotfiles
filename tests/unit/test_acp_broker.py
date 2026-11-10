@@ -17,6 +17,7 @@ import json
 import os
 import re
 import select
+import shutil
 import signal
 import socket
 import stat
@@ -53,6 +54,8 @@ DOMAINS = ["github.com", "api.github.com", "uploads.github.com", "codeload.githu
            "api.anthropic.com", "claude.ai", "platform.claude.com", "console.anthropic.com", "chatgpt.com",
            "auth.openai.com", "api.openai.com"]  # fmt: skip
 PING = b'{"jsonrpc":"2.0","id":1,"method":"ping"}\n'
+# The protected host file a Router-planted link points at (U343h; the auditor's reproduction used a scratch `.aws` file).
+VICTIM = b"[default]\naws_access_key_id = AKIAEXAMPLE\n# the protected host file a planted link points at\n"
 
 # The fake srt: records argv, environment names and cwd; `--version` answers 0.0.81; when `swap-ancestor` exists
 # beside the calls it performs the swap that file describes (the Router replacing an ancestor of its repository:
@@ -265,11 +268,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             env.pop(key, None)
         return env
 
-    def start_broker(self, name, cwd, wrapper=(), **overrides):
-        """Start the broker for the Router `name` (through the argv prefix `wrapper` when given) and return (process,
-        socket path) once the socket exists."""
+    def start_broker(self, name, cwd, wrapper=(), broker=BROKER, **overrides):
+        """Start the broker for the Router `name` (through the argv prefix `wrapper` when given; the lever at `broker`,
+        the checkout's unless a test runs a scratch copy) and return (process, socket path) once the socket exists."""
         proc = subprocess.Popen(
-            [*wrapper, str(BROKER), self.seats, name, str(cwd)], cwd=self.repo, env=self.broker_env(**overrides),
+            [*wrapper, str(broker), self.seats, name, str(cwd)], cwd=self.repo, env=self.broker_env(**overrides),
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         )  # fmt: skip
         self.brokers.append(proc)
@@ -946,6 +949,154 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(status, -signal.SIGTERM, err)
         self.assertFalse(sock.parent.exists(), "the broker directory remains")
         self.assertNotIn("cannot remove", err)
+
+    # --- U343h, round 6: the record is written through the pinned helper on a held directory descriptor ---
+
+    def plant_victim(self):
+        """A scratch protected host file (the auditor's `.aws` file) a planted link points at, and its stat before."""
+        victim = self.home_real / ".aws/credentials"
+        victim.parent.mkdir(mode=0o700, exist_ok=True)
+        victim.write_bytes(VICTIM)
+        return victim, victim.stat()
+
+    def assert_victim_untouched(self, victim, before):
+        after = victim.stat()
+        self.assertEqual(victim.read_bytes(), VICTIM, "the protected file's bytes")
+        self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
+        self.assertEqual(sorted(p.name for p in victim.parent.iterdir()), ["credentials"], "nothing landed beside it")
+
+    def scratch_checkout(self):
+        """A copy of the levers the broker runs beside itself (the broker, the relay, the isolated git library and the
+        record helper) under a scratch checkout with the manifest two levels up, so a test can alter the helper's
+        bytes without touching the repository; returns the broker's path and the helper's."""
+        checkout = Path(self.temp.name).resolve() / "checkout"
+        (checkout / "scripts/orchestrator").mkdir(parents=True)
+        (checkout / "home/dot_agents").mkdir(parents=True)
+        for lever in ("acp-broker", "acp-relay.py", "git-isolated.sh", "acp-record-place.py"):
+            shutil.copy2(ROOT / "scripts/orchestrator" / lever, checkout / "scripts/orchestrator" / lever)
+        shutil.copy2(ROOT / "home/dot_agents/agent-config.yaml", checkout / "home/dot_agents/agent-config.yaml")
+        return checkout / "scripts/orchestrator/acp-broker", checkout / "scripts/orchestrator/acp-record-place.py"
+
+    def test_a_a_link_planted_at_the_records_temporary_name_is_removed_and_its_target_untouched(self):
+        """U343h test (a) (verdict U343g-8a049561 P1 `acp-broker:1262`, the auditor's reproduction inverted): the
+        Router, which writes the broker directory and learns `<id>` from the first line, plants a link at `<id>.tmp`
+        to a protected host file; the reaper's `printf >` followed it. The record is written by `acp-record-place.py`
+        relative to the held directory descriptor: the link is unlinked as an entry, the record lands with its final
+        line, the protected file keeps its bytes and nothing lands beside it; through the client, with the link
+        planted after the record line, the exit status is omp's and the push word the pushed ref."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        victim, before = self.plant_victim()
+        conn, slot, _task = self.held_connection(sock, repo, "w1")
+        (sock.parent / f"{slot}.tmp").symlink_to(victim)
+        self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
+        self.assert_victim_untouched(victim, before)
+        self.assertEqual(
+            sorted(p.name for p in sock.parent.iterdir()), [slot, "sock"], "the link is gone, no temporary"
+        )
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
+        first = slot
+        (self.calls / "omp-status").write_text("3")
+        self.addCleanup(lambda: (self.calls / "omp-status").unlink(missing_ok=True))
+        client = self.client_popen(sock, repo, "w1")
+        client.stdin.write(PING)
+        client.stdin.flush()
+        self.assertEqual(client.stdout.readline(), PING)
+        (slot,) = self.acp_slots()
+        head = self.commit_in(self.slot_task(slot))
+        (sock.parent / f"{slot}.tmp").symlink_to(victim)
+        client.stdin.close()
+        out, err = client.communicate(timeout=120)
+        match = re.fullmatch(rb"acp-seat: push=(refs/acp-seat/w1/\d{8}-\d{6}-\d+)\n", err)
+        self.assertIsNotNone(match, err)
+        self.assertEqual((client.returncode, out), (3, b""), err)
+        self.assertEqual(self.scratch_git("rev-parse", "--verify", match.group(1).decode(), cwd=repo), head)
+        self.assert_victim_untouched(victim, before)
+        self.assertFalse(self.record_path(slot).exists(), "the client unlinked the record")
+        self.assertEqual(
+            sorted(p.name for p in sock.parent.iterdir()),
+            [first, "sock"],
+            "the raw session's record stays; the link is gone",
+        )
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_b_a_link_planted_at_the_record_is_replaced_as_an_entry_and_its_target_untouched(self):
+        """U343h test (b): the Router replaces its running record `<id>` by a link to a protected host file, or to a
+        protected directory (where `mv -f` moved the temporary into that directory and left the link standing). The
+        helper's `rename` relative to the held descriptor replaces the entry: the record is a regular 0600 file with
+        its three lines, the target keeps its bytes and nothing lands in the directory."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        victim, before = self.plant_victim()
+        for label, target in (("a link to a host file", victim), ("a link to a directory", victim.parent)):
+            with self.subTest(case=label):
+                conn, slot, _task = self.held_connection(sock, repo, "w1")
+                record = self.record_path(slot)
+                record.unlink()
+                record.symlink_to(target)
+                self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
+                self.assertTrue(record.is_file() and not record.is_symlink(), "the record is a regular file")
+                self.assertEqual(stat.S_IMODE(os.lstat(record).st_mode), 0o600)
+                self.assert_victim_untouched(victim, before)
+                self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
+                record.unlink()
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_c_a_helper_whose_digest_differs_from_the_pin_never_runs_and_the_record_stays_incomplete(self):
+        """U343h test (c): the reaper holds `acp-record-place.py` to its `claude.levers.sha256` pin through a private
+        copy before each run (hcom-seat's form, U310f). With the helper's bytes altered beside the lever before a
+        session, the running form is never written: the handler refuses before the record line and before omp
+        starts, naming the record, no slot and no record remain, and the client exits 2 with the refusal. Altered
+        after the record line, the final form is never written: the record keeps its two running lines, the stream
+        carries nothing of the broker's, the slot is removed, and the client exits 2 naming `<id>`; the broker's
+        stderr names the digest and the pin each time."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        broker, helper = self.scratch_checkout()
+        original = helper.read_bytes()
+        tampered = original + b"# one more line\n"
+        helper.write_bytes(tampered)
+        proc, sock = self.start_broker(name, cwd, broker=broker)
+        data = self.recv_all(self.connect(sock, repo, "w1")).decode()
+        self.assertTrue(data.startswith("acp-broker: refused: the reaper "), data)
+        self.assertEqual(data.count("\n"), 1, data)
+        self.assertIn(f"did not write the exit record {sock.parent}/acp-w1-", data)
+        self.assertEqual(self.acp_slots(), [], "the slot is removed")
+        self.assertEqual(sorted(p.name for p in sock.parent.iterdir()), ["sock"], "no record")
+        self.assertNotIn(
+            ["acp", "--profile", "dsh"], [c["argv"] for c in self.calls_of("omp")], "omp acp never started"
+        )
+        run = self.client(sock, repo, "w1", PING)
+        self.assertEqual((run.returncode, run.stdout), (2, b""), run.stderr)
+        self.assertIn(b"acp-broker: refused: the reaper ", run.stderr)
+        helper.write_bytes(original)
+        conn, slot, _task = self.held_connection(sock, repo, "w1")
+        helper.write_bytes(tampered)
+        conn.shutdown(socket.SHUT_WR)
+        self.assertEqual(self.recv_all(conn), b"", "nothing of the broker's on the stream")
+        lines = self.record_lines(slot)
+        self.assertEqual(len(lines), 2, lines)
+        self.assertEqual(lines[0], f"ref=refs/acp-seat/w1/{slot[len('acp-w1-') :]}")
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
+        helper.write_bytes(original)
+        client = self.client_popen(sock, repo, "w1")
+        client.stdin.write(PING)
+        client.stdin.flush()
+        self.assertEqual(client.stdout.readline(), PING)
+        (slot2,) = self.acp_slots()
+        helper.write_bytes(tampered)
+        client.stdin.close()
+        out, err = client.communicate(timeout=120)
+        self.assertEqual((client.returncode, out), (2, b""), err)
+        self.assertIn(f"without a complete record {slot2}".encode(), err)
+        self.assertNotIn(b"acp-seat: push=", err)
+        self.assertEqual(len(self.record_lines(slot2)), 2, "the final line was never written")
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertEqual(err.count(f" of {helper} differs from the pin in "), 4, err)
+        self.assertFalse(sock.parent.exists(), "the incomplete records went with the broker directory")
 
     def push_calls(self, slot):
         """The fake srt's calls after the launch (the push's), as (settings file, the git arguments after the

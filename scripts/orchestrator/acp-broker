@@ -110,10 +110,31 @@
 #   `~/.omp/run`, its `allowUnixSockets` empty; measured on this host for U343g: `srt --settings <the Router's
 #   settings> -- /bin/cat <record>` exits 0 with the content, the same read under a slot's settings fails with
 #   `Operation not permitted`). The shared Claude Code directory is worker-writable and never holds a record. The
-#   record is written by the reaper alone (`printf` to `<id>.tmp`, then `mv -f`, never by the handler): its running
-#   form, present before omp starts, is `ref=refs/acp-seat/<name>/<stamp>-<pid>` and `reaper=<pid>`; its final
-#   form adds one line `status=<omp's status when the handler reported it, else 2; 2 when the slot remains>
-#   push=<ref|none|failed|skipped>`. The teardown is the reaper (connection_reaper): one subshell per connection,
+#   record is written by the reaper alone, never by the handler: its running form, present before omp starts, is
+#   `ref=refs/acp-seat/<name>/<stamp>-<pid>` and `reaper=<pid>`; its final form adds one line `status=<omp's status
+#   when the handler reported it, else 2; 2 when the slot remains> push=<ref|none|failed|skipped>`.
+#   The record's write (regime-cutover U343h; verdict U343g-8a049561 P1 :1262, class record-path). The broker
+#   directory lies in the Router's own state slot, which the Router's settings grant for write, and the Router learns
+#   `<id>` from the first line, so a path under that directory opened for write by this unsandboxed process followed
+#   whatever the Router had planted there: round 5's `printf > <id>.tmp` and its `mv -f` did. No bash of this lever
+#   redirects into, moves, copies or links a path under the broker directory any more. Both forms are written by the
+#   pinned helper `acp-record-place.py` beside this file (the form of hcom-seat's profile-config-place.py, U310d and
+#   U310f), run by the reaper as `<pinned python3> -I -S <private copy>` with the record's lines on its stdin: the
+#   listener reads the directory's device and inode once, right after its mkdir (`broker_dir_id`, carried to each
+#   connection in ACP_BROKER_DIR_ID), and the helper opens the directory once with `O_NOFOLLOW`, refuses unless
+#   `fstat` gives that identity, this user and no group or other write bit, then unlinks `<id>.tmp`, creates it
+#   `O_EXCL | O_NOFOLLOW` 0600, writes, syncs and renames it onto `<id>`, every call relative to that descriptor
+#   (`dir_fd`), so a link planted at either name is removed or replaced as an entry and never followed. Before each
+#   run the reaper holds the helper (record_place): the path beside this file is no link and this user's regular file
+#   with no group or other write bit (record_helper_path_check, run by the handler before the slot is made); it is
+#   copied into a directory the reaper makes 0700 under hcom-seat's own state directory `~/.local/state/hcom-seat/`,
+#   where hcom-seat keeps its tool links and its own helper copies and no seat's settings grant a write
+#   (record_helper_copy_make); the copy's sha256 must equal the
+#   `claude.levers.sha256.acp-record-place.py` pin of the manifest the self-check read (record_helper_pin_check); the
+#   copy goes after the run. A hold or a helper that fails is one stderr line and the write is not made: before the
+#   record line the handler refuses and no omp runs; after it the record keeps its running form and the client exits
+#   2 naming `<id>`.
+#   The teardown is the reaper (connection_reaper): one subshell per connection,
 #   forked before omp, outside omp's process group, with HUP, INT and TERM ignored, holding the connection's stdout
 #   and reading one control pipe (a FIFO in the slot, closed for every child the handler starts) on which the
 #   handler writes `start <pid>` when omp runs, `exited <status>` when omp has exited and `done <status> <word>`
@@ -250,6 +271,10 @@ child=''
 push_word=''
 # The reaper's grace in seconds between TERM to omp's process group and KILL (regime-cutover U343g), named once.
 reaper_grace=5
+# The broker directory's identity (`<device>:<inode>`, regime-cutover U343h): read once by the listener after its
+# mkdir, carried to each connection in ACP_BROKER_DIR_ID, and the identity the record helper holds every write to.
+broker_dir_id=''
+record_helper='' helper_copy_dir='' helper_copy=''
 
 # @description Print the UTC time, `YYYY-MM-DDTHH:MM:SSZ` for a log line or `YYYYMMDD-HHMMSS` for a slot name, from
 #   `/bin/date` read status first (standing order 21); the caller refuses (exit 2) when this fails, so a failed read
@@ -713,9 +738,9 @@ require_clean_path "the Router's scratch cwd" "${scratch}"
 
 os=$(/usr/bin/uname -s) || refuse 'cannot read the operating system name (uname -s)'
 case ${os} in
-Darwin) lstat_args=(-f '%d:%i') stat_args=(-L -f '%d:%i') ;;
+Darwin) lstat_args=(-f '%d:%i') stat_args=(-L -f '%d:%i') mode_args=(-L -f '%Lp') ;;
 Linux)
-    lstat_args=(-c '%d:%i') stat_args=(-L -c '%d:%i')
+    lstat_args=(-c '%d:%i') stat_args=(-L -c '%d:%i') mode_args=(-L -c '%a')
     [[ -x /usr/bin/jq ]] || refuse 'the system jq /usr/bin/jq is absent; it reads the Router settings on Linux (apt install jq)'
     ;;
 *) refuse "no worker sandbox for ${os}; srt supports macOS and Linux" ;;
@@ -1021,13 +1046,18 @@ if ((! connection)); then
     fi
     /bin/mkdir "${broker_dir}" || refuse "cannot create the broker directory ${broker_dir} (another broker may have made it this moment)"
     require_own_dir 'the broker directory' "${broker_dir}"
+    # The directory's identity, read once (regime-cutover U343h): the device and inode the record helper holds every
+    # record write to; no connection reads it again, and a directory of another identity at the name is refused there.
+    broker_dir_id=$(/usr/bin/stat "${lstat_args[@]}" -- "${broker_dir}") || refuse "cannot read the identity of the broker directory ${broker_dir}"
+    [[ ${broker_dir_id} =~ ^[0-9]+:[0-9]+$ ]] || refuse "the identity of the broker directory ${broker_dir} read as '${broker_dir_id}', not <device>:<inode>"
     # Installed before the relay starts, so a signal while it listens removes what it made.
     # shellcheck disable=SC2064 # expanded now on purpose: the handler needs the signal's name
     for sig in HUP INT TERM; do trap "broker_signal ${sig}" "${sig}"; done
     # The relay runs as a child, so the socket and its directory can go when it ends; every connection it accepts
     # re-enters this lever by its physical path under /bin/bash (the interpreter line), with the same three arguments
-    # and the caller's PATH, from which each connection resolves the tools as this process did.
-    PATH=${caller_path} "${python_cmd[@]}" -I -S "${helper}" "${sock}" -- /bin/bash "${self_file}" --connection "${seats_root}" "${router}" "${scratch}" &
+    # and the caller's PATH, from which each connection resolves the tools as this process did; the broker directory's
+    # identity travels in its environment (regime-cutover U343h).
+    ACP_BROKER_DIR_ID=${broker_dir_id} PATH=${caller_path} "${python_cmd[@]}" -I -S "${helper}" "${sock}" -- /bin/bash "${self_file}" --connection "${seats_root}" "${router}" "${scratch}" &
     child=$!
     wait_child "${child}"
     status=${child_status}
@@ -1077,6 +1107,11 @@ task=${slot}/task
 pushed_ref=refs/acp-seat/${name}/${stamp}-$$
 # The exit record, the reaper's alone (regime-cutover U343g): in the Router's socket directory, named as the slot.
 record=${broker_dir}/${slot_name}
+# The broker directory's identity, read once by the listener and carried to every connection by the relay's
+# environment (regime-cutover U343h): the record helper holds each write to it. A connection run without it refuses
+# before anything is made; the record helper beside this file is held before the slot (record_helper_path_check).
+broker_dir_id=${ACP_BROKER_DIR_ID:-}
+[[ ${broker_dir_id} =~ ^[0-9]+:[0-9]+$ ]] || refuse "the broker directory's identity did not reach this connection (ACP_BROKER_DIR_ID is '${broker_dir_id}', not <device>:<inode>); a connection runs under the listener's relay alone"
 log_dir=${seats_real}/.state/${name}
 log=${log_dir}/acp-launch.log
 
@@ -1253,16 +1288,136 @@ push_back() {
     push_word=${pushed_ref}
 }
 
-# @description Write the exit record whole (regime-cutover U343g): the lines `$@` by `printf` to `<record>.tmp`, then
-#   `mv -f` over the record, so a reader sees the running form or the final form and never a partial file. Run by the
-#   reaper alone. Never refuses: a write that fails is one stderr line naming the record, and the caller goes on.
-# @arg $@ string The record's lines.
-# @exitcode 1 The record could not be written.
-record_write() {
-    if ! printf '%s\n' "$@" > "${record}.tmp" || ! /bin/mv -f -- "${record}.tmp" "${record}"; then
-        echo "acp-broker: cannot write the exit record ${record}" >&2
+# @description Hold the record helper `acp-record-place.py` beside this file to the rules lever_self_check applies to
+#   this file, before anything of the connection is made (regime-cutover U343h; hcom-seat's helper_path_check,
+#   U310f): it sits in LEVER_DIR, the physical directory of this file, and is itself no link (`-L` refused first), a
+#   regular file of this user whose mode grants no group or other write (`stat`, read with its status). Nothing here
+#   reads the file's bytes: the one read is the reaper's copy (record_helper_copy_make), made right before each run.
+# @set record_helper The helper's path beside this file, named in refusals.
+record_helper_path_check() {
+    local mode
+    record_helper=${LEVER_DIR}/acp-record-place.py
+    [[ ! -L ${record_helper} ]] || refuse "acp-record-place.py beside this script is a symbolic link: ${record_helper}; the helper runs from the lever's own directory only"
+    [[ -r ${record_helper} ]] || refuse "acp-record-place.py unreadable beside this script: ${record_helper}"
+    [[ -f ${record_helper} ]] || refuse "acp-record-place.py beside this script is not a regular file: ${record_helper}"
+    [[ -O ${record_helper} ]] || refuse "acp-record-place.py beside this script is not this user's own file: ${record_helper}"
+    mode=$(/usr/bin/stat "${mode_args[@]}" -- "${record_helper}") || refuse "cannot read the mode of ${record_helper}"
+    [[ ${mode} =~ ^[0-7]+[0145][0145]$ ]] ||
+        refuse "acp-record-place.py beside this script is writable by its group or by others (mode '${mode}'): ${record_helper}; the helper runs from the lever's own directory only"
+}
+
+# @description Read the record helper (record_helper_path_check) once, into the reaper's own copy (regime-cutover
+#   U343h; hcom-seat's helper_copy_make, U310f): a regular file this reaper creates now, 0600 (umask 077), in a
+#   directory it makes now with `mkdir` (no `-p`: an entry of any kind at the name fails it), 0700, under hcom-seat's
+#   own state directory `~/.local/state/hcom-seat/` (made 0700 when absent and held to a real directory of this
+#   user; hcom-seat keeps its tool links and its own helper copies there, and no seat's settings grant a write
+#   under `~/.local/state`), never under the broker directory, nor under the slot (removed before the final form
+#   is written) or the worker's state slot (a log directory made unwritable must not lose the record). What is hashed (record_helper_pin_check) and run (record_place) is this
+#   copy; the path beside this file is never read again. Runs in the reaper, whose stdout is the connection, so a
+#   failure is one stderr line and the status, never a refusal line on the stream.
+# @set helper_copy_dir The per-run directory holding the copy.
+# @set helper_copy The copy that is hashed and run.
+# @exitcode 1 The copy could not be made, named on stderr.
+record_helper_copy_make() {
+    local err state=${h}/.local/state/hcom-seat
+    if [[ ! -e ${state} && ! -L ${state} ]]; then
+        if ! err=$( (umask 077 && /bin/mkdir -p "${state}") 2>&1); then
+            echo "acp-broker: cannot create hcom-seat's state directory ${state} for the record helper's copy: ${err:-the umask set or the mkdir failed with no message}" >&2
+            return 1
+        fi
+    fi
+    if [[ -L ${state} || ! -d ${state} || ! -O ${state} ]]; then
+        echo "acp-broker: hcom-seat's state directory ${state} is a symbolic link, not a directory or not this user's; the record helper's copy is not made" >&2
         return 1
     fi
+    helper_copy_dir=${state}/acp-record-place.${slot_name}
+    if ! err=$( (umask 077 && /bin/mkdir "${helper_copy_dir}") 2>&1); then
+        helper_copy_dir=''
+        echo "acp-broker: cannot create the record helper's copy directory ${state}/acp-record-place.${slot_name}: ${err:-the umask set or the mkdir failed with no message}" >&2
+        return 1
+    fi
+    helper_copy=${helper_copy_dir}/acp-record-place.py
+    if ! err=$( (umask 077 && /bin/cat -- "${record_helper}" > "${helper_copy}") 2>&1); then
+        echo "acp-broker: cannot copy ${record_helper} into ${helper_copy_dir}: ${err:-the umask set or the copy failed with no message}" >&2
+        record_helper_copy_remove
+        return 1
+    fi
+}
+
+# @description Remove the record helper copy's directory (record_helper_copy_make) when one exists; a removal that
+#   fails is named, and the function returns 0 either way. Idempotent: the variable is cleared first.
+record_helper_copy_remove() {
+    local dir=${helper_copy_dir:-}
+    [[ -n ${dir} ]] || return 0
+    helper_copy_dir=''
+    /bin/rm -rf -- "${dir}" || echo "acp-broker: the record helper's copy directory ${dir} remains after its removal; remove it by hand" >&2
+}
+
+# @description Fail unless the file `$1`'s sha256 equals the `claude.levers.sha256.acp-record-place.py` pin in the
+#   manifest the self-check read (regime-cutover U343h; hcom-seat's helper_pin_check, U310d): the record helper is
+#   run by this lever, so it is held to its pin the way this file is held to its own (lever_self_check) and the relay
+#   to its, with the same readers; an unreadable file, a missing pin or a differing digest fails naming it. `$1` is
+#   the reaper's own copy (record_helper_copy_make) and `$2` the path beside this file the line names; the digest is
+#   the copy's, the file that runs (U310f).
+# @arg $1 string The file hashed, the copy.
+# @arg $2 string The helper's path beside this file.
+# @exitcode 1 The pin does not hold, named on stderr.
+record_helper_pin_check() {
+    local file=$1 named=$2 pin digest
+    [[ -r ${file} ]] || {
+        echo "acp-broker: the copy ${file} of acp-record-place.py is unreadable" >&2
+        return 1
+    }
+    pin=$(sed -n -E 's/^      acp-record-place\.py: ([0-9a-f]{64})$/\1/p' "${LEVER_MANIFEST}") || {
+        echo "acp-broker: cannot read ${LEVER_MANIFEST}" >&2
+        return 1
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "acp-broker: no single sha256 pin for acp-record-place.py in ${LEVER_MANIFEST}" >&2
+        return 1
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${file}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${file}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "acp-broker: cannot hash ${named} (its copy ${file})" >&2
+        return 1
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "acp-broker: sha256 ${digest} of ${named} differs from the pin in ${LEVER_MANIFEST}; the helper is not the pinned one (the digest is of the reaper's copy ${file})" >&2
+        return 1
+    }
+}
+
+# @description Write the exit record whole through the record helper (regime-cutover U343h; verdict U343g-8a049561
+#   P1 :1262, class record-path; the form of hcom-seat's profile_config_hold and profile_config_write, U310d): the
+#   lines `$@` on the helper's stdin, the helper the reaper's held copy (record_helper_copy_make,
+#   record_helper_pin_check) run as the pinned python3 `-I -S` over it with the broker directory, the identity the
+#   listener read (broker_dir_id) and the slot name, its stdout sent to stderr (the reaper's stdout is the
+#   connection), its status read; the copy's directory goes after the run. No `>` redirection, `mv`, `cp` or `ln`
+#   of this lever names a path under the broker directory: the helper alone names `<id>.tmp` and `<id>`, relative
+#   to the directory descriptor it holds, so a reader sees the running form or the final form and never a partial
+#   file, and a link the Router planted at either name is removed or replaced as an entry. Run by the reaper alone.
+#   Never refuses: a hold or a helper that fails is one stderr line (the helper's own, or the hold's) and the caller
+#   goes on.
+# @arg $@ string The record's lines.
+# @exitcode 1 The record could not be written.
+record_place() {
+    local status=0
+    record_helper_copy_make || return 1
+    if ! record_helper_pin_check "${helper_copy}" "${record_helper}"; then
+        record_helper_copy_remove
+        return 1
+    fi
+    if ! printf '%s\n' "$@" | "${python_cmd[@]}" -I -S "${helper_copy}" "${broker_dir}" "${broker_dir_id}" "${slot_name}" >&2; then
+        status=1
+        echo "acp-broker: cannot write the exit record ${record} (acp-record-place.py did not place it; its line is above)" >&2
+    fi
+    record_helper_copy_remove
+    return "${status}"
 }
 
 # @description The connection's reaper (regime-cutover U343g, the mechanism-change row of 2026-11-10T04:18:01Z, form
@@ -1270,8 +1425,9 @@ record_write() {
 #   and the one process that tears the connection down. Run as a background subshell forked by the handler before omp
 #   starts, outside omp's process group, with HUP, INT and TERM ignored, the connection's stdout held and the
 #   handler's control pipe on stdin (the slot's FIFO, whose writing end, fd 4, is closed here and for every child the
-#   handler starts). It writes the record's running form first (`ref=<pushed ref>`, `reaper=<its pid>`; the handler
-#   waits for it before omp starts), then reads the pipe: `start <pid>` names omp's process group, `exited <status>`
+#   handler starts). It writes the record's running form first, through the record helper (record_place; `ref=<pushed
+#   ref>`, `reaper=<its pid>`; the handler waits for it before omp starts), then reads the pipe: `start <pid>` names
+#   omp's process group, `exited <status>`
 #   omp's status, `done <status> <word>` ends the reading; EOF (the handler died: a signal from the relay, a refusal
 #   after the record line, anything) ends it too. Then it ends omp's process group when one remains (TERM, `kill -0`
 #   polled every tenth of a second for reaper_grace seconds, then KILL), appends the exit line to the launch log,
@@ -1296,7 +1452,7 @@ connection_reaper() {
         echo "acp-broker: the reaper of ${slot} cannot read its own pid" >&2
         exit 1
     }
-    record_write "ref=${pushed_ref}" "reaper=${pid}" || exit 1
+    record_place "ref=${pushed_ref}" "reaper=${pid}" || exit 1
     while IFS= read -r line; do
         case ${line} in
         start\ *)
@@ -1337,7 +1493,7 @@ connection_reaper() {
     slot_remove || removed=1
     final=${status}
     ((removed == 0)) || final=2
-    record_write "ref=${pushed_ref}" "reaper=${pid}" "status=${final} push=${word}" || exit 1
+    record_place "ref=${pushed_ref}" "reaper=${pid}" "status=${final} push=${word}" || exit 1
     exit "${removed}"
 }
 
@@ -1345,6 +1501,9 @@ connection_reaper() {
 # no other process made (mkdir takes no existing entry). No trap on HUP, INT or TERM: a signal that ends this
 # process before the reaper exists finds a slot the next connection's broker does not touch and refuse removes;
 # from the reaper's fork on, the reaper removes it (regime-cutover U343g).
+# The record helper beside this file is held before the slot exists (regime-cutover U343h): a helper that is a link,
+# another user's or writable by others refuses here, with nothing made.
+record_helper_path_check
 ensure_own_dir 'the state directory' "${seats_real}/.state"
 /bin/mkdir "${slot}" || refuse "cannot create the per-connection slot ${slot}"
 slot_made=1
@@ -1419,11 +1578,14 @@ log_line "omp acp start omp ${version} cwd ${task} repo ${repo} ref ${ref} base 
 exec 4<> "${slot}/control"
 (connection_reaper) < "${slot}/control" &
 reaper=$!
+# The reaper's own end before the record (its hold of the record helper failed, regime-cutover U343h) is read at once
+# (bash reaps the job on SIGCHLD, so `kill -0` finds no process), not after the 10 s bound.
 for ((n = 0; n < 100; n++)); do
     if [[ -e ${record} ]]; then break; fi
+    kill -0 "${reaper}" 2> /dev/null || break
     /bin/sleep 0.1
 done
-[[ -e ${record} ]] || refuse "the reaper (pid ${reaper}) did not write the exit record ${record} within 10 s; omp acp not started"
+[[ -e ${record} ]] || refuse "the reaper (pid ${reaper}) did not write the exit record ${record} (it ended, or 10 s passed; its own line is on the broker's stderr); omp acp not started"
 # The one broker line on the stream, before omp starts; everything after it is the worker's.
 printf 'acp-broker: record %s\n' "${slot_name}" || refuse "cannot write the record line to the connection; omp acp not started"
 # omp runs as a child, not an exec, so the push can follow and the reaper be told; the explicit `<&0` keeps the

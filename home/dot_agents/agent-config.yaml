@@ -879,6 +879,11 @@ claude:
   # `python3 -I -S` after hcom-seat has read its digest against this pin, never by
   # a policy rule; it writes one file inside the role's own profile through one
   # held directory descriptor and nothing else.
+  # acp-record-place.py is acp-broker's helper for the connection's exit record
+  # (U343h): installed and pinned the same way, run by the broker's reaper alone as
+  # `python3 -I -S` over a private copy whose digest the reaper reads against this
+  # pin before each run, never by a policy rule; it writes one record inside the
+  # broker directory through one held directory descriptor and nothing else.
   levers:
     sha256:
       hcom-seat: 34db7b4aa8954eac4e7e9a5fcd28cfe6f54350108bd7d0bee34e8861c95c4993
@@ -906,9 +911,10 @@ claude:
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
-      acp-broker: 1f41f70e46a8d61ef4ab8413d113acdc7bfc67bf7993132e29129b4c62f7c3ce
+      acp-broker: 57a7d80ac3718b58da8619b2b62a8b0f1bc8da80291a9e214c9b2099561f9fde
       acp-relay.py: d2b4852980affd6b536666fb46d6caa736def9f48924a608bf6f81440124a6b9
       acp-seat: b48f7bbe3c27934d67dc5f92e18640ec7b7f9e42f12cbc6858f3050a65a79c69
+      acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431
       intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the

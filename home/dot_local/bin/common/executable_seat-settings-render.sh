@@ -2,78 +2,26 @@
 # @file seat-settings-render.sh
 # @brief The one srt settings writer of the seat levers: the rows every seat's settings share and the JSON text they are written in, sourced by hcom-seat and acp-broker.
 # @description
-#   Regime-cutover U344 (M-24 part 2). Sourced by `hcom-seat` (every role's settings) and by `acp-broker` (the
-#   worker's settings, per connection) from the directory they run from (`LEVER_DIR`), never run on its own. It
-#   checks its own sha256 against its `claude.levers.sha256.seat-settings-render.sh` pin first, like regime-env, so a
-#   rewritten helper stops the caller. It holds what the two renderings shared by copy until this unit (the U343
-#   header: "This copy of the dsh row's shape is interim: U344 extracts one writer for both levers"): the path rule
-#   every settings row obeys (clean_path, clean_row), the fixed rows of the deny table (the credential stores denied
-#   for read, the project files denied for write under a seat's own directory, the rows denied for write under the
-#   shared Claude Code directory), the domain list, and the
-#   JSON writer (seat_settings_rows_json for a list, seat_settings_json for the file's text). It judges nothing (each
-#   lever's `settings_judge` stays its own) and writes no file (the caller writes the text it is handed, as before);
-#   each lever passes its rows, its `allowLocalBinding` value, its `allowUnixSockets` list and its Linux tool
-#   fragment. `acp-broker` reads the deny table back from the Router's settings `hcom-seat` rendered, so the rows
-#   below are spelled once and rendered once. tests/unit/test_acp_broker.py
-#   `test_one_settings_writer_renders_the_worker_and_the_dsh_row_byte_for_byte` holds the two levers' files
-#   byte-identical but the role's own rows.
-# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
-#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
-#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
-#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
-# @set LEVER_MANIFEST The manifest the pin came from.
-# @set LEVER_DIR The physical directory of this file, where the levers that source it sit.
-lever_self_check() {
-    local src dir self name pin digest home
-    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
-    src=${BASH_SOURCE[0]}
-    case ${src} in
-    */*) dir=${src%/*} ;;
-    *) dir=. ;;
-    esac
-    [[ -n ${dir} ]] || dir=/
-    dir=$(cd "${dir}" && pwd -P) || {
-        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
-        exit 2
-    }
-    self=${dir}/${BASH_SOURCE[0]##*/}
-    # shellcheck disable=SC2034 # read by the levers that source this helper from this directory
-    LEVER_DIR=${dir}
-    name=${self##*/}
-    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
-    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
-        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
-    else
-        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
-    fi
-    [[ -r ${LEVER_MANIFEST} ]] || {
-        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
-        exit 2
-    }
-    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
-        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
-        exit 2
-    }
-    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
-        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
-        exit 2
-    }
-    if command -v sha256sum > /dev/null; then
-        digest=$(sha256sum < "${self}") || digest=''
-    else
-        digest=$(shasum -a 256 < "${self}") || digest=''
-    fi
-    digest=${digest%% *}
-    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
-        echo "${name}: refused: cannot hash ${self}" >&2
-        exit 2
-    }
-    [[ ${digest} == "${pin}" ]] || {
-        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
-        exit 2
-    }
-}
-lever_self_check
+#   Regime-cutover U344 (M-24 part 2; U344c). Sourced by `hcom-seat` (every role's settings) and by `acp-broker` (the
+#   worker's settings, per connection), never run on its own. It carries no self-check of its own (regime-cutover
+#   U344c, verdict U344-a8adad11 P1 `seat-settings-render.sh:76`, class pin-then-run: a check inside sourced text
+#   runs after every line before it, so a replaced file ran unpinned up to that line and the check proved nothing
+#   about the bytes that ran). The lever that sources it hashes the copy it sources: it reads the file beside itself
+#   once into a private per-launch copy under its own state directory `~/.local/state/hcom-seat/`, hashes that copy
+#   against the `claude.levers.sha256.seat-settings-render.sh` pin of the manifest its own self-check read, sources
+#   the copy and removes the copy's directory at once (hcom-seat's and acp-broker's `renderer_source`, the form of
+#   hcom-seat's helper_copy_make, U310f), so the bytes hashed are the bytes sourced and nothing of this file runs
+#   before its digest equals the pin. It holds what the two renderings shared by copy until U344 (the U343 header:
+#   "This copy of the dsh row's shape is interim: U344 extracts one writer for both levers"): the path rule every
+#   settings row obeys (clean_path, clean_row), the fixed rows of the deny table (the credential stores denied for
+#   read, the project files denied for write under a seat's own directory, the rows denied for write under the
+#   shared Claude Code directory), the domain list, and the JSON writer (seat_settings_rows_json for a list,
+#   seat_settings_json for the file's text). It judges nothing (each lever's `settings_judge` stays its own) and
+#   writes no file (the caller writes the text it is handed, as before); each lever passes its rows, its
+#   `allowLocalBinding` value, its `allowUnixSockets` list and its Linux tool fragment. `acp-broker` reads the deny
+#   table back from the Router's settings `hcom-seat` rendered, so the rows below are spelled once and rendered
+#   once. tests/unit/test_acp_broker.py `test_one_settings_writer_renders_the_worker_and_the_dsh_row_byte_for_byte`
+#   holds the two levers' files byte-identical but the role's own rows.
 
 # @description Succeed when `$1` is a clean absolute path that srt cannot read as a pattern: `/` followed by
 #   components of `[A-Za-z0-9._@+-]` only (no glob metacharacter `*?[]{}`, no whitespace, no quote or backslash), none

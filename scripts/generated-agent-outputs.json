@@ -412,7 +412,7 @@
       "target": ".local/bin/common/acp-broker",
       "kind": "file",
       "executable": true,
-      "sha256": "94cb39f5d685643847adf110e3287a129ab45115b8fd9d337e1165b72aefdc2b"
+      "sha256": "7956cd3808eb03f3333e04126b0392173df2e9730e564a79ff12ca58803477e2"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-record-place.py",
@@ -475,7 +475,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "f07a0b322dfd9d7defd0b09295c22c8a464c39ddfcbeed818ebda058453ec5de"
+      "sha256": "ed2dd6ed52adf616ad6dc3f7aacc01dd0691b48e2134cb85d5ff5f03d05e2161"
     },
     {
       "source": "home/dot_local/bin/common/executable_intake-observe.py",
@@ -636,7 +636,7 @@
       "target": ".local/bin/common/seat-settings-render.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "5f076d3abe7321bf4810472fd46798de341cda824be76b060bc0cc552bd21759"
+      "sha256": "9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50"
     },
     {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",

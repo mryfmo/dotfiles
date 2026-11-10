@@ -176,17 +176,20 @@
 #   Router reads it. The omp profile, OMP_PROFILE and every other row are the dsh role's, so the role's rendered
 #   settings differ from the dsh role's in exactly the binding value, that one write root, that one deny row and the
 #   credential root's grant.
-#   The router row's broker (regime-cutover U344, M-24 part 2): the row's `broker` cell starts `acp-broker` beside this
-#   file (a regular file held to its `claude.levers.sha256.acp-broker` pin here before it runs, and to the same pin by
-#   itself; run by path under /bin/bash with the held physical DSH_HOME in its environment) after the settings are
-#   written and before the shim, waits for its socket `<seats-root>/.state/<name>/broker/sock`, and renders
-#   `network.allowUnixSockets` naming that directory, the fourth cell's, for this role alone (U342 measured: srt opens
-#   the sockets under it and nothing else); when dsh exits, and in the trap, the broker is stopped by SIGTERM and its
-#   exit status read (broker_stop): a status other than a clean end is named and the launch exits 2, never silent
-#   (standing order 21). Every role's settings text comes from the one writer both levers source,
-#   seat-settings-render.sh (pinned and self-checked like regime-env; every root an argument of this lever), so the
-#   worker's settings the broker renders and the dsh row's cannot drift (tests/unit/test_acp_broker.py holds them
-#   byte for byte).
+#   The router row's broker (regime-cutover U344, M-24 part 2; U344c): the row's `broker` cell starts `acp-broker`
+#   from a private per-launch copy of the lever set beside this file (`<state>/acp-broker.<name>/`, each file held
+#   as helper_path_check holds a helper and its copy hashed against its `claude.levers.sha256.<name>` pin before the
+#   broker's first byte runs, broker_copy_make; the copy run under /bin/bash with the held physical DSH_HOME in its
+#   environment) after the settings are written and before the shim, reads the broker's own line `acp-broker:
+#   listening on <sock>` from a pipe it holds as the readiness sign (never the socket path's existence, which
+#   precedes `listen`; broker_start), and renders `network.allowUnixSockets` naming the socket's directory
+#   `<seats-root>/.state/<name>/broker`, the fourth cell's, for this role alone (U342 measured: srt opens the sockets
+#   under it and nothing else); when dsh exits, and in the trap, the broker is stopped by SIGTERM, its exit status
+#   read and the copy directory removed (broker_stop): a status other than a clean end is named and the launch exits
+#   2, never silent (standing order 21). Every role's settings text comes from the one writer both levers source,
+#   seat-settings-render.sh (sourced from a private copy hashed against its pin, renderer_source, U344c; every root an
+#   argument of this lever), so the worker's settings the broker renders and the dsh row's cannot drift
+#   (tests/unit/test_acp_broker.py holds them byte for byte).
 # @arg $1 string Role: orchestrator, worker, dsh or router.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
@@ -293,12 +296,18 @@ usage='usage: hcom-seat <orchestrator|worker> [--name <name>] [--seats-root <dir
 # run), so no refusal after the slots exist leaves one behind (regime-cutover U310c). The flag is cleared before the
 # removal: slots_remove refuses through this function when a slot cannot be read. The flag is read with a default
 # because the tests run this function extracted from the lever's text, without the assignment below. The helper
-# copy's directory (helper_slot, regime-cutover U310f) goes the same way: a refusal after the copy exists removes it.
+# copy's directory (helper_slot, regime-cutover U310f) goes the same way: a refusal after the copy exists removes it;
+# so do the settings writer's copy directory (renderer_slot, renderer_source) and the broker's private copy directory
+# (broker_copy_dir, broker_copy_make), both U344c.
 slots_made=0
 helper_slot=''
+renderer_slot=''
+broker_copy_dir=''
 refuse() {
     echo "hcom-seat: $*" >&2
     if [[ -n ${helper_slot:-} ]]; then helper_copy_remove; fi
+    if [[ -n ${renderer_slot:-} ]]; then renderer_copy_remove; fi
+    if [[ -n ${broker_copy_dir:-} ]]; then broker_copy_remove; fi
     if ((${slots_made:-0})); then
         slots_made=0
         slots_remove || :
@@ -383,6 +392,52 @@ helper_pin_check() {
     digest=${digest%% *}
     [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash ${named} (its copy ${file})"
     [[ ${digest} == "${pin}" ]] || refuse "sha256 ${digest} of ${named} differs from the pin in ${LEVER_MANIFEST}; the helper is not the pinned one (the digest is of the lever's copy ${file})"
+}
+
+# @description Source the one settings writer `seat-settings-render.sh` from a private copy hashed against its pin
+#   (regime-cutover U344c; verdict U344-a8adad11 P1 `seat-settings-render.sh:76`, class pin-then-run: both levers
+#   sourced the file by path and the file checked its own pin at its line 76, so every line before it of a replaced
+#   file ran unpinned, and the auditor's altered copy printed before it refused). The form of helper_copy_make and
+#   helper_pin_check (U310f): the path beside this file is held as helper_path_check holds the profile config helper
+#   (no link, a readable regular file of this user, no group or other write bit), read once into a copy 0600 in a
+#   directory made now with `mkdir` (no `-p`), 0700, under the lever's own state directory
+#   (`<state>/seat-settings-render.<pid>`), the copy hashed against the `claude.levers.sha256.seat-settings-render.sh`
+#   pin of the manifest the self-check read (helper_pin_check, the same readers), the copy sourced, and the directory
+#   removed at once (the functions stay defined). A step that fails refuses naming it (refuse removes the directory),
+#   and nothing of the file runs before its digest equals the pin; the path beside this file is never read again.
+# @set renderer_slot The copy's directory while it exists.
+renderer_source() {
+    local writer=seat-settings-render.sh path=${LEVER_DIR}/seat-settings-render.sh copy err mode
+    [[ ! -L ${path} ]] || refuse "${writer} beside this script is a symbolic link: ${path}; the settings writer is sourced from the lever's own directory only"
+    [[ -r ${path} ]] || refuse "${writer} unreadable beside this script: ${path}"
+    [[ -f ${path} ]] || refuse "${writer} beside this script is not a regular file: ${path}"
+    [[ -O ${path} ]] || refuse "${writer} beside this script is not this user's own file: ${path}"
+    mode=$(/usr/bin/stat "${mode_args[@]}" -- "${path}") || refuse "cannot read the mode of ${path}"
+    [[ ${mode} =~ ^[0-7]+[0145][0145]$ ]] ||
+        refuse "${writer} beside this script is writable by its group or by others (mode '${mode}'): ${path}; the settings writer is sourced from the lever's own directory only"
+    renderer_slot=${tools_dir%/*}/seat-settings-render.$$
+    if ! err=$( (umask 077 && /bin/mkdir "${renderer_slot}") 2>&1); then
+        local failed=${renderer_slot}
+        renderer_slot=''
+        refuse "cannot create the settings writer's copy directory ${failed}: ${err:-the umask set or the mkdir failed with no message}"
+    fi
+    copy=${renderer_slot}/${writer}
+    if ! err=$( (umask 077 && /bin/cat -- "${path}" > "${copy}") 2>&1); then
+        refuse "cannot copy ${path} into ${renderer_slot}: ${err:-the umask set or the copy failed with no message}"
+    fi
+    helper_pin_check "${copy}" "${path}"
+    # shellcheck source=scripts/orchestrator/seat-settings-render.sh
+    . "${copy}"
+    renderer_copy_remove
+}
+
+# @description Remove the settings writer copy's directory (renderer_source) when one exists; a removal that fails is
+#   named, and the function returns 0 either way. Idempotent: the variable is cleared first.
+renderer_copy_remove() {
+    local slot=${renderer_slot:-}
+    [[ -n ${slot} ]] || return 0
+    renderer_slot=''
+    /bin/rm -rf -- "${slot}" || echo "hcom-seat: the settings writer's copy directory ${slot} remains after its removal; remove it by hand" >&2
 }
 
 # @description Hold the profile config helper for its one run (regime-cutover U310f): the copy (helper_copy_make),
@@ -2487,14 +2542,12 @@ dsh_deny_paths() {
     done
 }
 
-# The one settings writer (regime-cutover U344): the path rule every settings row obeys (clean_row, and clean_path
-# again, byte for byte), the fixed deny rows, the structural tags of the grant positions, the domain list and the JSON
-# text every role's settings are written in, sourced here, after the manifest's own checks and before any row is
-# rendered; it holds itself to its own pin, like regime-env, so a rewritten helper stops this launch.
-[[ -r ${LEVER_DIR}/seat-settings-render.sh && ! -L ${LEVER_DIR}/seat-settings-render.sh ]] ||
-    refuse "seat-settings-render.sh unreadable or a link beside this script: ${LEVER_DIR}/seat-settings-render.sh"
-# shellcheck source=scripts/orchestrator/seat-settings-render.sh
-. "${LEVER_DIR}/seat-settings-render.sh"
+# The one settings writer (regime-cutover U344; U344c): the path rule every settings row obeys (clean_row, and
+# clean_path again, byte for byte), the fixed deny rows, the structural tags of the grant positions, the domain list
+# and the JSON text every role's settings are written in, sourced here, after the manifest's own checks and before any
+# row is rendered, from a private copy this launch makes, hashes against the writer's pin and removes at once
+# (renderer_source): what is hashed is what is sourced, and a rewritten writer stops this launch before its first line.
+renderer_source
 
 # @description Render the seat's settings lists (regime-cutover U272e): `write` (the allowWrite roots, exactly
 #   seat_write_roots' list, so the protected set and the sandbox cannot drift), `deny_write` with the macOS
@@ -3282,6 +3335,7 @@ if ((dry_run)); then
     echo "hcom-seat: sandbox ${sandbox} (srt ${srt_cmd[*]}, omp ${omp_cmd[*]}, hcom ${hcom_cmd[*]}, herdr ${herdr_cmd[*]})" >&2
     if ((broker)); then
         echo "hcom-seat: a launch starts the ACP broker ${LEVER_DIR}/acp-broker ${seats_root} ${name} ${dir} beside dsh and stops it when dsh exits" >&2
+        echo "hcom-seat: a launch copies the ACP broker's lever set (acp-broker, acp-relay.py, acp-record-place.py, seat-settings-render.sh, git-isolated.sh) into the private directory ${tools_dir%/*}/acp-broker.${name}, hashes each copy against its pin and runs the broker from there; the directory goes with the broker" >&2
     fi
     exit 0
 fi
@@ -3371,65 +3425,196 @@ slots_remove() {
         return 1
     }
 }
-# @description Start `acp-broker` beside the Router (regime-cutover U344, M-24 part 2): the lever beside this file, a
-#   regular readable file held to its `claude.levers.sha256.acp-broker` pin here before it runs (it checks the same
-#   pin itself), run by path under /bin/bash with the seats root, this launch's seat name and its scratch cwd, the held
+# @description Make the broker's private per-launch copy directory (regime-cutover U344c; verdict U344-a8adad11 P1
+#   `hcom-seat:3414`, class pin-then-run: the launch hashed `acp-broker` by path and then ran the pathname, so a
+#   replacement between the two ran unpinned). The form of helper_copy_make (U310f) over the broker's lever set: the
+#   directory `<state>/acp-broker.<name>/` is made now with `mkdir` (no `-p`: an entry of any kind at the name fails
+#   it), 0700, under the lever's own state directory; the five files the broker runs or sources from its own
+#   directory (`acp-broker`; `acp-relay.py`, run by the pinned python; `acp-record-place.py`, copied again per run by
+#   its reaper; `seat-settings-render.sh` and `git-isolated.sh`, sourced) are each held beside this file as
+#   helper_path_check holds the profile config helper (no link, a readable regular file of this user, no group or
+#   other write bit), read once into a copy 0600 under `<copy>/scripts/orchestrator/`, and the manifest the
+#   self-check read is copied to `<copy>/home/dot_agents/agent-config.yaml`, the place a checkout keeps it two levels
+#   above its levers, so the broker's and the relay's own self-checks, unchanged, find their pins beside the copies
+#   they run from (the copy directory is the broker's `LEVER_DIR` by construction, its own path, and every
+#   connection re-enters the copy). Every copy is hashed against its `claude.levers.sha256.<name>` pin read from
+#   the manifest copy (the readers of helper_pin_check) before the broker's first byte runs; the digest is the copy's,
+#   the file that runs, and the paths beside this file are never read again. A step that fails is named on stderr
+#   and the function fails (2); the caller removes the directory. It goes after the broker's end (broker_stop: the
+#   normal end and the trap), by a refusal (refuse) and by a failed start (broker_start).
+# @set broker_copy_dir The copy directory while it exists.
+# @set broker_copy_lever The copy of `acp-broker` that runs.
+# @exitcode 0 The copies are made and each equals its pin.
+# @exitcode 2 A step failed; named on stderr.
+broker_copy_make() {
+    local state=${tools_dir%/*} lever_dir manifest_copy f path copy mode err pin digest
+    for f in acp-broker acp-relay.py acp-record-place.py seat-settings-render.sh git-isolated.sh; do
+        path=${LEVER_DIR}/${f}
+        [[ ! -L ${path} ]] || {
+            echo "hcom-seat: ${f} beside this script is a symbolic link: ${path}; the ACP broker runs from the lever's own directory only; dsh not started" >&2
+            return 2
+        }
+        [[ -r ${path} ]] || {
+            echo "hcom-seat: ${f} unreadable beside this script: ${path}; dsh not started" >&2
+            return 2
+        }
+        [[ -f ${path} ]] || {
+            echo "hcom-seat: ${f} beside this script is not a regular file: ${path}; dsh not started" >&2
+            return 2
+        }
+        [[ -O ${path} ]] || {
+            echo "hcom-seat: ${f} beside this script is not this user's own file: ${path}; dsh not started" >&2
+            return 2
+        }
+        mode=$(/usr/bin/stat "${mode_args[@]}" -- "${path}") || {
+            echo "hcom-seat: cannot read the mode of ${path}; dsh not started" >&2
+            return 2
+        }
+        [[ ${mode} =~ ^[0-7]+[0145][0145]$ ]] || {
+            echo "hcom-seat: ${f} beside this script is writable by its group or by others (mode '${mode}'): ${path}; the ACP broker runs from the lever's own directory only; dsh not started" >&2
+            return 2
+        }
+    done
+    if ! err=$( (umask 077 && /bin/mkdir "${state}/acp-broker.${name}") 2>&1); then
+        echo "hcom-seat: cannot create the ACP broker's copy directory ${state}/acp-broker.${name}: ${err:-the umask set or the mkdir failed with no message}; dsh not started" >&2
+        return 2
+    fi
+    broker_copy_dir=${state}/acp-broker.${name}
+    lever_dir=${broker_copy_dir}/scripts/orchestrator
+    manifest_copy=${broker_copy_dir}/home/dot_agents/agent-config.yaml
+    if ! err=$( (umask 077 && /bin/mkdir "${broker_copy_dir}/scripts" "${lever_dir}" "${broker_copy_dir}/home" "${manifest_copy%/*}") 2>&1); then
+        echo "hcom-seat: cannot lay out the ACP broker's copy directory ${broker_copy_dir}: ${err:-the umask set or the mkdir failed with no message}; dsh not started" >&2
+        return 2
+    fi
+    if ! err=$( (umask 077 && /bin/cat -- "${LEVER_MANIFEST}" > "${manifest_copy}") 2>&1); then
+        echo "hcom-seat: cannot copy ${LEVER_MANIFEST} into ${broker_copy_dir}: ${err:-the umask set or the copy failed with no message}; dsh not started" >&2
+        return 2
+    fi
+    for f in acp-broker acp-relay.py acp-record-place.py seat-settings-render.sh git-isolated.sh; do
+        path=${LEVER_DIR}/${f}
+        copy=${lever_dir}/${f}
+        if ! err=$( (umask 077 && /bin/cat -- "${path}" > "${copy}") 2>&1); then
+            echo "hcom-seat: cannot copy ${path} into ${lever_dir}: ${err:-the umask set or the copy failed with no message}; dsh not started" >&2
+            return 2
+        fi
+        pin=$(sed -n -E "s/^      ${f//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${manifest_copy}") || {
+            echo "hcom-seat: cannot read ${LEVER_MANIFEST} (its copy ${manifest_copy}) for the ${f} pin; dsh not started" >&2
+            return 2
+        }
+        [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+            echo "hcom-seat: no single sha256 pin for ${f} in ${LEVER_MANIFEST}; dsh not started" >&2
+            return 2
+        }
+        if command -v sha256sum > /dev/null; then
+            digest=$(sha256sum < "${copy}") || digest=''
+        else
+            digest=$(shasum -a 256 < "${copy}") || digest=''
+        fi
+        digest=${digest%% *}
+        [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+            echo "hcom-seat: cannot hash ${path} (its copy ${copy}); dsh not started" >&2
+            return 2
+        }
+        [[ ${digest} == "${pin}" ]] || {
+            echo "hcom-seat: sha256 ${digest} of ${path} differs from the pin in ${LEVER_MANIFEST}; the ACP broker's ${f} is not the pinned one (the digest is of the launch's copy ${copy}); dsh not started" >&2
+            return 2
+        }
+    done
+    broker_copy_lever=${lever_dir}/acp-broker
+}
+
+# @description Remove the broker's copy directory (broker_copy_make) when one exists; a removal that fails is named,
+#   and the function returns 0 either way. Idempotent: the variable is cleared first.
+broker_copy_remove() {
+    local dir=${broker_copy_dir:-}
+    [[ -n ${dir} ]] || return 0
+    broker_copy_dir=''
+    /bin/rm -rf -- "${dir}" || echo "hcom-seat: the ACP broker's copy directory ${dir} remains after its removal; remove it by hand" >&2
+}
+
+# @description Close the readiness pipe's descriptor (broker_start) when it is open.
+broker_fifo_close() {
+    ((broker_fifo_open)) || return 0
+    broker_fifo_open=0
+    exec 7>&-
+}
+
+# @description Start `acp-broker` beside the Router (regime-cutover U344, M-24 part 2; U344c): the broker's lever set
+#   copied into a private per-launch directory and each copy hashed against its pin (broker_copy_make), then
+#   `/bin/bash <copy>/acp-broker` run with the seats root, this launch's seat name and its scratch cwd, the held
 #   physical DSH_HOME in its environment (the broker holds the credential root from it, U343l), its stdin /dev/null
-#   and its stdout on stderr (its one line, `acp-broker: listening on <sock>`), as a background child of this launch,
-#   so a signal to the process group reaches it too and broker_stop can read its status. The launch waits for the
-#   socket `<seats-root>/.state/<name>/<broker_dir>/sock` before the shim starts, so dsh finds the broker listening; a
-#   broker that ends first, or does not listen within 60 s, is named with its status and the function fails (2) with
-#   the shim never started (the caller removes the slots as after any dsh exit).
+#   and its stdout the readiness pipe, as a background child of this launch, so a signal to the process group reaches
+#   it too and broker_stop can read its status. Readiness is the broker's own message, never a path's existence
+#   (U343o's form; verdict U344-a8adad11 P2 `hcom-seat:3416`: a Unix socket path exists after `bind` and before
+#   `listen`, so a poll of `-S <sock>` could start dsh before the broker accepted): a FIFO `broker-ready` made 0600
+#   in the launch's state slot and opened read-write by this process (fd 7, its own, so no end-of-file and no
+#   blocking open), the broker's stdout, read one line at a time with a one-second timeout and the broker's liveness
+#   checked between reads, within 60 s in all; the one line `acp-broker: listening on <sock>` (the relay prints it
+#   once `listen` has returned) is the sign, echoed on this launch's stderr, and dsh starts after it. A broker that
+#   ends first is named with its status now; one that writes any other line is stopped and named with the line and
+#   its status; one that does not report within 60 s is stopped and named: each fails the function (2) with the shim
+#   never started and the copy directory removed (the caller removes the slots as after any dsh exit). The descriptor
+#   stays open while the broker runs (a writer with no reader would be ended by SIGPIPE on any later line) and is
+#   closed by broker_stop; the dsh child does not inherit it.
 # @set broker_pid The broker's pid; empty when none runs.
 # @exitcode 0 The broker listens.
 # @exitcode 2 It could not be started or did not listen; named on stderr.
 broker_start() {
-    local lever=${LEVER_DIR}/acp-broker sock=${seats_root}/.state/${name}/${broker_dir}/sock pin digest n=0
-    [[ -f ${lever} && -r ${lever} && ! -L ${lever} ]] || {
-        echo "hcom-seat: the ACP broker is unreadable, a link or no regular file beside this script: ${lever}; dsh not started" >&2
+    # The socket as the broker spells it: under the physical state slot (the broker resolves the seats root physically,
+    # as seat_settings_render does for broker_dir_phys), so a seats root spelled through a link (`/tmp` on macOS)
+    # matches its one line.
+    local lever=${LEVER_DIR}/acp-broker sock=${broker_dir_phys}/sock fifo=${seats_root}/.state/${name}/broker-ready line n=0
+    broker_copy_make || {
+        broker_copy_remove
         return 2
     }
-    pin=$(sed -n -E 's/^      acp-broker: ([0-9a-f]{64})$/\1/p' "${LEVER_MANIFEST}") || {
-        echo "hcom-seat: cannot read ${LEVER_MANIFEST}; dsh not started" >&2
+    /usr/bin/mkfifo -m 600 "${fifo}" || {
+        echo "hcom-seat: cannot create the ACP broker's readiness pipe ${fifo}; dsh not started" >&2
+        broker_copy_remove
         return 2
     }
-    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
-        echo "hcom-seat: no single sha256 pin for acp-broker in ${LEVER_MANIFEST}; dsh not started" >&2
+    exec 7<> "${fifo}" || {
+        echo "hcom-seat: cannot open the ACP broker's readiness pipe ${fifo}; dsh not started" >&2
+        broker_copy_remove
         return 2
     }
-    if command -v sha256sum > /dev/null; then
-        digest=$(sha256sum < "${lever}") || digest=''
-    else
-        digest=$(shasum -a 256 < "${lever}") || digest=''
-    fi
-    digest=${digest%% *}
-    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
-        echo "hcom-seat: cannot hash ${lever}; dsh not started" >&2
-        return 2
-    }
-    [[ ${digest} == "${pin}" ]] || {
-        echo "hcom-seat: sha256 ${digest} of ${lever} differs from the pin in ${LEVER_MANIFEST}; dsh not started" >&2
-        return 2
-    }
-    DSH_HOME=${dsh_home_phys} /bin/bash "${lever}" "${seats_root}" "${name}" "${dir}" < /dev/null >&2 &
+    broker_fifo_open=1
+    DSH_HOME=${dsh_home_phys} /bin/bash "${broker_copy_lever}" "${seats_root}" "${name}" "${dir}" < /dev/null > "${fifo}" 7>&- &
     broker_pid=$!
-    while [[ ! -S ${sock} ]]; do
+    while :; do
+        line=''
+        if IFS= read -r -t 1 -u 7 line; then
+            if [[ ${line} == "acp-broker: listening on ${sock}" ]]; then # lint-comparisons: allow the broker's one readiness line, spelled with the socket this launch named
+                echo "${line}" >&2
+                return 0
+            fi
+            if kill -TERM "${broker_pid}" 2> /dev/null; then :; fi
+            broker_wait 2> /dev/null
+            broker_pid=''
+            broker_copy_remove
+            broker_fifo_close
+            echo "hcom-seat: the ACP broker ${lever} wrote '${line}' instead of its listening line for ${sock} (stopped, exit ${broker_status}); dsh not started" >&2
+            return 2
+        fi
         if ! kill -0 "${broker_pid}" 2> /dev/null; then
             broker_wait
             broker_pid=''
+            broker_copy_remove
+            broker_fifo_close
             echo "hcom-seat: the ACP broker ${lever} exited ${broker_status} before it listened on ${sock}; dsh not started" >&2
             return 2
         fi
-        ((n < 600)) || {
+        ((n < 60)) || {
             if kill -TERM "${broker_pid}" 2> /dev/null; then :; fi
             # The redirect hides bash's own `Terminated` job notice for the child this stop ended, nothing else:
             # broker_wait runs builtins alone and leaves the status in broker_status.
             broker_wait 2> /dev/null
             broker_pid=''
-            echo "hcom-seat: the ACP broker ${lever} did not listen on ${sock} within 60 s (stopped, exit ${broker_status}); dsh not started" >&2
+            broker_copy_remove
+            broker_fifo_close
+            echo "hcom-seat: the ACP broker ${lever} did not report listening on ${sock} within 60 s (stopped, exit ${broker_status}); dsh not started" >&2
             return 2
         }
-        sleep 0.1
         n=$((n + 1))
     done
 }
@@ -3452,10 +3637,12 @@ broker_wait() {
 }
 
 # @description Stop the broker when one runs (the normal end after dsh exited, and the trap): SIGTERM, then its exit
-#   status read (standing order 21). A clean end is 0 (the relay ended on its own with the socket gone and the records
-#   removed) or the status of the stop signal (143; 129 and 130 when the process group's hangup or interrupt reached
-#   the broker before this stop, each after its own cleanup); any other status is named with the directory that may
-#   hold leftovers and the function fails, so the launch exits 2 and never reads a failed stop as dsh's status.
+#   status read (standing order 21), then the private copy directory removed and the readiness pipe's descriptor
+#   closed (U344c; both after the broker ended, so nothing it runs from goes while it runs). A clean end is 0 (the
+#   relay ended on its own with the socket gone and the records removed) or the status of the stop signal (143; 129
+#   and 130 when the process group's hangup or interrupt reached the broker before this stop, each after its own
+#   cleanup); any other status is named with the directory that may hold leftovers and the function fails, so the
+#   launch exits 2 and never reads a failed stop as dsh's status.
 # @exitcode 0 No broker ran, or it ended cleanly.
 # @exitcode 1 The broker ended with another status; named on stderr.
 broker_stop() {
@@ -3465,13 +3652,15 @@ broker_stop() {
     # runs builtins alone and leaves the status in broker_status, read below.
     broker_wait 2> /dev/null
     broker_pid=''
+    broker_copy_remove
+    broker_fifo_close
     case ${broker_status} in
     0 | 129 | 130 | 143) return 0 ;;
     esac
     echo "hcom-seat: the ACP broker exited ${broker_status} at its stop; its socket directory ${seats_root}/.state/${name}/${broker_dir} may hold leftovers" >&2
     return 1
 }
-broker_pid='' broker_status=0
+broker_pid='' broker_status=0 broker_fifo_open=0
 
 # @description The dsh role's signal trap (regime-cutover U272d): a hangup, interrupt or termination stops the broker
 #   when one runs (broker_stop, U344), removes the slots and then ends this process by the same signal, its

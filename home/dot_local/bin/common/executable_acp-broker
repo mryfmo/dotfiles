@@ -91,7 +91,8 @@
 #   `allowLocalBinding` false, `allowUnixSockets` empty, the domain list
 #   `hcom-seat`'s. The settings text is the one writer's: both levers source `seat-settings-render.sh`
 #   (regime-cutover U344: the path rule every row obeys, the domain list and the JSON text; the rows are each
-#   lever's own and no root is baked in), so the worker's file is the dsh row's file with the worker's rows,
+#   lever's own and no root is baked in) from a private copy hashed against its pin (renderer_source, U344c), so the
+#   worker's file is the dsh row's file with the worker's rows,
 #   byte for byte (tests/unit/test_acp_broker.py `test_the_worker_settings_are_the_dsh_row_but_the_named_rows`
 #   and `test_one_settings_writer_renders_the_worker_and_the_dsh_row_byte_for_byte`).
 #   The judgement (regime-cutover U343c; hcom-seat's settings_judge, U272f and U272g). Before anything is made, every
@@ -331,14 +332,86 @@ lever_self_check
 # shellcheck disable=SC2119 # no name is kept on purpose: the worker's and the Router-side git's environments are built below
 git_env_scrub
 
-# The one settings writer (regime-cutover U344), sourced from the directory this lever runs from before any row is
-# checked or rendered; it holds itself to its own pin, like regime-env, so a rewritten helper stops the broker.
-[[ -r ${LEVER_DIR}/seat-settings-render.sh && ! -L ${LEVER_DIR}/seat-settings-render.sh ]] || {
-    echo "acp-broker: refused: seat-settings-render.sh unreadable or a link beside this script: ${LEVER_DIR}/seat-settings-render.sh" >&2
+# @description Refuse (exit 2) from renderer_source, before this lever's own `refuse` exists: one line on stderr, the
+#   copy directory `$1` removed when one was made (a removal that fails is named), nothing on the stream (no connection
+#   has read its header yet).
+# @arg $1 string The copy directory made so far, or empty.
+# @arg $@ string The reason, after it.
+renderer_refuse() {
+    local dir=$1
+    shift
+    echo "acp-broker: refused: $*" >&2
+    if [[ -n ${dir} ]]; then
+        /bin/rm -rf -- "${dir}" || echo "acp-broker: the settings writer's copy directory ${dir} remains after its removal; remove it by hand" >&2
+    fi
     exit 2
 }
-# shellcheck source=scripts/orchestrator/seat-settings-render.sh
-. "${LEVER_DIR}/seat-settings-render.sh"
+
+# @description Source the one settings writer `seat-settings-render.sh` from a private copy hashed against its pin
+#   (regime-cutover U344c; verdict U344-a8adad11 P1 `seat-settings-render.sh:76`, class pin-then-run: this lever
+#   sourced the file by path and the file checked its own pin at its line 76, so every line before it of a replaced
+#   file ran unpinned, and the auditor's altered copy printed before it refused). The form of record_helper_path_check,
+#   record_helper_copy_make and record_helper_pin_check (U343h; hcom-seat's helper_copy_make, U310f), run here before
+#   anything else of this lever (`refuse`, the OS table and the physical home are defined below, so each step names
+#   its own failure through renderer_refuse): the path beside this file is no link, a readable regular file of this
+#   user whose mode grants no group or other write (`stat`, read with its status, the flag chosen by `uname -s`);
+#   HOME is a clean absolute path (the writer's clean_path rule, spelled here once more because the writer is what is
+#   being sourced); the state directory `<HOME>/.local/state/hcom-seat` is made 0700 when absent and held to a real
+#   directory of this user; the copy directory `<state>/seat-settings-render.<pid>` is made now with `mkdir` (no
+#   `-p`: an entry of any kind at the name fails it), 0700; the file is read once into a copy 0600 there; the copy is
+#   hashed against the `claude.levers.sha256.seat-settings-render.sh` pin of the manifest lever_self_check read (the
+#   sed and hash readers of that check); the copy is sourced; the directory is removed at once (the functions and
+#   tables stay defined). A step that fails exits 2 naming it, and nothing of the file runs before its digest equals
+#   the pin; the path beside this file is never read again.
+renderer_source() {
+    local writer=seat-settings-render.sh path=${LEVER_DIR}/seat-settings-render.sh os state dir='' copy mode err pin digest
+    [[ ! -L ${path} ]] || renderer_refuse '' "${writer} beside this script is a symbolic link: ${path}; the settings writer is sourced from the lever's own directory only"
+    [[ -r ${path} ]] || renderer_refuse '' "${writer} unreadable beside this script: ${path}"
+    [[ -f ${path} ]] || renderer_refuse '' "${writer} beside this script is not a regular file: ${path}"
+    [[ -O ${path} ]] || renderer_refuse '' "${writer} beside this script is not this user's own file: ${path}"
+    os=$(/usr/bin/uname -s) || renderer_refuse '' 'cannot read the operating system name (uname -s)'
+    case ${os} in
+    Darwin) mode=$(/usr/bin/stat -L -f '%Lp' -- "${path}") || renderer_refuse '' "cannot read the mode of ${path}" ;;
+    Linux) mode=$(/usr/bin/stat -L -c '%a' -- "${path}") || renderer_refuse '' "cannot read the mode of ${path}" ;;
+    *) renderer_refuse '' "no worker sandbox for ${os}; srt supports macOS and Linux" ;;
+    esac
+    [[ ${mode} =~ ^[0-7]+[0145][0145]$ ]] ||
+        renderer_refuse '' "${writer} beside this script is writable by its group or by others (mode '${mode}'): ${path}; the settings writer is sourced from the lever's own directory only"
+    [[ ${HOME:-} =~ ^(/[A-Za-z0-9._@+-]+)+$ && /${HOME}/ != */./* && /${HOME}/ != */../* ]] || # lint-comparisons: allow the clean-path rule on one path, no path compare
+        renderer_refuse '' "HOME '${HOME:-}' is not a clean absolute path"
+    state=${HOME}/.local/state/hcom-seat
+    if [[ ! -e ${state} && ! -L ${state} ]]; then
+        err=$( (umask 077 && /bin/mkdir -p "${state}") 2>&1) ||
+            renderer_refuse '' "cannot create hcom-seat's state directory ${state} for the settings writer's copy: ${err:-the umask set or the mkdir failed with no message}"
+    fi
+    [[ ! -L ${state} && -d ${state} && -O ${state} ]] ||
+        renderer_refuse '' "hcom-seat's state directory ${state} is a symbolic link, not a directory or not this user's; the settings writer is not sourced"
+    dir=${state}/seat-settings-render.$$
+    err=$( (umask 077 && /bin/mkdir "${dir}") 2>&1) ||
+        renderer_refuse '' "cannot create the settings writer's copy directory ${dir}: ${err:-the umask set or the mkdir failed with no message}"
+    copy=${dir}/${writer}
+    err=$( (umask 077 && /bin/cat -- "${path}" > "${copy}") 2>&1) ||
+        renderer_refuse "${dir}" "cannot copy ${path} into ${dir}: ${err:-the umask set or the copy failed with no message}"
+    pin=$(sed -n -E 's/^      seat-settings-render\.sh: ([0-9a-f]{64})$/\1/p' "${LEVER_MANIFEST}") ||
+        renderer_refuse "${dir}" "cannot read ${LEVER_MANIFEST} for the ${writer} pin"
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || renderer_refuse "${dir}" "no single sha256 pin for ${writer} in ${LEVER_MANIFEST}"
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${copy}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${copy}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || renderer_refuse "${dir}" "cannot hash ${path} (its copy ${copy})"
+    [[ ${digest} == "${pin}" ]] ||
+        renderer_refuse "${dir}" "sha256 ${digest} of ${path} differs from the pin in ${LEVER_MANIFEST}; the settings writer is not the pinned one (the digest is of this process's copy ${copy})"
+    # shellcheck source=scripts/orchestrator/seat-settings-render.sh
+    . "${copy}"
+    /bin/rm -rf -- "${dir}" || echo "acp-broker: the settings writer's copy directory ${dir} remains after its removal; remove it by hand" >&2
+}
+# The one settings writer (regime-cutover U344; U344c), sourced before any row is checked or rendered, from the private
+# copy renderer_source makes, hashes and removes: what is hashed is what is sourced, and a rewritten writer stops the
+# broker before its first line.
+renderer_source
 
 usage='usage: acp-broker [--connection] <seats-root> <router-seat-name> <router-scratch-cwd>'
 connection=0

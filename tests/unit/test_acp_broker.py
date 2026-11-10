@@ -1113,11 +1113,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
         self.assertEqual(sorted(p.name for p in victim.parent.iterdir()), ["credentials"], "nothing landed beside it")
 
-    def scratch_checkout(self):
-        """A copy of the levers the broker runs beside itself (the broker, the relay, the isolated git library and the
-        record helper) under a scratch checkout with the manifest two levels up, so a test can alter the helper's
-        bytes without touching the repository; returns the broker's path and the helper's."""
-        checkout = Path(self.temp.name).resolve() / "checkout"
+    def scratch_checkout(self, name="checkout"):
+        """A copy of the levers the broker runs beside itself (the broker, the relay, the isolated git library, the
+        record helper and the settings writer) under a scratch checkout with the manifest two levels up, so a test can
+        alter a lever's bytes without touching the repository; returns the broker's path and the helper's."""
+        checkout = Path(self.temp.name).resolve() / name
         (checkout / "scripts/orchestrator").mkdir(parents=True)
         (checkout / "home/dot_agents").mkdir(parents=True)
         for lever in (
@@ -1433,17 +1433,27 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(sorted(p.name for p in log_dir.iterdir()), ["w1.log"], "no log for the refused name")
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
+    def sleeping_child(self, pid):
+        """Whether the handler `pid` has the injected `/bin/sleep 1` as a child now (`pgrep` by parent and argv), so
+        a test's signal lands inside the window the sleep holds open (U344c: CI at a8adad11 sent TERM as soon as the
+        slot appeared, which on a loaded runner landed between the `mkdir` and `slot_made=1` for the variant whose
+        sleep follows the flag)."""
+        run = subprocess.run(["pgrep", "-P", str(pid), "-f", "/bin/sleep 1"], capture_output=True, check=False)
+        return run.returncode == 0
+
     def term_while_the_slot_is_made(self, after, signal_line):
         """The body of the two handler-window tests: a scratch copy of the lever with one line `/bin/sleep 1` right
         after the line `after` (the copy differs from the source by that line alone, asserted with difflib, and is
-        pinned in the scratch manifest so it runs); a TERM to the handler pid once the slot exists leaves the slot
-        gone within the budget, the client exits 2 with nothing on stdout and no record line, no record exists for
-        the slot (had the reaper been forked, one ending `status=2 push=skipped` that the broker's end sweeps), omp
-        never ran, the next connection on the same broker is served, and the broker's stderr carries `signal_line`
-        once. The budget is the sleep plus a slack measured on the same machine, `max(2.0, 2 * setup)` where `setup`
-        is the wall time from the client's start to the slot's appearance (the handler's start: bash parsing the
-        lever, the header read, the template reads, the holds; CHANGE 2b of U343q: the fixed 5 s around a 3 s sleep
-        failed on the ubuntu-24.04 runners while ubuntu-26.04 passed). Returns (setup, elapsed, budget)."""
+        pinned in the scratch manifest so it runs); a TERM to the handler pid once the slot exists and the injected
+        sleep is its child (sleeping_child, so the signal lands where the sleep sits: after the flag in variant (a),
+        between the `mkdir` and the flag in variant (b)) leaves the slot gone within the budget, the client exits 2
+        with nothing on stdout and no record line, no record exists for the slot (had the reaper been forked, one
+        ending `status=2 push=skipped` that the broker's end sweeps), omp never ran, the next connection on the same
+        broker is served, and the broker's stderr carries `signal_line` once. The budget is the sleep plus a slack
+        measured on the same machine, `max(2.0, 2 * setup)` where `setup` is the wall time from the client's start to
+        the slot's appearance (the handler's start: bash parsing the lever, the header read, the template reads, the
+        holds; CHANGE 2b of U343q: the fixed 5 s around a 3 s sleep failed on the ubuntu-24.04 runners while
+        ubuntu-26.04 passed). Returns (setup, elapsed, budget)."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         broker, _helper = self.scratch_checkout()
@@ -1467,6 +1477,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         budget = 1.0 + max(2.0, 2 * setup)
         (slot,) = self.acp_slots()
         pid = int(slot.rsplit("-", 1)[1])
+        self.wait_for(lambda: self.sleeping_child(pid), "the injected sleep under the handler", seconds=30)
         started = time.monotonic()
         os.kill(pid, signal.SIGTERM)
         self.wait_for(lambda: self.acp_slots() == [], "the slot's removal", seconds=budget)
@@ -1539,8 +1550,10 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.wait_for(lambda: self.acp_slots() != [], "the slot's making", seconds=30)
         (slot,) = self.acp_slots()
         slot_path = self.seats_path / ".state" / slot
+        pid = int(slot.rsplit("-", 1)[1])
+        self.wait_for(lambda: self.sleeping_child(pid), "the injected sleep under the handler", seconds=30)
         (slot_path / "planted").write_text("")
-        os.kill(int(slot.rsplit("-", 1)[1]), signal.SIGTERM)
+        os.kill(pid, signal.SIGTERM)
         out, err = client.communicate(timeout=120)
         self.assertEqual((client.returncode, out), (2, b""), err)
         self.assertIn(b"the broker closed the connection before its first line", err)
@@ -2433,8 +2446,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         """Each producer the launch reads fails in turn: the slot mkdir, a physical resolution, the Router settings
         read (a malformed file, an unclean row), the reaper's placement (a file size limit on the broker, which the
         record helper's copy hits before the settings write, U343o), the canary, srt's exit (the record and the log
-        carry omp's status), the omp version read and the log append. Each refuses with one line naming what
-        failed, starts no omp and leaves no slot."""
+        carry omp's status), the omp version read, the log append and, U344c (verdict U344-a8adad11 P2
+        `test_acp_broker.py:2432`), the settings writer's two functions under the module's injection form (a scratch
+        copy of the lever with one line inserted after the judgement, pinned so it runs): a row that is not clean
+        reaching `seat_settings_rows_json`, and `seat_settings_json` failing. Each refuses with one line naming what
+        failed, starts no omp, writes nothing and leaves no slot."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
@@ -2526,18 +2542,19 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.assertEqual(self.acp_slots(), [])
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
         with self.subTest(producer="the reaper's placement, under a file size limit"):
-            # A file size limit of 1 KiB on the broker (inherited by every handler and its reaper). The reaper is
-            # forked as soon as the slot exists (U343o), before the settings write, and its first write is the record
-            # helper's private copy (13 KiB), which fails with EFBIG: the reaper removes the slot and writes no ready
-            # line, so the handler refuses with the ready line and the settings (8 KiB, the producer this limit
-            # reached until round 12) are never written. SIGXFSZ is ignored so a write fails instead of ending the
-            # shell.
+            # A file size limit of 12 KiB on the broker (inherited by every handler and its reaper): above the
+            # settings writer's private copy (8.2 KiB, which the listener and every handler make before anything
+            # else, U344c) and the settings (8 KiB, the producer this limit reached until round 12), below the
+            # record helper's private copy (13.3 KiB). The reaper is forked as soon as the slot exists (U343o),
+            # before the settings write, and its first write is that copy, which fails with EFBIG: the reaper
+            # removes the slot and writes no ready line, so the handler refuses with the ready line and the settings
+            # are never written. SIGXFSZ is ignored so a write fails instead of ending the shell.
             limit = [
                 sys.executable, "-c",
                 (
                     "import os, resource, signal, sys\n"
                     "signal.signal(signal.SIGXFSZ, signal.SIG_IGN)\n"
-                    "resource.setrlimit(resource.RLIMIT_FSIZE, (1024, 1024))\n"
+                    "resource.setrlimit(resource.RLIMIT_FSIZE, (12288, 12288))\n"
                     "os.execv(sys.argv[1], sys.argv[1:])\n"
                 ),
             ]  # fmt: skip
@@ -2546,8 +2563,42 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.assertIn("did not report ready within 10 s; omp acp not started", data)
             status, _out, err = self.stop_broker(proc)
             self.assertEqual(status, -signal.SIGTERM, err)
-            self.assertIn("acp-broker: cannot copy ", err)
+            self.assertIn(f"acp-broker: cannot copy {ROOT}/scripts/orchestrator/acp-record-place.py into ", err)
+            self.assertNotIn("seat-settings-render", err, "the settings writer's copies were made under the limit")
             self.assertNotIn("cannot write the worker settings", err, "the settings write was never reached")
+        source = BROKER.read_text()
+        anchor = (
+            "# The four lists and the file's text through the one writer (seat-settings-render.sh, U344), each "
+            "producer's status\n"
+        )
+        self.assertEqual(source.count(anchor), 1, "the one line the injection follows")
+        cases = (
+            (
+                "a row that is not clean reaches seat_settings_rows_json",
+                'deny_read+=("${h}/a b")\n',
+                "cannot render the worker's denyRead list (seat_settings_rows_json failed)",
+            ),
+            (
+                "seat_settings_json fails",
+                "seat_settings_json() { return 1; }\n",
+                "cannot render the worker settings text (seat_settings_json failed)",
+            ),
+        )
+        for index, (label, injected, message) in enumerate(cases):
+            with self.subTest(producer=label):
+                broker, _helper = self.scratch_checkout(f"checkout-renderer-{index}")
+                broker.write_text(source.replace(anchor, anchor + injected))
+                self.pin_lever(broker, broker)
+                srt_before, omp_before = len(self.calls_of("srt")), len(self.calls_of("omp"))
+                log_before = self.log_lines("w1")
+                proc, sock = self.start_broker(name, cwd, broker=broker)
+                refused(message)
+                self.assertEqual(list(state.glob("acp-*")), [], "no slot and no settings file were made")
+                self.assertEqual(
+                    (len(self.calls_of("srt")), len(self.calls_of("omp"))), (srt_before, omp_before), "nothing ran"
+                )
+                self.assertEqual(self.log_lines("w1"), log_before, "no canary line: the launch log gained nothing")
+                self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def test_the_worker_settings_are_the_dsh_row_but_the_named_rows(self):
         """The byte-identical compare (U343 ACCEPTANCE 6): the Router's settings come from a real held `hcom-seat

@@ -1059,6 +1059,33 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assert_broker_dir_stands_empty(sock)
         self.assertNotIn("cannot remove", err)
 
+    def test_g_a_record_that_cannot_be_removed_at_the_brokers_end_is_named_and_the_broker_exits_2(self):
+        """U344b (verdicts U343j-62c10228 P3 `acp-broker:1000` and U343l-426188c6 P3 `:1028`): until this head
+        `broker_cleanup` named a record it could not remove and returned 0, so the broker ended by its signal as if
+        the directory were clean. A planted non-empty directory at a record's name (`rm -f` takes no directory)
+        stands in for a record the broker cannot remove: the end names the record, names what remains, and the
+        broker exits 2 instead of ending by SIGTERM; the socket is gone, the record no client read is gone, and the
+        directory stands with the leftover alone."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
+        stuck = sock.parent / "acp-w9-20260101-000000-1"
+        stuck.mkdir()
+        (stuck / "inner").write_text("")
+        self.addCleanup(lambda: shutil.rmtree(stuck, ignore_errors=True))
+        stuck_real, dir_real = stuck.resolve(), sock.parent.resolve()
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, 2, err)
+        self.assertIn(f"acp-broker: cannot remove the exit record {stuck_real}", err)
+        self.assertIn(
+            f"acp-broker: 1 exit record(s) remain in {dir_real} after the removal ({stuck_real}); remove them by hand",
+            err,
+        )
+        self.assertIn("ended by SIGTERM; the broker exits 2 because an exit record remains (named above)", err)
+        self.assertFalse(sock.exists() or sock.is_symlink(), "the socket is gone")
+        self.assertEqual(self.broker_dir_entries(sock), [stuck.name], "the read record went; the leftover stands")
+
     def broker_dir_entries(self, sock):
         """The entries of the broker directory, dot names included; the test fails when the directory is gone."""
         self.assertTrue(sock.parent.is_dir() and not sock.parent.is_symlink(), f"{sock.parent} is not a directory")
@@ -1489,6 +1516,51 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             '/bin/mkdir "${slot}" || refuse "cannot create the per-connection slot ${slot}"\n',
             "acp-broker: the connection ended by a signal as the slot was made; the empty slot removed",
         )
+
+    def test_a_c_a_rmdir_that_fails_with_an_entry_present_between_the_mkdir_and_the_flag_is_named(self):
+        """U344b (verdict U343q-668a020e P2 `acp-broker:439`): the pre-flag branch of the trap ran `/bin/rmdir` and
+        said nothing when it failed, so an entry it could not take stood unnamed. With the sleep between the `mkdir`
+        and `slot_made=1`, a file planted in the fresh slot during the sleep (the one state `rmdir` refuses that a
+        test can reach) and a TERM to the handler: the slot stands with the planted file, the broker's stderr names
+        the entry once and asks for a removal by hand, the client exits 2 with nothing on stdout, omp never ran, and
+        once the slot is removed by hand the next connection on the same broker is served."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        broker, _helper = self.scratch_checkout()
+        after = '/bin/mkdir "${slot}" || refuse "cannot create the per-connection slot ${slot}"\n'
+        source = BROKER.read_text()
+        self.assertEqual(source.count(after), 1, f"the one line the sleep follows: {after!r}")
+        broker.write_text(source.replace(after, after + "/bin/sleep 1\n"))
+        self.pin_lever(broker, broker)
+        proc, sock = self.start_broker(name, cwd, broker=broker)
+        self.addCleanup(self.remove_slots)
+        client = self.client_popen(sock, repo, "w1")
+        self.addCleanup(lambda: client.poll() is None and client.kill())
+        self.wait_for(lambda: self.acp_slots() != [], "the slot's making", seconds=30)
+        (slot,) = self.acp_slots()
+        slot_path = self.seats_path / ".state" / slot
+        (slot_path / "planted").write_text("")
+        os.kill(int(slot.rsplit("-", 1)[1]), signal.SIGTERM)
+        out, err = client.communicate(timeout=120)
+        self.assertEqual((client.returncode, out), (2, b""), err)
+        self.assertIn(b"the broker closed the connection before its first line", err)
+        self.assertTrue((slot_path / "planted").exists(), "the slot stands with the planted entry")
+        self.assertEqual(self.acp_slots(), [slot])
+        self.assertEqual(self.calls_of("omp"), [], "omp never started")
+        self.assertEqual(self.log_lines("w1"), [], "no canary line and no exit line: omp never ran")
+        self.remove_slots()
+        self.assertEqual(self.acp_slots(), [])
+        conn, slot2, _task = self.held_connection(sock, repo, "w1")
+        self.assertEqual(self.finish(conn, slot2), (b"", "status=0 push=none"))
+        self.wait_for(lambda: self.acp_slots() == [], "the second slot's removal")
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        line = (
+            f"acp-broker: the connection ended by a signal as the slot was made; the entry at {slot_path.resolve()} "
+            "could not be removed (rmdir failed with the entry present); remove it by hand"
+        )
+        self.assertEqual(err.count(line), 1, err)
+        self.assert_broker_dir_stands_empty(sock)
 
     def push_calls(self, slot):
         """The fake srt's calls after the launch (the push's), as (settings file, the git arguments after the

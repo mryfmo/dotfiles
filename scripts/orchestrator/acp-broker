@@ -23,7 +23,9 @@
 #   is gone: `hcom-seat`'s router row renders `<state slot>/broker` as a `denyWrite` row of the Router's own settings
 #   (tagged `slot` inside the state-slot grant; srt's later deny wins on macOS and on Linux the path must exist when
 #   the settings are written) and makes the directory 0700 before it writes them (hcom-seat's broker_dir_make), so
-#   the Router reads it and connects to its socket and can plant, rename or unlink nothing in it. `acp-broker
+#   the Router reads it and connects to its socket (the router row's `network.allowUnixSockets` names this directory
+#   and nothing else since regime-cutover U344, so the connect is granted and this sentence holds at this head) and
+#   can plant, rename or unlink nothing in it. `acp-broker
 #   <seats-root> <router seat> <router scratch cwd>` makes nothing there: it takes the directory as hcom-seat made it,
 #   present (absent refuses naming hcom-seat), no link, a directory of this user, mode 0700 and empty (no entry of any
 #   kind: a socket inside is another broker's, one listener per Router launch; anything else is a crashed broker's
@@ -438,8 +440,13 @@ refuse() {
 #   slot_remove takes it (idempotent, so a reaper already forked may remove it too; a slot that remains names
 #   itself). With slot_made at 0 the only state the slot can have is the one a bare `mkdir` leaves, an empty
 #   directory of this user, and `/bin/rmdir` takes exactly that and nothing else: not a non-empty directory, not a
-#   file, not a link (it follows none), so a pre-existing entry at the name is never taken; its failure (nothing
-#   made, or an entry that is not this connection's) is ignored. The stderr line names which removal happened.
+#   file, not a link (it follows none). The guarantee as it is (regime-cutover U344b, verdict U343q-668a020e P3
+#   :439): a signal between the trap's arming and the `mkdir` may remove an empty directory at the slot's name that
+#   this connection did not make, which no seat can plant, since `.state` is the broker's own root and the slot
+#   name carries this pid. A `rmdir` that fails with nothing at the name is the signal before the `mkdir`, and
+#   nothing is said; one that fails with an entry at the name (verdict U343q-668a020e P2 :439: silent until this
+#   head) prints one stderr line naming the entry, which the operator removes by hand, and the exit is 2 as for
+#   every path of this trap. The stderr line names which removal happened.
 # shellcheck disable=SC2329 # invoked by the trap armed before the slot's mkdir
 slot_trap() {
     trap - HUP INT TERM
@@ -447,10 +454,10 @@ slot_trap() {
         if slot_remove; then
             echo "acp-broker: the connection ended by a signal before omp started; the slot removed" >&2
         fi
-    else
-        if /bin/rmdir -- "${slot}" 2> /dev/null; then
-            echo "acp-broker: the connection ended by a signal as the slot was made; the empty slot removed" >&2
-        fi
+    elif /bin/rmdir -- "${slot}" 2> /dev/null; then
+        echo "acp-broker: the connection ended by a signal as the slot was made; the empty slot removed" >&2
+    elif [[ -e ${slot} || -L ${slot} ]]; then
+        echo "acp-broker: the connection ended by a signal as the slot was made; the entry at ${slot} could not be removed (rmdir failed with the entry present); remove it by hand" >&2
     fi
     exit 2
 }
@@ -916,13 +923,14 @@ template_rows() {
 # @arg $1 string The command name.
 # @stdout The path, symlinks not yet followed.
 # @exitcode 1 None found.
+# @exitcode 2 The caller's PATH could not be split into directories (the `read` failed; standing order 21).
 find_tool() {
     local path_dir path_dirs=()
     if [[ -n ${tools_real} && -x ${tools_real}/$1 && ! -d ${tools_real}/$1 ]]; then
         printf '%s\n' "${tools_real}/$1"
         return 0
     fi
-    IFS=: read -r -a path_dirs <<< "${caller_path}"
+    IFS=: read -r -a path_dirs <<< "${caller_path}" || return 2
     for path_dir in ${path_dirs[@]+"${path_dirs[@]}"}; do
         [[ ${path_dir} == /* && ${path_dir} != *[[:cntrl:]]* ]] || continue # lint-comparisons: allow an absolute-path and content test
         [[ -x ${path_dir}/$1 && ! -d ${path_dir}/$1 ]] || continue
@@ -956,8 +964,11 @@ tool_place_check() {
 # @arg $1 string The tool's name.
 # @set pinned The argv.
 pin_tool() {
-    local label=$1 found file first magic interp name extra interp_path
-    found=$(find_tool "$1") || refuse "${label} not found in the private tool directory ${tools_dir} or on the caller's PATH; run hcom-seat once (make update)"
+    local label=$1 found file first magic interp name extra interp_path status=0
+    # The lookup's status is read (standing order 21): 2 is a failed split of the caller's PATH, 1 is none found.
+    found=$(find_tool "$1") || status=$?
+    ((status != 2)) || refuse "cannot split the caller's PATH into directories while resolving ${label}"
+    ((status == 0)) || refuse "${label} not found in the private tool directory ${tools_dir} or on the caller's PATH; run hcom-seat once (make update)"
     file=$(physical_path "${found}") || refuse "cannot resolve ${label} to a physical file: ${found}"
     [[ -f ${file} && -x ${file} && -r ${file} ]] || refuse "${label} ${found} resolves to ${file}, not a readable executable file"
     tool_place_check "${label}" "${found}" "${file}"
@@ -972,11 +983,14 @@ pin_tool() {
     case ${first} in
     '#!'*)
         extra=''
-        read -r interp name extra <<< "${first#??}"
+        read -r interp name extra <<< "${first#??}" || refuse "cannot split the interpreter line of ${label}: ${file}"
         if [[ ${interp} == /usr/bin/env ]]; then # lint-comparisons: allow the literal interpreter line, no path compare
             [[ -n ${name} && -z ${extra} && ${name} != -* ]] ||
                 refuse "${label}: unsupported interpreter line '${first}' in ${file}"
-            interp_path=$(find_tool "${name}") || refuse "${label}: interpreter ${name} not found in the private tool directory or on the caller's PATH"
+            status=0
+            interp_path=$(find_tool "${name}") || status=$?
+            ((status != 2)) || refuse "cannot split the caller's PATH into directories while resolving the interpreter ${name} of ${label}"
+            ((status == 0)) || refuse "${label}: interpreter ${name} not found in the private tool directory or on the caller's PATH"
         else
             [[ -z ${name} ]] || refuse "${label}: unsupported interpreter line '${first}' in ${file}"
             [[ ${interp} == /* ]] || # lint-comparisons: allow an absolute-path test
@@ -1047,7 +1061,7 @@ done
 # absolute entries (hcom-seat's seat path); outside, srt itself runs with the first two alone.
 outer_path=${tools_real:+${tools_real}:}${system_path}
 seat_path=${outer_path}
-IFS=: read -r -a caller_dirs <<< "${caller_path}"
+IFS=: read -r -a caller_dirs <<< "${caller_path}" || refuse "cannot split the caller's PATH into directories for the worker's seat path"
 for caller_dir in ${caller_dirs[@]+"${caller_dirs[@]}"}; do
     if [[ ${caller_dir} == /* && ${caller_dir} != *[[:cntrl:]]* ]]; then seat_path+=:${caller_dir}; fi # lint-comparisons: allow an absolute-path and content test
 done
@@ -1061,10 +1075,13 @@ done
 #   it are that broker's; then nothing is removed, the socket is named and the function fails. The directory is
 #   hcom-seat's and stands (regime-cutover U343i: no `rmdir`; the Router's settings deny it for write, so no link and
 #   no rename of it can stand at these names, and the launch's slot removal takes it with the Router's state slot).
-# @exitcode 0 The socket is gone and the records are removed, each failure named.
+# @exitcode 0 The socket is gone and every record is removed.
 # @exitcode 1 The socket stands, named on stderr; nothing was removed.
+# @exitcode 2 The socket is gone and a record could not be removed (regime-cutover U344b, verdicts U343j-62c10228 P3
+#   :1000 and U343l-426188c6 P3 :1028: until this head the failure was named and the function returned 0), each named
+#   on stderr as `cannot remove the exit record <path>` and the remaining records named once more at the end.
 broker_cleanup() {
-    local entry
+    local entry remaining=()
     path_presence "${sock}"
     ((! slot_present)) || {
         echo "acp-broker: the socket ${sock} stands after the relay's end (another broker's listener, or one the relay could not remove); this broker removes nothing in ${broker_dir}" >&2
@@ -1072,14 +1089,21 @@ broker_cleanup() {
     }
     for entry in "${broker_dir}"/acp-*; do
         [[ -e ${entry} || -L ${entry} ]] || continue
-        /bin/rm -f -- "${entry}" || echo "acp-broker: cannot remove the exit record ${entry}" >&2
+        /bin/rm -f -- "${entry}" || {
+            echo "acp-broker: cannot remove the exit record ${entry}" >&2
+            remaining+=("${entry}")
+        }
     done
+    ((${#remaining[@]} == 0)) || {
+        echo "acp-broker: ${#remaining[@]} exit record(s) remain in ${broker_dir} after the removal (${remaining[*]}); remove them by hand" >&2
+        return 2
+    }
 }
 
 # @description The listener's signal trap: a hangup, interrupt or termination ends the relay (and, through it, every
 #   worker it started; the relay removes its socket), removes the records once the socket is gone and then ends this
-#   process by the same signal, its disposition restored; a socket that stands is exit 2 whatever the signal, nothing
-#   removed.
+#   process by the same signal, its disposition restored; a socket that stands, or a record that could not be
+#   removed, is exit 2 whatever the signal, each named by broker_cleanup and told apart by its status.
 # @arg $1 string The signal name.
 # shellcheck disable=SC2329 # invoked by the trap installed below
 broker_signal() {
@@ -1090,8 +1114,12 @@ broker_signal() {
         if wait "${child}"; then :; fi
     fi
     broker_cleanup || removed=$?
-    ((removed == 0)) || {
+    ((removed != 1)) || {
         echo "acp-broker: ended by SIG$1; the broker exits 2 because the socket stands and nothing was removed" >&2
+        exit 2
+    }
+    ((removed == 0)) || {
+        echo "acp-broker: ended by SIG$1; the broker exits 2 because an exit record remains (named above)" >&2
         exit 2
     }
     kill -s "$1" $$
@@ -1181,8 +1209,14 @@ if ((! connection)); then
     wait_child "${child}"
     status=${child_status}
     trap - HUP INT TERM
-    broker_cleanup || {
+    removed=0
+    broker_cleanup || removed=$?
+    ((removed != 1)) || {
         echo "acp-broker: the relay exited ${status}; the broker exits 2 because the socket stands and nothing was removed" >&2
+        exit 2
+    }
+    ((removed == 0)) || {
+        echo "acp-broker: the relay exited ${status}; the broker exits 2 because an exit record remains (named above)" >&2
         exit 2
     }
     exit "${status}"
@@ -1200,7 +1234,7 @@ header=''
 IFS= read -r -n 1025 header || refuse 'no header line arrived before the connection closed'
 ((${#header} <= 1024)) || refuse 'the header exceeds 1024 characters, or its newline did not arrive within them'
 f1='' f2='' f3='' f4='' f5='' extra=''
-read -r f1 f2 f3 f4 f5 extra <<< "${header}"
+read -r f1 f2 f3 f4 f5 extra <<< "${header}" || refuse 'cannot split the header line into its fields'
 [[ ${f1} == ACP-SEAT && ${f2} == v1 ]] || refuse "the header '${header}' does not begin 'ACP-SEAT v1'"
 [[ ${f3} == repo=?* ]] || refuse "the header '${header}' has no 'repo=<path>' third field"
 [[ ${f4} == ref=?* ]] || refuse "the header '${header}' has no 'ref=<rev>' fourth field"

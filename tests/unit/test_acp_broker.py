@@ -833,21 +833,34 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         worker that ignored TERM held the trap, the slot and the connection open. The teardown is the reaper, not a
         trap, and the reaper polls the group with `kill -0` for the grace, then KILLs: with a TERM-ignoring fake omp,
         a TERM to the handler pid leaves the slot gone and the record complete, `status=2 push=skipped`, within the
-        grace plus two seconds, the worker dead and one exit line in the log; then the same worker under
-        `stop_broker`: the broker ends by its signal within the grace plus two seconds with the slot gone."""
+        grace plus a slack, the worker dead and one exit line in the log; then the same worker under `stop_broker`:
+        the broker ends by its signal within the grace plus a slack with the slot gone. The slack (U343n) is two
+        seconds or the wall time of the connection's own `held_connection` on the same machine (the clone, the
+        canary, the omp start, the record line and one echoed line: the same kinds of work as the teardown),
+        whichever is longer: the fixed two seconds measured on the development host failed twice at 7 s on the
+        macos-15 runner, where the module ran four to five times slower, and the reaper's grace is counted in
+        forked `/bin/sleep 0.1` iterations (acp-broker `:1506`), so it runs over five seconds on a slow machine."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
         (self.calls / "omp-ignore-term").touch()
         self.addCleanup(self.kill_fake_omp)
+        setup_started = time.monotonic()
         conn, slot, _task = self.held_connection(sock, repo, "w1")
+        setup = time.monotonic() - setup_started
+        slack = max(2.0, setup)
         pid = int(slot.rsplit("-", 1)[1])
         omp_pid = int((self.calls / "omp-pid").read_text())
         started = time.monotonic()
         os.kill(pid, signal.SIGTERM)
-        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal", seconds=GRACE + 2)
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal", seconds=GRACE + slack)
         rest = self.recv_all(conn)
-        self.assertLessEqual(time.monotonic() - started, GRACE + 2)
+        elapsed = time.monotonic() - started
+        self.assertLessEqual(
+            elapsed,
+            GRACE + slack,
+            f"the slot went in {elapsed:.1f} s, budget {GRACE + slack:.1f} s (setup took {setup:.1f} s)",
+        )
         self.assertEqual(rest, b"", "nothing of the broker's on the stream after the record line")
         self.assertEqual(self.record_lines(slot)[2], "status=2 push=skipped")
         self.assertEqual(len(self.record_lines(slot)), 3)
@@ -856,14 +869,21 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(len(exits), 1, self.log_lines("w1"))
         self.assertRegex(exits[0], r" acp-broker: omp acp exit 2 push=skipped$")
         (self.calls / "omp-pid").unlink()
+        setup_started = time.monotonic()
         conn, slot, _task = self.held_connection(sock, repo, "w1")
+        setup = time.monotonic() - setup_started
+        slack = max(2.0, setup)
         omp_pid = int((self.calls / "omp-pid").read_text())
         started = time.monotonic()
         status, _out, err = self.stop_broker(proc)
         elapsed = time.monotonic() - started
         self.assertEqual(status, -signal.SIGTERM, err)
         self.assertEqual(self.acp_slots(), [], "the slot went with the broker")
-        self.assertLessEqual(elapsed, GRACE + 2, f"the broker took {elapsed:.1f} s to end")
+        self.assertLessEqual(
+            elapsed,
+            GRACE + slack,
+            f"the broker went in {elapsed:.1f} s, budget {GRACE + slack:.1f} s (setup took {setup:.1f} s)",
+        )
         self.assertFalse(self.alive(omp_pid))
         self.assertEqual(
             self.broker_dir_entries(sock), [], "the records went at the broker's end; the directory stands"

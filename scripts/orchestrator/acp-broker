@@ -1451,7 +1451,7 @@ else
     reaper_status=$?
 fi
 ((reaper_status == 0)) || {
-    echo "acp-broker: omp acp exited ${status}; the connection exits 2 because the reaper (pid ${reaper}) ended ${reaper_status} (a per-connection slot or the record remains)" >&2
+    echo "acp-broker: omp ended ${status}; the connection exits 2 because the reaper (pid ${reaper}) ended ${reaper_status} (a per-connection slot or the record remains)" >&2
     exit 2
 }
 exit "${status}"

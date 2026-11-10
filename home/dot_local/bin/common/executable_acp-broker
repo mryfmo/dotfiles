@@ -48,7 +48,8 @@
 #   repository a clean absolute path (clean_path) the Router may read, the ref a revision in
 #   `^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$` without `..`, the name in the seat-name grammar `^[a-z0-9][a-z0-9_-]{0,63}$`
 #   (never `claude`, the shared Claude Code directory's name, never the Router's own seat name, never one beginning
-#   `acp-`, the prefix of the slots below), nothing after the fifth field, the whole line within 1024 characters and
+#   `acp-`, the prefix of the slots below, never `broker-logs`, the launch logs' directory, U343o), nothing after the
+#   fifth field, the whole line within 1024 characters and
 #   its newline read. Anything else is refused with one line `acp-broker: refused: <reason>` on the connection and
 #   the connection closed, nothing made. The Router's scratch cwd is the third argument alone: it is neither read
 #   nor granted, and no path of the header is a grant.
@@ -102,10 +103,15 @@
 #   under the operator's `~/.claude/debug` must all fail inside (`write-denied read-denied ssh-denied
 #   debug-denied`); any other answer, a canary that did not run, or a file a probe could make refuses with one line,
 #   the slot removed and no omp started. The answer is appended as `<utc> acp-broker: canary <four words>` to
-#   `<seats-root>/.state/<name>/acp-launch.log` (the directory made 0700 when absent), then omp's version is read
-#   under the same settings and `omp acp start omp <version> cwd <task> repo <path> ref <rev> base <commit>` logged,
-#   then the launch, then `omp acp exit <status> push=<word>`; a log line that cannot be appended refuses by name.
-#   The three lines of one launch are in that order.
+#   `<seats-root>/.state/broker-logs/<name>.log`, in a directory this lever makes 0700 under its own `.state`
+#   (regime-cutover U343o, verdict U343n-fd3db1b3 P1 :1264, the record-path premise once more: until round 12 the
+#   log was `.state/<name>/acp-launch.log`, inside the state slot an hcom-seat seat of that name writes, and a hard
+#   link a seat planted at that name passed the `-L` test and redirected this unsandboxed append to its target;
+#   `.state/broker-logs` is granted to no seat, the seats root being denied to every seat but its own slot, and this
+#   lever makes and writes nothing under `.state/<name>` any more), then omp's version is read under the same
+#   settings and `omp acp start omp <version> cwd <task> repo <path> ref <rev> base <commit>` logged, then the
+#   launch, then `omp acp exit <status> push=<word>`, the reaper's line, written only when omp ran; a log line that
+#   cannot be appended refuses by name. The three lines of one launch are in that order.
 #   The launch. `/usr/bin/env -i HOME PATH OMP_PROFILE=dsh CLAUDE_CONFIG_DIR AWS_SHARED_CREDENTIALS_FILE=/dev/null
 #   AWS_CONFIG_FILE=/dev/null HCOM_SEAT_SANDBOX=<slot> [USER LANG when this process has them] <srt> --settings
 #   <slot>/settings.json -- /usr/bin/env PATH=<seat path> <omp> acp --profile dsh`, in the slot's task, its stdin and
@@ -159,24 +165,38 @@
 #   copy goes after the run. A hold or a helper that fails is one stderr line and the write is not made: before the
 #   record line the handler refuses and no omp runs; after it the record keeps its running form and the client exits
 #   2 naming `<id>`.
-#   The teardown is the reaper (connection_reaper): one subshell per connection,
-#   forked before omp, outside omp's process group, with HUP, INT and TERM ignored, holding the connection's stdout
-#   and reading one control pipe (a FIFO in the slot, closed for every child the handler starts) on which the
-#   handler writes `start <pid>` when omp runs, `exited <status>` when omp has exited and `done <status> <word>`
-#   after the push, or nothing (its death closes the pipe). On `done` or on EOF the reaper ends omp's process group
-#   when one remains (TERM, `kill -0` polled for the grace of reaper_grace seconds, then KILL), appends the exit
-#   line to the launch log, removes the slot, writes the record's final line and exits, closing its stdout: the
-#   socket's close is the sign that the record is complete, and the connection's status is the record's. No trap
-#   on HUP, INT or TERM in a connection: the relay's terminate and kill target the handler pid alone, so no signal
-#   that ends the handler reaches the removal or the report. What the reaper cannot end, the two residuals of the
-#   body's threat table: a worker descendant that made a process group of its own (setsid, a daemonised tool),
-#   which stays inside the worker's sandbox and, when it holds stdout, keeps the connection open; and the reaper
-#   itself under SIGKILL, which strands the slot and leaves the record in its running form (the client exits 2
-#   naming the record). The client reads the first line, copies the rest to its stdout and, after EOF, reads the
-#   record from the socket directory, prints `acp-seat: push=<word>` on stderr, unlinks the record and exits with
-#   `status`; a missing or incomplete record is exit 2 naming `<id>`. The broker's own end removes the records no
-#   client read and leaves the directory, hcom-seat's, standing (the client's own unlink of the record is refused by
-#   the deny row and prints one line until U344 removes it).
+#   The teardown is the reaper (connection_reaper): one subshell per connection, forked the moment the slot exists
+#   (regime-cutover U343o, verdict U343n-fd3db1b3 P1 :1581: until round 12 it was forked after the settings write,
+#   the clone, the canary and the version read, and a signal to the handler in that window, a process with no trap,
+#   stranded the slot), outside omp's process group, with HUP, INT and TERM ignored, holding the connection's
+#   stdout and reading one control pipe (a FIFO in the slot, fd 4, closed for the reaper and for every long-lived
+#   child the handler starts; a printf, mkdir, mv or rm between the fork and omp's start holds it for its own run
+#   time alone) on which the handler writes `start <pid>` when omp runs, `exited <status>` when omp has exited and
+#   `done <status> <word>` after the push, or nothing (its death or its refusal closes the pipe). From the fork on
+#   the reaper alone removes the slot, in every path of its own: a running form the helper could not place (the
+#   slot removed, exit 1, no ready line), EOF or `done` before any `start` (no exit line, the slot removed, the
+#   record's final line `status=2 push=skipped`), `done` or EOF after `start` (omp's process group ended when one
+#   remains: TERM, `kill -0` polled for the grace of reaper_grace seconds, then KILL; the exit line; the slot
+#   removed; the final line). The handler never removes the slot after the fork: refuse leaves it to the reaper,
+#   whose EOF follows the handler's exit. The readiness is a message, never the record's existence (verdict
+#   U343n-fd3db1b3 P1 :1657: a helper that renamed the record into place and then failed left a visible record
+#   while the reaper exited 1, and omp started with no reaper over a slot nobody removed): once record_place of the
+#   running form returned 0 the reaper writes one line `ready <its pid>` on a second FIFO in the slot (`ready`,
+#   fd 5, opened read-write by the handler before the fork so no open blocks, closed by the reaper after its write
+#   and by the handler after its read, so no later child inherits it), and the handler reads one line with a 10 s
+#   bound and refuses unless it is `ready <the pid it forked>`: a reaper that died, failed its placement or stayed
+#   silent starts no omp. The reaper's exit closes its stdout: the socket's close is the sign that the record is
+#   complete, and the connection's status is the record's. No trap on HUP, INT or TERM in a connection: the relay's
+#   terminate and kill target the handler pid alone, so no signal that ends the handler reaches the removal or the
+#   report. What the reaper cannot end, the two residuals of the body's threat table: a worker descendant that made
+#   a process group of its own (setsid, a daemonised tool), which stays inside the worker's sandbox and, when it
+#   holds stdout, keeps the connection open; and the reaper itself under SIGKILL, which strands the slot and leaves
+#   the record in its running form (the client exits 2 naming the record). The client reads the first line, copies
+#   the rest to its stdout and, after EOF, reads the record from the socket directory, prints `acp-seat:
+#   push=<word>` on stderr, unlinks the record and exits with `status`; a missing or incomplete record is exit 2
+#   naming `<id>`. The broker's own end removes the records no client read and leaves the directory, hcom-seat's,
+#   standing (the client's own unlink of the record is refused by the deny row and prints one line until U344
+#   removes it).
 #   Tools. srt, omp, python3 and git (and bwrap, socat, rg on Linux, which srt runs by path and which must be
 #   binaries) are taken from the private tool directory `~/.local/state/hcom-seat/tools` that `hcom-seat` links on
 #   every launch, else from this process's caller's PATH, and run by their physical argv (pin_tool: every link
@@ -298,6 +318,8 @@ connection=0
 slot=''
 slot_made=0
 child=''
+# The connection's reaper pid once forked (regime-cutover U343o): from then on the reaper owns the slot's removal.
+reaper=''
 push_word=''
 # The reaper's grace in seconds between TERM to omp's process group and KILL (regime-cutover U343g), named once.
 reaper_grace=5
@@ -367,12 +389,16 @@ slot_remove() {
 }
 
 # @description Refuse (exit 2) with the reason on stderr; in a connection the same line goes to the client first, and
-#   a slot this connection made is removed (slot_remove), a slot that remains naming itself.
+#   a slot this connection made is removed (slot_remove) while no reaper has been forked, a slot that remains naming
+#   itself. After the fork the slot is the reaper's (regime-cutover U343o): this process's exit closes the control
+#   pipe, and the reaper removes the slot on that EOF.
 # @arg $@ string The reason.
 refuse() {
     if ((connection)); then printf 'acp-broker: refused: %s\n' "$*"; fi
     echo "acp-broker: refused: $*" >&2
-    if ! slot_remove; then :; fi
+    if [[ -z ${reaper} ]]; then
+        if ! slot_remove; then :; fi
+    fi
     exit 2
 }
 
@@ -1169,6 +1195,7 @@ require_clean_path "the header repo" "${repo}"
 [[ ${name} != claude ]] || refuse "the seat name 'claude' is taken by the shared Claude Code directory <seats-root>/.state/claude; choose another name"
 [[ ${name} != "${router}" ]] || refuse "the header name '${name}' is the Router's own seat name; a worker is never the Router"                                   # lint-comparisons: allow two seat names, no path compare
 [[ ${name} != acp-* ]] || refuse "the header name '${name}' begins with 'acp-', the prefix of the broker's slots under <seats-root>/.state; choose another name" # lint-comparisons: allow a prefix test on one seat name, no path compare
+[[ ${name} != broker-logs ]] || refuse "the header name 'broker-logs' is the broker's log directory <seats-root>/.state/broker-logs (regime-cutover U343o); choose another name"
 stamp=$(utc_stamp slot) || refuse 'cannot read the time (/bin/date failed or answered outside the shape)'
 # The slot name is its three validated parts (verdict U343d-136fbe0a P2 :980: the seat-name length applied to the
 # whole refused a name of 64 characters); the name's own grammar was checked above.
@@ -1184,8 +1211,11 @@ record=${broker_dir}/${slot_name}
 # before anything is made; the record helper beside this file is held before the slot (record_helper_path_check).
 broker_dir_id=${ACP_BROKER_DIR_ID:-}
 [[ ${broker_dir_id} =~ ^[0-9]+:[0-9]+$ ]] || refuse "the broker directory's identity did not reach this connection (ACP_BROKER_DIR_ID is '${broker_dir_id}', not <device>:<inode>); a connection runs under the listener's relay alone"
-log_dir=${seats_real}/.state/${name}
-log=${log_dir}/acp-launch.log
+# The launch log (regime-cutover U343o, verdict U343n-fd3db1b3 P1 :1264): under a directory of this lever's own,
+# never inside `.state/<name>`, the state slot an hcom-seat seat of that name writes (where a planted hard link named
+# `acp-launch.log` redirected the append until round 12). No seat's settings grant `.state/broker-logs`.
+log_dir=${seats_real}/.state/broker-logs
+log=${log_dir}/${name}.log
 
 # The worker's settings: the deny table from the Router's settings, the project-file rows re-rooted under the slot's
 # task and the held credential root appended last (where the dsh row renders it, U343l); the grants the role's own
@@ -1253,13 +1283,13 @@ for var in USER LANG; do
     if [[ $'\n'${inherited}$'\n' == *$'\n'"${var}"$'\n'* && -n ${!var:-} ]]; then worker_env+=("${var}=${!var}"); fi
 done
 
-# @description Append one log line `<utc> acp-broker: $*` to the launch log, the directory made 0700 when absent;
-#   a line that cannot be appended refuses by name.
+# @description Append one log line `<utc> acp-broker: $*` to the launch log in the broker's own log directory, made
+#   0700 when absent and held to a real directory of this user; a line that cannot be appended refuses by name.
 # @arg $@ string The event.
 log_line() {
     local when
     when=$(utc_stamp log) || refuse 'cannot read the time (/bin/date failed or answered outside the shape)'
-    ensure_own_dir "the worker's state slot" "${log_dir}"
+    ensure_own_dir "the broker's log directory" "${log_dir}"
     [[ ! -L ${log} ]] || refuse "the launch log ${log} is a symbolic link"
     printf '%s acp-broker: %s\n' "${when}" "$*" >> "${log}" || refuse "cannot append to the launch log ${log}"
 }
@@ -1267,7 +1297,8 @@ log_line() {
 # @description Append the exit line `omp acp exit <status> push=<word>` to the launch log without refusing (verdict
 #   U343e-fd94feae P2 :1284: the append's failure after a written ref refused, so the client read no report and
 #   learned no ref). A log that cannot be appended (or is a link) is one stderr line naming the line and the log;
-#   the slot's removal and the record follow in the caller, the reaper, the one writer of the exit line.
+#   the slot's removal and the record follow in the caller, the reaper, the one writer of the exit line, which
+#   writes it only when omp ran (regime-cutover U343o: a connection that never started omp leaves no line).
 # @arg $1 string omp's exit status.
 # @arg $2 string The push word.
 exit_line() {
@@ -1310,10 +1341,11 @@ worker_git() {
 # @description Run the isolated git outside every sandbox on the slot's own repository (`git_isolated` of the
 #   library, which runs `git` by name: the pinned git's directory leads PATH for the call, the system directories
 #   after it), before omp starts, when the worker has written nothing. Never on the Router's repository; never on
-#   the worker's once omp runs (worker_git).
+#   the worker's once omp runs (worker_git). The reaper's control pipe (fd 4, open since the slot was made) is
+#   closed for it.
 # @arg $@ string git's arguments.
 slot_git() {
-    PATH=${git_dir}:${system_path} git_isolated "$@"
+    PATH=${git_dir}:${system_path} git_isolated "$@" 4>&-
 }
 
 # @description Push the worker's HEAD back into the repository as `pushed_ref` (regime-cutover U343e) and set
@@ -1494,28 +1526,32 @@ record_place() {
 }
 
 # @description The connection's reaper (regime-cutover U343g, the mechanism-change row of 2026-11-10T04:18:01Z, form
-#   remove; verdict U343f-22a81500 P1 :1233, P1 :1339, P1 :1347, P2 acp-seat:190): the one writer of the exit record
-#   and the one process that tears the connection down. Run as a background subshell forked by the handler before omp
-#   starts, outside omp's process group, with HUP, INT and TERM ignored, the connection's stdout held and the
-#   handler's control pipe on stdin (the slot's FIFO, whose writing end, fd 4, is closed here and for every child the
-#   handler starts). It writes the record's running form first, through the record helper (record_place; `ref=<pushed
-#   ref>`, `reaper=<its pid>`; the handler waits for it before omp starts), then reads the pipe: `start <pid>` names
-#   omp's process group, `exited <status>`
-#   omp's status, `done <status> <word>` ends the reading; EOF (the handler died: a signal from the relay, a refusal
-#   after the record line, anything) ends it too. Then it ends omp's process group when one remains (TERM, `kill -0`
-#   polled every tenth of a second for reaper_grace seconds, then KILL), appends the exit line to the launch log,
-#   removes the slot (slot_remove) and writes the record's final line `status=<n> push=<word>`: `<n>` omp's status
-#   when the handler reported it, else 2, and 2 when the slot remains; `<word>` `skipped` until the handler's `done`.
-#   Its exit closes its copy of the connection's stdout, so the socket's close is the sign that the record is
-#   complete. The relay's terminate and kill target the handler pid alone (acp-relay.py), and no trap on HUP, INT or
-#   TERM exists in a connection: no signal that ends the handler reaches the removal or the report. What it cannot
-#   end: a worker descendant that made a process group of its own (setsid, a daemonised tool), and itself under
-#   SIGKILL, the two residuals the body's threat table carries.
+#   remove; verdict U343f-22a81500 P1 :1233, P1 :1339, P1 :1347, P2 acp-seat:190; regime-cutover U343o, verdict
+#   U343n-fd3db1b3 P1 :1581 and P1 :1657): the one writer of the exit record, the one remover of the slot from its
+#   fork on, and the one process that tears the connection down. Run as a background subshell forked by the handler
+#   the moment the slot exists, outside omp's process group, with HUP, INT and TERM ignored, the connection's stdout
+#   held, the handler's control pipe on stdin (the slot's FIFO, whose writing end, fd 4, is closed here and for every
+#   long-lived child the handler starts) and the ready pipe on fd 5. It writes the record's running form first,
+#   through the record helper (record_place; `ref=<pushed ref>`, `reaper=<its pid>`): a placement that fails removes
+#   the slot and exits 1 with no ready line, so the handler refuses and starts no omp. Then it writes `ready <pid>`
+#   on fd 5 and closes it (the handler proceeds on that line alone; the record's existence is no sign), then reads
+#   the pipe: `start <pid>` names omp's process group, `exited <status>` omp's status, `done <status> <word>` ends
+#   the reading; EOF (the handler died: a signal from the relay, a refusal before or after the record line,
+#   anything) ends it too. Then it ends omp's process group when one remains (TERM, `kill -0` polled every tenth
+#   of a second for reaper_grace seconds, then KILL), appends the exit line to the launch log when a `start` was
+#   seen (a connection that never started omp leaves no line), removes the slot (slot_remove) and writes the
+#   record's final line `status=<n> push=<word>`: `<n>` omp's status when the handler reported it, else 2, 2 when
+#   the slot remains and 2 with `skipped` when omp never ran; `<word>` `skipped` until the handler's `done`. Its
+#   exit closes its copy of the connection's stdout, so the socket's close is the sign that the record is complete.
+#   The relay's terminate and kill target the handler pid alone (acp-relay.py), and no trap on HUP, INT or TERM
+#   exists in a connection: no signal that ends the handler reaches the removal or the report. What it cannot end:
+#   a worker descendant that made a process group of its own (setsid, a daemonised tool), and itself under SIGKILL,
+#   the two residuals the body's threat table carries.
 # @stdin The control pipe: `start <pid>`, `exited <status>`, `done <status> <word>`; EOF when the handler is gone.
 # @exitcode 0 The slot is gone and the record complete.
 # @exitcode 1 The slot remains or the record could not be written (named on stderr).
 connection_reaper() {
-    local pid status=2 word=skipped line rest n removed=0 final
+    local pid status=2 word=skipped line rest n removed=0 final started=0
     trap '' HUP INT TERM
     exec 4>&-
     cd / || :
@@ -1523,14 +1559,25 @@ connection_reaper() {
     pid=$(exec /bin/sh -c 'echo "$PPID"') || pid=''
     [[ ${pid} =~ ^[0-9]+$ ]] || {
         echo "acp-broker: the reaper of ${slot} cannot read its own pid" >&2
+        if ! slot_remove; then :; fi
         exit 1
     }
-    record_place "ref=${pushed_ref}" "reaper=${pid}" || exit 1
+    # The running form. A placement that fails ends here: the slot removed (the reaper's from the fork on), no ready
+    # line, so the handler refuses without touching the slot and starts no omp.
+    record_place "ref=${pushed_ref}" "reaper=${pid}" || {
+        if ! slot_remove; then :; fi
+        exit 1
+    }
+    printf 'ready %s\n' "${pid}" >&5 || echo "acp-broker: the reaper (pid ${pid}) cannot write its ready line to ${slot}/ready" >&2
+    exec 5>&-
     while IFS= read -r line; do
         case ${line} in
         start\ *)
             rest=${line#start }
-            if [[ ${rest} =~ ^[0-9]+$ ]]; then child=${rest}; fi
+            if [[ ${rest} =~ ^[0-9]+$ ]]; then
+                child=${rest}
+                started=1
+            fi
             ;;
         exited\ *)
             rest=${line#exited }
@@ -1562,7 +1609,14 @@ connection_reaper() {
             done
         fi
     fi
-    exit_line "${status}" "${word}"
+    # The exit line only when omp ran (the log keeps the three lines of one launch); a connection that never started
+    # omp leaves no line and its record ends `status=2 push=skipped`, whatever the handler's last line said.
+    if ((started)); then
+        exit_line "${status}" "${word}"
+    else
+        status=2
+        word=skipped
+    fi
     slot_remove || removed=1
     final=${status}
     ((removed == 0)) || final=2
@@ -1571,9 +1625,12 @@ connection_reaper() {
 }
 
 # Now the slot: `.state` when absent (two connections may race for it), then this connection's own directory, which
-# no other process made (mkdir takes no existing entry). No trap on HUP, INT or TERM: a signal that ends this
-# process before the reaper exists finds a slot the next connection's broker does not touch and refuse removes;
-# from the reaper's fork on, the reaper removes it (regime-cutover U343g).
+# no other process made (mkdir takes no existing entry), and at once its reaper (regime-cutover U343o, verdict
+# U343n-fd3db1b3 P1 :1581: until round 12 the reaper was forked after the settings write, the clone, the canary and
+# the version read, and a signal that ended this process in that window, a process with no trap on HUP, INT or TERM,
+# stranded the slot). Before the fork refuse removes the slot; from the fork on the reaper removes it in every path
+# of its own and this process never touches it again (refuse leaves it: this process's exit closes fd 4 and the
+# reaper reads EOF).
 # The record helper beside this file is held before the slot exists (regime-cutover U343h): a helper that is a link,
 # another user's or writable by others refuses here, with nothing made.
 record_helper_path_check
@@ -1581,6 +1638,27 @@ ensure_own_dir 'the state directory' "${seats_real}/.state"
 /bin/mkdir "${slot}" || refuse "cannot create the per-connection slot ${slot}"
 slot_made=1
 require_own_dir 'the per-connection slot' "${slot}"
+# The two pipes, FIFOs in the slot, each opened here for reading and writing so neither open blocks: the control pipe
+# (fd 4), on which this process tells the reaper `start`, `exited` and `done` and whose EOF, when this process ends,
+# is the reaper's sign to tear down; the ready pipe (fd 5), on which the reaper writes `ready <pid>` once the record's
+# running form is placed. The reaper closes fd 4 at once and fd 5 after its one line; this process closes fd 5 after
+# its one read, so no later child inherits it, and fd 4 is closed for every long-lived child it starts (the clone's
+# and the push's git runs, the canary, the version read, omp); a printf, mkdir, mv or rm between here and omp's start
+# holds fd 4 for its own run time alone.
+/usr/bin/mkfifo -m 600 "${slot}/control" || refuse "cannot create the reaper's control pipe ${slot}/control; omp acp not started"
+/usr/bin/mkfifo -m 600 "${slot}/ready" || refuse "cannot create the reaper's ready pipe ${slot}/ready; omp acp not started"
+exec 4<> "${slot}/control" || refuse "cannot open the reaper's control pipe ${slot}/control; omp acp not started"
+exec 5<> "${slot}/ready" || refuse "cannot open the reaper's ready pipe ${slot}/ready; omp acp not started"
+(connection_reaper) < "${slot}/control" &
+reaper=$!
+# The readiness is the reaper's message, never the record's existence (verdict U343n-fd3db1b3 P1 :1657: a helper
+# that renamed the record into place and then failed left a visible record while the reaper exited 1). One line
+# within 10 s, `ready <the pid forked above>`; a reaper that died, failed its placement or stayed silent refuses
+# here, the slot its own (its line is on the broker's stderr), and nothing more of this connection is made.
+ready_line=''
+if ! read -r -t 10 -u 5 ready_line; then ready_line=''; fi
+exec 5>&-
+[[ ${ready_line} == "ready ${reaper}" ]] || refuse "the reaper (pid ${reaper}) did not report ready within 10 s; omp acp not started"
 settings=${slot}/settings.json
 if ! printf '%s\n' "${json}" > "${settings}.tmp" || ! /bin/mv -f -- "${settings}.tmp" "${settings}"; then
     refuse "cannot write the worker settings ${settings}"
@@ -1623,7 +1701,7 @@ probe=$(/usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${setting
 if cat "$2" > /dev/null 2>&1; then r=read-open; else r=read-denied; fi
 if ls "$3" > /dev/null 2>&1; then s=ssh-open; else s=ssh-denied; fi
 if true 2> /dev/null > "$4"; then d=debug-open; else d=debug-denied; fi
-echo "$w $r $s $d"' canary "${slot}/canary" "${settings}" "${HOME}/.ssh" "${debug_canary}" < /dev/null) ||
+echo "$w $r $s $d"' canary "${slot}/canary" "${settings}" "${HOME}/.ssh" "${debug_canary}" < /dev/null 4>&-) ||
     refuse "the sandbox canary did not run under ${srt_cmd[*]}; omp acp not started"
 if [[ ${probe} == 'write-denied read-denied ssh-denied debug-open' || -e ${debug_canary} ]]; then
     if /bin/rm -f -- "${debug_canary}"; then :; fi
@@ -1634,7 +1712,7 @@ if [[ ${probe} != 'write-denied read-denied ssh-denied debug-denied' || -e ${slo
 fi
 log_line "canary ${probe}"
 # omp's version under the same settings, by the checked argv, status first: a failed or shapeless read refuses.
-version=$(/usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${omp_cmd[@]}" --version < /dev/null) ||
+version=$(/usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${omp_cmd[@]}" --version < /dev/null 4>&-) ||
     refuse "cannot read the omp version (${omp_cmd[*]} --version failed under ${srt_cmd[*]}); omp acp not started"
 version=${version%%$'\n'*}
 version=${version%% *}
@@ -1642,24 +1720,9 @@ version=${version%% *}
 version=${version#omp/}
 [[ ${version} =~ ^[0-9A-Za-z.+-]+$ ]] || refuse "cannot read the omp version from '${version}'; omp acp not started"
 log_line "omp acp start omp ${version} cwd ${task} repo ${repo} ref ${ref} base ${base}"
-# The reaper before omp (regime-cutover U343g): the control pipe is a FIFO in the slot, opened for reading and writing
-# here so neither open blocks (fd 4; the reaper closes its copy, and every child the handler starts has it closed),
-# then the reaper runs as a background subshell reading it, and omp starts only once the record's running form exists.
-# From here on the reaper owns the slot's removal and the exit report, and this process refuses nothing more on the
-# stream once the record line is written.
-/usr/bin/mkfifo -m 600 "${slot}/control" || refuse "cannot create the reaper's control pipe ${slot}/control; omp acp not started"
-exec 4<> "${slot}/control"
-(connection_reaper) < "${slot}/control" &
-reaper=$!
-# The reaper's own end before the record (its hold of the record helper failed, regime-cutover U343h) is read at once
-# (bash reaps the job on SIGCHLD, so `kill -0` finds no process), not after the 10 s bound.
-for ((n = 0; n < 100; n++)); do
-    if [[ -e ${record} ]]; then break; fi
-    kill -0 "${reaper}" 2> /dev/null || break
-    /bin/sleep 0.1
-done
-[[ -e ${record} ]] || refuse "the reaper (pid ${reaper}) did not write the exit record ${record} (it ended, or 10 s passed; its own line is on the broker's stderr); omp acp not started"
-# The one broker line on the stream, before omp starts; everything after it is the worker's.
+# The one broker line on the stream, before omp starts; everything after it is the worker's. The reaper has been up
+# since the slot was made (its ready line read above), so from here on it owns the exit report too, and this process
+# refuses nothing more on the stream once the record line is written.
 printf 'acp-broker: record %s\n' "${slot_name}" || refuse "cannot write the record line to the connection; omp acp not started"
 # omp runs as a child, not an exec, so the push can follow and the reaper be told; the explicit `<&0` keeps the
 # connection as its stdin (a background command gets /dev/null otherwise), its stdout is the connection, and the

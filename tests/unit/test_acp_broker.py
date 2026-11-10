@@ -11,6 +11,7 @@ settings `hcom-seat` renders) is written by hand in the dsh row's shape for most
 router` launch for the settings compare. Nothing real starts; nothing outside the scratch is written.
 """
 
+import hashlib
 import importlib.machinery
 import importlib.util
 import json
@@ -71,6 +72,8 @@ VICTIM = b"[default]\naws_access_key_id = AKIAEXAMPLE\n# the protected host file
 # sandbox would act on it (U343f): `pack-sleep` holds a number of seconds a `pack-objects` sleeps before it runs (a
 # push in flight for the signal test), and `deny-paths` lists paths made unreadable (mode 0) for the span of the
 # command and restored after it (the paths the worker's settings deny; a store named by a planted alternates file).
+# One instruction applies to a `pack-objects` under the Router's settings (U343o): `clone-sleep` holds the clone's
+# pack that many seconds, `clone-sleeping` written first (a connection held before the canary for the signal test).
 FAKE_SRT = textwrap.dedent(
     """\
     #!/usr/bin/env python3
@@ -110,6 +113,11 @@ FAKE_SRT = textwrap.dedent(
         with open(os.path.join(conf["calls"], "pack-sleeping"), "w") as marker:
             marker.write(str(os.getpid()))
         time.sleep(float(open(sleep).read()))
+    hold = os.path.join(conf["calls"], "clone-sleep")
+    if not worker and "pack-objects" in command and os.path.exists(hold):
+        with open(os.path.join(conf["calls"], "clone-sleeping"), "w") as marker:
+            marker.write(str(os.getpid()))
+        time.sleep(float(open(hold).read()))
     deny = os.path.join(conf["calls"], "deny-paths")
     if worker and os.path.exists(deny):
         paths = open(deny).read().split()
@@ -530,7 +538,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             time.sleep(0.02)
 
     def log_lines(self, name):
-        path = self.seats_path / ".state" / name / "acp-launch.log"
+        """The launch log's lines: `<seats-root>/.state/broker-logs/<name>.log` (U343o; until round 12 it was
+        `.state/<name>/acp-launch.log`, inside the seat slot of that name)."""
+        path = self.seats_path / ".state/broker-logs" / f"{name}.log"
         return path.read_text().splitlines() if path.exists() else []
 
     def held_connection(self, sock, repo, name, ref="HEAD"):
@@ -768,7 +778,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.scratch_git("status", "--porcelain", cwd=task), "")
         self.assertEqual(self.scratch_git("rev-parse", "--abbrev-ref", "HEAD", cwd=task), "HEAD", "detached")
         self.assertEqual(
-            sorted(p.name for p in slot_path.iterdir()), ["control", "settings.json", "task"], "no pack left behind"
+            sorted(p.name for p in slot_path.iterdir()),
+            ["control", "ready", "settings.json", "task"],
+            "no pack left behind (the two pipes, U343o)",
         )
         self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
         self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
@@ -1169,7 +1181,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         data = self.recv_all(self.connect(sock, repo, "w1")).decode()
         self.assertTrue(data.startswith("acp-broker: refused: the reaper "), data)
         self.assertEqual(data.count("\n"), 1, data)
-        self.assertIn(f"did not write the exit record {sock.parent}/acp-w1-", data)
+        self.assertIn("did not report ready within 10 s; omp acp not started", data)
         self.assertEqual(self.acp_slots(), [], "the slot is removed")
         self.assertEqual(sorted(p.name for p in sock.parent.iterdir()), ["sock"], "no record")
         self.assertNotIn(
@@ -1203,6 +1215,184 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(status, -signal.SIGTERM, err)
         self.assertEqual(err.count(f" of {helper} differs from the pin in "), 4, err)
         self.assert_broker_dir_stands_empty(sock)
+
+    # --- U343o, round 12: the reaper owns the slot from its making, omp starts on its ready line, the log moves ---
+
+    def pin_helper(self, broker, helper):
+        """Pin the scratch checkout's helper as it stands: its sha256 written over the `acp-record-place.py` line of
+        the scratch manifest two levels above the broker's copy, so an altered helper passes record_helper_pin_check
+        and runs (the pinned form of U343h test (c)'s tampered copy)."""
+        manifest = broker.parents[2] / "home/dot_agents/agent-config.yaml"
+        digest = hashlib.sha256(helper.read_bytes()).hexdigest()
+        text, count = re.subn(
+            r"(?m)^(      acp-record-place\.py: )[0-9a-f]{64}$", rf"\g<1>{digest}", manifest.read_text()
+        )
+        self.assertEqual(count, 1, "one pin line for the helper in the scratch manifest")
+        manifest.write_text(text)
+
+    def held_in_the_clone(self, sock, repo, name, client=False):
+        """A connection held inside the clone's pack step by the fixture's `clone-sleep`: the raw connection (or the
+        client's process when `client` is set), the slot name, the handler's pid (the slot name's last field) and
+        the wall time the hold took to be reached (the slack of the teardown budget, U343n)."""
+        (self.calls / "clone-sleeping").unlink(missing_ok=True)
+        started = time.monotonic()
+        conn = self.client_popen(sock, repo, name) if client else self.connect(sock, repo, name)
+        self.wait_for(
+            lambda: (self.calls / "clone-sleeping").exists(),
+            "the clone's pack-objects under the Router's settings",
+            seconds=30,
+        )
+        (slot,) = self.acp_slots()
+        return conn, slot, int(slot.rsplit("-", 1)[1]), time.monotonic() - started
+
+    def test_a_a_term_during_the_clone_leaves_no_slot_and_a_skipped_record(self):
+        """U343o test (a) (verdict U343n-fd3db1b3 P1 `acp-broker:1581`): the slot was made at `:1581` and the reaper
+        forked at `:1652`, after the settings write, the clone, the canary and the version read, so a TERM to the
+        handler in that window ended a process with no trap and stranded the slot (the auditor's delayed clone). The
+        reaper is forked as soon as the slot exists and owns its removal in every path: with the clone's pack held
+        by the fixture's `clone-sleep`, a TERM to the handler pid leaves the slot gone within the grace plus the
+        slack, the record complete with `status=2 push=skipped` (omp never ran, so no exit line and no canary line
+        reach the launch log), the raw connection sees EOF with no record line, the client exits 2 naming the
+        closed connection, and the next connection on the same broker is served."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        (self.calls / "clone-sleep").write_text("3")
+        self.addCleanup(lambda: (self.calls / "clone-sleep").unlink(missing_ok=True))
+        self.addCleanup(self.remove_slots)
+        conn, slot, pid, setup = self.held_in_the_clone(sock, repo, "w1")
+        slack = max(2.0, setup)
+        started = time.monotonic()
+        os.kill(pid, signal.SIGTERM)
+        data = self.recv_all(conn)
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal", seconds=GRACE + slack)
+        elapsed = time.monotonic() - started
+        self.assertLessEqual(
+            elapsed,
+            GRACE + slack,
+            f"the slot went in {elapsed:.1f} s, budget {GRACE + slack:.1f} s (setup took {setup:.1f} s)",
+        )
+        self.assertEqual(data, b"", "EOF with no record line: the handler died before it")
+        lines = self.record_lines(slot)
+        self.assertIsNotNone(lines, f"no record {self.record_path(slot)}")
+        self.assertEqual(len(lines), 3, lines)
+        self.assertEqual(lines[2], "status=2 push=skipped")
+        self.assertEqual(self.log_lines("w1"), [], "no canary line and no exit line: omp never ran")
+        self.assertEqual(self.calls_of("omp"), [], "omp never started")
+        client, slot2, pid2, _setup = self.held_in_the_clone(sock, repo, "w1", client=True)
+        os.kill(pid2, signal.SIGTERM)
+        out, err = client.communicate(timeout=120)
+        self.assertEqual((client.returncode, out), (2, b""), err)
+        self.assertIn(b"the broker closed the connection before its first line", err)
+        self.wait_for(lambda: self.acp_slots() == [], "the second slot's removal", seconds=GRACE + slack)
+        self.assertEqual(self.record_lines(slot2)[2], "status=2 push=skipped")
+        (self.calls / "clone-sleep").unlink()
+        conn, slot3, _task = self.held_connection(sock, repo, "w1")
+        self.assertEqual(self.finish(conn, slot3), (b"", "status=0 push=none"))
+        exits = [line for line in self.log_lines("w1") if " acp-broker: omp acp exit " in line]
+        self.assertEqual(len(exits), 1, self.log_lines("w1"))
+        self.wait_for(lambda: self.acp_slots() == [], "the third slot's removal")
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assert_broker_dir_stands_empty(sock)
+
+    def test_b_a_record_helper_that_fails_after_its_rename_starts_no_omp_and_leaves_no_slot(self):
+        """U343o test (b) (verdict U343n-fd3db1b3 P1 `acp-broker:1657`): the handler took the record's existence as
+        the sign that the reaper was up, so a helper that renamed the record into place and then failed (the
+        directory fsync) left a visible record while the reaper exited 1, and omp started with no reaper and a slot
+        nobody removed. The reaper reports `ready <pid>` on its own pipe after a placement that returned 0, and the
+        handler proceeds on that line alone: a copy of `acp-record-place.py` that raises right after its rename,
+        pinned in the scratch manifest so it runs, refuses the connection with the ready line, starts no omp (no
+        `omp-pid`, no srt call under the slot's settings), leaves no slot within the grace plus two seconds, and the
+        record it left in its running form is swept at the broker's end."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        broker, helper = self.scratch_checkout()
+        original = helper.read_text()
+        rename = "                os.rename(name, record_id, src_dir_fd=dfd, dst_dir_fd=dfd)\n"
+        self.assertEqual(original.count(rename), 1, "the helper's one rename of the record into place")
+        # The two-argument form: the helper's line prints `strerror` (a message-only OSError prints `failed`).
+        injected = '                raise OSError(errno.EIO, "injected after the rename")\n'
+        helper.write_text(original.replace(rename, rename + injected))
+        self.pin_helper(broker, helper)
+        proc, sock = self.start_broker(name, cwd, broker=broker)
+        self.addCleanup(self.remove_slots)
+        started = time.monotonic()
+        conn = self.connect(sock, repo, "w1")
+        conn.shutdown(socket.SHUT_WR)
+        data = self.recv_all(conn).decode()
+        self.assertTrue(data.startswith("acp-broker: refused: the reaper (pid "), data)
+        self.assertEqual(data.count("\n"), 1, data)
+        self.assertIn("did not report ready", data)
+        self.assertIn("omp acp not started", data)
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal", seconds=GRACE + 2)
+        self.assertLessEqual(time.monotonic() - started, GRACE + 2 + 30, "the refusal and the removal in time")
+        self.assertFalse((self.calls / "omp-pid").exists(), "omp acp never started")
+        self.assertEqual(self.calls_of("omp"), [], "not even the version read: the refusal comes first")
+        under_slot = [
+            c["argv"][1]
+            for c in self.calls_of("srt")
+            if c["argv"][:1] == ["--settings"] and c["argv"][1].endswith("/settings.json")
+        ]
+        self.assertEqual(under_slot, [], "no srt call under the slot's settings")
+        records = [p.name for p in sock.parent.iterdir() if p.name != "sock"]
+        self.assertEqual(len(records), 1, records)
+        self.assertRegex(records[0], r"^acp-w1-\d{8}-\d{6}-\d+$", "the record the helper renamed into place")
+        lines = self.record_lines(records[0])
+        self.assertEqual(len(lines), 2, lines)
+        self.assertEqual(lines[0], f"ref=refs/acp-seat/w1/{records[0][len('acp-w1-') :]}")
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertIn("injected after the rename", err)
+        self.assert_broker_dir_stands_empty(sock)
+
+    def test_c_the_launch_log_lives_outside_every_seat_slot_and_a_planted_hard_link_is_never_followed(self):
+        """U343o test (c) (verdict U343n-fd3db1b3 P1 `acp-broker:1264`): the launch log was
+        `<seats-root>/.state/<name>/acp-launch.log`, inside the state slot an hcom-seat seat of that name may write,
+        so a seat planted a hard link named `acp-launch.log` to a protected file, the `-L` test passed and this
+        unsandboxed process appended to the target. The log is `<seats-root>/.state/broker-logs/<name>.log`, a
+        directory this lever makes 0700 that no seat's settings grant: with the link planted before the connection,
+        the victim keeps its bytes and its two links, the planted name holds the victim's bytes alone, nothing else
+        is made under `.state/w1`, and the three lines of the launch stand in the broker's own directory; the
+        header name `broker-logs` is refused by name."""
+        name, cwd = self.make_router()
+        repo, base = self.make_repo(cwd / "repo")
+        victim, before = self.plant_victim()
+        seat_slot = self.seats_path / ".state/w1"
+        seat_slot.mkdir(mode=0o700)
+        os.link(victim, seat_slot / "acp-launch.log")
+        self.assertEqual(victim.stat().st_nlink, 2)
+        proc, sock = self.start_broker(name, cwd)
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
+        self.assertEqual(victim.read_bytes(), VICTIM, "the protected file's bytes")
+        self.assertEqual(victim.stat().st_nlink, 2, "the planted link still counts; nothing replaced it")
+        self.assertEqual((seat_slot / "acp-launch.log").read_bytes(), VICTIM, "the planted name holds the victim alone")
+        self.assertEqual(
+            sorted(p.name for p in seat_slot.iterdir()), ["acp-launch.log"], "nothing made in the seat slot"
+        )
+        log_dir = self.seats_path / ".state/broker-logs"
+        self.assertTrue(log_dir.is_dir() and not log_dir.is_symlink(), "the broker's log directory")
+        self.assertEqual(stat.S_IMODE(os.lstat(log_dir).st_mode), 0o700)
+        self.assertEqual(os.lstat(log_dir).st_uid, os.getuid())
+        self.assertEqual(stat.S_IMODE(os.lstat(log_dir / "w1.log").st_mode), 0o600)
+        stamp = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"
+        task = rf"{re.escape(str(self.seats_path))}/\.state/acp-w1-\d{{8}}-\d{{6}}-\d+/task"
+        expected = [
+            rf"^{stamp} acp-broker: canary {FOUR_WORDS}$",
+            rf"^{stamp} acp-broker: omp acp start omp 18\.12\.6 cwd {task} repo {re.escape(str(repo))} ref HEAD base {base}$",
+            rf"^{stamp} acp-broker: omp acp exit 0 push=none$",
+        ]
+        lines = self.log_lines("w1")
+        self.assertEqual(len(lines), 3, lines)
+        for got, want in zip(lines, expected):
+            self.assertRegex(got, want)
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
+        data = self.recv_all(self.connect(sock, repo, "broker-logs")).decode()
+        self.assertEqual(data.count("\n"), 1, data)
+        self.assertIn("acp-broker: refused: the header name 'broker-logs' is the broker's log directory", data)
+        self.assertEqual(self.acp_slots(), [], "nothing made for the refused name")
+        self.assertEqual(sorted(p.name for p in log_dir.iterdir()), ["w1.log"], "no log for the refused name")
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def push_calls(self, slot):
         """The fake srt's calls after the launch (the push's), as (settings file, the git arguments after the
@@ -1310,8 +1500,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         proc, sock = self.start_broker(name, cwd)
         conn, slot, task = self.held_connection(sock, repo, "w1")
         head = self.commit_in(task)
-        log_dir = self.seats_path / ".state/w1"
-        log = log_dir / "acp-launch.log"
+        log_dir = self.seats_path / ".state/broker-logs"
+        log = log_dir / "w1.log"
         before = self.log_lines("w1")
         self.assertEqual(len(before), 2, before)
         log.chmod(0o400)
@@ -1481,8 +1671,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
 
     def test_the_launch_log_holds_the_three_lines_in_order(self):
         """`<utc> acp-broker: canary <four words>`, `omp acp start omp <version> cwd <task> repo <repo> ref <ref> base
-        <commit>`, `omp acp exit <status> push=<word>`, appended per launch under `<seats-root>/.state/<name>/`, a
-        directory the broker makes 0700."""
+        <commit>`, `omp acp exit <status> push=<word>`, appended per launch to `<seats-root>/.state/broker-logs/<name>.log`,
+        a directory the broker makes 0700 (U343o: outside every seat slot)."""
         name, cwd = self.make_router()
         repo, base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
@@ -1505,9 +1695,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(len(lines), len(expected), lines)
         for got, want in zip(lines, expected):
             self.assertRegex(got, want)
-        state = self.seats_path / ".state/w1"
-        self.assertEqual(stat.S_IMODE(os.lstat(state).st_mode), 0o700)
-        self.assertEqual(stat.S_IMODE(os.lstat(state / "acp-launch.log").st_mode), 0o600)
+        log_dir = self.seats_path / ".state/broker-logs"
+        self.assertEqual(stat.S_IMODE(os.lstat(log_dir).st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE(os.lstat(log_dir / "w1.log").st_mode), 0o600)
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def test_srt_and_omp_run_by_their_physical_argv_under_the_listed_environment(self):
@@ -1618,7 +1808,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.assertEqual((path / "task/a.txt").read_text(), "hello\n")
         settings = [json.loads((self.seats_path / ".state" / s / "settings.json").read_text()) for s in slots]
         self.assertEqual([s["filesystem"]["allowWrite"][0] for s in settings], [str(self.slot_task(s)) for s in slots])
-        self.assertEqual(self.state_names(), ["claude", name, "w1", "w2"])
+        self.assertEqual(self.state_names(), ["broker-logs", "claude", name], "no seat slot is made for a worker")
         self.assertEqual(self.finish(c1, s1), (b"", "status=0 push=none"))
         self.assertEqual(self.finish(c2, s2), (b"", "status=0 push=none"))
         records = sorted(p.name for p in sock.parent.iterdir() if p.name != "sock")
@@ -2073,9 +2263,10 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
 
     def test_every_producer_injection_refuses_by_name(self):
         """Each producer the launch reads fails in turn: the slot mkdir, a physical resolution, the Router settings
-        read (a malformed file, an unclean row), the settings write (a file size limit on the broker), the canary,
-        srt's exit (the record and the log carry omp's status), the omp version read and the log append. Each refuses
-        with one line naming what failed, starts no omp and leaves no slot."""
+        read (a malformed file, an unclean row), the reaper's placement (a file size limit on the broker, which the
+        record helper's copy hits before the settings write, U343o), the canary, srt's exit (the record and the log
+        carry omp's status), the omp version read and the log append. Each refuses with one line naming what
+        failed, starts no omp and leaves no slot."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         proc, sock = self.start_broker(name, cwd)
@@ -2149,12 +2340,12 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.assertEqual([c["argv"] for c in self.calls_of("omp")], [["--version"]], "omp acp never started")
             self.assertEqual(len(self.log_lines("w1")), 1, "the canary line alone; no start line")
         with self.subTest(producer="the log append"):
-            w2 = state / "w2"
-            w2.mkdir(mode=0o500)
+            logs = state / "broker-logs"
+            logs.chmod(0o500)
             try:
-                refused(f"cannot append to the launch log {w2}/acp-launch.log", worker="w2")
+                refused(f"cannot append to the launch log {logs}/w2.log", worker="w2")
             finally:
-                w2.chmod(0o700)
+                logs.chmod(0o700)
             self.assertEqual([c["argv"] for c in self.calls_of("omp")], [["--version"]], "omp acp never started")
             self.assertEqual(self.log_lines("w2"), [])
         with self.subTest(producer="srt's exit, as the record and the log"):
@@ -2166,9 +2357,13 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.assertRegex(self.log_lines("w1")[-1], r" acp-broker: omp acp exit 5 push=none$")
             self.assertEqual(self.acp_slots(), [])
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
-        with self.subTest(producer="the settings write"):
-            # A file size limit of 1 KiB on the broker (inherited by every handler) fails the settings write, which
-            # is larger; SIGXFSZ is ignored so the write fails with EFBIG instead of ending the shell.
+        with self.subTest(producer="the reaper's placement, under a file size limit"):
+            # A file size limit of 1 KiB on the broker (inherited by every handler and its reaper). The reaper is
+            # forked as soon as the slot exists (U343o), before the settings write, and its first write is the record
+            # helper's private copy (13 KiB), which fails with EFBIG: the reaper removes the slot and writes no ready
+            # line, so the handler refuses with the ready line and the settings (8 KiB, the producer this limit
+            # reached until round 12) are never written. SIGXFSZ is ignored so a write fails instead of ending the
+            # shell.
             limit = [
                 sys.executable, "-c",
                 (
@@ -2179,8 +2374,12 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 ),
             ]  # fmt: skip
             proc, sock = self.start_broker(name, cwd, wrapper=limit)
-            refused("cannot write the worker settings")
-            self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+            data = refused("the reaper (pid ")
+            self.assertIn("did not report ready within 10 s; omp acp not started", data)
+            status, _out, err = self.stop_broker(proc)
+            self.assertEqual(status, -signal.SIGTERM, err)
+            self.assertIn("acp-broker: cannot copy ", err)
+            self.assertNotIn("cannot write the worker settings", err, "the settings write was never reached")
 
     def test_the_worker_settings_are_the_dsh_row_but_the_named_rows(self):
         """The byte-identical compare (U343 ACCEPTANCE 6): the Router's settings come from a real held `hcom-seat

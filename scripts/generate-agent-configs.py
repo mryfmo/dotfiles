@@ -61,6 +61,16 @@ def parse_manifest(text: str) -> dict[str, Any]:
 LEVER_SOURCE_DIR = "scripts/orchestrator"
 LEVER_INSTALL_DIR = "home/dot_local/bin/common"
 LEVER_PIN_LINE = re.compile(r"^(      )([A-Za-z0-9][A-Za-z0-9_.-]*): ([0-9a-f]{64})$")
+# A lever that is a module: another lever imports it from its own directory and nothing runs it (ledger.py, the one
+# ledger reader, imported by ledger-row.py; regime-cutover U418). Its chezmoi copy carries no `executable_` prefix, so
+# chezmoi installs it at mode 0644 under ~/.local/bin/common beside the lever that imports it; it is pinned like every
+# lever, so the generator holds the copy byte-identical to the checkout's reader.
+LEVER_MODULES = frozenset({"ledger.py"})
+
+
+def lever_install_name(name: str) -> str:
+    """The chezmoi source name of a lever's installed copy: `executable_<name>`, or the bare name of a module."""
+    return name if name in LEVER_MODULES else f"executable_{name}"
 
 
 def lever_names(manifest: dict[str, Any]) -> list[str]:
@@ -93,12 +103,12 @@ def refresh_lever_pins(text: str) -> str:
 def lever_pins(manifest: dict[str, Any]) -> dict[Path, str]:
     """Each lever's chezmoi copy and the sha256 claude.levers.sha256 pins it to."""
     pins = manifest.get("claude", {}).get("levers", {}).get("sha256", {})
-    return {ROOT / LEVER_INSTALL_DIR / f"executable_{name}": pins[name] for name in lever_names(manifest)}
+    return {ROOT / LEVER_INSTALL_DIR / lever_install_name(name): pins[name] for name in lever_names(manifest)}
 
 
 def render_lever_installs(manifest: dict[str, Any]) -> dict[Path, str]:
     return {
-        ROOT / LEVER_INSTALL_DIR / f"executable_{name}": read_exact(ROOT / LEVER_SOURCE_DIR / name)
+        ROOT / LEVER_INSTALL_DIR / lever_install_name(name): read_exact(ROOT / LEVER_SOURCE_DIR / name)
         for name in lever_names(manifest)
     }
 
@@ -2987,7 +2997,7 @@ def generated_scopes() -> list[tuple[str, str]]:
     source_dir = ROOT / LEVER_SOURCE_DIR
     if source_dir.is_dir():
         scopes.extend(
-            (LEVER_INSTALL_DIR, glob.escape(f"executable_{script.name}"))
+            (LEVER_INSTALL_DIR, glob.escape(lever_install_name(script.name)))
             for script in sorted(source_dir.iterdir())
             if script.is_file()
         )

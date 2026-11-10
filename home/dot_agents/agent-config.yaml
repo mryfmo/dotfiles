@@ -871,6 +871,9 @@ claude:
   # ledger-row.py is the coordinator's one writer of a ledger.tsv row (U222):
   # installed and pinned the same way, run as `python3 -I -S` with ledger.py
   # beside it; it composes the row by the reader's grammar and appends one line.
+  # ledger.py is the one ledger reader that ledger-row.py imports from its own
+  # directory (U418): installed beside it under its bare name, no `executable_`
+  # prefix and mode 0644 since it is imported and never run, and pinned the same way.
   # profile-config-place.py is hcom-seat's helper for the dsh role's profile config
   # write (U310d): installed and pinned the same way, run by hcom-seat alone as
   # `python3 -I -S` after hcom-seat has read its digest against this pin, never by
@@ -917,6 +920,7 @@ claude:
       pr-audit.sh: 7024bdaec07f2b545d511ad71ca5756f39123dff20776dbec12fea9c89c56786
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
       ledger-row.py: 8eb2d306b9b4b7708a5ee23d8a7fa00116787b1efebe1d5824357b005f182f2c
+      ledger.py: 4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f

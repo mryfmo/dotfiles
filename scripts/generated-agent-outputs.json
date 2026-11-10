@@ -618,6 +618,13 @@
       "sha256": "4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293"
     },
     {
+      "source": "home/dot_local/bin/common/ledger.py",
+      "target": ".local/bin/common/ledger.py",
+      "kind": "file",
+      "executable": false,
+      "sha256": "4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21"
+    },
+    {
       "source": "install/common/aws_cli.sh",
       "target": null
     },

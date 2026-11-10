@@ -1,0 +1,16 @@
+security-audit sweep 34c1450ba57e847608969b29890c7f11d8deba5b: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U310g (origin/main 49f3c33c, U322 #718 included, merged into the U310 branch): the placement below the profile root holds (the overlay checked and its paths shape-refused before rendering, the helper run from a copy the lever made and hashed against its pin, every step on one O_DIRECTORY|O_NOFOLLOW descriptor of agent/, an exclusive random temporary, an identity-checked read-back); the router row places the same overlay into the shared dsh profile; no new candidate
+the profile root is not held: profile_config_write resolves ~/.omp/profiles/dsh with physical_path at the write (hcom-seat:1395) and the helper's O_NOFOLLOW covers agent/ alone, so the carried relink candidate regains its U310 placement leg
+unvalidated candidates, all on origin/main (not findings; the Phase 3 verifier launch was refused by policy):
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1395	a session's link at its profile root moves both the operator-side placement and the next launch's write grant to a target outside every deny
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2399
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2439
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:422
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2006
+hardening (new): hold the profile root (an lstat refusal, or the helper opening it O_NOFOLLOW) to close both relink legs; the docs name the helper beside the lever while the lever runs its own pinned copy
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: 49f3c33c..34c1450b (14 files); run-32's records carried and re-mapped through 3a6a22a0..34c1450b; the four U310 units restated from the source; profile standard, source-only; ledger 78 units: 31 covered, 5 candidate, 42 out_of_scope
+brief notes: the GOAL paragraph and branch name are U322's text and the hunt list U322's (answered from run-31's blob, section 1b); the CONTEXT calls run-32 the U310d head 39f75cc8, which is run-31's U322d head; U310e and U310f were swept on sweep-3, whose records this seat cannot read
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: linemap.cjs, blobs.cjs, cite-sample.cjs, build-ledger.cjs and the five candidate records in agents/parent-hunter/scratch/)
+wall time: 483s (2026-11-07T07:30:36Z to 2026-11-07T07:38:39Z)

@@ -9,7 +9,13 @@
 #   move (slug `dotfiles`, no `~/.local/state/hcom/dotfiles/origin`, and `~/.local/state/hcom-regime/hcom.db`
 #   present), the pre-move pair `~/.local/state/hcom-regime` and `regime`, because a seat's environment carries
 #   no HCOM_TEAM and the slug would name another thread (decisions 2026-10-24T10:19:06Z); else the sourced
-#   regime-env derives both (U33). An explicit store must already exist. When a seat tagged `orchestrator` is
+#   regime-env derives both (U33). An explicit store must already exist. A program's store is chosen by the two-form
+#   rule the levers read by (regime-cutover U221, store move 5 of 5, handoff/07-store-move-design.md; U216's
+#   `store_resolve`): the derived store `${REGIME_STORE_ROOT}/<program>` when that directory exists, the root being
+#   the fixed derivation `<physical HOME>/.local/state/regime-store/<slug>` the sourced regime-env exports (U215),
+#   else the checkout's own `.orchestration/orchestrate/<program>`, the pre-move form that stands until
+#   `regime-store-move` moves the live store; the form chosen is printed once on stderr, and with neither the
+#   refusal names both. When a seat tagged `orchestrator` is
 #   alive in the store (hcom status active, listening or blocked) it is reported, not duplicated; otherwise
 #   `hcom-seat orchestrator` (the copy beside this file) launches it from the checkout, and the command waits up
 #   to 120 s for it to be alive. Either way the checkout is registered for the supervisor (toplevel, store, team,
@@ -33,7 +39,7 @@
 #   key exactly once (toplevel, hcom_dir, hcom_team, program, seat, base, fails, next); a registration that breaks
 #   that, names another toplevel, or whose store's `origin` names another checkout is never launched, replaced or
 #   stopped from.
-# @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`) whose store `.orchestration/orchestrate/<program>/` must exist; optional.
+# @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`) whose store is `${REGIME_STORE_ROOT}/<program>` when that directory exists, else the checkout's `.orchestration/orchestrate/<program>/` (the pre-move form), one of which must exist; optional.
 # @option --supervise One supervisor pass over every registration; no other argument.
 # @option --stop [--all] regime-stop.
 # @env HCOM_DIR The hcom store (default: as described above).
@@ -444,7 +450,7 @@ choose_store() {
         export HCOM_DIR=${legacy} HCOM_TEAM=regime
         echo "${me}: the dotfiles program has not moved its store yet; using HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM}" >&2
     fi
-    regime_env "${me}" || exit 2
+    regime_env regime-start || exit 2
     [[ -d ${HCOM_DIR} ]] || refuse "the hcom store ${HCOM_DIR} does not exist; run regime-init <program> first or set an existing store"
     [[ ${HCOM_TEAM} =~ ${name_grammar} ]] || refuse "team '${HCOM_TEAM}' is outside ${name_grammar}"
     if [[ -e ${HCOM_DIR}/origin ]]; then
@@ -453,6 +459,39 @@ choose_store() {
             refuse "the store ${HCOM_DIR} belongs to ${recorded}, not ${top}"
         fi
     fi
+}
+
+# @description Choose the program store (regime-cutover U221, store move 5 of 5, handoff/07-store-move-design.md;
+#   the `store_resolve` shape of U216's pr-merge.sh and pr-close.sh, in this lever's own body: no helper file,
+#   standing order 36): the derived store `${REGIME_STORE_ROOT}/<program>` when that path exists, which must then be
+#   a directory of this user and no symlink (a link is refused by name before anything is read through it; a file or
+#   another user's directory is refused by name too), the root being the fixed derivation regime-env exported from the
+#   physical HOME and the slug when choose_store ran it (U215); else the checkout's own
+#   `<toplevel>/.orchestration/orchestrate/<program>`, the pre-move form that stands until `regime-store-move` moves
+#   the live store, which must exist as a directory; with neither the refusal names both. Nothing is written. The form
+#   chosen is printed once on stderr (`store: derived <dir>`, or `store: checkout <dir> (pre-move form, removed by
+#   U221)`), the line the coordinator reads after the deploy.
+# @arg $1 string The program name.
+# @set store_dir The chosen store.
+store_resolve() {
+    local program=$1 store_derived store_checkout
+    [[ -n ${REGIME_STORE_ROOT:-} ]] ||
+        refuse "regime-env derived no store root for ${top}; the program store is judged under it (U216, U221)"
+    store_derived=${REGIME_STORE_ROOT}/${program}
+    store_checkout=${top}/.orchestration/orchestrate/${program}
+    [[ ! -L ${store_derived} ]] ||
+        refuse "${store_derived} is a symlink; the derived program store is a plain directory of this user under the store root ${REGIME_STORE_ROOT}, and nothing is read through a link"
+    if [[ -e ${store_derived} ]]; then
+        [[ -d ${store_derived} && -O ${store_derived} ]] ||
+            refuse "${store_derived} exists but is not a directory of this user; the derived program store under ${REGIME_STORE_ROOT} is read only as one"
+        store_dir=${store_derived}
+        echo "${me}: store: derived ${store_dir}" >&2
+        return 0
+    fi
+    [[ -d ${store_checkout} ]] ||
+        refuse "no program store at ${store_derived} (the derived store, U216) or ${store_checkout} (the checkout's own, the pre-move form); run regime-init ${program} first"
+    store_dir=${store_checkout}
+    echo "${me}: store: checkout ${store_dir} (pre-move form, removed by U221)" >&2
 }
 
 top=$(regime_toplevel) || refuse "run ${me} inside the repository checkout"
@@ -498,8 +537,7 @@ program=${1:-}
 choose_store
 store_dir=''
 if [[ -n ${program} ]]; then
-    store_dir=${top}/.orchestration/orchestrate/${program}
-    [[ -d ${store_dir} ]] || refuse "no program store ${store_dir}; run regime-init ${program} first"
+    store_resolve "${program}"
 fi
 take_lock wait || refuse "pid ${lock_holder} still holds ${lock} after ${lock_wait} s; nothing changed"
 # This checkout's own registration is replaced only for the same store and team (U36 F3).

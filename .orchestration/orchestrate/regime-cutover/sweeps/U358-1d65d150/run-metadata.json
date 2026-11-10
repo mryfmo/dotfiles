@@ -1,0 +1,143 @@
+{
+  "run_id": "dotfiles-run-36",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "1d65d150854228e96c5ed4139ec4be02163782d0",
+    "branch": "fix/build-under-srt-resolves-srt-through-mise",
+    "branch_note": "the local branch (git branch --contains HEAD; checked out in another worktree); the brief names fix/dsh-harness-build-under-srt, U322's branch, from its template text",
+    "parent_of_change": "6ad1be2304d8cdef975136e44e5cde5c86219374",
+    "base_note": "U354: one commit (1d65d150) on origin/main 6ad1be23, which carries U310 (#708) and U317 (#711) since run-34. Checked: git diff 6ad1be23..HEAD lists two files, scripts/update-agent-assets.sh and tests/unit/test_update_agent_assets.py (the brief says 3 against 668ba887). The brief's title calls the head 'U354's merge head' and its GOAL is U322's text again; its CONTEXT names run-35 ('the U354d head 39f75cc8') as this seat's previous run, but no run-35 exists in this seat's state; the last is run-34 (U317d, 4c06cbbe), carried here. The output directory is run-36 as the brief says. The lever and the helper are the blobs run-33 read; the router profile, intake-observe.py and the validator the blobs run-34 read.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U354 against main 6ad1be23 (the updater's srt lookup by mise which in build_under_srt and update_dsh_superagent, and its tests); (2) the carry: run-34's units re-mapped through 4c06cbbe..1d65d150 (U310's merge and U354), the four U310 units restored from run-33 (the same lever and helper blobs) and re-mapped through 34c1450b..1d65d150, the relink candidate's U310 write leg restored now that U310 is on main.",
+  "carry_note": "The brief names run-35, which does not exist in this seat's state; run-34 is the seat's previous run and the set carried. run-33's U310 units and relink leg are taken for the files it read, which are the head's blobs.",
+  "scope_paths": [
+    "scripts/update-agent-assets.sh",
+    "tests/unit/test_update_agent_assets.py",
+    "scripts/orchestrator/hcom-seat",
+    "scripts/orchestrator/profile-config-place.py",
+    "home/dot_dsh/profiles/router/cordis.patch.yml",
+    "scripts/orchestrator/intake-observe.py",
+    "scripts/generate-agent-configs.py",
+    "scripts/validate-agent-assets.py",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "docs/deepseek-harness.md",
+    "scripts/orchestrator/seat-login-preflight",
+    "home/dot_local/bin/common/executable_regime-url-opener"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the auditor's own scripts compared blobs across the swept heads and re-mapped the carried records.",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md",
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "AI-AND-LLM.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-34",
+      "source_ref": "4c06cbbe6ee67f7b1d1df6512a04fb0d7440e844",
+      "findings": 0,
+      "ledger_units": 81,
+      "use": "The set to carry (the brief's run-35 does not exist): every unit and four candidate records re-mapped to this head."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-33",
+      "source_ref": "34c1450ba57e847608969b29890c7f11d8deba5b",
+      "findings": 0,
+      "ledger_units": 78,
+      "use": "The lever and helper blobs of this head: the four U310 units, the relink candidate's write leg and its record."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T08:58:00Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: five candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused): router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound, updater/build_under_srt/settings-file-in-session-write-root, updater/build_under_srt/session-lockfile-names-the-build-hosts, dsh-seat/profile-root-relink/write-grant-follows-session-made-link (both legs now on origin/main) and seats/shared-claude-config-dir/cross-seat-session-files, all proposed needs_validation, all on origin/main, none a finding. U354 itself yields no candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-34",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-34",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/settings-file-in-session-write-root",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-settings-file",
+      "record": "agents/parent-hunter/scratch/candidate-settings-in-write-root.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-34",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/session-lockfile-names-the-build-hosts",
+      "ledger_unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "record": "agents/parent-hunter/scratch/candidate-lockfile-hosts.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-34",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-34",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (5), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted U354 as a restatement of the build_under_srt and update_dsh_superagent units, the four U310 units restored from run-33, and the relink write leg restored; no new candidate"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 5,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T09:02:59Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

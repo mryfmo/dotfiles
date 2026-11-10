@@ -1362,6 +1362,67 @@ INSTALLING_ASSET_SOURCES = {
     "installer-script",
     "vendored",
 }
+# The one asset whose Source rows the kit renders (regime-cutover U317): the superagent intake's GitHub Source. `sources`
+# is admitted under this asset alone, each Source is one of the kinds below, and each row is a fixed key set compared
+# with fixed values: the repository against `owner/name`, the accept mode against the three the upstream Policy knows
+# (dsh-superagent src/policy.ts:84), `auto` only with the two row timestamps the M-18 ladder defines.
+SOURCED_ASSET = "dsh-superagent"
+ASSET_SOURCE_KEYS = {
+    "github": ("repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission")
+}
+ASSET_SOURCE_REQUIRED = ("repository", "accept_mode", "accept_mode_row")
+ACCEPT_MODES = ("off", "observe", "auto")
+# The two words of the policy cell router-settings-apply writes (U416): the pulls row's unlistedUnaddressed cell.
+OBSERVE_ADMISSIONS = ("inferred", "ignore")
+SOURCE_REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
+LADDER_ROW_TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+
+
+def validate_asset_sources(name: str, asset: dict[str, Any]) -> None:
+    """Refuse a `sources` block outside the sourced asset, an unknown Source or key, a repository outside `owner/name`,
+    a mode outside the three, and `auto` without `accept_mode_auto_row`; each refusal names the key."""
+    sources = asset.get("sources")
+    if sources is None:
+        return
+    if name != SOURCED_ASSET:
+        fail(f"assets.{name}.sources: only assets.{SOURCED_ASSET} carries Source rows")
+    if not isinstance(sources, dict) or not sources:
+        fail(f"assets.{name}.sources must be a non-empty mapping of Source kind to row")
+    for kind, row in sources.items():
+        label = f"assets.{name}.sources.{kind}"
+        keys = ASSET_SOURCE_KEYS.get(kind)
+        if keys is None:
+            fail(f"{label} is not a Source the kit renders; the kinds are {sorted(ASSET_SOURCE_KEYS)}")
+        if not isinstance(row, dict):
+            fail(f"{label} must be a mapping")
+        unknown = sorted(set(row) - set(keys))
+        if unknown:
+            fail(f"{label} has unknown key(s) {unknown}; the row admits {list(keys)}")
+        missing = [key for key in ASSET_SOURCE_REQUIRED if not row.get(key)]
+        if missing:
+            fail(f"{label} is missing {missing}")
+        for key, value in row.items():
+            if not isinstance(value, str):
+                fail(f"{label}.{key} must be a string, not {type(value).__name__}: {value!r}")
+        if not SOURCE_REPOSITORY.fullmatch(row["repository"]):
+            fail(f"{label}.repository {row['repository']!r} is not owner/name")
+        mode = row["accept_mode"]
+        if mode not in ACCEPT_MODES:
+            fail(f"{label}.accept_mode {mode!r} is not one of {list(ACCEPT_MODES)}")
+        for key in ("accept_mode_row", "accept_mode_auto_row"):
+            if key in row and not LADDER_ROW_TIMESTAMP.fullmatch(row[key]):
+                fail(f"{label}.{key} {row[key]!r} is not a decisions.tsv timestamp (YYYY-MM-DDTHH:MM:SSZ)")
+        if mode == "auto" and "accept_mode_auto_row" not in row:
+            fail(
+                f"{label}.accept_mode auto needs accept_mode_auto_row beside accept_mode_row (the two row timestamps "
+                "the M-18 ladder defines); the mode stays observe until that row is written"
+            )
+        if mode != "auto" and "accept_mode_auto_row" in row:
+            fail(f"{label}.accept_mode_auto_row belongs only to accept_mode auto, not {mode!r}")
+        if "observe_admission" in row and row["observe_admission"] not in OBSERVE_ADMISSIONS:
+            fail(f"{label}.observe_admission {row['observe_admission']!r} is not one of {list(OBSERVE_ADMISSIONS)}")
+
+
 # A literal value is double-quoted without $, single-quoted, or an unquoted
 # token without quotes, $, backticks, or parentheses; derived values pass.
 LITERAL_VERSION_ASSIGNMENT = re.compile(
@@ -1459,6 +1520,7 @@ def validate_assets(manifest: dict[str, Any]) -> None:
         for field, value in asset_pin_values(asset):
             if not isinstance(value, str):
                 fail(f"assets.{name}.{field} must be a string, not {type(value).__name__}: {value!r}")
+        validate_asset_sources(name, asset)
         render = asset.get("render")
         for entry in (render if isinstance(render, list) else [render]) if render else []:
             constants = entry.get("constants") if isinstance(entry, dict) else None

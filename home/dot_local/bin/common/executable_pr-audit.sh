@@ -69,11 +69,20 @@
 #   (`cat` and `ls` in the head's tree, `mkdir` in the scratch TMPDIR) succeeded. Either probe failing, an unproven
 #   denial, any other curl status (0, a timeout, 126/127), or a probe that cannot run, is a refusal: the measured
 #   property is a precondition of every run. Then
-#   `codex exec --strict-config --skip-git-repo-check --ephemeral --ignore-rules -C <empty cwd> --output-schema <schema>
-#   -o <verdict JSON> -` reads the prompt, bounded by PR_AUDIT_TIMEOUT seconds. `--ignore-rules` loads no execpolicy
-#   `.rules` file of the caller or the head; `--ignore-user-config` is not passed, since codex-cli 0.164.0 documents it
-#   as "Do not load `$CODEX_HOME/config.toml`", which is the scratch config that selects the audit profile (regime-cutover
-#   U106). Every codex call runs in a session and process group of its own under one
+#   `codex exec --strict-config --skip-git-repo-check --ephemeral --ignore-rules --cyber-access-program standard
+#   -C <empty cwd> --output-schema <schema> -o <verdict JSON> -` reads the prompt, bounded by PR_AUDIT_TIMEOUT seconds.
+#   `--ignore-rules` loads no execpolicy `.rules` file of the caller or the head; `--ignore-user-config` is not passed,
+#   since codex-cli 0.164.0 documents it as "Do not load `$CODEX_HOME/config.toml`", which is the scratch config that
+#   selects the audit profile (regime-cutover U106). The standard cyber access program is requested for the turn
+#   (`--cyber-access-program`, codex-cli 0.166.0), so an account approved for Daybreak is not gated on a hardware-key
+#   session for a turn that needs no Daybreak (it reads a diff and writes a verdict; measured 2026-11-09, regime-cutover
+#   U407). `--cyber-program daybreak_blue` asks for the Daybreak Blue program instead, with `-c model="gpt-6-sol"` in
+#   the place of `--cyber-access-program standard` (the model Daybreak answers on; gpt-6.1-sol answers `403 Daybreak
+#   isn't available for this model`), for a unit whose content the standard program's classifier refuses (measured on
+#   U343, 2026-11-09: the turn on PR 720 ended on `This content was flagged for possible cybersecurity risk`), and it
+#   needs the operator's Codex session to carry the account's hardware key (regime-cutover U413). The program and its
+#   override are the two rows of one table in this file, never read from the environment or the manifest, and the
+#   probes carry neither. Every codex call runs in a session and process group of its own under one
 #   Python supervisor (`python3 -I -S`, from PATH; none is a refusal) that stops the whole group on its deadline and
 #   on INT, TERM or HUP; the lever forwards those signals to it and exits 128 + the signal's number. The deadline stops
 #   codex's process group on both OSes and every descendant on Linux (the supervisor is the child subreaper); on macOS
@@ -124,6 +133,10 @@
 #   The same store feeds the prompt's `Earlier findings and their dispositions` block through the checkout's
 #   `scripts/orchestrator/audit-carry.py` (U122): its exit 0 is the block, 1 is no earlier audited head and no
 #   block, anything else refuses the audit. A body without the line keeps the behaviour without the flag.
+# @option --cyber-program <standard|daybreak_blue> The cyber access program of the audit turn (regime-cutover U413).
+#   `standard` (the default, every audit since U407) is the argv above; `daybreak_blue` puts `--cyber-access-program
+#   daybreak_blue -c model="gpt-6-sol"` in its place, for a unit whose content the standard program's classifier
+#   refuses. Any other word, or no word, is refused with exit 2 before any call; the probes are the same either way.
 # @env CODEX_HOME The caller's Codex home whose `auth.json` is the login (default ~/.codex).
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call and per `git fetch` (default 60).
 # @env PR_AUDIT_TIMEOUT Seconds for the `codex exec` run (default 3600).
@@ -137,7 +150,8 @@
 #   number the reader cannot represent are not), does not conform to the schema (a type, enum or bound), or names a
 #   verdict its findings contradict; or the schema uses a keyword or type the reader does not implement; or
 #   `verdict.md` could not be written (then none is left).
-# @exitcode 2 Refused: usage, a base other than `main`, a moved head, no `## Contract` or `## Audit` section, a program
+# @exitcode 2 Refused: usage, a `--cyber-program` value outside `standard` and `daybreak_blue`, a base other than
+#   `main`, a moved head, no `## Contract` or `## Audit` section, a program
 #   pull request (a `Program-Unit:` line) without `--records`, a store that is not a readable directory or not the
 #   body's program's, a malformed or doubled `Program-Unit:` line, a store whose earlier findings cannot be read as
 #   data (audit-carry.py exited other than 0 or 1), the
@@ -270,7 +284,7 @@ caller_cwd=$(pwd -P) || {
 }
 
 lever='pr-audit.sh'
-usage='usage: pr-audit.sh <pr> [--records <store>]'
+usage='usage: pr-audit.sh <pr> [--records <store>] [--cyber-program <standard|daybreak_blue>]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
 audit_timeout=${PR_AUDIT_TIMEOUT:-3600}
 probe_timeout=${PR_AUDIT_PROBE_TIMEOUT:-120}
@@ -803,12 +817,20 @@ records=''
 # The duplicate-flag sentinel is its own boolean (U120 round 5): a first value of `/` once normalised to the empty
 # string and let a second `--records` pass.
 records_given=0
+cyber_program='standard'
+cyber_program_given=0
 while (($# > 0)); do
     case $1 in
     --records)
         [[ $# -ge 2 && -n $2 && ${records_given} == 0 ]] || refuse "${usage}"
         records=$2
         records_given=1
+        shift 2
+        ;;
+    --cyber-program)
+        [[ -n ${2:-} && ${cyber_program_given} == 0 ]] || refuse "${usage}"
+        cyber_program=$2
+        cyber_program_given=1
         shift 2
         ;;
     *)
@@ -820,6 +842,15 @@ while (($# > 0)); do
 done
 [[ -n ${pr} ]] || refuse "${usage}"
 [[ ${pr} =~ ^[1-9][0-9]{0,9}$ ]] || refuse "the pull request is not a decimal number: ${pr}"
+# The cyber access program table (regime-cutover U413): one row per word the option takes, each row the flag codex is
+# given and the config override the turn carries (`-c model=...`; the standard row carries none). The model name is a
+# literal here, beside the program it answers for, never read from the environment or the manifest; a word outside
+# the table is refused before any call (standing order 21). The probes never see these arguments.
+case ${cyber_program} in
+standard) cyber_program_args=(--cyber-access-program standard) ;;
+daybreak_blue) cyber_program_args=(--cyber-access-program daybreak_blue -c 'model="gpt-6-sol"') ;;
+*) refuse "--cyber-program ${cyber_program} is not one of standard, daybreak_blue" ;;
+esac
 if [[ -n ${records} ]]; then
     # The store by its physical path, once (U120 round 5): `.` from inside it, a trailing `/.` and a path relative
     # to the checkout then all end in the program's name, and `/` (no last component, no ledger) is no store.
@@ -1614,7 +1645,8 @@ verdict=${run}/verdict.md
 codex_started=1
 status=0
 codex_scratch "${audit_timeout}" "${prompt}" "${run}/codex.log" exec --strict-config --skip-git-repo-check --ephemeral \
-    --ignore-rules -C "${work}/cwd" --output-schema "${schema}" -o "${verdict_json}" - || status=$?
+    --ignore-rules "${cyber_program_args[@]}" -C "${work}/cwd" --output-schema "${schema}" -o "${verdict_json}" - ||
+    status=$?
 ((status == 0)) || fail "codex exec exited ${status}; its log is ${run}/codex.log"
 [[ -s ${verdict_json} ]] || fail "codex exec wrote no final message to ${verdict_json}; its log is ${run}/codex.log"
 # The reader's status decides (standing order 21): a reader that failed or refused yields no verdict, never a default.

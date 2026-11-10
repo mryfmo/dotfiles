@@ -242,6 +242,7 @@ MANAGED_ALLOW = [
 ]
 LEVERS = (
     "acp-broker",
+    "acp-record-place.py",
     "acp-relay.py",
     "acp-seat",
     "brief-check.py",
@@ -250,6 +251,9 @@ LEVERS = (
     "git-isolated.sh",
     "hcom-dispatch",
     "hcom-seat",
+    "intake-observe.py",
+    "ledger-row.py",
+    "ledger.py",
     "omp-run.sh",
     "pr-audit.sh",
     "pr-body-edit.sh",
@@ -259,12 +263,16 @@ LEVERS = (
     "pr-thread-resolve.sh",
     "pr-threads-check.sh",
     "pr-update-branch.sh",
+    "profile-config-place.py",
     "read-lib.sh",
     "records-sync.sh",
     "regime-env",
     "regime-init",
     "regime-start",
     "regime-stop",
+    "regime-store-move",
+    "router-gh",
+    "router-settings-apply",
     "seat-login-preflight",
     "seat-settings-render.sh",
     "worker-worktree.sh",
@@ -1091,16 +1099,38 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         for name in LEVERS:
             with self.subTest(lever=name):
                 source = (ROOT / "scripts/orchestrator" / name).read_bytes()
-                installed = ROOT / "home/dot_local/bin/common" / f"executable_{name}"
+                install_name = self.module.lever_install_name(name)
+                installed = ROOT / "home/dot_local/bin/common" / install_name
                 self.assertEqual(installs[installed], source.decode())
                 self.assertEqual(installed.read_bytes(), source)
-                self.assertTrue(os.access(installed, os.X_OK))
+                # A module another lever imports is installed under its bare name and never executable (U418).
+                self.assertEqual(os.access(installed, os.X_OK), install_name.startswith("executable_"))
                 pin = hashlib.sha256(source).hexdigest()
                 self.assertEqual(manifest["claude"]["levers"]["sha256"][name], pin)
                 self.assertIn(f"\n      {name}: {pin}\n", text)
         self.assertEqual(self.module.refresh_lever_pins(text), text, "the committed pins are current")
         stale = text.replace(manifest["claude"]["levers"]["sha256"]["hcom-seat"], "0" * 64)
         self.assertEqual(self.module.refresh_lever_pins(stale), text, "a stale pin is refreshed and nothing else moves")
+
+    def test_the_ledger_reader_installs_beside_the_row_writer_under_its_bare_name_and_pinned(self) -> None:
+        """`ledger-row.py` imports `ledger.py` from its own directory, so the deployed writer needs the reader deployed
+        beside it (regime-cutover U418: every run of `~/.local/bin/common/ledger-row.py` refused, `no ledger.py beside
+        the lever`). The copy is byte-identical to the checkout's reader, pinned like every lever, and carries no
+        `executable_` prefix: chezmoi installs it at mode 0644, a module that is imported and never run."""
+        self.module.ROOT = ROOT
+        source = ROOT / "scripts/orchestrator/ledger.py"
+        installed = ROOT / "home/dot_local/bin/common/ledger.py"
+        self.assertTrue(
+            installed.is_file(), f"{installed.relative_to(ROOT)} is missing: the deployed row writer imports it"
+        )
+        self.assertEqual(installed.read_bytes(), source.read_bytes())
+        self.assertFalse((ROOT / "home/dot_local/bin/common/executable_ledger.py").exists())
+        self.assertFalse(os.access(installed, os.X_OK), "the reader is imported, never run")
+        manifest = load_manifest_fixture(self.temp_dir)
+        pin = hashlib.sha256(source.read_bytes()).hexdigest()
+        self.assertEqual(manifest["claude"]["levers"]["sha256"].get("ledger.py"), pin)
+        self.assertIn(f"\n      ledger.py: {pin}\n", (ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        self.assertEqual(installed, next(path for path in self.module.lever_pins(manifest) if path.name == "ledger.py"))
 
     def test_check_reports_a_stale_lever_pin_and_a_run_refreshes_it(self) -> None:
         (self.temp_dir / "scripts/orchestrator").mkdir(parents=True)
@@ -2458,6 +2488,84 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertLessEqual(policies, set(roles))
         for role in roles:
             self.assertTrue((ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl").is_file(), role)
+
+    def test_omp_gateway_role_overlay_carries_the_bridge_route_the_extension_and_the_seat_providers_off(self) -> None:
+        """U310: the dsh role's profile config, placed by hcom-seat as `~/.omp/profiles/dsh/agent/config.yml`, names the
+        gateway route of the profile's dsh model, the bridge extension directory of omp.extension_providers (the home
+        through the chezmoi template, as the seat overlays carry it), the seat providers off, skills off and the seat
+        overlays' wizard and update rows; a key that is a seat role too, a profile without a dsh entry and a missing
+        extension_providers row each refuse."""
+        manifest = sample_manifest()
+        manifest["model_profiles"]["standard"]["dsh"] = {"model": "claude-opus-5-5", "route": "omp-gateway"}
+        manifest["omp"]["gateway_roles"] = {"dsh": "standard"}
+        manifest["omp"]["extension_providers"] = {"claude-bridge": "~/.local/lib/omp-extensions/pi-claude-bridge"}
+        manifest["omp"]["disabled_providers"] = ["agent-plugins"]
+        manifest["omp"]["seat_disabled_providers"] = ["native", "mcp-json"]
+        overlay = self.module.render_omp_gateway_overlay(manifest, "dsh")
+
+        self.assertEqual(
+            overlay,
+            f"# {self.module.GENERATED_HEADER}\n"
+            "modelRoles:\n  default: claude-bridge/claude-opus-5-5\n"
+            "skills:\n  enabled: false\n"
+            "extensions:\n  - {{ .chezmoi.homeDir }}/.local/lib/omp-extensions/pi-claude-bridge\n"
+            "disabledProviders:\n  - agent-plugins\n  - native\n  - mcp-json\n"
+            "setupVersion: 2\nstartup:\n  setupWizard: false\n  checkUpdate: false\n",
+        )
+        self.assertIn(
+            "extensions:\n  - /render-home/.local/lib/omp-extensions/pi-claude-bridge\n",
+            execute_chezmoi_template(overlay, self.temp_dir),
+        )
+        for change, message in (
+            ({"roles": {"dsh": "standard"}}, "omp.gateway_roles.dsh is a seat role too"),
+            ({"gateway_roles": {"dsh": "express"}}, "names 'express', which carries no dsh entry"),
+            ({"gateway_roles": {"Dsh": "standard"}}, "omp.gateway_roles key is not launcher-safe: 'Dsh'"),
+            ({"gateway_roles": {"dsh": "nope"}}, "omp.gateway_roles.dsh must name a model profile: 'nope'"),
+            ({"gateway_roles": ["dsh"]}, "omp.gateway_roles must be a mapping"),
+            ({"extension_providers": {"openai-siwc": "~/x"}}, "must name the extension directory of claude-bridge"),
+            ({"extension_providers": {"claude-bridge": "relative/dir"}}, "must name the extension directory"),
+        ):
+            with self.subTest(change=change):
+                broken = sample_manifest()
+                broken["model_profiles"]["standard"]["dsh"] = {"model": "claude-opus-5-5", "route": "omp-gateway"}
+                broken["omp"]["gateway_roles"] = {"dsh": "standard"}
+                broken["omp"]["extension_providers"] = {"claude-bridge": "~/.local/lib/omp-extensions/pi-claude-bridge"}
+                broken["omp"].update(change)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.render_omp_gateway_overlay(broken, "dsh")
+                self.assertIn(message, stderr.getvalue())
+
+    def test_the_manifest_renders_the_dsh_gateway_overlay_with_the_allow_listed_bridge(self) -> None:
+        """U310: the committed manifest's gateway role is dsh, its overlay is a committed output, its route is the
+        gateway provider on the interactive profile's dsh model (the thak profile's agent-default-model, so the child
+        answers the model the harness asks for), and its one extension entry is the bridge row of the lever's
+        allow-list claude.levers.extensions, which hcom-seat holds the placed entry to."""
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.module.ROOT = ROOT
+        roles = self.module.omp_gateway_roles(manifest)
+        self.assertEqual(roles, {"dsh": "deep"})
+        self.assertEqual(roles["dsh"], manifest["interactive_profile"])
+        expected = self.module.expected_outputs(manifest)
+        path = ROOT / "home/dot_agents/omp/profiles/dsh.yml.tmpl"
+        self.assertIn(path, expected)
+        self.assertEqual(path.read_text(), expected[path])
+        text = expected[path]
+        dsh_model = manifest["model_profiles"][manifest["interactive_profile"]]["dsh"]["model"]
+        header = f"# {self.module.GENERATED_HEADER}\nmodelRoles:\n  default: claude-bridge/{dsh_model}\n"
+        self.assertTrue(text.startswith(header + "skills:\n  enabled: false\nextensions:\n"), text)
+        allow_list = manifest["claude"]["levers"]["extensions"]
+        bridge = manifest["omp"]["extension_providers"]["claude-bridge"]
+        self.assertIn(bridge, allow_list)
+        self.assertIn(
+            f"extensions:\n  - {bridge.replace('~', '{{ .chezmoi.homeDir }}', 1)}\ndisabledProviders:\n", text
+        )
+        disabled = "".join(f"  - {provider}\n" for provider in self.module.omp_seat_disabled_providers(manifest))
+        tail = f"disabledProviders:\n{disabled}setupVersion: 2\nstartup:\n  setupWizard: false\n  checkUpdate: false\n"
+        self.assertTrue(text.endswith(tail), text)
+        # The seat overlays are what they were: the gateway row adds a file and changes none of theirs.
+        for role in manifest["omp"]["roles"]:
+            self.assertNotIn("extensions:", expected[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"])
 
     def test_manifest_adds_one_allowlisted_omp_model_per_profile_and_nothing_else(self) -> None:
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()

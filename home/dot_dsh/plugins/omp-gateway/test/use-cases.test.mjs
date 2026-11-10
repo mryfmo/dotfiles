@@ -12,7 +12,7 @@ import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { DEFAULT_CONFIG, DEFAULT_ENV_NAMES, resolveConfig } from '../config.mjs'
+import { DEFAULT_CONFIG, DEFAULT_ENV_NAMES, SRT_INJECTED_ENV_NAMES, resolveConfig } from '../config.mjs'
 import { GatewayClient, pickEnv } from '../gateway-client.mjs'
 import { toError } from '../translate.mjs'
 
@@ -621,8 +621,14 @@ adapterTest('f1', async t => {
   const config = resolveConfig()
   assert.deepEqual([config.command, [...config.args], [...config.providers], config.maxTokens, config.readyTimeoutMs, config.cwd], ['omp', ['auth-gateway', 'stdio'], ['claude-bridge'], 4096, 30000, undefined])
   assert.deepEqual([...config.env], [...DEFAULT_ENV_NAMES])
-  assert.equal(config.env.every(name => /^[A-Z_][A-Z0-9_]*$/.test(name)), true)
-  assert.equal(config.env.some(name => /KEY|TOKEN|SECRET|OAUTH|PASSWORD/i.test(name)), false)
+  // srt's injected names include the lower-case proxy forms (`http_proxy`, `no_proxy`), so the shape admits both cases.
+  assert.equal(config.env.every(name => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)), true)
+  // The plugin's own rows carry no credential-shaped name. Of srt's injected names (U364) exactly one has the shape,
+  // `CLOUDSDK_PROXY_PASSWORD`: its value is the per-process proxy token srt mints for this child, the same token
+  // inside `HTTPS_PROXY`, never an operator credential.
+  const own = config.env.filter(name => !SRT_INJECTED_ENV_NAMES.includes(name))
+  assert.equal(own.some(name => /KEY|TOKEN|SECRET|OAUTH|PASSWORD/i.test(name)), false)
+  assert.deepEqual(SRT_INJECTED_ENV_NAMES.filter(name => /KEY|TOKEN|SECRET|OAUTH|PASSWORD/i.test(name)), ['CLOUDSDK_PROXY_PASSWORD'])
   t.diagnostic(`f1 observed: ${JSON.stringify({ ...DEFAULT_CONFIG, env: [...DEFAULT_ENV_NAMES] })}`)
 })
 
@@ -759,7 +765,8 @@ test('g1', async t => {
   const self = fileURLToPath(import.meta.url)
   const hits = pluginFiles().filter(file => file !== self).flatMap(file => readFileSync(file, 'utf8').split('\n').flatMap((line, index) => (credentialShape.test(line) ? [`${file}:${index + 1}`] : [])))
   assert.deepEqual(hits, [])
-  const names = [...DEFAULT_ENV_NAMES]
+  // The same split as f1: the plugin's own rows carry no credential-shaped name; srt's one such name is pinned there.
+  const names = [...DEFAULT_ENV_NAMES].filter(name => !SRT_INJECTED_ENV_NAMES.includes(name))
   assert.equal(names.some(name => /KEY|TOKEN|SECRET|OAUTH|PASSWORD/i.test(name)), false)
   t.diagnostic(`g1 observed: ${pluginFiles().length} files, 0 credential-shaped lines; default env names ${JSON.stringify(names)}`)
 })

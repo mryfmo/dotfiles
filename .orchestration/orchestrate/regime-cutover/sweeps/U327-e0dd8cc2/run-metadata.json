@@ -1,0 +1,137 @@
+{
+  "run_id": "dotfiles-sweep-3-run-21",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "e0dd8cc221de0b19477d82c850d1f631042bef4d",
+    "branch": "feat/seat-login-shared-config-dir",
+    "base": "284828321eef20d6c19a9f4e9fe5cd6241384787",
+    "diff_base": "2b2415f6cae8b5d1db8d65a560f7cfb9e48e5ab6",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: git diff 2b2415f6..e0dd8cc2, 20 paths: U312 (#712) and U283d (#710) on main, then U318 (28482832..e0dd8cc2, 14 files): scripts/orchestrator/{hcom-seat,seat-login-preflight} and their deployed copies, the lever pins, home/dot_zshenv, home/dot_profile, scripts/lib/asset-manifest.sh, scripts/update-agent-assets.sh, six test files and four docs; the installed pi-claude-bridge source, scripts/orchestrator/{README.md,regime-env} and the managed Claude settings as context; plus five carried leads; every other path is carried out_of_scope",
+  "scope_note": "The brief counts 16 paths and calls the head the U312 head; git diff --name-only 2b2415f6 HEAD lists 20 (U283d's four included), and the head is U318's (commit subject regime-cutover U318). All 20 are in scope.",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "scripts/orchestrator/seat-login-preflight",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "home/dot_local/bin/common/executable_seat-login-preflight",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "home/dot_zshenv",
+    "home/dot_profile",
+    "scripts/lib/asset-manifest.sh",
+    "scripts/update-agent-assets.sh",
+    "tests/unit/test_hcom_seat.py",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "tests/unit/test_remote_host_logins.py",
+    "tests/unit/test_asset_manifest.py",
+    "tests/unit/test_update_agent_assets.py",
+    "tests/install/common/check_tools.bats",
+    "README.md",
+    "docs/remote-host-logins.md",
+    "docs/pi-claude-bridge.md",
+    "home/dot_agents/README.md"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, cmp, shasum and grep over the tree and over the installed pi-claude-bridge source (~/.local/lib/omp-extensions/pi-claude-bridge, read only); every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-20",
+      "source_ref": "964c6a07251605957a8802360e40ab67f9c1e259",
+      "findings": 0,
+      "unvalidated_candidates": 5,
+      "ledger_units": 68,
+      "use": "Base ledger (the brief's set). Its ten covered U301 units are out_of_scope (U301 is on another branch); run-19's seven U312 units, which run-20 carried out of scope, are re-covered here since U312 is on main; the five leads are re-checked, hcom-seat lines re-mapped (:105-107, :1256-1260, :1516, :1692-1695, :1833-1836)."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T00:50:33Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and six leads (one new, five carried) could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:1255, :1521, :1767-1770, :1826, :1831, :1837; pi-claude-bridge src/index.ts:838-843, :2068",
+      "proposed_verdict": "needs_validation",
+      "note": "new; every role reads and writes one Claude Code directory that holds every seat's resumed session files and the login"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "no token variable exists at this head (hcom-seat:147, :2251-2252, :2305)"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "a direct ~/.dsh/bin/dsh run outside the U272 role (scripts/update-agent-assets.sh:2174)",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id (home/dot_dsh/profiles/thak/cordis.patch.yml:9-12)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "bash-sandbox disabled (home/dot_dsh/profiles/thak/cordis.patch.yml:13-14)"
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 1,
+      "reassign_ids": 0,
+      "result": "accepted one unit: what the bridge stores in the shared directory and reads back, past the eight configuration names (session JSONL, the login, .claude.json); hunted in the same parent pass, now the candidate hcom-seat/claude-config:shared-directory-crosses-seat-isolation"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 6,
+  "findings_count": 0,
+  "ledger_units": 73,
+  "ledger_counts": {
+    "covered": 11,
+    "candidate": 6,
+    "out_of_scope": 56
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-07T00:59:03Z"
+}

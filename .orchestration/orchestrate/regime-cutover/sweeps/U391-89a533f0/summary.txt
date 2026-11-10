@@ -1,0 +1,21 @@
+security-audit sweep 89a533f0447396dc470766a91ead1cbcbebdcad0: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U221e (round 5 of U221: the procedure's copy line `cp -a <live> <dest> && chmod -R go-rwx <dest>` leaves the store 0700, every listing read whole, every read's stderr captured, uv's cache under the scratch directory, a failed cleanup exits 1): no candidate; the lever stays read-only, so the move-race candidate stays resolved (U221d).
+hardening: the derived store's absence is checked when the procedure is printed (scripts/orchestrator/regime-store-move:443-445) and step 2 has no guard (:281); `mkdir -m 0700 <dest> && cp -a <live>/. <dest>` would close it
+unvalidated candidates carried from run-51 (not findings; no independent verifier on this seat):
+  seats/regime-store-root/program-records-outside-the-dsh-and-build-read-denies	scripts/orchestrator/hcom-seat:2420
+  records-sync/derived-store/publishes-what-the-checkout-ignore-rules-withheld	scripts/orchestrator/records-sync.sh:457
+  updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm	scripts/update-agent-assets.sh:2015
+  router-seat/keychain/model-gh-resolves-the-operators-login	scripts/orchestrator/router-gh:168
+  seats/router-credential-root/read-deny-follows-the-launching-callers-home	scripts/orchestrator/hcom-seat:844
+  router-seat/credential-root/agent-token-readable-by-the-router-model	scripts/orchestrator/hcom-seat:2605
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:450
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1517
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2434
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2474
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2238
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: af547232..89a533f0 (7 files); run-51's records carried and re-mapped, the move unit restated; profile standard, source-only; ledger 96 units: 43 covered, 11 candidate, 42 out_of_scope
+brief notes: the title and GOAL are U322's template (branch fix/dsh-harness-build-under-srt, base 668ba887, 3 paths); the CONTEXT and TRUST name run-52, this run's own directory, as the previous run and the carry set; run-51 is this seat's previous run and is carried
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: build-ledger.cjs, overrides.json, write-metadata.cjs, nv-carried.md and the eleven candidate records in agents/parent-hunter/scratch/)
+wall time: 141s (2026-11-08T11:29:59Z to 2026-11-08T11:32:20Z)

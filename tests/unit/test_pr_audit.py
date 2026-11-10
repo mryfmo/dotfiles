@@ -269,6 +269,7 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual([c["argv"][0] for c in calls], ["sandbox", "sandbox", "exec"])
         work = rundir / "work"
         exec_argv = ["exec", "--strict-config", "--skip-git-repo-check", "--ephemeral", "--ignore-rules"]
+        exec_argv += ["--cyber-access-program", "standard"]
         exec_argv += ["-C", str(work / "cwd"), "--output-schema", str(rundir / "verdict.schema.json")]
         self.assertEqual(calls[2]["argv"], [*exec_argv, "-o", str(rundir / "verdict.json"), "-"])
         self.assertNotIn("--ignore-user-config", calls[2]["argv"], "it would skip the scratch config.toml")
@@ -299,6 +300,7 @@ class PrAuditTest(unittest.TestCase):
             )
             if call["argv"][0] == "sandbox":
                 self.assertEqual(call["argv"][:4], ["sandbox", "--", "/bin/sh", "-c"])
+                self.assertNotIn("--cyber-access-program", call["argv"], "a probe is no turn and names no program")
             self.assertEqual(call["cwd"], str(work / "cwd"))
             self.assertEqual(call["env"]["HOME"], str(work / "home"))
             self.assertEqual(call["env"]["CODEX_HOME"], str(work / "codex-home"))
@@ -829,6 +831,71 @@ class PrAuditTest(unittest.TestCase):
             with self.subTest(args=args):
                 self.assert_refused(self.run_lever(*args), "")
                 self.assertFalse((self.rec / "gh-calls").exists())
+
+    def test_cyber_program_daybreak_blue_runs_the_turn_under_that_program_on_gpt_6_sol(self):
+        """U413: `--cyber-program daybreak_blue` puts `--cyber-access-program daybreak_blue -c model="gpt-6-sol"` in the
+        exec argv in the place of `--cyber-access-program standard` (the model override is a literal of the lever's
+        two-row table, not of the environment or the manifest; the scratch config is unchanged); the probes carry no
+        program flag and no override. `--cyber-program standard` spelled out is the default argv."""
+        for program, program_argv in (
+            ("daybreak_blue", ["--cyber-access-program", "daybreak_blue", "-c", 'model="gpt-6-sol"']),
+            ("standard", ["--cyber-access-program", "standard"]),
+        ):
+            with self.subTest(program=program):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                for name in ("codex-calls", "gh-calls"):
+                    (self.rec / name).unlink(missing_ok=True)
+                run = self.run_lever("--cyber-program", program, "7", PR_AUDIT_CYBER_PROGRAM="daybreak_red")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertTrue(run.stdout.endswith("Verdict: correct\n"), run.stdout)
+                rundirs = list(self.tmp.iterdir())
+                self.assertEqual(len(rundirs), 1)
+                work = rundirs[0] / "work"
+                calls = self.codex_calls()
+                self.assertEqual([c["argv"][0] for c in calls], ["sandbox", "sandbox", "exec"])
+                exec_argv = ["exec", "--strict-config", "--skip-git-repo-check", "--ephemeral", "--ignore-rules"]
+                exec_argv += program_argv
+                exec_argv += ["-C", str(work / "cwd"), "--output-schema", str(rundirs[0] / "verdict.schema.json")]
+                self.assertEqual(calls[2]["argv"], [*exec_argv, "-o", str(rundirs[0] / "verdict.json"), "-"])
+                if program == "daybreak_blue":
+                    self.assertNotIn("standard", calls[2]["argv"])
+                else:
+                    self.assertNotIn("-c", calls[2]["argv"])
+                    self.assertFalse(any("gpt-6-sol" in a for a in calls[2]["argv"]))
+                for call in calls[:2]:
+                    self.assertEqual(call["argv"][:4], ["sandbox", "--", "/bin/sh", "-c"])
+                    self.assertNotIn("--cyber-access-program", call["argv"], "a probe is no turn and names no program")
+                    self.assertFalse(any("gpt-6-sol" in a or a.startswith("model=") for a in call["argv"]))
+                self.assertEqual(
+                    calls[2]["config"], calls[0]["config"], "the override rides on argv, not in the config"
+                )
+                self.assertIn(
+                    'model = "gpt-6.1-sol"', calls[2]["config"], "the scratch config keeps the template's pin"
+                )
+
+    def test_a_cyber_program_outside_the_two_words_or_without_a_value_is_refused_before_any_call(self):
+        """U413 (standing order 21): the option's value is one of two words; `red`, `daybreak_red`, a case variant, an
+        empty value, no value, or the flag twice is exit 2 before gh or codex runs (the fixtures record no call)."""
+        for args, message in (
+            (("7", "--cyber-program", "red"), "--cyber-program red is not one of standard, daybreak_blue"),
+            (
+                ("7", "--cyber-program", "daybreak_red"),
+                "--cyber-program daybreak_red is not one of standard, daybreak_blue",
+            ),
+            (
+                ("--cyber-program", "Daybreak_Blue", "7"),
+                "--cyber-program Daybreak_Blue is not one of standard, daybreak_blue",
+            ),
+            (("7", "--cyber-program", ""), "usage:"),
+            (("7", "--cyber-program"), "usage:"),
+            (("--cyber-program", "7"), "usage:"),
+            (("7", "--cyber-program", "standard", "--cyber-program", "daybreak_blue"), "usage:"),
+        ):
+            with self.subTest(args=args):
+                self.assert_refused(self.run_lever(*args), message)
+                self.assertFalse((self.rec / "gh-calls").exists())
+                self.assertEqual(self.codex_calls(), [], "no probe and no audit")
 
     def with_store(self, ledger_rows=(), program="regime-cutover", root=None, brief=CLEAN_BRIEF):
         """A fixture store of PROGRAM in scratch (or under ROOT) holding the unit's brief `briefs/U7-fixture.md`

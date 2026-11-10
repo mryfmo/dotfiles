@@ -1,0 +1,198 @@
+{
+  "run_id": "dotfiles-sweep-3-run-57",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "c19788fe80581834e18583e224e394522f3c1a7b",
+    "branch": "fix/router-profile-bash-sandbox-on",
+    "base": "57e5345a1",
+    "previous_swept_head": "da0b4e01b6569009c81cb0544d9f036b9a1e6a1f",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U406 change (57e5345a1..c19788fe, 3 files) with its round 2 (U406b, da0b4e01..c19788fe: one comment of scripts/generate-agent-configs.py and two docstrings of tests/unit/test_dsh_profile.py, the rendered patch unchanged), hunted for what the harness sandbox on inside srt admits under the router row; plus the run-56 records carried (their router units in the run-55 form, since this head is run-55's but in those lines) and re-checked with their lines re-mapped",
+  "scope_note": "U406's round-1 head da0b4e01 was swept in run-55; run-56 swept U407 (68c3dc3f), a sibling off the same main, whose three units are out_of_scope here. The brief's CHANGE carries run-56 while its TRUST names run-53; run-56's unit set, which carries run-53's, is carried. The coordinator store's decisions row 2026-11-09T05:16:19Z, which the round-2 comment's measurement cites, was read from the store (not in this head).",
+  "scope_paths": [
+    "home/dot_dsh/profiles/router/cordis.patch.yml",
+    "scripts/generate-agent-configs.py",
+    "tests/unit/test_dsh_profile.py",
+    "home/dot_dsh/profiles/router/package.json",
+    "scripts/orchestrator/hcom-seat",
+    "scripts/orchestrator/router-gh",
+    "scripts/orchestrator/router-settings-apply",
+    "docs/deepseek-harness.md"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent read source, ran git (diff, log, ls-tree), grep and sed over the target, and its own node scripts (ledger builder, output scan) in agents/parent-hunter/scratch/; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-56",
+      "source_ref": "68c3dc3fb6360f07cd021659967c75c505da15da",
+      "findings": 0,
+      "unvalidated_candidates": 14,
+      "ledger_units": 148,
+      "use": "The carried unit set; its three U407 units out_of_scope here (sibling)."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-55",
+      "source_ref": "da0b4e01b6569009c81cb0544d9f036b9a1e6a1f",
+      "findings": 0,
+      "unvalidated_candidates": 16,
+      "ledger_units": 145,
+      "use": "U406's round-1 sweep: the form of every unit at this head, lines re-mapped for the round-2 comment (+2 after generate-agent-configs.py:188) and docstring (+1 after test_dsh_profile.py:266); its two U406 leads re-judged against the round-2 text."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-09T05:24:52Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat (probed in run-54 this session; the policy is unchanged), so every phase ran in the parent and sixteen leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. U406b produced no new candidate.",
+  "hardening_notes": [
+    "scripts/generate-agent-configs.py:183-184 states that bash-sandbox runs in danger-full-access under the superagent's presets, but no repository source sets that mode (no sandbox-policy row in the router patch, no DSH_PERMISSION_MODE in any file); the coordinator's row 2026-11-09T05:16:19Z named a patch row as the design. If the presets do not set it, the default workspace-write applies and every Router shell command fails at sandbox_apply (closed).",
+    "docs/deepseek-harness.md:149-150 still describes the router presets as restated with their sandbox rows disabled; U406 and U406b leave the docs unchanged (the text understates confinement).",
+    "scripts/orchestrator/ledger-row.py: the installed copy refuses every call (fails closed; unchanged since run-49)."
+  ],
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-profile/shell:github-input-reaches-a-live-shell-whose-outer-bound-reads-the-agent-token",
+      "where": "home/dot_dsh/profiles/router/cordis.patch.yml:9-43; scripts/generate-agent-configs.py:181-188, :2500-2502; scripts/orchestrator/hcom-seat:2216-2220, :2604-2608, :3017-3023",
+      "proposed_verdict": "needs_validation",
+      "u406b": "the round-2 text states srt as the shell's one bound"
+    },
+    {
+      "fingerprint": "router-profile/bash-sandbox:nested-seatbelt-refused-under-srt-so-the-confinement-premise-is-unmet",
+      "where": "scripts/generate-agent-configs.py:181-188; tests/unit/test_dsh_profile.py:262-267",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "claim changed: U406b withdraws the two-boundary premise and documents srt as the one boundary; the measurement this lead cited was confirmed by the coordinator"
+    },
+    {
+      "fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off",
+      "where": "home/dot_dsh/profiles/router/cordis.patch.yml:9-43",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "claim changed: no router row disables the harness sandbox"
+    },
+    {
+      "fingerprint": "router-profile/management-api:settings-write-guarded-by-a-fixed-header-alone",
+      "where": "scripts/orchestrator/router-settings-apply:15-16, :73; home/dot_dsh/profiles/router/cordis.patch.yml:28-30",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:450, :3011-3023",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "regime-store/store-root:dsh-and-router-roles-can-read-the-live-store",
+      "where": "scripts/orchestrator/hcom-seat:2594-2598",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "where": "scripts/orchestrator/hcom-seat:774, :2216-2220",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/orchestrator/hcom-seat:2519, :2387-2420; scripts/update-agent-assets.sh:1985",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2473-2478, :2818-2819, :2888-2889",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1914-1935",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:2213, :2238",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "scripts/update-agent-assets.sh:2501",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the token is unset at start (hcom-seat:201) and before the seat environment (:3086)"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the thak profile runs no shell tool (tests/unit/test_dsh_profile.py:169, :271)"
+    }
+  ],
+  "leads_on_other_branches": [
+    "U407 (run-56): three covered units, no lead; out_of_scope here",
+    "U404 (run-54): home/dot_dsh/profiles/router/package.json#dsh.profile.bundles blocked on the plugin's own patch; the merged U404 plus U406 tree needs its own sweep",
+    "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox (U343, run-35)",
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-35)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-35)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; scripts in agents/parent-hunter/scratch/)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "asked whether the round-2 text's danger-full-access claim is backed by a repository row (no: no sandbox-policy row and no DSH_PERMISSION_MODE; recorded as a hardening note, closed either way), whether withdrawing the inner boundary widens the shell's reach (no: srt was already its only effective bound; the live-shell lead stands with that bound stated), and whether run-56's U407 units describe this head (no: out_of_scope)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 16,
+  "findings_count": 0,
+  "ledger_units": 148,
+  "ledger_counts": {
+    "covered": 71,
+    "candidate": 16,
+    "out_of_scope": 61
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-09T05:28:33Z"
+}

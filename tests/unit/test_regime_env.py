@@ -33,6 +33,7 @@ PROBE = (
     'printf "%s|%s|%s|%s|%s\\n" "${REGIME_TOPLEVEL:-}" "${REGIME_SLUG:-}" "${HCOM_DIR:-}" "${HCOM_TEAM:-}" '
     '"${REGIME_SEATS_ROOT:-}"'
 )
+STORE_PROBE = 'printenv REGIME_STORE_ROOT; printf "exported=%s\\n" "$?"'
 
 
 class RegimeEnvTest(unittest.TestCase):
@@ -126,6 +127,96 @@ class RegimeEnvTest(unittest.TestCase):
                 self.assertIn("is a symlink", run.stderr)
                 self.clear(state / "hcom")
         self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through a symlink")
+
+    def test_the_store_root_is_a_fixed_derivation_from_the_physical_home_and_the_slug(self):
+        """U215c (the mechanism-change row of 2026-11-07T18:05:48Z, form remove; verdicts U215-11a32ed6 P1 and
+        U215-a081d8ba P1 `:127`, P2 `:135` and `:140`): the program stores lie under one root per repository slug,
+        `<physical HOME>/.local/state/regime-store/<slug>`, derived from HOME resolved by `pwd -P` and from the slug
+        this helper already derives for the hcom store, and from nothing else: no binding file, option or environment
+        value chooses it, so nothing a seat writes enters it (hcom-seat grants the hcom store to every seat for the
+        bus). It is exported for a derived and for an explicit `HCOM_DIR` alike, for `--unbound-ok` too, and the helper
+        makes nothing; a HOME given through a symbolic link resolves to the physical directory; round 2's binding
+        `<HCOM_DIR>/store-root`, planted with `<HCOM_DIR>/store` in it and unreadable, is not read (a read would fail
+        under a non-root harness; its content never reaches the root). Outside a checkout, with an explicit `HCOM_DIR`,
+        there is no slug and the root is exported empty. A refusal (the next test) is the function's return 1; each
+        caller maps it to its own status (`regime-init` exit 2, asserted in test_regime_init; `bus-history.sh` and
+        `hcom-dispatch` exit 1), so no caller's status is claimed here."""
+        hcom_store = self.bind()
+        root = self.home / ".local/state/regime-store/kit-pilot"
+        for args in ("test", "test --unbound-ok"):
+            with self.subTest(args=args):
+                run = self.bash(f"regime_env {args}; {STORE_PROBE}")
+                self.assertEqual((run.returncode, run.stdout), (0, f"{root}\nexported=0\n"), run.stderr)
+        self.assertFalse((self.home / ".local/state/regime-store").exists(), "the helper derives and makes nothing")
+        linked_home = self.root / "home-link"
+        linked_home.symlink_to(self.home)
+        run = self.bash(f"regime_env test; {STORE_PROBE}", HOME=str(linked_home))
+        self.assertEqual((run.returncode, run.stdout), (0, f"{root}\nexported=0\n"), "HOME through a link")
+        planted = hcom_store / "store-root"
+        planted.write_text(f"{hcom_store}/store\n")
+        planted.chmod(0)
+        run = self.bash(f"regime_env test; {STORE_PROBE}")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, f"{root}\nexported=0\n", ""), "not read")
+        self.assertEqual(sorted(path.name for path in hcom_store.iterdir()), ["origin", "store-root"])
+        explicit = self.root / "explicit"
+        explicit.mkdir()
+        (explicit / "store-root").write_text(f"{explicit}/store\n")
+        run = self.bash(f"regime_env test; {STORE_PROBE}", HCOM_DIR=str(explicit))
+        self.assertEqual(
+            (run.returncode, run.stdout), (0, f"{root}\nexported=0\n"), "an explicit store chooses nothing"
+        )
+        outside = self.root / "outside"
+        outside.mkdir()
+        run = self.bash(f"regime_env test; {STORE_PROBE}", cwd=outside, HCOM_DIR=str(explicit))
+        self.assertEqual((run.returncode, run.stdout), (0, "\nexported=0\n"), "no slug outside a checkout")
+        self.assertFalse((hcom_store / "store").exists(), "no store under the hcom store")
+        self.assertFalse((explicit / "store").exists())
+
+    def test_a_store_root_component_that_is_a_link_a_file_or_unsearchable_is_refused_by_name(self):
+        """U215c (verdict U215-a081d8ba P1 `:147`, P2 `:135`): every component of the root from `.local` down is held
+        by its own test under a parent this user can search (the shape of seat-login-preflight's
+        claude_config_validate): absent, or a real directory of this user that is no symbolic link and that this user
+        can search. A link at `regime-store` or at `regime-store/<slug>` is refused by name (return 1; physical
+        resolution and the walk leave no textual prefix to pass), a file at either too, and a `.local/state` of mode
+        000 is refused naming it, never read as absent and never passed with an empty or a derived root (the
+        failed-read rule, standing order 21; skipped as root, who searches everything). Nothing is written."""
+        self.bind()
+        elsewhere = self.root / "elsewhere"
+        elsewhere.mkdir()
+        state = self.home / ".local/state"
+        parent = state / "regime-store"
+        root = parent / "kit-pilot"
+        for label, plant, named, reason in (
+            ("a link at regime-store", lambda: parent.symlink_to(elsewhere), parent, "is a symlink"),
+            ("a link at the root", lambda: (parent.mkdir(), root.symlink_to(elsewhere)), root, "is a symlink"),
+            ("a file at regime-store", lambda: parent.write_text(""), parent, "is not a real directory"),
+            ("a file at the root", lambda: (parent.mkdir(), root.write_text("")), root, "is not a real directory"),
+        ):
+            with self.subTest(label):
+                plant()
+                for args in ("test", "test --unbound-ok"):
+                    run = self.bash(f"regime_env {args}; {STORE_PROBE}")
+                    self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+                    self.assertIn(f"test: refused: the store root component {named} {reason}", run.stderr)
+            # Cleared outside the subTest, so a failing assertion still leaves the next case its clean start.
+            for path in (root, parent):
+                if path.is_symlink() or path.is_file():
+                    path.unlink()
+                elif path.is_dir():
+                    path.rmdir()
+        self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through a link")
+        if os.geteuid() == 0:
+            self.skipTest("root searches a mode-000 directory")
+        state.chmod(0)
+        try:
+            for args in ("test", "test --unbound-ok"):
+                with self.subTest(unsearchable=args):
+                    run = self.bash(f"regime_env {args}; {STORE_PROBE}")
+                    self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+                    self.assertIn(f"test: refused: cannot search the store root component {state}", run.stderr)
+        finally:
+            state.chmod(0o700)
+        self.assertFalse(parent.exists())
 
     def test_defaults_derive_from_the_main_checkout_and_explicit_values_win(self):
         self.bind()

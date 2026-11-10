@@ -1,0 +1,183 @@
+{
+  "run_id": "dotfiles-sweep-3-run-54",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "63ce5ded23145a7da2fef1c84378bdbe1457d25d",
+    "branch": "fix/router-profile-bundles-dsh-superagent",
+    "base": "57e5345a1",
+    "previous_swept_head": null,
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U404 change (57e5345a1..63ce5ded, 3 files: home/dot_dsh/profiles/router/package.json, scripts/generate-agent-configs.py (DSH_ROUTER_BUNDLES and its comment), tests/unit/test_dsh_profile.py), hunted for what the third bundle admits into the composed Router under the dsh and router rows of scripts/orchestrator/hcom-seat (the state root, the credential root read grant, the loopback binding, the Management API); plus the run-53 records carried and re-checked at this head with their lines re-mapped; every other path is carried out_of_scope or covered from run-53",
+  "scope_note": "Outside .orchestration this head differs from run-53's head 9de50a15 only in U404's three files (git diff --name-only 9de50a15 HEAD), so every carried unit sits on byte-identical source; records sync 53 (#741) is scanned for identity residue. The plugin's own cordis.patch.yml under ~/.dsh/plugins/dsh-superagent is outside the repository and, per the brief, was not read.",
+  "scope_paths": [
+    "home/dot_dsh/profiles/router/package.json",
+    "scripts/generate-agent-configs.py",
+    "tests/unit/test_dsh_profile.py",
+    "home/dot_dsh/profiles/router/cordis.patch.yml",
+    "scripts/orchestrator/hcom-seat",
+    "scripts/orchestrator/router-gh",
+    "scripts/orchestrator/router-settings-apply",
+    "scripts/update-agent-assets.sh"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent read source, ran git (diff, log, ls-tree, show), grep, sed and shasum over the target, and its own node scripts (ledger builder, records scan, output scan) in agents/parent-hunter/scratch/; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-53",
+      "source_ref": "9de50a15aa5e5ad3fb24f291d4e58e02650cc39b",
+      "findings": 0,
+      "unvalidated_candidates": 13,
+      "ledger_units": 140,
+      "use": "Base ledger; outside .orchestration byte-identical to this head but U404's three files; the U404-touched units re-checked, four stale router-row units refreshed, two units added, the rest carried with lines re-mapped."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-09T02:52:40Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat (probed at the start of this run), so every phase ran in the parent and fourteen leads (thirteen carried, one new from the U404 hunt) could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. One unit is blocked on the plugin's own patch, outside the repository.",
+  "hardening_notes": [
+    "scripts/orchestrator/ledger-row.py: no chezmoi source deploys ledger.py beside ~/.local/bin/common/ledger-row.py, so the installed copy refuses every call (fails closed; unchanged since run-49; on main since #740)."
+  ],
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off",
+      "where": "home/dot_dsh/profiles/router/cordis.patch.yml:57-71, :152-166; home/dot_dsh/profiles/router/package.json:6-12; scripts/generate-agent-configs.py:195; scripts/orchestrator/hcom-seat:450, :2604-2608, :3017-3023",
+      "proposed_verdict": "needs_validation",
+      "u404": "made live: the presets compose from this head"
+    },
+    {
+      "fingerprint": "router-profile/management-api:settings-write-guarded-by-a-fixed-header-alone",
+      "where": "scripts/orchestrator/router-settings-apply:15-16, :73; home/dot_dsh/profiles/router/cordis.patch.yml:26-32; scripts/orchestrator/hcom-seat:151-155",
+      "proposed_verdict": "needs_validation",
+      "u404": "new: the Management API is served once the plugin composes"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:450, :3011-3023",
+      "proposed_verdict": "needs_validation",
+      "u404": "a binding process inside the seat now exists (tool-bash)"
+    },
+    {
+      "fingerprint": "regime-store/store-root:dsh-and-router-roles-can-read-the-live-store",
+      "where": "scripts/orchestrator/hcom-seat:2594-2598, :2387-2420, :2519, :119",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified; live at the store move; no queued unit adds the deny)"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "where": "scripts/orchestrator/hcom-seat:774, :2216-2220",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/orchestrator/hcom-seat:2519, :2387-2420; scripts/update-agent-assets.sh:1985",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2473-2478, :2818-2819, :2888-2889",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1914-1935",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:2213, :2238",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "scripts/update-agent-assets.sh:2501; scripts/orchestrator/hcom-seat:2216-2220",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the token is unset at start (hcom-seat:201) and before the seat environment (:3086)"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the thak profile runs no shell tool"
+    }
+  ],
+  "blocked_units": [
+    {
+      "surface": "home/dot_dsh/profiles/router/package.json#dsh.profile.bundles",
+      "blocker": "the plugin's own cordis.patch.yml at pin 8c32a9dc names two of the five superagent entries the profile does not restate, and the limits the replaced plugin row drops; outside the repository and this hunt"
+    }
+  ],
+  "leads_on_other_branches": [
+    "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox (U343, run-35)",
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-35)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-35)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; scripts in agents/parent-hunter/scratch/)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 2,
+      "reassign_ids": 0,
+      "result": "asked what the third bundle admits beyond the restated rows (two unrestated entries: added as a blocked unit) and whether the four router-row units carried as out_of_scope still describe this head (no: refreshed, two to current verdicts); asked whether the bundle layer adds a writer (no: DSH_HOME writers could already rewrite the plugin's code)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 14,
+  "findings_count": 0,
+  "ledger_units": 142,
+  "ledger_counts": {
+    "covered": 71,
+    "candidate": 14,
+    "blocked": 1,
+    "out_of_scope": 56
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-09T03:01:16Z"
+}

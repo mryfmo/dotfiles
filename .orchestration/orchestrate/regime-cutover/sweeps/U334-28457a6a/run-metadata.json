@@ -1,0 +1,131 @@
+{
+  "run_id": "dotfiles-run-27",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "28457a6ac5ae2518254ee52066ffcb2d2680f890",
+    "branch": "feat/dsh-role-profile-route",
+    "parent_of_change": "ede9d532c",
+    "base_note": "U310d (round 4) on ede9d532, the branch's merge of origin/main 247d890d (U283d, U312, U311, U318, U301) over U310 to U310c; origin/main has since gained U318b (#716, 668ba887), which this head does not hold. 2b2415f6..HEAD holds 39 paths, not the brief's 9; round 4 alone (ede9d532..HEAD) holds 11.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U310 to U310d, round 4's held-descriptor helper profile-config-place.py and the lever's profile config row, in run-26's four U310 units re-checked at round 4 and one new unit for the profile root relink; (2) run-26's other units carried and re-mapped through ad9b9456..HEAD, the preflight unit restated for U318's preflight (U318b is absent at this head).",
+  "carry_note": "The brief names run-26 as the set to carry. run-26 swept U318b on 247d890d, where the U310 units were not_applicable; they are re-checked here from source at round 4.",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "scripts/orchestrator/profile-config-place.py",
+    "home/dot_local/bin/common/executable_profile-config-place.py",
+    "tests/unit/test_profile_config_place.py",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "scripts/orchestrator/README.md",
+    "docs/deepseek-harness.md",
+    "home/dot_agents/agent-config.yaml",
+    "home/dot_agents/omp/profiles/dsh.yml.tmpl",
+    "scripts/generate-agent-configs.py",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/seat-login-preflight",
+    "docs/pi-claude-bridge.md",
+    "install/common/aws_cli.sh",
+    "scripts/lib/asset-manifest.sh",
+    "scripts/update-agent-assets.sh",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Source checks throughout, plus one non-destructive observation of srt 0.0.81 from inside this seat's containment: /bin/rmdir on this seat's own non-empty write root returned 'Directory not empty' (the sandbox allowed the unlink), on its parent 'Operation not permitted'; nothing was removed.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-26",
+      "source_ref": "ad9b9456a171a40b0701eb1d87f82c324a9c0b7b",
+      "findings": 0,
+      "ledger_units": 71,
+      "use": "The set to carry: every unit re-mapped through ad9b9456..HEAD; its four U310 units re-checked at round 4; its preflight unit restated for U318's code; its U318 shared-directory candidate carried."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-25",
+      "source_ref": "792604f91ddd879e13e67e8b85076253a32a508c",
+      "findings": 0,
+      "ledger_units": 67,
+      "use": "This branch's round-3 sweep: its two residual races inside agent/ (the rename into a swapped directory, the FIFO at config.yml) are re-hunted and found closed by round 4's descriptor-relative helper."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T03:31:07Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: three candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused): dsh-seat/profile-root-relink/write-grant-follows-session-made-link (new), seats/shared-claude-config-dir/cross-seat-session-files (U318, carried) and dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt (carried); all proposed needs_validation, none a finding.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "new_in": "this run (U272's profile root grant with U310d's write; the within-launch leg on this branch, the next-launch leg on origin/main)"
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-26",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh",
+      "record": "agents/parent-hunter/scratch/candidate-pnpm.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-26",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (3), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 1,
+      "reassign_ids": 0,
+      "result": "accepted one new unit, the profile root relink, which no unit owned (the helper's guarantee stops at agent/, the judge's at the denies); every carried unit re-mapped"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 3,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T03:40:05Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

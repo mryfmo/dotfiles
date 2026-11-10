@@ -1,0 +1,1992 @@
+[
+  {
+    "coverage_id": ".claude::.claude::.claude::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": ".claude",
+      "boundary": ".claude",
+      "subsystem": ".claude",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": ".claude",
+    "boundary": ".claude",
+    "subsystem": ".claude",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      ".claude"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": ".github::.github::.github::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": ".github",
+      "boundary": ".github",
+      "subsystem": ".github",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": ".github",
+    "boundary": ".github",
+    "subsystem": ".github",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      ".github"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": ".orchestration::.orchestration::.orchestration::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": ".orchestration",
+      "boundary": ".orchestration",
+      "subsystem": ".orchestration",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": ".orchestration",
+    "boundary": ".orchestration",
+    "subsystem": ".orchestration",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      ".orchestration"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": ".ua::.ua::.ua::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": ".ua",
+      "boundary": ".ua",
+      "subsystem": ".ua",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": ".ua",
+    "boundary": ".ua",
+    "subsystem": ".ua",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      ".ua"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "AGENTS.md%23Audit::home%2Fdot_agents%2Fregime%2FAGENTS-audit-section.md::policy-text::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "AGENTS.md#Audit",
+      "boundary": "home/dot_agents/regime/AGENTS-audit-section.md",
+      "subsystem": "policy-text",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "AGENTS.md Audit sweep rule, its template and the levers README",
+    "boundary": "the rule the lever enforces",
+    "subsystem": "policy text",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "AGENTS.md",
+      "home/dot_agents/regime/AGENTS-audit-section.md",
+      "scripts/orchestrator/README.md"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "docs%2Fdeepseek-harness.md::tests%2Funit%2Ftest_dsh_srt.py%23DshSrtTest::docs-and-tests::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "docs/deepseek-harness.md",
+      "boundary": "tests/unit/test_dsh_srt.py#DshSrtTest",
+      "subsystem": "docs-and-tests",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "dsh-srt documentation and tests",
+    "boundary": "the stated contract and its regression coverage",
+    "subsystem": "docs and tests",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "docs/deepseek-harness.md",
+      "tests/unit/test_dsh_srt.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the launcher contains the agent process; it assembles no prompt or model context and binds no tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the settings deny every unix socket and local binding; the launcher adds no daemon, socket or privileged helper"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "the domain allowlist is copied verbatim from the seat; no HTTP surface, session or credential handling is added"
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_covered_changed_source",
+    "status": "covered",
+    "agent_id": "parent-hunt-r8w1",
+    "reviewed_paths": [
+      "docs/deepseek-harness.md",
+      "tests/unit/test_dsh_srt.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "docs/deepseek-harness.md",
+          "tests/unit/test_dsh_srt.py"
+        ],
+        "invariant": "the documented contract matches the code and the tests exercise each refusal",
+        "method": "source",
+        "result": "docs/deepseek-harness.md is unchanged since f46a72b8; test_dsh_srt.py adds round-4 cases: no program found on PATH runs before containment (705), physical and trust-judged caller PATH entries (752), writable ancestors (796), a fresh settings directory (882), a failing or lying stat and readlink (1046, 1068, 1099). The tests exclude sed, shasum and sha256sum from the planted helpers on purpose (test_dsh_srt.py:96-97), which leaves the self-check candidate untested.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "docs::docs::docs::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "docs",
+      "boundary": "docs",
+      "subsystem": "docs",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "docs",
+    "boundary": "docs",
+    "subsystem": "docs",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "docs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; docs/deepseek-harness.md is covered by an in-scope unit; every other path under docs is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "git-diff%23b49be338..385bd1a1::git-diff%23b49be338..385bd1a1::scoped-diff::ATTACK-CLASSES.md%23Obvious%20things",
+    "canonical_refs": {
+      "surface": "git-diff#b49be338..385bd1a1",
+      "boundary": "git-diff#b49be338..385bd1a1",
+      "subsystem": "scoped-diff",
+      "attack_class": "ATTACK-CLASSES.md#Obvious things"
+    },
+    "surface": "the 9 changed paths of the U227b commit",
+    "boundary": "repository content of the U227b commit",
+    "subsystem": "scoped diff (U227b)",
+    "attack_class": "Obvious things",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/generate-agent-configs.py",
+      "home/dot_dsh/profiles/thak/cordis.patch.yml"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "git-diff%23b49be338..f46a72b8::git-diff%23b49be338..f46a72b8::scoped-diff::ATTACK-CLASSES.md%23Obvious%20things",
+    "canonical_refs": {
+      "surface": "git-diff#b49be338..f46a72b8",
+      "boundary": "git-diff#b49be338..f46a72b8",
+      "subsystem": "scoped-diff",
+      "attack_class": "ATTACK-CLASSES.md#Obvious things"
+    },
+    "surface": "the 7 changed paths of the U251 commits",
+    "boundary": "repository content of the U251 commits",
+    "subsystem": "scoped diff (U251)",
+    "attack_class": "Obvious things",
+    "starting_paths": [
+      "scripts/orchestrator/dsh-srt",
+      "home/dot_local/bin/common/executable_dsh-srt"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the launcher contains the agent process; it assembles no prompt or model context and binds no tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the settings deny every unix socket and local binding; the launcher adds no daemon, socket or privileged helper"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "the domain allowlist is copied verbatim from the seat; no HTTP surface, session or credential handling is added"
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_covered_changed_source",
+    "status": "covered",
+    "agent_id": "parent-hunt-r8w1",
+    "reviewed_paths": [
+      "docs/deepseek-harness.md",
+      "home/dot_agents/agent-config.yaml",
+      "home/dot_local/bin/common/executable_dsh-srt",
+      "scripts/generated-agent-outputs.json",
+      "scripts/orchestrator/dsh-srt",
+      "tests/unit/test_dsh_srt.py",
+      "tests/unit/test_generate_agent_configs.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "scripts/orchestrator/dsh-srt",
+          "home/dot_local/bin/common/executable_dsh-srt",
+          "home/dot_agents/agent-config.yaml",
+          "scripts/generated-agent-outputs.json",
+          "docs/deepseek-harness.md",
+          "tests/unit/test_dsh_srt.py",
+          "tests/unit/test_generate_agent_configs.py"
+        ],
+        "invariant": "no secret, credential file, debug switch, eval or new download is added",
+        "method": "source",
+        "result": "a scan of every added line of git diff d49a5349..cca089f8 found no hit; the earlier rounds' hits are test fixtures (CLOUDSDK_PROXY_PASSWORD as a name in srt's variable list, the dummy SECRET_OF_THE_CALLER).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_prior_note": "the canonical surface keeps run-6's diff identity (b49be338..f46a72b8); this run re-scanned the diff to cca089f8."
+  },
+  {
+    "coverage_id": "git-diff%23c4195463..7992f1f5::git-diff%23c4195463..7992f1f5::scoped-diff::ATTACK-CLASSES.md%23Obvious%20things",
+    "canonical_refs": {
+      "surface": "git-diff#c4195463..7992f1f5",
+      "boundary": "git-diff#c4195463..7992f1f5",
+      "subsystem": "scoped-diff",
+      "attack_class": "ATTACK-CLASSES.md#Obvious things"
+    },
+    "surface": "the 27 changed paths",
+    "boundary": "repository content",
+    "subsystem": "scoped diff",
+    "attack_class": "Obvious things",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "home/.chezmoiremove",
+      "home/dot_agents/agent-config.yaml",
+      "README.md"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "git-diff%23d1ecd495..d1fd54ba::git-diff%23d1ecd495..d1fd54ba::scoped-diff::ATTACK-CLASSES.md%23Obvious%20things",
+    "canonical_refs": {
+      "surface": "git-diff#d1ecd495..d1fd54ba",
+      "boundary": "git-diff#d1ecd495..d1fd54ba",
+      "subsystem": "scoped-diff",
+      "attack_class": "ATTACK-CLASSES.md#Obvious things"
+    },
+    "surface": "the 9 changed paths",
+    "boundary": "repository content",
+    "subsystem": "scoped diff",
+    "attack_class": "Obvious things",
+    "starting_paths": [
+      "scripts/orchestrator/pr-merge.sh",
+      "home/dot_local/bin/common/executable_pr-merge.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "home%23unchanged-paths::home::home::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "home#unchanged-paths",
+      "boundary": "home",
+      "subsystem": "home",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "home (paths outside the diff)",
+    "boundary": "home",
+    "subsystem": "home",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "home"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; the changed paths under home are covered by the in-scope units; every other path under home is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "home%2F.chezmoiremove::home%2F.chezmoiremove%23chezmoi-apply-removal::home::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "home/.chezmoiremove",
+      "boundary": "home/.chezmoiremove#chezmoi-apply-removal",
+      "subsystem": "home",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": ".chezmoiremove retirement rows",
+    "boundary": "chezmoi apply removal of listed targets",
+    "subsystem": "home (chezmoi source)",
+    "attack_class": "Resource and file handling",
+    "starting_paths": [
+      "home/.chezmoiremove"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fagent-config.yaml%23assets.claude-plugins.plugins::scripts%2Fupdate-agent-assets.sh%23converge_claude_plugins::home%2Fdot_agents::SUPPLY-CHAIN-AND-RELEASE.md%23Plugin%20and%20extension%20trust%20expansion",
+    "canonical_refs": {
+      "surface": "home/dot_agents/agent-config.yaml#assets.claude-plugins.plugins",
+      "boundary": "scripts/update-agent-assets.sh#converge_claude_plugins",
+      "subsystem": "home/dot_agents",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    },
+    "surface": "Claude plugin pin list (understand-anything removed)",
+    "boundary": "pin convergence and disable of off-pin plugins",
+    "subsystem": "home/dot_agents (manifest)",
+    "attack_class": "Plugin and extension trust expansion",
+    "starting_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "scripts/plugin-pins.json",
+      "scripts/update-agent-assets.sh",
+      "scripts/check-agent-runtime.py"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    ],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fagent-config.yaml%23model_profiles.dsh::scripts%2Fgenerate-agent-configs.py%23model_profiles::home%2Fdot_agents::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "home/dot_agents/agent-config.yaml#model_profiles.dsh",
+      "boundary": "scripts/generate-agent-configs.py#model_profiles",
+      "subsystem": "home/dot_agents",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "manifest dsh model rows",
+    "boundary": "the generator's model_profiles validation",
+    "subsystem": "home/dot_agents (manifest)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "scripts/generate-agent-configs.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fagent-config.yaml%23skills.audience::scripts%2Fgenerate-agent-configs.py%23--check::home%2Fdot_agents::SUPPLY-CHAIN-AND-RELEASE.md%23Generated-source%20and%20codegen%20provenance%20gaps",
+    "canonical_refs": {
+      "surface": "home/dot_agents/agent-config.yaml#skills.audience",
+      "boundary": "scripts/generate-agent-configs.py#--check",
+      "subsystem": "home/dot_agents",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    },
+    "surface": "skills audience and standing rules (manifest)",
+    "boundary": "generator render-check",
+    "subsystem": "home/dot_agents (manifest)",
+    "attack_class": "Generated-source and codegen provenance gaps",
+    "starting_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "scripts/generated-agent-outputs.json",
+      "home/dot_codex/AGENTS.md.tmpl",
+      "home/.chezmoiremove",
+      "scripts/plugin-pins.json"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    ],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fprofiles%2Fthak%2Fcordis.patch.yml%23insert%2Fomp-gateway::scripts%2Fgenerate-agent-configs.py%23render_dsh_profile_patch::home%2Fdot_dsh::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/profiles/thak/cordis.patch.yml#insert/omp-gateway",
+      "boundary": "scripts/generate-agent-configs.py#render_dsh_profile_patch",
+      "subsystem": "home/dot_dsh",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "thak profile gateway plugin row",
+    "boundary": "the generator that writes the row",
+    "subsystem": "home/dot_dsh (rendered profile)",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "home/dot_dsh/profiles/thak/cordis.patch.yml",
+      "scripts/generate-agent-configs.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fprofiles%2Fthak%2Fcordis.patch.yml%23llm-pi-ai::scripts%2Fgenerate-agent-configs.py%23DSH_ROUTES::home%2Fdot_dsh::ATTACK-CLASSES.md%23Cryptography%20and%20secrets",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/profiles/thak/cordis.patch.yml#llm-pi-ai",
+      "boundary": "scripts/generate-agent-configs.py#DSH_ROUTES",
+      "subsystem": "home/dot_dsh",
+      "attack_class": "ATTACK-CLASSES.md#Cryptography and secrets"
+    },
+    "surface": "withdrawn Ollama provider row",
+    "boundary": "the API-key route",
+    "subsystem": "home/dot_dsh (rendered profile)",
+    "attack_class": "Cryptography and secrets",
+    "starting_paths": [
+      "home/dot_dsh/profiles/thak/cordis.patch.yml",
+      "home/dot_dsh/profiles/thak/package.json",
+      "scripts/generate-agent-configs.py",
+      "home/dot_agents/agent-config.yaml"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Cryptography and secrets",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_dsh%2Fprofiles%2Fthak%2Fpackage.json%23dependencies::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness::home%2Fdot_dsh::SUPPLY-CHAIN-AND-RELEASE.md%23Plugin%20and%20extension%20trust%20expansion",
+    "canonical_refs": {
+      "surface": "home/dot_dsh/profiles/thak/package.json#dependencies",
+      "boundary": "scripts/update-agent-assets.sh#update_deepseek_harness",
+      "subsystem": "home/dot_dsh",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    },
+    "surface": "thak profile package.json link: dependency",
+    "boundary": "the profile install and plugin load",
+    "subsystem": "home/dot_dsh (rendered profile)",
+    "attack_class": "Plugin and extension trust expansion",
+    "starting_paths": [
+      "home/dot_dsh/profiles/thak/package.json",
+      "scripts/update-agent-assets.sh",
+      "home/dot_agents/agent-config.yaml"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    ],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_local%2Fbin%2Fcommon%2Fexecutable_dsh-srt::home%2Fdot_agents%2Fagent-config.yaml%23claude.levers.sha256::home%2Fdot_local%2Fbin::SUPPLY-CHAIN-AND-RELEASE.md%23Generated-source%20and%20codegen%20provenance%20gaps",
+    "canonical_refs": {
+      "surface": "home/dot_local/bin/common/executable_dsh-srt",
+      "boundary": "home/dot_agents/agent-config.yaml#claude.levers.sha256",
+      "subsystem": "home/dot_local/bin",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    },
+    "surface": "deployed dsh-srt copy and its pin",
+    "boundary": "lever self-check pin in the manifest",
+    "subsystem": "home/dot_local/bin and the manifest",
+    "attack_class": "Generated-source and codegen provenance gaps",
+    "starting_paths": [
+      "home/dot_local/bin/common/executable_dsh-srt",
+      "scripts/orchestrator/dsh-srt",
+      "home/dot_agents/agent-config.yaml",
+      "scripts/generated-agent-outputs.json",
+      "tests/unit/test_generate_agent_configs.py"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the launcher contains the agent process; it assembles no prompt or model context and binds no tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the settings deny every unix socket and local binding; the launcher adds no daemon, socket or privileged helper"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "the domain allowlist is copied verbatim from the seat; no HTTP surface, session or credential handling is added"
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_covered_changed_source",
+    "status": "covered",
+    "agent_id": "parent-hunt-r8w1",
+    "reviewed_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "home/dot_local/bin/common/executable_dsh-srt",
+      "scripts/generated-agent-outputs.json",
+      "scripts/orchestrator/dsh-srt",
+      "tests/unit/test_generate_agent_configs.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "home/dot_local/bin/common/executable_dsh-srt",
+          "scripts/orchestrator/dsh-srt",
+          "home/dot_agents/agent-config.yaml",
+          "scripts/generated-agent-outputs.json",
+          "tests/unit/test_generate_agent_configs.py"
+        ],
+        "invariant": "the deployed copy is the reviewed lever and the self-check pin is its digest",
+        "method": "source",
+        "result": "git hash-object prints dbff15c710e4ff4208d970bb78ac1862eb24edf9 for both copies; shasum -a 256 of the lever prints fac6e7e5be4076b7fbf5a7eebc34d7b46384696cb4113425bcb3d616e8ca0b5c, the `dsh-srt` levers pin at agent-config.yaml:896; generated-agent-outputs.json follows.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "home%2Fdot_local%2Fbin%2Fcommon%2Fexecutable_pr-merge.sh::home%2Fdot_agents%2Fagent-config.yaml%23claude.levers.sha256::home%2Fdot_local%2Fbin::SUPPLY-CHAIN-AND-RELEASE.md%23Generated-source%20and%20codegen%20provenance%20gaps",
+    "canonical_refs": {
+      "surface": "home/dot_local/bin/common/executable_pr-merge.sh",
+      "boundary": "home/dot_agents/agent-config.yaml#claude.levers.sha256",
+      "subsystem": "home/dot_local/bin",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    },
+    "surface": "deployed pr-merge.sh copy and its pin",
+    "boundary": "lever self-check pin in the manifest",
+    "subsystem": "home/dot_local/bin and the manifest",
+    "attack_class": "Generated-source and codegen provenance gaps",
+    "starting_paths": [
+      "home/dot_local/bin/common/executable_pr-merge.sh",
+      "scripts/orchestrator/pr-merge.sh",
+      "home/dot_agents/agent-config.yaml",
+      "scripts/generated-agent-outputs.json"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    ],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_local%2Fbin%2Fcommon%2Fexecutable_remove-agent-asset%23path_is_in_safe_root::home%2Fdot_local%2Fbin%2Fcommon%2Fexecutable_remove-agent-asset%23path_is_in_safe_root::home%2Fdot_local%2Fbin::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "home/dot_local/bin/common/executable_remove-agent-asset#path_is_in_safe_root",
+      "boundary": "home/dot_local/bin/common/executable_remove-agent-asset#path_is_in_safe_root",
+      "subsystem": "home/dot_local/bin",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": "remove-agent-asset",
+    "boundary": "removable-root allowlist",
+    "subsystem": "home/dot_local/bin (levers)",
+    "attack_class": "Resource and file handling",
+    "starting_paths": [
+      "home/dot_local/bin/common/executable_remove-agent-asset"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "install::install::install::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "install",
+      "boundary": "install",
+      "subsystem": "install",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "install",
+    "boundary": "install",
+    "subsystem": "install",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "install"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "plans::plans::plans::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "plans",
+      "boundary": "plans",
+      "subsystem": "plans",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "plans",
+    "boundary": "plans",
+    "subsystem": "plans",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "plans"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "repository-root-files::repository-root-files::repository-root-files::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "repository-root-files",
+      "boundary": "repository-root-files",
+      "subsystem": "repository-root-files",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "root files (Makefile, setup.sh, Dockerfile, AGENTS.md and the rest)",
+    "boundary": "repository root",
+    "subsystem": "repository root",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "Makefile"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; the root files are unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%23unchanged-paths::scripts::scripts::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "scripts#unchanged-paths",
+      "boundary": "scripts",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "scripts (paths outside the diff)",
+    "boundary": "scripts",
+    "subsystem": "scripts",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "scripts"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; the changed paths under scripts are covered by the in-scope units; every other path under scripts is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fcheck-agent-runtime.py%23installer_owned_skill_names::scripts%2Fcheck-agent-runtime.py%23compare_shared_skills::scripts::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/check-agent-runtime.py#installer_owned_skill_names",
+      "boundary": "scripts/check-agent-runtime.py#compare_shared_skills",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "make doctor skill ownership",
+    "boundary": "unmanaged-skill and orphan reporting",
+    "subsystem": "scripts (doctor)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "scripts/check-agent-runtime.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fdsh-srt%23DENY_READ_UNDER_HOME::scripts%2Forchestrator%2Fhcom-seat%23deny_read::scripts%2Forchestrator::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/dsh-srt#DENY_READ_UNDER_HOME",
+      "boundary": "scripts/orchestrator/hcom-seat#deny_read",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "surface": "dsh-srt read denies, write denies and domains",
+    "boundary": "the worker seat's lists in hcom-seat",
+    "subsystem": "scripts/orchestrator (levers)",
+    "attack_class": "Access control",
+    "starting_paths": [
+      "scripts/orchestrator/dsh-srt",
+      "scripts/orchestrator/hcom-seat"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the launcher contains the agent process; it assembles no prompt or model context and binds no tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the settings deny every unix socket and local binding; the launcher adds no daemon, socket or privileged helper"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "the domain allowlist is copied verbatim from the seat; no HTTP surface, session or credential handling is added"
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_covered_changed_source",
+    "status": "covered",
+    "agent_id": "parent-hunt-r8w1",
+    "reviewed_paths": [
+      "scripts/orchestrator/dsh-srt",
+      "scripts/orchestrator/hcom-seat"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "scripts/orchestrator/dsh-srt",
+          "scripts/orchestrator/hcom-seat"
+        ],
+        "invariant": "no deny of the seat is dropped and no allow is widened",
+        "method": "source",
+        "result": "re-read at cca089f8 with lines re-mapped: the read denies (dsh-srt:181-183), operator Claude paths (186, 633-643, 653), PROJECT_FILES (189-190, 650-652), srt's own write paths (203-204, 644-648, 654), domains and network tail (207-213) are unchanged and equal hcom-seat:1743-1746, 1750, 1755-1757, 1720-1721 and 1776-1781; allowRead stays empty (683).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "hcom-seat also read-denies a configured REGIME_SEATS_ROOT (hcom-seat:1751-1754); dsh-srt still denies ~/.local/state/omp-seats only.",
+      "hcom-seat's canary has a fourth probe for the operator's ~/.claude/debug (hcom-seat:1818-1833); dsh-srt's canary is still the three probes (694-700)."
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fdsh-srt%23inside_any::scripts%2Forchestrator%2Fdsh-srt%23srt_added::scripts%2Forchestrator::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/dsh-srt#inside_any",
+      "boundary": "scripts/orchestrator/dsh-srt#srt_added",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "dsh-srt cwd and write-root placement",
+    "boundary": "read-denied and srt-granted regions",
+    "subsystem": "scripts/orchestrator (levers)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "scripts/orchestrator/dsh-srt"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the launcher contains the agent process; it assembles no prompt or model context and binds no tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the settings deny every unix socket and local binding; the launcher adds no daemon, socket or privileged helper"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "the domain allowlist is copied verbatim from the seat; no HTTP surface, session or credential handling is added"
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_covered_changed_source",
+    "status": "covered",
+    "agent_id": "parent-hunt-r8w1",
+    "reviewed_paths": [
+      "scripts/orchestrator/dsh-srt"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "scripts/orchestrator/dsh-srt"
+        ],
+        "invariant": "neither write root lies in a read-denied region or a region srt grants on its own, decided by identity, and both are held to the trust rule up to /",
+        "method": "source",
+        "result": "re-read at cca089f8: DSH_HOME and TMPDIR are clean physical paths held to the trust rule over every ancestor (505-518); inside_any (420-431); the placement refusals (659-662) before anything is created; the bootstrap `stat` over the four system tools (491-500).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "The canary's write probe targets the explicitly denied sandbox directory, so a too-broad allowWrite would still pass it; a probe outside every write root would test the list itself."
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fdsh-srt%23lever_self_check::scripts%2Forchestrator%2Fhcom-seat%23system_path::scripts%2Forchestrator::ATTACK-CLASSES.md%23Chained%20vulnerabilities%20and%20trust%20boundaries",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/dsh-srt#lever_self_check",
+      "boundary": "scripts/orchestrator/hcom-seat#system_path",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries"
+    },
+    "surface": "dsh-srt self-check before the environment drop",
+    "boundary": "the seat's PATH reset before its self-check",
+    "subsystem": "scripts/orchestrator (levers)",
+    "attack_class": "Chained vulnerabilities and trust boundaries",
+    "starting_paths": [
+      "scripts/orchestrator/dsh-srt",
+      "scripts/orchestrator/hcom-seat",
+      "tests/unit/test_dsh_srt.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the launcher contains the agent process; it assembles no prompt or model context and binds no tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the settings deny every unix socket and local binding; the launcher adds no daemon, socket or privileged helper"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "the domain allowlist is copied verbatim from the seat; no HTTP surface, session or credential handling is added"
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "parent-hunt-r8w1",
+    "reviewed_paths": [
+      "scripts/orchestrator/dsh-srt",
+      "scripts/orchestrator/hcom-seat",
+      "tests/unit/test_dsh_srt.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "scripts/orchestrator/dsh-srt"
+        ],
+        "invariant": "no program a contained dsh could have written runs before containment (the round-4 header, dsh-srt:23-32: exactly the four system tools and the pinned node and srt)",
+        "method": "source",
+        "result": "lever_self_check (dsh-srt:82-128) is called at 129, before the caller's environment is read and dropped and PATH is set to the system directories (141-153). It runs `sed -n -E` (106) and, by `command -v sha256sum`, either the first `sha256sum` on the caller's PATH or `shasum` from it (114-117), with the caller's full environment and cwd; on macOS, which ships no sha256sum, any PATH entry holding one is used. A PATH entry under DSH_HOME or the scratch root (DSH_HOME/bin holds the dsh wrapper), or a relative or empty entry with the caller's cwd at a write root, puts a program the contained dsh wrote there into the uncontained launcher, and a planted sha256sum can print the expected pin so the self-check passes.",
+        "artifact": null
+      },
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "scripts/orchestrator/hcom-seat"
+        ],
+        "invariant": "the seat's ordering the copy is measured against",
+        "method": "source",
+        "result": "hcom-seat sets PATH to /usr/bin:/bin:/usr/sbin:/sbin (hcom-seat:101-103) before its identical lever_self_check (123-173), so its sed and sha256sum or shasum come from the system directories; dsh-srt runs the same function before its own reset.",
+        "artifact": null
+      },
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "tests/unit/test_dsh_srt.py"
+        ],
+        "invariant": "regression coverage",
+        "method": "source",
+        "result": "test_dsh_srt.py states the exclusion itself: \"`sed`, `shasum` and `sha256sum` are left out, since `lever_self_check` (the shared U31 form, out of this unit's scope) looks them up\" (96-97), so test_no_program_found_on_path_runs_before_containment (705) plants every other helper name but not these.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "dsh-srt:self-check-helpers-from-caller-path"
+    ],
+    "unresolved": [
+      "independent candidate validation unavailable: the seat's tool policy denies the Task tool (tools.approval.task: deny), so no fresh verifier could run; the candidate stays unvalidated in the ledger and is not in findings.json",
+      "decisive facts outside source: the caller's PATH when the operator runs dsh-srt (an entry under DSH_HOME or the scratch root, or a relative or empty entry with the cwd at a write root) and whether the host has a system sha256sum"
+    ],
+    "parent_prior_note": "present since round 1 (lever_self_check preceded every PATH reset in f46a72b8 and d49a5349 too); run-6 and run-7 did not raise it, a coverage gap of those runs disclosed here."
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fdsh-srt%23main::scripts%2Forchestrator%2Fdsh-srt%23ENV_NAMES::scripts%2Forchestrator::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/dsh-srt#main",
+      "boundary": "scripts/orchestrator/dsh-srt#ENV_NAMES",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "dsh-srt arguments, environment and exec",
+    "boundary": "the profile name rule and the reduced environment",
+    "subsystem": "scripts/orchestrator (levers)",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "scripts/orchestrator/dsh-srt"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the launcher contains the agent process; it assembles no prompt or model context and binds no tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the settings deny every unix socket and local binding; the launcher adds no daemon, socket or privileged helper"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "the domain allowlist is copied verbatim from the seat; no HTTP surface, session or credential handling is added"
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_covered_changed_source",
+    "status": "covered",
+    "agent_id": "parent-hunt-r8w1",
+    "reviewed_paths": [
+      "scripts/orchestrator/dsh-srt"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "scripts/orchestrator/dsh-srt"
+        ],
+        "invariant": "a caller or a DSH profile cannot make the launcher run anything but the pinned srt over the stat-checked runtime, and nothing beyond the listed names reaches it",
+        "method": "source",
+        "result": "re-read at cca089f8: the caller's environment is read into variables and dropped by the shell (every exported name unset, a name that cannot be dropped refused, every exported function unset) before PATH is set to the system directories (141-153); the profile name rule (255-256), dsh arguments verbatim inside srt (254, 702-704), no profile file read, the runtime stat-checked and never run outside srt (511-512, 528); the exported set is enforced to be ENV_NAMES (588-595). Inside srt dsh gets RUN_PATH plus the caller's physical PATH entries outside the write roots that pass the trust rule (560-586). The one exception to `nothing runs before the drop` is lever_self_check (129), a separate unit.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fdsh-srt%23settings::scripts%2Forchestrator%2Fdsh-srt%23ensure_own_dir::scripts%2Forchestrator::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/dsh-srt#settings",
+      "boundary": "scripts/orchestrator/dsh-srt#ensure_own_dir",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": "dsh-srt settings file and its directories",
+    "boundary": "0700 own directories, mktemp and rename",
+    "subsystem": "scripts/orchestrator (levers)",
+    "attack_class": "Resource and file handling",
+    "starting_paths": [
+      "scripts/orchestrator/dsh-srt"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the launcher contains the agent process; it assembles no prompt or model context and binds no tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the settings deny every unix socket and local binding; the launcher adds no daemon, socket or privileged helper"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "the domain allowlist is copied verbatim from the seat; no HTTP surface, session or credential handling is added"
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_covered_changed_source",
+    "status": "covered",
+    "agent_id": "parent-hunt-r8w1",
+    "reviewed_paths": [
+      "scripts/orchestrator/dsh-srt",
+      "tests/unit/test_dsh_srt.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "scripts/orchestrator/dsh-srt",
+          "tests/unit/test_dsh_srt.py"
+        ],
+        "invariant": "the settings file cannot be redirected, read or rewritten by the contained process or another local user",
+        "method": "source",
+        "result": "re-read at cca089f8: the settings directory is removed when it is a real directory of this user (else refused) and created anew with `mkdir -m 0700`, which refuses an existing name (671-675); the file is created O_EXCL under noclobber with umask 077 (687), so nothing planted is opened or followed; the scratch root, .state and the Claude state are 0700 own directories (388-399, 664-666); the sandbox directory is read- and write-denied inside (632, 649) and the canary checks both (694-700). test_the_settings_directory_is_made_fresh_and_a_planted_link_is_never_followed (test_dsh_srt.py:882).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fdsh-srt%23tool_path::scripts%2Forchestrator%2Fhcom-seat%23pin_exec::scripts%2Forchestrator::ATTACK-CLASSES.md%23Chained%20vulnerabilities%20and%20trust%20boundaries",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/dsh-srt#tool_path",
+      "boundary": "scripts/orchestrator/hcom-seat#pin_exec",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries"
+    },
+    "surface": "dsh-srt lookup of srt and what srt itself runs",
+    "boundary": "the seat's interpreter-chain pin and PATH-entry check",
+    "subsystem": "scripts/orchestrator (levers)",
+    "attack_class": "Chained vulnerabilities and trust boundaries",
+    "starting_paths": [
+      "scripts/orchestrator/dsh-srt",
+      "scripts/orchestrator/hcom-seat",
+      "tests/unit/test_dsh_srt.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the launcher contains the agent process; it assembles no prompt or model context and binds no tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the settings deny every unix socket and local binding; the launcher adds no daemon, socket or privileged helper"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "the domain allowlist is copied verbatim from the seat; no HTTP surface, session or credential handling is added"
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_covered_changed_source",
+    "status": "covered",
+    "agent_id": "parent-hunt-r8w1",
+    "reviewed_paths": [
+      "scripts/orchestrator/dsh-srt",
+      "scripts/orchestrator/hcom-seat",
+      "tests/unit/test_dsh_srt.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "scripts/orchestrator/dsh-srt",
+          "scripts/orchestrator/hcom-seat",
+          "tests/unit/test_dsh_srt.py"
+        ],
+        "invariant": "srt and its interpreter are pinned and run with no lookup left, and no relative or empty PATH entry is searched",
+        "method": "source",
+        "result": "re-read at cca089f8: find_on_path searches only absolute entries free of control characters (dsh-srt:439-449), so the cwd never names code; pin_file resolves physically, refuses write roots, control characters and `:` and holds the file, its directory and every ancestor to the trust rule (462-480, 314-382); srt and the interpreter of its `#!/usr/bin/env node` line are pinned and run as `<node> <srt>` (530-554); the version probe, canary and exec run under the one exported environment with PATH=RUN_PATH (556-559, 588-595, 599, 694, 704). test_a_planted_interpreter_never_runs_outside_srt (test_dsh_srt.py:980) and test_no_program_found_on_path_runs_before_containment (705) cover it. The run-6 candidate stays resolved; the self-check helpers are a separate unit and candidate.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_prior_note": "covered in run-7 (resolved there by U251c); re-read at cca089f8."
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fdsh-srt%23write::scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness::scripts%2Forchestrator::ATTACK-CLASSES.md%23Chained%20vulnerabilities%20and%20trust%20boundaries",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/dsh-srt#write",
+      "boundary": "scripts/update-agent-assets.sh#update_deepseek_harness",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries"
+    },
+    "surface": "dsh-srt write root DSH_HOME",
+    "boundary": "the updater's pnpm run in the profile, outside srt",
+    "subsystem": "scripts/orchestrator (levers) and the updater",
+    "attack_class": "Chained vulnerabilities and trust boundaries",
+    "starting_paths": [
+      "scripts/orchestrator/dsh-srt",
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "the launcher contains the agent process; it assembles no prompt or model context and binds no tool call"
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "the settings deny every unix socket and local binding; the launcher adds no daemon, socket or privileged helper"
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "no IAM, infrastructure, container, or provider configuration is in the changed paths"
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "the domain allowlist is copied verbatim from the seat; no HTTP surface, session or credential handling is added"
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_blocked",
+    "status": "candidate",
+    "agent_id": "parent-hunt-r8w1",
+    "reviewed_paths": [
+      "scripts/orchestrator/dsh-srt",
+      "scripts/update-agent-assets.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "scripts/orchestrator/dsh-srt"
+        ],
+        "invariant": "the write roots the launcher grants hold nothing a later uncontained step executes",
+        "method": "source",
+        "result": "unchanged in substance at cca089f8: allowWrite is DSH_HOME whole, the scratch root and DSH_HOME/.state/claude (dsh-srt:524, 679, 684); the write denies under DSH_HOME are the settings directory and PROJECT_FILES only (189-190, 649-652), so DSH_HOME/profiles/thak, DSH_HOME/dsh and DSH_HOME/bin stay writable from inside, `.pnpmfile.cjs`, `.npmrc`, `mise.toml` and `.tool-versions` included. The round-4 header (23-42) speaks for the launcher's own pre-containment programs, not for the updater.",
+        "artifact": null
+      },
+      {
+        "agent_id": "parent-hunt-r8w1",
+        "reviewed_paths": [
+          "scripts/update-agent-assets.sh"
+        ],
+        "invariant": "what the uncontained updater runs there",
+        "method": "source",
+        "result": "update_deepseek_harness is unchanged on this branch (git diff d49a5349..cca089f8 names no updater path): it runs `(cd \"${DSH_HOME}/profiles/thak\" && mise exec -- pnpm install)` (update-agent-assets.sh:2170) and `pnpm install` plus `pnpm run build` under `mise exec` in a new tree under DSH_HOME/dsh (2161) as the operator, outside srt.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "dsh-srt:dsh-home-write-root-run-by-updater"
+    ],
+    "unresolved": [
+      "independent candidate validation unavailable: the seat's tool policy denies the Task tool (tools.approval.task: deny), so no fresh verifier could run; the candidate stays unvalidated in the ledger and is not in findings.json",
+      "decisive facts outside source: whether the pinned pnpm (via mise) executes a `.pnpmfile.cjs` or honours an `.npmrc` in the profile directory on that install, and whether mise acts on a config planted in the profile or a parent under DSH_HOME without a trust prompt"
+    ],
+    "parent_prior_note": "carried from run-7 (first raised in run-6) with the same fingerprint; the relevant source is unchanged at cca089f8 and it is still unvalidated for the same reason."
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fpr-merge.sh%23require_sweep_row::scripts%2Forchestrator%2Fledger.py%23sweep::scripts%2Forchestrator::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/pr-merge.sh#require_sweep_row",
+      "boundary": "scripts/orchestrator/ledger.py#sweep",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "surface": "pr-merge.sh sweep gate",
+    "boundary": "ledger.py sweep reader and the exact sweep row",
+    "subsystem": "scripts/orchestrator (levers)",
+    "attack_class": "Access control",
+    "starting_paths": [
+      "scripts/orchestrator/pr-merge.sh",
+      "scripts/orchestrator/ledger.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fpr-merge.sh%23resolve_store::scripts%2Forchestrator%2Fpr-merge.sh%23program_unit_re::scripts%2Forchestrator::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/pr-merge.sh#resolve_store",
+      "boundary": "scripts/orchestrator/pr-merge.sh#program_unit_re",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "pr-merge.sh store and unit selection",
+    "boundary": "the body's one Program-Unit line",
+    "subsystem": "scripts/orchestrator (levers)",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "scripts/orchestrator/pr-merge.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fpr-merge.sh%23sweep_pin_probe::scripts%2Forchestrator%2Fpr-merge.sh%23lever_self_check::scripts%2Forchestrator::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/pr-merge.sh#sweep_pin_probe",
+      "boundary": "scripts/orchestrator/pr-merge.sh#lever_self_check",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "pr-merge.sh manifest pin probe",
+    "boundary": "the manifest the self-check read (LEVER_MANIFEST)",
+    "subsystem": "scripts/orchestrator (levers)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "scripts/orchestrator/pr-merge.sh",
+      "home/dot_agents/agent-config.yaml"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fpr-merge.sh%23trust_probe::scripts%2Forchestrator%2Fbrief-check.py%23sections::scripts%2Forchestrator::ATTACK-CLASSES.md%23Chained%20vulnerabilities%20and%20trust%20boundaries",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/pr-merge.sh#trust_probe",
+      "boundary": "scripts/orchestrator/brief-check.py#sections",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries"
+    },
+    "surface": "pr-merge.sh brief reading (removed)",
+    "boundary": "the brief checker's TRUST mark",
+    "subsystem": "scripts/orchestrator (levers)",
+    "attack_class": "Chained vulnerabilities and trust boundaries",
+    "starting_paths": [
+      "scripts/orchestrator/pr-merge.sh",
+      "home/dot_local/bin/common/executable_pr-merge.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23main::scripts%2Fupdate-agent-assets.sh%23main::scripts::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#main",
+      "boundary": "scripts/update-agent-assets.sh#main",
+      "subsystem": "scripts",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    },
+    "surface": "make update step list",
+    "boundary": "installers run by main",
+    "subsystem": "scripts (updater)",
+    "attack_class": "Mutable and unbound build inputs",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    ],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23retire_understand_anything::scripts%2Fpin_records.py%23claude_marketplace_state::scripts::SUPPLY-CHAIN-AND-RELEASE.md%23Plugin%20and%20extension%20trust%20expansion",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#retire_understand_anything",
+      "boundary": "scripts/pin_records.py#claude_marketplace_state",
+      "subsystem": "scripts",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    },
+    "surface": "retire_understand_anything (make update step)",
+    "boundary": "marketplace identity check before uninstall and removal",
+    "subsystem": "scripts (updater)",
+    "attack_class": "Plugin and extension trust expansion",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/pin_records.py"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    ],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23retire_understand_anything::scripts%2Fpin_records.py%23load_claude_installs::scripts::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#retire_understand_anything",
+      "boundary": "scripts/pin_records.py#load_claude_installs",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "retire_understand_anything (make update step)",
+    "boundary": "strict installed_plugins.json reader",
+    "subsystem": "scripts (updater)",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/pin_records.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23retire_understand_anything::scripts%2Fupdate-agent-assets.sh%23claude_outside_projects::scripts::ATTACK-CLASSES.md%23Chained%20vulnerabilities%20and%20trust%20boundaries",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#retire_understand_anything",
+      "boundary": "scripts/update-agent-assets.sh#claude_outside_projects",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries"
+    },
+    "surface": "retire_understand_anything (make update step)",
+    "boundary": "claude runs outside any project (claude_outside_projects) and user-scope-only management",
+    "subsystem": "scripts (updater)",
+    "attack_class": "Chained vulnerabilities and trust boundaries",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/pin_records.py",
+      "home/dot_agents/agent-config.yaml",
+      "README.md"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23retire_understand_anything::scripts%2Fupdate-agent-assets.sh%23main::scripts::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#retire_understand_anything",
+      "boundary": "scripts/update-agent-assets.sh#main",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "retire_understand_anything (make update step)",
+    "boundary": "set -Eeuo pipefail ordering in main",
+    "subsystem": "scripts (updater)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "scripts/pin_records.py",
+      "Makefile",
+      "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23retire_understand_anything::tests%2Funit%2Ftest_update_agent_assets.py%23RetireUnderstandAnythingTest::tests::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#retire_understand_anything",
+      "boundary": "tests/unit/test_update_agent_assets.py#RetireUnderstandAnythingTest",
+      "subsystem": "tests",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "retire_understand_anything tests",
+    "boundary": "regression coverage",
+    "subsystem": "tests (unit)",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "tests/unit/test_update_agent_assets.py",
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23update_deepseek_harness::scripts%2Fupdate-agent-assets.sh%23dsh_link_plugin::scripts::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#update_deepseek_harness",
+      "boundary": "scripts/update-agent-assets.sh#dsh_link_plugin",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": "update_deepseek_harness plugin link",
+    "boundary": "the node_modules symlink the step writes",
+    "subsystem": "scripts (updater)",
+    "attack_class": "Resource and file handling",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "scripts%2Fvalidate-agent-assets.py%23main::scripts%2Fvalidate-agent-assets.py%23main::scripts::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/validate-agent-assets.py#main",
+      "boundary": "scripts/validate-agent-assets.py#main",
+      "subsystem": "scripts",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "make validate-agent-assets",
+    "boundary": "asset validation gate",
+    "subsystem": "scripts (validator)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "scripts/validate-agent-assets.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "tests%23changed-tests-and-lint-data::tests%2Funit%2Ftest_network_bounds.py%23EXEMPT::tests::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "tests#changed-tests-and-lint-data",
+      "boundary": "tests/unit/test_network_bounds.py#EXEMPT",
+      "subsystem": "tests",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "changed tests and lint data",
+    "boundary": "network-bound exemptions, comparison baseline and retired-term list",
+    "subsystem": "tests and lint data",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "tests/unit/test_network_bounds.py",
+      "scripts/lint-comparisons-baseline.tsv",
+      "scripts/retired-terms.tsv",
+      "tests/install/common/lifecycle.bats"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "tests%23u227b-tests::tests%2Funit%2Ftest_network_bounds.py%23EXEMPT::tests::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "tests#u227b-tests",
+      "boundary": "tests/unit/test_network_bounds.py#EXEMPT",
+      "subsystem": "tests",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "changed tests and the network-bound exemption",
+    "boundary": "regression coverage",
+    "subsystem": "tests (unit)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "tests/unit/test_dsh_profile.py",
+      "tests/unit/test_update_agent_assets.py",
+      "tests/unit/test_validate_agent_assets.py",
+      "tests/unit/test_network_bounds.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "tests%23unchanged-paths::tests::tests::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "tests#unchanged-paths",
+      "boundary": "tests",
+      "subsystem": "tests",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "tests (paths outside the diff)",
+    "boundary": "tests",
+    "subsystem": "tests",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "tests"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; the changed paths under tests are covered by the in-scope units; every other path under tests is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "tests%2Funit%2Ftest_pr_merge.py%23PrMergeSweepTest::tests%2Funit%2Ftest_pr_levers.py%23PrMergeTest::tests::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "tests/unit/test_pr_merge.py#PrMergeSweepTest",
+      "boundary": "tests/unit/test_pr_levers.py#PrMergeTest",
+      "subsystem": "tests",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "merge-lever tests",
+    "boundary": "regression coverage of the gate",
+    "subsystem": "tests (unit)",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "tests/unit/test_pr_merge.py",
+      "tests/unit/test_pr_levers.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  },
+  {
+    "coverage_id": "vendor::vendor::vendor::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "vendor",
+      "boundary": "vendor",
+      "subsystem": "vendor",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "vendor",
+    "boundary": "vendor",
+    "subsystem": "vendor",
+    "attack_class": "Wildcard",
+    "starting_paths": [
+      "vendor"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "prior_status": "prior_out_of_scope",
+    "status": "out_of_scope",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "scoped run: only the 7 paths of git diff b49be338..cca089f8 (the U251, U251b, U251c and U251d commits) are in scope; this area is unchanged by the unit"
+    ]
+  }
+]

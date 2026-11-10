@@ -1,0 +1,153 @@
+{
+  "run_id": "dotfiles-run-38",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "8791100fa9a3ae5606df893490386385ce183339",
+    "branch": "feat/m26-stage-b-router-settings-and-credential-root",
+    "parent_of_change": "6ad1be2304d8cdef975136e44e5cde5c86219374",
+    "base_note": "U353: two commits (7d1b733d tests, 8791100f) on origin/main 6ad1be23; origin/main has since moved to 64bcc666 (U359, a CI bound), not in this head. Checked: git diff 6ad1be23..HEAD lists sixteen files. The brief's title calls the head 'U353's merge head' and its GOAL and hunt list are U322's text again (branch fix/dsh-harness-build-under-srt); its CONTEXT names run-37 ('the U353d head 39f75cc8') as the previous run, which does not exist in this seat's state (the last runs are 35 and 36). The output directory is run-38 as the brief says.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U353 against main 6ad1be23 (16 files: hcom-seat's credential root row, router-gh, router-settings-apply, their copies and pins, the router profile's header comments and generator, the engagement handout's agent-account section, the README sentence, tests) in three new units, one a candidate; (2) the carry: run-36's units (main 6ad1be23 plus U354) re-mapped through 1d65d150..8791100f, U354's sentences put back in run-34's form, U353's lever hunks placed by hand.",
+  "carry_note": "The brief names run-37, which does not exist. run-36 is the last run of this seat on main 6ad1be23 (with U354, which this head lacks); run-35 is the U343 branch. run-36's units with U354 reversed are this head's main.",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "scripts/orchestrator/router-gh",
+    "scripts/orchestrator/router-settings-apply",
+    "home/dot_local/bin/common/executable_router-gh",
+    "home/dot_local/bin/common/executable_router-settings-apply",
+    "home/dot_dsh/profiles/router/cordis.patch.yml",
+    "scripts/generate-agent-configs.py",
+    "docs/engagement-handout.md",
+    "scripts/orchestrator/README.md",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "tests/unit/test_router_settings_apply.py",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "scripts/update-agent-assets.sh",
+    "scripts/orchestrator/profile-config-place.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the sha256 of the lever, router-gh and router-settings-apply were computed with shasum on their blobs.",
+  "selected_companions": [
+    "AI-AND-LLM.md",
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-36",
+      "source_ref": "1d65d150854228e96c5ed4139ec4be02163782d0",
+      "findings": 0,
+      "ledger_units": 81,
+      "use": "The carry (the brief's run-37 does not exist): every unit and five candidate records re-mapped to this head, U354 reversed."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-35",
+      "source_ref": "136fbe0a0b94d5fb4da2f3c93a308a4041afa85c",
+      "findings": 0,
+      "ledger_units": 84,
+      "use": "The U343 branch; not in this head, so its broker units and candidate are not carried."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T10:38:49Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: six candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused): the new router-seat/credential-root/agent-token-readable-by-the-router-model, and the carried router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound, dsh-seat/profile-root-relink/write-grant-follows-session-made-link, updater/build_under_srt/settings-file-in-session-write-root, updater/build_under_srt/session-lockfile-names-the-build-hosts and seats/shared-claude-config-dir/cross-seat-session-files, all proposed needs_validation, none a finding.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-seat/credential-root/agent-token-readable-by-the-router-model",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#credential-root-read-by-the-router-model",
+      "record": "agents/parent-hunter/scratch/candidate-agent-token-readable.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": null,
+      "on_default_branch": false
+    },
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-36",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-36",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/settings-file-in-session-write-root",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-settings-file",
+      "record": "agents/parent-hunter/scratch/candidate-settings-in-write-root.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-36",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/session-lockfile-names-the-build-hosts",
+      "ledger_unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "record": "agents/parent-hunter/scratch/candidate-lockfile-hosts.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-36",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-36",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (6), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted three U353 units (the credential root row covered, router-gh and router-settings-apply covered, the token's reach of the Router's model a candidate) and the router local-binding candidate's note that the same shell now reaches the token"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 6,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T10:45:15Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

@@ -2799,6 +2799,433 @@ class HcomSeatTest(SeatFixture):
         self.assertIn(f"hcom-seat: sandbox {self.seats}/.sandbox/worker", run.stderr)
         self.assertFalse(Path(self.seats).exists())
 
+    def test_every_omp_launch_makes_the_routers_credential_root_and_denies_it_for_read_and_write(self):
+        """U353d (verdict U353-318f268d P1 `:2383` and P2 `:2393`; the mechanism-change row of 2026-11-07T12:55:26Z,
+        form remove). srt 0.0.81's Linux backend mounts nothing for a denyRead entry that is not there
+        (`dist/sandbox/linux-sandbox-utils.js:1810-1812`), so the U353b row, which named `<DSH_HOME>/router-credentials`
+        whether or not it existed, left an omp seat started before the Router's first launch free to read the login
+        once the Router had made the root; and the omp rows denied the root for read alone, so a worker launched with
+        `DSH_HOME` equal to `HCOM_DIR` held the root under an allowWrite root with no covering denyWrite. Now every
+        launch of every role makes the root (the caller's `DSH_HOME`, else `~/.dsh`, held to a clean path and resolved
+        physically, a linked home through its target; the home made too when absent) as a 0700 directory of this user
+        before the settings file is written, and the orchestrator and worker rows carry its physical path once in
+        denyRead and once in denyWrite with no grant at or under it; a present root is kept; a dry run makes nothing and
+        says what a launch would make; a planted link or file at the root's path refuses by name with nothing made and
+        nothing started; a `DSH_HOME` that is not a clean absolute path refuses."""
+        home = self.home.resolve()
+        default_root = home / ".dsh/router-credentials"
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(
+            f"hcom-seat: the worker role's credential root {default_root} does not exist; a launch creates it (0700)",
+            run.stderr,
+        )
+        self.assertFalse((home / ".dsh").exists() or (home / ".dsh").is_symlink(), "a dry run makes nothing")
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                run = self.seat(role, "--seats-root", self.seats)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertNotIn("does not exist; a launch creates it", run.stderr)
+                self.assertTrue(default_root.is_dir() and not default_root.is_symlink(), "the launch makes the root")
+                self.assertEqual(stat.S_IMODE(default_root.stat().st_mode), 0o700)
+                self.assertEqual(default_root.stat().st_uid, os.geteuid(), "a directory of this user")
+                self.assertEqual(stat.S_IMODE((home / ".dsh").stat().st_mode), 0o700, "the absent home is made 0700")
+                settings_file = Path(self.seats, ".sandbox", role, "srt-settings.json")
+                self.assertLessEqual(
+                    default_root.stat().st_mtime_ns,
+                    settings_file.stat().st_mtime_ns,
+                    "the root exists before the settings file is written",
+                )
+                fs = self.settings_of(role)["filesystem"]
+                self.assertEqual(fs["denyRead"].count(str(default_root)), 1, fs["denyRead"])
+                self.assertEqual(fs["denyWrite"].count(str(default_root)), 1, fs["denyWrite"])
+                for key in ("allowRead", "allowWrite"):
+                    under = [row for row in fs[key] if row == str(default_root) or row.startswith(f"{default_root}/")]
+                    self.assertEqual(under, [], key)
+                self.assertEqual(list(default_root.iterdir()), [], "the root is made empty and nothing is placed in it")
+        self.assertEqual(len(self.calls_of("omp")), 2, "both launches reached omp")
+        # A caller's DSH_HOME, spelled directly and through a link: the row and the made root are the physical path.
+        other_home = Path(self.temp.name).resolve() / "other-dsh-home"
+        other_home.mkdir()
+        linked = Path(self.temp.name).resolve() / "linked-dsh-home"
+        linked.symlink_to(other_home)
+        other_root = other_home / "router-credentials"
+        for spelled in (other_home, linked):
+            with self.subTest(dsh_home=str(spelled)):
+                run = self.seat("worker", "--seats-root", self.seats, DSH_HOME=str(spelled))
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertTrue(other_root.is_dir() and not other_root.is_symlink())
+                self.assertEqual(stat.S_IMODE(other_root.stat().st_mode), 0o700)
+                fs = self.settings_of("worker")["filesystem"]
+                self.assertEqual(
+                    (fs["denyRead"].count(str(other_root)), fs["denyWrite"].count(str(other_root))), (1, 1)
+                )
+                self.assertNotIn(str(default_root), fs["denyRead"] + fs["denyWrite"])
+        # DSH_HOME equal to HCOM_DIR (the auditor's probe): the root lies under the store, a write root of the worker,
+        # and the denyWrite row covers it.
+        store_root = self.store.resolve() / "router-credentials"
+        run = self.seat("worker", "--seats-root", self.seats, DSH_HOME=str(self.store))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        fs = self.settings_of("worker")["filesystem"]
+        self.assertIn(str(self.store.resolve()), fs["allowWrite"])
+        self.assertEqual((fs["denyRead"].count(str(store_root)), fs["denyWrite"].count(str(store_root))), (1, 1))
+        self.assertTrue(store_root.is_dir() and not store_root.is_symlink())
+        self.assertEqual(stat.S_IMODE(store_root.stat().st_mode), 0o700)
+        # A DSH_HOME that is no clean absolute path refuses before anything is resolved.
+        run = self.seat("worker", "--seats-root", self.seats, DSH_HOME="relative/dsh")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("DSH_HOME 'relative/dsh' is not a clean absolute path", run.stderr)
+        # A planted link (into the operator's own gh directory) or a regular file at the root's path refuses by name,
+        # for both omp roles, in a dry run too, with no seats root, no tool run and nothing at the link's target.
+        planted_home = Path(self.temp.name).resolve() / "planted-dsh-home"
+        planted_home.mkdir()
+        outside = home / ".config/gh"
+        outside.mkdir(parents=True)
+        planted = planted_home / "router-credentials"
+        planted.symlink_to(outside)
+        fresh_seats = str(Path(self.temp.name).resolve() / "fresh-seats")
+        tools_before = (len(self.calls_of("srt")), len(self.calls_of("hcom")), len(self.calls_of("omp")))
+        for role in ("worker", "orchestrator"):
+            for args in ([], ["--dry-run"]):
+                with self.subTest(case="a link", role=role, args=args):
+                    run = self.seat(role, "--seats-root", fresh_seats, *args, DSH_HOME=str(planted_home))
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(
+                        f"the {role} role's credential root {planted} is a symbolic link; it must be a real directory"
+                        " inside DSH_HOME, or absent",
+                        run.stderr,
+                    )
+                    self.assertFalse(Path(fresh_seats).exists(), "no seats root and no settings file")
+                    self.assertEqual(list(outside.iterdir()), [], "nothing written at the link's target")
+        planted.unlink()
+        planted.write_text("")
+        for role in ("worker", "orchestrator"):
+            with self.subTest(case="a regular file", role=role):
+                run = self.seat(role, "--seats-root", fresh_seats, DSH_HOME=str(planted_home))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"the {role} role's credential root {planted} exists and is not a directory", run.stderr)
+                self.assertFalse(Path(fresh_seats).exists())
+        self.assertEqual(
+            (len(self.calls_of("srt")), len(self.calls_of("hcom")), len(self.calls_of("omp"))),
+            tools_before,
+            "no refused launch ran a tool",
+        )
+
+    def make_store_root(self):
+        """The program store's root as regime-init leaves it (U215c): `regime-store` and `<slug>` under the scratch
+        HOME's `.local/state`, each a 0700 directory of this user, the shape hcom-seat holds every component to
+        (U219c; a parent made with Python's default mode is refused by the launch, as regime-init refuses it)."""
+        root = self.home.resolve() / ".local/state/regime-store/repo"
+        root.parent.mkdir(parents=True, mode=0o700)
+        root.mkdir(mode=0o700)
+        return root
+
+    def store_root_modes(self, root):
+        """(mode, is a real directory, owned by this user) of the root and of its `regime-store` parent."""
+        return [
+            (stat.S_IMODE(os.lstat(p).st_mode), p.is_dir() and not p.is_symlink(), os.lstat(p).st_uid == os.getuid())
+            for p in (root.parent, root)
+        ]
+
+    def test_the_store_root_is_read_by_both_roles_and_written_by_the_orchestrator_alone(self):
+        """U219 (store move 3 of 5, handoff/07-store-move-design.md): regime-env derives the program store's root
+        `<physical HOME>/.local/state/regime-store/<slug>` (U215c) and hcom-seat grants it, in its physical form, to
+        the worker's and the orchestrator's `allowRead` and to the orchestrator's `allowWrite` (its row 7, the held
+        slot after `~/.omp/run`, printed verbatim, U219c) and to no other grant list: the worker reads the records and
+        writes none, and its `denyWrite` carries the root (U219c, verdict U219-985b7c04 P1 `:1981`: the deny srt
+        applies under any grant a link could fold onto the root), the orchestrator's does not. A launch that finds the
+        root absent makes it (U219c, the same verdict's P2 `:1815`: srt 0.0.81's Linux backend skips an absent write
+        or deny path), both components 0700 directories of this user, before its settings file is written; a root
+        regime-init made passes as it is. No seat grants the hcom store's `~/.local/state/hcom` tree or
+        `~/.local/state/regime-store` above the root."""
+        home = self.home.resolve()
+        root = home / ".local/state/regime-store/repo"
+        for present in (False, True):
+            if present:
+                self.assertEqual(self.store_root_modes(root), [(0o700, True, True)] * 2, "made by the earlier launch")
+            else:
+                self.assertFalse(root.parent.exists(), "absent before the first launch")
+            for role in ("worker", "orchestrator"):
+                with self.subTest(role=role, present=present):
+                    run = self.seat(role, "--seats-root", self.seats)
+                    self.assertEqual(run.returncode, 0, run.stderr)
+                    fs = self.settings_of(role)["filesystem"]
+                    self.assertEqual(fs["allowRead"].count(str(root)), 1, fs["allowRead"])
+                    self.assertEqual(
+                        fs["allowWrite"].count(str(root)), 1 if role == "orchestrator" else 0, fs["allowWrite"]
+                    )
+                    if role == "orchestrator":
+                        self.assertEqual(fs["allowWrite"][7], str(root), "row 7, the held slot after ~/.omp/run")
+                        self.assertEqual(fs["allowWrite"][6], str(home / ".omp/run"))
+                    self.assertEqual(
+                        fs["denyWrite"].count(str(root)), 0 if role == "orchestrator" else 1, fs["denyWrite"]
+                    )
+                    self.assertEqual(
+                        [row for row in fs["denyRead"] if row == str(root) or row.startswith(f"{root}/")], []
+                    )
+                    self.assertEqual([row for row in fs["denyWrite"] if row.startswith(f"{root}/")], [])
+                    for key in ("allowRead", "allowWrite"):
+                        above = [row for row in fs[key] if Path(row) in root.parents]
+                        self.assertEqual(above, [], f"{key} grants a directory above the root")
+                    self.assertEqual(
+                        fs["allowWrite"][2], str(Path(self.seats, ".state/claude")), "row 2 is the shared directory"
+                    )
+                    self.assertEqual(
+                        self.store_root_modes(root), [(0o700, True, True)] * 2, "the launch makes the root"
+                    )
+        self.assertEqual(len(self.calls_of("omp")), 4, "every launch reached omp")
+        # The dry run names the derived root beside the pair (the seat inherits it from regime-env's export, U215c;
+        # the fake hcom records HCOM_* names alone, so the export is read here, on stderr).
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"environment HCOM_DIR={self.store} HCOM_TEAM=repo REGIME_STORE_ROOT={root}", run.stderr)
+
+    def test_an_hcom_store_that_is_inside_or_contains_the_store_root_is_refused_by_name(self):
+        """U219 (verdict U215-15c6be1e P1 `:127`, held residual on this unit): the hcom store `HCOM_DIR` is every seat's
+        write grant, so a store root equal to it, inside it or containing it would put the records inside a worker's
+        write root. The launch is refused naming both paths (exit 2, nothing printed on stdout) right after regime-env
+        derives the root, before the seats root, a slot, a settings file or hcom exists, for both roles and in a dry
+        run too; the paths are compared physically (a link spelling the store is seen through), so `HCOM_DIR` through a
+        link into the root is refused as well; a store beside the root, under `~/.local/state/hcom`, passes."""
+        home = self.home.resolve()
+        root = self.make_store_root()
+        linked = home / "store-link"
+        linked.symlink_to(root)
+        fresh_seats = str(Path(self.temp.name).resolve() / "fresh-seats")
+        for label, store, message in (
+            ("equal", root, f"the hcom store HCOM_DIR {root} is the store root REGIME_STORE_ROOT {root}"),
+            (
+                "inside",
+                root / "hcom",
+                f"the hcom store HCOM_DIR {root}/hcom lies inside the store root REGIME_STORE_ROOT {root}",
+            ),
+            (
+                "containing",
+                root.parent,
+                f"the hcom store HCOM_DIR {root.parent} contains the store root REGIME_STORE_ROOT {root}",
+            ),
+            (
+                "through a link",
+                linked,
+                f"the hcom store HCOM_DIR {linked} ({root}) is the store root REGIME_STORE_ROOT {root}",
+            ),
+        ):
+            for role in ("worker", "orchestrator"):
+                for args in ([], ["--dry-run"]):
+                    with self.subTest(label, role=role, args=args):
+                        run = self.seat(role, "--seats-root", fresh_seats, *args, HCOM_DIR=str(store))
+                        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                        self.assertIn(message, run.stderr)
+                        self.assertIn("every seat's write grant", run.stderr)
+                        self.assertFalse(Path(fresh_seats).exists(), "no seats root, no slot, no settings file")
+        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertEqual(sorted(p.name for p in root.iterdir()), [], "nothing made under the root")
+        # The control: the derived store beside the root passes and the settings carry both.
+        derived = home / ".local/state/hcom/repo"
+        derived.mkdir(parents=True)
+        (derived / "origin").write_text(f"{self.repo}\n")
+        run = self.seat("worker", "--seats-root", self.seats, HCOM_DIR=None, HCOM_TEAM=None)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        fs = self.settings_of("worker")["filesystem"]
+        self.assertIn(str(derived), fs["allowWrite"])
+        self.assertIn(str(root), fs["allowRead"])
+
+    def test_an_executable_planted_under_the_store_root_never_runs(self):
+        """U219b (verdict U219-ce7e875e P1 `:2158`): the orchestrator writes `<HOME>/.local/state/regime-store/<slug>`,
+        so the parent `~/.local/state/regime-store` is in the protected set whole, from the lever's start, like
+        `~/.local/state/hcom` and `~/.local/state/omp-seats`: a `git` planted under the root and first on the caller's
+        PATH is refused by name before anything runs it (round 1 granted the root in the settings but not here, and the
+        auditor's planted git ran three times on the host before the late write-root refusal), for both roles, in a
+        launch and in a dry run; the planted file never runs (the record it would write does not exist), no seats
+        root, slot or settings file is made, and hcom is never called."""
+        home = self.home.resolve()
+        root = self.make_store_root()
+        planted = root / "bin"
+        marker = self.plant(planted, "git")
+        for role in ("worker", "orchestrator"):
+            for args in ([], ["--dry-run"]):
+                with self.subTest(role=role, args=args):
+                    run = self.seat(role, "--seats-root", self.seats, *args, PATH=f"{planted}:{self.env['PATH']}")
+                    self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(
+                        f"git {planted}/git is or lies under the seat write root {home}/.local/state/regime-store",
+                        run.stderr,
+                    )
+                    self.assertFalse(Path(self.seats).exists(), "no seats root, no slot, no settings file")
+        self.assertEqual(self.calls_of("hcom"), [])
+        # The control: the same root, nothing planted on PATH, launches and grants the root as round 1 did.
+        run = self.seat("orchestrator", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(str(root), self.settings_of("orchestrator")["filesystem"]["allowWrite"])
+
+    def test_a_write_root_that_is_or_lies_inside_the_store_root_is_refused_before_any_settings_file(self):
+        """U219c (verdict U219-985b7c04 P1 `:1981`): round 2 judged `HCOM_DIR` alone against the store root, so a
+        worker whose `~/.omp/run` was a link to the root launched with the records in its `allowWrite`. Every rendered
+        `allowWrite` row of every role is judged against the root by identity (`store_root_judge`, the judge's first
+        step; the orchestrator's own held row 7 alone is exempt, by its position and byte equality): a worker's
+        `~/.omp/run` linked to the root and an orchestrator whose `~/.omp/profiles/orchestrator` links to the root
+        each refuse (exit 2) naming the row and the root, before the settings file is written and before hcom runs
+        (the worker's worktree exists by then: its render needs it, and git's `HEAD is now at` is the one line on
+        stdout). A seats root inside the root, so a worker whose own slot lies inside it, is refused earlier and by
+        construction: the orchestrator's row 7 is the root, which contains the seats root, the overlap invariant's
+        protected path (`seat_overlap_check`), before anything is made under the root. The same launches pass once
+        the link is a directory again."""
+        home = self.home.resolve()
+        root = self.make_store_root()
+        (home / ".omp/profiles").mkdir(parents=True)
+        run_root, profile = home / ".omp/run", home / ".omp/profiles/orchestrator"
+        inner_seats = str(root / "seats")
+        judged = "is, contains or lies inside the store root REGIME_STORE_ROOT"
+        cases = (
+            ("the worker's ~/.omp/run linked to the root", "worker", run_root, self.seats,
+             f"the worker role's allowWrite row {root} {judged} {root}; the launch is refused before its settings file is written"),
+            ("the worker's own slot inside the root", "worker", None, inner_seats,
+             f"the orchestrator seat's write root {root} contains the seats root {inner_seats}; seat write roots must not overlap"),
+            ("the orchestrator's profile linked to the root", "orchestrator", profile, self.seats,
+             f"the orchestrator role's allowWrite row {root} {judged} {root}; the launch is refused before its settings file is written"),
+        )  # fmt: skip
+        for label, role, link, seats, message in cases:
+            with self.subTest(case=label):
+                try:
+                    if link is not None:
+                        link.symlink_to(root)
+                    run = self.seat(role, "--seats-root", seats)
+                    self.assertEqual(run.returncode, 2, run.stderr)
+                    self.assertIn(run.stdout.split(" ")[0], ("", "HEAD"), f"git's worktree echo at most: {run.stdout}")
+                    self.assertIn(message, run.stderr)
+                    self.assertFalse(Path(seats, ".sandbox").exists(), "no settings file, no shim")
+                    if link is not None:
+                        self.assertTrue(link.is_symlink(), "the launch neither removed nor replaced the link")
+                finally:
+                    if link is not None and link.is_symlink():
+                        link.unlink()
+        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertEqual(sorted(p.name for p in root.iterdir()), [], "nothing made under the root")
+        # The control: with `~/.omp/run` and the profile real directories, both roles launch and the root is granted
+        # as before (the worker's deny row, the orchestrator's held write row).
+        for role in ("worker", "orchestrator"):
+            run = self.seat(role, "--seats-root", self.seats)
+            self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.settings_of("worker")["filesystem"]["denyWrite"].count(str(root)), 1)
+        self.assertEqual(self.settings_of("orchestrator")["filesystem"]["allowWrite"][7], str(root))
+
+    def test_the_orchestrators_store_root_row_is_the_held_path_through_a_swap_between_the_hold_and_the_render(self):
+        """U219c (verdict U219-985b7c04 P1 `:2161`): round 2 put the held root into `extra`, which `seat_write_roots`
+        resolves again, so a directory-to-link swap of the root during `seat_roots_out`, restored right after,
+        rendered the link's target (the auditor's `~/.config/autostart`) as the orchestrator's write root. The swap is
+        injected through bash's DEBUG trap (BASH_ENV): the root becomes a link to `~/.config/autostart` right before
+        the top-level `seat_roots_out=...` command and is restored at the next command. The rendered `allowWrite`
+        carries the held path at row 7 and the target nowhere; the trap's record proves the swap happened."""
+        home = self.home.resolve()
+        root = self.make_store_root()
+        outside = home / ".config/autostart"
+        outside.mkdir(parents=True)
+        mark = Path(self.temp.name) / "swap-mark"
+        hook = Path(self.temp.name) / "swap-hook.bash"
+        hook.write_text(
+            "__u219_swapped=0\n"
+            "trap '"
+            'if [[ ${__u219_swapped} == 0 && ${BASH_COMMAND} == "seat_roots_out="* ]]; then '
+            '/bin/mv "${U219_ROOT-}" "${U219_ROOT-}.held" && /bin/ln -s "${U219_OUTSIDE-}" "${U219_ROOT-}"'
+            ' && __u219_swapped=1 && builtin echo swapped >> "${U219_MARK-}"; '
+            "elif [[ ${__u219_swapped} == 1 ]]; then "
+            '/bin/rm "${U219_ROOT-}" && /bin/mv "${U219_ROOT-}.held" "${U219_ROOT-}"'
+            ' && __u219_swapped=2 && builtin echo restored >> "${U219_MARK-}"; '
+            "fi' DEBUG\n"
+        )
+        run = self.seat(
+            "orchestrator", "--seats-root", self.seats,
+            BASH_ENV=str(hook), U219_ROOT=str(root), U219_OUTSIDE=str(outside), U219_MARK=str(mark),
+        )  # fmt: skip
+        self.assertEqual(mark.read_text(), "swapped\nrestored\n", "the swap ran around seat_roots_out")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        settings = self.settings_of("orchestrator")
+        self.assertNotIn(str(outside), json.dumps(settings), "the link's target is granted nowhere")
+        self.assertEqual(settings["filesystem"]["allowWrite"][7], str(root), settings["filesystem"]["allowWrite"])
+        self.assertEqual(settings["filesystem"]["allowWrite"].count(str(root)), 1)
+        self.assertTrue(root.is_dir() and not root.is_symlink(), "the root is a directory again")
+        self.assertEqual(sorted(outside.iterdir()), [], "nothing written at the target")
+        self.assertEqual(len(self.calls_of("omp")), 1)
+
+    def test_a_launch_makes_the_absent_store_root_before_its_settings_file_and_a_planted_entry_refuses_by_name(self):
+        """U219c (verdict U219-985b7c04 P2 `:1815`): srt 0.0.81's Linux backend skips an absent write path and an
+        absent deny path, so a root granted but never made left the first `regime-init` inside a Linux orchestrator
+        seat unable to write it and the worker's deny void. A launch of either role whose root is absent makes both
+        components (`regime-store`, `<slug>`) 0700 directories of this user, before `seat_sandbox_write` writes the
+        settings file (bash's DEBUG trap records the order); a dry run makes nothing and says what a launch would make;
+        a symbolic link or a regular file at either component refuses by name (regime-env's hold of the components,
+        U215c) and so does a directory of another mode (the launch's hold, as regime-init refuses it), exit 2 and
+        nothing on stdout, launch and dry run alike, before the seats root, a slot or a settings file exists."""
+        home = self.home.resolve()
+        root = home / ".local/state/regime-store/repo"
+        trace = Path(self.temp.name) / "trace"
+        hook = Path(self.temp.name) / "trace-hook.bash"
+        hook.write_text(
+            'set -T\ntrap \'builtin printf "%s\\t%s\\0" "$BASH_COMMAND" "${path-}" >> "$U219_TRACE"\' DEBUG\n'
+        )
+        with self.subTest(case="a dry run makes nothing"):
+            run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertIn(f"the program store's root {root} does not exist; a launch creates it (0700)", run.stderr)
+            self.assertFalse(root.parent.exists())
+        for role in ("worker", "orchestrator"):
+            with self.subTest(case="a launch makes it", role=role):
+                try:
+                    trace.write_text("")
+                    run = self.seat(role, "--seats-root", self.seats, BASH_ENV=str(hook), U219_TRACE=str(trace))
+                    self.assertEqual(run.returncode, 0, run.stderr)
+                    self.assertEqual(self.store_root_modes(root), [(0o700, True, True)] * 2)
+                    commands = trace.read_text().split("\0")[:-1]
+                    made = [i for i, c in enumerate(commands) if c == f'/bin/mkdir "${{path}}"\t{root}']
+                    written = [i for i, c in enumerate(commands) if c.startswith("seat_sandbox_write\t")]
+                    self.assertTrue(made and written, (made, written))
+                    self.assertLess(made[0], written[0], "the root is made before the settings file is written")
+                    self.assertTrue(Path(self.seats, ".sandbox", role, "srt-settings.json").is_file())
+                finally:
+                    if root.parent.exists():
+                        shutil.rmtree(root.parent)
+        self.assertEqual(len(self.calls_of("omp")), 2)
+        outside = home / ".config/autostart"
+        outside.mkdir(parents=True)
+        fresh_seats = str(Path(self.temp.name).resolve() / "fresh-seats")
+        wrong = home / ".local/state/regime-store"
+
+        def planted(kind, path):
+            if kind == "link":
+                path.symlink_to(outside)
+                return f"the store root component {path} is a symlink"
+            if kind == "file":
+                path.write_text("")
+                return f"the store root component {path} is not a real directory of this user"
+            path.mkdir(mode=0o755)
+            os.chmod(path, 0o755)
+            return f"the store root component {path} has mode 755, not 0700"
+
+        def cleared():
+            if wrong.is_symlink() or wrong.is_file():
+                wrong.unlink()
+            elif wrong.is_dir():
+                shutil.rmtree(wrong)
+
+        for kind in ("link", "file", "mode"):
+            for component in (wrong, root):
+                for role in ("worker", "orchestrator"):
+                    for args in ([], ["--dry-run"]):
+                        with self.subTest(kind=kind, component=component.name, role=role, args=args):
+                            try:
+                                if component is root:
+                                    wrong.mkdir(mode=0o700)
+                                message = planted(kind, component)
+                                run = self.seat(role, "--seats-root", fresh_seats, *args)
+                                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                                self.assertIn(message, run.stderr)
+                                self.assertFalse(Path(fresh_seats).exists(), "no seats root, no slot, no settings file")
+                                self.assertEqual(sorted(outside.iterdir()), [], "nothing written at a link's target")
+                            finally:
+                                cleared()
+        self.assertEqual(len(self.calls_of("omp")), 2, "no refused launch reached omp")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,3291 @@
+[
+  {
+    "coverage_id": ".claude%2Fsettings.json%23contextdb%20hooks::.claude%2Fcontextdb%2Fcontextdb%2Fmemory.py%23extract_candidates::.claude%2Fcontextdb::AI-AND-LLM.md%23Persistent%20memory%20poisoning",
+    "canonical_refs": {
+      "surface": ".claude/settings.json#contextdb hooks",
+      "boundary": ".claude/contextdb/contextdb/memory.py#extract_candidates",
+      "subsystem": ".claude/contextdb",
+      "attack_class": "AI-AND-LLM.md#Persistent memory poisoning"
+    },
+    "surface": ".claude/settings.json#contextdb hooks",
+    "boundary": ".claude/contextdb/contextdb/memory.py#extract_candidates",
+    "subsystem": ".claude/contextdb",
+    "attack_class": "AI-AND-LLM.md#Persistent memory poisoning",
+    "starting_paths": [
+      ".claude/contextdb",
+      ".claude/hooks",
+      "vendor/compactiondb"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Persistent memory poisoning",
+      "AI-AND-LLM.md#Cross-session or cross-tenant context bleed",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Analytics, logs, traces, and diagnostics as alternate readers",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      ".claude/contextdb/config.json",
+      ".claude/contextdb/contextdb/memory.py",
+      ".claude/contextdb/contextdb/paths.py",
+      ".claude/contextdb/contextdb/semantic.py",
+      ".claude/contextdb/contextdb/util.py",
+      ".gitignore",
+      "vendor/compactiondb"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          ".claude/contextdb/config.json",
+          ".claude/contextdb/contextdb/memory.py",
+          ".claude/contextdb/contextdb/paths.py",
+          ".claude/contextdb/contextdb/semantic.py",
+          ".claude/contextdb/contextdb/util.py",
+          ".gitignore",
+          "vendor/compactiondb"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": ".github%2Fworkflows%23pull_request::.github%2Fworkflows%23permissions::.github%2Fworkflows::SUPPLY-CHAIN-AND-RELEASE.md%23Workflow%20command%20and%20expression%20confusion",
+    "canonical_refs": {
+      "surface": ".github/workflows#pull_request",
+      "boundary": ".github/workflows#permissions",
+      "subsystem": ".github/workflows",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Workflow command and expression confusion"
+    },
+    "surface": ".github/workflows#pull_request",
+    "boundary": ".github/workflows#permissions",
+    "subsystem": ".github/workflows",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Workflow command and expression confusion",
+    "starting_paths": [
+      ".github/workflows"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Workflow command and expression confusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Cache, artifact, and workspace trust mixing",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      ".github/workflows/actions.lock",
+      ".github/workflows/agent-assets.yml",
+      ".github/workflows/apply-check.yml",
+      ".github/workflows/docs-check.yml",
+      ".github/workflows/docs.yml",
+      ".github/workflows/drift-watch.yml",
+      ".github/workflows/macos.yaml",
+      ".github/workflows/private-bootstrap.yaml",
+      ".github/workflows/remote.yaml",
+      ".github/workflows/test.yaml",
+      ".github/workflows/ubuntu.yaml"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          ".github/workflows/actions.lock",
+          ".github/workflows/agent-assets.yml",
+          ".github/workflows/apply-check.yml",
+          ".github/workflows/docs-check.yml",
+          ".github/workflows/docs.yml",
+          ".github/workflows/drift-watch.yml",
+          ".github/workflows/macos.yaml",
+          ".github/workflows/private-bootstrap.yaml",
+          ".github/workflows/remote.yaml",
+          ".github/workflows/test.yaml",
+          ".github/workflows/ubuntu.yaml"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening": [
+      "Same-repository pull_request runs of macos.yaml and ubuntu.yaml load PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY into ssh-agent before running the branch's setup.sh (macos.yaml:93-121); acceptable while only the coordinator pushes branches, but any future branch-push grant to a lower-trust actor would expose the deploy key."
+    ],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": ".github%2Fworkflows%2Fregime.yml%23pull_request_target::scripts%2Forchestrator%2Fregime-ci.py%23TRUSTED_AUTHORS::.github%2Fworkflows::SUPPLY-CHAIN-AND-RELEASE.md%23Untrusted%20code%20in%20a%20privileged%20workflow",
+    "canonical_refs": {
+      "surface": ".github/workflows/regime.yml#pull_request_target",
+      "boundary": "scripts/orchestrator/regime-ci.py#TRUSTED_AUTHORS",
+      "subsystem": ".github/workflows",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Untrusted code in a privileged workflow"
+    },
+    "surface": ".github/workflows/regime.yml#pull_request_target",
+    "boundary": "scripts/orchestrator/regime-ci.py#TRUSTED_AUTHORS",
+    "subsystem": ".github/workflows",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Untrusted code in a privileged workflow",
+    "starting_paths": [
+      ".github/workflows/regime.yml",
+      "scripts/orchestrator/regime-ci.py",
+      "scripts/orchestrator/rounds-check.py"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Untrusted code in a privileged workflow",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Workflow command and expression confusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      ".github/workflows/regime.yml",
+      "scripts/orchestrator/ledger.py",
+      "scripts/orchestrator/regime-ci.py",
+      "scripts/orchestrator/rounds-check.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          ".github/workflows/regime.yml",
+          "scripts/orchestrator/ledger.py",
+          "scripts/orchestrator/regime-ci.py",
+          "scripts/orchestrator/rounds-check.py"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening": [
+      "regime-ci passes a records-only pull request (every path under .orchestration/) from any author, including outside forks (regime-ci.py:76-79); by design while regime is not a required context, but if it becomes required the records-only branch should also check author_association.",
+      "rounds-check --all reads ledger.tsv and decisions.tsv from the pull request head (regime.yml:57-66), so the head can present its own round history; the coordinator's store remains the authority (pr-audit.sh runs rounds-check over the store)."
+    ],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": ".orchestration%23top-level%20directory::no%20runtime%20trust%20boundary::.orchestration::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": ".orchestration#top-level directory",
+      "boundary": "no runtime trust boundary",
+      "subsystem": ".orchestration",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": ".orchestration#top-level directory",
+    "boundary": "no runtime trust boundary",
+    "subsystem": ".orchestration",
+    "attack_class": "ATTACK-CLASSES.md#Wildcard",
+    "starting_paths": [
+      ".orchestration"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Coordinator records, briefs and verdicts (data). The one script, .orchestration/validation/025-pilot-s0-siwc-probe.py, is a pilot artifact no workflow, hook, installer or lever references (grep). Covered only by the tracked-file secret scan. Changed at 406fb9dd (the merge of main 30e94d9b): eight coordinator records (the U145, U146 and U147 briefs, the U145 and U20 verdicts, decisions.tsv, ledger.tsv, units.tsv), still records only."
+    ],
+    "status": "not_applicable",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": ".ua%23top-level%20directory::no%20runtime%20trust%20boundary::.ua::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": ".ua#top-level directory",
+      "boundary": "no runtime trust boundary",
+      "subsystem": ".ua",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": ".ua#top-level directory",
+    "boundary": "no runtime trust boundary",
+    "subsystem": ".ua",
+    "attack_class": "ATTACK-CLASSES.md#Wildcard",
+    "starting_paths": [
+      ".ua"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Generated knowledge-graph data for a local code-map tool; no host, hook, or CI path executes it."
+    ],
+    "status": "not_applicable",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "docs%23top-level%20directory::no%20runtime%20trust%20boundary::docs::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "docs#top-level directory",
+      "boundary": "no runtime trust boundary",
+      "subsystem": "docs",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "docs#top-level directory",
+    "boundary": "no runtime trust boundary",
+    "subsystem": "docs",
+    "attack_class": "ATTACK-CLASSES.md#Wildcard",
+    "starting_paths": [
+      "docs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Prose documentation and one stylesheet; no executable path or configuration consumed by a host or CI step (docs.yml only renders it). Changed at 406fb9dd (the merge of main 30e94d9b): docs/engagement-handout.md (U149), read whole: an operator page of commands and read-only checks with hosts named by kind and no credential; still documentation, no runtime trust boundary."
+    ],
+    "status": "not_applicable",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "home%2F.chezmoiscripts%23run%20scripts::home%2F.chezmoi.yaml.tmpl%23template%20data::home::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "home/.chezmoiscripts#run scripts",
+      "boundary": "home/.chezmoi.yaml.tmpl#template data",
+      "subsystem": "home",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "home/.chezmoiscripts#run scripts",
+    "boundary": "home/.chezmoi.yaml.tmpl#template data",
+    "subsystem": "home",
+    "attack_class": "ATTACK-CLASSES.md#Injection",
+    "starting_paths": [
+      "home/.chezmoiscripts",
+      "home/.chezmoi.yaml.tmpl",
+      "home/.chezmoiexternal.yaml.tmpl",
+      "home/.chezmoitemplates/chezmoiexternal.d"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "prior_deferred from run-13 (and run-1 before it): 3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); none touches this unit's paths, so its source is unchanged, and this unit sweep re-verified the carried records; still needs its own hunter pass"
+    ],
+    "prior_status": "prior_deferred",
+    "status": "deferred"
+  },
+  {
+    "coverage_id": "home%2F.chezmoitemplates%2Fclaude-settings-managed.json%23sandbox.filesystem.allowWrite::Claude%20Code%20Bash%20sandbox::home%2F.chezmoitemplates::AI-AND-LLM.md%23Excessive%20agency%20and%20confused-deputy%20authority",
+    "canonical_refs": {
+      "surface": "home/.chezmoitemplates/claude-settings-managed.json#sandbox.filesystem.allowWrite",
+      "boundary": "Claude Code Bash sandbox",
+      "subsystem": "home/.chezmoitemplates",
+      "attack_class": "AI-AND-LLM.md#Excessive agency and confused-deputy authority"
+    },
+    "surface": "home/.chezmoitemplates/claude-settings-managed.json#sandbox.filesystem.allowWrite",
+    "boundary": "Claude Code Bash sandbox",
+    "subsystem": "home/.chezmoitemplates",
+    "attack_class": "AI-AND-LLM.md#Excessive agency and confused-deputy authority",
+    "starting_paths": [
+      "home/.chezmoitemplates/claude-settings-managed.json",
+      "home/dot_agents/agent-config.yaml",
+      "scripts/generate-agent-configs.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Excessive agency and confused-deputy authority",
+      "AI-AND-LLM.md#Indirect injection through retrieved or ingested content",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "v15-c1",
+    "reviewed_paths": [
+      "home/.chezmoitemplates/claude-settings-managed.json",
+      "home/dot_agents/agent-config.yaml",
+      "home/dot_claude/modify_private_settings.json",
+      "scripts/generate-agent-configs.py",
+      "scripts/orchestrator/README.md",
+      "scripts/orchestrator/hcom-seat"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "v15-c1",
+        "reviewed_paths": [
+          "home/.chezmoitemplates/claude-settings-managed.json",
+          "home/dot_agents/agent-config.yaml",
+          "home/dot_claude/modify_private_settings.json",
+          "scripts/generate-agent-configs.py",
+          "scripts/orchestrator/README.md",
+          "scripts/orchestrator/hcom-seat"
+        ],
+        "invariant": "carried needs_validation record: the current source still supports the trace, and the blocker is still outside source and local observation",
+        "method": "source",
+        "result": "Re-verified at 3da428db: Changed under the merge: home/dot_agents/agent-config.yaml, by the Graphify entry only, outside every cited line; every cited trace and evidence line read at 3da428db equals its line at 406fb9dd (cite-check.py, 0 missing); the claimed root cause, blockers and decision hold unchanged.",
+        "artifact": null
+      },
+      {
+        "agent_id": "r15-c1",
+        "reviewed_paths": [
+          "home/.chezmoitemplates/claude-settings-managed.json",
+          "home/dot_agents/agent-config.yaml",
+          "home/dot_claude/modify_private_settings.json",
+          "scripts/generate-agent-configs.py",
+          "scripts/orchestrator/README.md",
+          "scripts/orchestrator/hcom-seat"
+        ],
+        "invariant": "Phase 5: the carried record matches the source at a442694c",
+        "method": "source",
+        "result": "Phase 5: trace, evidence, blockers and plans verified against the lines at 3da428db; decision verified (needs_validation kept).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "claude-sandbox:allow-write-covers-seat-launch-inputs"
+    ],
+    "unresolved": [
+      "hcom launch-time consumption of store files and Claude Code allowWrite semantics are runtime facts; target execution is forbidden in this run."
+    ],
+    "prior_status": "prior_needs_validation",
+    "status": "candidate"
+  },
+  {
+    "coverage_id": "home%2F.chezmoitemplates%2Fcodex-config-managed.toml%23sandbox_mode::codex%20workspace-write%20sandbox::home%2Fdot_codex::AI-AND-LLM.md%23Excessive%20agency%20and%20confused-deputy%20authority",
+    "canonical_refs": {
+      "surface": "home/.chezmoitemplates/codex-config-managed.toml#sandbox_mode",
+      "boundary": "codex workspace-write sandbox",
+      "subsystem": "home/dot_codex",
+      "attack_class": "AI-AND-LLM.md#Excessive agency and confused-deputy authority"
+    },
+    "surface": "home/.chezmoitemplates/codex-config-managed.toml#sandbox_mode",
+    "boundary": "codex workspace-write sandbox",
+    "subsystem": "home/dot_codex",
+    "attack_class": "AI-AND-LLM.md#Excessive agency and confused-deputy authority",
+    "starting_paths": [
+      "home/.chezmoitemplates/codex-config-managed.toml",
+      "home/dot_codex",
+      "home/dot_local/bin/common/executable_contextdb-codex-notify"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Excessive agency and confused-deputy authority",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "home/.chezmoitemplates/codex-config-managed.toml",
+      "home/dot_codex/modify_private_audit.config.toml",
+      "home/dot_codex/modify_private_security.config.toml",
+      "home/dot_local/bin/common/executable_contextdb-codex-notify"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "home/.chezmoitemplates/codex-config-managed.toml",
+          "home/dot_codex/modify_private_audit.config.toml",
+          "home/dot_codex/modify_private_security.config.toml",
+          "home/dot_local/bin/common/executable_contextdb-codex-notify"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "home%2FLibrary%2FLaunchAgents%2Fcom.mryfmo.dotfiles.usage-snapshot.plist.tmpl%23ProgramArguments::make%20-C%20chezmoi%20working%20tree::home%2FLibrary::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "home/Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist.tmpl#ProgramArguments",
+      "boundary": "make -C chezmoi working tree",
+      "subsystem": "home/Library",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "home/Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist.tmpl#ProgramArguments",
+    "boundary": "make -C chezmoi working tree",
+    "subsystem": "home/Library",
+    "attack_class": "ATTACK-CLASSES.md#Business logic",
+    "starting_paths": [
+      "home/Library/LaunchAgents",
+      "home/dot_config/systemd/user/usage-snapshot.service.tmpl",
+      "scripts/usage-snapshot.sh",
+      "Makefile"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Install, update, and repair path trust",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "Makefile",
+      "home/Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist.tmpl",
+      "home/dot_config/systemd/user/usage-snapshot.service.tmpl",
+      "scripts/usage-snapshot.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "Makefile",
+          "home/Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist.tmpl",
+          "home/dot_config/systemd/user/usage-snapshot.service.tmpl",
+          "scripts/usage-snapshot.sh"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening": [
+      "The job executes the chezmoi working tree's Makefile and scripts outside any sandbox on a timer; a Claude Code session whose cwd is that tree can change them within its sandbox and have them run unsandboxed later without operator action."
+    ],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fagent-config.yaml%23assets.graphify::home%2Fdot_agents%2Fagent-config.yaml%23assets.graphify%20verify%20sha256::home%2Fdot_agents::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+    "canonical_refs": {
+      "surface": "home/dot_agents/agent-config.yaml#assets.graphify",
+      "boundary": "home/dot_agents/agent-config.yaml#assets.graphify verify sha256",
+      "subsystem": "home/dot_agents",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    },
+    "surface": "home/dot_agents/agent-config.yaml#assets.graphifyy (keyed assets.graphify before round 4)",
+    "boundary": "home/dot_agents/agent-config.yaml#assets.graphify verify sha256",
+    "subsystem": "home/dot_agents",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+    "starting_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "tests/unit/test_graphify_asset.py",
+      "scripts/update-agent-assets.sh",
+      "scripts/validate-agent-assets.py"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Dependency source and namespace confusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "The change is a manifest entry and two tests; the hosted OAuth route it names is refused, not added."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM or runtime configuration in the change."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "YAML and Python tests only."
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "No local listener or IPC surface in the change."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "unresolved": [],
+    "result_fingerprints": [
+      "assets.graphify:installer-skips-pinned-sha256"
+    ],
+    "hardening": [
+      "The verified wheel is installed with `uv tool install --force <wheel>`, which resolves graphifyy's dependency closure from PyPI by version, without hashes, at install time (agent-config.yaml:1358; gated by the host's 7-day exclude-newer, :1342-1344). Round 4 keeps make update from re-resolving it later (upgrade-tools.sh:552-555 skips the tool), so the residual is the one trial install, the same as the hcom install carries (update-agent-assets.sh:1699); a hashed constraints file for the closure would close it for both.",
+      "The installer's `|| exit 1` (agent-config.yaml:1356) ends the operator's interactive shell on a failed digest read, and the chain's left-to-right && / || grouping also sends a failed mktemp or curl there; it fails closed, but a subshell `( ... )` around the line would keep the terminal. The mktemp directory and the wheel are still left behind (:1353-1358)."
+    ],
+    "prior_status": "prior_rejected_claim_changed",
+    "status": "candidate",
+    "agent_id": "v15-g1",
+    "local_checks": [
+      {
+        "agent_id": "v15-g1",
+        "reviewed_paths": [
+          "home/dot_agents/agent-config.yaml",
+          "home/dot_config/uv/uv.toml",
+          "scripts/check-agent-runtime.py",
+          "scripts/update-agent-assets.sh",
+          "scripts/upgrade-tools.sh",
+          "scripts/validate-agent-assets.py",
+          "tests/unit/agent_home_isolation.py",
+          "tests/unit/test_graphify_asset.py"
+        ],
+        "invariant": "the run-8 rejection still holds: the recorded installer binds the reviewed digest at install time, and the test file's evidence for it is intact",
+        "method": "source",
+        "result": "Still refuted at 3da428db: the installer is byte-equal to ac4af099's and sits at agent-config.yaml:1352-1359 (10 lower in the file, under U148's audience lines): download, status-checked shasum -a 256 compared with the pin (:1356-1357), && before the local-file install (:1358); the static checks are test_graphify_asset.py:175-205 and the failure-injection test :207-229, unchanged. Decision: rejected, kept.",
+        "artifact": null
+      },
+      {
+        "agent_id": "v15-g1",
+        "reviewed_paths": [
+          "tests/unit/agent_home_isolation.py",
+          "tests/unit/test_graphify_asset.py"
+        ],
+        "invariant": "the round-6 module hooks and the stubbed run expose nothing beyond their scratch directories",
+        "method": "source",
+        "result": "Unchanged at 3da428db: test_graphify_asset.py and tests/unit/agent_home_isolation.py are byte-equal to ac4af099, so the stubbed installer run still uses an env of exactly PATH, TMPDIR and HOME in a TemporaryDirectory (test_graphify_asset.py:115-146) and the module isolates the agent homes (:19-28); nothing reaches beyond the scratch directories.",
+        "artifact": null
+      },
+      {
+        "agent_id": "r15-g1",
+        "reviewed_paths": [
+          "home/dot_agents/agent-config.yaml",
+          "home/dot_config/uv/uv.toml",
+          "scripts/check-agent-runtime.py",
+          "scripts/update-agent-assets.sh",
+          "scripts/upgrade-tools.sh",
+          "scripts/validate-agent-assets.py",
+          "tests/unit/agent_home_isolation.py",
+          "tests/unit/test_graphify_asset.py"
+        ],
+        "invariant": "Phase 5: the rejected record's trace, evidence and reason match the source at 3da428db",
+        "method": "source",
+        "result": "Every cited line re-read (cite-check.py, 0 missing); the manifest references follow the +10 shift and each shifted line was compared with its text at ac4af099; decision verified (rejected).",
+        "artifact": null
+      }
+    ],
+    "reviewed_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "home/dot_config/uv/uv.toml",
+      "scripts/check-agent-runtime.py",
+      "scripts/update-agent-assets.sh",
+      "scripts/upgrade-tools.sh",
+      "scripts/validate-agent-assets.py",
+      "tests/unit/agent_home_isolation.py",
+      "tests/unit/test_graphify_asset.py"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fagent-config.yaml%23mcp_servers::scripts%2Fvalidate-agent-assets.py%23validate_agent_manifest%20MCP%20checks::home%2Fdot_agents::AI-AND-LLM.md%23MCP%20server%20and%20tool%20identity%20confusion",
+    "canonical_refs": {
+      "surface": "home/dot_agents/agent-config.yaml#mcp_servers",
+      "boundary": "scripts/validate-agent-assets.py#validate_agent_manifest MCP checks",
+      "subsystem": "home/dot_agents",
+      "attack_class": "AI-AND-LLM.md#MCP server and tool identity confusion"
+    },
+    "surface": "home/dot_agents/agent-config.yaml#mcp_servers",
+    "boundary": "scripts/validate-agent-assets.py#validate_agent_manifest MCP checks",
+    "subsystem": "home/dot_agents",
+    "attack_class": "AI-AND-LLM.md#MCP server and tool identity confusion",
+    "starting_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "tests/unit/test_graphify_asset.py",
+      "tests/unit/test_validate_agent_assets.py",
+      "scripts/validate-agent-assets.py"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#MCP server and tool identity confusion",
+      "AI-AND-LLM.md#MCP metadata and schema as policy",
+      "AI-AND-LLM.md#Sensitive context extraction",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "The change is a manifest entry and two tests; the hosted OAuth route it names is refused, not added."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM or runtime configuration in the change."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "YAML and Python tests only."
+      },
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "No local listener or IPC surface in the change."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "unresolved": [],
+    "result_fingerprints": [],
+    "prior_status": "prior_covered_changed_source",
+    "status": "covered",
+    "agent_id": "h15-merge",
+    "local_checks": [
+      {
+        "agent_id": "h15-merge",
+        "reviewed_paths": [
+          "home/dot_agents/agent-config.yaml",
+          "scripts/validate-agent-assets.py",
+          "tests/unit/test_graphify_asset.py",
+          "tests/unit/test_validate_agent_assets.py"
+        ],
+        "invariant": "the manifest still declares no MCP server and the validator still requires it",
+        "method": "source",
+        "result": "Changed under the merge: home/dot_agents/agent-config.yaml, by U148's ten audience lines (:114-123) only; the mcp_servers block, the validator, test_graphify_asset.py:251-253 and the Graphify MCP cases of test_validate_agent_assets.py are byte-equal to ac4af099, and the Graphify entry still declares no MCP server and refuses the hosted OAuth route (agent-config.yaml:1349-1350).",
+        "artifact": null
+      }
+    ],
+    "reviewed_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "scripts/validate-agent-assets.py",
+      "tests/unit/test_graphify_asset.py",
+      "tests/unit/test_validate_agent_assets.py"
+    ]
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fomp%2Fextensions%2Fopenai-siwc%2Fsrc%2Foauth.ts%23loopback%20callback::PKCE%20and%20state%20binding::home%2Fdot_agents%2Fomp::DESKTOP-MOBILE-AND-LOCAL-IPC.md%23App%20and%20account%20handoff%20confusion",
+    "canonical_refs": {
+      "surface": "home/dot_agents/omp/extensions/openai-siwc/src/oauth.ts#loopback callback",
+      "boundary": "PKCE and state binding",
+      "subsystem": "home/dot_agents/omp",
+      "attack_class": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#App and account handoff confusion"
+    },
+    "surface": "home/dot_agents/omp/extensions/openai-siwc/src/oauth.ts#loopback callback",
+    "boundary": "PKCE and state binding",
+    "subsystem": "home/dot_agents/omp",
+    "attack_class": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#App and account handoff confusion",
+    "starting_paths": [
+      "home/dot_agents/omp/extensions/openai-siwc/src",
+      "home/private_dot_ssh/private_config.tmpl"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#App and account handoff confusion",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Credential-store and local-secret boundary mismatch",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "home/dot_agents/omp/extensions/openai-siwc/src/oauth.ts",
+      "home/dot_agents/omp/extensions/openai-siwc/src/store.ts",
+      "home/private_dot_ssh/private_config.tmpl"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "home/dot_agents/omp/extensions/openai-siwc/src/oauth.ts",
+          "home/dot_agents/omp/extensions/openai-siwc/src/store.ts",
+          "home/private_dot_ssh/private_config.tmpl"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fomp%2Fhooks%2Fstop-gate.ts%23session_start::omp%20extension%20loading::home%2Fdot_agents%2Fomp::AI-AND-LLM.md%23Sub-agent%20and%20MCP%20trust%20inheritance",
+    "canonical_refs": {
+      "surface": "home/dot_agents/omp/hooks/stop-gate.ts#session_start",
+      "boundary": "omp extension loading",
+      "subsystem": "home/dot_agents/omp",
+      "attack_class": "AI-AND-LLM.md#Sub-agent and MCP trust inheritance"
+    },
+    "surface": "home/dot_agents/omp/hooks/stop-gate.ts#session_start",
+    "boundary": "omp extension loading",
+    "subsystem": "home/dot_agents/omp",
+    "attack_class": "AI-AND-LLM.md#Sub-agent and MCP trust inheritance",
+    "starting_paths": [
+      "home/dot_agents/omp/hooks/stop-gate.ts",
+      "home/dot_agents/assets/pi-claude-bridge"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Sub-agent and MCP trust inheritance",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "prior_deferred from run-13 (and run-1 before it): 3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); none touches this unit's paths, so its source is unchanged, and this unit sweep re-verified the carried records; still needs its own hunter pass"
+    ],
+    "prior_status": "prior_deferred",
+    "status": "deferred"
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fomp%2Fpolicies%23bash.patterns::omp%20approval%20overlay::home%2Fdot_agents%2Fomp::AI-AND-LLM.md%23Tool-schema%20and%20dispatcher%20disagreement",
+    "canonical_refs": {
+      "surface": "home/dot_agents/omp/policies#bash.patterns",
+      "boundary": "omp approval overlay",
+      "subsystem": "home/dot_agents/omp",
+      "attack_class": "AI-AND-LLM.md#Tool-schema and dispatcher disagreement"
+    },
+    "surface": "home/dot_agents/omp/policies#bash.patterns",
+    "boundary": "omp approval overlay",
+    "subsystem": "home/dot_agents/omp",
+    "attack_class": "AI-AND-LLM.md#Tool-schema and dispatcher disagreement",
+    "starting_paths": [
+      "home/dot_agents/omp/policies"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Tool-schema and dispatcher disagreement",
+      "AI-AND-LLM.md#Excessive agency and confused-deputy authority",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "home/dot_agents/omp/policies/README.md",
+      "home/dot_agents/omp/policies/audit.yml",
+      "home/dot_agents/omp/policies/orchestrator.yml",
+      "home/dot_agents/omp/policies/worker.yml"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "home/dot_agents/omp/policies/README.md",
+          "home/dot_agents/omp/policies/audit.yml",
+          "home/dot_agents/omp/policies/orchestrator.yml",
+          "home/dot_agents/omp/policies/worker.yml"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fskills%2Fkwp-%2A%23SKILL.md::home%2Fdot_agents%2Fagent-config.yaml%23skills%20audiences::home%2Fdot_agents%2Fskills::AI-AND-LLM.md%23Indirect%20injection%20through%20retrieved%20or%20ingested%20content",
+    "canonical_refs": {
+      "surface": "home/dot_agents/skills/kwp-*#SKILL.md",
+      "boundary": "home/dot_agents/agent-config.yaml#skills audiences",
+      "subsystem": "home/dot_agents/skills",
+      "attack_class": "AI-AND-LLM.md#Indirect injection through retrieved or ingested content"
+    },
+    "surface": "home/dot_agents/skills/kwp-*#SKILL.md",
+    "boundary": "home/dot_agents/agent-config.yaml#skills audiences",
+    "subsystem": "home/dot_agents/skills",
+    "attack_class": "AI-AND-LLM.md#Indirect injection through retrieved or ingested content",
+    "starting_paths": [
+      "home/dot_agents/skills/kwp-architecture/SKILL.md",
+      "home/dot_agents/skills/kwp-change-request/SKILL.md",
+      "home/dot_agents/skills/kwp-deploy-checklist/SKILL.md",
+      "home/dot_agents/skills/kwp-incident-response/SKILL.md",
+      "home/dot_agents/skills/kwp-risk-assessment/SKILL.md",
+      "home/dot_agents/skills/kwp-runbook/SKILL.md",
+      "home/dot_agents/skills/kwp-status-report/SKILL.md",
+      "home/dot_agents/skills/kwp-tech-debt/SKILL.md",
+      "home/dot_agents/skills/kwp-testing-strategy/SKILL.md",
+      "home/dot_agents/agent-config.yaml"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Indirect injection through retrieved or ingested content",
+      "AI-AND-LLM.md#Excessive agency and confused-deputy authority",
+      "AI-AND-LLM.md#Prompt role and provenance confusion",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "The change adds prompt text and its test; no HTTP or identity surface."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "The skills describe deployment practice as prose; no IaC, IAM or runtime configuration is added."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "Markdown, JSON, YAML and one Python test only."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser surface."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-merge",
+    "reviewed_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "home/dot_agents/skills/kwp-architecture/SKILL.md",
+      "home/dot_agents/skills/kwp-change-request/SKILL.md",
+      "home/dot_agents/skills/kwp-deploy-checklist/SKILL.md",
+      "home/dot_agents/skills/kwp-incident-response/SKILL.md",
+      "home/dot_agents/skills/kwp-risk-assessment/SKILL.md",
+      "home/dot_agents/skills/kwp-runbook/SKILL.md",
+      "home/dot_agents/skills/kwp-status-report/SKILL.md",
+      "home/dot_agents/skills/kwp-tech-debt/SKILL.md",
+      "home/dot_agents/skills/kwp-testing-strategy/SKILL.md"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-merge",
+        "reviewed_paths": [
+          "home/dot_agents/agent-config.yaml",
+          "home/dot_agents/skills/kwp-architecture/SKILL.md",
+          "home/dot_agents/skills/kwp-change-request/SKILL.md",
+          "home/dot_agents/skills/kwp-deploy-checklist/SKILL.md",
+          "home/dot_agents/skills/kwp-incident-response/SKILL.md",
+          "home/dot_agents/skills/kwp-risk-assessment/SKILL.md",
+          "home/dot_agents/skills/kwp-runbook/SKILL.md",
+          "home/dot_agents/skills/kwp-status-report/SKILL.md",
+          "home/dot_agents/skills/kwp-tech-debt/SKILL.md",
+          "home/dot_agents/skills/kwp-testing-strategy/SKILL.md"
+        ],
+        "invariant": "the nine kwp skills reach exactly the audiences the manifest names, and their text is the reviewed port",
+        "method": "source",
+        "result": "Changed under the merge: home/dot_agents/agent-config.yaml, by the U150 Graphify entry (:1325-1359) under `assets:` only; the nine audience lines (:114-123) and the nine SKILL.md files are byte-equal to 406fb9dd.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening": [
+      "The port rewrites each upstream connector gate 'If **~~<kind>** is connected:' (a connector the operator configured for that placeholder) to 'If <kind> tools are available in this session:' and adds 'use the ones available in this session' (drift test PLACEHOLDER_REPLACEMENT and CONNECTORS_REPLACEMENT, test_kwp_skills_drift.py:87-91). The incident-response, change-request and status-report skills then direct 'Page on-call responders', 'Post status updates to incident channel' and 'Post change updates to the relevant team channels' (kwp-incident-response/SKILL.md:150-156, kwp-change-request/SKILL.md:117-119) through whatever tool of that kind a session has; in an omp seat the hcom bus is such a tool, and the audience includes the yolo seats. Consider keeping those lines as offers, as status-report already does ('Offer to post', kwp-status-report/SKILL.md:72), or leaving the three skills out of the omp-worker and omp-orchestrator audiences."
+    ],
+    "status": "covered",
+    "prior_status": "prior_covered_changed_source"
+  },
+  {
+    "coverage_id": "home%2Fdot_agents%2Fskills%2Fkwp-%2A%23SKILL.md::tests%2Funit%2Ftest_kwp_skills_drift.py%23SKILLS::home%2Fdot_agents%2Fskills::SUPPLY-CHAIN-AND-RELEASE.md%23Plugin%20and%20extension%20trust%20expansion",
+    "canonical_refs": {
+      "surface": "home/dot_agents/skills/kwp-*#SKILL.md",
+      "boundary": "tests/unit/test_kwp_skills_drift.py#SKILLS",
+      "subsystem": "home/dot_agents/skills",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    },
+    "surface": "home/dot_agents/skills/kwp-*#SKILL.md",
+    "boundary": "tests/unit/test_kwp_skills_drift.py#SKILLS",
+    "subsystem": "home/dot_agents/skills",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion",
+    "starting_paths": [
+      "home/dot_agents/skills",
+      "tests/fixtures/kwp-upstream",
+      "tests/unit/test_kwp_skills_drift.py"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "The change adds prompt text and its test; no HTTP or identity surface."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "The skills describe deployment practice as prose; no IaC, IAM or runtime configuration is added."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "Markdown, JSON, YAML and one Python test only."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser surface."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      ".prettierignore",
+      "home/dot_agents/skills/kwp-architecture/SKILL.md",
+      "home/dot_agents/skills/kwp-change-request/SKILL.md",
+      "home/dot_agents/skills/kwp-deploy-checklist/SKILL.md",
+      "home/dot_agents/skills/kwp-incident-response/SKILL.md",
+      "home/dot_agents/skills/kwp-risk-assessment/SKILL.md",
+      "home/dot_agents/skills/kwp-runbook/SKILL.md",
+      "home/dot_agents/skills/kwp-status-report/SKILL.md",
+      "home/dot_agents/skills/kwp-tech-debt/SKILL.md",
+      "home/dot_agents/skills/kwp-testing-strategy/SKILL.md",
+      "tests/fixtures/kwp-upstream",
+      "tests/unit/test_kwp_skills_drift.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          ".prettierignore",
+          "home/dot_agents/skills/kwp-architecture/SKILL.md",
+          "home/dot_agents/skills/kwp-change-request/SKILL.md",
+          "home/dot_agents/skills/kwp-deploy-checklist/SKILL.md",
+          "home/dot_agents/skills/kwp-incident-response/SKILL.md",
+          "home/dot_agents/skills/kwp-risk-assessment/SKILL.md",
+          "home/dot_agents/skills/kwp-runbook/SKILL.md",
+          "home/dot_agents/skills/kwp-status-report/SKILL.md",
+          "home/dot_agents/skills/kwp-tech-debt/SKILL.md",
+          "home/dot_agents/skills/kwp-testing-strategy/SKILL.md",
+          "tests/fixtures/kwp-upstream",
+          "tests/unit/test_kwp_skills_drift.py"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "home%2Fdot_claude%2Fhooks%23PostToolUse%20and%20PreToolUse::unsandboxed%20Claude%20Code%20user%20hooks::home%2Fdot_claude::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "home/dot_claude/hooks#PostToolUse and PreToolUse",
+      "boundary": "unsandboxed Claude Code user hooks",
+      "subsystem": "home/dot_claude",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "home/dot_claude/hooks#PostToolUse and PreToolUse",
+    "boundary": "unsandboxed Claude Code user hooks",
+    "subsystem": "home/dot_claude",
+    "attack_class": "ATTACK-CLASSES.md#Injection",
+    "starting_paths": [
+      "home/dot_claude/hooks"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Tool-argument injection into a downstream sink",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "home/dot_claude/hooks/executable_enforce-uv.sh",
+      "home/dot_claude/hooks/executable_format-edited-files.py",
+      "home/dot_claude/hooks/executable_project-map-reload.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "home/dot_claude/hooks/executable_enforce-uv.sh",
+          "home/dot_claude/hooks/executable_format-edited-files.py",
+          "home/dot_claude/hooks/executable_project-map-reload.sh"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening": [
+      "project-map-reload opens any agent-written */.project-map/index.html in terminal-browser outside the sandbox (project-map-reload.sh); the page runs with a file:// origin in that browser profile."
+    ],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "home%2Fdot_claude%2Fskills%2Fkwp-%2A%2Fsymlink_SKILL.md.tmpl::chezmoi%20source%20directory%20symlink%20target::home%2Fdot_claude::SUPPLY-CHAIN-AND-RELEASE.md%23Build-context%20inclusion",
+    "canonical_refs": {
+      "surface": "home/dot_claude/skills/kwp-*/symlink_SKILL.md.tmpl",
+      "boundary": "chezmoi source directory symlink target",
+      "subsystem": "home/dot_claude",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Build-context inclusion"
+    },
+    "surface": "home/dot_claude/skills/kwp-*/symlink_SKILL.md.tmpl",
+    "boundary": "chezmoi source directory symlink target",
+    "subsystem": "home/dot_claude",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Build-context inclusion",
+    "starting_paths": [
+      "home/dot_claude/skills",
+      "scripts/generated-agent-outputs.json"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Build-context inclusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Local file ownership and TOCTOU",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "The change adds prompt text and its test; no HTTP or identity surface."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "The skills describe deployment practice as prose; no IaC, IAM or runtime configuration is added."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "Markdown, JSON, YAML and one Python test only."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser surface."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "home/dot_claude/skills/kwp-architecture/symlink_SKILL.md.tmpl",
+      "home/dot_claude/skills/kwp-change-request/symlink_SKILL.md.tmpl",
+      "home/dot_claude/skills/kwp-deploy-checklist/symlink_SKILL.md.tmpl",
+      "home/dot_claude/skills/kwp-incident-response/symlink_SKILL.md.tmpl",
+      "home/dot_claude/skills/kwp-risk-assessment/symlink_SKILL.md.tmpl",
+      "home/dot_claude/skills/kwp-runbook/symlink_SKILL.md.tmpl",
+      "home/dot_claude/skills/kwp-status-report/symlink_SKILL.md.tmpl",
+      "home/dot_claude/skills/kwp-tech-debt/symlink_SKILL.md.tmpl",
+      "home/dot_claude/skills/kwp-testing-strategy/symlink_SKILL.md.tmpl",
+      "scripts/generated-agent-outputs.json",
+      "tests/unit/test_kwp_skills_drift.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "home/dot_claude/skills/kwp-architecture/symlink_SKILL.md.tmpl",
+          "home/dot_claude/skills/kwp-change-request/symlink_SKILL.md.tmpl",
+          "home/dot_claude/skills/kwp-deploy-checklist/symlink_SKILL.md.tmpl",
+          "home/dot_claude/skills/kwp-incident-response/symlink_SKILL.md.tmpl",
+          "home/dot_claude/skills/kwp-risk-assessment/symlink_SKILL.md.tmpl",
+          "home/dot_claude/skills/kwp-runbook/symlink_SKILL.md.tmpl",
+          "home/dot_claude/skills/kwp-status-report/symlink_SKILL.md.tmpl",
+          "home/dot_claude/skills/kwp-tech-debt/symlink_SKILL.md.tmpl",
+          "home/dot_claude/skills/kwp-testing-strategy/symlink_SKILL.md.tmpl",
+          "scripts/generated-agent-outputs.json",
+          "tests/unit/test_kwp_skills_drift.py"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "home%2Fdot_config%2Fsheldon%2Fplugin_sources%23github%20plugins::home%2Fdot_config%2Fsheldon%2Fplugin_sources%2Fcommon.toml%23rev::home%2Fdot_config::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+    "canonical_refs": {
+      "surface": "home/dot_config/sheldon/plugin_sources#github plugins",
+      "boundary": "home/dot_config/sheldon/plugin_sources/common.toml#rev",
+      "subsystem": "home/dot_config",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    },
+    "surface": "home/dot_config/sheldon/plugin_sources#github plugins",
+    "boundary": "home/dot_config/sheldon/plugin_sources/common.toml#rev",
+    "subsystem": "home/dot_config",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+    "starting_paths": [
+      "home/dot_config/sheldon/plugin_sources/common.toml"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "home/dot_config/sheldon/plugin_sources/common.toml"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "home/dot_config/sheldon/plugin_sources/common.toml"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "home%2Fdot_config%2Fsystemd%2Fuser%2Fdisk-gc.timer.tmpl%23OnCalendar::home%2Fdot_local%2Fbin%2Fcommon%2Fexecutable_disk-gc%23worktree_gc::home%2Fdot_local%2Fbin::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "home/dot_config/systemd/user/disk-gc.timer.tmpl#OnCalendar",
+      "boundary": "home/dot_local/bin/common/executable_disk-gc#worktree_gc",
+      "subsystem": "home/dot_local/bin",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": "home/dot_config/systemd/user/disk-gc.timer.tmpl#OnCalendar",
+    "boundary": "home/dot_local/bin/common/executable_disk-gc#worktree_gc",
+    "subsystem": "home/dot_local/bin",
+    "attack_class": "ATTACK-CLASSES.md#Resource and file handling",
+    "starting_paths": [
+      "home/dot_local/bin/common/executable_disk-gc",
+      "home/dot_config/systemd/user/disk-gc.service.tmpl",
+      "home/dot_config/systemd/user/disk-gc.timer.tmpl"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Local file ownership and TOCTOU",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "v15-c4",
+    "reviewed_paths": [
+      "home/.chezmoiscripts/ubuntu/run_onchange_after_61-enable-disk-gc-timer.sh.tmpl",
+      "home/dot_config/systemd/user/disk-gc.service.tmpl",
+      "home/dot_config/systemd/user/disk-gc.timer.tmpl",
+      "home/dot_local/bin/common/executable_disk-gc",
+      "scripts/orchestrator/hcom-seat",
+      "scripts/orchestrator/worktree-gc.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "v15-c4",
+        "reviewed_paths": [
+          "home/.chezmoiscripts/ubuntu/run_onchange_after_61-enable-disk-gc-timer.sh.tmpl",
+          "home/dot_config/systemd/user/disk-gc.service.tmpl",
+          "home/dot_config/systemd/user/disk-gc.timer.tmpl",
+          "home/dot_local/bin/common/executable_disk-gc",
+          "scripts/orchestrator/hcom-seat",
+          "scripts/orchestrator/worktree-gc.sh"
+        ],
+        "invariant": "carried needs_validation record: the current source still supports the trace, and the blocker is still outside source and local observation",
+        "method": "source",
+        "result": "Re-verified at 3da428db: None of the merged paths is read by this record; every cited trace and evidence line read at 3da428db equals its line at 406fb9dd (cite-check.py, 0 missing); the claimed root cause, blockers and decision hold unchanged.",
+        "artifact": null
+      },
+      {
+        "agent_id": "r15-c4",
+        "reviewed_paths": [
+          "home/.chezmoiscripts/ubuntu/run_onchange_after_61-enable-disk-gc-timer.sh.tmpl",
+          "home/dot_config/systemd/user/disk-gc.service.tmpl",
+          "home/dot_config/systemd/user/disk-gc.timer.tmpl",
+          "home/dot_local/bin/common/executable_disk-gc",
+          "scripts/orchestrator/hcom-seat",
+          "scripts/orchestrator/worktree-gc.sh"
+        ],
+        "invariant": "Phase 5: the carried record matches the source at a442694c",
+        "method": "source",
+        "result": "Phase 5: trace, evidence, blockers and plans verified against the lines at 3da428db; decision verified (needs_validation kept).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "disk-gc:worktree-porcelain-path-field-split"
+    ],
+    "unresolved": [
+      "Requires running git and disk-gc against a fixture repository, which this run may not do."
+    ],
+    "prior_status": "prior_needs_validation",
+    "status": "candidate"
+  },
+  {
+    "coverage_id": "home%2Fdot_local%2Fbin%2Fcommon%23operator%20tools::same-user%20CLI%20helpers::home%2Fdot_local%2Fbin::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "home/dot_local/bin/common#operator tools",
+      "boundary": "same-user CLI helpers",
+      "subsystem": "home/dot_local/bin",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": "home/dot_local/bin/common#operator tools",
+    "boundary": "same-user CLI helpers",
+    "subsystem": "home/dot_local/bin",
+    "attack_class": "ATTACK-CLASSES.md#Resource and file handling",
+    "starting_paths": [
+      "home/dot_local/bin/common/executable_remove-agent-asset",
+      "home/dot_local/bin/common/executable_provision-machine-key",
+      "home/dot_local/bin/common/executable_setup-gh",
+      "home/dot_local/bin/common/executable_setup-gpg",
+      "home/dot_local/bin/common/executable_ua-symbol-coverage",
+      "home/dot_local/bin/server"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Credential-store and local-secret boundary mismatch",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "prior_deferred from run-13 (and run-1 before it): 3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); none touches this unit's paths, so its source is unchanged, and this unit sweep re-verified the carried records; still needs its own hunter pass"
+    ],
+    "prior_status": "prior_deferred",
+    "status": "deferred"
+  },
+  {
+    "coverage_id": "home%2Fdot_local%2Fbin%2Fcommon%2Fexecutable_permgate%23PermissionRequest::home%2Fdot_agents%2Fpermgate-policy.yaml%23allow_patterns::home%2Fdot_local%2Fbin::AI-AND-LLM.md%23Action-confirmation%20and%20approval%20binding",
+    "canonical_refs": {
+      "surface": "home/dot_local/bin/common/executable_permgate#PermissionRequest",
+      "boundary": "home/dot_agents/permgate-policy.yaml#allow_patterns",
+      "subsystem": "home/dot_local/bin",
+      "attack_class": "AI-AND-LLM.md#Action-confirmation and approval binding"
+    },
+    "surface": "home/dot_local/bin/common/executable_permgate#PermissionRequest",
+    "boundary": "home/dot_agents/permgate-policy.yaml#allow_patterns",
+    "subsystem": "home/dot_local/bin",
+    "attack_class": "AI-AND-LLM.md#Action-confirmation and approval binding",
+    "starting_paths": [
+      "home/dot_local/bin/common/executable_permgate",
+      "home/dot_agents/permgate-policy.yaml"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Action-confirmation and approval binding",
+      "AI-AND-LLM.md#Tool-schema and dispatcher disagreement",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "home/.chezmoitemplates/claude-settings-managed.json",
+      "home/dot_agents/permgate-policy.yaml",
+      "home/dot_local/bin/common/executable_permgate"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "home/.chezmoitemplates/claude-settings-managed.json",
+          "home/dot_agents/permgate-policy.yaml",
+          "home/dot_local/bin/common/executable_permgate"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "home%2Fdot_local%2Fbin%2Fcommon%2Fexecutable_regime-url-opener%23POST%20%2Fopen::check_url%20allow-list%20and%20X-Regime-Open%20header::home%2FLibrary::DESKTOP-MOBILE-AND-LOCAL-IPC.md%23IPC%20peer-authentication%20gaps",
+    "canonical_refs": {
+      "surface": "home/dot_local/bin/common/executable_regime-url-opener#POST /open",
+      "boundary": "check_url allow-list and X-Regime-Open header",
+      "subsystem": "home/Library",
+      "attack_class": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#IPC peer-authentication gaps"
+    },
+    "surface": "home/dot_local/bin/common/executable_regime-url-opener#POST /open",
+    "boundary": "check_url allow-list and X-Regime-Open header",
+    "subsystem": "home/Library",
+    "attack_class": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#IPC peer-authentication gaps",
+    "starting_paths": [
+      "home/dot_local/bin/common/executable_regime-url-opener",
+      "home/Library/LaunchAgents/com.mryfmo.dotfiles.url-opener.plist.tmpl"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#IPC peer-authentication gaps",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#File-open and intent authority confusion",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "home/Library/LaunchAgents/com.mryfmo.dotfiles.url-opener.plist.tmpl",
+      "home/dot_local/bin/common/executable_regime-url-opener",
+      "home/private_dot_ssh/private_config.tmpl"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "home/Library/LaunchAgents/com.mryfmo.dotfiles.url-opener.plist.tmpl",
+          "home/dot_local/bin/common/executable_regime-url-opener",
+          "home/private_dot_ssh/private_config.tmpl"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening": [
+      "The opener uses the single-threaded http.server.HTTPServer with no socket timeout, so one connection that sends nothing stalls it until it closes; any process on the laptop or the forwarded seat host can do that."
+    ],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "install%2Fubuntu%2Fserver%2Fssh_server.sh%23sshd_config::install%2Fubuntu%2Fserver%2Fssh_server.sh%23run_in_container_only::install::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "install/ubuntu/server/ssh_server.sh#sshd_config",
+      "boundary": "install/ubuntu/server/ssh_server.sh#run_in_container_only",
+      "subsystem": "install",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "surface": "install/ubuntu/server/ssh_server.sh#sshd_config",
+    "boundary": "install/ubuntu/server/ssh_server.sh#run_in_container_only",
+    "subsystem": "install",
+    "attack_class": "ATTACK-CLASSES.md#Access control",
+    "starting_paths": [
+      "install/ubuntu/server/ssh_server.sh",
+      "install/ubuntu/common/apparmor/bwrap-userns",
+      "home/private_dot_ssh/private_config.tmpl"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Privileged helper as confused deputy",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "home/private_dot_ssh/private_config.tmpl",
+      "install/ubuntu/common/apparmor/bwrap-userns",
+      "install/ubuntu/server/ssh_server.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "home/private_dot_ssh/private_config.tmpl",
+          "install/ubuntu/common/apparmor/bwrap-userns",
+          "install/ubuntu/server/ssh_server.sh"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening": [
+      "install/ubuntu/common/apparmor/bwrap-userns grants any caller of /usr/bin/bwrap unprivileged user namespaces (flags=(unconfined), userns), reopening the kernel attack surface Ubuntu restricts; the file documents this ceiling."
+    ],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "plans%23top-level%20directory::no%20runtime%20trust%20boundary::plans::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "plans#top-level directory",
+      "boundary": "no runtime trust boundary",
+      "subsystem": "plans",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "plans#top-level directory",
+    "boundary": "no runtime trust boundary",
+    "subsystem": "plans",
+    "attack_class": "ATTACK-CLASSES.md#Wildcard",
+    "starting_paths": [
+      "plans"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Prose planning documents; nothing executes or loads them."
+    ],
+    "status": "not_applicable",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "repository%20tracked%20files::.gitignore::.::ATTACK-CLASSES.md%23Obvious%20things",
+    "canonical_refs": {
+      "surface": "repository tracked files",
+      "boundary": ".gitignore",
+      "subsystem": ".",
+      "attack_class": "ATTACK-CLASSES.md#Obvious things"
+    },
+    "surface": "repository tracked files",
+    "boundary": ".gitignore",
+    "subsystem": ".",
+    "attack_class": "ATTACK-CLASSES.md#Obvious things",
+    "starting_paths": [
+      ".claude",
+      ".github",
+      ".orchestration",
+      ".ua",
+      "docs",
+      "home",
+      "install",
+      "plans",
+      "scripts",
+      "tests",
+      "vendor",
+      ".gitignore",
+      ".coderabbit.yaml",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "Dockerfile",
+      "Makefile",
+      "README.md",
+      "renovate.json",
+      "setup.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Build-context inclusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-merge",
+    "reviewed_paths": [
+      ".claude",
+      ".coderabbit.yaml",
+      ".github",
+      ".gitignore",
+      ".orchestration",
+      ".orchestration/orchestrate/regime-cutover/briefs/U145-bun-tests-on-every-test-cell.md",
+      ".orchestration/orchestrate/regime-cutover/briefs/U146-gate-job-pattern-compared.md",
+      ".orchestration/orchestrate/regime-cutover/briefs/U147-pr-merge-sweep-row-gate.md",
+      ".orchestration/orchestrate/regime-cutover/decisions.tsv",
+      ".orchestration/orchestrate/regime-cutover/ledger.tsv",
+      ".orchestration/orchestrate/regime-cutover/units.tsv",
+      ".orchestration/orchestrate/regime-cutover/verdicts/U145-9dab16ec.md",
+      ".orchestration/orchestrate/regime-cutover/verdicts/U20-914354b8.md",
+      ".ua",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "Dockerfile",
+      "Makefile",
+      "README.md",
+      "docs",
+      "docs/engagement-handout.md",
+      "home",
+      "home/.key.txt.age",
+      "home/dot_agents/agent-config.yaml",
+      "home/dot_agents/regime/AGENTS-audit-section.md",
+      "home/dot_agents/skills/kwp-architecture/SKILL.md",
+      "home/dot_agents/skills/kwp-change-request/SKILL.md",
+      "home/dot_agents/skills/kwp-deploy-checklist/SKILL.md",
+      "home/dot_agents/skills/kwp-incident-response/SKILL.md",
+      "home/dot_agents/skills/kwp-runbook/SKILL.md",
+      "home/dot_agents/skills/kwp-status-report/SKILL.md",
+      "home/dot_local/bin/common/executable_pr-merge.sh",
+      "install",
+      "install/common/credential_dirs.sh",
+      "plans",
+      "renovate.json",
+      "scripts",
+      "scripts/generated-agent-outputs.json",
+      "scripts/gh-auth.sh",
+      "scripts/orchestrator/README.md",
+      "scripts/orchestrator/ledger.py",
+      "scripts/orchestrator/pr-merge.sh",
+      "setup.sh",
+      "tests",
+      "tests/unit/test_graphify_asset.py",
+      "tests/unit/test_kwp_skills_drift.py",
+      "tests/unit/test_ledger.py",
+      "tests/unit/test_pr_levers.py",
+      "tests/unit/test_pr_merge.py",
+      "tests/unit/test_validate_agent_assets.py",
+      "vendor"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-merge",
+        "reviewed_paths": [
+          ".claude",
+          ".coderabbit.yaml",
+          ".github",
+          ".gitignore",
+          ".orchestration",
+          ".orchestration/orchestrate/regime-cutover/briefs/U145-bun-tests-on-every-test-cell.md",
+          ".orchestration/orchestrate/regime-cutover/briefs/U146-gate-job-pattern-compared.md",
+          ".orchestration/orchestrate/regime-cutover/briefs/U147-pr-merge-sweep-row-gate.md",
+          ".orchestration/orchestrate/regime-cutover/decisions.tsv",
+          ".orchestration/orchestrate/regime-cutover/ledger.tsv",
+          ".orchestration/orchestrate/regime-cutover/units.tsv",
+          ".orchestration/orchestrate/regime-cutover/verdicts/U145-9dab16ec.md",
+          ".orchestration/orchestrate/regime-cutover/verdicts/U20-914354b8.md",
+          ".ua",
+          "AGENTS.md",
+          "CLAUDE.md",
+          "Dockerfile",
+          "Makefile",
+          "README.md",
+          "docs",
+          "docs/engagement-handout.md",
+          "home",
+          "home/.key.txt.age",
+          "home/dot_agents/agent-config.yaml",
+          "home/dot_agents/regime/AGENTS-audit-section.md",
+          "home/dot_agents/skills/kwp-architecture/SKILL.md",
+          "home/dot_agents/skills/kwp-change-request/SKILL.md",
+          "home/dot_agents/skills/kwp-deploy-checklist/SKILL.md",
+          "home/dot_agents/skills/kwp-incident-response/SKILL.md",
+          "home/dot_agents/skills/kwp-runbook/SKILL.md",
+          "home/dot_agents/skills/kwp-status-report/SKILL.md",
+          "home/dot_local/bin/common/executable_pr-merge.sh",
+          "install",
+          "install/common/credential_dirs.sh",
+          "plans",
+          "renovate.json",
+          "scripts",
+          "scripts/generated-agent-outputs.json",
+          "scripts/gh-auth.sh",
+          "scripts/orchestrator/README.md",
+          "scripts/orchestrator/ledger.py",
+          "scripts/orchestrator/pr-merge.sh",
+          "setup.sh",
+          "tests",
+          "tests/unit/test_graphify_asset.py",
+          "tests/unit/test_kwp_skills_drift.py",
+          "tests/unit/test_ledger.py",
+          "tests/unit/test_pr_levers.py",
+          "tests/unit/test_pr_merge.py",
+          "tests/unit/test_validate_agent_assets.py",
+          "vendor"
+        ],
+        "invariant": "no tracked file publishes a credential, key or host-specific secret",
+        "method": "source",
+        "result": "Changed under the merge: U150's three files. The secret-pattern scan (private key headers, gh and github_pat tokens, sk-ant keys, AKIA keys) over the 326 lines 3da428db adds over 406fb9dd finds none (scan15.py); the test's stub wheel bytes and digests are fixtures. The two tests equal ac4af099, which run-12 scanned; the rest of the tree equals 406fb9dd, which run-13 scanned. .gitignore is unchanged.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening": [
+      "home/.key.txt.age publishes the passphrase-encrypted age identity in a public repository; its strength rests entirely on the passphrase (standard chezmoi pattern).",
+      "Seats read the machine's single gh login from ~/.config/gh/hosts.yml (not in the seat denyRead list); documented as out of scope (README:299, U29)."
+    ],
+    "status": "covered",
+    "prior_status": "prior_covered_changed_source"
+  },
+  {
+    "coverage_id": "scripts%2Fci%23CI%20helper%20scripts::.github%2Fworkflows%23run%20steps::scripts::SUPPLY-CHAIN-AND-RELEASE.md%23Cache%2C%20artifact%2C%20and%20workspace%20trust%20mixing",
+    "canonical_refs": {
+      "surface": "scripts/ci#CI helper scripts",
+      "boundary": ".github/workflows#run steps",
+      "subsystem": "scripts",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Cache, artifact, and workspace trust mixing"
+    },
+    "surface": "scripts/ci#CI helper scripts",
+    "boundary": ".github/workflows#run steps",
+    "subsystem": "scripts",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Cache, artifact, and workspace trust mixing",
+    "starting_paths": [
+      "scripts/ci",
+      "Makefile"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Cache, artifact, and workspace trust mixing",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "prior_deferred from run-13 (and run-1 before it): 3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); none touches this unit's paths, so its source is unchanged, and this unit sweep re-verified the carried records; still needs its own hunter pass"
+    ],
+    "prior_status": "prior_deferred",
+    "status": "deferred"
+  },
+  {
+    "coverage_id": "scripts%2Fgenerate-agent-configs.py%23render::scripts%2Fvalidate-agent-assets.py%23invariants::scripts::SUPPLY-CHAIN-AND-RELEASE.md%23Generated-source%20and%20codegen%20provenance%20gaps",
+    "canonical_refs": {
+      "surface": "scripts/generate-agent-configs.py#render",
+      "boundary": "scripts/validate-agent-assets.py#invariants",
+      "subsystem": "scripts",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    },
+    "surface": "scripts/generate-agent-configs.py#render",
+    "boundary": "scripts/validate-agent-assets.py#invariants",
+    "subsystem": "scripts",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps",
+    "starting_paths": [
+      "scripts/generate-agent-configs.py",
+      "scripts/validate-agent-assets.py",
+      "scripts/pin_records.py"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "prior_deferred from run-13 (and run-1 before it): 3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); none touches this unit's paths, so its source is unchanged, and this unit sweep re-verified the carried records; still needs its own hunter pass"
+    ],
+    "prior_status": "prior_deferred",
+    "status": "deferred"
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%23gh%20pr%20levers::scripts%2Forchestrator%2Fpr-merge.sh%23head%20pin::scripts%2Forchestrator::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator#gh pr levers",
+      "boundary": "scripts/orchestrator/pr-merge.sh#head pin",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "scripts/orchestrator#gh pr levers",
+    "boundary": "scripts/orchestrator/pr-merge.sh#head pin",
+    "subsystem": "scripts/orchestrator",
+    "attack_class": "ATTACK-CLASSES.md#Business logic",
+    "starting_paths": [
+      "scripts/orchestrator/pr-merge.sh",
+      "scripts/orchestrator/pr-update-branch.sh",
+      "scripts/orchestrator/pr-close.sh",
+      "scripts/orchestrator/records-sync.sh"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Build-to-promotion substitution",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "scripts/orchestrator/pr-close.sh",
+      "scripts/orchestrator/pr-merge.sh",
+      "scripts/orchestrator/pr-update-branch.sh",
+      "scripts/orchestrator/records-sync.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "scripts/orchestrator/pr-close.sh",
+          "scripts/orchestrator/pr-merge.sh",
+          "scripts/orchestrator/pr-update-branch.sh",
+          "scripts/orchestrator/records-sync.sh"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fhcom-dispatch%23--from::scripts%2Forchestrator%2FREADME.md%23Bus%20trust%20boundary::scripts%2Forchestrator::DESKTOP-MOBILE-AND-LOCAL-IPC.md%23Claimed%20principal%20versus%20channel%20identity",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/hcom-dispatch#--from",
+      "boundary": "scripts/orchestrator/README.md#Bus trust boundary",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Claimed principal versus channel identity"
+    },
+    "surface": "scripts/orchestrator/hcom-dispatch#--from",
+    "boundary": "scripts/orchestrator/README.md#Bus trust boundary",
+    "subsystem": "scripts/orchestrator",
+    "attack_class": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Claimed principal versus channel identity",
+    "starting_paths": [
+      "scripts/orchestrator/hcom-dispatch",
+      "scripts/orchestrator/README.md",
+      "home/dot_agents/omp/hooks/stop-gate.ts"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Claimed principal versus channel identity",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#IPC peer-authentication gaps",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "v15-c5",
+    "reviewed_paths": [
+      "home/dot_agents/omp/hooks/stop-gate.ts",
+      "scripts/orchestrator/README.md",
+      "scripts/orchestrator/hcom-dispatch",
+      "scripts/orchestrator/hcom-seat"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "v15-c5",
+        "reviewed_paths": [
+          "home/dot_agents/omp/hooks/stop-gate.ts",
+          "scripts/orchestrator/README.md",
+          "scripts/orchestrator/hcom-dispatch",
+          "scripts/orchestrator/hcom-seat"
+        ],
+        "invariant": "carried needs_validation record: the current source still supports the trace, and the blocker is still outside source and local observation",
+        "method": "source",
+        "result": "Re-verified at 3da428db: None of the merged paths is read by this record; every cited trace and evidence line read at 3da428db equals its line at 406fb9dd (cite-check.py, 0 missing); the claimed root cause, blockers and decision hold unchanged.",
+        "artifact": null
+      },
+      {
+        "agent_id": "r15-c5",
+        "reviewed_paths": [
+          "home/dot_agents/omp/hooks/stop-gate.ts",
+          "scripts/orchestrator/README.md",
+          "scripts/orchestrator/hcom-dispatch",
+          "scripts/orchestrator/hcom-seat"
+        ],
+        "invariant": "Phase 5: the carried record matches the source at a442694c",
+        "method": "source",
+        "result": "Phase 5: trace, evidence, blockers and plans verified against the lines at 3da428db; decision verified (needs_validation kept).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "hcom-bus:sender-identity-caller-asserted"
+    ],
+    "unresolved": [
+      "hcom's sender binding is external behavior; needs a two-seat local run."
+    ],
+    "prior_status": "prior_needs_validation",
+    "status": "candidate"
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fhcom-seat%23deny_write::.claude%2Fsettings.json%23hooks::scripts%2Forchestrator::ATTACK-CLASSES.md%23Chained%20vulnerabilities%20and%20trust%20boundaries",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/hcom-seat#deny_write",
+      "boundary": ".claude/settings.json#hooks",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries"
+    },
+    "surface": "scripts/orchestrator/hcom-seat#deny_write",
+    "boundary": ".claude/settings.json#hooks",
+    "subsystem": "scripts/orchestrator",
+    "attack_class": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "starting_paths": [
+      "scripts/orchestrator/hcom-seat",
+      ".claude/settings.json",
+      ".claude/hooks",
+      ".claude/contextdb"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Sub-agent and MCP trust inheritance",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "v15-c3",
+    "reviewed_paths": [
+      ".claude/contextdb/contextdb/hook.py",
+      ".claude/hooks/contextdb_hook.py",
+      ".claude/settings.json",
+      "home/dot_agents/omp/policies/orchestrator.yml",
+      "scripts/orchestrator/hcom-seat"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "v15-c3",
+        "reviewed_paths": [
+          ".claude/contextdb/contextdb/hook.py",
+          ".claude/hooks/contextdb_hook.py",
+          ".claude/settings.json",
+          "home/dot_agents/omp/policies/orchestrator.yml",
+          "scripts/orchestrator/hcom-seat"
+        ],
+        "invariant": "carried needs_validation record: the current source still supports the trace, and the blocker is still outside source and local observation",
+        "method": "source",
+        "result": "Re-verified at 3da428db: None of the merged paths is read by this record; every cited trace and evidence line read at 3da428db equals its line at 406fb9dd (cite-check.py, 0 missing); the claimed root cause, blockers and decision hold unchanged.",
+        "artifact": null
+      },
+      {
+        "agent_id": "r15-c3",
+        "reviewed_paths": [
+          ".claude/contextdb/contextdb/hook.py",
+          ".claude/hooks/contextdb_hook.py",
+          ".claude/settings.json",
+          "home/dot_agents/omp/policies/orchestrator.yml",
+          "scripts/orchestrator/hcom-seat"
+        ],
+        "invariant": "Phase 5: the carried record matches the source at a442694c",
+        "method": "source",
+        "result": "Phase 5: trace, evidence, blockers and plans verified against the lines at 3da428db; decision verified (needs_validation kept).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "hcom-seat:srt-deny-write-misses-claude-hook-package"
+    ],
+    "unresolved": [
+      "Whether Claude Code sessions with the checkout's project hooks run in a seat-writable directory is a deployment fact; srt enforcement needs a sandboxed run."
+    ],
+    "prior_status": "prior_needs_validation",
+    "status": "candidate"
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fhcom-seat%23seat_write_roots::scripts%2Forchestrator%2Fhcom-seat%23seat_sandbox_write::scripts%2Forchestrator::AI-AND-LLM.md%23Sub-agent%20and%20MCP%20trust%20inheritance",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/hcom-seat#seat_write_roots",
+      "boundary": "scripts/orchestrator/hcom-seat#seat_sandbox_write",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "AI-AND-LLM.md#Sub-agent and MCP trust inheritance"
+    },
+    "surface": "scripts/orchestrator/hcom-seat#seat_write_roots",
+    "boundary": "scripts/orchestrator/hcom-seat#seat_sandbox_write",
+    "subsystem": "scripts/orchestrator",
+    "attack_class": "AI-AND-LLM.md#Sub-agent and MCP trust inheritance",
+    "starting_paths": [
+      "scripts/orchestrator/hcom-seat",
+      "scripts/orchestrator/README.md"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Sub-agent and MCP trust inheritance",
+      "AI-AND-LLM.md#Persistent memory poisoning",
+      "AI-AND-LLM.md#MCP server and tool identity confusion",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "v15-c2",
+    "reviewed_paths": [
+      "home/dot_agents/omp/policies/worker.yml",
+      "scripts/generate-agent-configs.py",
+      "scripts/orchestrator/README.md",
+      "scripts/orchestrator/hcom-seat"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "v15-c2",
+        "reviewed_paths": [
+          "home/dot_agents/omp/policies/worker.yml",
+          "scripts/generate-agent-configs.py",
+          "scripts/orchestrator/README.md",
+          "scripts/orchestrator/hcom-seat"
+        ],
+        "invariant": "carried needs_validation record: the current source still supports the trace, and the blocker is still outside source and local observation",
+        "method": "source",
+        "result": "Re-verified at 3da428db: None of the merged paths is read by this record; every cited trace and evidence line read at 3da428db equals its line at 406fb9dd (cite-check.py, 0 missing); the claimed root cause, blockers and decision hold unchanged.",
+        "artifact": null
+      },
+      {
+        "agent_id": "r15-c2",
+        "reviewed_paths": [
+          "home/dot_agents/omp/policies/worker.yml",
+          "scripts/generate-agent-configs.py",
+          "scripts/orchestrator/README.md",
+          "scripts/orchestrator/hcom-seat"
+        ],
+        "invariant": "Phase 5: the carried record matches the source at a442694c",
+        "method": "source",
+        "result": "Phase 5: trace, evidence, blockers and plans verified against the lines at 3da428db; decision verified (needs_validation kept).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "hcom-seat:srt-write-roots-share-operator-claude-config"
+    ],
+    "unresolved": [
+      "Claude Code's handling of user-scope mcpServers and ~/.claude/rules and srt's file-root semantics are runtime facts; target execution is forbidden in this run."
+    ],
+    "prior_status": "prior_needs_validation",
+    "status": "candidate"
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fpr-audit.sh%23codex%20exec::home%2Fdot_agents%2Fcodex-audit%2Fconfig.toml%23default_permissions::scripts%2Forchestrator::AI-AND-LLM.md%23Indirect%20injection%20through%20retrieved%20or%20ingested%20content",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/pr-audit.sh#codex exec",
+      "boundary": "home/dot_agents/codex-audit/config.toml#default_permissions",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "AI-AND-LLM.md#Indirect injection through retrieved or ingested content"
+    },
+    "surface": "scripts/orchestrator/pr-audit.sh#codex exec",
+    "boundary": "home/dot_agents/codex-audit/config.toml#default_permissions",
+    "subsystem": "scripts/orchestrator",
+    "attack_class": "AI-AND-LLM.md#Indirect injection through retrieved or ingested content",
+    "starting_paths": [
+      "scripts/orchestrator/pr-audit.sh",
+      "home/dot_agents/codex-audit/config.toml"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Indirect injection through retrieved or ingested content",
+      "AI-AND-LLM.md#Sensitive context extraction",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "prior_deferred from run-13 (and run-1 before it): 3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); none touches this unit's paths, so its source is unchanged, and this unit sweep re-verified the carried records; still needs its own hunter pass"
+    ],
+    "prior_status": "prior_deferred",
+    "status": "deferred"
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fpr-merge.sh%23require_sweep_row::scripts%2Forchestrator%2Fbrief-check.py%23sections%20TRUST%20mark%20and%20scripts%2Forchestrator%2Fledger.py%23newest_sweep::scripts%2Forchestrator::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/pr-merge.sh#require_sweep_row",
+      "boundary": "scripts/orchestrator/brief-check.py#sections TRUST mark and scripts/orchestrator/ledger.py#newest_sweep",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "scripts/orchestrator/pr-merge.sh#require_sweep_row",
+    "boundary": "scripts/orchestrator/brief-check.py#sections TRUST mark and scripts/orchestrator/ledger.py#newest_sweep",
+    "subsystem": "scripts/orchestrator",
+    "attack_class": "ATTACK-CLASSES.md#Business logic",
+    "starting_paths": [
+      "scripts/orchestrator/pr-merge.sh",
+      "scripts/orchestrator/ledger.py",
+      "scripts/orchestrator/brief-check.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Release authorization and signing-policy gaps",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules",
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Action-confirmation and approval binding",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "The change is a local shell lever and a TSV reader; GitHub is reached only through gh reads that predate it."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM or runtime configuration in the change."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "Bash and Python only."
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+        "reason": "One operator's single store; no tenant or retention boundary in the change."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-merge",
+    "reviewed_paths": [
+      "home/dot_agents/agent-config.yaml",
+      "home/dot_local/bin/common/executable_pr-merge.sh",
+      "scripts/orchestrator/README.md",
+      "scripts/orchestrator/brief-check.py",
+      "scripts/orchestrator/hcom-seat",
+      "scripts/orchestrator/ledger.py",
+      "scripts/orchestrator/pr-merge.sh",
+      "tests/unit/test_ledger.py",
+      "tests/unit/test_pr_merge.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-merge",
+        "reviewed_paths": [
+          "home/dot_local/bin/common/executable_pr-merge.sh",
+          "scripts/orchestrator/brief-check.py",
+          "scripts/orchestrator/pr-merge.sh"
+        ],
+        "invariant": "a trust-boundary unit never merges without its sweep row at the audited head, and every failed or ambiguous read refuses or fails instead of reading as 'no TRUST'",
+        "method": "source",
+        "result": "Re-verified at 3da428db: every path of this unit but agent-config.yaml is byte-equal to 406fb9dd, and the manifest adds only the Graphify entry. Run-13's result, which holds at the same lines: Re-verified at 406fb9dd: pr-merge.sh, its installed copy, brief-check.py, ledger.py, the README, hcom-seat and the gate's tests are byte-equal to run-9's 84b4e984; agent-config.yaml differs from it only by the ten U148 lines (:114-123, a comment and nine skills.audience entries). Run-9's result, which holds at the same lines: require_sweep_row (pr-merge.sh:699-800) keeps run-3's decision table: one brief of this user or a refusal; the mark read by the checker's own sections() through trust_probe (:269-321), mapped 0 mark, 3 no mark, 2 refusal, anything else failure (:728-737); the unit bound to the verdict row's unit (:444-455). Round 4 compiles the checker from its source text into a fresh module (:297), so no __pycache__ entry is read or written, keeps __file__ so the checker's self-check finds its manifest, and names an exit at import that wrote nothing (:310-315).",
+        "artifact": null
+      },
+      {
+        "agent_id": "h15-merge",
+        "reviewed_paths": [
+          "home/dot_agents/agent-config.yaml",
+          "scripts/orchestrator/ledger.py",
+          "scripts/orchestrator/pr-merge.sh",
+          "tests/unit/test_ledger.py",
+          "tests/unit/test_pr_merge.py"
+        ],
+        "invariant": "only the exact sweep row of the Audit rule opens the gate: pr -, the pinned skill as verifier, a findings file in the store",
+        "method": "source",
+        "result": "Re-verified at 3da428db: every path of this unit but agent-config.yaml is byte-equal to 406fb9dd, and the manifest adds only the Graphify entry. Run-13's result, which holds at the same lines: Re-verified at 406fb9dd: pr-merge.sh, its installed copy, brief-check.py, ledger.py, the README, hcom-seat and the gate's tests are byte-equal to run-9's 84b4e984; agent-config.yaml differs from it only by the ten U148 lines (:114-123, a comment and nine skills.audience entries). Run-9's result, which holds at the same lines: ledger.py refuses as Malformed any sweep row of the unit whose pr is not '-', whose verifier does not begin 'security-audit-skill <8+ hex>', or whose first evidence field is not sweeps/<path>.json without '..' or empty components (ledger.py:69-72, :129-150, :190-208). The lever reads the answer by its shape, requires the pin word to be a prefix of assets.security-audit-skill.pin read by sweep_pin_probe from LEVER_MANIFEST, the manifest its own sha256 self-check read, which for the installed lever is ~/.agents/agent-config.yaml outside every sandbox write root (pr-merge.sh:333-380, :771-780), and requires the findings file to be a regular file of this user under <store>/sweeps/, also rejecting '.' components (:784-799). The probe parses the manifest by indentation and accepts exactly one `pin: <40 hex>` line at the asset's field level; zero or two is a refusal. The installed copy is byte-identical and its sha256 7f84f11b equals the pin (agent-config.yaml:875, generated-agent-outputs.json).",
+        "artifact": null
+      },
+      {
+        "agent_id": "h15-merge",
+        "reviewed_paths": [
+          "home/dot_agents/agent-config.yaml",
+          "scripts/orchestrator/README.md",
+          "scripts/orchestrator/hcom-seat"
+        ],
+        "invariant": "the gate's inputs are not writable by a principal it is meant to constrain",
+        "method": "source",
+        "result": "Re-verified at 3da428db: every path of this unit but agent-config.yaml is byte-equal to 406fb9dd, and the manifest adds only the Graphify entry. Run-13's result, which holds at the same lines: Re-verified at 406fb9dd: pr-merge.sh, its installed copy, brief-check.py, ledger.py, the README, hcom-seat and the gate's tests are byte-equal to run-9's 84b4e984; agent-config.yaml differs from it only by the ten U148 lines (:114-123, a comment and nine skills.audience entries). Run-9's result, which holds at the same lines: Unchanged from run-3: the briefs, ledger.tsv, the sweeps/ files, brief-check.py and ledger.py all live in the main checkout, the orchestrator seat's own write root (hcom-seat:1151), and that seat runs the lever and writes the ledger rows (README.md:173); the manifest pin now comes from the deployed manifest, which no seat or sandbox can write. Recorded as hardening, not a candidate.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h15-merge",
+        "reviewed_paths": [
+          "home/dot_agents/agent-config.yaml",
+          "scripts/orchestrator/pr-merge.sh"
+        ],
+        "invariant": "the merged manifest still yields exactly the one skill pin the gate compares, so neither the U148 lines nor the U150 entry adds a pin or hides the real one",
+        "method": "source",
+        "result": "sweep_pin_probe (pr-merge.sh:333-380) counts only `pin: <40 hex>` lines at the first-field indent of assets.security-audit-skill (:338, :355-365). Here the U148 lines (agent-config.yaml:114-123) are flow-style entries under `skills:` / `audience:`, never on that key path; the asset opens at :1302 with pin c1c8a8c1 at :1305, and the U150 entry `  graphifyy:` at :1325, at the asset indent, closes it before its own `pin: 0.9.99` (:1328), which is not 40 hex either. The probe still finds one pin, the skill's, and the merge adds no input to the gate.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening": [
+      "trust_probe still runs the checkout copy scripts/orchestrator/brief-check.py (pr-merge.sh:869, :728), and the comment at pr-merge.sh:253 still says its import-time pin self-check means 'a rewritten checker reads no brief'; outside ~/.local/bin/common that self-check compares the file with the checkout's own home/dot_agents/agent-config.yaml (brief-check.py:75-91), and a rewrite can drop the check itself; the same holds for the unpinned checkout ledger.py. Round 4 already reads the skill pin from LEVER_MANIFEST; reading the pinned installed ~/.local/bin/common/brief-check.py the same way would make the comment true.",
+      "The findings-file check refuses a symlink only at the last component (`! -L ${findings_file}`, pr-merge.sh:798) after checking sweeps/ itself; a symlinked subdirectory below sweeps/ (sweeps/<link>/x.json) passes -f and -O through the link, so the file need not be under the store. The lever never opens it and the store is the orchestrator's own, so this weakens only the stated 'under the store' property; a physical-path check (cd -P and a prefix compare) would close it.",
+      "RESOLVED since run-3: newest_sweep accepted any row starting with the word sweep whatever its pr and verifier; round 4 requires pr '-', the 'security-audit-skill <pin>' verifier with the pin checked against the deployed manifest, and a findings file under sweeps/ (ledger.py:129-150, pr-merge.sh:771-799)."
+    ],
+    "status": "covered",
+    "prior_status": "prior_covered_changed_source"
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fregime-start%23--supervise::home%2FLibrary%2FLaunchAgents%2Fcom.mryfmo.dotfiles.regime-supervisor.plist.tmpl::scripts%2Forchestrator::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/regime-start#--supervise",
+      "boundary": "home/Library/LaunchAgents/com.mryfmo.dotfiles.regime-supervisor.plist.tmpl",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "scripts/orchestrator/regime-start#--supervise",
+    "boundary": "home/Library/LaunchAgents/com.mryfmo.dotfiles.regime-supervisor.plist.tmpl",
+    "subsystem": "scripts/orchestrator",
+    "attack_class": "ATTACK-CLASSES.md#Business logic",
+    "starting_paths": [
+      "scripts/orchestrator/regime-start",
+      "scripts/orchestrator/regime-stop",
+      "scripts/orchestrator/regime-init",
+      "scripts/orchestrator/seat-login-preflight"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Privileged helper as confused deputy",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Universal moves",
+      "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "prior_deferred from run-13 (and run-1 before it): 3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); none touches this unit's paths, so its source is unchanged, and this unit sweep re-verified the carried records; still needs its own hunter pass"
+    ],
+    "prior_status": "prior_deferred",
+    "status": "deferred"
+  },
+  {
+    "coverage_id": "scripts%2Forchestrator%2Fworker-worktree.sh%23push%20path::scripts%2Forchestrator%2Fcheckout-guard.sh%23pre-commit::scripts%2Forchestrator::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "scripts/orchestrator/worker-worktree.sh#push path",
+      "boundary": "scripts/orchestrator/checkout-guard.sh#pre-commit",
+      "subsystem": "scripts/orchestrator",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "surface": "scripts/orchestrator/worker-worktree.sh#push path",
+    "boundary": "scripts/orchestrator/checkout-guard.sh#pre-commit",
+    "subsystem": "scripts/orchestrator",
+    "attack_class": "ATTACK-CLASSES.md#Access control",
+    "starting_paths": [
+      "scripts/orchestrator/worker-worktree.sh",
+      "scripts/orchestrator/checkout-guard.sh",
+      "scripts/orchestrator/git-isolated.sh",
+      "scripts/orchestrator/worktree-gc.sh"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Automation identity overreach",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "prior_deferred from run-13 (and run-1 before it): 3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); none touches this unit's paths, so its source is unchanged, and this unit sweep re-verified the carried records; still needs its own hunter pass"
+    ],
+    "prior_status": "prior_deferred",
+    "status": "deferred"
+  },
+  {
+    "coverage_id": "scripts%2Fupdate-agent-assets.sh%23asset%20installers::home%2Fdot_agents%2Fagent-config.yaml%23assets::scripts::SUPPLY-CHAIN-AND-RELEASE.md%23Plugin%20and%20extension%20trust%20expansion",
+    "canonical_refs": {
+      "surface": "scripts/update-agent-assets.sh#asset installers",
+      "boundary": "home/dot_agents/agent-config.yaml#assets",
+      "subsystem": "scripts",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion"
+    },
+    "surface": "scripts/update-agent-assets.sh#asset installers",
+    "boundary": "home/dot_agents/agent-config.yaml#assets",
+    "subsystem": "scripts",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion",
+    "starting_paths": [
+      "scripts/update-agent-assets.sh",
+      "home/dot_agents/agent-config.yaml",
+      "scripts/lib"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Update metadata and rollback confusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "scripts/lib/installer-pins.sh",
+      "scripts/update-agent-assets.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "scripts/lib/installer-pins.sh",
+          "scripts/update-agent-assets.sh"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "scripts%2Fupgrade-tools.sh%23upgrade_uv_tools::scripts%2Fupgrade-tools.sh%23manifest_wheel_pin::scripts::SUPPLY-CHAIN-AND-RELEASE.md%23Update%20metadata%20and%20rollback%20confusion",
+    "canonical_refs": {
+      "surface": "scripts/upgrade-tools.sh#upgrade_uv_tools",
+      "boundary": "scripts/upgrade-tools.sh#manifest_wheel_pin",
+      "subsystem": "scripts",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Update metadata and rollback confusion"
+    },
+    "surface": "scripts/upgrade-tools.sh#upgrade_uv_tools",
+    "boundary": "scripts/upgrade-tools.sh#manifest_wheel_pin",
+    "subsystem": "scripts",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Update metadata and rollback confusion",
+    "starting_paths": [
+      "scripts/upgrade-tools.sh",
+      "home/dot_agents/agent-config.yaml",
+      "tests/unit/test_graphify_asset.py"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Update metadata and rollback confusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "A local upgrade loop over uv's tool list; no HTTP or identity surface."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM or runtime configuration."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "Bash and awk only."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "unresolved": [],
+    "result_fingerprints": [],
+    "prior_status": "prior_covered_changed_source",
+    "status": "covered",
+    "agent_id": "h15-merge",
+    "local_checks": [
+      {
+        "agent_id": "h15-merge",
+        "reviewed_paths": [
+          "Makefile",
+          "home/dot_agents/agent-config.yaml",
+          "scripts/upgrade-tools.sh",
+          "tests/unit/test_graphify_asset.py"
+        ],
+        "invariant": "make update still skips the pinned graphify tool and never reinstalls it unverified",
+        "method": "source",
+        "result": "Changed under the merge: home/dot_agents/agent-config.yaml, by U148's audience lines only; the Graphify entry (now :1325-1359), scripts/upgrade-tools.sh and the test (test_graphify_asset.py:202-205) are byte-equal to ac4af099, so manifest_wheel_pin still returns 0.9.99 for graphifyy and upgrade_uv_tools still skips it (upgrade-tools.sh:552-557).",
+        "artifact": null
+      }
+    ],
+    "reviewed_paths": [
+      "Makefile",
+      "home/dot_agents/agent-config.yaml",
+      "scripts/upgrade-tools.sh",
+      "tests/unit/test_graphify_asset.py"
+    ]
+  },
+  {
+    "coverage_id": "setup.sh%23bootstrap%20downloads::setup.sh%23verify_checksum_manifest::install::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+    "canonical_refs": {
+      "surface": "setup.sh#bootstrap downloads",
+      "boundary": "setup.sh#verify_checksum_manifest",
+      "subsystem": "install",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    },
+    "surface": "setup.sh#bootstrap downloads",
+    "boundary": "setup.sh#verify_checksum_manifest",
+    "subsystem": "install",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+    "starting_paths": [
+      "setup.sh",
+      "install",
+      "home/.chezmoiscripts",
+      "Dockerfile"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Dependency source and namespace confusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Build-context inclusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      "Dockerfile",
+      "home/.chezmoiscripts",
+      "install",
+      "setup.sh"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          "Dockerfile",
+          "home/.chezmoiscripts",
+          "install",
+          "setup.sh"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening": [
+      "Docker and Tailscale apt signing keys are fetched over HTTPS and installed without a fingerprint check (install/ubuntu/client/docker.sh:74-75, install/ubuntu/client/tailscale.sh:34-35), unlike the pinned-fingerprint handling for AWS CLI and mise; TLS to the vendor is the only check."
+    ],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  },
+  {
+    "coverage_id": "tests%23top-level%20directory::no%20runtime%20trust%20boundary::tests::ATTACK-CLASSES.md%23Wildcard",
+    "canonical_refs": {
+      "surface": "tests#top-level directory",
+      "boundary": "no runtime trust boundary",
+      "subsystem": "tests",
+      "attack_class": "ATTACK-CLASSES.md#Wildcard"
+    },
+    "surface": "tests#top-level directory",
+    "boundary": "no runtime trust boundary",
+    "subsystem": "tests",
+    "attack_class": "ATTACK-CLASSES.md#Wildcard",
+    "starting_paths": [
+      "tests"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Wildcard",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Unit and install tests with fixtures; run only in CI with contents: read and never deployed to hosts. Covered only by the tracked-file secret scan (dummy values). At 4e83aba7 it also holds tests/fixtures/kwp-upstream (the pinned upstream copies of the nine kwp skills and their LICENSE) and tests/unit/test_kwp_skills_drift.py, test data and a test that run only in CI; reviewed under the kwp units. Changed at c44a7c6c: tests/unit/test_kwp_skills_drift.py (the U148 round-2 drift test), still a test only. Changed at 406fb9dd (the merge of main 30e94d9b): tests/unit/test_ledger.py, tests/unit/test_pr_merge.py, tests/unit/test_pr_levers.py (the U147 gate's tests, byte-equal to 84b4e984), still tests only. At 3da428db (the merge of main into the U150 head) it also holds tests/unit/test_graphify_asset.py and the Graphify cases of tests/unit/test_validate_agent_assets.py, byte-equal to ac4af099 and read under the Graphify units; still tests only."
+    ],
+    "status": "not_applicable",
+    "prior_status": "prior_covered_changed_source"
+  },
+  {
+    "coverage_id": "vendor%2Fcompactiondb%23vendored%20package::vendor%2Fcompactiondb%2FMANIFEST.sha256::vendor::SUPPLY-CHAIN-AND-RELEASE.md%23Generated-source%20and%20codegen%20provenance%20gaps",
+    "canonical_refs": {
+      "surface": "vendor/compactiondb#vendored package",
+      "boundary": "vendor/compactiondb/MANIFEST.sha256",
+      "subsystem": "vendor",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps"
+    },
+    "surface": "vendor/compactiondb#vendored package",
+    "boundary": "vendor/compactiondb/MANIFEST.sha256",
+    "subsystem": "vendor",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps",
+    "starting_paths": [
+      "vendor/compactiondb"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Generated-source and codegen provenance gaps",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Build-context inclusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No HTTP application, session, or identity-provider server in this repository; the only HTTP listeners are loopback helpers covered by the local-IPC companion."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "No IaC, IAM, Kubernetes, or cloud event source; the Dockerfile builds a local test container only."
+      },
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unsafe code; shell, Python, and TypeScript only."
+      },
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "The hcom bus is an external binary; its message trust is reviewed through the local-IPC claimed-principal class."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Core discipline",
+        "reason": "No browser application or extension in source."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+        "reason": "No shared multi-user service; local single-operator tooling only, availability effects are self-impact."
+      }
+    ],
+    "attempts": [],
+    "wave": 1,
+    "agent_id": "h15-carry",
+    "reviewed_paths": [
+      ".claude/contextdb",
+      "home/dot_local/bin/common/executable_compactiondb-install",
+      "vendor/compactiondb"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h15-carry",
+        "reviewed_paths": [
+          ".claude/contextdb",
+          "home/dot_local/bin/common/executable_compactiondb-install",
+          "vendor/compactiondb"
+        ],
+        "invariant": "the reviewed source is unchanged at this head",
+        "method": "source",
+        "result": "3da428db merges main dab64ca1 (tree equal to 406fb9dd: main 30e94d9b plus U148) into the U150 head ac4af099: git diff 406fb9dd 3da428db lists only U150's three files, tests/unit/test_graphify_asset.py and tests/unit/test_validate_agent_assets.py byte-equal to ac4af099 and agent-config.yaml the union (the Graphify entry at :1325-1359, after U148's audience lines :114-123); no path this unit reads is among them, so the run-13 source checks apply byte-for-byte; no reassignment proposed by the critic.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "status": "covered",
+    "prior_status": "prior_covered_same_source"
+  }
+]

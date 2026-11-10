@@ -69,10 +69,11 @@ first=$(printf w) || fail 'no w'
 # producer-status-check (U112 round 13): a descriptor spelled `02`, the move `1>&2-` and a `<&`, so the decimal
 # reading of the descriptor and both dup operators the lint reads are in the tree.
 git ls-files > "$dir/list" 2> "$dir/err" 02>&1 1>&2- <&0 || exit 1
-# producer-status-check (U112 round 14): the one `source` shape rule f accepts, so the parameter and the two literals
-# the rule reads are in the tree.
+# producer-status-check (U112 round 14, U216c): the one `source` shape rule f accepts, so the parameter and the three
+# literals the rule reads are in the tree.
 . "${LEVER_DIR}/git-isolated.sh"
 . "${LEVER_DIR}/read-lib.sh"
+. "${LEVER_DIR}/regime-env"
 # producer-status-check (U112 round 17): a declaration whose argument is a quoted assignment word, so the variant and
 # the arguments the lint reads on a DeclClause are in the tree.
 export 'FIRST=1'

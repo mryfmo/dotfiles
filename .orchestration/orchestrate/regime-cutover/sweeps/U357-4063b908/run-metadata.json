@@ -1,0 +1,167 @@
+{
+  "run_id": "dotfiles-sweep-3-run-32",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "4063b9085175008a472227285c6ec23ac9ad053c",
+    "branch": "(detached at the U355 head)",
+    "base": "6ad1be2304d8cdef975136e44e5cde5c86219374",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U355 change against its merge base origin/main 6ad1be23 (2 files: home/dot_dsh/plugins/omp-gateway/config.mjs's DEFAULT_ENV_NAMES and its test); U317 as merged on main (#711, after U317d) re-checked against run-29's four leads; the run-31 records re-checked at this head; every other path is carried out_of_scope",
+  "scope_note": "The brief does not match the head: its title repeats U310h's description, its GOAL repeats U322's, and its CONTEXT names run-31 as the U355d head 39f75cc8 (run-31 was U310h b125d6bc). The positioned head is U355, one commit on origin/main 6ad1be23, which now holds U310 #708 and U317 #711; git diff --name-only 668ba887 HEAD lists 38 paths, not 3.",
+  "scope_paths": [
+    "home/dot_dsh/plugins/omp-gateway/config.mjs",
+    "home/dot_dsh/plugins/omp-gateway/test/gateway-client.test.mjs",
+    "scripts/update-agent-assets.sh"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, grep and its own node ledger builder over the tree; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-31",
+      "source_ref": "b125d6bc087f0213b13a874138d86c4dd1aa94ac",
+      "findings": 0,
+      "unvalidated_candidates": 11,
+      "ledger_units": 113,
+      "use": "Base ledger (the brief's set): hcom-seat and the placer equal its head and the updater up to update_deepseek_harness equals it, so its lines hold; the manifest's cited lines moved by 12."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-29",
+      "source_ref": "41af8592b289bbaa307d8bb91acdd2fd142ca19a",
+      "findings": 0,
+      "unvalidated_candidates": 15,
+      "ledger_units": 102,
+      "use": "U317's eight units, now on main: three leads closed by U317d's build_under_srt runs, the Router profile lead carried (the profile equals run-29's head), four covered units re-read; hcom-seat lines moved through git diff -U0 49f3c33c HEAD, generator lines by +57."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T08:53:15Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and twelve carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. U355 produced no new candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off",
+      "where": "home/dot_dsh/profiles/router/cordis.patch.yml:150-164, :55-69",
+      "proposed_verdict": "needs_validation",
+      "note": "U317, now on main"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "where": "scripts/orchestrator/hcom-seat:746-750, :1989-2013, :1377, :1395",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/orchestrator/hcom-seat:2285-2286; scripts/update-agent-assets.sh:1950-1953",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:422, :2694",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2438-2443",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1908-1929",
+      "proposed_verdict": "needs_validation",
+      "note": "now covers both updater steps"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:1731, :2006-2008",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "scripts/update-agent-assets.sh:2466",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the token is unset at hcom-seat:180 and :2757"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the thak profile runs no shell tool"
+    }
+  ],
+  "closed_on_this_head": [
+    "update_dsh_superagent/srt-settings-file:written-through-a-link-a-seat-plants (U317d: build_under_srt's noclobber settings, scripts/update-agent-assets.sh:1946-1949, :1987-1990)",
+    "update_dsh_superagent/srt-settings:deny-list-narrower-than-the-seat-that-writes-its-inputs (U317d: build_under_srt's rows, :1950-1966)",
+    "update_dsh_superagent/pnpm-store:linked-store-reaches-the-host-mkdir-and-the-write-grant (U317d: build_under_srt's store hold, :1917-1929; the window is the carried U322 lead)"
+  ],
+  "leads_on_other_branches": [
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-30)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-30)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "asked whether the added environment name carries a secret (no: a path the roles already hold) and whether U317d's fixed settings name still allows a host-side write (no: build_under_srt refuses it)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 12,
+  "findings_count": 0,
+  "ledger_units": 114,
+  "ledger_counts": {
+    "covered": 46,
+    "candidate": 12,
+    "out_of_scope": 56
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-07T08:56:52Z"
+}

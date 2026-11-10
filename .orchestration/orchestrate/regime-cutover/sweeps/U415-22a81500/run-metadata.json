@@ -1,0 +1,213 @@
+{
+  "run_id": "dotfiles-sweep-3-run-61",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "22a81500935360b3a0df4918a2604cd7af998de3",
+    "branch": "feat/acp-broker-lever",
+    "base": "fd94feaeb19322d9f17ff99f122e7ff900e4987e",
+    "merge_base": "6ad1be2304d8cdef975136e44e5cde5c86219374",
+    "previous_swept_head": "fd94feaeb19322d9f17ff99f122e7ff900e4987e (run-35)",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: unit U343f (fd94feae..22a81500, 8 files, +449 -98; PR 720, round 4 of U343): push_back reads the worker's clone inside the worker's own srt settings (worker_git), exit_line never refuses, the traps stay armed through the push and the exit line, the group signal escalates TERM then KILL, and acp-seat takes only a newline-terminated last line as the trailer and anchors NAME and REF with \\Z; plus the copies, the pins, one README sentence and tests/unit/test_acp_broker.py. Hunted at the two git boundaries, the pack crossing, the trap window, the exit line and the client's trailer rule; plus the run-35 records (this branch) carried and re-checked at this head and the run-60 records (main) re-mapped.",
+  "scope_note": "This head is on feat/acp-broker-lever, whose merge base with main is 6ad1be23; run-60 swept main at bd5106c0, and git diff --name-only 22a81500 bd5106c0 lists 563 paths. So the base ledger is run-35 (fd94feae, this branch, the unit's earlier swept head; fd94feae..22a81500 is exactly the brief's 8 paths), and run-60's records are re-mapped: its 12 records on files this branch shares carry run-35's lines at this head (e.g. hcom-seat:450 on main is :422 here), and its 4 main-only records and its 1 blocked unit read source that is not on this branch (router-settings-apply absent; the router profile and hcom-seat's store-root code at their pre-U404/U406/U219 form) and are out of scope at this head, as are its 31 other main-only units.",
+  "scope_paths": [
+    "scripts/orchestrator/acp-broker",
+    "scripts/orchestrator/acp-seat",
+    "home/dot_local/bin/common/executable_acp-broker",
+    "home/dot_local/bin/common/executable_acp-seat",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_acp_broker.py",
+    "scripts/orchestrator/acp-relay.py",
+    "scripts/orchestrator/git-isolated.sh"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent read source, ran git (diff, log, merge-base, cat-file), grep, cmp and openssl dgst over the target, read the installed srt 0.0.81 macOS profile source for its signal rule, and ran its own node scripts (ledger builder, metadata builder, output scan) in agents/parent-hunter/scratch/; every ledger check is a source check.",
+  "selected_companions": [
+    "PROTOCOLS-RPC-AND-MESSAGING.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-35",
+      "source_ref": "fd94feaeb19322d9f17ff99f122e7ff900e4987e",
+      "findings": 0,
+      "unvalidated_candidates": 15,
+      "ledger_units": 117,
+      "use": "Base ledger: this unit's earlier swept head on this branch; every unit carried, the eight acp units re-checked at this head, six U343f units added."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-60",
+      "source_ref": "bd5106c06ea2343faa920c7a3a0600219e55b4e9",
+      "findings": 0,
+      "unvalidated_candidates": 16,
+      "ledger_units": 152,
+      "use": "This seat's previous run (main). Records re-mapped: 12 shared with run-35 by coverage id carry run-35's lines, re-checked here; 35 main-only units (4 records, 1 blocked) out of scope at this head with the reason."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-10T02:55:01Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat (probed again in this run: both calls returned \"blocked by user policy\"), so every phase ran in the parent and sixteen leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. The U343f hunt raised one new lead (the client's trailer rule).",
+  "hardening_notes": [
+    "scripts/orchestrator/acp-broker:1209-1213, :1337: a signal during update-ref or before push_done=1 logs push=skipped while the ref exists (new, U343f).",
+    "scripts/orchestrator/acp-broker:1330-1332: omp's own exit ends no member of its group; subsumed by the named setsid residual (new, U343f).",
+    "scripts/orchestrator/acp-broker:1233-1236: the KILL waits for omp's exit with no bound (new, U343f).",
+    "scripts/orchestrator/acp-broker:1201-1205: the pack has no size bound (new, U343f).",
+    "scripts/orchestrator/acp-broker:82, :87-88, :93-96, :98-99: four header-contract statements U343f made stale (new, U343f).",
+    "scripts/orchestrator/acp-broker:1284: the checkout of the Router-chosen tree runs outside the sandbox on git's default path protections (carried from run-35)."
+  ],
+  "u343f_hunt": {
+    "worker_git": "scripts/orchestrator/acp-broker:1158-1160, used at :1184 and :1201 (the reads of the worker's clone inside <slot>/settings.json, under worker_env)",
+    "router_git": "scripts/orchestrator/acp-broker:1144-1146, used at :1205, :1209 (index-pack --strict, update-ref with an empty old value) and :1274-1280 (the clone)",
+    "slot_git": "scripts/orchestrator/acp-broker:1167-1169, used only at :1281-1285, before omp starts",
+    "pack": "scripts/orchestrator/acp-broker:1197-1205 (revs and pack by path in the slot, which the worker cannot write)",
+    "trap": "scripts/orchestrator/acp-broker:1228-1250, armed :1256, dropped :1339; launched :1328, push_done :1337",
+    "exit_line": "scripts/orchestrator/acp-broker:1127-1135 (returns 0 on every path)",
+    "client": "scripts/orchestrator/acp-seat:44-46 (\\Z anchors, trailer shape), :190-192, :211-223 (complete last line only)",
+    "pins": "home/dot_agents/agent-config.yaml:909, :911; scripts/generated-agent-outputs.json:415, :429 (b6cc10aa, 145e32ef; copies cmp-equal)",
+    "srt_signal_rule": "srt 0.0.81 dist/sandbox/macos-sandbox-utils.js:765: (allow signal (target same-sandbox))"
+  },
+  "verdict_u343e_answers": {
+    "P1 acp-broker:1146 (alternates/HEAD read outside every sandbox)": "answered: worker_git (:1158-1160, :1184, :1201); lead acp-broker/push-back proposed rejected, claim changed",
+    "P2 acp-broker:1282 (traps dropped before the push)": "answered: armed through the exit line (:1256, :1339); hardening: a signal during update-ref logs skipped",
+    "P2 acp-broker:1188 (group signal and TERM-ignorers)": "answered for TERM-ignorers in the group (KILL, :1234-1236); the own-group residual is named (:1224-1225, README.md:209); the header :87-88 still says every descendant",
+    "P2 acp-seat:213 (trailer-shaped final payload)": "answered for a tail without a newline (:211-217); a complete trailer-shaped worker line before a trapless end remains (new lead)",
+    "P2 acp-broker:1284 (exit-log append refused after a written ref)": "answered: exit_line never refuses (:1127-1135)",
+    "P2 executable_acp-broker:1 (PR threat table rows)": "outside the repository (the PR body); not judged",
+    "P3 acp-seat:235 ($ accepts a terminal newline)": "answered: \\Z (:44-45)"
+  },
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "unit": ".orchestration/orchestrate/regime-cutover#records-sync-43-copies",
+      "proposed": "confirmed, low (carried since run-2)"
+    },
+    {
+      "fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off",
+      "unit": "home/dot_dsh/profiles/router/cordis.patch.yml#dsh-superagent-router-preset#shell",
+      "proposed": "needs_validation (carried; this branch keeps the run-35 form)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "unit": "home/dot_dsh/profiles/thak/cordis.patch.yml#bash-sandbox-and-the-shell-tool",
+      "proposed": "rejected (carried)"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "unit": "home/dot_dsh/profiles/thak/cordis.patch.yml#tool-fs-workspace-writes",
+      "proposed": "needs_validation (carried)"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "unit": "home/dot_dsh/profiles/thak/cordis.patch.yml#web-search-deepseek-and-web-deepseek-api",
+      "proposed": "rejected (carried)"
+    },
+    {
+      "fingerprint": "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to",
+      "unit": "scripts/orchestrator/acp-broker#log_line",
+      "proposed": "needs_validation (carried, narrowed; exit_line adds a call site)"
+    },
+    {
+      "fingerprint": "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox",
+      "unit": "scripts/orchestrator/acp-broker#push_back",
+      "proposed": "rejected (claim changed at this head by U343f)"
+    },
+    {
+      "fingerprint": "acp-broker/relay:no-cap-on-concurrent-workers",
+      "unit": "scripts/orchestrator/acp-relay.py#Relay.run",
+      "proposed": "needs_validation (carried)"
+    },
+    {
+      "fingerprint": "acp-seat/relay:worker-complete-trailer-line-accepted-when-the-broker-ends-without-its-own",
+      "unit": "scripts/orchestrator/acp-seat#relay#trailer",
+      "proposed": "needs_validation (new on U343f)"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "unit": "scripts/orchestrator/hcom-seat#claude_config-row",
+      "proposed": "needs_validation (carried)"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "unit": "scripts/orchestrator/hcom-seat#dsh-profile-root",
+      "proposed": "needs_validation (carried)"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "unit": "scripts/orchestrator/hcom-seat#router-role-allowLocalBinding",
+      "proposed": "needs_validation (carried)"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "unit": "scripts/orchestrator/hcom-seat#seat_settings_render-deny_read",
+      "proposed": "needs_validation (carried)"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "unit": "scripts/orchestrator/hcom-seat#shim-exec-environment",
+      "proposed": "rejected (carried)"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "unit": "scripts/update-agent-assets.sh#build_under_srt#pnpm-store-and-profile-dir",
+      "proposed": "needs_validation (carried)"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "proposed": "needs_validation (carried)"
+    }
+  ],
+  "blocked_units": [],
+  "leads_on_other_branches": "run-60's main-only records (router-profile/shell, router-profile/management-api, router-profile/bash-sandbox, regime-store/store-root) and its blocked router package.json unit stand on main bd5106c0; their source is not on this branch.",
+  "agents": [
+    {
+      "agent_id": "parent-hunter",
+      "role": "parent (reconnaissance, hunting, critic passes; no independent verifier available)"
+    }
+  ],
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "by": "parent-hunter",
+      "result": "Asked: does any worker-written byte reach a reader outside the worker's settings after omp starts (no: worker_git, and the slot is not a worker write root); does any signal window leave the slot (no) or misname the push (yes: during update-ref, hardening); can a worker line stand in for the broker's (yes, when the broker ends without its trailer: the new lead)."
+    },
+    {
+      "pass": "final-clean",
+      "by": "parent-hunter",
+      "result": "No reassignment; no unit left planned. Both passes ran in the parent, so this is a single-reviewer coverage statement."
+    }
+  ],
+  "candidate_count": 16,
+  "findings_count": 0,
+  "ledger_units": 158,
+  "ledger_counts": {
+    "out_of_scope": 87,
+    "candidate": 16,
+    "covered": 55
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-10T03:06:48Z"
+}

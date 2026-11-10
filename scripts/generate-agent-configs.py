@@ -61,6 +61,16 @@ def parse_manifest(text: str) -> dict[str, Any]:
 LEVER_SOURCE_DIR = "scripts/orchestrator"
 LEVER_INSTALL_DIR = "home/dot_local/bin/common"
 LEVER_PIN_LINE = re.compile(r"^(      )([A-Za-z0-9][A-Za-z0-9_.-]*): ([0-9a-f]{64})$")
+# A lever that is a module: another lever imports it from its own directory and nothing runs it (ledger.py, the one
+# ledger reader, imported by ledger-row.py; regime-cutover U418). Its chezmoi copy carries no `executable_` prefix, so
+# chezmoi installs it at mode 0644 under ~/.local/bin/common beside the lever that imports it; it is pinned like every
+# lever, so the generator holds the copy byte-identical to the checkout's reader.
+LEVER_MODULES = frozenset({"ledger.py"})
+
+
+def lever_install_name(name: str) -> str:
+    """The chezmoi source name of a lever's installed copy: `executable_<name>`, or the bare name of a module."""
+    return name if name in LEVER_MODULES else f"executable_{name}"
 
 
 def lever_names(manifest: dict[str, Any]) -> list[str]:
@@ -93,12 +103,12 @@ def refresh_lever_pins(text: str) -> str:
 def lever_pins(manifest: dict[str, Any]) -> dict[Path, str]:
     """Each lever's chezmoi copy and the sha256 claude.levers.sha256 pins it to."""
     pins = manifest.get("claude", {}).get("levers", {}).get("sha256", {})
-    return {ROOT / LEVER_INSTALL_DIR / f"executable_{name}": pins[name] for name in lever_names(manifest)}
+    return {ROOT / LEVER_INSTALL_DIR / lever_install_name(name): pins[name] for name in lever_names(manifest)}
 
 
 def render_lever_installs(manifest: dict[str, Any]) -> dict[Path, str]:
     return {
-        ROOT / LEVER_INSTALL_DIR / f"executable_{name}": read_exact(ROOT / LEVER_SOURCE_DIR / name)
+        ROOT / LEVER_INSTALL_DIR / lever_install_name(name): read_exact(ROOT / LEVER_SOURCE_DIR / name)
         for name in lever_names(manifest)
     }
 
@@ -175,6 +185,36 @@ DSH_GATEWAY_LINK = "link:../../plugins/omp-gateway"
 # The DeepSeek harness plan's names: the kit's one profile and the Claude Code settings file whose hooks it mounts.
 DSH_PROFILE = "thak"
 DSH_HOOKS_SETTINGS = "~/.claude/settings.json"
+# The kit's second harness profile (regime-cutover U317): the dsh-superagent Router, started by `hcom-seat router --
+# --no-open` and never by the archive's own launcher. Its rows come from the pinned archive: the webserver's loopback
+# bind and the plugin's one required key (examples/profile.cordis.patch.yml, src/deployment.ts:15-16) and the bundles of
+# a Web profile (docs/006-deployment.md "What runs"). The superagent plugin is listed as a bundle as well as a `link:`
+# dependency (U404): dsh composes the bundle layers in `dsh.profile.bundles` order before the profile patch, so the
+# plugin's own cordis.patch.yml inserts the five superagent entries the patch's rows address; `dsh plugin add` writes
+# both the dependency and the bundle, and so does this renderer. Unlike thak, the router keeps the base bundle's
+# bash-sandbox row on (U406, U406b): it is the base bundle's only shell provider whose executor carries a sandboxMode,
+# which upstream's permission presets require to activate (permission-presets lib/index.js:177). Under the superagent's
+# presets it runs in `danger-full-access`, the mode that skips sandbox-exec (bash-sandbox lib/index.js), and
+# sandbox-exec cannot apply inside srt on macOS in any case (sandbox_apply refused, measured 2026-11-09), so the seat's
+# one boundary is srt, the 2026-11-06 decision unchanged. The GitHub Source's repository and the accept mode live in the
+# Router's settings store, saved through its Management API (docs/006-deployment.md "Settings"), not in a plugin row
+# (src/deployment.ts:40 refuses unknown keys), so the patch carries them as the data rows a save reads.
+DSH_ROUTER_PROFILE = "router"
+DSH_SUPERAGENT_ASSET = "dsh-superagent"
+DSH_SUPERAGENT_PLUGIN = "dsh-superagent"
+DSH_SUPERAGENT_LINK = "link:../../plugins/dsh-superagent"
+DSH_ROUTER_BUNDLES = ("@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", DSH_SUPERAGENT_PLUGIN)
+DSH_ROUTER_WEBSERVER = {"host": "127.0.0.1", "port": 3082}
+# The Router's state root (regime-cutover U317b): `$DSH_HOME/router-state`, inside the dsh role's one write root
+# (hcom-seat seat_write_roots: DSH_HOME, exported into the dsh child as DSH_HOME), so the sandboxed launch can create
+# the store; the plugin requires an absolute path, and a launch without DSH_HOME gets a relative one it refuses.
+DSH_ROUTER_STATE_DIR = "router-state"
+DSH_ACCEPT_MODES = ("off", "observe", "auto")
+# The two words of the policy cell router-settings-apply writes (U416): the pulls row's unlistedUnaddressed cell of the
+# github Source's admission table; `explicit` is not admitted (it would accept an unlisted sender in observe mode).
+DSH_OBSERVE_ADMISSIONS = ("inferred", "ignore")
+DSH_SOURCE_REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+DSH_LADDER_ROW_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 # The plan's base profile: the shipped bundle whose patch already turns the HMR, credentials and account rows off.
 DSH_BASE_PROFILE = "headless"
 OMP_RETIRED_ROUTES = ("openai-codex",)
@@ -2035,6 +2075,41 @@ def omp_roles(manifest: dict[str, Any]) -> dict[str, str]:
     return roles
 
 
+def omp_gateway_roles(manifest: dict[str, Any]) -> dict[str, str]:
+    """Gateway role -> model profile (regime-cutover U310); one profile config overlay renders per key, none when absent.
+
+    A gateway role runs no omp session: hcom-seat places its overlay as the role's own `~/.omp/profiles/<role>/agent/
+    config.yml`, which the child `omp auth-gateway stdio` reads. The profile must carry a dsh entry (the route the
+    gateway serves), and a key may not be a seat role as well, whose overlay rides the launch flags instead.
+    """
+    roles = manifest.get("omp", {}).get("gateway_roles", {})
+    if not isinstance(roles, dict):
+        fail("omp.gateway_roles must be a mapping of gateway role to model profile")
+    profiles = model_profiles(manifest)
+    seat_roles = omp_roles(manifest)
+    for role, profile in roles.items():
+        if not PROFILE_NAME_RE.match(str(role)):
+            fail(f"omp.gateway_roles key is not launcher-safe: {role!r}")
+        if role in seat_roles:
+            fail(f"omp.gateway_roles.{role} is a seat role too; a role's overlay is placed or passed, never both")
+        if profile not in profiles:
+            fail(f"omp.gateway_roles.{role} must name a model profile: {profile!r}")
+        if "dsh" not in profiles[profile]:
+            fail(f"omp.gateway_roles.{role} names {profile!r}, which carries no dsh entry for the gateway route")
+    return roles
+
+
+def omp_extension_provider_dir(manifest: dict[str, Any], provider: str) -> str:
+    """The extension directory `omp.extension_providers` declares for a model route, as the manifest spells it."""
+    providers = manifest.get("omp", {}).get("extension_providers")
+    if not isinstance(providers, dict) or not all(isinstance(value, str) for value in providers.values()):
+        fail("omp.extension_providers must map omp provider ids to extension directories")
+    directory = providers.get(provider)
+    if directory is None or not SKILLS_DIRECTORY_RE.fullmatch(directory):
+        fail(f"omp.extension_providers must name the extension directory of {provider} as a ~/ or absolute path")
+    return directory
+
+
 def omp_extensions(manifest: dict[str, Any]) -> list[str]:
     """Extension directories a plain omp launch loads through the top-level `extensions` setting; none when absent.
 
@@ -2242,6 +2317,28 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
     return overlay + "setupVersion: 2\n" + omp_startup_yaml(manifest, "setupWizard: false")
 
 
+def render_omp_gateway_overlay(manifest: dict[str, Any], role: str) -> str:
+    """A gateway role's profile config (regime-cutover U310), placed by hcom-seat as `~/.omp/profiles/<role>/agent/config.yml`.
+
+    The child `omp auth-gateway stdio` resolves a request's model among the providers its own settings load (omp 18.12.6
+    src/cli/auth-gateway-stdio.ts:60-64: `Settings.init`, then `loadCliExtensionProviders`), and a named profile's
+    settings are that profile's `agent/config.yml` alone, no `--config` overlay and no `-e` list; without the bridge
+    directory in its `extensions` the child answers 404 for every `claude-bridge/<model>` (item g6, 2026-11-06T19:22Z).
+    The overlay carries the gateway route of the profile's dsh model as `modelRoles.default`, the bridge directory
+    `omp.extension_providers` declares for that route (hcom-seat rewrites the entry to the canonical allow-list path
+    when it places the file), the seat providers off as every seat overlay has them, skills off (DSH reads
+    `~/.agents/skills` itself; the gateway child runs no session) and the seat overlays' wizard and update rows.
+    """
+    profile = model_profiles(manifest)[omp_gateway_roles(manifest)[role]]
+    model = f"{DSH_GATEWAY_PROVIDER}/{profile['dsh']['model']}"
+    extension = re.sub(r"^~/", "{{ .chezmoi.homeDir }}/", omp_extension_provider_dir(manifest, DSH_GATEWAY_PROVIDER))
+    overlay = omp_config_yaml(model, "skills:\n  enabled: false\n") + omp_list_yaml("extensions", [extension])
+    disabled = "".join(f"  - {provider}\n" for provider in omp_seat_disabled_providers(manifest))
+    if disabled:
+        overlay += f"disabledProviders:\n{disabled}"
+    return overlay + "setupVersion: 2\n" + omp_startup_yaml(manifest, "setupWizard: false")
+
+
 def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
     """The kit's DeepSeek harness profile (U172, U227b): its package.json and the cordis patch over the base bundles.
 
@@ -2294,11 +2391,28 @@ def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
         f"    provider: {DSH_GATEWAY_PROVIDER}",
         f"    model: {default['model']}",
     ]
-    models = sorted({f"{DSH_GATEWAY_PROVIDER}/{entry['model']}" for entry in dsh.values()})
     # The `!!js` expression is the form the shipped headless patch uses for environment values.
     config_path = f"!!js process.env.HOME + '{DSH_HOOKS_SETTINGS.removeprefix('~')}'"
     lines += [
         "- insert:",
+        *dsh_gateway_insert(dsh),
+        "    - id: hooks-claude-code",
+        "      name: '@deepseek-ai/dsh-hooks-claude-code'",
+        "      config:",
+        f"        configPath: {config_path}",
+    ]
+    profile_dir = ROOT / "home/dot_dsh/profiles" / DSH_PROFILE
+    return {
+        profile_dir / "package.json": json.dumps(package, indent=2) + "\n",
+        profile_dir / "cordis.patch.yml": "\n".join(lines) + "\n",
+    }
+
+
+def dsh_gateway_insert(dsh: dict[str, dict[str, Any]]) -> list[str]:
+    """The omp-gateway plugin entry of an `insert:` block: the login command and every profile's dsh model under the
+    provider, the rows both harness profiles share (U227b; the router profile inherits them, U317)."""
+    models = sorted({f"{DSH_GATEWAY_PROVIDER}/{entry['model']}" for entry in dsh.values()})
+    return [
         f"    - id: {DSH_ROUTES[0]}",
         f"      name: {DSH_GATEWAY_PLUGIN}",
         "      config:",
@@ -2309,12 +2423,106 @@ def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
         f"          - {DSH_GATEWAY_PROVIDER}",
         "        models:",
         *(f"          - {model}" for model in models),
-        "    - id: hooks-claude-code",
-        "      name: '@deepseek-ai/dsh-hooks-claude-code'",
-        "      config:",
-        f"        configPath: {config_path}",
     ]
-    profile_dir = ROOT / "home/dot_dsh/profiles" / DSH_PROFILE
+
+
+def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
+    """The superagent asset's GitHub Source row, each value compared with its fixed set: the repository against
+    `owner/name`, the accept mode against the three the upstream Policy knows (src/policy.ts:84), `auto` only with the
+    second M-18 row timestamp beside the first, `observe_admission` against the two words router-settings-apply writes
+    into the pulls row's unlistedUnaddressed cell (U416). An unknown key is refused by name."""
+    sources = asset.get("sources")
+    if not isinstance(sources, dict) or not isinstance(sources.get("github"), dict):
+        fail(
+            f"assets.{DSH_SUPERAGENT_ASSET}.sources.github must be a mapping (repository, accept_mode, accept_mode_row)"
+        )
+    row = sources["github"]
+    label = f"assets.{DSH_SUPERAGENT_ASSET}.sources.github"
+    unknown = sorted(
+        set(row) - {"repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission"}
+    )
+    if unknown:
+        fail(f"{label} has unknown key(s) {unknown}")
+    for key in ("repository", "accept_mode", "accept_mode_row"):
+        if not isinstance(row.get(key), str) or not row[key]:
+            fail(f"{label}.{key} must be a non-empty string")
+    if not DSH_SOURCE_REPOSITORY_RE.fullmatch(row["repository"]):
+        fail(f"{label}.repository {row['repository']!r} is not owner/name")
+    if row["accept_mode"] not in DSH_ACCEPT_MODES:
+        fail(f"{label}.accept_mode {row['accept_mode']!r} is not one of {list(DSH_ACCEPT_MODES)}")
+    for key in ("accept_mode_row", "accept_mode_auto_row"):
+        if key in row and (not isinstance(row[key], str) or not DSH_LADDER_ROW_RE.fullmatch(row[key])):
+            fail(f"{label}.{key} {row[key]!r} is not a decisions.tsv timestamp")
+    if row["accept_mode"] == "auto" and "accept_mode_auto_row" not in row:
+        fail(f"{label}.accept_mode auto needs accept_mode_auto_row beside accept_mode_row (the M-18 ladder's two rows)")
+    if "observe_admission" in row and row["observe_admission"] not in DSH_OBSERVE_ADMISSIONS:
+        fail(f"{label}.observe_admission {row['observe_admission']!r} is not one of {list(DSH_OBSERVE_ADMISSIONS)}")
+    return {key: str(value) for key, value in row.items()}
+
+
+def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
+    """The dsh-superagent Router profile (U317): its package.json (the Web profile's bundles, the superagent bundle and
+    the omp-gateway plugin as link: dependencies the updater installs) and its cordis patch: the thak-form rows (the
+    session log upload off, the official API and API-key rows disabled, the default model on the gateway provider),
+    the webserver's loopback bind, the plugin's stateDir under $DSH_HOME (the dsh write root), the GitHub Source row as
+    data, and the gateway insert. Unlike thak, the router keeps the base bundle's bash-sandbox row on (U406): upstream's
+    permission presets need a confining executor, and srt stays the seat's outer boundary. A manifest whose profiles
+    name no dsh model renders no profile, like the thak renderer."""
+    dsh = {name: profile["dsh"] for name, profile in model_profiles(manifest).items() if "dsh" in profile}
+    if not dsh:
+        return {}
+    default = interactive_profile(manifest).get("dsh")
+    if default is None:
+        fail(f"interactive_profile {manifest.get('interactive_profile')!r} names no dsh model for agent-default-model")
+    asset = manifest.get("assets", {}).get(DSH_SUPERAGENT_ASSET)
+    if not isinstance(asset, dict) or not isinstance(asset.get("pin"), str):
+        fail(
+            f"model_profiles name dsh models, so assets.{DSH_SUPERAGENT_ASSET} must carry the pin the router profile follows"
+        )
+    github = dsh_github_source(asset)
+    package = {
+        "name": DSH_ROUTER_PROFILE,
+        "private": True,
+        "dsh": {"manifestVersion": 1, "profile": {"bundles": list(DSH_ROUTER_BUNDLES)}},
+        "dependencies": {DSH_SUPERAGENT_PLUGIN: DSH_SUPERAGENT_LINK, DSH_GATEWAY_PLUGIN: DSH_GATEWAY_LINK},
+    }
+    auto_row = f", accept_mode_auto_row {github['accept_mode_auto_row']}" if "accept_mode_auto_row" in github else ""
+    lines = [
+        f"# {GENERATED_HEADER}",
+        f"# dsh-superagent pin {asset['pin']}; the Router runs under srt through `hcom-seat router -- --no-open`.",
+        f"# GitHub Source (assets.{DSH_SUPERAGENT_ASSET}.sources.github): repository {github['repository']}, accept_mode",
+        f"# {github['accept_mode']} (M-18 ladder row {github['accept_mode_row']}{auto_row}); the allowed list is empty.",
+        "# These two values live in the Router's settings store (upstream docs/006-deployment.md, Settings), where the",
+        "# lever `router-settings-apply` writes them through the Management API after the launch's ready line, with the",
+        "# Source's `cli` set to `router-gh`, the gh wrapper whose GH_CONFIG_DIR is $DSH_HOME/router-credentials/gh (the",
+        "# router role's one read grant beyond the dsh row's; U353). The plugin row below admits stateDir and limits alone.",
+        "- id: session-log-deepseek",
+        "  config:",
+        "    enabled: false",
+        "- id: llm-deepseek",
+        "  disabled: true",
+        "- id: llm-deepseek-account",
+        "  disabled: true",
+        "- id: web-search-deepseek",
+        "  disabled: true",
+        "- id: web-deepseek-api",
+        "  disabled: true",
+        "- id: agent-default-model",
+        "  config:",
+        f"    provider: {DSH_GATEWAY_PROVIDER}",
+        f"    model: {default['model']}",
+        "- id: webserver",
+        "  config:",
+        f"    host: {DSH_ROUTER_WEBSERVER['host']}",
+        f"    port: {DSH_ROUTER_WEBSERVER['port']}",
+        f"- id: {DSH_SUPERAGENT_PLUGIN}",
+        "  config:",
+        f"    stateDir: !!js process.env.DSH_HOME + '/{DSH_ROUTER_STATE_DIR}'",
+    ]
+    # No bash-sandbox row and no preset row (U406): the base bundle's sandbox stays on, and upstream's bundle layer
+    # inserts the two agent presets as shipped.
+    lines += ["- insert:", *dsh_gateway_insert(dsh)]
+    profile_dir = ROOT / "home/dot_dsh/profiles" / DSH_ROUTER_PROFILE
     return {
         profile_dir / "package.json": json.dumps(package, indent=2) + "\n",
         profile_dir / "cordis.patch.yml": "\n".join(lines) + "\n",
@@ -2516,6 +2724,8 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs[ROOT / "home/.chezmoitemplates/omp-config-managed.yml"] = render_omp_config(manifest)
     for role in omp_roles(manifest):
         outputs[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"] = render_omp_role_overlay(manifest, role)
+    for role in omp_gateway_roles(manifest):
+        outputs[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"] = render_omp_gateway_overlay(manifest, role)
     outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
     outputs[ROOT / "home/dot_claude/agents/project-map.md"] = render_claude_project_map_agent(manifest)
     outputs[ROOT / CODEX_COMMAND_RULES] = render_codex_command_rules(manifest)
@@ -2526,6 +2736,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs.update(render_lever_installs(manifest))
     outputs.update(render_standing_rule_outputs(manifest, outputs))
     outputs.update(render_dsh_profile_patch(manifest))
+    outputs.update(render_dsh_router_profile(manifest))
     remove_path = ROOT / CHEZMOIREMOVE
     current = outputs.get(remove_path)
     if current is None:
@@ -2786,7 +2997,7 @@ def generated_scopes() -> list[tuple[str, str]]:
     source_dir = ROOT / LEVER_SOURCE_DIR
     if source_dir.is_dir():
         scopes.extend(
-            (LEVER_INSTALL_DIR, glob.escape(f"executable_{script.name}"))
+            (LEVER_INSTALL_DIR, glob.escape(lever_install_name(script.name)))
             for script in sorted(source_dir.iterdir())
             if script.is_file()
         )

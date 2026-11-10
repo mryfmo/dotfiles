@@ -1,0 +1,14 @@
+security-audit sweep 1d65d150854228e96c5ed4139ec4be02163782d0: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U354 (build_under_srt and update_dsh_superagent read srt by mise which, like pnpm and node, and hold it to an absolute executable file; type -P answered the mise shim on a host PATH): no candidate; every other line of both steps is the blob runs 31 and 34 read
+unvalidated candidates carried from run-34, all on origin/main (not findings; the Phase 3 verifier launch was refused by policy):
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:422	(GitHub Source text to a Router model with tool-bash, home/dot_dsh/profiles/router/cordis.patch.yml:3-6, :150-167)
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1395	(both legs on main since U310 #708)
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2399	(and :2778, :2842 in update_dsh_superagent)
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2439
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2006
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: 6ad1be23..1d65d150 (2 files); run-34's records carried (the brief's run-35 does not exist) and re-mapped through 4c06cbbe..1d65d150; the four U310 units restored from run-33 (the same lever and helper blobs); the relink write leg restored; profile standard, source-only; ledger 81 units: 34 covered, 5 candidate, 42 out_of_scope
+brief notes: the title calls the head U354's merge head and the GOAL and hunt list are U322's text; the CONTEXT names run-35 ('the U354d head 39f75cc8') as the previous run, which does not exist in this seat's state; the diff against main is 2 paths
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: linemap.cjs, blobs.cjs, cite-sample.cjs, build-ledger.cjs and the five candidate records in agents/parent-hunter/scratch/)
+wall time: 299s (2026-11-07T08:58:00Z to 2026-11-07T09:02:59Z)

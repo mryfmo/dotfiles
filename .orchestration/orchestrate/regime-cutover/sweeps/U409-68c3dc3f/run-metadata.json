@@ -1,0 +1,185 @@
+{
+  "run_id": "dotfiles-sweep-3-run-56",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "68c3dc3fb6360f07cd021659967c75c505da15da",
+    "branch": "fix/pr-audit-standard-cyber-program",
+    "base": "57e5345a1",
+    "previous_swept_head": null,
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U407 change (57e5345a1..68c3dc3f, 5 files: scripts/orchestrator/pr-audit.sh's codex exec line and header sentence, its copy home/dot_local/bin/common/executable_pr-audit.sh, the pin in home/dot_agents/agent-config.yaml and scripts/generated-agent-outputs.json, tests/unit/test_pr_audit.py), hunted for what the program flag changes on the audit's model turn; plus the run-55 records carried and re-checked at this head with their lines re-mapped; every other path is carried out_of_scope or covered",
+  "scope_note": "U404, U406 and U407 are siblings off 57e5345a1. Outside .orchestration this head equals run-53's 9de50a15 but in U407's five files, and .orchestration equals run-55's head, so the router units sit on main's source again and carry their run-53 checks; the U404 and U406 units of run-54 and run-55 are out_of_scope here and stay open on their branches. The brief's CHANGE carries run-55 while its TRUST names run-53; run-55, which carries run-53, is carried.",
+  "scope_paths": [
+    "scripts/orchestrator/pr-audit.sh",
+    "home/dot_local/bin/common/executable_pr-audit.sh",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "tests/unit/test_pr_audit.py",
+    "home/dot_dsh/profiles/router/cordis.patch.yml",
+    "home/dot_dsh/profiles/router/package.json",
+    "scripts/generate-agent-configs.py",
+    "tests/unit/test_dsh_profile.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent read source, ran git (diff, log, ls-tree), grep, sed, cmp and shasum over the target, and its own node scripts (ledger builder, output scan) in agents/parent-hunter/scratch/; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-55",
+      "source_ref": "da0b4e01b6569009c81cb0544d9f036b9a1e6a1f",
+      "findings": 0,
+      "unvalidated_candidates": 16,
+      "ledger_units": 145,
+      "use": "Base ledger (a sibling head off the same main); the router units re-based on main's source with their run-53 checks, the U404 and U406 units moved out_of_scope, three U407 units added, the rest carried."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-53",
+      "source_ref": "9de50a15aa5e5ad3fb24f291d4e58e02650cc39b",
+      "findings": 0,
+      "unvalidated_candidates": 13,
+      "ledger_units": 140,
+      "use": "Source of the carried checks for render_dsh_router_profile and the docs paragraph, whose source here equals run-53's."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-09T05:14:03Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat (probed in run-54 this session; the policy is unchanged), so every phase ran in the parent and fourteen carried leads could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json. U407 produced no new candidate.",
+  "hardening_notes": [
+    "scripts/orchestrator/ledger-row.py: no chezmoi source deploys ledger.py beside ~/.local/bin/common/ledger-row.py, so the installed copy refuses every call (fails closed; unchanged since run-49)."
+  ],
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off",
+      "where": "home/dot_dsh/profiles/router/cordis.patch.yml:20-21, :57-59, :152-154",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "with every bash-sandbox row disabled the shell service has no provider, so tool-bash cannot activate (.orchestration/orchestrate/regime-cutover/tests/dsh-workflow-turn.tsv:23)"
+    },
+    {
+      "fingerprint": "router-profile/management-api:settings-write-guarded-by-a-fixed-header-alone",
+      "where": "scripts/orchestrator/router-settings-apply:15-16, :73; home/dot_dsh/profiles/router/cordis.patch.yml:30-32",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:450, :3011-3023",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "regime-store/store-root:dsh-and-router-roles-can-read-the-live-store",
+      "where": "scripts/orchestrator/hcom-seat:2594-2598",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "where": "scripts/orchestrator/hcom-seat:774, :2216-2220",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/orchestrator/hcom-seat:2519, :2387-2420; scripts/update-agent-assets.sh:1985",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2473-2478, :2818-2819, :2888-2889",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1914-1935",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:2213, :2238",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "scripts/update-agent-assets.sh:2501",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the token is unset at start (hcom-seat:201) and before the seat environment (:3086)"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the thak profile runs no shell tool"
+    }
+  ],
+  "leads_on_other_branches": [
+    "U406 (run-55): router-profile/shell:github-input-reaches-a-live-shell-whose-outer-bound-reads-the-agent-token; router-profile/bash-sandbox:nested-seatbelt-refused-under-srt-so-the-confinement-premise-is-unmet",
+    "U404 (run-54): home/dot_dsh/profiles/router/package.json#dsh.profile.bundles blocked on the plugin's own patch; the merged U404 plus U406 tree needs its own sweep",
+    "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox (U343, run-35)",
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-35)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-35)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; scripts in agents/parent-hunter/scratch/)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "asked whether the flag reaches the OS sandbox or the permission profile (no: it selects the model-side safeguards program, and every sandbox and permission flag stays absent), whether an older codex or a declining model can turn into a correct verdict (no: a non-zero exit fails the lever, and the reader takes no default), and whether the router units carried from run-55 describe this head (no: re-based on main's source)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 14,
+  "findings_count": 0,
+  "ledger_units": 148,
+  "ledger_counts": {
+    "covered": 73,
+    "candidate": 14,
+    "out_of_scope": 61
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-09T05:18:18Z"
+}

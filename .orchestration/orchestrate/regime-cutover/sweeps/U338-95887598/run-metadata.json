@@ -1,0 +1,118 @@
+{
+  "run_id": "dotfiles-run-29",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "95887598e57b2d51a876fde8da72517791e6ce15",
+    "branch": "fix/seat-login-preflight-root-spelling-and-predicates",
+    "parent_of_change": "668ba887acf39ff740348d922ac0da7724b96459",
+    "base_note": "U318c, one commit on origin/main 668ba887 (U318b merged as #716), a sibling of run-28's head 55573b7c (U330). Checked: git diff 668ba887..HEAD lists U318c's six files alone, and git diff 55573b7c..HEAD lists those six and U330's seven.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U318c (668ba887..95887598, 6 files: seat-login-preflight's seats_root_normalise, the absolute-root refusal and the searchable-parent rule in claude_config_validate, its copy and pin, tests/unit/test_hcom_seat.py's pass-through test, tests/unit/test_remote_host_logins.py) in the preflight unit, restated; (2) run-28's records carried, re-mapped through 55573b7c..95887598: U330's unit not_applicable, the other units at their lines here.",
+  "carry_note": "The brief names run-28 (U330, a sibling of this head on the same base) as the set to carry. Its units are taken at this tree: no line any carried unit cites moved except the three preflight lines the remapper moved (153, 160 and 370 to 157, 164 and 430); the U330 unit is not applicable, since its change is absent here.",
+  "scope_paths": [
+    "scripts/orchestrator/seat-login-preflight",
+    "home/dot_local/bin/common/executable_seat-login-preflight",
+    "tests/unit/test_hcom_seat.py",
+    "tests/unit/test_remote_host_logins.py",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/hcom-seat",
+    "install/common/aws_cli.sh",
+    "scripts/lib/asset-manifest.sh",
+    "scripts/update-agent-assets.sh",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check. The preflight's sha256 was computed with shasum on the blob; the normaliser's component-stack steps were re-typed in the auditor's own harness (agents/parent-hunter/scratch/normalise-harness.sh) and run under /bin/bash 3.2.57 on fixed strings, touching no file.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-28",
+      "source_ref": "55573b7c8a85009673349eb505af7574ff21cd9f",
+      "findings": 0,
+      "ledger_units": 73,
+      "use": "The set to carry: every unit re-mapped to this head; its U330 unit not_applicable; its three candidate records carried unchanged (their cites into changed files land on unchanged lines)."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T04:45:54Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: three carried candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused): dsh-seat/profile-root-relink/write-grant-follows-session-made-link, seats/shared-claude-config-dir/cross-seat-session-files and dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt, all proposed needs_validation, none a finding. U318c itself yields no candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-28",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-28",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh",
+      "record": "agents/parent-hunter/scratch/candidate-pnpm.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-28",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (3), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work beyond the restated preflight unit; the preflight's other paths (siwc_state, the remote-host branch) are unchanged since run-26 and stay as carried"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 3,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T04:51:11Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

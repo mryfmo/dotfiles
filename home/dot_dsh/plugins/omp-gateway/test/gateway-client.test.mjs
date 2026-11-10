@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline'
 import { PassThrough } from 'node:stream'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { DEFAULT_ENV_NAMES } from '../config.mjs'
+import { DEFAULT_ENV_NAMES, resolveConfig } from '../config.mjs'
 import { GatewayClient, GatewayError, pickEnv } from '../gateway-client.mjs'
 
 const stub = fileURLToPath(new URL('../stub-gateway.mjs', import.meta.url))
@@ -263,11 +263,11 @@ const RECORDER = [
   '})',
 ].join('\n')
 
-async function recordedChildEnv(t, source) {
+async function recordedChildEnv(t, source, names = DEFAULT_ENV_NAMES) {
   const client = new GatewayClient({
     command: process.execPath,
     args: ['--input-type=module', '-e', RECORDER],
-    env: pickEnv(DEFAULT_ENV_NAMES, source),
+    env: pickEnv(names, source),
     readyTimeoutMs: 5000,
   })
   t.after(() => client.close())
@@ -280,4 +280,42 @@ test('the child carries OMP_PROFILE when the plugin has it and not when it is un
   const launcher = { HOME: '/Users/operator', PATH: process.env.PATH, USER: 'operator', NOT_A_ROW: 'x' }
   assert.deepEqual(await recordedChildEnv(t, { ...launcher, OMP_PROFILE: 'dsh' }), ['HOME', 'OMP_PROFILE', 'PATH', 'USER'])
   assert.deepEqual(await recordedChildEnv(t, launcher), ['HOME', 'PATH', 'USER'])
+})
+
+test('the child carries CLAUDE_CONFIG_DIR when the launcher exported it and not when config.env omits it', async t => {
+  // hcom-seat hands the dsh role CLAUDE_CONFIG_DIR=<seats-root>/.state/claude (U318) and denies ~/.claude; the bridge's
+  // Claude child finds the seat login only through this name (U355, row g6). A config.env row that omits it still wins.
+  const launcher = { HOME: '/Users/operator', PATH: process.env.PATH, USER: 'operator', CLAUDE_CONFIG_DIR: '/scratch/login', NOT_A_ROW: 'x' }
+  assert.deepEqual(await recordedChildEnv(t, launcher), ['CLAUDE_CONFIG_DIR', 'HOME', 'PATH', 'USER'])
+  const narrowed = resolveConfig({ env: ['HOME', 'PATH', 'USER'] })
+  assert.deepEqual(await recordedChildEnv(t, launcher, narrowed.env), ['HOME', 'PATH', 'USER'])
+})
+
+/**
+ * Every name srt injects into the child it sandboxes, read from @anthropic-ai/sandbox-runtime 0.0.81
+ * `dist/sandbox/sandbox-utils.js` `generateProxyEnvVars` (:667-838): the runtime mark (:680), `TMPDIR` (:691), the
+ * `CA_TRUST_VARS` (:649-665, pushed :698), the proxy names (:720-727, :749-750, :759-760), `GIT_CONFIG_PARAMETERS`
+ * (:732) and the SOCKS branch (:785-830). The list is kept here, apart from `config.mjs`, so the boundary is pinned
+ * by a source the plugin does not read.
+ */
+const SRT_INJECTED_NAMES = [
+  'SANDBOX_RUNTIME', 'TMPDIR',
+  'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'CURL_CA_BUNDLE', 'REQUESTS_CA_BUNDLE', 'PIP_CERT', 'GIT_SSL_CAINFO',
+  'AWS_CA_BUNDLE', 'CARGO_HTTP_CAINFO', 'DENO_CERT', 'CLOUDSDK_CORE_CUSTOM_CA_CERTS_FILE', 'NIX_SSL_CERT_FILE',
+  'NO_PROXY', 'no_proxy', 'HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'GIT_CONFIG_PARAMETERS',
+  'ALL_PROXY', 'all_proxy', 'GRPC_PROXY', 'grpc_proxy',
+  'SRT_SSH_PROXY_COMMAND', 'GIT_SSH_COMMAND', 'FTP_PROXY', 'ftp_proxy', 'RSYNC_PROXY',
+  'DOCKER_HTTP_PROXY', 'DOCKER_HTTPS_PROXY',
+  'CLOUDSDK_PROXY_TYPE', 'CLOUDSDK_PROXY_ADDRESS', 'CLOUDSDK_PROXY_PORT', 'CLOUDSDK_PROXY_USERNAME', 'CLOUDSDK_PROXY_PASSWORD',
+]
+
+test('the child carries every name srt injects when the launcher holds them and not when config.env omits them', async t => {
+  // Under srt the sandbox reaches the network through the proxy srt starts, and srt tells its child so only through
+  // these names; a gateway child without them resolves DNS directly, which the sandbox denies (U364, row g6:
+  // `network-outbound /private/var/run/mDNSResponder`). A config.env row that omits them still wins.
+  const launcher = { HOME: '/Users/operator', PATH: process.env.PATH, USER: 'operator', NOT_A_ROW: 'x' }
+  for (const name of SRT_INJECTED_NAMES) launcher[name] = `srt:${name}`
+  assert.deepEqual(await recordedChildEnv(t, launcher), [...SRT_INJECTED_NAMES, 'HOME', 'PATH', 'USER'].sort())
+  const narrowed = resolveConfig({ env: ['HOME', 'PATH', 'USER'] })
+  assert.deepEqual(await recordedChildEnv(t, launcher, narrowed.env), ['HOME', 'PATH', 'USER'])
 })

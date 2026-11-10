@@ -1,0 +1,160 @@
+{
+  "run_id": "dotfiles-run-40",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "9c504ad9b5595c23de6fbe696c3d39d78726b00f",
+    "branch": "feat/m26-stage-b-router-settings-and-credential-root",
+    "parent_of_change": "8791100fa9a3ae5606df893490386385ce183339",
+    "base_note": "U353b (round 2 of U353, PR 724): one commit on run-38's head 8791100f, which is U353 on origin/main 6ad1be23. Checked: git diff 8791100f..HEAD lists 13 files (hcom-seat, router-gh, router-settings-apply and their installed copies, the handout, the README, the pins and three test modules). The brief's title and GOAL are U322's template text (branch fix/dsh-harness-build-under-srt, base 668ba887, '3 paths'); git diff 668ba887..HEAD lists 42 files, the whole of main since 668ba887 plus U353 and U353b. The brief's CONTEXT names run-38 as 'the U353bd head 39f75cc8'; run-38 swept U353 at 8791100f, which is this head's parent, so run-38 is the carry set.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U353b against 8791100f: the omp roles' read deny of the Router's credential root, router-gh's own read of the login and its GH_TOKEN exec, router-settings-apply's loopback opener and save order, the handout and README paragraphs, the pins and tests; (2) the carry: run-38's units and six candidate records re-mapped through 8791100f..9c504ad9, the credential-root unit and the settings-writer unit restated; (3) the brief's U322 hunt list, answered by the carried updater units (the updater is unchanged since run-38).",
+  "carry_note": "The brief names run-38, which swept U353 at 8791100f, this head's parent; its 84 units and six candidate records are carried. run-39 (U364, main dba01803 plus U364) is on another line and is not carried.",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "scripts/orchestrator/router-gh",
+    "scripts/orchestrator/router-settings-apply",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "home/dot_local/bin/common/executable_router-gh",
+    "home/dot_local/bin/common/executable_router-settings-apply",
+    "docs/engagement-handout.md",
+    "scripts/orchestrator/README.md",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "tests/unit/test_hcom_seat.py",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "tests/unit/test_router_settings_apply.py",
+    "home/dot_dsh/profiles/router/cordis.patch.yml"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target, any gh call and any read of a credential store. Every check is a source check; srt 0.0.81's installed macOS profile builder was read for its mach-lookup allowances (read only, not run).",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "AI-AND-LLM.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-38",
+      "source_ref": "8791100fa9a3ae5606df893490386385ce183339",
+      "findings": 0,
+      "ledger_units": 84,
+      "use": "The carry: every unit and its six candidate records, re-mapped through 8791100f..9c504ad9."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T11:45:21Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: eight candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny, refused again in run-39 and not retried): two new in U353b's scope (router-seat/keychain/model-gh-resolves-the-operators-login, seats/router-credential-root/read-deny-follows-the-launching-callers-home) and six carried from run-38. All are proposed needs_validation; none is a finding.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-seat/keychain/model-gh-resolves-the-operators-login",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#router-row-keychain-and-operator-gh-config",
+      "record": "agents/parent-hunter/scratch/candidate-router-keychain.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": null,
+      "on_default_branch": false
+    },
+    {
+      "fingerprint": "seats/router-credential-root/read-deny-follows-the-launching-callers-home",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#cred_root_omp-deny-row-home",
+      "record": "agents/parent-hunter/scratch/candidate-cred-root-home.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": null,
+      "on_default_branch": false
+    },
+    {
+      "fingerprint": "router-seat/credential-root/agent-token-readable-by-the-router-model",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#credential-root-read-by-the-router-model",
+      "record": "agents/parent-hunter/scratch/candidate-agent-token-readable.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-38",
+      "on_default_branch": false
+    },
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-38",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-38",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/settings-file-in-session-write-root",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-settings-file",
+      "record": "agents/parent-hunter/scratch/candidate-settings-in-write-root.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-38",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/session-lockfile-names-the-build-hosts",
+      "ledger_unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "record": "agents/parent-hunter/scratch/candidate-lockfile-hosts.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-38",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-38",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (8), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the delegation tool is denied by policy on this seat (refused in run-38 and run-39); every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted the two restated U353 units and the two new U353b candidate units; the brief's U322 list is answered by the carried updater units"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 8,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T11:56:11Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

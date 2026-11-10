@@ -1,0 +1,146 @@
+{
+  "run_id": "dotfiles-run-34",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "4c06cbbe6ee67f7b1d1df6512a04fb0d7440e844",
+    "branch": "feat/dsh-superagent-asset-observe",
+    "parent_of_change": "49f3c33c3fe0322474a671a598765aa2f1397259",
+    "base_note": "U317d: the U317 branch (9f279755 U317, 6eac2332, 9cb6a2fb U317b, 58fd4fb5 and 41af8592 U317c, 4c06cbbe U317d) with origin/main 0249e534 and then 49f3c33c merged in; the merge base with origin/main is 49f3c33c. Checked: git diff 49f3c33c..HEAD lists eighteen files (the brief says 3). The brief's GOAL paragraph and branch name are U322's text, its CONTEXT hunt list U322's and its previous-run line 'the U317d head 0fc4740b' (0fc4740b is U322c); its title, head and REPORT line name U317d, which this run hunted. U310 is not in this head; the lever is main's blob 053617d2, the one run-32 read.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U317 against main 49f3c33c (18 files: update_dsh_superagent in the updater, the rendered router profile and its generator, intake-observe.py and its copy and pin, the validator's Source rows, docs, pins, tests) in three new units, and its effect on the carried candidates (the router profile's tools and GitHub Source for the router local-binding candidate, the superagent step's settings files for the settings-file candidate, its registry-only hosts against the lockfile-hosts candidate); (2) the carry: run-32's units (the same lever blob) re-mapped through 3a6a22a0..4c06cbbe with run-33's main-side restatements, the four U310 units not applicable.",
+  "carry_note": "The brief names run-33 (U310g, 34c1450b) as the set to carry. U310 is not in this head, so run-33's U310 content does not apply; the rest of run-33 is run-32's re-mapped plus its main-side restatements (U322 on main as #718, the pnpm unit closed on main, the relink sentence placed), which this run applies to run-32's units directly.",
+  "scope_paths": [
+    "scripts/update-agent-assets.sh",
+    "home/dot_dsh/profiles/router/cordis.patch.yml",
+    "home/dot_dsh/profiles/router/package.json",
+    "scripts/orchestrator/intake-observe.py",
+    "home/dot_local/bin/common/executable_intake-observe.py",
+    "scripts/generate-agent-configs.py",
+    "scripts/validate-agent-assets.py",
+    "scripts/lib/installer-pins.sh",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "docs/deepseek-harness.md",
+    "scripts/orchestrator/rounds-check.py",
+    "scripts/orchestrator/ledger.py",
+    "scripts/orchestrator/pr-threads-check.sh",
+    "scripts/orchestrator/hcom-seat",
+    "scripts/orchestrator/seat-login-preflight",
+    "home/dot_local/bin/common/executable_regime-url-opener"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; intake-observe.py's sha256 was computed with shasum on its blob.",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md",
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "AI-AND-LLM.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-33",
+      "source_ref": "34c1450ba57e847608969b29890c7f11d8deba5b",
+      "findings": 0,
+      "ledger_units": 78,
+      "use": "The brief's carry set: its main-side restatements applied; its U310 content not in this head."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-32",
+      "source_ref": "3a6a22a09d5be8b1b46002691287e355d883461b",
+      "findings": 0,
+      "ledger_units": 78,
+      "use": "The same lever blob: its units and five candidate records re-mapped to this head."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T07:50:27Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: five candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused): router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound (with U317's router profile: tool-bash and a GitHub Source in observe mode), updater/build_under_srt/settings-file-in-session-write-root (a second surface in update_dsh_superagent), updater/build_under_srt/session-lockfile-names-the-build-hosts, dsh-seat/profile-root-relink/write-grant-follows-session-made-link and seats/shared-claude-config-dir/cross-seat-session-files, all proposed needs_validation, all on origin/main, none a finding.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-33",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/settings-file-in-session-write-root",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-settings-file",
+      "record": "agents/parent-hunter/scratch/candidate-settings-in-write-root.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-33",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/session-lockfile-names-the-build-hosts",
+      "ledger_unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "record": "agents/parent-hunter/scratch/candidate-lockfile-hosts.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-33",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-33",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-33",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (5), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted three U317 units and the extension of two carried candidates (router local binding: the profile's tool-bash and GitHub Source; settings file: the superagent step's second surface); no new candidate"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 5,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T08:00:57Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

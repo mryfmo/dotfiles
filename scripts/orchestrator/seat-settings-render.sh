@@ -9,7 +9,7 @@
 #   header: "This copy of the dsh row's shape is interim: U344 extracts one writer for both levers"): the path rule
 #   every settings row obeys (clean_path, clean_row), the fixed rows of the deny table (the credential stores denied
 #   for read, the project files denied for write under a seat's own directory, the rows denied for write under the
-#   shared Claude Code directory), the structural tags of the dsh row's grant positions, the domain list, and the
+#   shared Claude Code directory), the domain list, and the
 #   JSON writer (seat_settings_rows_json for a list, seat_settings_json for the file's text). It judges nothing (each
 #   lever's `settings_judge` stays its own) and writes no file (the caller writes the text it is handed, as before);
 #   each lever passes its rows, its `allowLocalBinding` value, its `allowUnixSockets` list and its Linux tool
@@ -112,16 +112,6 @@ SEAT_SETTINGS_CREDENTIAL_DENIES=(.ssh .gnupg .aws .netrc .docker .kube .config/g
 SEAT_SETTINGS_PROJECT_FILES=(.claude/settings.json .claude/settings.local.json .claude/hooks .claude/contextdb .omp .codex .envrc .mcp.json)
 # shellcheck disable=SC2034 # read by the levers that source this helper
 SEAT_SETTINGS_CLAUDE_ROWS=(settings.json settings.local.json rules hooks plugins skills commands agents)
-# The structural tags of the dsh row's grant positions, in both grant lists (regime-cutover U272g): row 0 the seat's
-# own cwd and row 1 its own state slot (`slot`: both lie under the seats-root denies, which the own slot alone
-# re-opens), row 2 the shared Claude Code directory (`slot`: under the seats-root denies and over its configuration
-# denies, U318), row 3 DSH_HOME (no tag: judged like any row wherever it is spelled), row 4 the seat's own omp profile
-# (`profile`: the one row re-opened under the `~/.omp/profiles` deny); every later row carries no tag. A tag names
-# why a (grant, deny) pair may overlap by construction, and each lever's judge exempts a pair only when both rows carry
-# the same tag and the grant lies where the role spells it. The worker acp-broker starts has the dsh row's positions
-# 0, 2 and 4 onward (no state slot, no DSH_HOME), so it reads its tags from those positions of this list.
-# shellcheck disable=SC2034 # read by the levers that source this helper
-SEAT_SETTINGS_GRANT_TAGS=(slot slot slot '' profile)
 # The outbound hosts every seat may reach (`network.allowedDomains`): GitHub and its API, upload, codeload and content
 # hosts; PyPI; the Anthropic and Claude hosts; the OpenAI hosts of the openai-siwc route.
 SEAT_SETTINGS_DOMAINS='"github.com","api.github.com","uploads.github.com","codeload.github.com","objects.githubusercontent.com"'

@@ -10,6 +10,7 @@ import hashlib
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -26,6 +27,7 @@ LEVERS = (
     "seat-login-preflight",
     "regime-start",
     "regime-stop",
+    "regime-store-move",
     "pr-thread-reply.sh",
     "pr-thread-resolve.sh",
     "pr-update-branch.sh",
@@ -40,7 +42,12 @@ LEVERS = (
     "brief-check.py",
     "worker-worktree.sh",
     "checkout-guard.sh",
+    "router-gh",
+    "router-settings-apply",
 )
+# The levers whose self-check is Python (hashlib and its own manifest read, no PATH tool): a sed or hash tool planted
+# on the caller's PATH is never consulted by them (brief-check.py, U104 round 3; router-settings-apply, U353).
+PYTHON_LEVERS = ("brief-check.py", "router-settings-apply")
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 
 
@@ -101,8 +108,11 @@ class LeverSelfCheckTest(unittest.TestCase):
     def test_a_rewritten_installed_lever_refuses_to_run(self):
         for name in LEVERS:
             with self.subTest(lever=name):
+                # The appended line is in the lever's own language, read from its interpreter line (router-settings-apply
+                # is Python without a `.py` suffix, U353d), so the self-check, not a parse error, is what refuses.
+                shebang = (self.bin / name).read_text().splitlines()[0]
                 with (self.bin / name).open("a") as lever:
-                    lever.write('print("rewritten")\n' if name.endswith(".py") else "echo rewritten\n")
+                    lever.write('print("rewritten")\n' if "python" in shebang else "echo rewritten\n")
                 run = self.run_lever(name)
                 self.assert_refused(run, "differs from the pin in")
                 self.assertNotIn("rewritten", run.stdout)
@@ -132,25 +142,89 @@ class LeverSelfCheckTest(unittest.TestCase):
 
         hcom-seat runs its self-check with PATH set to the system directories before any external command (U85
         round 4), so a producer planted on the caller's PATH is never consulted there and the check passes.
-        brief-check.py is Python (U104 round 3): it hashes with hashlib and reads the manifest itself, so it runs
-        neither tool and a planted one is never consulted; each of its own reads is failed in
-        `tests/unit/test_brief_check.py` (`InstalledBriefCheckTest`: manifest mode 000, a directory, no or two pin
-        lines, HOME unset or missing, and the hash read of its own bytes: the copy on stdin so `<stdin>` is the path,
-        and `builtins.open` raising in process, round 6), every one a refusal with nothing on stdout.
+        brief-check.py and router-settings-apply are Python (U104 round 3; U353, U353d): each hashes with hashlib and
+        reads the manifest itself, so it runs neither tool and a planted one is never consulted; each of
+        brief-check.py's own reads is failed in `tests/unit/test_brief_check.py` (`InstalledBriefCheckTest`: manifest
+        mode 000, a directory, no or two pin lines, HOME unset or missing, and the hash read of its own bytes: the copy
+        on stdin so `<stdin>` is the path, and `builtins.open` raising in process, round 6), every one a refusal with
+        nothing on stdout; router-settings-apply's are the two tests below (U370) and, for the installed copy's altered
+        bytes, `tests/unit/test_router_settings_apply.py`'s.
         """
-        path_levers = [name for name in LEVERS if name not in ("hcom-seat", "brief-check.py")]
+        path_levers = [name for name in LEVERS if name != "hcom-seat" and name not in PYTHON_LEVERS]
+        self.assertIn("router-gh", path_levers, "the gh wrapper's self-check reads sed and the hash tool from PATH")
         env = self.fake_tools("sha256sum", "shasum")
         for name in path_levers:
             with self.subTest(lever=name, producer="hash"):
                 self.assert_refused(self.run_lever(name, env=env), "cannot hash")
         self.assert_passed(self.run_lever("hcom-seat", env=env))
-        self.assert_passed(self.run_lever("brief-check.py", env=env))
+        for name in PYTHON_LEVERS:
+            self.assert_passed(self.run_lever(name, env=env))
         env = self.fake_tools("sed")
         for name in path_levers:
             with self.subTest(lever=name, producer="sed"):
                 self.assert_refused(self.run_lever(name, env=env), "cannot read")
         self.assert_passed(self.run_lever("hcom-seat", env=env))
-        self.assert_passed(self.run_lever("brief-check.py", env=env))
+        for name in PYTHON_LEVERS:
+            self.assert_passed(self.run_lever(name, env=env))
+
+    def test_router_settings_apply_refuses_a_manifest_it_cannot_read_and_runs_nothing_else(self):
+        """U370 (verdict U353-747995da P2 `:150`, standing order 21): the Python writer's manifest read fails closed under
+        a committed test. The deployed manifest of mode 000 is refused by name with exit 2 and nothing on stdout: the
+        lever's `--help` text, its first output once the self-check passes, never appears, so no argument was parsed
+        and no request left. Root reads a mode 000 file, so the refusal cannot be forced there and the test skips."""
+        if os.geteuid() == 0:
+            self.skipTest("root reads a mode 000 manifest, so the unreadable-manifest refusal cannot be forced")
+        manifest = self.home / ".agents/agent-config.yaml"
+        manifest.chmod(0)
+        self.addCleanup(manifest.chmod, 0o644)
+        run = self.run_lever("router-settings-apply", "--help")
+        self.assert_refused(run, f"manifest unreadable: {manifest}")
+        self.assertEqual("", run.stdout, "nothing else ran")
+
+    def test_router_settings_apply_refuses_when_its_own_bytes_cannot_be_read_for_hashing(self):
+        """U370 (the same P2): the writer's read of its own file fails closed under a committed test. The lever hashes
+        `<physical directory of __file__>/<basename of __file__>`; the installed copy run on stdin from the installed
+        directory (brief-check.py's form, `tests/unit/test_brief_check.py` round 6) names `<install dir>/<stdin>`, and
+        the test plants there what makes that one read fail: a directory, a file of mode 000 (not as root), and no
+        entry. The manifest and the pin are read first and pass; the refusal names the self file, exit 2, nothing on
+        stdout, so no argument was parsed and no request left."""
+        copy = self.bin / "router-settings-apply"
+        self_path = self.bin / "<stdin>"
+        cases = [("a directory", self_path.mkdir, self_path.rmdir), ("absent", None, None)]
+        if os.geteuid() != 0:
+            cases.insert(1, ("mode 000", lambda: (self_path.touch(), self_path.chmod(0)), self_path.unlink))
+        for label, plant, remove in cases:
+            with self.subTest(self_file=label):
+                if plant is not None:
+                    plant()
+                with copy.open("rb") as script:
+                    run = subprocess.run(
+                        [sys.executable, "-I", "-", "--help"],
+                        stdin=script,
+                        cwd=self.bin,
+                        env=self.env,
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        check=False,
+                    )
+                if remove is not None:
+                    remove()
+                self.assert_refused(run, f"cannot hash {self_path}")
+                self.assertEqual("", run.stdout, "nothing else ran")
+
+    def test_the_harness_page_names_the_three_write_roots_build_under_srt_grants(self):
+        """U370 (dispositions 2026-11-07T11:49:01Z, the U363 residual): `docs/deepseek-harness.md`'s install paragraph
+        said `build_under_srt`'s `allowWrite` is the build directory and `~/.dsh/.pnpm-store` alone; since U363 the
+        third row is pnpm's store operation lock directory `<physical /tmp>/pnpm-store-operation-locks-<uid>`. The
+        sentence names the three roots the code renders and closes on none of them alone. (The brief's write scope
+        put this assertion beside the lever tests; it belongs with the U363 tests on the next touch of that module.)"""
+        text = " ".join((ROOT / "docs/deepseek-harness.md").read_text().split())  # the page wraps at 80 columns
+        sentence = text.split("its `allowWrite` is", 1)[1].split("its `denyWrite`", 1)[0]
+        self.assertIn("the build directory", sentence)
+        self.assertIn("`~/.dsh/.pnpm-store`", sentence)
+        self.assertIn("pnpm-store-operation-locks", sentence)
+        self.assertNotIn("alone", sentence, "the two-row claim is gone")
 
     def test_hcom_seat_self_check_refuses_a_failing_producer(self):
         """U85 round 15: hcom-seat's own self-check fails closed on a failing sed or hash tool too. Its first statement

@@ -5655,8 +5655,8 @@
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env -S python3 -I</span>
-<span class="s2">"""Make the dsh-superagent Router's settings store equal to the kit's GitHub Source row and accept mode (regime-cutover</span>
-<span class="s2">U353, M-26 stage B).</span>
+<span class="s2">"""Make the dsh-superagent Router's settings store equal to the kit's GitHub Source row, accept mode and observe</span>
+<span class="s2">admission cell (regime-cutover U353, M-26 stage B; U416).</span>
 
 <span class="s2">`router-settings-apply [--manifest &lt;agent-config.yaml&gt;] [--profile &lt;cordis.patch.yml&gt;] [--wait &lt;seconds&gt;]` is run by the</span>
 <span class="s2">coordinator outside every sandbox, as the operator's user, after `hcom-seat router -- --no-open` has printed its ready</span>
@@ -5664,15 +5664,15 @@
 <span class="s2">`src/deployment.ts:33-44` refuses `repository` there, naming the Source as where it moved), so the values the kit renders</span>
 <span class="s2">as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the Router through this lever alone:</span>
 
-<span class="s2">- The manifest's `assets.dsh-superagent.sources.github` row gives `repository` (`owner/name`) and `accept_mode`; the</span>
-<span class="s2">  rendered router profile's `webserver` row gives the port (its host must be `127.0.0.1`, the only host this lever ever</span>
-<span class="s2">  connects to). The Source's `cli` is the physical path of `router-gh` beside this file, the `gh` wrapper whose</span>
+<span class="s2">- The manifest's `assets.dsh-superagent.sources.github` row gives `repository` (`owner/name`), `accept_mode` and</span>
+<span class="s2">  `observe_admission` (`inferred` or `ignore`); the rendered router profile's `webserver` row gives the port (its host</span>
+<span class="s2">  must be `127.0.0.1`, the only host this lever ever connects to). The Source's `cli` is the physical path of `router-gh` beside this file, the `gh` wrapper whose</span>
 <span class="s2">  `GH_CONFIG_DIR` is `&lt;DSH_HOME&gt;/router-credentials/gh` (upstream docs/006-deployment.md "</span>Agent<span class="w"> </span>GitHub<span class="w"> </span>account<span class="s2">").</span>
 <span class="s2">- `GET settings` at `http://127.0.0.1:&lt;port&gt;/orchestrator/api/settings` with the `x-orchestrator-request: 1` header</span>
 <span class="s2">  (upstream `src/app/http.ts:75-78`: the host `127.0.0.1:&lt;port&gt;` and that header, else 403) gives each block's current</span>
 <span class="s2">  `value` and `revision`. For a block whose value differs from the kit's, `PUT settings/&lt;block&gt;` carries</span>
 <span class="s2">  `{"</span>value<span class="s2">": &lt;the whole block&gt;, "</span>revision<span class="s2">": &lt;the revision read&gt;}` (upstream `src/app/http.ts:196-202`, `src/app/settings.ts:148-151`:</span>
-<span class="s2">  a stale revision is 409). The two blocks:</span>
+<span class="s2">  a stale revision is 409). The three blocks, written in the order `eval`, `policy`, `source:github`:</span>
 <span class="s2">  - `source:github`: `{"</span>enabled<span class="s2">": true, "</span>config<span class="s2">": {&lt;the current config&gt;, "</span>repository<span class="s2">": &lt;repository&gt;, "</span>cli<span class="s2">": &lt;router-gh&gt;,</span>
 <span class="s2">    "</span>observePulls<span class="s2">": true}}` (`src/sources/github.ts:25-28`, the Source's config keys). `observePulls` is the observe</span>
 <span class="s2">    path: the notifications poll (`src/sources/github.ts:304`, `notifications?all=true`) needs a classic token with the</span>
@@ -5681,13 +5681,22 @@
 <span class="s2">    request with the token's `Pull requests` permission and runs whether or not the notifications poll fails (`:282-286`).</span>
 <span class="s2">  - `eval`: the current eval block with `mode` set to the accept mode (`src/policy.ts:83-87`). `auto` is refused here:</span>
 <span class="s2">    the M-18 ladder's second rung is the operator's row, and this unit applies `off` or `observe` alone.</span>
+<span class="s2">  - `policy`: the current block with the github Source's admission cell `sources.github.admission.pulls.unlistedUnaddressed`</span>
+<span class="s2">    set to the manifest's `observe_admission` (`src/policy.ts:76-84`, `src/admission.ts:13`), its `rules`, the github</span>
+<span class="s2">    `allowed` list (empty when absent) and every other row, cell and Source carried as read. Without this cell the</span>
+<span class="s2">    observe rung records nothing: the kit's allowed list is empty and upstream's default for the cell is `ignore`, so</span>
+<span class="s2">    every unlisted human's pull request falls to `not_a_member` before any assessment (`src/policy.ts:192-210`; measured</span>
+<span class="s2">    on the i2 probes, decisions 2026-11-10T04:08:19Z), while `inferred` makes it a candidate that observe mode can only</span>
+<span class="s2">    record as an ignore Decision with `audit.would_accept` (`src/policy.ts:55-57`), never accept. The allowed list is</span>
+<span class="s2">    the auto rung's lever (a listed login's mention is `explicit`, accepted even in observe mode) and stays untouched.</span>
 <span class="s2">- A block already equal to the kit's is not written: a second run PUTs nothing (`unchanged`). After a save the Router</span>
 <span class="s2">  answers `restarting: true` while setup is pending or a setup field changed (`src/app/settings.ts:176`), and the API is</span>
 <span class="s2">  unavailable for a moment; before the next PUT this lever polls `GET settings` until it answers again, for at most</span>
 <span class="s2">  `--wait` seconds (default 60).</span>
 <span class="s2">- `eval` is saved before `source:github` (regime-cutover U353b, verdict U353-8791100f P2 `:401`): a store whose mode is</span>
 <span class="s2">  `auto` would otherwise poll under `auto` from the Source's restart until the mode is written, so the safe mode is in</span>
-<span class="s2">  place before the Source is enabled or its setup fields change.</span>
+<span class="s2">  place before the Source is enabled or its setup fields change. `policy` goes between them: its save changes</span>
+<span class="s2">  `policyVersion` and restarts nothing (measured 2026-11-10T03:03Z, `restarting: false`), so no wait precedes the Source.</span>
 <span class="s2">- Saving `source:github` runs the Router's account probe first (`src/app/settings.ts:167`, `src/app/setup.ts:61-66`,</span>
 <span class="s2">  `src/deployment.ts:87-105`: `&lt;cli&gt; api user`, then `repos/&lt;name&gt;` for push); without the agent account's login in the</span>
 <span class="s2">  credential root the Router answers 400 with `setup.code` `agentCliSignedOut` and saves nothing. This lever names that</span>
@@ -5695,11 +5704,12 @@
 <span class="s2">  which the coordinator runs this lever again.</span>
 
 <span class="s2">Output: one line per block on stdout, `&lt;block&gt; saved (revision &lt;n&gt;[, restarting])` or `&lt;block&gt; unchanged (revision &lt;n&gt;)`.</span>
-<span class="s2">Exit 0 when both blocks hold the kit's values. Every refusal is one line on stderr, `router-settings-apply: &lt;reason&gt;`, and</span>
-<span class="s2">exit 2: a manifest or profile that cannot be read or lacks its row, `auto`, a wrapper that is no executable file, a port</span>
+<span class="s2">Exit 0 when the three blocks hold the kit's values. Every refusal is one line on stderr, `router-settings-apply: &lt;reason&gt;`,</span>
+<span class="s2">and exit 2: a manifest or profile that cannot be read or lacks its row, `auto`, an `observe_admission` outside its two</span>
+<span class="s2">words, a wrapper that is no executable file, a port</span>
 <span class="s2">that answers nothing (`unreachable`, naming `127.0.0.1:&lt;port&gt;`), a 403 (naming the header), a 409 (naming the revision), a</span>
 <span class="s2">400 with `setup` (naming the code and its text), a 3xx (naming its Location; never followed), any other status, or a</span>
-<span class="s2">settings view without the `github` Source or the `eval` block. Nothing is written to any file; the only network peer is</span>
+<span class="s2">settings view without the `github` Source, the `eval` block or the `policy` block. Nothing is written to any file; the only network peer is</span>
 <span class="s2">`127.0.0.1:&lt;port&gt;`: the opener is built by hand (U353b, verdict P2 `:268`) with an empty proxy table, so a proxy named in</span>
 <span class="s2">the environment or the system settings is not consulted, and without a redirect handler, so a 3xx is a refusal and no</span>
 <span class="s2">request leaves the loopback port.</span>
@@ -5731,6 +5741,13 @@ import<span class="w"> </span>urllib.request
 <span class="nv">SOURCE_BLOCK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"source:github"</span>
 <span class="nv">EVAL_BLOCK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"eval"</span>
 <span class="nv">ACCEPT_MODES_APPLIED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"off"</span>,<span class="w"> </span><span class="s2">"observe"</span><span class="o">)</span>
+<span class="nv">POLICY_BLOCK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"policy"</span>
+<span class="c1"># The one policy cell this lever writes (U416): the pulls row's unlistedUnaddressed cell of the github Source's admission</span>
+<span class="c1"># table (src/admission.ts), from the manifest's observe_admission, whose two words are the cell's values short of explicit.</span>
+<span class="nv">ADMISSION_SOURCE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"github"</span>
+<span class="nv">ADMISSION_ROW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"pulls"</span>
+<span class="nv">ADMISSION_CELL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"unlistedUnaddressed"</span>
+<span class="nv">OBSERVE_ADMISSIONS_APPLIED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"inferred"</span>,<span class="w"> </span><span class="s2">"ignore"</span><span class="o">)</span>
 <span class="c1"># The levers block of the manifest, read as text by indentation alone, never parsed as YAML (brief-check.py's reader):</span>
 <span class="c1"># a mapping key is a bare `&lt;key&gt;:` line; a pin is `&lt;name&gt;: &lt;64 hex&gt;` at the one indentation the first pin fixes.</span>
 <span class="nv">MAPPING_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(\S+):</span>$<span class="s2">"</span><span class="o">)</span>
@@ -5868,13 +5885,14 @@ def<span class="w"> </span>read_lines<span class="o">(</span>path:<span class="w
 <span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"{what} {path} could not be read: {error}"</span><span class="o">)</span><span class="w"> </span>from<span class="w"> </span>None
 
 
-def<span class="w"> </span>source_row<span class="o">(</span>manifest:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]</span>:
-<span class="w">    </span><span class="s2">"""The manifest's repository and accept mode, each held to its form; `auto` is refused here."""</span>
+def<span class="w"> </span>source_row<span class="o">(</span>manifest:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>str,<span class="w"> </span>str,<span class="w"> </span>str<span class="o">]</span>:
+<span class="w">    </span><span class="s2">"""The manifest's repository, accept mode and observe admission, each held to its form; `auto` and a third word for</span>
+<span class="s2">    the cell are refused here."""</span>
 <span class="w">    </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>manifest_scalars<span class="o">(</span>read_lines<span class="o">(</span>manifest,<span class="w"> </span><span class="s2">"the manifest"</span><span class="o">)</span>,<span class="w"> </span>SOURCE_KEYS<span class="o">)</span>
 <span class="w">    </span><span class="nv">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"."</span>.join<span class="o">(</span>SOURCE_KEYS<span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>row<span class="w"> </span>is<span class="w"> </span>None:
 <span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"the manifest {manifest} names no {label} mapping"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>key<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="s2">"repository"</span>,<span class="w"> </span><span class="s2">"accept_mode"</span><span class="o">)</span>:
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>key<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="s2">"repository"</span>,<span class="w"> </span><span class="s2">"accept_mode"</span>,<span class="w"> </span><span class="s2">"observe_admission"</span><span class="o">)</span>:
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>row.get<span class="o">(</span>key<span class="o">)</span>:
 <span class="w">            </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"the manifest {manifest} names no {label}.{key}"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>REPOSITORY.fullmatch<span class="o">(</span>row<span class="o">[</span><span class="s2">"repository"</span><span class="o">])</span>:
@@ -5884,7 +5902,13 @@ def<span class="w"> </span>source_row<span class="o">(</span>manifest:<span clas
 <span class="w">            </span>f<span class="s2">"{label}.accept_mode {row['accept_mode']!r} in {manifest} is not applied by this lever; it applies "</span>
 <span class="w">            </span>f<span class="s2">"{' or '.join(ACCEPT_MODES_APPLIED)} alone, and the M-18 ladder's second rung is the operator's row"</span>
 <span class="w">        </span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>row<span class="o">[</span><span class="s2">"repository"</span><span class="o">]</span>,<span class="w"> </span>row<span class="o">[</span><span class="s2">"accept_mode"</span><span class="o">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>row<span class="o">[</span><span class="s2">"observe_admission"</span><span class="o">]</span><span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>OBSERVE_ADMISSIONS_APPLIED:
+<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>
+<span class="w">            </span>f<span class="s2">"{label}.observe_admission {row['observe_admission']!r} in {manifest} is not "</span>
+<span class="w">            </span>f<span class="s2">"{' or '.join(OBSERVE_ADMISSIONS_APPLIED)}; the {ADMISSION_ROW} row's {ADMISSION_CELL} cell takes those two "</span>
+<span class="w">            </span><span class="s2">"words alone (explicit would accept an unlisted sender's pull request in observe mode)"</span>
+<span class="w">        </span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>row<span class="o">[</span><span class="s2">"repository"</span><span class="o">]</span>,<span class="w"> </span>row<span class="o">[</span><span class="s2">"accept_mode"</span><span class="o">]</span>,<span class="w"> </span>row<span class="o">[</span><span class="s2">"observe_admission"</span><span class="o">]</span>
 
 
 def<span class="w"> </span>webserver_port<span class="o">(</span>profile:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>int:
@@ -6009,8 +6033,9 @@ class<span class="w"> </span>Api:
 <span class="w">                </span>time.sleep<span class="o">(</span><span class="m">1</span><span class="o">)</span>
 
 
-def<span class="w"> </span>block_views<span class="o">(</span>settings:<span class="w"> </span>dict,<span class="w"> </span>where:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>tuple<span class="o">[</span>dict,<span class="w"> </span>int<span class="o">]</span>,<span class="w"> </span>tuple<span class="o">[</span>dict,<span class="w"> </span>int<span class="o">]]</span>:
-<span class="w">    </span><span class="s2">"""The github Source's and the eval block's (value, revision) from a settings view, each refused when absent."""</span>
+def<span class="w"> </span>block_views<span class="o">(</span>settings:<span class="w"> </span>dict,<span class="w"> </span>where:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>tuple<span class="o">[</span>dict,<span class="w"> </span>int<span class="o">]</span>,<span class="w"> </span>tuple<span class="o">[</span>dict,<span class="w"> </span>int<span class="o">]</span>,<span class="w"> </span>tuple<span class="o">[</span>dict,<span class="w"> </span>int<span class="o">]]</span>:
+<span class="w">    </span><span class="s2">"""The github Source's, the eval block's and the policy block's (value, revision) from a settings view, each</span>
+<span class="s2">    refused when absent."""</span>
 <span class="w">    </span><span class="nv">sources</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>settings.get<span class="o">(</span><span class="s2">"sources"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">github</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
 <span class="w">        </span>next<span class="o">((</span>s<span class="w"> </span><span class="k">for</span><span class="w"> </span>s<span class="w"> </span><span class="k">in</span><span class="w"> </span>sources<span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>s,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>s.get<span class="o">(</span><span class="s2">"id"</span><span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"github"</span><span class="o">)</span>,<span class="w"> </span>None<span class="o">)</span>
@@ -6020,14 +6045,13 @@ def<span class="w"> </span>block_views<span class="o">(</span>settings:<span cla
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>github<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>github.get<span class="o">(</span><span class="s2">"value"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>github.get<span class="o">(</span><span class="s2">"revision"</span><span class="o">)</span>,<span class="w"> </span>int<span class="o">)</span>:
 <span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"{where} answered GET settings without the Source github (its value and revision)"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">blocks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>settings.get<span class="o">(</span><span class="s2">"blocks"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">eval_block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>blocks.get<span class="o">(</span>EVAL_BLOCK<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>blocks,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>None
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
-<span class="w">        </span>not<span class="w"> </span>isinstance<span class="o">(</span>eval_block,<span class="w"> </span>dict<span class="o">)</span>
-<span class="w">        </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>eval_block.get<span class="o">(</span><span class="s2">"value"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span>
-<span class="w">        </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>eval_block.get<span class="o">(</span><span class="s2">"revision"</span><span class="o">)</span>,<span class="w"> </span>int<span class="o">)</span>
-<span class="w">    </span><span class="o">)</span>:
-<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"{where} answered GET settings without the eval block (its value and revision)"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>github<span class="o">[</span><span class="s2">"value"</span><span class="o">]</span>,<span class="w"> </span>github<span class="o">[</span><span class="s2">"revision"</span><span class="o">])</span>,<span class="w"> </span><span class="o">(</span>eval_block<span class="o">[</span><span class="s2">"value"</span><span class="o">]</span>,<span class="w"> </span>eval_block<span class="o">[</span><span class="s2">"revision"</span><span class="o">])</span>
+<span class="w">    </span>views:<span class="w"> </span>list<span class="o">[</span>tuple<span class="o">[</span>dict,<span class="w"> </span>int<span class="o">]]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span>EVAL_BLOCK,<span class="w"> </span>POLICY_BLOCK<span class="o">)</span>:
+<span class="w">        </span><span class="nv">block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>blocks.get<span class="o">(</span>name<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>blocks,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>None
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>block,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>block.get<span class="o">(</span><span class="s2">"value"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>block.get<span class="o">(</span><span class="s2">"revision"</span><span class="o">)</span>,<span class="w"> </span>int<span class="o">)</span>:
+<span class="w">            </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"{where} answered GET settings without the {name} block (its value and revision)"</span><span class="o">)</span>
+<span class="w">        </span>views.append<span class="o">((</span>block<span class="o">[</span><span class="s2">"value"</span><span class="o">]</span>,<span class="w"> </span>block<span class="o">[</span><span class="s2">"revision"</span><span class="o">]))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>github<span class="o">[</span><span class="s2">"value"</span><span class="o">]</span>,<span class="w"> </span>github<span class="o">[</span><span class="s2">"revision"</span><span class="o">])</span>,<span class="w"> </span>views<span class="o">[</span><span class="m">0</span><span class="o">]</span>,<span class="w"> </span>views<span class="o">[</span><span class="m">1</span><span class="o">]</span>
 
 
 def<span class="w"> </span>desired_source<span class="o">(</span>current:<span class="w"> </span>dict,<span class="w"> </span>repository:<span class="w"> </span>str,<span class="w"> </span>cli:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict:
@@ -6037,6 +6061,22 @@ def<span class="w"> </span>desired_source<span class="o">(</span>current:<span c
 
 def<span class="w"> </span>desired_eval<span class="o">(</span>current:<span class="w"> </span>dict,<span class="w"> </span>mode:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict:
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>**current,<span class="w"> </span><span class="s2">"mode"</span>:<span class="w"> </span>mode<span class="o">}</span>
+
+
+def<span class="w"> </span>desired_policy<span class="o">(</span>current:<span class="w"> </span>dict,<span class="w"> </span>cell:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict:
+<span class="w">    </span><span class="s2">"""The policy block as read with the github Source's `pulls.unlistedUnaddressed` cell set to `cell`: the rules, the</span>
+<span class="s2">    allowed list (empty when absent), the other rows and cells and every other Source's entry unchanged."""</span>
+<span class="w">    </span><span class="nv">sources</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>current.get<span class="o">(</span><span class="s2">"sources"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>current.get<span class="o">(</span><span class="s2">"sources"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
+<span class="w">    </span><span class="nv">github</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sources.get<span class="o">(</span>ADMISSION_SOURCE<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>sources.get<span class="o">(</span>ADMISSION_SOURCE<span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
+<span class="w">    </span><span class="nv">admission</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>github.get<span class="o">(</span><span class="s2">"admission"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>github.get<span class="o">(</span><span class="s2">"admission"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
+<span class="w">    </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>admission.get<span class="o">(</span>ADMISSION_ROW<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>admission.get<span class="o">(</span>ADMISSION_ROW<span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
+<span class="w">    </span><span class="nv">allowed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>github.get<span class="o">(</span><span class="s2">"allowed"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>github.get<span class="o">(</span><span class="s2">"allowed"</span><span class="o">)</span>,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="nv">entry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>**github,
+<span class="w">        </span><span class="s2">"allowed"</span>:<span class="w"> </span>allowed,
+<span class="w">        </span><span class="s2">"admission"</span>:<span class="w"> </span><span class="o">{</span>**admission,<span class="w"> </span>ADMISSION_ROW:<span class="w"> </span><span class="o">{</span>**row,<span class="w"> </span>ADMISSION_CELL:<span class="w"> </span>cell<span class="o">}}</span>,
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>**current,<span class="w"> </span><span class="s2">"rules"</span>:<span class="w"> </span>current.get<span class="o">(</span><span class="s2">"rules"</span>,<span class="w"> </span><span class="o">[])</span>,<span class="w"> </span><span class="s2">"sources"</span>:<span class="w"> </span><span class="o">{</span>**sources,<span class="w"> </span>ADMISSION_SOURCE:<span class="w"> </span>entry<span class="o">}}</span>
 
 
 def<span class="w"> </span>apply_block<span class="o">(</span>api:<span class="w"> </span>Api,<span class="w"> </span>block:<span class="w"> </span>str,<span class="w"> </span>current:<span class="w"> </span>dict,<span class="w"> </span>desired:<span class="w"> </span>dict,<span class="w"> </span>revision:<span class="w"> </span>int<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>bool:
@@ -6053,7 +6093,7 @@ def<span class="w"> </span>apply_block<span class="o">(</span>api:<span class="w
 
 def<span class="w"> </span>main<span class="o">(</span>argv:<span class="w"> </span>list<span class="o">[</span>str<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>int:
 <span class="w">    </span><span class="nv">parser</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>argparse.ArgumentParser<span class="o">(</span>
-<span class="w">        </span><span class="nv">prog</span><span class="o">=</span>LEVER,<span class="w"> </span><span class="nv">description</span><span class="o">=</span><span class="s2">"write the kit's GitHub Source row and accept mode into the Router's settings store"</span>
+<span class="w">        </span><span class="nv">prog</span><span class="o">=</span>LEVER,<span class="w"> </span><span class="nv">description</span><span class="o">=</span><span class="s2">"write the kit's GitHub Source row, accept mode and observe admission cell into the Router's settings store"</span>
 <span class="w">    </span><span class="o">)</span>
 <span class="w">    </span><span class="nv">directory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>lever_directory<span class="o">()</span>
 <span class="w">    </span>parser.add_argument<span class="o">(</span>
@@ -6078,16 +6118,20 @@ def<span class="w"> </span>main<span class="o">(</span>argv:<span class="w"> </s
 <span class="w">        </span><span class="nv">dsh_home</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">"DSH_HOME"</span><span class="o">)</span><span class="w"> </span>or<span class="w"> </span>os.path.join<span class="o">(</span>os.environ.get<span class="o">(</span><span class="s2">"HOME"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">)</span>,<span class="w"> </span><span class="s2">".dsh"</span><span class="o">)</span>
 <span class="w">        </span><span class="nv">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>dsh_home,<span class="w"> </span><span class="s2">"profiles/router/cordis.patch.yml"</span><span class="o">)</span>
 <span class="w">    </span>try:
-<span class="w">        </span>repository,<span class="w"> </span><span class="nv">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>source_row<span class="o">(</span>args.manifest<span class="o">)</span>
+<span class="w">        </span>repository,<span class="w"> </span>mode,<span class="w"> </span><span class="nv">cell</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>source_row<span class="o">(</span>args.manifest<span class="o">)</span>
 <span class="w">        </span><span class="nv">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>webserver_port<span class="o">(</span>profile<span class="o">)</span>
 <span class="w">        </span><span class="nv">cli</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>wrapper_path<span class="o">(</span>directory<span class="o">)</span>
 <span class="w">        </span><span class="nv">api</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Api<span class="o">(</span>port,<span class="w"> </span>args.wait<span class="o">)</span>
-<span class="w">        </span><span class="o">(</span>source,<span class="w"> </span>source_revision<span class="o">)</span>,<span class="w"> </span><span class="o">(</span>evaluation,<span class="w"> </span>eval_revision<span class="o">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>block_views<span class="o">(</span>api.settings<span class="o">()</span>,<span class="w"> </span>api.where<span class="o">())</span>
+<span class="w">        </span><span class="o">(</span>source,<span class="w"> </span>source_revision<span class="o">)</span>,<span class="w"> </span><span class="o">(</span>evaluation,<span class="w"> </span>eval_revision<span class="o">)</span>,<span class="w"> </span><span class="o">(</span>policy,<span class="w"> </span>policy_revision<span class="o">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>block_views<span class="o">(</span>
+<span class="w">            </span>api.settings<span class="o">()</span>,<span class="w"> </span>api.where<span class="o">()</span>
+<span class="w">        </span><span class="o">)</span>
 <span class="w">        </span><span class="c1"># The mode first (U353b): the Source restarts into polling under whatever mode the store holds.</span>
 <span class="w">        </span><span class="nv">restarting</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>apply_block<span class="o">(</span>api,<span class="w"> </span>EVAL_BLOCK,<span class="w"> </span>evaluation,<span class="w"> </span>desired_eval<span class="o">(</span>evaluation,<span class="w"> </span>mode<span class="o">)</span>,<span class="w"> </span>eval_revision<span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>restarting:
 <span class="w">            </span>api.settings_after_restart<span class="o">()</span>
-<span class="w">            </span><span class="o">(</span>source,<span class="w"> </span>source_revision<span class="o">)</span>,<span class="w"> </span><span class="o">(</span>_,<span class="w"> </span>_<span class="o">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>block_views<span class="o">(</span>api.settings<span class="o">()</span>,<span class="w"> </span>api.where<span class="o">())</span>
+<span class="w">            </span><span class="o">(</span>source,<span class="w"> </span>source_revision<span class="o">)</span>,<span class="w"> </span><span class="o">(</span>_,<span class="w"> </span>_<span class="o">)</span>,<span class="w"> </span><span class="o">(</span>policy,<span class="w"> </span>policy_revision<span class="o">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>block_views<span class="o">(</span>api.settings<span class="o">()</span>,<span class="w"> </span>api.where<span class="o">())</span>
+<span class="w">        </span><span class="c1"># The admission cell next (U416): a policy save changes policyVersion and restarts nothing, so no wait here.</span>
+<span class="w">        </span>apply_block<span class="o">(</span>api,<span class="w"> </span>POLICY_BLOCK,<span class="w"> </span>policy,<span class="w"> </span>desired_policy<span class="o">(</span>policy,<span class="w"> </span>cell<span class="o">)</span>,<span class="w"> </span>policy_revision<span class="o">)</span>
 <span class="w">        </span>refusals:<span class="w"> </span>list<span class="o">[</span>str<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
 <span class="w">        </span>try:
 <span class="w">            </span>apply_block<span class="o">(</span>api,<span class="w"> </span>SOURCE_BLOCK,<span class="w"> </span>source,<span class="w"> </span>desired_source<span class="o">(</span>source,<span class="w"> </span>repository,<span class="w"> </span>cli<span class="o">)</span>,<span class="w"> </span>source_revision<span class="o">)</span>

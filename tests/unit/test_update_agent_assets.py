@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -67,6 +68,14 @@ from codex_plugin_fixture import PONYTAIL, install_ponytail_copy, reviewed_conte
 from scratch_git import git_init
 
 OFFICIAL_CLONE = REVIEWED / "marketplaces/claude-plugins-official"
+
+
+def pnpm_lock_directory(tmp_real: str | None = None) -> str:
+    """pnpm 12's store operation lock directory, the third write root build_under_srt grants (regime-cutover U363):
+    `pnpm-store-operation-locks-<uid>` under the physical /tmp (or the stand-in a test's prelude makes `pwd -P` of /tmp
+    answer). pnpm makes it on its own outside srt (0700, this user's), so a run finds it present or makes it the same
+    way."""
+    return f"{tmp_real or Path('/tmp').resolve()}/pnpm-store-operation-locks-{os.getuid()}"
 
 
 def setUpModule() -> None:
@@ -815,7 +824,7 @@ exit 0
     FAKE_PNPM = '#!/usr/bin/env bash\nprintf \'pnpm %s\\n\' "$*" >> "$HOME/bare-pnpm"\nexit 1\n'
 
     def fake_tools(self, home: Path, *, srt: str | None = None, with_srt: bool = True) -> Path:
-        """$HOME/bin holding the fake srt (unless with_srt is False), the fake pnpm and a fake node, the two `mise
+        """$HOME/bin holding the fake srt (unless with_srt is False), the fake pnpm and a fake node, the three `mise
         which` answers; returns the directory."""
         tools = home / "bin"
         tools.mkdir(exist_ok=True)
@@ -908,6 +917,19 @@ exit 0
         cd = f'cd() {{ if [ "${{1-}}" = /private/tmp ]; then builtin cd "{fixture}"; return; fi; builtin cd "$@"; }}; '
         return pwd + test + cd
 
+    def tmp_stood_in(self, home: Path) -> tuple[str, Path]:
+        """A prelude for run_build_under_srt whose `pwd -P` of /tmp answers a fixture directory under the scratch HOME
+        (every other pwd runs the builtin), so a test plants and inspects entries under build_under_srt's physical
+        temporary directory without touching the host's own (U363); returns the prelude and the fixture."""
+        fixture = home / "tmp-real"
+        fixture.mkdir()
+        prelude = (
+            'pwd() { if [ "${1-}" = -P ]; then case "$PWD" in /tmp) printf "%s\\n" "'
+            + str(fixture)
+            + '"; return 0 ;; esac; fi; builtin pwd "$@"; }; '
+        )
+        return prelude, fixture
+
     def archive(
         self, home: Path, version: str | None = None, lockfile: str | None = "lockfileVersion: '9.0'\n"
     ) -> tuple[Path, str]:
@@ -970,8 +992,9 @@ exit 0
         cwd: Path | None = None,
     ):
         # curl is a shell function that writes $PAYLOAD to its -o path and logs its arguments; mise logs its arguments
-        # and answers `which pnpm` and `which node` with the fakes under $HOME/bin, and otherwise succeeds unless a
-        # test hands it a body; srt is the fake executable on PATH (FAKE_SRT), handed `srt` as its body, which runs
+        # and answers `which srt`, `which pnpm` and `which node` with the fakes under $HOME/bin (without srt, `which
+        # srt` fails as mise does for a tool it has not installed), and otherwise succeeds unless a test hands it a
+        # body; srt is the fake executable (FAKE_SRT), handed `srt` as its body, which runs
         # nothing unless told, so no pnpm runs. shasum and jq are the real producers unless a test hands one a body
         # (a failure injection over `command shasum` or `command jq`). The prelude is any shell text placed before
         # the stubs: a test defines pwd, readlink, mktemp, bash, ln, mv or grep there as functions (failing_call makes
@@ -982,7 +1005,9 @@ exit 0
             'curl() { echo "curl $*" >> "$CALLS"; ' + download + "; }; "
             'mise() { echo "mise $*" >> "$CALLS"; '
             + (mise or ":")
-            + '; case "$1" in which) printf "%s\\n" "$HOME/bin/$2"; return 0 ;; esac; return 0; }; '
+            + '; case "$1" in which) '
+            + ('[ "$2" != srt ] || return 1; ' if not with_srt else "")
+            + 'printf "%s\\n" "$HOME/bin/$2"; return 0 ;; esac; return 0; }; '
             + (f"shasum() {{ {shasum}; }}; " if shasum else "")
             + (f"jq() {{ {jq}; }}; " if jq else "")
             + (f"manifest_record() {{ {manifest_record}; }}; " if manifest_record else "")
@@ -1033,8 +1058,13 @@ exit 0
         env.pop("DSH_HOME", None)
         if dsh_home is not None:
             env["DSH_HOME"] = str(dsh_home)
-        # mise answers `which` with the fakes, as run_step's stub does; a prelude may redefine it.
-        stubs = 'mise() { case "$1" in which) printf "%s\\n" "$HOME/bin/$2"; return 0 ;; esac; return 0; }; '
+        # mise answers `which` with the fakes, as run_step's stub does (without srt, `which srt` fails as mise does for
+        # a tool it has not installed); a prelude may redefine it.
+        stubs = (
+            'mise() { case "$1" in which) '
+            + ('[ "$2" != srt ] || return 1; ' if not with_srt else "")
+            + 'printf "%s\\n" "$HOME/bin/$2"; return 0 ;; esac; return 0; }; '
+        )
         script = 'source "$1"; ' + stubs + (prelude + "\n" if prelude else "") + "build_under_srt " + arguments
         return subprocess.run(
             ["bash", "-c", script, "bash", str(UPDATER)],
@@ -1169,12 +1199,13 @@ exit 0
             mise = 'printf "%s\\n" "${MISE_EXEC_AUTO_INSTALL-<unset>}" >> "$HOME/auto-install"'
             result = self.run_step(home, payload, digest, dsh_home=dsh_home, mise=mise)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-            # U322: mise no longer runs pnpm (srt does, inside); its only calls resolve pnpm and node for the PATH
-            # inside srt, two per srt run (the canary and the three commands), each with auto-install off.
+            # U322: mise no longer runs pnpm (srt does, inside); its only calls resolve srt, pnpm and node (U354: srt
+            # through `mise which` too, never the shim on PATH), three per srt run (the canary and the three
+            # commands), each with auto-install off.
             mise_calls = [call for call in self.calls(home) if call.startswith("mise ")]
-            self.assertEqual(["mise which pnpm", "mise which node"] * 4, mise_calls)
+            self.assertEqual(["mise which srt", "mise which pnpm", "mise which node"] * 4, mise_calls)
             self.assertEqual([], [call for call in mise_calls if call.startswith("mise exec")], "no mise exec at all")
-            self.assertEqual(["false"] * 8, (home / "auto-install").read_text().splitlines())
+            self.assertEqual(["false"] * 12, (home / "auto-install").read_text().splitlines())
             self.assertEqual(self.BUILD_CALLS, self.build_calls(home))
 
     def test_a_failed_build_leaves_no_install_no_wrapper_and_no_record(self):
@@ -3107,7 +3138,9 @@ exit 0
             self.assertEqual(1, len(seen), seen)
             store = (dsh_home / ".pnpm-store").resolve()
             self.assertTrue((store / "tmpdir").is_dir(), "the store and its TMPDIR are made before the run")
-            self.assertEqual([str(build.resolve()), str(store)], seen[0]["filesystem"]["allowWrite"])
+            self.assertEqual(
+                [str(build.resolve()), str(store), pnpm_lock_directory()], seen[0]["filesystem"]["allowWrite"]
+            )
             self.assertEqual(self.expected_deny_write(home), seen[0]["filesystem"]["denyWrite"])
             self.assertEqual([], seen[0]["filesystem"]["allowRead"])
             self.assertEqual(self.expected_deny(home), seen[0]["filesystem"]["denyRead"])
@@ -3154,7 +3187,7 @@ exit 0
                 after = os.readlink(settings) if settings.is_symlink() else settings.read_text()
                 self.assertEqual(before, after, "the path as it was")
 
-    def test_build_under_srt_refuses_when_srt_is_absent_from_path_naming_the_pin(self):
+    def test_build_under_srt_refuses_when_mise_which_srt_fails_naming_the_pin(self):
         with tempfile.TemporaryDirectory() as directory:
             home, dsh_home = self.opted_in_home(directory)
             build = dsh_home / "dsh/build"
@@ -3165,12 +3198,70 @@ exit 0
             )
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn(
-                "build_under_srt: srt is absent from PATH (the kit pins npm:@anthropic-ai/sandbox-runtime 0.0.81 in"
-                " home/dot_mise/config.toml; run mise install and rerun make update); nothing run.",
+                "build_under_srt: srt is absent (mise which srt failed; the kit pins npm:@anthropic-ai/sandbox-runtime"
+                " 0.0.81 in home/dot_mise/config.toml, so run mise install and rerun make update); nothing run.",
                 result.stderr,
             )
             self.assertFalse(settings.exists(), "no settings written")
             self.assertFalse((dsh_home / ".pnpm-store").exists(), "refused before the store is made")
+            self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host")
+
+    def test_build_under_srt_resolves_srt_through_mise_which_and_never_runs_the_shim_first_on_path(self):
+        # U354: the updater's main puts ~/.local/share/mise/shims first on PATH, so `type -P srt` named the mise shim,
+        # and env -i started it with XDG_STATE_HOME inside the store, where the shim's mise found no trust store and
+        # exited 1 (`mise ERROR Config files in ~/.config/mise/config.toml are not trusted`): every build_under_srt run
+        # on a real host failed at the canary (measured 2026-11-07 on the macOS laptop). The shim stand-in here behaves
+        # as measured; the binary is what `mise which srt` answers, read with its status as pnpm and node are.
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            build = dsh_home / "dsh/build"
+            build.mkdir(parents=True)
+            settings = dsh_home / "dsh/build.srt.json"
+            shims = home / "shims"
+            shims.mkdir()
+            (shims / "srt").write_text(
+                "#!/usr/bin/env bash\n"
+                'printf "shim %s\\n" "$*" >> "$HOME/shim-calls"\n'
+                'if [ "${XDG_STATE_HOME-}" != "$HOME/.local/state" ]; then\n'
+                '    printf "mise ERROR Config files in %s/.config/mise/config.toml are not trusted\\n" "$HOME" >&2\n'
+                "    exit 1\n"
+                "fi\n"
+                'exec "$HOME/bin/srt" "$@"\n'
+            )
+            (shims / "srt").chmod(0o755)
+            prelude = (
+                'mise() { echo "mise $*" >> "$CALLS"; case "$1" in which) printf "%s\\n" "$HOME/bin/$2"; return 0 ;;'
+                " esac; return 0; }"
+            )
+            result = self.run_build_under_srt(
+                home,
+                f'"{build}" "{settings}" registry.npmjs.org -- pnpm run build',
+                dsh_home=dsh_home,
+                prelude=prelude,
+                extra_env={"PATH": f"{shims}:{self.search_path(home / 'bin')}"},
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertNotIn("not trusted", result.stderr)
+            self.assertFalse((home / "shim-calls").exists(), "the shim first on PATH never ran")
+            self.assertEqual(
+                ["mise which srt", "mise which pnpm", "mise which node"],
+                [call for call in self.calls(home) if call.startswith("mise ")],
+                "srt is the first of the three mise which producers",
+            )
+            # The run is the one U322 fixed: the same command, the same settings, the same PATH inside.
+            [call] = self.srt_calls(home)
+            self.assertEqual(f"srt --settings {settings} -- pnpm run build", call)
+            [seen] = self.settings_seen(home)
+            store = (dsh_home / ".pnpm-store").resolve()
+            self.assertEqual(
+                [str(build.resolve()), str(store), pnpm_lock_directory()], seen["filesystem"]["allowWrite"]
+            )
+            self.assertEqual(self.expected_deny(home), seen["filesystem"]["denyRead"])
+            self.assertEqual(self.expected_deny_write(home), seen["filesystem"]["denyWrite"])
+            self.assertEqual(["registry.npmjs.org"], seen["network"]["allowedDomains"])
+            [srt_env] = self.srt_environments(home)
+            self.assertEqual(f"{home}/bin:{home}/bin:/usr/bin:/bin", srt_env["PATH"], "no shim directory inside")
+            self.assertFalse(settings.exists(), "the settings file is removed after the run")
             self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host")
 
     def test_build_under_srt_passes_the_command_s_exit_through_and_removes_the_settings(self):
@@ -3327,7 +3418,9 @@ exit 0
             self.assertIn("/tmp/claude", seen["filesystem"]["denyWrite"])
             self.assertIn(f"{home.resolve()}/.npm/_logs", seen["filesystem"]["denyWrite"])
             self.assertEqual(
-                [str(build.resolve()), store], seen["filesystem"]["allowWrite"], "the two roots, as before"
+                [str(build.resolve()), store, pnpm_lock_directory()],
+                seen["filesystem"]["allowWrite"],
+                "the two roots and pnpm's lock directory (U363), as before",
             )
             [srt_env] = self.srt_environments(home)
             self.assertEqual(f"{store}/tmpdir", srt_env["TMPDIR"])
@@ -3473,6 +3566,108 @@ exit 0
             [seen] = self.settings_seen(home)
             self.assertEqual(["/tmp/claude", f"{home.resolve()}/.npm/_logs"], seen["filesystem"]["denyWrite"])
             self.assertEqual([], [row for row in seen["filesystem"]["denyWrite"] if row.startswith("/private/tmp")])
+
+    def test_build_under_srt_makes_pnpm_s_store_operation_lock_directory_under_the_physical_tmp_and_grants_it(self):
+        # U363: pnpm 12.8.1 keeps its store operation lock at <tmp>/pnpm-store-operation-locks-<uid> whatever TMPDIR,
+        # XDG_STATE_HOME or store-dir say (the macOS unified log: `Sandbox: pnpm(67566) deny(1) file-write-create
+        # /private/tmp/pnpm-store-operation-locks-501`), and no write root covered it, so every real pnpm install
+        # inside srt failed with ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK. The function makes the directory (0700, this
+        # user's own) under the physical temporary directory before the run and grants it as the third write root; it
+        # stays after the run and a second run finds it. The first case stands a fixture in for /tmp so the host's own
+        # directory is neither read nor made; the second is the host's shape.
+        for case in ("a stand-in for /tmp", "the host's /tmp"):
+            with self.subTest(tmp=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                build = dsh_home / "dsh/build"
+                build.mkdir(parents=True)
+                settings = dsh_home / "dsh/build.srt.json"
+                if case == "a stand-in for /tmp":
+                    prelude, fixture = self.tmp_stood_in(home)
+                    lock_dir = Path(pnpm_lock_directory(str(fixture)))
+                    self.assertFalse(lock_dir.exists(), "absent before the first run")
+                else:
+                    prelude, lock_dir = None, Path(pnpm_lock_directory())
+                result = self.run_build_under_srt(
+                    home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                [seen] = self.settings_seen(home)
+                store = str((dsh_home / ".pnpm-store").resolve())
+                self.assertEqual([str(build.resolve()), store, str(lock_dir)], seen["filesystem"]["allowWrite"])
+                self.assertTrue(lock_dir.is_dir() and not lock_dir.is_symlink(), f"{lock_dir} is a directory")
+                self.assertEqual(os.getuid(), lock_dir.stat().st_uid, "this user's own")
+                self.assertFalse(settings.exists(), "the settings file is removed after the run")
+                [srt_env] = self.srt_environments(home)
+                self.assertEqual(f"{store}/tmpdir", srt_env["TMPDIR"], "the TMPDIR inside the store, as before")
+                if case != "a stand-in for /tmp":
+                    continue
+                self.assertEqual(0o700, stat.S_IMODE(lock_dir.stat().st_mode), "made 0700")
+                self.assertEqual([], list(lock_dir.iterdir()), "made empty; the step writes nothing there itself")
+                again = self.run_build_under_srt(
+                    home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+                )
+                self.assertEqual(0, again.returncode, again.stdout + again.stderr)
+                self.assertEqual(2, len(self.settings_seen(home)), "the second run finds the directory and runs")
+                self.assertEqual(str(lock_dir), self.settings_seen(home)[1]["filesystem"]["allowWrite"][2])
+
+    def test_build_under_srt_refuses_a_planted_entry_at_pnpm_s_lock_directory_path_and_a_uid_it_cannot_read(self):
+        # TRUST of U363: the lock directory is this user's own, so no other process plants a lock the build follows. A
+        # link at its path (any user can make one under the sticky /tmp), a regular file there, or a parent the
+        # directory cannot be made in, is refused by name before any settings file is written and before srt runs;
+        # `id -u`, the producer of the directory's name, refuses on failure and on an answer that is no uid.
+        cases = ("a symlink", "a regular file", "an unwritable parent", "id -u fails", "id -u answers no uid")
+        for case in cases:
+            if case == "an unwritable parent" and os.geteuid() == 0:
+                continue
+            with self.subTest(planted=case), tempfile.TemporaryDirectory() as directory:
+                home, dsh_home = self.opted_in_home(directory)
+                build = dsh_home / "dsh/build"
+                build.mkdir(parents=True)
+                settings = dsh_home / "dsh/build.srt.json"
+                prelude, fixture = self.tmp_stood_in(home)
+                lock_dir = Path(pnpm_lock_directory(str(fixture)))
+                not_ours = (
+                    f"{lock_dir} could not be made and is not a directory of this user (pnpm keeps its store"
+                    " operation lock there; move the entry aside and rerun make update); nothing run."
+                )
+                if case == "a symlink":
+                    (home / "elsewhere").mkdir()
+                    lock_dir.symlink_to(home / "elsewhere")
+                    message = (
+                        f"{lock_dir} is a symlink; pnpm's store operation lock directory must be a directory of this"
+                        " user (move it aside and rerun make update); nothing run."
+                    )
+                elif case == "a regular file":
+                    lock_dir.write_text("")
+                    message = not_ours
+                elif case == "an unwritable parent":
+                    fixture.chmod(0o500)
+                    message = not_ours
+                elif case == "id -u fails":
+                    prelude += "id() { return 1; }; "
+                    message = (
+                        "the uid could not be read (id -u failed), which names pnpm's store operation lock directory;"
+                        " nothing run."
+                    )
+                else:
+                    prelude += 'id() { printf "nobody\\n"; }; '
+                    message = "id -u answered nobody, not a uid; nothing run."
+                try:
+                    result = self.run_build_under_srt(
+                        home, f'"{build}" "{settings}" -- pnpm run build', dsh_home=dsh_home, prelude=prelude
+                    )
+                finally:
+                    fixture.chmod(0o755)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"build_under_srt: {message}", result.stderr)
+                self.assertEqual([], self.srt_calls(home), "no srt run")
+                self.assertFalse(settings.exists(), "no settings file written")
+                self.assertFalse((home / "bare-pnpm").exists(), "no pnpm ran on the host")
+                if case == "a symlink":
+                    self.assertTrue(lock_dir.is_symlink(), "the planted link is left as it was")
+                    self.assertEqual([], list((home / "elsewhere").iterdir()), "nothing written through it")
+                elif case in ("id -u fails", "id -u answers no uid"):
+                    self.assertFalse(lock_dir.exists(), "no directory made under a name the uid did not give")
 
     def test_build_under_srt_refuses_when_a_resolver_of_the_deny_list_fails_naming_it(self):
         # verdicts/U322c P2 (:1914): the resolver reads the pwd injections above do not reach. The `cd` of the deny
@@ -3629,10 +3824,15 @@ exit 0
             self.assertEqual(4, len(seen))
             self.assertEqual([], seen[0]["network"]["allowedDomains"], "the canary needs no network")
             for settings in seen[:3]:
-                self.assertEqual([str(install.resolve()), store], settings["filesystem"]["allowWrite"])
+                self.assertEqual(
+                    [str(install.resolve()), store, pnpm_lock_directory()], settings["filesystem"]["allowWrite"]
+                )
             for settings in seen[1:]:
                 self.assertEqual(["registry.npmjs.org"], settings["network"]["allowedDomains"])
-            self.assertEqual([str((dsh_home / "profiles/thak").resolve()), store], seen[3]["filesystem"]["allowWrite"])
+            self.assertEqual(
+                [str((dsh_home / "profiles/thak").resolve()), store, pnpm_lock_directory()],
+                seen[3]["filesystem"]["allowWrite"],
+            )
             for settings in seen:
                 self.assertEqual(self.expected_deny(home), settings["filesystem"]["denyRead"])
                 self.assertEqual(self.expected_deny_write(home), settings["filesystem"]["denyWrite"])
@@ -6350,7 +6550,7 @@ def real_srt() -> str | None:
 class DshSuperagentTest(unittest.TestCase):
     """update_dsh_superagent over an archive built here, never downloaded (U317, round 2 U317b, round 4 U317d): the
     opt-in, the physical-path rule over plugins/ and profiles/, the digest check before anything is unpacked, every
-    archive member under the one root naming the pin, srt on PATH and pnpm and node by `mise which` before any
+    archive member under the one root naming the pin, srt, pnpm and node by `mise which` before any
     download, the lockfiles' tarball hosts held to the registry, then the canary, the tree's install and build and
     the profile install, each one `build_under_srt` run (the updater's one sandbox builder, U322; the step's own
     settings builder is gone, verdicts/U317c). mise is a stub that answers `which` with scripts under the fixture;
@@ -6365,9 +6565,10 @@ class DshSuperagentTest(unittest.TestCase):
     COMMIT_MATCH = re.search(r'^DSH_SUPERAGENT_COMMIT="([^"]+)"$', INSTALLER_PINS, re.MULTILINE)
     COMMIT = COMMIT_MATCH[1] if COMMIT_MATCH else "0" * 40
     URL = f"https://codeload.github.com/deepseek-ai/dsh-superagent-prototype/tar.gz/{COMMIT}"
-    # The step's own reads before any download (srt is read from PATH, as build_under_srt reads it, and logs nothing);
-    # build_under_srt reads the two again before each of its runs.
-    TOOL_CALLS = ["mise which pnpm", "mise which node"]
+    # The step's own reads before any download, each `mise which` with its status (srt is read the same way since
+    # U354: never `type -P`, which named the mise shim the updater puts first on PATH); build_under_srt reads the three
+    # again before each of its runs.
+    TOOL_CALLS = ["mise which srt", "mise which pnpm", "mise which node"]
     # build_under_srt's read denies under the home (hcom-seat's dsh role rows), read back from the settings the fake
     # srt kept; the three the step's own builder omitted (verdicts/U317c P1 :2634) are among them.
     CREDENTIAL_ROOTS = (
@@ -6558,12 +6759,12 @@ class DshSuperagentTest(unittest.TestCase):
     def assert_settings_shape(
         self, settings: dict, home: Path, write: list[str], hosts: list[str] | None = None
     ) -> None:
-        """build_under_srt's one settings shape, read back for the step's runs: the given write roots (physical) and
-        nothing else, the dsh role's credential rows and the checkout denied for read, srt's implicit write grants
-        denied by name, the hosts given (the registry alone for a pnpm run, none for the canary), no binding, no
-        socket, no pty."""
+        """build_under_srt's one settings shape, read back for the step's runs: the given write roots (physical) then
+        pnpm's store operation lock directory (U363) and nothing else, the dsh role's credential rows and the checkout
+        denied for read, srt's implicit write grants denied by name, the hosts given (the registry alone for a pnpm
+        run, none for the canary), no binding, no socket, no pty."""
         home_real = home.resolve()
-        self.assertEqual(write, settings["filesystem"]["allowWrite"])
+        self.assertEqual([*write, pnpm_lock_directory()], settings["filesystem"]["allowWrite"])
         deny_read = settings["filesystem"]["denyRead"]
         for row in self.CREDENTIAL_ROOTS:
             self.assertIn(f"{home_real}/{row}", deny_read)
@@ -6602,15 +6803,15 @@ class DshSuperagentTest(unittest.TestCase):
             result = self.run_step(home, payload, digest, dsh_home=dsh_home)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             calls = self.calls(home)
-            self.assertEqual(self.TOOL_CALLS, calls[:2], "pnpm and node are resolved before any download")
+            self.assertEqual(self.TOOL_CALLS, calls[:3], "srt, pnpm and node are resolved before any download")
             self.assertTrue(
-                calls[2].startswith(
+                calls[3].startswith(
                     f"curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 {self.URL} -o "
                 )
             )
-            # build_under_srt reads pnpm and node again before each of its four runs: the canary, the install, the
+            # build_under_srt reads srt, pnpm and node again before each of its four runs: the canary, the install, the
             # build and the profile install, each one `srt --settings <file> -- <command as given>`.
-            self.assertEqual(self.TOOL_CALLS * 4, [call for call in calls[3:] if not call.startswith("srt ")])
+            self.assertEqual(self.TOOL_CALLS * 4, [call for call in calls[4:] if not call.startswith("srt ")])
             install = dsh_home / "plugins/dsh-superagent"
             store = (dsh_home / ".pnpm-store").resolve()
             profile = dsh_home / "profiles/router"
@@ -6746,8 +6947,8 @@ class DshSuperagentTest(unittest.TestCase):
             result = self.run_step(home, payload, "0" * 64, dsh_home=dsh_home)
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn(f"dsh-superagent checksum mismatch: expected {'0' * 64}, got {digest}.", result.stderr)
-            self.assertEqual([*self.TOOL_CALLS, "curl"], [*self.calls(home)[:2], self.calls(home)[2].split()[0]])
-            self.assertEqual(3, len(self.calls(home)), "the download, then no srt")
+            self.assertEqual([*self.TOOL_CALLS, "curl"], [*self.calls(home)[:3], self.calls(home)[3].split()[0]])
+            self.assertEqual(4, len(self.calls(home)), "the download, then no srt")
             self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "nothing unpacked")
             self.assertFalse((home / ".agents").exists(), "nothing recorded")
 
@@ -6762,7 +6963,7 @@ class DshSuperagentTest(unittest.TestCase):
                 "update_dsh_superagent: the digest of the downloaded archive could not be read; install refused.",
                 result.stderr,
             )
-            self.assertEqual(3, len(self.calls(home)), "the tools and the download, then no srt")
+            self.assertEqual(4, len(self.calls(home)), "the tools and the download, then no srt")
             self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "nothing unpacked")
 
     def test_an_archive_whose_root_names_another_commit_is_refused_before_the_build(self):
@@ -6775,7 +6976,7 @@ class DshSuperagentTest(unittest.TestCase):
                 f"dsh-superagent archive root dsh-superagent-prototype-{'d' * 40} does not name the pin {self.COMMIT}; install refused.",
                 result.stderr,
             )
-            self.assertEqual(3, len(self.calls(home)), "no srt call")
+            self.assertEqual(4, len(self.calls(home)), "no srt call")
             self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "nothing unpacked")
         with tempfile.TemporaryDirectory() as directory:
             home, dsh_home = self.opted_in_home(directory)
@@ -6784,7 +6985,7 @@ class DshSuperagentTest(unittest.TestCase):
             result = self.run_step(home, payload, digest, dsh_home=dsh_home, prelude=prelude)
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn("the member list of the archive could not be read; install refused.", result.stderr)
-            self.assertEqual(3, len(self.calls(home)), "no srt call")
+            self.assertEqual(4, len(self.calls(home)), "no srt call")
 
     def test_an_archive_with_a_second_root_and_the_matching_digest_is_refused_before_unpack(self):
         # verdicts/U317 P2 :2403: the first member alone was checked, so an archive whose later members sat under a
@@ -6801,7 +7002,7 @@ class DshSuperagentTest(unittest.TestCase):
                 f" dsh-superagent-prototype-{self.COMMIT} that names the pin; install refused before anything is unpacked.",
                 result.stderr,
             )
-            self.assertEqual(3, len(self.calls(home)), "the tools and the download, then no srt")
+            self.assertEqual(4, len(self.calls(home)), "the tools and the download, then no srt")
             self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home), "no tree was made")
             self.assertFalse((home / ".agents").exists(), "nothing recorded")
 
@@ -6839,30 +7040,34 @@ class DshSuperagentTest(unittest.TestCase):
 
     def test_an_absent_srt_or_a_tool_that_is_no_executable_refuses_before_any_download(self):
         # verdicts/U317 P1 :2421: the upstream build ran through mise outside srt. The containment and the build
-        # tools are read with their status before the download, so no srt is no build: srt from PATH, the one
-        # producer build_under_srt reads for its runs (U317d), pnpm and node from the kit's mise pins.
+        # tools are read with their status before the download, so no srt is no build: srt, pnpm and node from the
+        # kit's mise pins by `mise which` (U354: srt too, never `type -P`, which named the mise shim the updater puts
+        # first on PATH), the three producers build_under_srt reads for its runs.
         with tempfile.TemporaryDirectory() as directory:
             home, dsh_home = self.opted_in_home(directory)
             payload, digest = self.archive(home)
             result = self.run_step(home, payload, digest, dsh_home=dsh_home, srt="absent")
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn(
-                "update_dsh_superagent: srt is absent from PATH (the kit pins npm:@anthropic-ai/sandbox-runtime",
+                "update_dsh_superagent: srt is absent (mise which srt failed; the kit pins it in"
+                " home/dot_mise/config.toml, so run make update after mise install); nothing installed, nothing"
+                " recorded.",
                 result.stderr,
             )
-            self.assertEqual([], self.calls(home), "srt is read first; no mise, no download, no build")
+            self.assertEqual(["mise which srt"], self.calls(home), "srt is read first; no download, no build")
             self.assertEqual(["omp-gateway"], self.plugin_entries(dsh_home))
+            (home / "calls").unlink()
             not_executable = home / "pnpm.txt"
             not_executable.write_text("not a program\n")
             result = self.run_step(home, payload, digest, dsh_home=dsh_home, pnpm=str(not_executable))
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn(f"{not_executable} (mise which pnpm) is not an executable file", result.stderr)
-            self.assertEqual(["mise which pnpm"], self.calls(home))
+            self.assertEqual(["mise which srt", "mise which pnpm"], self.calls(home))
             (home / "calls").unlink()
             result = self.run_step(home, payload, digest, dsh_home=dsh_home, pnpm="relative/pnpm")
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn("mise which pnpm answered relative/pnpm, not an absolute path", result.stderr)
-            self.assertEqual(["mise which pnpm"], self.calls(home))
+            self.assertEqual(["mise which srt", "mise which pnpm"], self.calls(home))
 
     def test_a_lockfile_without_a_row_a_tarball_host_beyond_the_registry_or_a_failed_read_refuses_before_any_build(
         self,

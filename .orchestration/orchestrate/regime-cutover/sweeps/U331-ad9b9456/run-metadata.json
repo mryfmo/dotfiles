@@ -1,0 +1,136 @@
+{
+  "run_id": "dotfiles-run-26",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "ad9b9456a171a40b0701eb1d87f82c324a9c0b7b",
+    "branch": "fix/seat-login-preflight-chain-quoting-status",
+    "parent_of_change": "247d890d753fea2f1ae2bb4b96e3a6f537d88036",
+    "base_note": "U318b (round 2 of U318) on origin/main 247d890d, where U283d (#710), U312 (#712), U311 (#713), U318 (#714) and U301 (#709) merged after 2b2415f6; U310 is not on main. The brief names origin/main 28482832 (U312) as the base and 16 paths in 2b2415f6..HEAD; at ad9b9456 the merge base with origin/main is 247d890d and 2b2415f6..HEAD holds 30 paths.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run over 2b2415f6..ad9b9456: (1) U318 and U318b (the shared Claude Code directory row of hcom-seat, seat-login-preflight's Claude route) and U312 (the seat token retired), hunted in three new units; (2) U301 (the five installers' ci-runner helper block) in one new unit; (3) U311 and U283d, merged byte-identical to the heads run-24 and run-21 swept, re-checked from those sweeps' units; (4) run-25's lever, U227b and U306 units and the carried candidate re-mapped through 792604f9..HEAD; run-25's four U310 units not_applicable (U310 is not on main).",
+  "carry_note": "The brief names run-25 as the set to carry (TRUST) and run-20 as this seat's previous run (CONTEXT; this seat's previous run is run-25). run-25 is carried; its U311 and U283d units were not_applicable there and are restored from run-24 and run-21, whose sweeps cover files byte-identical to this head's.",
+  "scope_paths": [
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "scripts/orchestrator/seat-login-preflight",
+    "home/dot_local/bin/common/executable_seat-login-preflight",
+    "docs/pi-claude-bridge.md",
+    "docs/remote-host-logins.md",
+    "home/dot_profile",
+    "home/dot_zshenv",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "tests/unit/test_hcom_seat.py",
+    "tests/unit/test_hcom_seat_dsh.py",
+    "tests/unit/test_remote_host_logins.py",
+    "install/common/aws_cli.sh",
+    "install/macos/common/brew.sh",
+    "install/macos/common/dependencies.sh",
+    "install/macos/common/docker.sh",
+    "install/macos/common/misc.sh",
+    "install/ubuntu/client/misc.sh",
+    "tests/unit/test_ci_runner.py",
+    "scripts/lib/asset-manifest.sh",
+    "scripts/update-agent-assets.sh",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the installed, pinned pi-claude-bridge 0.9.3 (agent-config.yaml:1289-1297) was read, not run.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-25",
+      "source_ref": "792604f91ddd879e13e67e8b85076253a32a508c",
+      "findings": 0,
+      "ledger_units": 67,
+      "use": "The set to carry: its lever, U227b and U306 units and the carried candidate re-mapped through 792604f9..HEAD (U318 shifts the dsh grant rows by one); its four U310 units not_applicable; its slots-after-a-refusal note, restated as closed by U310c there, open again here."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-24",
+      "source_ref": "a1f22ecaf547d6ab5b1a2f787f796d5b61f073a5",
+      "findings": 0,
+      "ledger_units": 67,
+      "use": "Its three U311 units, restored: install/common/aws_cli.sh and its tests are byte-identical at this head."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-21",
+      "source_ref": "858f053bc781019e5abc870ca3fa9cc495acd77f",
+      "findings": 0,
+      "ledger_units": 64,
+      "use": "Its two U283d units, restored: asset-manifest.sh, update-agent-assets.sh and their tests are byte-identical at this head."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T01:58:14Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: two candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused). seats/shared-claude-config-dir/cross-seat-session-files (new in U318, on origin/main; proposed needs_validation) and dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt (carried; proposed needs_validation) stay unvalidated ledger candidates and are not findings.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "new_in": "U318 (#714, on origin/main 247d890d)",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh",
+      "record": "agents/parent-hunter/scratch/candidate-pnpm.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-25",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (2), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted four new units (the shared directory grant, the preflight's Claude route, the retired token, the installers' helper block) and the restoration of the U311 and U283d units; every carried unit re-mapped"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 2,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T02:08:22Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

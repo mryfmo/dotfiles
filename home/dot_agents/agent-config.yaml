@@ -874,6 +874,12 @@ claude:
   # acp-relay.py is its socket relay, pinned like regime-env and checked by the
   # broker before it runs; acp-seat is the thin client dsh-subagent-acp runs
   # inside the Router's sandbox, self-checked like brief-check.py.
+  # ledger-row.py is the coordinator's one writer of a ledger.tsv row (U222):
+  # installed and pinned the same way, run as `python3 -I -S` with ledger.py
+  # beside it; it composes the row by the reader's grammar and appends one line.
+  # ledger.py is the one ledger reader that ledger-row.py imports from its own
+  # directory (U418): installed beside it under its bare name, no `executable_`
+  # prefix and mode 0644 since it is imported and never run, and pinned the same way.
   # profile-config-place.py is hcom-seat's helper for the dsh role's profile config
   # write (U310d): installed and pinned the same way, run by hcom-seat alone as
   # `python3 -I -S` after hcom-seat has read its digest against this pin, never by
@@ -884,31 +890,48 @@ claude:
   # `python3 -I -S` over a private copy whose digest the reaper reads against this
   # pin before each run, never by a policy rule; it writes one record inside the
   # broker directory through one held directory descriptor and nothing else.
+  # router-settings-apply and router-gh (U353, M-26 stage B): the settings
+  # writer the coordinator runs outside every sandbox after `hcom-seat router`
+  # is ready (the manifest's sources.github row and accept mode into the Router's
+  # store through its loopback Management API, revision-checked and idempotent),
+  # and the gh wrapper the Router's Source names as its cli (GH_CONFIG_DIR under
+  # $DSH_HOME/router-credentials, the router role's one read grant beyond the
+  # dsh row's; the login inside it is the operator's step). Both installed and
+  # pinned the same way.
+  # regime-store-move (U221, store move 5 of 5; read-only since U221d) judges
+  # whether a program's live store may move out of the main checkout to the
+  # derived store root and prints the operator's procedure, the copy included;
+  # it moves nothing. Run by the coordinator or the operator outside every
+  # seat; installed and pinned the same way, with no allow rule and no seat
+  # policy row.
   levers:
     sha256:
-      hcom-seat: 07977f3b0c049897de607a8b2ba90fb4a0ff1e97270205b96532d6c985c92a54
+      hcom-seat: 5200c47a76db5f549a1376cfb75f93f685d404ac9c5103093f2a3df3c1a9f565
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
       worker-worktree.sh: 3cfe8e3a98ce7379bcbfab9883e8c0f60c53fe7f38e2427512ef92c355c04dd1
-      regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
+      regime-env: be25d823cd66bf4ed93da4a30f3bdf619fda06310c1ef0de53ab11e794d64257
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
-      regime-init: c48f38c22638f0004caeb6151a79b1abfc260f055c306ef678a0c303c2dafb3e
-      checkout-guard.sh: f87d279dbc65e7f3d0119d05f820222f9903d865087394f2663d86e1058e894c
+      regime-init: 1c576fc79b9f21491fe3bbfcd221efa92af7e7aebbb7e479eaee3a94e91b758d
+      checkout-guard.sh: 4fd793eeefa7312b8f23c74a5b8f457eb915213b55f1020cc260932657674c45
       seat-login-preflight: 7d12ffb08da39735f6c368ddb9ab4ed10084d755a1f57470edc64d1d78e4ae61
-      regime-start: c7b630d2353020e57c57a01af94fac5f7ed7f503071de9d1a15172eeb057bc6b
+      regime-start: 978087b6ac9cbe00a3cb4f45dd749a8634d960948b5e2df96a97bbafe9597d17
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
+      regime-store-move: 592ed0a7513a072446d1dee5a96b27b96b139eda33cfdc5ac95dd559aa66351a
       pr-thread-reply.sh: a87078136ec916af8d3e46cd907b729d00ae8b3a6ea841c05ad77daefed3087c
       pr-thread-resolve.sh: efd650ad68b47654483e5cb67de7ae5b165e7e0a7a48bd3e00c6cf35aa564c0b
       pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae
-      pr-close.sh: 113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a
+      pr-close.sh: 7e9778c493949cde1a7773ed439f502ca687d84d3de9bbf9be0f00b915b20233
       pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
       pr-threads-check.sh: 984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c
-      records-sync.sh: 234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e
-      pr-merge.sh: f9063f3bcd4f84cb1007cfb919d757e5aa20db5358a9cfb1cd91a46ab4cade9b
+      records-sync.sh: c832fe80d70a760370bac021691dc470d8d118dc596884f60c9f696984871a97
+      pr-merge.sh: 6c7f3ff20bbaad62855e177afe38499547aba5519d164f9a0a9faf579f3a3028
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
-      pr-audit.sh: af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0
+      pr-audit.sh: 7024bdaec07f2b545d511ad71ca5756f39123dff20776dbec12fea9c89c56786
       brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
+      ledger-row.py: 8eb2d306b9b4b7708a5ee23d8a7fa00116787b1efebe1d5824357b005f182f2c
+      ledger.py: 4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       acp-broker: 56cd0aa51447f631ff1e587a24d318c088491d9975e7adc8fb2b70b3c386ad41
@@ -916,6 +939,8 @@ claude:
       acp-seat: b48f7bbe3c27934d67dc5f92e18640ec7b7f9e42f12cbc6858f3050a65a79c69
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431
       intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f
+      router-settings-apply: 105865474f5c52d552f53b86764fab2b25d6699851ab30ca8a24e7ac579d39f5
+      router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).
@@ -1448,6 +1473,11 @@ assets:
         repository: mryfmo/dotfiles
         accept_mode: observe
         accept_mode_row: "2026-11-06T23:24:00Z"
+        # observe_admission is the one policy cell router-settings-apply writes (sources.github.admission.pulls
+        # .unlistedUnaddressed, U416): the M-18 observe rung records a would-accept Decision only through this cell
+        # (inferred; upstream's default ignore sends every unlisted human's pull request to not_a_member before any
+        # assessment, measured 2026-11-10T04:08:19Z), while the allowed list is the auto rung's lever and stays empty.
+        observe_admission: inferred
   graphifyy:
     source: github-release
     upstream: Graphify-Labs/graphify

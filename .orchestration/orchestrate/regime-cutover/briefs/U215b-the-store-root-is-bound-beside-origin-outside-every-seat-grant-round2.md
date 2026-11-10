@@ -1,0 +1,45 @@
+# U215b round 2 of U215: the store root is bound beside `origin`, outside every seat's write grant, and existing components are held to 0700
+
+GOAL
+The round-1 audit of PR 730 (verdicts/U215-11a32ed6.md, class write-boundary) found one P1, two P2 and one P3. (1) P1 regime-init:120: `REGIME_STORE_ROOT=${HCOM_DIR}/store` puts the coordinator's records inside the hcom store, which hcom-seat grants recursively to every seat for the bus (`seat_write_roots`, the `hcom_real` row), and no rendered denyWrite covers the new directory, so a worker seat could write the ledger; same-user 0700 isolates nothing from a same-user seat. (2) P2 regime-init:172: an existing `store` or `store/<program>` directory is held to type and owner, not to mode, so two pre-made 0777 directories pass and keep 0777. (3) P2 tests/unit/test_regime_init.py:127: the renamed guard test pins that a commit in a freshly initialised checkout passes, and the Threat table's residual row names U219 alone; the row needs the containment that holds until U219 (the live store of this program is untouched, no fresh checkout is initialised before U219, and the installed guard still fires on this program's checkout because its `units.tsv` is still there). (4) P3 tests/unit/test_regime_env.py:134: the body claims every caller converts the helper's refusal to exit 2, but bus-history.sh and hcom-dispatch exit 1 for a symlink at the new root; the claim is corrected, the callers are not changed (standing order 36, two levers). The decisions row of 2026-11-07T17:3xZ (design) fixes the round-2 shape: the design doc's binding form.
+
+SCOPE
+The same branch `feat/store-root-derivation-regime-env-regime-init` and PR 730; the tree is `/tmp/dotfiles-wt/U215` at 11a32ed6 (clean). May write: `scripts/orchestrator/regime-env` and `scripts/orchestrator/regime-init` with their copies `home/dot_local/bin/common/executable_regime-env` and `home/dot_local/bin/common/executable_regime-init`, `tests/unit/test_regime_env.py`, `tests/unit/test_regime_init.py`, `scripts/orchestrator/README.md` (the store-root paragraph and the regime-init rows), the pins through `scripts/generate-agent-configs.py` (never by hand) and whatever it regenerates, and the PR body `/tmp/dotfiles-wt/U215-pr-body.md`. Non-goals: every other file under `scripts/orchestrator/` and the workflow stay as they are; no file of the live store is moved, copied or read.
+
+CONTEXT
+`regime-env` and `regime-init` at 11a32ed6 (the round-1 shape: `REGIME_STORE_ROOT=${HCOM_DIR}/store`, the symlink refusal, the two `mkdir` steps); `regime-env`'s origin binding (`REGIME_ORIGIN=${HCOM_DIR}/origin`, read and compared, `--unbound-ok`) as the form the store-root binding copies; hcom-seat's `seat_write_roots` and the hcom store row (why nothing under `${HCOM_DIR}` may hold the records) and its `state_root_make` (the 0700 hold: `-d`, `! -L`, `-O`, and the mode read by `stat`); `handoff/07-store-move-design.md` (a plain directory outside the repository, bound the way `origin` is bound); the round-1 verdict; `preferences.md` standing orders 21, 36, 46.
+
+DATA SHAPE
+One binding file `${HCOM_DIR}/store-root` holding one absolute path (no trailing slash, no control character, under this user's home), written by `regime-init` and read by `regime-env`; one default root at first init, `${HOME}/.local/state/regime-store/<slug>`, a directory no seat's write grant covers; `REGIME_STORE_ROOT` exported as the bound path, or empty with no refusal when the binding is absent (today's hosts, until U221 binds them); one program store `${REGIME_STORE_ROOT}/<program>`; every existing component held to a real directory of this user with mode 0700.
+
+CHANGE
+1. Tests first, red at 11a32ed6: (a) `test_regime_env.py`: with `<HCOM_DIR>/store-root` holding `<HOME>/.local/state/regime-store/<slug>`, sourcing the helper exports `REGIME_STORE_ROOT` equal to it; with no binding file, `REGIME_STORE_ROOT` is exported empty and the helper succeeds; a binding whose content is relative, holds a control character, names a path outside `<HOME>`, or is a symbolic link refuses by name; (b) `test_regime_init.py`: the first run writes `<HCOM_DIR>/store-root` (0600, the default path) and creates `<HOME>/.local/state/regime-store/<slug>/<program>` (both components 0700, this user) holding the five templates, and creates nothing under `<HCOM_DIR>` but `origin` and `store-root`, and nothing under `<repo>/.orchestration/`; the second run changes nothing; a pre-made `regime-store/<slug>` or `<slug>/<program>` directory with mode 0777 (or any mode but 0700) refuses by name before any write; a binding that names another path is honoured (the store is created there) when the path is under `<HOME>` and refused otherwise; the guard test keeps pinning the trigger consequence and its docstring names the containment of GOAL (3). 2. `regime-env`: `REGIME_STORE_BINDING=${HCOM_DIR}/store-root`; when it exists (no link; a regular file of this user), its one line is read (every producer's status, standing order 21), held to the grammar of DATA SHAPE and exported as `REGIME_STORE_ROOT`; absent, `REGIME_STORE_ROOT=''` exported, no refusal. 3. `regime-init`: the default root `${HOME}/.local/state/regime-store/${REGIME_SLUG}`, or the bound one when the binding exists; `regime-store`, `<slug>` and `<program>` each made under `umask 077` or found a real directory of this user whose mode is 0700 (read by `/usr/bin/stat`, Darwin `-f %Lp`, else `-c %a`; any other mode refuses by name); the binding written 0600 after the directories exist (an existing binding that differs refuses, like `origin`); the `created`/`unchanged` rows name the root and the binding; the header and usage say so. 4. Copies and pins; the README paragraph and the regime-init rows (the exit-status claim corrected: the helper returns 1 and each caller maps it to its own refusal status). 5. Green: `uv run --offline --with pyyaml python -m unittest tests.unit.test_regime_env tests.unit.test_regime_init tests.unit.test_lever_self_check tests.unit.test_generate_agent_configs tests.unit.test_hcom_dispatch tests.unit.test_regime_start -v` to `/tmp/u215b/full.txt`; the lints through `run-on-lint-files.sh` (shellcheck, shfmt, ruff, prettier), `lint-comparisons --changed`, `make render-check`, `validate-agent-assets`; cmp of each pair; the pins equal `shasum -a 256` of the sources. 6. One commit on 11a32ed6; the body gains `## Round 2 (U215b)` (the four findings in the body's own words, the design correction) and a `### Round 2, U215b, head <sha>` subsection under the existing `## Verification` heading (kept once) with ACCEPTANCE pasted; the Threat table's rows for regime-init and the test gain the containment text; `Program-Unit: regime-cutover/U215` once at the end.
+
+ACCEPTANCE
+1. Tests (a) and (b) named with their red lines at 11a32ed6 (`/tmp/u215b/red.txt`) and green lines at the head. 2. The six modules OK with counts under `python -m unittest`. 3. Every lint 0 (`run-on-lint-files.sh`, `lint-comparisons --changed`, `make render-check`); cmp 0 for both pairs; the two pins equal `shasum -a 256` of the sources. 4. `git diff --stat 11a32ed6 HEAD` pasted. 5. `grep -n 'HCOM_DIR}/store\b' scripts/orchestrator/regime-env scripts/orchestrator/regime-init` prints nothing (no store under the hcom store), pasted.
+
+VERIFY
+ACCEPTANCE pasted into the body's Verification section and the report; the coordinator pushes to PR 730's branch, and the one audit, the sweep and CI follow.
+
+CLOSURE
+remove
+
+TRUST
+TRUST: the unit trusts hcom-seat's write-root table as the boundary the records must stay outside of, `regime-env`'s origin binding as the form of the new binding, and the two test modules' fixtures (a scratch HOME and repository) as the proof that nothing lands under the hcom store or the checkout.
+
+TIMEBOX
+50 minutes.
+
+FORBIDDEN
+No change to any lever but the two named; no store under `${HCOM_DIR}`; no read, copy or move of the live store; no network; no push; no pin edited by hand; no rebase; no pipe `|` in any bash command (standing order 46: output to a file under `/tmp/u215b/`, then read it).
+
+WORKER RULES (standing orders 21, 27, 29, 31, 34, 44, 46, 49; read `~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/preferences.md` lines 23 to 56)
+- Never run git or edit files in `~/Workspace/dotfiles`, never push, never open or edit a PR, never edit the live store; you stop at a committed head in `/tmp/dotfiles-wt/U215`. The worktree is yours alone; your final line is the Task return.
+- Progress line at `../U215b-progress.txt`; final report to `../U215b-report.txt`.
+- Commit unsigned: `git -c commit.gpgsign=false commit`. The commit message ends with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
+
+REPORT
+Status, head sha (40 hex), the tests with red and green lines, the ACCEPTANCE lines, deviations. Under 12 lines, ending with `head=<40 hex>`.
+
+STANDING
+`preferences.md` (standing orders 21, 24, 27, 29, 34, 36, 44, 46, 49); `verdicts/U215-11a32ed6.md`; the U215 brief; `handoff/07-store-move-design.md`; the decisions rows of 2026-11-05T23:34:51Z and 2026-11-07T17:3xZ (design).

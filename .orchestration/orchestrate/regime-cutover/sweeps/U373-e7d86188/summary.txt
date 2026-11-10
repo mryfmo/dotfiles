@@ -1,0 +1,18 @@
+security-audit sweep e7d86188ac516ef0fb0e9db132356c0fc24aa406: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U370 (docs: the harness page's third write root; router-gh's header on the Keychain; the settings writer's fail-closed read tests): no candidate. Main since run-42 (U353 #724 byte-identical to run-42's head; U354, U355, U359, U364 swept earlier on this seat) adds U363, hunted here: one new candidate (not a finding):
+  updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm	scripts/update-agent-assets.sh:2015	(the contained build's third write root is pnpm's host-wide lock directory, left in place and never inspected for the operator's next unsandboxed pnpm; pnpm's handling of a planted entry unread, native binary)
+unvalidated candidates carried from run-42, all on main now (not findings; no independent verifier on this seat):
+  router-seat/keychain/model-gh-resolves-the-operators-login	scripts/orchestrator/router-gh:168
+  seats/router-credential-root/read-deny-follows-the-launching-callers-home	scripts/orchestrator/hcom-seat:831
+  router-seat/credential-root/agent-token-readable-by-the-router-model	scripts/orchestrator/hcom-seat:2458
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:437
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1501
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2434
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2474
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2112
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: ff286680..e7d86188 (7 files) and 747995da..e7d86188 (14 files); run-42's records carried (they hold run-38's, the brief's named set) and re-mapped, run-39's omp-gateway unit carried, the build unit given U363's root; profile standard, source-only; ledger 87 units: 36 covered, 9 candidate, 42 out_of_scope
+brief notes: the title and GOAL are U322's template (branch fix/dsh-harness-build-under-srt, base 668ba887, 3 paths); the CONTEXT names run-38 'the U370d head 39f75cc8' (run-38 swept U353 at 8791100f)
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: build-ledger.cjs, overrides.json, nv-head.md, nv-carried.md and the nine candidate records in agents/parent-hunter/scratch/)
+wall time: 379s (2026-11-07T17:02:29Z to 2026-11-07T17:08:48Z)

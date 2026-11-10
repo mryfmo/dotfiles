@@ -8,8 +8,10 @@ way a worker's head reaches the coordinator's checkout. Nothing reads the real c
 """
 
 import ast
+import hashlib
 import os
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -24,19 +26,26 @@ from scratch_git import git_clone, git_init, quiet_git_env  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 LEVER = ROOT / "scripts/orchestrator/checkout-guard.sh"
 HOOK = "reference-transaction"
+# The coordinator marker `install` writes beside the hook (regime-cutover U219): the hook's trigger once the live
+# store has left the checkout (U221), beside the pre-move store trigger until then.
+MARKER = "regime-coordinator"
+MARKER_TEXT = b"regime-cutover U219: this checkout is the coordinator's\n"
 ROUND1_HOOKS = ("pre-commit", "post-checkout")
 PREFIX = "checkout-guard: "
 ROUTE = (
     "commits belong in a worker tree: ~/.local/bin/common/worker-worktree.sh <unit> <branch> origin/main makes one "
     "under $TMPDIR/dotfiles-wt/<unit> (standing order 29)"
 )
+# The pre-move lever (origin/main 7b570792, U215 merged): the coordinator's live checkout holds the hook it wrote, which
+# this lever's `install` upgrades (U219b). The test renders that lever from `git show`, never from a copied literal.
+BASE = "7b570792"
 REFUSAL = "checkout-guard: this checkout is the coordinator's; " + ROUTE
 FAILED_READ = "the update is refused (standing order 21)"
 ZERO = "0" * 40
 # The expected bytes `install` and `check` write to the scratch directory before anything else: one `cat` per hook form
-# (`reference-transaction`, `pre-commit`, `post-checkout`, `pre-commit.subst`); the next `cat` of an install is the
-# write of the hook's bytes to the temporary file in the hooks directory.
-SCRATCH_WRITES = 4
+# (`reference-transaction`, `pre-commit`, `post-checkout`, `pre-commit.subst`) and one for the marker; the next `cat`
+# of an install is the write of the hook's bytes to the temporary file in the hooks directory.
+SCRATCH_WRITES = 5
 # githooks(5), reference-transaction: "For each reference update that was added to the transaction, the hook receives
 # on standard input a line of the format: <old-value> SP <new-value> SP <ref-name> LF"; symbolic values are
 # `ref:<ref-target>`; the exit status counts in the "preparing" and "prepared" states alone.
@@ -74,6 +83,7 @@ class CheckoutGuardTest(unittest.TestCase):
         self.git("commit", "-q", "-m", "main", cwd=self.origin)
         self.checkout = self.clone(self.root / "checkout")
         self.hooks = self.checkout / ".git/hooks"
+        self.marker = self.hooks / MARKER
         # The commit origin does not hold: minted in another clone, fetched by path (FETCH_HEAD moves no ref).
         other = self.clone(self.root / "other")
         self.git("checkout", "-q", "-b", "work", cwd=other)
@@ -121,10 +131,19 @@ class CheckoutGuardTest(unittest.TestCase):
         (store / "units.tsv").write_text("unit\tstate\n")
         return store
 
-    def install(self, checkout=None):
+    def install(self, checkout=None, marker=True):
+        """Install the hook and the marker into CHECKOUT (the fixture's by default). With MARKER false the marker is
+        removed again, so the test exercises the pre-move trigger alone: a store under a toplevel (U221 removes it)."""
         run = self.run_lever("install", str(checkout or self.checkout))
         self.assertEqual(run.returncode, 0, run.stderr)
+        if not marker:
+            ((checkout or self.checkout) / ".git/hooks" / MARKER).unlink()
         return run
+
+    def installed_rows(self, checkout=None):
+        """The rows a first install prints: the hook, then the marker."""
+        hooks = (checkout or self.checkout) / ".git/hooks"
+        return [("installed", str(hooks / HOOK)), ("installed", str(hooks / MARKER))]
 
     def branches(self, cwd=None):
         """Every local branch with its commit, and HEAD's symbolic target (or its commit when detached)."""
@@ -149,15 +168,21 @@ class CheckoutGuardTest(unittest.TestCase):
         self.assertIn(REFUSAL, err)
         self.assertIn("which no refs/remotes/origin/* ref reaches", err)
 
-    def shim(self, pattern, status=128, name="git", nth=None):
+    def shim(self, pattern, status=128, name="git", nth=None, output=None, before=None):
         """The directory whose `NAME` (default `git`) exits STATUS on a call whose arguments hold PATTERN, else runs
         the real NAME from PATH. With NTH, only the NTH such call fails (the calls are counted in the `calls` file
         of the directory, read and written by the shell's builtins so a `cat` shim never runs itself; the caller
-        removes the file between runs)."""
+        removes the file between runs). With OUTPUT, the failing call prints it on stdout first, as a tool that fails
+        after plausible output would (U219b). With BEFORE, a matching call runs that shell command and then the real
+        NAME instead of failing."""
         real = shutil.which(name, path=self.env["PATH"])
         shims = Path(tempfile.mkdtemp(prefix=f"shim-{name}-", dir=self.root))
         failing = f'echo "shim: failing {name} {pattern}" >&2; exit {status}'
-        if nth is None:
+        if output is not None:
+            failing = f"printf '%s\\n' {shlex.quote(output)}; " + failing
+        if before is not None:
+            decision = f"{before} ;;"
+        elif nth is None:
             decision = f"{failing} ;;"
         else:
             decision = (
@@ -174,17 +199,42 @@ class CheckoutGuardTest(unittest.TestCase):
         for everything but PATTERN (the outer command among it)."""
         return {**self.env, "GIT_EXEC_PATH": str(self.shim(pattern))}
 
+    def base_lever(self):
+        """The pre-move lever (BASE) rendered from `git show` into a scratch tree of the checkout's shape, git-isolated.sh
+        of the same commit beside it and a manifest pinning both, so its self-check passes and its `install` writes
+        the hook bytes a checkout upgraded from it holds; never a copied literal (U219b TRUST)."""
+        tree = self.root / "base"
+        levers = tree / "scripts/orchestrator"
+        levers.mkdir(parents=True)
+        (tree / "home/dot_agents").mkdir(parents=True)
+        pins = []
+        for name in ("checkout-guard.sh", "git-isolated.sh"):
+            shown = subprocess.run(
+                ["git", "-C", str(ROOT), "show", f"{BASE}:scripts/orchestrator/{name}"],
+                env=self.env, capture_output=True, check=False, timeout=120,
+            )  # fmt: skip
+            self.assertEqual(shown.returncode, 0, shown.stderr.decode())
+            (levers / name).write_bytes(shown.stdout)
+            pins.append(f"      {name}: {hashlib.sha256(shown.stdout).hexdigest()}\n")
+        (levers / "checkout-guard.sh").chmod(0o755)
+        (tree / "home/dot_agents/agent-config.yaml").write_text("claude:\n  levers:\n    sha256:\n" + "".join(pins))
+        return levers / "checkout-guard.sh"
+
     def test_install_on_a_main_checkout_writes_the_hook_and_a_second_install_is_a_no_op(self):
-        """`install` writes `reference-transaction` into the checkout's hooks directory, mode 0755, and reads it back;
-        `check` reports it installed; a second install finds its own hook, prints `unchanged` and leaves every byte
-        and mode as it was; round 1's two hook paths are not written."""
+        """`install` writes `reference-transaction` into the checkout's hooks directory, mode 0755, and reads it back,
+        and the marker `regime-coordinator` beside it (U219: a regular file, mode 0644, one line); `check` reports
+        both installed; a second install finds its own hook and marker, prints `unchanged` for each and leaves every
+        byte and mode as it was; round 1's two hook paths are not written."""
         hook = self.hooks / HOOK
         before = self.run_lever("check", str(self.checkout))
         self.assertEqual(before.returncode, 1, before.stdout)
-        self.assertEqual([("absent", str(hook))], self.rows(before.stdout))
+        self.assertEqual([("absent", str(hook)), ("absent", str(self.marker))], self.rows(before.stdout))
         run = self.install()
-        self.assertEqual([("installed", str(hook))], self.rows(run.stdout))
+        self.assertEqual(self.installed_rows(), self.rows(run.stdout))
         self.assertEqual(stat.S_IMODE(hook.stat().st_mode), 0o755)
+        self.assertTrue(self.marker.is_file() and not self.marker.is_symlink(), "a regular file beside the hook")
+        self.assertEqual(stat.S_IMODE(self.marker.stat().st_mode), 0o644)
+        self.assertEqual(self.marker.read_bytes(), MARKER_TEXT)
         text = hook.read_text()
         self.assertTrue(text.startswith("#!/usr/bin/env -S python3 -I -S\n"), text[:40])
         self.assertIn("worker-worktree.sh <unit> <branch> origin/main makes one ", text)
@@ -195,16 +245,16 @@ class CheckoutGuardTest(unittest.TestCase):
             self.assertFalse((self.hooks / name).exists(), name)
         check = self.run_lever("check", str(self.checkout))
         self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
-        self.assertEqual([("installed", str(hook))], self.rows(check.stdout))
+        self.assertEqual(self.installed_rows(), self.rows(check.stdout))
         state = self.hooks_state()
         again = self.install()
-        self.assertEqual([("unchanged", str(hook))], self.rows(again.stdout))
+        self.assertEqual([("unchanged", str(hook)), ("unchanged", str(self.marker))], self.rows(again.stdout))
         self.assertEqual(self.hooks_state(), state)
         # `install` works from a subdirectory of the checkout too: the toplevel is git's.
         (self.checkout / "sub").mkdir()
         deeper = self.run_lever("install", str(self.checkout / "sub"))
         self.assertEqual(deeper.returncode, 0, deeper.stderr)
-        self.assertEqual([("unchanged", str(hook))], self.rows(deeper.stdout))
+        self.assertEqual([("unchanged", str(hook)), ("unchanged", str(self.marker))], self.rows(deeper.stdout))
 
     def test_install_removes_round_1_s_hooks_and_leaves_any_other_file_at_their_paths(self):
         """An upgraded checkout holds round 1's `pre-commit` and `post-checkout`: `check` names each `stale` (exit 1),
@@ -219,22 +269,28 @@ class CheckoutGuardTest(unittest.TestCase):
             (self.hooks / "post-checkout").write_bytes(round1_body("post-checkout"))
             for name in ROUND1_HOOKS:
                 (self.hooks / name).chmod(0o755)
+            # The second round starts with the hook removed and the marker of the first install still there.
+            marker_before = "unchanged" if self.marker.exists() else "installed"
             check = self.run_lever("check", str(self.checkout))
             self.assertEqual(check.returncode, 1, check.stdout)
             self.assertEqual(
-                [("absent", str(self.hooks / HOOK))] + [("stale", str(self.hooks / name)) for name in ROUND1_HOOKS],
+                [
+                    ("absent", str(self.hooks / HOOK)),
+                    ("installed" if self.marker.exists() else "absent", str(self.marker)),
+                ]
+                + [("stale", str(self.hooks / name)) for name in ROUND1_HOOKS],
                 self.rows(check.stdout),
             )
             run = self.install()
             self.assertEqual(
-                [("installed", str(self.hooks / HOOK))]
+                [("installed", str(self.hooks / HOOK)), (marker_before, str(self.marker))]
                 + [("removed", str(self.hooks / name)) for name in ROUND1_HOOKS],
                 self.rows(run.stdout),
             )
             for name in ROUND1_HOOKS:
                 self.assertFalse((self.hooks / name).exists(), name)
             check = self.run_lever("check", str(self.checkout))
-            self.assertEqual((check.returncode, self.rows(check.stdout)), (0, [("installed", str(self.hooks / HOOK))]))
+            self.assertEqual((check.returncode, self.rows(check.stdout)), (0, self.installed_rows()))
             (self.hooks / HOOK).unlink()
         self.install()
         # Not round 1's bytes: left alone, not a row, not a refusal.
@@ -244,10 +300,12 @@ class CheckoutGuardTest(unittest.TestCase):
         (self.hooks / "post-checkout").write_text("#!/bin/sh\nexit 0\n")
         state = self.hooks_state()
         run = self.install()
-        self.assertEqual([("unchanged", str(self.hooks / HOOK))], self.rows(run.stdout))
+        self.assertEqual(
+            [("unchanged", str(self.hooks / HOOK)), ("unchanged", str(self.marker))], self.rows(run.stdout)
+        )
         self.assertEqual(self.hooks_state(), state)
         check = self.run_lever("check", str(self.checkout))
-        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, [("installed", str(self.hooks / HOOK))]))
+        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, self.installed_rows()))
 
     def test_install_refuses_a_linked_worktree_and_a_foreign_hook_and_writes_nothing(self):
         """Each refusal is exit 2 with nothing written: a linked worktree (its hooks are the main checkout's), a
@@ -368,13 +426,15 @@ class CheckoutGuardTest(unittest.TestCase):
         (shims / "calls").unlink()
         check = self.run_lever("check", str(self.checkout), env=env)
         self.assertEqual(
-            (check.returncode, self.rows(check.stdout)), (1, [("not-executable", str(hook))]), check.stderr
+            (check.returncode, self.rows(check.stdout)),
+            (1, [("not-executable", str(hook)), ("installed", str(self.marker))]),
+            check.stderr,
         )
         self.assertNotIn("shim", check.stderr)
         self.assertEqual((shims / "calls").read_text(), "1\n", "check makes the scratch directory alone")
         # The control: no shim, the same checkout, the hook is installed in place.
         run = self.install()
-        self.assertEqual([("installed", str(hook))], self.rows(run.stdout))
+        self.assertEqual([("installed", str(hook)), ("unchanged", str(self.marker))], self.rows(run.stdout))
         self.assertEqual((hook.read_bytes(), stat.S_IMODE(hook.stat().st_mode)), (original, 0o755))
 
     def test_a_failed_install_removes_the_hooks_directory_it_made_and_never_one_that_existed(self):
@@ -408,8 +468,8 @@ class CheckoutGuardTest(unittest.TestCase):
                 self.assertEqual(self.hooks_state(), state)
                 shutil.rmtree(self.hooks)
         run = self.install()
-        self.assertEqual([("installed", str(self.hooks / HOOK))], self.rows(run.stdout))
-        self.assertEqual([entry.name for entry in self.hooks.iterdir()], [HOOK])
+        self.assertEqual(self.installed_rows(), self.rows(run.stdout))
+        self.assertEqual(sorted(entry.name for entry in self.hooks.iterdir()), sorted([HOOK, MARKER]))
 
     def test_a_failing_toplevel_read_or_hook_write_refuses_check_and_install_and_writes_nothing(self):
         """Standing order 21, the two producers round 4 left without an injection test: the installer's isolated
@@ -446,7 +506,7 @@ class CheckoutGuardTest(unittest.TestCase):
         place left an empty, a non-executable or an unverified hook behind a refusal; round 5 pinned none of `mkdir`,
         `chmod` and the stale-hook `rm`). The hook's bytes go to a temporary file in the hooks directory, which one
         `mv` renames onto the hook path after the mode is set and the read-back passes; `mkdir` of an absent hooks
-        directory, the `cat` that writes those bytes (the fifth cat of a run, after the four scratch copies), `chmod`,
+        directory, the `cat` that writes those bytes (the sixth cat of a run, after the five scratch copies), `chmod`,
         the read-back `cmp` and the `mv`, each a PATH shim exiting 28, make `install` exit 2 naming the step with no
         row, the hooks directory's listing, bytes and modes unchanged and no temporary file left, whether the hook
         is absent or is this lever's own without its execute bit. The round-1 `rm` comes after the rename by design
@@ -464,10 +524,14 @@ class CheckoutGuardTest(unittest.TestCase):
         original = hook.read_bytes()
         hook.unlink()
         cat = self.shim("", status=28, name="cat", nth=SCRATCH_WRITES + 1)
-        # The count is the install's: `check` writes the four scratch copies and no fifth, so the shim never fires.
+        # The count is the install's: `check` writes the five scratch copies and no sixth, so the shim never fires.
         env = {**self.env, "PATH": f"{cat}:{self.env['PATH']}"}
         check = self.run_lever("check", str(self.checkout), env=env)
-        self.assertEqual((check.returncode, self.rows(check.stdout)), (1, [("absent", str(hook))]), check.stderr)
+        self.assertEqual(
+            (check.returncode, self.rows(check.stdout)),
+            (1, [("absent", str(hook)), ("installed", str(self.marker))]),
+            check.stderr,
+        )
         self.assertNotIn("shim", check.stderr)
         (cat / "calls").unlink()
         staged = f"{self.hooks}/.{HOOK}."
@@ -497,7 +561,7 @@ class CheckoutGuardTest(unittest.TestCase):
                     self.assertEqual(self.hooks_state(), state)
         # The control: the same checkout, no shim on PATH, the hook without its execute bit is installed in place.
         run = self.install()
-        self.assertEqual([("installed", str(hook))], self.rows(run.stdout))
+        self.assertEqual([("installed", str(hook)), ("unchanged", str(self.marker))], self.rows(run.stdout))
         self.assertEqual((hook.read_bytes(), stat.S_IMODE(hook.stat().st_mode)), (original, 0o755))
         # The round-1 `rm`, after the rename: the pattern names the round-1 path alone, so the trap's own removals run.
         stale = self.hooks / "pre-commit"
@@ -509,26 +573,29 @@ class CheckoutGuardTest(unittest.TestCase):
         run = self.run_lever("install", str(self.checkout), env=env)
         self.assertEqual(run.returncode, 2, run.stdout)
         self.assertIn(f"cannot remove the round-1 {stale}", run.stderr)
-        self.assertEqual([("unchanged", str(hook))], self.rows(run.stdout))
+        self.assertEqual([("unchanged", str(hook)), ("unchanged", str(self.marker))], self.rows(run.stdout))
         self.assertEqual(self.hooks_state(), state)
         hook.unlink()
         run = self.run_lever("install", str(self.checkout), env=env)
         self.assertEqual(run.returncode, 2, run.stdout)
         self.assertIn(f"cannot remove the round-1 {stale}", run.stderr)
-        self.assertEqual([("installed", str(hook))], self.rows(run.stdout))
+        self.assertEqual([("installed", str(hook)), ("unchanged", str(self.marker))], self.rows(run.stdout))
         self.assertEqual((hook.read_bytes(), stat.S_IMODE(hook.stat().st_mode)), (original, 0o755))
         self.assertEqual(stale.read_bytes(), round1_body("pre-commit"))
         run = self.install()
-        self.assertEqual([("unchanged", str(hook)), ("removed", str(stale))], self.rows(run.stdout))
+        self.assertEqual(
+            [("unchanged", str(hook)), ("unchanged", str(self.marker)), ("removed", str(stale))], self.rows(run.stdout)
+        )
         self.assertFalse(stale.exists())
 
     def test_every_way_of_authoring_a_commit_is_refused_and_no_branch_moves(self):
-        """With `.orchestration/orchestrate/<program>/units.tsv` under the toplevel, every command that would move a
-        local branch to a commit origin does not hold is refused with the route: `commit`, `commit --no-verify` (no
+        """With `.orchestration/orchestrate/<program>/units.tsv` under the toplevel (the pre-move trigger, which U221
+        removes; the marker is taken away so this trigger is proved alone), every command that would move a local
+        branch to a commit origin does not hold is refused with the route: `commit`, `commit --no-verify` (no
         bypass: it skips no reference-transaction hook), `commit --amend`, `merge --no-ff`, `cherry-pick`, `rebase`
         onto such a commit, `branch -f` and `update-ref`. No branch moves; HEAD stays on its branch, except after the
         refused `rebase`, which git leaves detached at the onto commit in its rebase state until `rebase --abort`."""
-        self.install()
+        self.install(marker=False)
         self.store()
         before = self.branches()
         status, err, head = self.commit()
@@ -568,7 +635,7 @@ class CheckoutGuardTest(unittest.TestCase):
         """A linked worktree shares the main checkout's hooks directory: a commit there is refused while the main
         worktree holds a store, although the linked worktree's own toplevel holds none; the add itself passes (its
         branch is made at origin's commit)."""
-        self.install()
+        self.install(marker=False)
         self.store()
         linked = self.root / "linked"
         status, _, err = self.git_status("worktree", "add", "-q", "-b", "linked", str(linked), "origin/main")
@@ -655,10 +722,10 @@ class CheckoutGuardTest(unittest.TestCase):
                 self.git("reset", "-q", "--hard", "origin/main")
 
     def test_without_a_store_the_hook_passes_everything(self):
-        """Without a store the hook exits 0 and prints nothing: `commit`, `merge --no-ff` and a commit in a linked
-        worktree pass, as does a program directory holding no `units.tsv`; so the hook is inert in any other
-        repository regime-init prepared and in the checkout before its first program."""
-        self.install()
+        """Without a store and without the marker the hook exits 0 and prints nothing: `commit`, `merge --no-ff` and a
+        commit in a linked worktree pass, as does a program directory holding no `units.tsv`; so the hook is inert in
+        any other repository whose marker the operator removed and in a checkout before its first program."""
+        self.install(marker=False)
         status, err, before = self.commit()
         self.assertEqual(status, 0, err)
         self.assertNotIn("checkout-guard", err)
@@ -674,6 +741,297 @@ class CheckoutGuardTest(unittest.TestCase):
         status, err, _ = self.commit()
         self.assertEqual(status, 0, err)
         self.assertNotIn("checkout-guard", err)
+
+    def test_with_the_marker_and_no_store_every_way_of_authoring_a_commit_is_refused_and_no_branch_moves(self):
+        """U219: the marker `regime-coordinator` beside the hook is the trigger once the live store has left the
+        checkout (U221), so with the marker and no store under any toplevel every command that would move a local
+        branch to a commit origin does not hold is refused with the route, in the main checkout and in a linked
+        worktree (which shares the hooks directory), and no branch moves; the moves the coordinator makes pass."""
+        self.install()
+        self.assertFalse((self.checkout / ".orchestration").exists())
+        before = self.branches()
+        status, err, head = self.commit()
+        self.assert_refused(status, err)
+        self.assertEqual(self.git("rev-parse", "HEAD"), head)
+        self.git("reset", "-q", "--hard", "origin/main")
+        status, err, head = self.commit(None, "--no-verify")
+        self.assert_refused(status, err)
+        self.assertEqual(self.git("rev-parse", "HEAD"), head)
+        self.git("reset", "-q", "--hard", "origin/main")
+        for label, args in (
+            ("amend", ["commit", "-q", "--amend", "--allow-empty", "-m", "amended"]),
+            ("merge --no-ff", ["merge", "--no-ff", "--no-edit", "-q", self.work]),
+            ("cherry-pick", ["cherry-pick", self.work]),
+            ("branch -f", ["branch", "-f", "topic", self.work]),
+            ("update-ref", ["update-ref", "refs/heads/topic", self.work]),
+        ):
+            with self.subTest(label):
+                status, _, err = self.git_status(*args)
+                self.assert_refused(status, err)
+                self.assertEqual(self.branches(), before)
+                self.git_status("merge", "--abort")
+                self.git_status("cherry-pick", "--quit")
+                self.git("reset", "-q", "--hard", "origin/main")
+        status, _, err = self.git_status("rebase", "-q", self.work)
+        self.assert_refused(status, err)
+        self.assertEqual(self.branches()[0], before[0], "no branch moved")
+        if (self.checkout / ".git/rebase-merge").is_dir():
+            self.git("rebase", "--abort")
+        self.assertEqual(self.branches(), before)
+        linked = self.root / "linked"
+        status, _, err = self.git_status("worktree", "add", "-q", "-b", "linked", str(linked), "origin/main")
+        self.assertEqual(status, 0, err)
+        status, err, head = self.commit(linked)
+        self.assert_refused(status, err)
+        self.assertIn("refs/heads/linked would move to", err)
+        self.assertEqual(self.git("rev-parse", "HEAD", cwd=linked), head)
+        for label, args in (
+            ("fetch", ["fetch", "-q", "origin"]),
+            ("reset --hard origin/main", ["reset", "-q", "--hard", "origin/main"]),
+            ("branch at origin's commit", ["branch", "topic", "origin/main"]),
+            ("branch -D", ["branch", "-q", "-D", "topic"]),
+            ("tag", ["tag", "mark", self.work]),
+        ):
+            with self.subTest(label):
+                status, _, err = self.git_status(*args)
+                self.assertEqual(status, 0, err)
+                self.assertNotIn("checkout-guard", err)
+
+    def test_install_writes_the_marker_alone_into_a_guarded_checkout_and_check_reports_a_missing_one(self):
+        """U219: a checkout upgraded from the pre-move guard holds the hook and no marker: `check` names the marker
+        `absent` (exit 1, the hook `installed`), `install` leaves the hook (`unchanged`) and writes the marker
+        (`installed`, mode 0644, one line); the marker's bytes changed by hand are `differs` for `check` and a refusal
+        for `install`, which overwrites nothing; a marker without its own bytes but with this lever's is `installed`."""
+        hook = self.hooks / HOOK
+        self.install(marker=False)
+        check = self.run_lever("check", str(self.checkout))
+        self.assertEqual(
+            (check.returncode, self.rows(check.stdout)), (1, [("installed", str(hook)), ("absent", str(self.marker))])
+        )
+        state = self.hooks_state()
+        run = self.install()
+        self.assertEqual([("unchanged", str(hook)), ("installed", str(self.marker))], self.rows(run.stdout))
+        self.assertEqual(self.marker.read_bytes(), MARKER_TEXT)
+        self.assertEqual(stat.S_IMODE(self.marker.stat().st_mode), 0o644)
+        self.assertEqual({k: v for k, v in self.hooks_state().items() if k != MARKER}, state, "the hook as it was")
+        self.marker.write_text("another program's note\n")
+        check = self.run_lever("check", str(self.checkout))
+        self.assertEqual(
+            (check.returncode, self.rows(check.stdout)), (1, [("installed", str(hook)), ("differs", str(self.marker))])
+        )
+        run = self.run_lever("install", str(self.checkout))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"{self.marker} exists and is not this lever's marker; it is never overwritten", run.stderr)
+        self.assertEqual(self.marker.read_text(), "another program's note\n")
+        self.marker.write_bytes(MARKER_TEXT)
+        self.marker.chmod(0o600)
+        check = self.run_lever("check", str(self.checkout))
+        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, self.installed_rows()))
+
+    def test_a_marker_that_is_a_symlink_or_a_directory_is_refused_by_install_and_ignored_by_the_hook(self):
+        """U219: the hook treats only a regular file beside it as the marker (`lstat`, never a link followed): a
+        symbolic link, even one that resolves to this lever's bytes, a dangling one, or a directory at the marker's
+        path triggers nothing, so a commit passes while no store exists and is refused once one does; `install` and
+        `check` refuse (exit 2, nothing written through or over it, no row) naming the kind, and nothing reaches the
+        link's target."""
+        hook = self.hooks / HOOK
+        self.install(marker=False)
+        saved = self.root / "saved-marker"
+        saved.write_bytes(MARKER_TEXT)
+        for kind, make in (
+            ("a symlink", lambda: self.marker.symlink_to(saved)),
+            ("a symlink", lambda: self.marker.symlink_to(self.root / "nowhere")),
+            ("a directory", self.marker.mkdir),
+        ):
+            make()
+            state = self.hooks_state()
+            for action in ("check", "install"):
+                with self.subTest(
+                    action, kind=kind, target=os.readlink(self.marker) if self.marker.is_symlink() else None
+                ):
+                    run = self.run_lever(action, str(self.checkout))
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(
+                        f"{self.marker} is {kind}, not this lever's marker; {action} does not judge it", run.stderr
+                    )
+                    self.assertEqual(self.hooks_state(), state)
+            with self.subTest("the hook ignores it", kind=kind):
+                status, err, before = self.commit()
+                self.assertEqual(status, 0, err)
+                self.assertNotIn("checkout-guard", err)
+                self.assertNotEqual(self.git("rev-parse", "HEAD"), before)
+                self.git("reset", "-q", "--hard", "origin/main")
+                self.store()
+                status, err, before = self.commit()
+                self.assert_refused(status, err)
+                self.assertEqual(self.git("rev-parse", "HEAD"), before)
+                self.git("reset", "-q", "--hard", "origin/main")
+                shutil.rmtree(self.checkout / ".orchestration")
+            self.assertEqual(saved.read_bytes(), MARKER_TEXT)
+            self.assertFalse((self.root / "nowhere").exists())
+            if self.marker.is_dir() and not self.marker.is_symlink():
+                self.marker.rmdir()
+            else:
+                self.marker.unlink()
+        self.assertEqual(hook.read_bytes(), (self.hooks / HOOK).read_bytes())
+        run = self.install()
+        self.assertEqual([("unchanged", str(hook)), ("installed", str(self.marker))], self.rows(run.stdout))
+
+    def test_a_hook_the_pre_move_lever_wrote_is_older_and_install_upgrades_it(self):
+        """U219b (verdict U219-ce7e875e P2 `:774`): the coordinator's live checkout holds the hook the pre-move lever
+        (BASE, 7b570792) wrote and no marker. Against that hook, written by the base lever itself (`git show` into a
+        scratch tree, run as the lever, never a copied literal), this head's `check` reports the hook `older` (exit 1,
+        with or without its execute bit) and the marker `absent`; `install` replaces the hook through the staged write
+        (`upgraded` row, this lever's bytes, 0755) and writes the marker (`installed`), after which `check` exits 0
+        with every row `installed` and a second install prints `unchanged` for each; a hook with bytes of neither
+        version is `differs`, refused as today and never overwritten; the hash tool failing on the hook's read (a PATH
+        stub that prints a plausible digest and exits 7) is a refusal naming the hook for `check` and `install`, never
+        `differs` and nothing written (standing order 21)."""
+        hook = self.hooks / HOOK
+        base = self.base_lever()
+        run = subprocess.run(
+            [str(base), "install", str(self.checkout)],
+            cwd=self.root, env=self.env, capture_output=True, text=True, timeout=120,
+        )  # fmt: skip
+        self.assertEqual((run.returncode, self.rows(run.stdout)), (0, [("installed", str(hook))]), run.stderr)
+        older = hook.read_bytes()
+        self.assertFalse(self.marker.exists(), "the pre-move lever writes no marker")
+        for mode in (0o755, 0o644):
+            hook.chmod(mode)
+            with self.subTest("check", mode=oct(mode)):
+                check = self.run_lever("check", str(self.checkout))
+                self.assertEqual(
+                    (check.returncode, self.rows(check.stdout)),
+                    (1, [("older", str(hook)), ("absent", str(self.marker))]),
+                    check.stderr,
+                )
+        hook.chmod(0o755)
+        # The lever hashes on stdin (no file name is escaped into the output), so the stub fails by count: the third
+        # hash call of a run, after this lever's self-check and git-isolated.sh's, is the hook's digest.
+        tool = "sha256sum" if shutil.which("sha256sum", path=self.env["PATH"]) else "shasum"
+        shims = self.shim("", status=7, name=tool, nth=3, output=f"{'0' * 64}  -")
+        env = {**self.env, "PATH": f"{shims}:{self.env['PATH']}"}
+        state = self.hooks_state()
+        for action in ("check", "install"):
+            with self.subTest(action, producer=tool):
+                (shims / "calls").unlink(missing_ok=True)
+                run = self.run_lever(action, str(self.checkout), env=env)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"shim: failing {tool}", run.stderr)
+                self.assertIn(f"cannot hash {hook}", run.stderr)
+                self.assertEqual((shims / "calls").read_text(), "3\n", "the hook's digest was the call that failed")
+                self.assertEqual(self.hooks_state(), state)
+        run = self.install()
+        self.assertEqual([("upgraded", str(hook)), ("installed", str(self.marker))], self.rows(run.stdout))
+        self.assertNotEqual(hook.read_bytes(), older)
+        self.assertEqual(stat.S_IMODE(hook.stat().st_mode), 0o755)
+        self.assertEqual((self.marker.read_bytes(), stat.S_IMODE(self.marker.stat().st_mode)), (MARKER_TEXT, 0o644))
+        check = self.run_lever("check", str(self.checkout))
+        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, self.installed_rows()), check.stderr)
+        run = self.install()
+        self.assertEqual([("unchanged", str(hook)), ("unchanged", str(self.marker))], self.rows(run.stdout))
+        status, err, before = self.commit()
+        self.assert_refused(status, err)
+        self.assertEqual(self.git("rev-parse", "HEAD"), before)
+        neither = older + b"# neither version\n"
+        hook.write_bytes(neither)
+        check = self.run_lever("check", str(self.checkout))
+        self.assertEqual(
+            (check.returncode, self.rows(check.stdout)), (1, [("differs", str(hook)), ("installed", str(self.marker))])
+        )
+        run = self.run_lever("install", str(self.checkout))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"{hook} exists and is not this lever's hook; it is never overwritten", run.stderr)
+        self.assertEqual(hook.read_bytes(), neither)
+
+    def test_a_failing_producer_of_the_marker_s_write_leaves_no_partial_marker_and_the_hook_as_found(self):
+        """U219b (verdict U219-ce7e875e P2 `:809`, standing order 21): the marker's staged write has the producers the
+        hook's has, each read by its status: `mktemp` (the marker's template, after the scratch directory's call and,
+        the hook being in place, no call for the hook), `cat` (the sixth of a run, after the five scratch copies; it
+        writes into the temporary file, so the plausible output it prints, the marker's own line, is what a refusal
+        must remove), `chmod`, the read-back `cmp` and the `mv`. Each, a PATH stub that prints plausible output and
+        exits 7, makes `install` exit 2 naming the step, prints no marker row (the `mv` comes after the hook's row),
+        leaves no temporary file and no partial marker in the hooks directory and the hook's bytes and mode as found.
+        The control without a stub writes the marker."""
+        hook = self.hooks / HOOK
+        self.install(marker=False)
+        staged = f"{self.hooks}/.{MARKER}."
+        for label, shims, messages, rows in (
+            (
+                "mktemp",
+                self.shim(f".{MARKER}.", status=7, name="mktemp", output=f"{staged}plausible"),
+                (f"cannot make a temporary file in {self.hooks} for the marker",),
+                [],
+            ),
+            (
+                "cat",
+                self.shim("", status=7, name="cat", nth=SCRATCH_WRITES + 1, output=MARKER_TEXT.decode().rstrip("\n")),
+                (f"cannot write {staged}",),
+                [],
+            ),
+            ("chmod", self.shim(f".{MARKER}.", status=7, name="chmod"), (f"cannot make {staged}", " mode 0644"), []),
+            (
+                "cmp",
+                self.shim(f".{MARKER}.", status=7, name="cmp"),
+                (f"cannot compare {staged}", f" with this lever's {MARKER}"),
+                [],
+            ),
+            (
+                "mv",
+                self.shim(f".{MARKER}.", status=7, name="mv"),
+                (f"cannot move {staged}", f" onto {self.marker}"),
+                [("unchanged", str(hook))],
+            ),
+        ):
+            env = {**self.env, "PATH": f"{shims}:{self.env['PATH']}"}
+            state = self.hooks_state()
+            with self.subTest(label):
+                (shims / "calls").unlink(missing_ok=True)
+                run = self.run_lever("install", str(self.checkout), env=env)
+                self.assertEqual(run.returncode, 2, run.stdout)
+                self.assertIn(f"shim: failing {label}", run.stderr)
+                for message in messages:
+                    self.assertIn(message, run.stderr)
+                self.assertEqual(self.rows(run.stdout), rows)
+                self.assertEqual(self.hooks_state(), state, "no partial marker, no temporary file, the hook as found")
+                self.assertFalse(self.marker.exists())
+        run = self.install()
+        self.assertEqual([("unchanged", str(hook)), ("installed", str(self.marker))], self.rows(run.stdout))
+        self.assertEqual(self.marker.read_bytes(), MARKER_TEXT)
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads an unreadable directory")
+    def test_a_marker_read_that_fails_refuses_the_move(self):
+        """U219b (verdict U219-ce7e875e P2 `:809`, standing order 21): the hook's `os.lstat` of the marker failing with
+        anything but "no such file" refuses the transaction naming the marker's path, never passes it. The injection:
+        the hooks directory is made unsearchable (mode 000) while the hook already runs, by the hook's own first git
+        read (a `GIT_EXEC_PATH` shim that sets the mode on `rev-parse --show-toplevel` and then runs the real git),
+        since git runs no hook it cannot reach and python reads no file it cannot open. A commit is refused, marker
+        present or removed, without the route, and the branch stays; the control, the same shim leaving the directory
+        alone, passes a commit without the marker and refuses one with it."""
+        self.install()
+        self.addCleanup(self.hooks.chmod, 0o755)
+        lock = self.shim("rev-parse --show-toplevel", before=f"chmod 000 {shlex.quote(str(self.hooks))}")
+        env = {**self.env, "GIT_EXEC_PATH": str(lock)}
+        for present in (True, False):
+            if not present:
+                self.marker.unlink()
+            with self.subTest(marker=present):
+                before = self.branches()
+                status, err, _ = self.commit(env=env)
+                self.hooks.chmod(0o755)
+                self.assertNotEqual(status, 0, err)
+                self.assertIn(f"cannot read {self.marker}", err)
+                self.assertIn(FAILED_READ, err)
+                self.assertNotIn(REFUSAL, err)
+                self.assertEqual(self.branches(), before)
+        status, err, before = self.commit(env=self.hook_shim("no-such-read"))
+        self.assertEqual(status, 0, err)
+        self.assertNotEqual(self.git("rev-parse", "HEAD"), before)
+        self.git("reset", "-q", "--hard", "origin/main")
+        self.marker.write_bytes(MARKER_TEXT)
+        status, err, before = self.commit(env=self.hook_shim("no-such-read"))
+        self.assert_refused(status, err)
+        self.assertEqual(self.git("rev-parse", "HEAD"), before)
 
     def test_the_isolated_git_of_the_levers_is_unaffected(self):
         """`git -c core.hooksPath=/dev/null commit`, the flag git-isolated.sh carries, runs no hook of the checkout:
@@ -699,7 +1057,7 @@ class CheckoutGuardTest(unittest.TestCase):
         cannot be listed after a readable one holding a store (round 4 returned at the first `units.tsv`), and an
         `.orchestration` that is a file, are each a refusal naming the directory, never "no store"; an absent
         `.orchestration` is no store."""
-        self.install()
+        self.install(marker=False)
         store = self.store()
         stores = store.parent
         later = self.store(program="zz-later")
@@ -747,9 +1105,10 @@ class CheckoutGuardTest(unittest.TestCase):
     def test_a_checkout_path_holding_a_newline_is_guarded(self):
         """A main checkout whose path holds a newline (which truncated round 1's porcelain read) is guarded in the
         main worktree and in a linked one: the main checkout's path is the parent of the common directory, read as
-        bytes with one line end removed."""
+        bytes with one line end removed; the marker beside the hook (U219) is found through that path as well, as
+        bytes, once the store is gone."""
         checkout = self.clone(self.root / "check\nout")
-        self.install(checkout)
+        self.install(checkout, marker=False)
         self.store(checkout)
         self.git("fetch", "-q", str(self.root / "other"), "work", cwd=checkout)
         status, err, before = self.commit(checkout)
@@ -763,6 +1122,17 @@ class CheckoutGuardTest(unittest.TestCase):
         status, err, before = self.commit(linked)
         self.assert_refused(status, err)
         self.assertEqual(self.git("rev-parse", "HEAD", cwd=linked), before)
+        # The marker alone (U219): installed again, the store removed, both worktrees stay refused. The rows are read
+        # whole (the path holds a newline, so a line split would cut them).
+        run = self.install(checkout)
+        hooks = checkout / ".git/hooks"
+        self.assertEqual(run.stdout, f"{PREFIX}unchanged\t{hooks / HOOK}\n{PREFIX}installed\t{hooks / MARKER}\n")
+        shutil.rmtree(checkout / ".orchestration")
+        for tree in (checkout, linked):
+            with self.subTest(tree=tree.name):
+                status, err, before = self.commit(tree)
+                self.assert_refused(status, err)
+                self.assertEqual(self.git("rev-parse", "HEAD", cwd=tree), before)
 
     def test_a_separate_git_directory_whose_name_ends_in_lf_is_installed_into(self):
         """A checkout whose `.git` is a symlink to a separate git directory whose name ends in LF: git resolves both
@@ -791,13 +1161,18 @@ class CheckoutGuardTest(unittest.TestCase):
         hook = lf / "hooks" / HOOK
         run = self.run_lever("install", str(checkout))
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(run.stdout, f"{PREFIX}installed\t{hook}\n")
+        marker = lf / "hooks" / MARKER
+        self.assertEqual(run.stdout, f"{PREFIX}installed\t{hook}\n{PREFIX}installed\t{marker}\n")
         self.assertEqual(stat.S_IMODE(hook.stat().st_mode), 0o755)
         self.install()
         self.assertEqual(hook.read_bytes(), (self.hooks / HOOK).read_bytes())
         self.assertEqual(list((sibling / "hooks").iterdir()), [], "nothing in the stripped sibling")
         check = self.run_lever("check", str(checkout))
-        self.assertEqual((check.returncode, check.stdout), (0, f"{PREFIX}installed\t{hook}\n"), check.stderr)
+        self.assertEqual(
+            (check.returncode, check.stdout),
+            (0, f"{PREFIX}installed\t{hook}\n{PREFIX}installed\t{marker}\n"),
+            check.stderr,
+        )
         self.store(checkout)
         self.git("fetch", "-q", str(self.root / "other"), "work", cwd=checkout)
         status, err, before = self.commit(checkout)
@@ -827,7 +1202,7 @@ class CheckoutGuardTest(unittest.TestCase):
         checkout = self.clone(self.root / "sym-checkout")
         shutil.move(str(checkout / ".git"), str(gitdir))
         (checkout / ".git").symlink_to(gitdir)
-        self.install(checkout)
+        self.install(checkout, marker=False)
         self.store(checkout)
         self.git("fetch", "-q", str(self.root / "other"), "work", cwd=checkout)
         linked = self.root / "sym-linked"
@@ -925,8 +1300,8 @@ class CheckoutGuardTest(unittest.TestCase):
         value, a tag, a remote-tracking ref, a detached HEAD and the packed backend's creation line for a branch that
         already names the commit pass; a line of another shape is a refusal; the states other than `prepared` exit 0
         whatever the lines; a transaction holding one refused line among passing ones is refused."""
+        self.git("branch", "off", self.work)  # before the guard is installed (U219: its marker triggers from then on)
         self.install()
-        self.git("branch", "off", self.work)  # before the store exists: a branch already off origin
         self.store()
         held = self.git("rev-parse", "origin/main")
         hook = self.hooks / HOOK
@@ -1014,7 +1389,9 @@ class CheckoutGuardTest(unittest.TestCase):
         with hook.open("a") as handle:
             handle.write("print('drift')\n")
         check = self.run_lever("check", str(self.checkout))
-        self.assertEqual((check.returncode, self.rows(check.stdout)), (1, [("differs", str(hook))]))
+        self.assertEqual(
+            (check.returncode, self.rows(check.stdout)), (1, [("differs", str(hook)), ("installed", str(self.marker))])
+        )
         run = self.run_lever("install", str(self.checkout))
         self.assertEqual(run.returncode, 2, run.stdout)
         self.assertIn("is not this lever's hook", run.stderr)
@@ -1022,23 +1399,30 @@ class CheckoutGuardTest(unittest.TestCase):
         nul[len(nul) // 2] = 0
         hook.write_bytes(bytes(nul))
         check = self.run_lever("check", str(self.checkout))
-        self.assertEqual((check.returncode, self.rows(check.stdout)), (1, [("differs", str(hook))]))
+        self.assertEqual(
+            (check.returncode, self.rows(check.stdout)), (1, [("differs", str(hook)), ("installed", str(self.marker))])
+        )
         run = self.run_lever("install", str(self.checkout))
         self.assertEqual(run.returncode, 2, run.stdout)
         self.assertEqual(hook.read_bytes(), bytes(nul), "never overwritten")
         hook.write_bytes(original)
         hook.chmod(0o644)
         check = self.run_lever("check", str(self.checkout))
-        self.assertEqual((check.returncode, self.rows(check.stdout)), (1, [("not-executable", str(hook))]))
+        self.assertEqual(
+            (check.returncode, self.rows(check.stdout)),
+            (1, [("not-executable", str(hook)), ("installed", str(self.marker))]),
+        )
         run = self.install()
-        self.assertEqual([("installed", str(hook))], self.rows(run.stdout))
+        self.assertEqual([("installed", str(hook)), ("unchanged", str(self.marker))], self.rows(run.stdout))
         self.assertEqual(stat.S_IMODE(hook.stat().st_mode), 0o755)
         self.assertEqual(hook.read_bytes(), original)
         hook.unlink()
         check = self.run_lever("check", str(self.checkout))
-        self.assertEqual((check.returncode, self.rows(check.stdout)), (1, [("absent", str(hook))]))
+        self.assertEqual(
+            (check.returncode, self.rows(check.stdout)), (1, [("absent", str(hook)), ("installed", str(self.marker))])
+        )
         run = self.install()
-        self.assertEqual([("installed", str(hook))], self.rows(run.stdout))
+        self.assertEqual([("installed", str(hook)), ("unchanged", str(self.marker))], self.rows(run.stdout))
         self.assertEqual(hook.read_bytes(), original)
         check = self.run_lever("check", str(self.checkout))
         self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
@@ -1052,13 +1436,14 @@ class CheckoutGuardTest(unittest.TestCase):
         env = {**self.env, "GIT_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other)}
         run = self.run_lever("install", str(self.checkout), env=env)
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual([("installed", str(self.hooks / HOOK))], self.rows(run.stdout))
+        self.assertEqual(self.installed_rows(), self.rows(run.stdout))
         self.assertFalse((other / ".git/hooks" / HOOK).exists())
         check = self.run_lever("check", str(self.checkout), env=env)
-        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, [("installed", str(self.hooks / HOOK))]))
+        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, self.installed_rows()))
         check = self.run_lever("check", str(other), env=env)
         self.assertEqual(
-            (check.returncode, self.rows(check.stdout)), (1, [("absent", str(other / ".git/hooks" / HOOK))])
+            (check.returncode, self.rows(check.stdout)),
+            (1, [("absent", str(other / ".git/hooks" / HOOK)), ("absent", str(other / ".git/hooks" / MARKER))]),
         )
 
     def test_a_replaced_origin_tip_does_not_rewrite_the_ancestry_the_hook_reads(self):
@@ -1128,8 +1513,8 @@ class CheckoutGuardTest(unittest.TestCase):
         in a guarded checkout holding a branch that is already off origin (made before the store existed; round 2
         aborted the packing with exit 128) succeed and move nothing, while a move of that branch to another commit
         origin does not hold is still refused."""
+        self.git("branch", "off", self.work)  # before the guard is installed (U219: its marker triggers from then on)
         self.install()
-        self.git("branch", "off", self.work)
         self.store()
         before = self.branches()
         for label, args in (("pack-refs --all", ["pack-refs", "--all"]), ("gc", ["gc", "-q"])):
@@ -1163,7 +1548,7 @@ class CheckoutGuardTest(unittest.TestCase):
             self.hooks.chmod(0o755)
         self.assertEqual(self.hooks_state(), state)
         check = self.run_lever("check", str(self.checkout))
-        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, [("installed", str(self.hooks / HOOK))]))
+        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, self.installed_rows()))
         flat = self.clone(self.root / "flat")
         if (flat / ".git/hooks").exists():
             shutil.rmtree(flat / ".git/hooks")
@@ -1212,14 +1597,16 @@ class CheckoutGuardTest(unittest.TestCase):
         hook.write_text("#!/bin/sh\nexit 0\n")
         hook.chmod(0o755)
         check = self.run_lever("check", str(self.checkout))
-        self.assertEqual((check.returncode, self.rows(check.stdout)), (1, [("differs", str(hook))]))
+        self.assertEqual(
+            (check.returncode, self.rows(check.stdout)), (1, [("differs", str(hook)), ("installed", str(self.marker))])
+        )
         run = self.run_lever("install", str(self.checkout))
         self.assertEqual(run.returncode, 2, run.stdout)
         self.assertIn(f"{hook} exists and is not this lever's hook", run.stderr)
         self.assertEqual(hook.read_text(), "#!/bin/sh\nexit 0\n")
         hook.write_bytes(original)
         check = self.run_lever("check", str(self.checkout))
-        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, [("installed", str(hook))]))
+        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, self.installed_rows()))
 
 
 if __name__ == "__main__":

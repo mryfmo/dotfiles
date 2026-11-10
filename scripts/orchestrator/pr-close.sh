@@ -5,9 +5,14 @@
 #   Regime-cutover U28, a lever of the omp orchestrator seat, allowed only in the form
 #   `~/.local/bin/common/pr-close.sh --from-table *` by `home/dot_agents/omp/policies/orchestrator.yml`
 #   (scripts/orchestrator/README.md, "Seat levers for GitHub writes"). The table is a table the orchestrator
-#   wrote: a regular file (not a symlink) whose real path is under
-#   `<toplevel>/.orchestration/orchestrate/<program>/handouts/` of the main checkout, where the orchestrator seat
-#   runs (a linked worktree, a worker's clone, is refused). The lever reads its `## Open pull requests` section,
+#   wrote: a regular file (not a symlink) whose real path is `<store>/handouts/<file>` of one program store, the
+#   store chosen by one rule with two forms (regime-cutover U216, store move 2 of 5, handoff/07-store-move-design.md):
+#   the derived store `${REGIME_STORE_ROOT}/<program>` when that directory exists, the root being the fixed derivation
+#   `<physical HOME>/.local/state/regime-store/<slug>` the sourced `regime-env` exports (U215); else, until U221 moves
+#   the live store of this program there and removes the form, the checkout's own store
+#   `<toplevel>/.orchestration/orchestrate/<program>` of the main checkout, where the orchestrator seat runs (the
+#   pre-move form; `store_resolve`, which prints the form chosen on stderr; a table in the other form is refused
+#   naming both). A linked worktree, a worker's clone, is refused. The lever reads its `## Open pull requests` section,
 #   whose header row must be `| PR | branch | opened | files | title | default |`; every row must carry a `#<n>`
 #   PR cell and a backticked branch cell, else the whole table is refused before any `gh` call. The selected rows
 #   are those whose `default` cell starts with `close:`; `--only <pr>` narrows them to that one row and is refused
@@ -30,6 +35,7 @@
 # @example
 #   ~/.local/bin/common/pr-close.sh --from-table .orchestration/orchestrate/regime-cutover/handouts/cleanup-table.md
 #   ~/.local/bin/common/pr-close.sh --from-table .orchestration/orchestrate/regime-cutover/handouts/cleanup-table.md --only 378
+#   ~/.local/bin/common/pr-close.sh --from-table ~/.local/state/regime-store/dotfiles/regime-cutover/handouts/cleanup-table.md
 set -euo pipefail
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
@@ -37,6 +43,7 @@ set -euo pipefail
 #   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
 #   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
 # @set LEVER_MANIFEST The manifest the pin came from.
+# @set LEVER_DIR The physical directory of this file, where the sourced regime-env helper sits (U33, U216).
 lever_self_check() {
     local src dir self name pin digest home
     # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
@@ -51,6 +58,8 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -86,6 +95,17 @@ lever_self_check() {
     }
 }
 lever_self_check
+
+# The store root (regime-cutover U216): the program stores lie under `REGIME_STORE_ROOT`, the root the sourced
+# regime-env derives from the physical HOME and this checkout's slug (U215) and holds component by component; the
+# helper is sourced from the directory this lever runs from and self-checked like a lever (U33), so a rewritten copy
+# stops this lever. The call that derives the root comes after this lever's own checkout checks, below.
+[[ -r ${LEVER_DIR}/regime-env ]] || {
+    echo "pr-close.sh: refused: regime-env unreadable beside this script: ${LEVER_DIR}/regime-env" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/regime-env
+. "${LEVER_DIR}/regime-env"
 
 lever='pr-close.sh'
 usage='usage: pr-close.sh --from-table <table.md> [--only <pr>]'
@@ -135,6 +155,53 @@ gh_bounded() {
     perl -e 'alarm shift; exec @ARGV or die "exec gh: $!\n"' "${gh_timeout}" gh "$@"
 }
 
+# @description Choose the program store this lever reads (regime-cutover U216, store move 2 of 5,
+#   handoff/07-store-move-design.md; U215 gave regime-env the root): the derived store `${REGIME_STORE_ROOT}/<program>`
+#   when that directory exists, the root being the fixed derivation `<physical HOME>/.local/state/regime-store/<slug>`
+#   the sourced regime-env exports after holding every component of it; else the pre-move form
+#   `<toplevel>/.orchestration/orchestrate/<program>`, this main checkout's own store, which stands until U221 moves the
+#   live store of this program to the root and removes this form. One rule, two forms: while the derived store exists
+#   the checkout form is refused (the caller refuses a path naming it, naming both forms), and while it does not the
+#   checkout form is read as before U216. The per-component holds of the chain walk (U71) stay and apply to the form
+#   chosen: a symbolic link at `<root>/<program>` is refused by name before anything is read through it, an entry
+#   there that is not a directory of this user is refused by name, and only an absent one falls through to the
+#   checkout chain, whose three components are each a directory of this user and no symlink. The root's own
+#   components are held by regime-env (`regime_store_root`). Nothing is written. The form chosen is printed once on
+#   stderr (`store: derived <dir>`, or `store: checkout <dir> (pre-move form, removed by U221)`), the line the
+#   coordinator reads after the deploy. The same text stands in pr-merge.sh (two levers, standing order 36: no helper
+#   file).
+# @arg $1 string The program name.
+# @set store The chosen store, `pwd -P` form (the root and the toplevel are both physical).
+# @set store_form `derived` or `checkout`.
+# @set store_derived The derived candidate `${REGIME_STORE_ROOT}/<program>`.
+# @set store_checkout The checkout candidate `<toplevel>/.orchestration/orchestrate/<program>`.
+store_resolve() {
+    local program=$1 path part
+    [[ -n ${REGIME_STORE_ROOT:-} ]] ||
+        refuse "regime-env derived no store root for ${toplevel}; the program store is judged under it (U216)"
+    store_derived=${REGIME_STORE_ROOT}/${program}
+    store_checkout=${toplevel}/.orchestration/orchestrate/${program}
+    [[ ! -L ${store_derived} ]] ||
+        refuse "${store_derived} is a symlink; the derived program store is a plain directory of this user under the store root ${REGIME_STORE_ROOT}, and nothing is read through a link"
+    if [[ -e ${store_derived} ]]; then
+        [[ -d ${store_derived} && -O ${store_derived} ]] ||
+            refuse "${store_derived} exists but is not a directory of this user; the derived program store under ${REGIME_STORE_ROOT} is read only as one"
+        store=${store_derived}
+        store_form=derived
+        echo "${lever}: store: derived ${store}" >&2
+        return 0
+    fi
+    path=${toplevel}
+    for part in .orchestration orchestrate "${program}"; do
+        path=${path}/${part}
+        [[ -d ${path} && ! -L ${path} && -O ${path} ]] ||
+            refuse "${path} is not a directory of this user (a symlink or a missing store); no derived store ${store_derived} exists, so ${lever} reads only the checkout's own store (the pre-move form, until U221)"
+    done
+    store=${store_checkout}
+    store_form=checkout
+    echo "${lever}: store: checkout ${store} (pre-move form, removed by U221)" >&2
+}
+
 table=''
 only=''
 while (($#)); do
@@ -164,6 +231,12 @@ git_dir=$(cd "${git_dir}" && pwd -P) || refuse "cannot resolve ${git_dir}"
 common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_dir}"
 [[ ${git_dir} == "${common_dir}" ]] || # lint-comparisons: allow both sides are pwd -P forms
     refuse "${toplevel} is a linked worktree; run from the main checkout, where the orchestrator writes its tables"
+# U216: regime-env derives `REGIME_STORE_ROOT` for this checkout (its own refusals name this lever). This lever reads
+# nothing in the hcom store, so the store's `origin` binding is not asked of it (`--unbound-ok`; the dotfiles program
+# runs on the pre-U33 store pair and its derived hcom store `~/.local/state/hcom/dotfiles` carries no `origin`, so the
+# bound form would stop every run on this host); the collision refusal (an `origin` naming another checkout) and
+# every store-root hold stay. The helper's refusal (return 1) is this lever's refusal status, exit 2.
+regime_env pr-close.sh --unbound-ok || exit 2
 [[ -f ${table} && ! -L ${table} ]] || refuse "the table is not a regular file: ${table}"
 case ${table} in
 */*) table_dir=${table%/*} ;;
@@ -171,9 +244,30 @@ case ${table} in
 esac
 [[ -n ${table_dir} ]] || table_dir=/
 table_dir=$(cd "${table_dir}" && pwd -P) || refuse "cannot resolve the directory of ${table}"
-handouts='^/.+/\.orchestration/orchestrate/[A-Za-z0-9][A-Za-z0-9._-]*/handouts$'
-[[ ${table_dir} =~ ${handouts} && ${table_dir} == "${toplevel}/.orchestration/orchestrate/"* ]] || # lint-comparisons: allow both sides are pwd -P forms
-    refuse "the table is not under ${toplevel}/.orchestration/orchestrate/<program>/handouts/: ${table_dir}"
+# U216: the table lies in `<store>/handouts/` of one program store, the store store_resolve chooses for the program
+# the path names. The directory (`pwd -P` form) is read as `<parent>/<program>/handouts`, the parent one of the two
+# roots (the derived store root, or the checkout's `.orchestration/orchestrate`) and the program in the store grammar;
+# any other place is refused naming both forms before the store is judged. Then the store chosen for that program must
+# be the directory's own `<parent>/<program>`: a table in the checkout form while the derived store exists is refused
+# naming both. The root and the toplevel are physical paths, so the comparisons are of `pwd -P` forms throughout.
+[[ -n ${REGIME_STORE_ROOT:-} ]] || refuse "regime-env derived no store root for ${toplevel}; the table's store is judged under it (U216)"
+program_re='^[A-Za-z0-9][A-Za-z0-9._-]*$'
+store_parent=''
+case ${table_dir} in # lint-comparisons: allow the table directory, the root and the toplevel are all pwd -P forms
+"${REGIME_STORE_ROOT}"/*/handouts) store_parent=${REGIME_STORE_ROOT} ;;
+"${toplevel}"/.orchestration/orchestrate/*/handouts) store_parent=${toplevel}/.orchestration/orchestrate ;;
+*) refuse "the table is not under ${REGIME_STORE_ROOT}/<program>/handouts/ (the derived store, U216) or ${toplevel}/.orchestration/orchestrate/<program>/handouts/ (the pre-move form, until U221): ${table_dir}" ;;
+esac
+program=${table_dir#"${store_parent}"/}
+program=${program%/handouts}
+[[ ${program} =~ ${program_re} ]] || refuse "the program component of ${table_dir} is outside ${program_re}"
+store_resolve "${program}"
+[[ ${store_parent}/${program} == "${store}" ]] || { # lint-comparisons: allow both sides are pwd -P forms (the physical root and toplevel)
+    case ${store_form} in
+    derived) refuse "the table ${table} lies in the checkout store ${store_checkout}/handouts/, the pre-move form, but the derived store ${store} exists and is the program's store (U216); the checkout form is refused while it exists, until U221 removes it" ;;
+    *) refuse "the table ${table} lies in ${store_parent}/${program}/handouts/, which is not the program's store ${store} (no derived store ${store_derived} exists, so the pre-move checkout form stands until U221)" ;;
+    esac
+}
 
 status=0
 rows=$(awk -v header="${header}" "${table_awk}" "${table_dir}/${table##*/}") || status=$?

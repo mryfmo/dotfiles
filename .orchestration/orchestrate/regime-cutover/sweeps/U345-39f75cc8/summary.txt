@@ -1,0 +1,16 @@
+security-audit sweep 39f75cc8ec390bf4ed7aecc256dcc373968e82ef: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U322 to U322d (build_under_srt: the harness step's tree install, build and profile install inside srt): every producer and srt's exit are read with their status, the canary runs before the first upstream command, env -i stands outside srt, srt's implicit write grants are denied; this closes on this branch the carried pnpm-outside-srt candidate (open on origin/main until U322 merges)
+new unvalidated candidates (not findings; the Phase 3 verifier launch was refused by policy):
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2399	the srt settings files are written beside the tree under DSH_HOME/dsh, a dsh session's write root, and srt reads them after start-up, so a session running during make update can swap the policy for the run that executes its own .pnpmfile.cjs
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2439	every tarball: host of the profile's own lockfile, which a dsh session writes, becomes an allowed domain of the build that runs the session's code
+unvalidated candidates carried from run-30, on origin/main (not findings):
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1516
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:1521
+off this head: the pnpm candidate (closed here, open on main) and run-30's router local-binding candidate (on main since #715, absent here)
+hardening (new): the directory and the store are lstat-checked then resolved by a separate pwd -P inside DSH_HOME; the build's deny list misses a caller's CLAUDE_CONFIG_DIR, a configured REGIME_SEATS_ROOT, a custom HCOM_DIR and the hcom-* sibling stores the dsh role denies, while the docs claim parity; the docs name only the tree's lockfile as the hosts' source
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: U322 (origin/main 668ba887..39f75cc8, 5 files) in three new units; run-30's records carried and re-mapped through d625a7f6..39f75cc8 (U321 units and U330 not_applicable; preflight = run-28's U318b reading, same blob; three updater units whose cites were run-9's numbering restated); profile standard, source-only; ledger 78 units: 25 covered, 4 candidate, 7 not_applicable, 42 out_of_scope
+brief notes: the diff is 5 paths, not 3; origin/main moved to 0249e534 (U330, U318c, U321) after this branch took 668ba887
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: linemap.cjs, build-ledger.cjs, patch-u226.cjs, cite-sample.cjs, exempt-eq.cjs, candidate-settings-in-write-root.json, candidate-lockfile-hosts.json, candidate-profile-root-relink.json, candidate-shared-claude-dir.json in agents/parent-hunter/scratch/)
+wall time: 699s (2026-11-07T05:54:46Z to 2026-11-07T06:06:25Z)

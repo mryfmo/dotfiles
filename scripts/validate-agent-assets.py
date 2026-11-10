@@ -1367,9 +1367,13 @@ INSTALLING_ASSET_SOURCES = {
 # with fixed values: the repository against `owner/name`, the accept mode against the three the upstream Policy knows
 # (dsh-superagent src/policy.ts:84), `auto` only with the two row timestamps the M-18 ladder defines.
 SOURCED_ASSET = "dsh-superagent"
-ASSET_SOURCE_KEYS = {"github": ("repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row")}
+ASSET_SOURCE_KEYS = {
+    "github": ("repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission")
+}
 ASSET_SOURCE_REQUIRED = ("repository", "accept_mode", "accept_mode_row")
 ACCEPT_MODES = ("off", "observe", "auto")
+# The two words of the policy cell router-settings-apply writes (U416): the pulls row's unlistedUnaddressed cell.
+OBSERVE_ADMISSIONS = ("inferred", "ignore")
 SOURCE_REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
 LADDER_ROW_TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
 
@@ -1415,6 +1419,8 @@ def validate_asset_sources(name: str, asset: dict[str, Any]) -> None:
             )
         if mode != "auto" and "accept_mode_auto_row" in row:
             fail(f"{label}.accept_mode_auto_row belongs only to accept_mode auto, not {mode!r}")
+        if "observe_admission" in row and row["observe_admission"] not in OBSERVE_ADMISSIONS:
+            fail(f"{label}.observe_admission {row['observe_admission']!r} is not one of {list(OBSERVE_ADMISSIONS)}")
 
 
 # A literal value is double-quoted without $, single-quoted, or an unquoted

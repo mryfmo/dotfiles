@@ -1,0 +1,127 @@
+{
+  "run_id": "dotfiles-run-28",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "55573b7c8a85009673349eb505af7574ff21cd9f",
+    "branch": "fix/pr-merge-requires-the-test-checks-by-name",
+    "parent_of_change": "668ba887acf39ff740348d922ac0da7724b96459",
+    "base_note": "U330, one commit on origin/main 668ba887 (U318b merged as #716), whose tree equals run-26's head ad9b9456 (checked: git diff ad9b9456..HEAD lists only U330's seven files).",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U330 (668ba887..55573b7c, 7 files: pr-merge.sh's REQUIRED_CHECKS named-check gate, its copy and pin, the orchestrator README's policy row, tests/unit/test_pr_merge.py and test_pr_levers.py) in one new unit; (2) run-27's records carried in the form they hold at this tree: run-26's units at unchanged lines (U310 not_applicable again, U318b's preflight reading back), and run-27's new relink candidate restated for main's code.",
+  "carry_note": "The brief names run-27 (U310d, a sibling branch) as the set to carry. This head's base is main, whose tree run-26 swept; so the carried units are run-26's, re-checked here, plus run-27's one new unit, restated without its U310d leg.",
+  "scope_paths": [
+    "scripts/orchestrator/pr-merge.sh",
+    "home/dot_local/bin/common/executable_pr-merge.sh",
+    "scripts/orchestrator/README.md",
+    "tests/unit/test_pr_merge.py",
+    "tests/unit/test_pr_levers.py",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "scripts/orchestrator/hcom-seat",
+    "scripts/orchestrator/seat-login-preflight",
+    "install/common/aws_cli.sh",
+    "scripts/lib/asset-manifest.sh",
+    "scripts/update-agent-assets.sh",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the lever's sha256 at this head was computed by the auditor's own script.",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md",
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-27",
+      "source_ref": "28457a6ac5ae2518254ee52066ffcb2d2680f890",
+      "findings": 0,
+      "ledger_units": 72,
+      "use": "The set to carry: its relink candidate restated for main's code (the next-launch leg; U310d's within-launch leg is not on main); its U310 units not_applicable again; its other units as run-26 left them, since this tree is run-26's."
+    },
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-26",
+      "source_ref": "ad9b9456a171a40b0701eb1d87f82c324a9c0b7b",
+      "findings": 0,
+      "ledger_units": 71,
+      "use": "The tree this head's base equals: its units re-checked here at unchanged lines, the U318b preflight reading and the U318 shared-directory candidate included."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T04:02:45Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: three carried candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused): dsh-seat/profile-root-relink/write-grant-follows-session-made-link, seats/shared-claude-config-dir/cross-seat-session-files and dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt, all proposed needs_validation, none a finding. U330 itself yields no candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-27",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-27",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh",
+      "record": "agents/parent-hunter/scratch/candidate-pnpm.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-27",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (3), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work beyond the U330 unit; the pre-existing pr-merge.sh units outside U330's gate stay out of scope"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 3,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T04:08:49Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

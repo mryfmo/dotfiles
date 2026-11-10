@@ -454,7 +454,7 @@
       "target": ".local/bin/common/checkout-guard.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "f87d279dbc65e7f3d0119d05f820222f9903d865087394f2663d86e1058e894c"
+      "sha256": "4fd793eeefa7312b8f23c74a5b8f457eb915213b55f1020cc260932657674c45"
     },
     {
       "source": "home/dot_local/bin/common/executable_git-isolated.sh",
@@ -475,7 +475,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "07977f3b0c049897de607a8b2ba90fb4a0ff1e97270205b96532d6c985c92a54"
+      "sha256": "5200c47a76db5f549a1376cfb75f93f685d404ac9c5103093f2a3df3c1a9f565"
     },
     {
       "source": "home/dot_local/bin/common/executable_intake-observe.py",
@@ -483,6 +483,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_ledger-row.py",
+      "target": ".local/bin/common/ledger-row.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "8eb2d306b9b4b7708a5ee23d8a7fa00116787b1efebe1d5824357b005f182f2c"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
@@ -496,7 +503,7 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "af06aa8f024a35500a71aff7d88d086be218123662196e8bed377e412ca50df0"
+      "sha256": "7024bdaec07f2b545d511ad71ca5756f39123dff20776dbec12fea9c89c56786"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
@@ -510,14 +517,14 @@
       "target": ".local/bin/common/pr-close.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a"
+      "sha256": "7e9778c493949cde1a7773ed439f502ca687d84d3de9bbf9be0f00b915b20233"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-merge.sh",
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "f9063f3bcd4f84cb1007cfb919d757e5aa20db5358a9cfb1cd91a46ab4cade9b"
+      "sha256": "6c7f3ff20bbaad62855e177afe38499547aba5519d164f9a0a9faf579f3a3028"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -566,28 +573,28 @@
       "target": ".local/bin/common/records-sync.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e"
+      "sha256": "c832fe80d70a760370bac021691dc470d8d118dc596884f60c9f696984871a97"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-env",
       "target": ".local/bin/common/regime-env",
       "kind": "file",
       "executable": true,
-      "sha256": "d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba"
+      "sha256": "be25d823cd66bf4ed93da4a30f3bdf619fda06310c1ef0de53ab11e794d64257"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-init",
       "target": ".local/bin/common/regime-init",
       "kind": "file",
       "executable": true,
-      "sha256": "c48f38c22638f0004caeb6151a79b1abfc260f055c306ef678a0c303c2dafb3e"
+      "sha256": "1c576fc79b9f21491fe3bbfcd221efa92af7e7aebbb7e479eaee3a94e91b758d"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-start",
       "target": ".local/bin/common/regime-start",
       "kind": "file",
       "executable": true,
-      "sha256": "c7b630d2353020e57c57a01af94fac5f7ed7f503071de9d1a15172eeb057bc6b"
+      "sha256": "978087b6ac9cbe00a3cb4f45dd749a8634d960948b5e2df96a97bbafe9597d17"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-stop",
@@ -595,6 +602,27 @@
       "kind": "file",
       "executable": true,
       "sha256": "be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_regime-store-move",
+      "target": ".local/bin/common/regime-store-move",
+      "kind": "file",
+      "executable": true,
+      "sha256": "592ed0a7513a072446d1dee5a96b27b96b139eda33cfdc5ac95dd559aa66351a"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_router-gh",
+      "target": ".local/bin/common/router-gh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_router-settings-apply",
+      "target": ".local/bin/common/router-settings-apply",
+      "kind": "file",
+      "executable": true,
+      "sha256": "105865474f5c52d552f53b86764fab2b25d6699851ab30ca8a24e7ac579d39f5"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-login-preflight",
@@ -616,6 +644,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293"
+    },
+    {
+      "source": "home/dot_local/bin/common/ledger.py",
+      "target": ".local/bin/common/ledger.py",
+      "kind": "file",
+      "executable": false,
+      "sha256": "4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21"
     },
     {
       "source": "install/common/aws_cli.sh",
@@ -773,6 +808,11 @@
     {
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
+      "glob": "ledger-row.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
       "glob": "ledger.py"
     },
     {
@@ -863,7 +903,22 @@
     {
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
+      "glob": "regime-store-move"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
       "glob": "rounds-check.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "router-gh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "router-settings-apply"
     },
     {
       "source": "home/dot_local/bin/common",

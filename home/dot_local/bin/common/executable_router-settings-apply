@@ -1,0 +1,496 @@
+#!/usr/bin/env -S python3 -I
+"""Make the dsh-superagent Router's settings store equal to the kit's GitHub Source row, accept mode and observe
+admission cell (regime-cutover U353, M-26 stage B; U416).
+
+`router-settings-apply [--manifest <agent-config.yaml>] [--profile <cordis.patch.yml>] [--wait <seconds>]` is run by the
+coordinator outside every sandbox, as the operator's user, after `hcom-seat router -- --no-open` has printed its ready
+line. The Router learns its Sources from the settings store under `stateDir`, never from the plugin config (upstream
+`src/deployment.ts:33-44` refuses `repository` there, naming the Source as where it moved), so the values the kit renders
+as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the Router through this lever alone:
+
+- The manifest's `assets.dsh-superagent.sources.github` row gives `repository` (`owner/name`), `accept_mode` and
+  `observe_admission` (`inferred` or `ignore`); the rendered router profile's `webserver` row gives the port (its host
+  must be `127.0.0.1`, the only host this lever ever connects to). The Source's `cli` is the physical path of `router-gh` beside this file, the `gh` wrapper whose
+  `GH_CONFIG_DIR` is `<DSH_HOME>/router-credentials/gh` (upstream docs/006-deployment.md "Agent GitHub account").
+- `GET settings` at `http://127.0.0.1:<port>/orchestrator/api/settings` with the `x-orchestrator-request: 1` header
+  (upstream `src/app/http.ts:75-78`: the host `127.0.0.1:<port>` and that header, else 403) gives each block's current
+  `value` and `revision`. For a block whose value differs from the kit's, `PUT settings/<block>` carries
+  `{"value": <the whole block>, "revision": <the revision read>}` (upstream `src/app/http.ts:196-202`, `src/app/settings.ts:148-151`:
+  a stale revision is 409). The three blocks, written in the order `eval`, `policy`, `source:github`:
+  - `source:github`: `{"enabled": true, "config": {<the current config>, "repository": <repository>, "cli": <router-gh>,
+    "observePulls": true}}` (`src/sources/github.ts:25-28`, the Source's config keys). `observePulls` is the observe
+    path: the notifications poll (`src/sources/github.ts:304`, `notifications?all=true`) needs a classic token with the
+    `notifications` scope, which the M-25 handout's fine-grained token does not carry, while the repository stream
+    (`src/sources/github.ts:174`, `issues?state=all`, read when `observeIssues || observePulls`) receives every new pull
+    request with the token's `Pull requests` permission and runs whether or not the notifications poll fails (`:282-286`).
+  - `eval`: the current eval block with `mode` set to the accept mode (`src/policy.ts:83-87`). `auto` is refused here:
+    the M-18 ladder's second rung is the operator's row, and this unit applies `off` or `observe` alone.
+  - `policy`: the current block with the github Source's admission cell `sources.github.admission.pulls.unlistedUnaddressed`
+    set to the manifest's `observe_admission` (`src/policy.ts:76-84`, `src/admission.ts:13`), its `rules`, the github
+    `allowed` list (empty when absent) and every other row, cell and Source carried as read. Without this cell the
+    observe rung records nothing: the kit's allowed list is empty and upstream's default for the cell is `ignore`, so
+    every unlisted human's pull request falls to `not_a_member` before any assessment (`src/policy.ts:192-210`; measured
+    on the i2 probes, decisions 2026-11-10T04:08:19Z), while `inferred` makes it a candidate that observe mode can only
+    record as an ignore Decision with `audit.would_accept` (`src/policy.ts:55-57`), never accept. The allowed list is
+    the auto rung's lever (a listed login's mention is `explicit`, accepted even in observe mode) and stays untouched.
+- A block already equal to the kit's is not written: a second run PUTs nothing (`unchanged`). After a save the Router
+  answers `restarting: true` while setup is pending or a setup field changed (`src/app/settings.ts:176`), and the API is
+  unavailable for a moment; before the next PUT this lever polls `GET settings` until it answers again, for at most
+  `--wait` seconds (default 60).
+- `eval` is saved before `source:github` (regime-cutover U353b, verdict U353-8791100f P2 `:401`): a store whose mode is
+  `auto` would otherwise poll under `auto` from the Source's restart until the mode is written, so the safe mode is in
+  place before the Source is enabled or its setup fields change. `policy` goes between them: its save changes
+  `policyVersion` and restarts nothing (measured 2026-11-10T03:03Z, `restarting: false`), so no wait precedes the Source.
+- Saving `source:github` runs the Router's account probe first (`src/app/settings.ts:167`, `src/app/setup.ts:61-66`,
+  `src/deployment.ts:87-105`: `<cli> api user`, then `repos/<name>` for push); without the agent account's login in the
+  credential root the Router answers 400 with `setup.code` `agentCliSignedOut` and saves nothing. This lever names that
+  refusal, with `eval` already saved, and exits 2: the token is the operator's step (docs/engagement-handout.md), after
+  which the coordinator runs this lever again.
+
+Output: one line per block on stdout, `<block> saved (revision <n>[, restarting])` or `<block> unchanged (revision <n>)`.
+Exit 0 when the three blocks hold the kit's values. Every refusal is one line on stderr, `router-settings-apply: <reason>`,
+and exit 2: a manifest or profile that cannot be read or lacks its row, `auto`, an `observe_admission` outside its two
+words, a wrapper that is no executable file, a port
+that answers nothing (`unreachable`, naming `127.0.0.1:<port>`), a 403 (naming the header), a 409 (naming the revision), a
+400 with `setup` (naming the code and its text), a 3xx (naming its Location; never followed), any other status, or a
+settings view without the `github` Source, the `eval` block or the `policy` block. Nothing is written to any file; the only network peer is
+`127.0.0.1:<port>`: the opener is built by hand (U353b, verdict P2 `:268`) with an empty proxy table, so a proxy named in
+the environment or the system settings is not consulted, and without a redirect handler, so a 3xx is a refusal and no
+request leaves the loopback port.
+
+Before anything else the file hashes itself against its `claude.levers.sha256.router-settings-apply` pin in the manifest
+beside it (the deployed `~/.agents/agent-config.yaml` for the copy under the physical `~/.local/bin/common`, else the
+checkout's `home/dot_agents/agent-config.yaml` two levels up) and refuses to run (exit 2, nothing on stdout) when the
+digest differs, in brief-check.py's form. Standing order 21: every producer's status is read; a read that fails is a
+refusal, never a pass.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import sys
+import time
+import urllib.error
+import urllib.request
+
+LEVER = "router-settings-apply"
+WRAPPER = "router-gh"
+HOST = "127.0.0.1"
+HEADER = "x-orchestrator-request"
+API = "/orchestrator/api/"
+SOURCE_BLOCK = "source:github"
+EVAL_BLOCK = "eval"
+ACCEPT_MODES_APPLIED = ("off", "observe")
+POLICY_BLOCK = "policy"
+# The one policy cell this lever writes (U416): the pulls row's unlistedUnaddressed cell of the github Source's admission
+# table (src/admission.ts), from the manifest's observe_admission, whose two words are the cell's values short of explicit.
+ADMISSION_SOURCE = "github"
+ADMISSION_ROW = "pulls"
+ADMISSION_CELL = "unlistedUnaddressed"
+OBSERVE_ADMISSIONS_APPLIED = ("inferred", "ignore")
+# The levers block of the manifest, read as text by indentation alone, never parsed as YAML (brief-check.py's reader):
+# a mapping key is a bare `<key>:` line; a pin is `<name>: <64 hex>` at the one indentation the first pin fixes.
+MAPPING_KEY = re.compile(r"^(\S+):$")
+SCALAR = re.compile(r"^(\S+): (.+)$")
+LEVER_PIN = re.compile(r"^(\S+): ([0-9a-f]{64})$")
+LEVERS_KEYS = ("claude", "levers", "sha256")
+SOURCE_KEYS = ("assets", "dsh-superagent", "sources", "github")
+REPOSITORY = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+# The webserver row as scripts/generate-agent-configs.py renders it (DSH_ROUTER_WEBSERVER), host first, then port.
+WEBSERVER_ROW = re.compile(r"^- id: webserver\n  config:\n    host: (\S+)\n    port: (\d+)\n", re.MULTILINE)
+
+
+class Refusal(Exception):
+    """One refusal line; main prints it and exits 2."""
+
+
+def refuse_to_run(reason: str) -> None:
+    """The self-check's refusal, in the shell levers' words on stderr: exit 2 and nothing was read or written."""
+    print(f"{LEVER}: refused: {reason}", file=sys.stderr)
+    sys.exit(2)
+
+
+def lever_directory() -> str:
+    return os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
+
+
+def manifest_beside(directory: str) -> str:
+    """The manifest the pin and the Source row come from: the deployed one for the installed copy, else the checkout's."""
+    home = os.environ.get("HOME", "")
+    if home and os.path.isdir(home) and directory == os.path.realpath(os.path.join(home, ".local/bin/common")):
+        return os.path.join(home, ".agents/agent-config.yaml")
+    return os.path.join(directory, "../../home/dot_agents/agent-config.yaml")
+
+
+def lever_self_check() -> None:
+    """Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31; U317b)."""
+    directory = lever_directory()
+    self_path = os.path.join(directory, os.path.basename(__file__))
+    manifest = manifest_beside(directory)
+    if not os.access(manifest, os.R_OK):
+        refuse_to_run(f"manifest unreadable: {manifest}")
+    try:
+        with open(manifest, "rb") as handle:
+            lines = handle.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        refuse_to_run(f"cannot read {manifest}")
+    pins = [digest for name, digest in manifest_levers(lines, manifest) if name == LEVER]
+    if len(pins) != 1:
+        refuse_to_run(f"no single sha256 pin for {LEVER} in {manifest}")
+    try:
+        with open(self_path, "rb") as handle:
+            digest = hashlib.sha256(handle.read()).hexdigest()
+    except OSError:
+        refuse_to_run(f"cannot hash {self_path}")
+    if digest != pins[0]:
+        refuse_to_run(f"sha256 {digest} of {self_path} differs from the pin in {manifest}")
+
+
+def manifest_levers(lines: list[str], manifest: str) -> tuple[tuple[str, str], ...]:
+    """The `(name, sha256)` pins under the manifest's `claude.levers.sha256` mapping, in file order (brief-check.py,
+    U136): the mapping keys are walked by indentation, so `levers:` counts only under the top-level `claude:` and
+    `sha256:` only under that `levers:`; inside the block, blank and comment lines are skipped, the entries share the
+    indentation of the first pin, and the list ends at the first line indented less. An entry that is not
+    `<name>: <64 hex>` is a refusal naming the line; no entry at all is the missing-block refusal."""
+    pins: list[tuple[str, str]] = []
+    keys: list[tuple[int, str]] = []  # the open mapping keys as (indentation, key), outermost first
+    block = None  # the indentation of the `sha256:` key once the path is open
+    entries = None  # the indentation of the pin lines, fixed by the first
+    for number, line in enumerate(lines, 1):
+        text = line.lstrip(" ")
+        if not text or text.startswith("#"):
+            continue
+        indent = len(line) - len(text)
+        if block is not None:
+            if indent <= block or (entries is not None and indent < entries):
+                break
+            match = LEVER_PIN.match(text)
+            if match is None or (entries is not None and indent != entries):
+                refuse_to_run(f"line {number} of {manifest} is not a `<name>: <sha256>` pin under claude.levers.sha256")
+            entries = indent
+            pins.append((match.group(1), match.group(2)))
+            continue
+        while keys and indent <= keys[-1][0]:
+            keys.pop()
+        match = MAPPING_KEY.match(text)
+        if match and (keys or indent == 0):
+            keys.append((indent, match.group(1)))
+            if tuple(key for _, key in keys) == LEVERS_KEYS:
+                block = indent
+    if not pins:
+        refuse_to_run(f"no claude.levers.sha256 block in {manifest}")
+    return tuple(pins)
+
+
+def manifest_scalars(lines: list[str], mapping: tuple[str, ...]) -> dict[str, str] | None:
+    """The `<key>: <value>` scalars directly under the mapping named by the key tuple `mapping` (top-level key first),
+    read by the indentation walk of manifest_levers; a value's surrounding quotes are removed. None when the manifest
+    has no such mapping."""
+    found: dict[str, str] = {}
+    keys: list[tuple[int, str]] = []
+    block = None
+    entries = None
+    for line in lines:
+        text = line.lstrip(" ")
+        if not text or text.startswith("#"):
+            continue
+        indent = len(line) - len(text)
+        if block is not None:
+            if indent <= block or (entries is not None and indent < entries):
+                break
+            if entries is None:
+                entries = indent
+            match = SCALAR.match(text)
+            if indent == entries and match:
+                value = match.group(2).strip()
+                if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                    value = value[1:-1]
+                found[match.group(1)] = value
+            continue
+        while keys and indent <= keys[-1][0]:
+            keys.pop()
+        match = MAPPING_KEY.match(text)
+        if match and (keys or indent == 0):
+            keys.append((indent, match.group(1)))
+            if tuple(key for _, key in keys) == mapping:
+                block = indent
+    return found if block is not None else None
+
+
+def read_lines(path: str, what: str) -> list[str]:
+    try:
+        with open(path, "rb") as handle:
+            return handle.read().decode("utf-8", "replace").splitlines()
+    except OSError as error:
+        raise Refusal(f"{what} {path} could not be read: {error}") from None
+
+
+def source_row(manifest: str) -> tuple[str, str, str]:
+    """The manifest's repository, accept mode and observe admission, each held to its form; `auto` and a third word for
+    the cell are refused here."""
+    row = manifest_scalars(read_lines(manifest, "the manifest"), SOURCE_KEYS)
+    label = ".".join(SOURCE_KEYS)
+    if row is None:
+        raise Refusal(f"the manifest {manifest} names no {label} mapping")
+    for key in ("repository", "accept_mode", "observe_admission"):
+        if not row.get(key):
+            raise Refusal(f"the manifest {manifest} names no {label}.{key}")
+    if not REPOSITORY.fullmatch(row["repository"]):
+        raise Refusal(f"{label}.repository {row['repository']!r} in {manifest} is not owner/name")
+    if row["accept_mode"] not in ACCEPT_MODES_APPLIED:
+        raise Refusal(
+            f"{label}.accept_mode {row['accept_mode']!r} in {manifest} is not applied by this lever; it applies "
+            f"{' or '.join(ACCEPT_MODES_APPLIED)} alone, and the M-18 ladder's second rung is the operator's row"
+        )
+    if row["observe_admission"] not in OBSERVE_ADMISSIONS_APPLIED:
+        raise Refusal(
+            f"{label}.observe_admission {row['observe_admission']!r} in {manifest} is not "
+            f"{' or '.join(OBSERVE_ADMISSIONS_APPLIED)}; the {ADMISSION_ROW} row's {ADMISSION_CELL} cell takes those two "
+            "words alone (explicit would accept an unlisted sender's pull request in observe mode)"
+        )
+    return row["repository"], row["accept_mode"], row["observe_admission"]
+
+
+def webserver_port(profile: str) -> int:
+    """The rendered router profile's webserver port; its host must be the loopback address this lever connects to."""
+    text = "\n".join(read_lines(profile, "the router profile")) + "\n"
+    match = WEBSERVER_ROW.search(text)
+    if match is None:
+        raise Refusal(f"the router profile {profile} names no webserver host and port in the rendered form")
+    if match.group(1) != HOST:
+        raise Refusal(f"the router profile {profile} binds the webserver to {match.group(1)}, not {HOST}")
+    port = int(match.group(2))
+    if not 1 <= port <= 65535:
+        raise Refusal(f"the router profile {profile} names the webserver port {port}, outside 1 to 65535")
+    return port
+
+
+def wrapper_path(directory: str) -> str:
+    """The physical path of router-gh beside this file, an executable regular file."""
+    path = os.path.join(directory, WRAPPER)
+    if os.path.islink(path) or not os.path.isfile(path) or not os.access(path, os.X_OK):
+        raise Refusal(f"the gh wrapper {path} is not an executable file beside this lever")
+    return path
+
+
+def loopback_opener() -> urllib.request.OpenerDirector:
+    """An opener that speaks to the loopback port alone (regime-cutover U353b): urllib's default opener honours the
+    environment's and the system's proxy settings for a loopback host too and follows a redirect wherever it points,
+    so it is built by hand here: an empty proxy table, the http handler, and the error processor that turns every
+    status outside 2xx into an HTTPError (a 3xx included, no redirect handler being present); no https, file or ftp
+    handler, so nothing but `http://127.0.0.1:<port>` can be opened through it."""
+    opener = urllib.request.OpenerDirector()
+    for handler in (
+        urllib.request.ProxyHandler({}),
+        urllib.request.HTTPHandler(),
+        urllib.request.HTTPDefaultErrorHandler(),
+        urllib.request.HTTPErrorProcessor(),
+    ):
+        opener.add_handler(handler)
+    return opener
+
+
+class Api:
+    """The Management API at one loopback port: GET and PUT with the header, each answer read whole as JSON."""
+
+    def __init__(self, port: int, wait: float) -> None:
+        self.port = port
+        self.wait = wait
+        self.base = f"http://{HOST}:{port}{API}"
+        self.opener = loopback_opener()
+
+    def where(self) -> str:
+        return f"the Management API at {HOST}:{self.port}"
+
+    def request(self, method: str, route: str, body: dict | None = None) -> dict:
+        data = None if body is None else json.dumps(body).encode()
+        headers = {HEADER: "1"}
+        if data is not None:
+            headers["content-type"] = "application/json"
+        request = urllib.request.Request(self.base + route, data=data, method=method, headers=headers)
+        label = f"{method} {route}"
+        try:
+            with self.opener.open(request, timeout=30) as response:  # the loopback host alone, no proxy, no redirect
+                text = response.read().decode("utf-8", "replace")
+                status = response.status
+        except urllib.error.HTTPError as error:
+            text = error.read().decode("utf-8", "replace")
+            raise Refusal(self.describe(label, error.code, text, error.headers.get("location"))) from None
+        except (urllib.error.URLError, OSError) as error:
+            reason = getattr(error, "reason", error)
+            raise Refusal(f"{self.where()} is unreachable for {label}: {reason}") from None
+        try:
+            answer = json.loads(text)
+        except json.JSONDecodeError as error:
+            raise Refusal(f"{self.where()} answered {status} to {label} with no JSON object: {error}") from None
+        if not isinstance(answer, dict):
+            raise Refusal(f"{self.where()} answered {status} to {label} with no JSON object")
+        return answer
+
+    def describe(self, label: str, code: int, text: str, location: str | None = None) -> str:
+        """One refusal for a status outside 2xx: the 403 names the header, the 409 the revision, the 400 its setup code,
+        a 3xx its Location (never followed: the lever speaks to the loopback port alone)."""
+        try:
+            answer = json.loads(text)
+        except json.JSONDecodeError:
+            answer = {}
+        error = answer.get("error", text.strip()) if isinstance(answer, dict) else text.strip()
+        if 300 <= code < 400:
+            return (
+                f"{self.where()} answered {code} to {label}: a redirect to {location or 'no Location'} is not followed; "
+                f"this lever speaks to {HOST}:{self.port} alone"
+            )
+        if code == 403:
+            return f"{self.where()} answered 403 to {label}: the {HEADER} header or the Host was not accepted ({error})"
+        if code == 409:
+            return f"{self.where()} answered 409 to {label}: the revision read was stale ({error})"
+        setup = answer.get("setup") if isinstance(answer, dict) else None
+        if code == 400 and isinstance(setup, dict):
+            return (
+                f"{self.where()} answered 400 to {label}: setup {setup.get('code')}: {setup.get('detail', error)}; the "
+                f"agent account's gh login under the credential root {WRAPPER} names is the operator's step "
+                "(docs/engagement-handout.md), after which this lever runs again"
+            )
+        return f"{self.where()} answered {code} to {label}: {error}"
+
+    def settings(self) -> dict:
+        return self.request("GET", "settings")
+
+    def settings_after_restart(self) -> None:
+        """Poll GET settings until the restarted Router answers, for at most `wait` seconds; a 403 refuses at once."""
+        deadline = time.monotonic() + self.wait
+        while True:
+            try:
+                self.settings()
+                return
+            except Refusal as refusal:
+                if "unreachable" not in str(refusal) and " answered 5" not in str(refusal):
+                    raise
+                if time.monotonic() >= deadline:
+                    raise Refusal(
+                        f"{self.where()} did not answer within {self.wait:g} s after its restart: {refusal}"
+                    ) from None
+                time.sleep(1)
+
+
+def block_views(settings: dict, where: str) -> tuple[tuple[dict, int], tuple[dict, int], tuple[dict, int]]:
+    """The github Source's, the eval block's and the policy block's (value, revision) from a settings view, each
+    refused when absent."""
+    sources = settings.get("sources")
+    github = (
+        next((s for s in sources if isinstance(s, dict) and s.get("id") == "github"), None)
+        if isinstance(sources, list)
+        else None
+    )
+    if github is None or not isinstance(github.get("value"), dict) or not isinstance(github.get("revision"), int):
+        raise Refusal(f"{where} answered GET settings without the Source github (its value and revision)")
+    blocks = settings.get("blocks")
+    views: list[tuple[dict, int]] = []
+    for name in (EVAL_BLOCK, POLICY_BLOCK):
+        block = blocks.get(name) if isinstance(blocks, dict) else None
+        if not isinstance(block, dict) or not isinstance(block.get("value"), dict) or not isinstance(block.get("revision"), int):
+            raise Refusal(f"{where} answered GET settings without the {name} block (its value and revision)")
+        views.append((block["value"], block["revision"]))
+    return (github["value"], github["revision"]), views[0], views[1]
+
+
+def desired_source(current: dict, repository: str, cli: str) -> dict:
+    config = current.get("config") if isinstance(current.get("config"), dict) else {}
+    return {"enabled": True, "config": {**config, "repository": repository, "cli": cli, "observePulls": True}}
+
+
+def desired_eval(current: dict, mode: str) -> dict:
+    return {**current, "mode": mode}
+
+
+def desired_policy(current: dict, cell: str) -> dict:
+    """The policy block as read with the github Source's `pulls.unlistedUnaddressed` cell set to `cell`: the rules, the
+    allowed list (empty when absent), the other rows and cells and every other Source's entry unchanged."""
+    sources = current.get("sources") if isinstance(current.get("sources"), dict) else {}
+    github = sources.get(ADMISSION_SOURCE) if isinstance(sources.get(ADMISSION_SOURCE), dict) else {}
+    admission = github.get("admission") if isinstance(github.get("admission"), dict) else {}
+    row = admission.get(ADMISSION_ROW) if isinstance(admission.get(ADMISSION_ROW), dict) else {}
+    allowed = github.get("allowed") if isinstance(github.get("allowed"), list) else []
+    entry = {
+        **github,
+        "allowed": allowed,
+        "admission": {**admission, ADMISSION_ROW: {**row, ADMISSION_CELL: cell}},
+    }
+    return {**current, "rules": current.get("rules", []), "sources": {**sources, ADMISSION_SOURCE: entry}}
+
+
+def apply_block(api: Api, block: str, current: dict, desired: dict, revision: int) -> bool:
+    """PUT `block` when it differs; print the line; True when the Router restarts after the save."""
+    if json.dumps(current, sort_keys=True) == json.dumps(desired, sort_keys=True):
+        print(f"{block} unchanged (revision {revision})")
+        return False
+    answer = api.request("PUT", f"settings/{block}", {"value": desired, "revision": revision})
+    saved = answer.get("revision")
+    restarting = answer.get("restarting") is True
+    print(f"{block} saved (revision {saved}{', restarting' if restarting else ''})")
+    return restarting
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog=LEVER, description="write the kit's GitHub Source row, accept mode and observe admission cell into the Router's settings store"
+    )
+    directory = lever_directory()
+    parser.add_argument(
+        "--manifest",
+        default=manifest_beside(directory),
+        help="the agent-config.yaml to read (default: the one beside this lever's install)",
+    )
+    parser.add_argument(
+        "--profile",
+        default=None,
+        help="the rendered router cordis.patch.yml (default: $DSH_HOME/profiles/router/cordis.patch.yml, DSH_HOME defaulting to ~/.dsh)",
+    )
+    parser.add_argument(
+        "--wait",
+        type=float,
+        default=60.0,
+        help="seconds to wait for the Router after a save that restarts it (default 60)",
+    )
+    args = parser.parse_args(argv[1:])
+    profile = args.profile
+    if profile is None:
+        dsh_home = os.environ.get("DSH_HOME") or os.path.join(os.environ.get("HOME", ""), ".dsh")
+        profile = os.path.join(dsh_home, "profiles/router/cordis.patch.yml")
+    try:
+        repository, mode, cell = source_row(args.manifest)
+        port = webserver_port(profile)
+        cli = wrapper_path(directory)
+        api = Api(port, args.wait)
+        (source, source_revision), (evaluation, eval_revision), (policy, policy_revision) = block_views(
+            api.settings(), api.where()
+        )
+        # The mode first (U353b): the Source restarts into polling under whatever mode the store holds.
+        restarting = apply_block(api, EVAL_BLOCK, evaluation, desired_eval(evaluation, mode), eval_revision)
+        if restarting:
+            api.settings_after_restart()
+            (source, source_revision), (_, _), (policy, policy_revision) = block_views(api.settings(), api.where())
+        # The admission cell next (U416): a policy save changes policyVersion and restarts nothing, so no wait here.
+        apply_block(api, POLICY_BLOCK, policy, desired_policy(policy, cell), policy_revision)
+        refusals: list[str] = []
+        try:
+            apply_block(api, SOURCE_BLOCK, source, desired_source(source, repository, cli), source_revision)
+        except Refusal as refusal:
+            if " answered 400 " not in str(refusal):
+                raise
+            refusals.append(str(refusal))
+    except Refusal as refusal:
+        print(f"{LEVER}: {refusal}", file=sys.stderr)
+        return 2
+    for refusal in refusals:
+        print(f"{LEVER}: {refusal}", file=sys.stderr)
+    return 2 if refusals else 0
+
+
+if __name__ == "__main__":
+    lever_self_check()
+    sys.exit(main(sys.argv))

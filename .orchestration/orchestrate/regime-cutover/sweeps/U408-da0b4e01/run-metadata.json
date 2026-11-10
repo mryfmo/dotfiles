@@ -1,0 +1,190 @@
+{
+  "run_id": "dotfiles-sweep-3-run-55",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "da0b4e01b6569009c81cb0544d9f036b9a1e6a1f",
+    "branch": "fix/router-profile-bash-sandbox-on",
+    "base": "57e5345a1",
+    "previous_swept_head": null,
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U406 change (57e5345a1..da0b4e01, 3 files: home/dot_dsh/profiles/router/cordis.patch.yml, scripts/generate-agent-configs.py (the router renderer's three bash-sandbox rows, the two restated presets and their helpers removed), tests/unit/test_dsh_profile.py), hunted for what turning the harness sandbox on inside srt admits under the router row of scripts/orchestrator/hcom-seat; plus the run-54 records carried and re-checked at this head with their lines re-mapped; every other path is carried out_of_scope or covered",
+  "scope_note": "U404 (run-54's head 63ce5ded) and U406 are siblings off 57e5345a1: this head equals 63ce5ded but in U406's three files and U404's package.json line, which is absent here. The run-54 records specific to U404 (the bundle unit, its test unit) are out_of_scope at this head and stay open on U404's branch; the merged U404 plus U406 tree is neither head. The brief's CHANGE carries run-54 while its TRUST names run-53; run-54, which carries run-53, is carried. The coordinator store's decisions row 2026-11-09T03:52:16Z, which U406's test cites, was read from the store (not in this head).",
+  "scope_paths": [
+    "home/dot_dsh/profiles/router/cordis.patch.yml",
+    "scripts/generate-agent-configs.py",
+    "tests/unit/test_dsh_profile.py",
+    "home/dot_dsh/profiles/router/package.json",
+    "scripts/orchestrator/hcom-seat",
+    "scripts/orchestrator/router-gh",
+    "scripts/orchestrator/router-settings-apply",
+    ".orchestration/orchestrate/regime-cutover/decisions.tsv",
+    ".orchestration/orchestrate/regime-cutover/tests/dsh-workflow-turn.tsv",
+    ".orchestration/decisions.tsv"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent read source, ran git (diff, log, ls-tree), grep and sed over the target, and its own node scripts (ledger builder, output scan) in agents/parent-hunter/scratch/; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-54",
+      "source_ref": "63ce5ded23145a7da2fef1c84378bdbe1457d25d",
+      "findings": 0,
+      "unvalidated_candidates": 14,
+      "ledger_units": 142,
+      "use": "Base ledger (a sibling head off the same main); the U406-touched units re-checked, the two U404-only units moved out_of_scope, three units added, the rest carried."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-09T04:13:34Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat (probed in run-54 this session; the policy is unchanged), so every phase ran in the parent and sixteen leads (fourteen carried, two new from the U406 hunt) could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json.",
+  "hardening_notes": [
+    "scripts/orchestrator/ledger-row.py: no chezmoi source deploys ledger.py beside ~/.local/bin/common/ledger-row.py, so the installed copy refuses every call (fails closed; unchanged since run-49).",
+    "docs/deepseek-harness.md:149-150 still describes the router presets as restated with their sandbox rows disabled; U406 leaves the docs unchanged (the text understates confinement)."
+  ],
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "router-profile/shell:github-input-reaches-a-live-shell-whose-outer-bound-reads-the-agent-token",
+      "where": "home/dot_dsh/profiles/router/cordis.patch.yml:9-43; scripts/generate-agent-configs.py:2498-2500; scripts/orchestrator/hcom-seat:2216-2220, :2604-2608, :3017-3023",
+      "proposed_verdict": "needs_validation",
+      "u406": "new: the shell service has its provider from this head"
+    },
+    {
+      "fingerprint": "router-profile/bash-sandbox:nested-seatbelt-refused-under-srt-so-the-confinement-premise-is-unmet",
+      "where": "scripts/generate-agent-configs.py:181-186; tests/unit/test_dsh_profile.py:262-266; .orchestration/orchestrate/regime-cutover/decisions.tsv:628; .orchestration/decisions.tsv:138",
+      "proposed_verdict": "needs_validation",
+      "u406": "new: the unit's two-boundary premise against the repository's nested-Seatbelt measurements"
+    },
+    {
+      "fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off",
+      "where": "home/dot_dsh/profiles/router/cordis.patch.yml:9-43",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "claim changed: no router row disables the harness sandbox at this head"
+    },
+    {
+      "fingerprint": "router-profile/management-api:settings-write-guarded-by-a-fixed-header-alone",
+      "where": "scripts/orchestrator/router-settings-apply:15-16, :73; home/dot_dsh/profiles/router/cordis.patch.yml:24-30",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:450, :3011-3023",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "regime-store/store-root:dsh-and-router-roles-can-read-the-live-store",
+      "where": "scripts/orchestrator/hcom-seat:2594-2598",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "where": "scripts/orchestrator/hcom-seat:774, :2216-2220",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/orchestrator/hcom-seat:2519, :2387-2420; scripts/update-agent-assets.sh:1985",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2473-2478, :2818-2819, :2888-2889",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1914-1935",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:2213, :2238",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "scripts/update-agent-assets.sh:2501",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the token is unset at start (hcom-seat:201) and before the seat environment (:3086)"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the thak profile runs no shell tool (its bash-sandbox row stays disabled, tests/unit/test_dsh_profile.py:169, :270)"
+    }
+  ],
+  "leads_on_other_branches": [
+    "U404 (run-54): home/dot_dsh/profiles/router/package.json#dsh.profile.bundles blocked on the plugin's own patch; the merged U404 plus U406 tree needs its own sweep",
+    "acp-broker/push-back:worker-written-gitdir-or-alternates-reads-outside-the-sandbox (U343, run-35)",
+    "acp-broker/launch-log:header-name-picks-a-router-writable-log-the-broker-appends-to (U343, run-35)",
+    "acp-broker/relay:no-cap-on-concurrent-workers (U343, run-35)"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; scripts in agents/parent-hunter/scratch/)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 2,
+      "reassign_ids": 0,
+      "result": "asked whether the inner sandbox can apply inside srt on macOS (the repository's measurements say a second sandbox_apply is refused: added as a unit) and whether run-54's U404-only units describe this head (no: moved out_of_scope); asked whether the removed helpers leave a caller (no)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 16,
+  "findings_count": 0,
+  "ledger_units": 145,
+  "ledger_counts": {
+    "covered": 71,
+    "candidate": 16,
+    "out_of_scope": 58
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-09T04:19:29Z"
+}

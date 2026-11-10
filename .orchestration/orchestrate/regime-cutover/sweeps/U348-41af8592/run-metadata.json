@@ -1,0 +1,190 @@
+{
+  "run_id": "dotfiles-sweep-3-run-29",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-3",
+  "source_ref": {
+    "commit": "41af8592b289bbaa307d8bb91acdd2fd142ca19a",
+    "branch": "feat/dsh-superagent-asset-observe",
+    "base": "49f3c33c3fe0322474a671a598765aa2f1397259",
+    "unit_round_2_head": "9cb6a2fb3",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "scoped run: the U317 change against its merge base origin/main 49f3c33c (18 files: update_dsh_superagent and its srt helpers in scripts/update-agent-assets.sh, scripts/lib/installer-pins.sh, the Router profile home/dot_dsh/profiles/router/, scripts/orchestrator/intake-observe.py and its copy, scripts/generate-agent-configs.py, scripts/validate-agent-assets.py, the manifest rows, the docs paragraph, seven test modules); the run-28 records re-checked at this head (U322, U321, U318c and U330 now on main); every other path is carried out_of_scope",
+  "scope_note": "The brief does not match the head: its GOAL describes U322 (branch fix/dsh-harness-build-under-srt, rounds 1 to 5) and names run-28 as the U317c head 0fc4740b, while the coordinator positioned the U317c head 41af8592 of feat/dsh-superagent-asset-observe and the TASK names it. This run sweeps the positioned head; U317's own change is 49f3c33c..HEAD (git diff --name-only 668ba887 HEAD lists 31 paths, not 3). U317's round-1 verdict (verdicts/U317-6eac2332.md) was read and each finding re-checked here.",
+  "scope_paths": [
+    "scripts/update-agent-assets.sh",
+    "scripts/lib/installer-pins.sh",
+    "home/dot_dsh/profiles/router/cordis.patch.yml",
+    "home/dot_dsh/profiles/router/package.json",
+    "scripts/orchestrator/intake-observe.py",
+    "home/dot_local/bin/common/executable_intake-observe.py",
+    "scripts/generate-agent-configs.py",
+    "scripts/generated-agent-outputs.json",
+    "scripts/validate-agent-assets.py",
+    "home/dot_agents/agent-config.yaml",
+    "docs/deepseek-harness.md",
+    "tests/unit/test_update_agent_assets.py",
+    "tests/unit/test_dsh_profile.py",
+    "tests/unit/test_intake_observe.py"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran (task rule), and no credential store was read. The parent ran git, cmp, grep and its own node scripts (ledger builder, per-file line map) over the tree, and read the installed srt 0.0.81 JavaScript as source; every ledger check is a source check.",
+  "selected_companions": [],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-3/security-audit/run-28",
+      "source_ref": "85d05d29b2f8f1ad49f972b622037a32b6c29c7f",
+      "findings": 0,
+      "unvalidated_candidates": 10,
+      "ledger_units": 91,
+      "use": "Base ledger (the brief's set). Lines moved per file through git diff -U0 85d05d29 HEAD (the updater, hcom-seat, seat-login-preflight); the four hcom-seat references inside U321's hunks re-read by hand; the leads whose code U321 rewrote re-checked fresh."
+    },
+    {
+      "path": "~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/verdicts/U317-6eac2332.md",
+      "source_ref": "6eac2332",
+      "use": "U317's round-1 verdict: three P1 and seven P2/P3 findings, each re-checked at this head (all closed)."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T07:04:39Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "independent_agents_unavailable: the delegation tool (task) and the eval kernel are denied by policy on this seat, so every phase ran in the parent and fifteen leads (four new on U317) could not get their Phase 3 and Phase 5 independent verifiers; they stay unvalidated candidates in the ledger and are not in findings.json.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "update_dsh_superagent/srt-settings-file:written-through-a-link-a-seat-plants",
+      "where": "scripts/update-agent-assets.sh:2663, :2801, :2861",
+      "proposed_verdict": "needs_validation",
+      "note": "new on U317"
+    },
+    {
+      "fingerprint": "update_dsh_superagent/srt-settings:deny-list-narrower-than-the-seat-that-writes-its-inputs",
+      "where": "scripts/update-agent-assets.sh:2634-2639",
+      "proposed_verdict": "needs_validation",
+      "note": "new on U317"
+    },
+    {
+      "fingerprint": "update_dsh_superagent/pnpm-store:linked-store-reaches-the-host-mkdir-and-the-write-grant",
+      "where": "scripts/update-agent-assets.sh:2791, :2797",
+      "proposed_verdict": "needs_validation",
+      "note": "new on U317; the macOS write grant does not follow the link (srt keeps the spelling)"
+    },
+    {
+      "fingerprint": "router-profile/tool-bash:github-input-reaches-a-shell-with-the-harness-sandbox-off",
+      "where": "home/dot_dsh/profiles/router/cordis.patch.yml:150-164, :55-69",
+      "proposed_verdict": "needs_validation",
+      "note": "new on U317"
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "where": "scripts/orchestrator/hcom-seat:625-629, :1638-1662",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "seat-sandbox/deny-read:chezmoi-age-identity-readable",
+      "where": "scripts/orchestrator/hcom-seat:1934-1941; scripts/update-agent-assets.sh:1950-1953, :2634-2638",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:profile-lockfile-hosts-from-a-seat-writable-file",
+      "where": "scripts/update-agent-assets.sh:2438-2443",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "update-agent-assets/build_under_srt:write-root-resolved-after-its-link-check",
+      "where": "scripts/update-agent-assets.sh:1908-1929",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/router:local-binding-every-interface",
+      "where": "scripts/orchestrator/hcom-seat:303, :2340",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "hcom-seat/claude-config:shared-directory-crosses-seat-isolation",
+      "where": "scripts/orchestrator/hcom-seat:1380, :1655",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-fs-tool-writes-workspace-git-unguarded",
+      "where": "scripts/update-agent-assets.sh:2466",
+      "proposed_verdict": "needs_validation"
+    },
+    {
+      "fingerprint": "records-sync/redaction/account-identity-residue-in-published-row",
+      "where": ".orchestration/orchestrate/regime-cutover/decisions.tsv:509",
+      "proposed_verdict": "confirmed",
+      "proposed_severity": "low (unverified)"
+    },
+    {
+      "fingerprint": "hcom-seat/shim:seat-token-inherited-by-seat-tool-commands",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the token is unset at hcom-seat:167 and :2403"
+    },
+    {
+      "fingerprint": "dsh-profile:web-search-routes-to-the-official-api",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "both base-bundle web rows disabled by id"
+    },
+    {
+      "fingerprint": "dsh-profile:thak-runs-without-command-sandbox",
+      "proposed_verdict": "rejected",
+      "proposed_reason": "the thak profile runs no shell tool (the router profile does: the router-profile lead)"
+    }
+  ],
+  "closed_on_this_head": [
+    "hcom-seat/router:state-root-resolved-through-a-seat-writable-link (state_root_hold, hcom-seat:631-680)",
+    "hcom-seat/router:passthrough-launcher-flags-recompose-the-profile (hcom-seat:321-331)",
+    "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt (U322 on main)",
+    "verdicts/U317-6eac2332 P1 :30, :27, :2421; P2 :169, :2347, :2403, :185, :5317; P3 :182"
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 2 hunter waves (the updater step; the Router profile and lever), 1 post-wave critic, 1 final-clean critic, 2 verifiers per candidate",
+    "spent": "0 delegated agents; every phase ran in the parent (agent_id parent-hunter; ledger builder agents/parent-hunter/scratch/build-ledger.cjs)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "asked whether the settings-file lead needs a race (the symlink plant does not), whether srt's normalisation follows a linked store on macOS (it keeps the spelling), and whether observe mode stops the shell (not by itself: the assessment session runs)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no planned unit remains"
+    }
+  ],
+  "candidate_count": 15,
+  "findings_count": 0,
+  "ledger_units": 102,
+  "ledger_counts": {
+    "covered": 37,
+    "candidate": 15,
+    "out_of_scope": 50
+  },
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "finished_at": "2026-11-07T07:15:50Z"
+}

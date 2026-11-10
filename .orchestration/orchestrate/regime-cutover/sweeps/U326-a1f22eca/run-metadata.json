@@ -1,0 +1,108 @@
+{
+  "run_id": "dotfiles-run-24",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "a1f22ecaf547d6ab5b1a2f787f796d5b61f073a5",
+    "branch": "fix/aws-cli-versioned-release",
+    "parent_of_change": "2b2415f6c",
+    "base_note": "U311b (a1f22eca, one README row) on U311 (c0768a42, 0059848e, run-23's head) on origin/main 2b2415f6; a sibling of U310 (run-22) and U283d (run-21).",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U311 with its round 2 U311b (2b2415f6..a1f22eca: install/common/aws_cli.sh, its tests, test_network_bounds.py, .chezmoiremove, and U311b's one README row README.md:1230), in run-23's three U311 units, the signature unit gaining a check of the README row; (2) run-23's other 64 units carried at this head; round 2 replaces one line with one line, so no cited line moves.",
+  "carry_note": "The brief's CHANGE names run-23's records as the set to carry and its TRUST line names run-20's; run-23 carries run-22 and through it run-20, so all are carried. The brief counts 4 paths in 2b2415f6..HEAD; at a1f22eca there are 5, README.md being U311b's.",
+  "scope_paths": [
+    "README.md",
+    "install/common/aws_cli.sh",
+    "tests/unit/test_aws_cli_acquisition.py",
+    "tests/unit/test_network_bounds.py",
+    "home/.chezmoiremove",
+    "home/.chezmoiscripts/ubuntu/run_after_04-install-aws-cli.sh.tmpl",
+    "home/.chezmoiscripts/macos/run_after_04-install-aws-cli.sh.tmpl",
+    "scripts/orchestrator/hcom-seat",
+    "home/dot_local/bin/common/executable_hcom-seat",
+    "scripts/update-agent-assets.sh",
+    "Makefile",
+    "home/dot_dsh/profiles/thak/cordis.patch.yml",
+    "home/dot_dsh/plugins/omp-gateway"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target. Every check is a source check; the round-2 diff was checked to be one README line replaced by one line before any line was carried.",
+  "selected_companions": [
+    "SUPPLY-CHAIN-AND-RELEASE.md",
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-23",
+      "source_ref": "0059848ee276acdb64fec66f35b91e1c4f9f9a49",
+      "findings": 0,
+      "ledger_units": 67,
+      "use": "The set to carry: all 67 units at this head, every cited line unchanged (U311b replaces one README row); the U311 signature unit gains a check of that row; the six not_applicable units (U310, U283d) stay so."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-07T00:47:33Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: the carried candidate dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt has no fresh independent verifier on this seat (the delegation tool is denied by policy, tools.approval.task: deny; a Phase 3 verifier launch was attempted in this run and refused), so it stays an unvalidated ledger candidate and is not a finding.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "dsh-seat/DSH_HOME-write-root/host-pnpm-install-outside-srt",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#seat_write_roots-dsh",
+      "record": "agents/parent-hunter/scratch/candidate-pnpm.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-23",
+      "on_default_branch": true
+    }
+  ],
+  "not_carried_candidates": [
+    {
+      "fingerprint": "dsh-seat/profile-config-write/tmp-path-link-followed-outside-srt",
+      "reason": "U310's source is absent at this head; the candidate remains open on feat/dsh-role-profile-route (run-22)."
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (1), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the Phase 3 verifier launch was refused by policy; every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work: U311b's one README row is read in the U311 signature unit; every carried unit holds at unchanged lines; the U310 and U283d units not_applicable"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory has a verdict"
+    }
+  ],
+  "candidate_count": 1,
+  "findings_count": 0,
+  "finished_at": "2026-11-07T00:49:52Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ]
+}

@@ -1,0 +1,17 @@
+security-audit sweep 9c504ad9b5595c23de6fbe696c3d39d78726b00f: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U353b (round 2 of U353: the omp rows deny the Router's credential root, router-gh reads the login itself and runs gh with GH_TOKEN, router-settings-apply on loopback alone and the mode saved first): the three fixes hold for what they cover; two new candidates beside them (not findings):
+  router-seat/keychain/model-gh-resolves-the-operators-login	scripts/orchestrator/router-gh:146	(any gh in the Router's sandbox but the wrapper's falls back to the operator's Keychain login, srt allowing the Security server; the model's tool-bash runs on public thread text there)
+  seats/router-credential-root/read-deny-follows-the-launching-callers-home	scripts/orchestrator/hcom-seat:2383	(the seats' read deny names the root under their own launch's home; a Router under --home elsewhere leaves the agent token readable)
+unvalidated candidates carried from run-38 (not findings; no independent verifier on this seat):
+  router-seat/credential-root/agent-token-readable-by-the-router-model	scripts/orchestrator/hcom-seat:2413	(U353 branch)
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:434	(main)
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1455	(main)
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2399	(main)
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2439	(main)
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2066	(main)
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: 8791100f..9c504ad9 (13 files); run-38's records carried and re-mapped (one run-38 cite corrected: the router's github domains are hcom-seat:2787-2790); profile standard, source-only; ledger 86 units: 36 covered, 8 candidate, 42 out_of_scope
+brief notes: the title and GOAL are U322's template (branch fix/dsh-harness-build-under-srt, base 668ba887, 3 paths; the diff against 668ba887 is 42 files); the CONTEXT names run-38 'the U353bd head 39f75cc8' (run-38 swept U353 at 8791100f, this head's parent)
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: build-ledger.cjs, overrides.json, nv-head.md, nv-carried.md and the eight candidate records in agents/parent-hunter/scratch/)
+wall time: 650s (2026-11-07T11:45:21Z to 2026-11-07T11:56:11Z)

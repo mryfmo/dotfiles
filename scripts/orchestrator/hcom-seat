@@ -43,6 +43,19 @@
 #   from the environment or `--seats-root` when set, else from the checkout through
 #   the sourced regime-env helper (regime-cutover U33: `~/.local/state/hcom/<slug>`,
 #   `<slug>`, `~/.local/state/omp-seats/<slug>`), and are exported to the seat.
+#   The program store's root `REGIME_STORE_ROOT` (`<physical HOME>/.local/state/regime-store/<slug>`, regime-env's
+#   fixed derivation, U215c; regime-cutover U219, store move 3 of 5, handoff/07-store-move-design.md) is held once
+#   (store_root_hold: clean, each component a 0700 directory of this user or absent, resolved physically once into
+#   `store_root_phys`) and, since U219c (verdict U219-985b7c04), four things hold of it: it is made by every role's
+#   launch that finds it absent, before its settings file is written (store_root_make, after the judgement, as the
+#   credential root is made, because srt's Linux backend skips an absent path); it is printed verbatim into the
+#   orchestrator's write roots (row 7, seat_write_roots, never resolved again) and granted for read to both omp roles;
+#   it is denied for write to every other row (the worker's, the dsh's and the router's `denyWrite`, tagged `store`);
+#   and every rendered write grant of every role is judged against it (store_root_judge: a row that is, contains or
+#   lies inside the root refuses the launch by name, the orchestrator's own row excepted by position and byte
+#   equality). An hcom store `HCOM_DIR` that is, lies inside or contains it refuses the launch by name before anything
+#   is made (store_root_overlap_check, by identity: the hcom store is every seat's write grant, so the records would
+#   lie inside it; verdict U215-15c6be1e P1); the dsh and router rows carry no grant of it.
 #   The seat's omp runs under OS containment (regime-cutover U85): Anthropic's sandbox-runtime `srt`
 #   (sandbox-exec on macOS, bubblewrap on Linux) with per-seat settings, through an `omp` shim at
 #   `<seats-root>/.sandbox/<name>/bin/omp` that is put first on PATH, so hcom pins it as the pane's tool;
@@ -150,10 +163,19 @@
 #   class record-path), where acp-broker listens and writes its exit records, denied to the Router for write as one
 #   tagged denyWrite row inside the state-slot grant and made 0700 by the launch before the settings are written
 #   (broker_dir_make; a dry run says what a launch would make), so the Router reads it and connects to its socket and
-#   can plant, rename or unlink nothing in it. The
-#   omp profile, OMP_PROFILE and every other row are the dsh role's, so
-#   the role's rendered settings differ from the dsh role's in exactly the binding value, that one write root and that
-#   one deny row, and no other role's settings change by a byte.
+#   can plant, rename or unlink nothing in it. The Router's credential root `<DSH_HOME>/router-credentials`
+#   (regime-cutover U353, M-26 stage B; U353b; U353d): the one directory the role reads beyond the dsh row's grants,
+#   allowRead row 7, where the operator places the agent account's gh login (`router-gh` reads the token from its
+#   `gh/hosts.yml`); held like the state root by every role (cred_home_hold, cred_root_hold: under the held physical
+#   DSH_HOME for the foreground rows and under the caller's DSH_HOME else `~/.dsh` for the omp roles, which hold no
+#   DSH_HOME; no link, a directory of this user, inside the home), made 0700 by every role's real launch before its
+#   settings file is written (cred_root_make; the foreground rows after the judgement), because srt 0.0.81's Linux
+#   backend mounts nothing for a denyRead entry that is not there (U353d), and denied for read and for write by every
+#   row but the router's (the role table's `cred_root_grant` cell: `read` for the router row, `deny` for the dsh row;
+#   the omp rows in seat_settings_render) and for write by the router row too, so no role writes it and only the
+#   Router reads it. The omp profile, OMP_PROFILE and every other row are the dsh role's, so the role's rendered
+#   settings differ from the dsh role's in exactly the binding value, that one write root, that one deny row and the
+#   credential root's grant.
 # @arg $1 string Role: orchestrator, worker, dsh or router.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role); the dsh role appends `-<utc stamp>-<pid>`.
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
@@ -417,19 +439,26 @@ gate=${HOME}/.agents/omp/hooks
 # (a DSH profile the row fixes, the only one the role accepts, in the options and among the verbatim dsh arguments
 # alike; empty when the caller chooses), `state_root` (the name of a directory under DSH_HOME the row grants as a
 # write root of its own, held once by state_root_hold from the one held physical DSH_HOME before anything of the launch
-# is made and made by state_root_make after the home's deny judgement, U321b to U321d; empty for a row without one)
-# and `broker_dir` (regime-cutover U343i, the mechanism-change row of 2026-11-10T06:20:28Z, form remove: the name of
+# is made and made by state_root_make after the home's deny judgement, U321b to U321d; empty for a row without one),
+# `broker_dir` (regime-cutover U343i, the mechanism-change row of 2026-11-10T06:20:28Z, form remove: the name of
 # the directory under the seat's own state slot where acp-broker listens and writes its exit records, `broker` for the
 # router row alone; rendered as `<state slot>/broker` in the row's denyWrite list, tagged `slot`, and made 0700 by
 # broker_dir_make before the settings are written, so the Router reads it and connects to its socket but can plant,
-# rename or unlink nothing in it; empty for a row without one).
+# rename or unlink nothing in it; empty for a row without one) and
+# `cred_root_grant` (the Router's credential root `<DSH_HOME>/router-credentials`, `cred_root`, regime-cutover U353:
+# `read` for the router row, whose allowRead gains it as its last row, `deny` for the dsh row, whose denyRead gains it;
+# both rows deny writing it; empty for the omp roles, whose denyRead and denyWrite gain the same root under the home
+# router-gh resolves, the caller's `${DSH_HOME:-~/.dsh}`, U353b and U353d, in seat_settings_render. Every role holds
+# the root once, by cred_home_hold and cred_root_hold beside the state root, and makes it by cred_root_make before
+# its settings file is written, U353d).
 # The profile config row (U310): the omp roles' overlays ride the launch flags (`--config`, omp_inputs_check), so
 # their row is `none`; the foreground roles' overlay, the one of their omp profile (`omp_profile`), is placed as that
 # profile's own `agent/config.yml` (profile_config_check; the write is the helper's, profile_config_place).
+cred_root=router-credentials
 case ${role} in
-orchestrator | worker) role_launch=hcom omp_profile=${role} allow_local_binding=false role_profile='' state_root='' broker_dir='' ;;
-dsh) role_launch=foreground omp_profile=dsh allow_local_binding=false role_profile='' state_root='' broker_dir='' ;;
-router) role_launch=foreground omp_profile=dsh allow_local_binding=true role_profile=router state_root=router-state broker_dir=broker ;;
+orchestrator | worker) role_launch=hcom omp_profile=${role} allow_local_binding=false role_profile='' state_root='' broker_dir='' cred_root_grant='' ;;
+dsh) role_launch=foreground omp_profile=dsh allow_local_binding=false role_profile='' state_root='' broker_dir='' cred_root_grant=deny ;;
+router) role_launch=foreground omp_profile=dsh allow_local_binding=true role_profile=router state_root=router-state broker_dir=broker cred_root_grant=read ;;
 *) refuse "unknown role '${role}'; expected orchestrator, worker, dsh or router" ;;
 esac
 case ${role_launch} in
@@ -838,9 +867,100 @@ broker_dir_make() {
     [[ -d ${broker_dir_phys} && ! -L ${broker_dir_phys} && -O ${broker_dir_phys} ]] ||
         refuse "the ${role} role's broker directory ${broker_dir_phys} is not a real directory of this user"
 }
-dsh_home_phys='' state_root_phys='' state_root_absent=0 broker_dir_phys=''
+
+# @description Hold the home the Router's credential root lies in (regime-cutover U353d, verdict U353-318f268d P1
+#   `:2383`): every role makes and denies `<home>/router-credentials`, so every role resolves the home exactly once,
+#   here, before anything of the launch is made. The foreground rows take the held physical DSH_HOME (dsh_home_hold).
+#   The omp roles hold no DSH_HOME; their home is the one router-gh resolves, the caller's `DSH_HOME` else `~/.dsh`,
+#   held to a clean path, resolved once (physical_path; a linked home through its target) into a clean physical path
+#   and, present, a directory, each else refused by name. Absent (an omp seat host without the dsh kit), it is noted
+#   (`cred_home_absent`) and made 0700 by cred_root_make with the root, so the omp rows' deny names a directory that
+#   exists.
+# @set cred_home_phys The physical home the credential root lies in.
+# @set cred_home_absent 1 when that home does not exist yet.
+cred_home_hold() {
+    local spelled
+    if [[ ${role_launch} == foreground ]]; then
+        cred_home_phys=${dsh_home_phys}
+        return 0
+    fi
+    spelled=${DSH_HOME:-${HOME}/.dsh}
+    require_clean_path DSH_HOME "${spelled}"
+    cred_home_phys=$(physical_path "${spelled}") || refuse "cannot resolve DSH_HOME ${spelled}, the home of the Router's credential root"
+    require_clean_path DSH_HOME "${cred_home_phys}"
+    if [[ -e ${spelled} || -L ${spelled} ]]; then
+        [[ -d ${cred_home_phys} ]] || refuse "DSH_HOME ${spelled} resolves to ${cred_home_phys}, which is not a directory"
+    else
+        cred_home_absent=1
+    fi
+}
+
+# @description Hold the Router's credential root (regime-cutover U353, U353d): `<home>/router-credentials` (`cred_root`
+#   under the held home of cred_home_hold), the directory the agent account's gh login lives under (`router-gh` sets
+#   `GH_CONFIG_DIR` to its `gh/`): the one read grant of the router row beyond the dsh row's (`cred_root_grant` read)
+#   and a read-and-write deny of every other row (the dsh row's `deny` cell; the omp rows, U353b and U353d). The same
+#   hold as the state root (state_root_hold): the path is opened relative to the held physical home and resolved
+#   exactly once, here, into `cred_root_phys`, which seat_settings_render renders verbatim and nothing resolves again;
+#   one of the pre-launch checks of every role, before the private tool directory, any link, tool copy or host git
+#   call, in a dry run too, and it writes nothing: no symbolic link (a link into the operator's own `~/.config/gh`
+#   would hand the Router another account's login, or an omp seat a deny of another directory); present, a directory
+#   of this user; its physical form inside the held home. Absent, it is noted (`cred_root_absent`) and made 0700 by
+#   cred_root_make for every role: srt 0.0.81's Linux backend mounts nothing for a denyRead entry that is not there
+#   (dist/sandbox/linux-sandbox-utils.js:1810-1812: "a tmpfs (directory) or a /dev/null mask on the entry itself;
+#   nothing when it is not there"), so a deny of an absent root held nothing once the Router had made it (verdict
+#   U353-318f268d P1 `:2383`); now the root exists before any role's settings file is written.
+# @set cred_root_phys The physical path of the held credential root.
+# @set cred_root_absent 1 when the held credential root does not exist yet.
+cred_root_hold() {
+    local spelled=${cred_home_phys}/${cred_root}
+    [[ ! -L ${spelled} ]] ||
+        refuse "the ${role} role's credential root ${spelled} is a symbolic link; it must be a real directory inside DSH_HOME, or absent"
+    if [[ -e ${spelled} ]]; then
+        [[ -d ${spelled} ]] || refuse "the ${role} role's credential root ${spelled} exists and is not a directory"
+        [[ -O ${spelled} ]] || refuse "the ${role} role's credential root ${spelled} is not this user's directory"
+        cred_root_absent=0
+    else
+        cred_root_absent=1
+    fi
+    cred_root_phys=$(physical_path "${spelled}") || refuse "cannot resolve the ${role} role's credential root ${spelled}"
+    [[ ${cred_root_phys}/ == "${cred_home_phys}"/* ]] || # lint-comparisons: allow both operands physical (physical_path); the trailing slash makes the prefix a whole component
+        refuse "the ${role} role's credential root ${spelled} resolves to ${cred_root_phys}, outside DSH_HOME ${cred_home_phys}"
+}
+
+# @description Make the held credential root (cred_root_hold) when it was absent, 0700, for every role (regime-cutover
+#   U353; U353d: the dsh and omp rows too, since the deny they render must name a directory that exists when srt reads
+#   it), the home first when it was absent (cred_home_hold, the omp roles alone), in a real launch alone and, for the
+#   foreground rows, after their home has passed the deny judgement (the form of state_root_make). A dry run makes
+#   nothing and says what a launch would make. Two launches at once (the dsh role's normal case; an orchestrator and a
+#   worker started together) may both find the root absent: the loser of the mkdir race takes the directory the winner
+#   made, held to a real directory of this user, while a link planted since the hold fails mkdir and that hold alike.
+#   Present or made, the held path is a real directory of this user, else refused by name. The login inside it is
+#   never made here: it is the operator's step.
+# @arg $1 int 1 for a dry run.
+cred_root_make() {
+    local path
+    if ((cred_root_absent)); then
+        if (($1)); then
+            echo "hcom-seat: the ${role} role's credential root ${cred_root_phys} does not exist; a launch creates it (0700)" >&2
+            return 0
+        fi
+        if ((cred_home_absent)); then
+            path=${cred_home_phys}
+            (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} && -O ${path} ]] ||
+                refuse "cannot create DSH_HOME ${path}, the home of the ${role} role's credential root"
+        fi
+        path=${cred_root_phys}
+        (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} && -O ${path} ]] ||
+            refuse "cannot create the ${role} role's credential root ${path}"
+    fi
+    [[ -d ${cred_root_phys} && ! -L ${cred_root_phys} && -O ${cred_root_phys} ]] ||
+        refuse "the ${role} role's credential root ${cred_root_phys} is not a real directory of this user"
+}
+dsh_home_phys='' state_root_phys='' state_root_absent=0 broker_dir_phys='' cred_home_phys='' cred_home_absent=0 cred_root_phys='' cred_root_absent=0
 if [[ ${role_launch} == foreground ]]; then dsh_home_hold; fi
 if [[ -n ${state_root} ]]; then state_root_hold; fi
+cred_home_hold
+cred_root_hold
 
 # @description Refuse (exit 2) when the physical path `$2`, or any directory above it, has the identity of a
 #   protected write root (`root_ids`).
@@ -1127,9 +1247,12 @@ srt_tmp_roots_for() {
 }
 srt_tmp_roots_for "${os}"
 root_ids=$'\n' root_id_list=() root_path_list=()
-roots=("${HOME}/.local/state/omp-seats" "${HOME}/.local/state/hcom" "${HOME}/Workspace" "${HOME}/.omp/profiles"
-    "${HOME}/.omp/run" "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}" "${HOME}/.claude" "${HOME}/.claude.json"
-    "${HOME}/.npm/_logs" "${srt_tmp_roots[@]}")
+# The program stores' root parent `~/.local/state/regime-store` is in the set whole, before the slug is known (regime-cutover
+# U219b, verdict U219-ce7e875e P1): the orchestrator writes `<root>/<slug>` (seat_write_roots), so a tool a seat
+# plants under it must be refused here, before anything runs it, like one under `~/.local/state/hcom` or the seats roots.
+roots=("${HOME}/.local/state/omp-seats" "${HOME}/.local/state/hcom" "${HOME}/.local/state/regime-store" "${HOME}/Workspace"
+    "${HOME}/.omp/profiles" "${HOME}/.omp/run" "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}" "${HOME}/.claude"
+    "${HOME}/.claude.json" "${HOME}/.npm/_logs" "${srt_tmp_roots[@]}")
 # The dsh role's DSH_HOME, the held physical home (dsh_home_hold), is protected from here on (U272): a tool `mise which`
 # or the caller's PATH answers under it is refused before anything runs it, as a tool under a seats root is.
 for root in ${HCOM_DIR:+"${HCOM_DIR}"} ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"} ${seats_root:+"${seats_root}"} ${dsh_home_phys:+"${dsh_home_phys}"}; do
@@ -1722,6 +1845,77 @@ regime_env hcom-seat || exit 2
 for var in HCOM_DIR REGIME_SEATS_ROOT; do
     if [[ -n ${!var:-} ]]; then require_clean_path "${var}" "${!var}"; fi
 done
+# @description Hold the program store's root (regime-cutover U219, U219c): regime-env derived `REGIME_STORE_ROOT`
+#   (U215c: from the physical HOME and the slug, never from the environment; empty only outside a checkout, which the
+#   toplevel check below refuses for every role) and held its components to plain directories of this user or absent,
+#   a link or a file refused by name. Here each component (`regime-store`, `<slug>`), when present, is held to mode
+#   0700 as well (store_root_mode_check, regime-init's rule: a pre-made 0755 root is a refusal, never kept), the root
+#   is resolved physically once into `store_root_phys` (the clean-path rule holds both forms), and an absent root is
+#   noted (`store_root_absent`) for store_root_make. Nothing resolves the root again: seat_write_roots prints the held
+#   value verbatim as the orchestrator's row 7, seat_settings_render renders it into the read grants and the deny rows,
+#   and store_root_judge and store_root_overlap_check judge against it.
+# @set store_root_phys The physical store root; empty when regime-env derived none.
+# @set store_root_absent 1 when the root does not exist yet (store_root_make makes it).
+store_root_hold() {
+    local path
+    store_root_absent=0
+    require_clean_path REGIME_STORE_ROOT "${REGIME_STORE_ROOT}"
+    for path in "${REGIME_STORE_ROOT%/*}" "${REGIME_STORE_ROOT}"; do
+        if [[ -e ${path} || -L ${path} ]]; then
+            [[ -d ${path} && ! -L ${path} && -O ${path} ]] || refuse "the store root component ${path} is not a real directory of this user"
+            store_root_mode_check "${path}"
+        else
+            store_root_absent=1
+        fi
+    done
+    store_root_phys=$(physical_path "${REGIME_STORE_ROOT}") || refuse "cannot resolve the store root ${REGIME_STORE_ROOT}"
+    require_clean_path 'the store root' "${store_root_phys}"
+}
+
+# @description Refuse (exit 2) unless the store root component `$1` has mode 0700, read by `/usr/bin/stat` (mode_args)
+#   with its status (standing order 21): regime-init makes each component 0700 and refuses any other mode, and so does
+#   every launch, so a component another process widened is never granted or denied as if it were the root's.
+# @arg $1 string A store root component.
+store_root_mode_check() {
+    local mode
+    mode=$(/usr/bin/stat "${mode_args[@]}" -- "$1") || refuse "cannot read the mode of the store root component $1"
+    [[ ${mode} == 700 ]] || refuse "the store root component $1 has mode ${mode}, not 0700 (regime-init makes it 0700; chmod 700 it, or move it aside)"
+}
+
+# @description Make the held store root (store_root_hold) when it was absent, `regime-store` then `<slug>`, each by its
+#   own `mkdir` under `umask 077` (no `-p`, so none is made through an entry planted above it), for every role, in a
+#   real launch alone and after the judgement (the shape of cred_root_make, regime-cutover U353d: the foreground rows
+#   after settings_judge, the omp roles beside their credential root, before their settings are rendered): srt
+#   0.0.81's Linux backend skips an absent write path (dist/sandbox/linux-sandbox-utils.js:1990-1992) and binds nothing
+#   for an absent deny (:2413-2416), so a root nothing had made left the orchestrator's first regime-init unable to
+#   write it and the worker's deny of it void (verdict U219-985b7c04 P2 `:1815`). A dry run makes nothing and says what
+#   a launch would make. Two launches at once may both find a component absent: the loser of the mkdir race takes the
+#   directory the winner made, while a link planted since the hold fails mkdir and the check alike. Present or made,
+#   each component is a real directory of this user with mode 0700, else refused by name. The program store under the
+#   root is regime-init's to make.
+# @arg $1 int 1 for a dry run.
+store_root_make() {
+    local path
+    [[ -n ${store_root_phys} ]] || return 0
+    if ((store_root_absent)); then
+        if (($1)); then
+            echo "hcom-seat: the program store's root ${store_root_phys} does not exist; a launch creates it (0700)" >&2
+            return 0
+        fi
+        for path in "${store_root_phys%/*}" "${store_root_phys}"; do
+            if [[ ! -e ${path} && ! -L ${path} ]]; then
+                (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} && -O ${path} ]] ||
+                    refuse "cannot create the store root component ${path}"
+            fi
+        done
+    fi
+    for path in "${store_root_phys%/*}" "${store_root_phys}"; do
+        [[ -d ${path} && ! -L ${path} && -O ${path} ]] || refuse "the store root component ${path} is not a real directory of this user"
+        store_root_mode_check "${path}"
+    done
+}
+store_root_phys='' store_root_absent=0
+if [[ -n ${REGIME_STORE_ROOT:-} ]]; then store_root_hold; fi
 command -v hcom > /dev/null || refuse 'hcom not found on PATH'
 [[ ${HCOM_TEAM:-} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "team '${HCOM_TEAM:-}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
 # @description Check the omp roles' inputs and set `exts` to the canonical extension directories: the policy and
@@ -1871,6 +2065,34 @@ within_ix() {
     [[ ${tbl_rest[$2]} == "${tbl_rest[$1]}"* ]]              # lint-comparisons: allow absent components below one ancestor of the same identity, compared on component boundaries
 }
 
+# @description Refuse (exit 2) when the hcom store `HCOM_DIR` is, lies inside or contains the program store's root
+#   (regime-cutover U219; verdict U215-15c6be1e P1 `:127`, held residual on this unit): the hcom store is a write root
+#   of every seat (seat_write_roots) and no rendered deny covers a directory under it, so a root at or under it would
+#   put the records inside a worker's write grant, and a store under the root would put the bus inside the records.
+#   Both paths in their physical form (store_root_hold, physical_path), the decision by identity for what exists and
+#   by the absent components below one shared ancestor otherwise (identity_table, within_ix), before the seats root, a
+#   slot or a settings file is made, in a dry run too. The refusal names both paths and which contains which. Nothing
+#   to judge without a root (outside a checkout, with an explicit HCOM_DIR, where no slug exists).
+store_root_overlap_check() {
+    local hcom_phys spelled why
+    [[ -n ${store_root_phys} ]] || return 0
+    hcom_phys=$(physical_path "${HCOM_DIR}") || refuse "cannot resolve the hcom store ${HCOM_DIR}"
+    spelled=${HCOM_DIR}
+    [[ ${hcom_phys} == "${HCOM_DIR}" ]] || spelled="${HCOM_DIR} (${hcom_phys})" # lint-comparisons: allow one path's spelled and physical forms, for the message alone; the decision is by identity below
+    identity_table "${store_root_phys}" "${hcom_phys}"
+    if within_ix 0 1 && within_ix 1 0; then
+        why=is
+    elif within_ix 0 1; then
+        why='lies inside'
+    elif within_ix 1 0; then
+        why=contains
+    else
+        return 0
+    fi
+    refuse "the hcom store HCOM_DIR ${spelled} ${why} the store root REGIME_STORE_ROOT ${REGIME_STORE_ROOT}; the hcom store is every seat's write grant, so the records would lie inside it (set HCOM_DIR to a directory outside the store root)"
+}
+store_root_overlap_check
+
 # @description Set `phys_list` to the physical form of each absolute path `$@`, in order (regime-cutover U95), or
 #   refuse (exit 2), in one subshell for all of them, present or absent. In that subshell a path's deepest existing entry is found with builtins (physical_path's
 #   walk); it must be a directory, which `cd -P` resolves, and the absent rest is appended, as physical_path does.
@@ -2009,7 +2231,10 @@ fi
 #   carry as `allowWrite` (seat_sandbox_write writes exactly this list), followed by the paths srt 0.0.81 makes
 #   writable without a listing (`srt_tmp_roots`: `/tmp/claude`, and `/private/tmp/claude` on macOS; `~/.npm/_logs`).
 #   The role table's write-root row (U272): the omp roles write the repository's git common directory, the program's
-#   hcom store and their own omp profile; the dsh role writes DSH_HOME and its own omp profile, where its login child
+#   hcom store and their own omp profile, and the orchestrator the program store's root as well (regime-cutover U219,
+#   U219c: the held physical `store_root_phys`, printed verbatim as row 7, the held slot after `~/.omp/run`, never
+#   resolved here; where the records live once U221 has moved them); the
+#   dsh role writes DSH_HOME and its own omp profile, where its login child
 #   lives, and no git or hcom path. Row 2 of every role is the shared Claude Code directory `<seats-root>/.state/claude`
 #   (the `claude_config` row, regime-cutover U318), which the shim exports as the seat's `CLAUDE_CONFIG_DIR`: the
 #   child's login, `.claude.json`, state and sessions live there, and seat_settings_render denies its settings, rules,
@@ -2034,6 +2259,14 @@ seat_write_roots() {
         # the Router's `stateDir`, after the dsh row's roots, so every tagged position (rows 0 to 2 and 4) stays the
         # dsh role's. It is the value state_root_hold holds (U321c): printed verbatim below, never resolved here.
         held=${state_root_phys}
+        ;;
+    orchestrator)
+        extra=("${common}" "${HCOM_DIR}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run")
+        # The program store's root (regime-cutover U219, U219c): the value store_root_hold holds, printed verbatim
+        # below as row 7, the held slot after `~/.omp/run` that the router row's state root takes, never resolved
+        # here (verdict U219-985b7c04 P1 `:2161`: round 2 put it in `extra`, so a directory-to-link swap of the root
+        # during this render granted the link's target). seat_settings_render tags that position `store`.
+        held=${store_root_phys}
         ;;
     *) extra=("${common}" "${HCOM_DIR}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;
     esac
@@ -2266,8 +2499,10 @@ dsh_deny_paths() {
 # @set row_tags The structural tags, each naming one row by list and position (tag_row): `slot` for the seat's own
 #   slots (its directory and state slot) and the shared Claude Code directory, the seats-root denies they re-open, the
 #   project-file denies under its directory and the configuration denies under the shared directory; `profile` for
-#   its own omp profile and the profiles deny it re-opens. The grant tags are the dsh role's, whose judge reads them;
-#   the deny tags are rendered for every role and change no list.
+#   its own omp profile and the profiles deny it re-opens; `store` for the program store's root (U219c): the
+#   orchestrator's held write row 7, the one grant store_root_judge exempts, and the deny row of every other role. The
+#   grant tags are the dsh role's and the orchestrator's store row, read by their judges; the deny tags are rendered
+#   for every role and change no list.
 seat_settings_render() {
     local root path kind project_files=()
     h=$(physical_path "${HOME}") || refuse "cannot resolve HOME ${HOME}"
@@ -2344,33 +2579,71 @@ seat_settings_render() {
     # The role table's read-grant row (U272c): denyRead is broad and every allowRead entry re-opens a path under it,
     # so the list is the role's own. The omp roles re-open their directory, the repository's git directory (the
     # worktree's objects and refs), the hcom store, their omp profile, their state slot, the shared Claude Code
-    # directory (U318) and the coordinator's records under the main checkout (briefs, verdict files), read by absolute
-    # path; the main checkout itself is unreadable to a worker wherever it lives, and the orchestrator also reads the
-    # worker clones of its own program, which it reviews. The dsh role has no worktree, no bus and no store: it
-    # re-opens its scratch cwd and state slot, the shared Claude Code directory, DSH_HOME, its own omp profile, the
-    # skills it loads and the pinned tool directory on its PATH, and no git, hcom or record path.
+    # directory (U318), the coordinator's records under the main checkout (briefs, verdict files), read by absolute
+    # path, and the program store's root (regime-cutover U219: the held physical `store_root_phys`, last; where the
+    # records live once U221 has moved them; made by this launch when absent, U219c); the main checkout itself is unreadable
+    # to a worker wherever it lives, and the orchestrator also reads the worker clones of its own program, which it
+    # reviews. The dsh role has no worktree, no bus and no store: it re-opens its scratch cwd and state slot, the
+    # shared Claude Code directory, DSH_HOME, its own omp profile, the skills it loads and the pinned tool directory
+    # on its PATH, and no git, hcom, record or store-root path.
+    # The omp roles' rows of the Router's credential root (regime-cutover U353b, verdict U353-8791100f P1 `:430`; U353d,
+    # verdict U353-318f268d P1 `:2383` and P2 `:2393`): srt allows reads by default, and the U353 head denied the root
+    # to the dsh row alone, so a worker or orchestrator seat read `router-credentials/gh/hosts.yml` once the login was
+    # there; U353b's row named the kit's root whether or not it existed, which srt's Linux backend mounts nothing for,
+    # and denied it for read alone, so a worker under `DSH_HOME=HCOM_DIR` held the root under a write root. The rows
+    # are the held physical root (cred_root_hold, under the home router-gh resolves; made by cred_root_make before this
+    # render): one denyRead row before the read grants, one denyWrite row after the operator's Claude Code paths.
     case ${role} in
     orchestrator)
+        deny_read+=("${cred_root_phys}")
+        deny_write+=("${cred_root_phys}")
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
-            "${claude_config_real}" "${checkout}/.orchestration/orchestrate" "${seats_real}")
+            "${claude_config_real}" "${checkout}/.orchestration/orchestrate" "${seats_real}" ${store_root_phys:+"${store_root_phys}"})
+        # The held store root is write row 7 (seat_write_roots), the one grant store_root_judge exempts, by this tag.
+        if [[ -n ${store_root_phys} ]]; then tag_row store allowWrite 7 "${store_root_phys}"; fi
         ;;
     worker)
-        deny_read+=("${checkout}")
+        deny_read+=("${checkout}" "${cred_root_phys}")
+        deny_write+=("${cred_root_phys}")
+        # The program store's root (regime-cutover U219c, verdict U219-985b7c04 P1 `:1981`): the orchestrator's write
+        # root is the worker's deny, in the credential root's shape (the held physical path, tagged; made by
+        # store_root_make before this launch's settings are written, so srt's Linux backend binds it), so a worker
+        # grant a link folds onto the root (`~/.omp/run -> <root>`) is denied by srt as well as refused by
+        # store_root_judge.
+        if [[ -n ${store_root_phys} ]]; then
+            tag_row store denyWrite ${#deny_write[@]} "${store_root_phys}"
+            deny_write+=("${store_root_phys}")
+        fi
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
-            "${claude_config_real}" "${checkout}/.orchestration/orchestrate")
+            "${claude_config_real}" "${checkout}/.orchestration/orchestrate" ${store_root_phys:+"${store_root_phys}"})
         ;;
     dsh | router)
-        # The deny row (U272d): the role's own denies for read and for write, after the worker's.
-        deny_read+=("${checkout}" ${dsh_deny[@]+"${dsh_deny[@]}"})
-        deny_write+=(${dsh_deny[@]+"${dsh_deny[@]}"})
+        # The deny row (U272d): the role's own denies for read and for write, after the worker's. The credential root
+        # (U353, `cred_root_grant`) stands before them: the dsh row denies it for read, both rows for write, and each of
+        # its rows carries the `credential` tag that pairs it with the DSH_HOME grant it lies inside by construction.
+        deny_read+=("${checkout}")
+        if [[ ${cred_root_grant} == deny ]]; then # lint-comparisons: allow a cell word of the role table (read, deny), not a path
+            tag_row credential denyRead ${#deny_read[@]} "${cred_root_phys}"
+            deny_read+=("${cred_root_phys}")
+        fi
+        deny_read+=(${dsh_deny[@]+"${dsh_deny[@]}"})
+        # The program store's root (U219c): denied for write by the dsh and router rows as by the worker, right before
+        # the credential root's row; the rows carry no grant of it, for read or for write.
+        if [[ -n ${store_root_phys} ]]; then
+            tag_row store denyWrite ${#deny_write[@]} "${store_root_phys}"
+            deny_write+=("${store_root_phys}")
+        fi
+        tag_row credential denyWrite ${#deny_write[@]} "${cred_root_phys}"
+        deny_write+=("${cred_root_phys}" ${dsh_deny[@]+"${dsh_deny[@]}"})
         # The router row's broker directory (regime-cutover U343i, broker_dir_make): `<state slot>/broker`, where
         # acp-broker listens and writes its exit records, is denied to the Router for write, one row inside allowWrite
         # row 1 (the state slot) as the project-file denies lie inside row 0, and tagged `slot` like them so the judge
         # pairs it with that grant (and with allowRead row 1) and with nothing else. srt keeps the deeper deny (on macOS
         # the later rule wins, acp-broker's header; on Linux the path must exist, so the launch makes it before the
         # settings are written). The Router keeps the read (allowRead row 1) and the socket (U344's allowUnixSockets
-        # row) and can plant, rename or unlink nothing in it. After every deny the dsh row renders, so every existing
-        # position, tagged or not, stays; the dsh row renders no such row.
+        # row) and can plant, rename or unlink nothing in it. After every deny the dsh row renders (the store root's
+        # and the credential root's rows among them, U219c and U353), so every existing position, tagged or not,
+        # stays; the dsh row renders no such row.
         if [[ -n ${broker_dir} ]]; then
             broker_dir_phys=${sandbox_state}/${broker_dir}
             tag_row slot denyWrite ${#deny_write[@]} "${broker_dir_phys}"
@@ -2378,16 +2651,25 @@ seat_settings_render() {
         fi
         allow_read=("${dir_real}" "${sandbox_state}" "${claude_config_real}" "${dsh_home_phys}" "${h}/.omp/profiles/${omp_profile}"
             "${h}/.agents/skills" "${tools_dir}")
+        # The router row's credential root (U353): allowRead row 7, after the tool directory, so every position the dsh
+        # row tags stays; tagged `credential` like its denyWrite row, which it is by construction.
+        if [[ ${cred_root_grant} == read ]]; then # lint-comparisons: allow a cell word of the role table (read, deny), not a path
+            tag_row credential allowRead ${#allow_read[@]} "${cred_root_phys}"
+            allow_read+=("${cred_root_phys}")
+        fi
         # The judge's exempted grants, each one row by its position (tag_row, regime-cutover U272g): the own cwd and
         # state slot, rows 0 and 1 of both grant lists, the shared Claude Code directory, row 2 of both (seat_write_roots
         # puts the three first; the directory sits under the seats-root denies and over its configuration denies, U318),
-        # and the own omp profile, row 4 of both. DSH_HOME (row 3), `~/.omp/run` (write row 5) and the router role's
-        # state root (write row 6) carry no tag whatever they are spelled, so a DSH_HOME at or inside the profiles
-        # directory, or a `~/.omp/run` linked there, is judged like any row.
+        # and the own omp profile, row 4 of both. DSH_HOME (row 3 of both) carries the `credential` tag (U353), which
+        # pairs it with the credential-root rows alone (the denies it contains by construction, and the router row's
+        # read grant against its own write deny); against every other deny it is judged like any row, as are
+        # `~/.omp/run` (write row 5) and the router role's state root (write row 6), which carry no tag whatever they
+        # are spelled, so a DSH_HOME at or inside the profiles directory, or a `~/.omp/run` linked there, is a hit.
         for kind in allowRead allowWrite; do
             tag_row slot "${kind}" 0 "${dir_real}"
             tag_row slot "${kind}" 1 "${sandbox_state}"
             tag_row slot "${kind}" 2 "${claude_config_real}"
+            tag_row credential "${kind}" 3 "${dsh_home_phys}"
             tag_row profile "${kind}" 4 "${h}/.omp/profiles/${omp_profile}"
         done
         ;;
@@ -2427,6 +2709,44 @@ row_tag() {
     done
 }
 
+# @description Judge the rendered `allowWrite` rows against the program store's root (regime-cutover U219c, verdict
+#   U219-985b7c04 P1 `:1981`: round 2 judged `HCOM_DIR` alone, so a worker whose `~/.omp/run` was a link to the root
+#   launched with the records in its write grants). The root is the held `store_root_phys`, taken as held and never
+#   resolved again (the overlap check's form); the rows are the `write` list seat_settings_render set, resolved in
+#   one subshell (physical_each); both are judged by identity for what exists and by the absent components below
+#   one shared ancestor otherwise (identity_table, within_ix). A row
+#   that is, contains or lies inside the root is a hit, whatever role renders it, unless it is the orchestrator's own
+#   store-root row: the row at the position tag_row tagged `store` (row 7, seat_write_roots), byte-equal to the held
+#   path and lying where it is rendered (its physical path is its rendered path), so a profile directory or a
+#   `~/.omp/run` linked to the root, a seats root inside it, or the held row itself once a link has moved it, is a hit.
+#   The first step of settings_judge for the dsh and router rows; the omp roles run it alone after their render, since
+#   their grants contain their denies by design (the common directory over its `config` and `hooks`). Nothing to judge
+#   without a root.
+# @set judge_grant The first hit: `allowWrite row <path>` and, when it differs, its physical path in parentheses;
+#   empty when every row is clear.
+# @set judge_deny `the store root REGIME_STORE_ROOT <root>`; empty when clear.
+# @exitcode 0 Every write row keeps clear of the root, the orchestrator's own row aside.
+# @exitcode 1 A row hits; `judge_grant` and `judge_deny` name it.
+store_root_judge() {
+    local i n
+    judge_grant='' judge_deny=''
+    [[ -n ${store_root_phys} ]] || return 0
+    n=${#write[@]}
+    ((n)) || return 0
+    physical_each "${write[@]}"
+    phys_list+=("${store_root_phys}")
+    identity_table "${phys_list[@]}"
+    for ((i = 0; i < n; i++)); do
+        within_ix "${n}" "${i}" || within_ix "${i}" "${n}" || continue
+        row_tag allowWrite "${i}" "${write[i]}"
+        if [[ ${tag_of} == store && ${phys_list[i]} == "${write[i]}" ]]; then continue; fi # lint-comparisons: allow a tag word, and one row's rendered and physical spellings from the same physical producers; the overlap was decided by identity above
+        judge_grant="allowWrite row ${write[i]}"
+        [[ ${phys_list[i]} == "${write[i]}" ]] || judge_grant+=" (${phys_list[i]})" # lint-comparisons: allow one row's rendered and physical spellings, both from physical producers, no decision rests on it
+        judge_deny="the store root REGIME_STORE_ROOT ${store_root_phys}"
+        return 1
+    done
+}
+
 # @description Judge the rendered grants against the rendered denies (regime-cutover U272f): every row of the final
 #   `allowRead` and `allowWrite` lists against every row of the final `denyRead` and `denyWrite` lists, and nothing
 #   else is the boundary. Rounds 3 and 4 each judged a list of inputs (`DSH_HOME`, then the slot and the cwd too)
@@ -2444,6 +2764,8 @@ row_tag() {
 #   an exempted row's spelling (`DSH_HOME=~/.omp/profiles/dsh`, `~/.omp/run -> ~/.omp/profiles`). The read grants
 #   go first: they are spelled as rendered (the profile by its name), so the first hit names the row as the caller
 #   knows it. The macOS write patterns are not rows (no grant of the role lies under the common directory).
+#   The program store's root is judged first (store_root_judge, regime-cutover U219c): every allowWrite row against
+#   the held root, the orchestrator's own tagged row excepted; the omp roles run that step alone after their render.
 # @set judge_grant The first grant that hits: `<kind> row <path>` and, when it differs, its physical path in
 #   parentheses; empty when every grant is clear.
 # @set judge_deny The deny it hits: `<path>[ (<physical>)], a row of its <kind> list`; empty when clear.
@@ -2451,6 +2773,7 @@ row_tag() {
 # @exitcode 1 A pair overlaps; `judge_grant` and `judge_deny` name it.
 settings_judge() {
     local i j n m rows=() kinds=() ixs=() tags=()
+    store_root_judge || return 1
     for ((i = 0; i < ${#allow_read[@]}; i++)); do rows+=("${allow_read[i]}") kinds+=(allowRead) ixs+=("${i}"); done
     for ((i = 0; i < ${#write[@]}; i++)); do rows+=("${write[i]}") kinds+=(allowWrite) ixs+=("${i}"); done
     n=${#rows[@]}
@@ -2592,11 +2915,15 @@ if [[ ${role_launch} == foreground ]]; then
     seat_settings_render
     settings_judge ||
         refuse "the dsh role's ${judge_grant} is, contains or lies inside ${judge_deny}; the launch is refused before anything is made"
-    # The router row's state root is made now, after the home it lies in has passed the judgement, in a real launch
-    # alone (state_root_make, regime-cutover U321d); a dry run says what a launch would make and makes nothing. The
-    # router row's broker directory (regime-cutover U343i): a dry run says here what a launch would make; a launch makes
-    # it in seat_sandbox_write, once the state slot it lies in exists and the slot trap is armed (broker_dir_make).
+    # The router row's state root and both foreground rows' credential root are made now, after the home they lie in
+    # has passed the judgement, in a real launch alone (state_root_make, regime-cutover U321d; cred_root_make, U353,
+    # the dsh row too since U353d); a dry run says what a launch would make and makes nothing. The router row's broker
+    # directory (regime-cutover U343i): a dry run says here what a launch would make; a launch makes it in
+    # seat_sandbox_write, once the state slot it lies in exists and the slot trap is armed (broker_dir_make).
     if [[ -n ${state_root} ]]; then state_root_make "${dry_run}"; fi
+    cred_root_make "${dry_run}"
+    # The program store's root (U219c): made now, for the deny row the dsh and router rows render of it.
+    store_root_make "${dry_run}"
     if ((dry_run)); then broker_dir_make 1; fi
     # The dry run's compare of a present profile config runs the helper after the judge's acceptance of the profile
     # boundary and writes nothing (regime-cutover U310c, U310d); a launch compares at the write.
@@ -2715,6 +3042,10 @@ seat_sandbox_write() {
         [[ -d ${state_root_phys} && ! -L ${state_root_phys} && -O ${state_root_phys} ]] ||
             refuse "the ${role} role's state root ${state_root_phys} is not a real directory of this user"
     fi
+    # The credential root (U353, U353d): every role's must be the real directory of this user cred_root_make left, so
+    # the deny or the grant that names it names a directory that exists when srt reads the settings.
+    [[ -d ${cred_root_phys} && ! -L ${cred_root_phys} && -O ${cred_root_phys} ]] ||
+        refuse "the ${role} role's credential root ${cred_root_phys} is not a real directory of this user"
     for path in "${seats_root}/.state" "${claude_config}" "${seats_root}/.state/${name}" \
         ${scratch_dir:+"${scratch_dir}"} "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do
         if [[ ! -e ${path} && ! -L ${path} ]]; then
@@ -2905,10 +3236,17 @@ hcom_store_ensure() {
 }
 
 hcom_store_ensure "${dry_run}"
+# The omp roles' credential root (regime-cutover U353d) and the program store's root (U219c): made beside the store,
+# before anything else of the launch is made or rendered, in a real launch; a dry run says what a launch would make.
+# The foreground rows made theirs after the judgement above.
+if [[ ${role_launch} == hcom ]]; then
+    cred_root_make "${dry_run}"
+    store_root_make "${dry_run}"
+fi
 if ((dry_run)); then
     printf '%q ' "${argv[@]}"
     echo
-    echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-}" >&2
+    echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-} REGIME_STORE_ROOT=${REGIME_STORE_ROOT:-}" >&2
     echo "hcom-seat: sandbox ${sandbox} (srt ${srt_cmd[*]}, omp ${omp_cmd[*]}, hcom ${hcom_cmd[*]}, herdr ${herdr_cmd[*]})" >&2
     exit 0
 fi
@@ -3028,7 +3366,14 @@ if [[ ${role_launch} == foreground ]]; then
     # refuse after a slot may exist.
     slots_made=1
 fi
-if [[ ${role_launch} == hcom ]]; then seat_settings_render; fi
+if [[ ${role_launch} == hcom ]]; then
+    seat_settings_render
+    # The omp roles' judgement (regime-cutover U219c): their grants contain their denies by design, so settings_judge
+    # is the dsh role's; the store-root step alone runs here, over the rendered write list, before the settings file
+    # is written (the worktree exists, so git_state_check has run inside the render).
+    store_root_judge ||
+        refuse "the ${role} role's ${judge_grant} is, contains or lies inside ${judge_deny}; the launch is refused before its settings file is written"
+fi
 seat_sandbox_write
 if [[ ${role_launch} == foreground ]]; then profile_config_write; fi
 case ${role_launch} in

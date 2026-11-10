@@ -1,0 +1,16 @@
+security-audit sweep 3a6a22a09d5be8b1b46002691287e355d883461b: 0 findings, advisory
+counts: critical 0, high 0, medium 0, low 0, informational 0; needs_validation 0; rejected 0
+U322f (origin/main 0249e534 merged into the U322 branch, U322e's test hooks included): the merge changes no line of U322's code (the updater is run-31's blob); it brings U321, U318c and U330 back into the head as the blobs runs 30, 29 and 28 read, and both new docs paragraphs stand whole (U321 :60-81, U322 :83-115); the router role is a second writer of DSH_HOME, so U322's two candidates have two writers
+unvalidated candidates (not findings; the Phase 3 verifier launch was refused by policy):
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2399	the srt settings files are written under DSH_HOME/dsh, a dsh and router session write root, and srt reads them after start-up
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2439	every tarball: host of the session-written profile lockfile becomes an allowed domain of the build
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:303	the router row's allowLocalBinding is outbound to every loopback port and inbound on every interface under srt 0.0.81 on macOS (on origin/main)
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1641	(on origin/main)
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:1655	(on origin/main)
+off this head: the DSH_HOME pnpm-outside-srt candidate is closed here by U322 and open on origin/main until this branch merges
+hardening: the build's lstat-then-pwd -P on the directory and store; the build's deny list narrower than the dsh role's while the docs claim parity; the docs name only the tree's lockfile as the hosts' source; carried U321, U318c, U330 and earlier notes
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy)
+scope: 0249e534..3a6a22a0 (5 files); run-31's records carried, each unit from the run that read its blob (run-31's through 39f75cc8..HEAD, the U321 units from run-30, the U318c preflight from run-29, the U330 gate from run-28); profile standard, source-only; ledger 78 units: 27 covered, 5 candidate, 4 not_applicable, 42 out_of_scope
+brief notes: the diff against main is 5 paths, not 3
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: linemap.cjs, blobs.cjs, cite-sample.cjs, build-ledger.cjs and the five candidate records in agents/parent-hunter/scratch/)
+wall time: 309s (2026-11-07T06:13:05Z to 2026-11-07T06:18:14Z)

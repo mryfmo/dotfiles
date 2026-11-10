@@ -1,0 +1,21 @@
+security-audit sweep c6276bf8c415467260d7f7cf5b0612dce14ae701: 0 findings, advisory
+(no finding line: findings.json holds no record)
+counts by severity: critical 0, high 0, medium 0, low 0, informational 0
+U418 (6 files against f66c4d78): no candidate; four new covered units (deployed copy, pin and mode; LEVER_MODULES; the writer's import of the reader; tests and docs); two hardening notes (no run-time pin check of ledger-row.py or the ledger.py it imports; LEVER_MODULES admits a chezmoi-prefixed name)
+unvalidated candidates, carried from run-54 (not findings; proposed needs_validation; NEEDS-VALIDATION.md):
+  seats/regime-store-root/program-records-outside-the-dsh-and-build-read-denies	scripts/orchestrator/hcom-seat:2576 (restated: the store move has run on this host)
+  records-sync/derived-store/publishes-what-the-checkout-ignore-rules-withheld	scripts/orchestrator/records-sync.sh:450 (restated: the derived root holds 162 coverage ledgers)
+  updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm	scripts/update-agent-assets.sh:2015
+  router-seat/keychain/model-gh-resolves-the-operators-login	scripts/orchestrator/router-gh:168 (restated: upstream's presets since U406)
+  seats/router-credential-root/read-deny-follows-the-launching-callers-home	scripts/orchestrator/hcom-seat:844
+  router-seat/credential-root/agent-token-readable-by-the-router-model	scripts/orchestrator/hcom-seat:2605 (restated: upstream's presets since U406)
+  router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound	scripts/orchestrator/hcom-seat:450 (restated: upstream's presets since U406)
+  dsh-seat/profile-root-relink/write-grant-follows-session-made-link	scripts/orchestrator/hcom-seat:1517
+  updater/build_under_srt/settings-file-in-session-write-root	scripts/update-agent-assets.sh:2434
+  updater/build_under_srt/session-lockfile-names-the-build-hosts	scripts/update-agent-assets.sh:2474
+  seats/shared-claude-config-dir/cross-seat-session-files	scripts/orchestrator/hcom-seat:2238
+run_status: incomplete (candidate_validation_incomplete; every phase ran in the parent because the delegation tool is denied by policy, tools.approval.task deny)
+scope: U418 against f66c4d78 hunted whole; run-54's records carried and re-mapped through ea28db72..c6276bf8 (U222e, U404, U406, U407, records sync 54, U413 merged on main since); profile standard, source-only; ledger 105 units: 48 covered, 11 candidate, 46 out_of_scope
+brief note: the CONTEXT calls run-54 'the U20 head c6276bf8'; run-54 ran at ea28db72 (records sync 53), and is carried from there
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt (scratch: build-ledger.cjs, gen-overrides.cjs, overrides.json, write-metadata.cjs, write-nv.py, scan-own.cjs, nv-carried.md, unvalidated-candidates.json and the eleven candidate records in agents/parent-hunter/scratch/)
+wall time: 781s (2026-11-10T04:45:18Z to 2026-11-10T04:58:19Z)

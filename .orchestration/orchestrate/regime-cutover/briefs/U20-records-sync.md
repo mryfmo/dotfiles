@@ -12,7 +12,7 @@ CHANGE
 3. Merge with `pr-merge.sh` on the correct row for the head.
 
 ACCEPTANCE
-1. The receipt line of the lever. 2. The audit verdict `correct` for the head. 3. `rounds-check.py --all` over the store exits 0 before the sync.
+1. The receipt line of the lever. 2. The audit verdict `correct` for the head. 3. `rounds-check.py --all` over the store exits 0 before the sync. 4. The store's tables check passes on the synced store: `python3 -I tests/check-tables.py tests/*.tsv` exits 0 run from the store directory (the test gate of a records unit: every tests/*.tsv row parses and the verdict counts print; no unit test applies to records), and the `regime` CI check on the head is green. 5. The copied markdown and tables pass the format lint: `scripts/ci/run-on-lint-files.sh` (prettier as `make format` runs it) exits 0 on the head (the lint gate; a records file is never hand-formatted).
 
 TIMEBOX
 30 minutes per sync.

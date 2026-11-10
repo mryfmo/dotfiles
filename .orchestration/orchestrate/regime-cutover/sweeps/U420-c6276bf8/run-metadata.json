@@ -1,0 +1,186 @@
+{
+  "run_id": "dotfiles-run-55",
+  "repo": "dotfiles",
+  "target": "~/.local/state/omp-seats/dotfiles/sweep-2",
+  "source_ref": {
+    "commit": "c6276bf8c415467260d7f7cf5b0612dce14ae701",
+    "branch": "fix/deploy-ledger-reader (PR 752; the seat's checkout is detached at the head)",
+    "parent_of_change": "f66c4d789",
+    "base_note": "U418: one commit on origin/main f66c4d78, 6 files, +350 -6 (git diff --name-only f66c4d78 HEAD): home/dot_local/bin/common/ledger.py (new, byte-identical to scripts/orchestrator/ledger.py), scripts/generate-agent-configs.py (LEVER_MODULES, lever_install_name), home/dot_agents/agent-config.yaml (the pin and a comment), scripts/generated-agent-outputs.json (the output row), tests/unit/test_generate_agent_configs.py, scripts/orchestrator/README.md (one sentence). Since run-54's head ea28db72 main has merged U222e (#742), U404 (#743), U406 (#744), U407 (#745), records sync 54 (#746) and U413 (#747). The brief's CONTEXT calls run-54 'the U20 head c6276bf8'; run-54's metadata records ea28db72 (records sync 53), so its records are re-mapped through ea28db72..c6276bf8.",
+    "worktree_dirty": false
+  },
+  "profile": "standard",
+  "scope": "Scoped run: (1) U418 against f66c4d78, hunted whole: the deployed module's copy, pin, output row and mode; the generator's LEVER_MODULES and its three callers; the deployed writer's import of the reader from its own directory under python3 -I -S; the tests, the README sentence and the manifest comment (four new covered units, no candidate); (2) the carry: run-54's 98 units and eleven candidate records re-mapped through ea28db72..c6276bf8; the router profile unit and the three router candidates restated where U404/U406 removed the kit's restated presets and its bash-sandbox rows (upstream's presets read in the installed copy on this host); the records-sync and store-root candidates restated with the store move measured on this host; (3) U407/U413 (pr-audit.sh), records sync 54 and U222e recorded out of scope (their own sweeps); .ruff_cache named out of scope (a self-ignored tool cache).",
+  "carry_note": "The brief names run-54 as this seat's previous run 'at the U20 head c6276bf8'; run-54 ran at ea28db72 (records sync 53). Run-54 is carried and its lines re-mapped through ea28db72..c6276bf8.",
+  "scope_paths": [
+    "home/dot_local/bin/common/ledger.py",
+    "scripts/orchestrator/ledger.py",
+    "scripts/orchestrator/ledger-row.py",
+    "scripts/generate-agent-configs.py",
+    "home/dot_agents/agent-config.yaml",
+    "scripts/generated-agent-outputs.json",
+    "tests/unit/test_generate_agent_configs.py",
+    "scripts/orchestrator/README.md",
+    "home/dot_dsh/profiles/router"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "execution_note": "No target-controlled code ran: the task forbids building, testing or executing the target, any gh call and any read of a credential store. The change was read as text through git diff, cmp and shasum; upstream's dsh-superagent bundle layer was read as text in its installed copy under ~/.dsh/plugins (no credential); the derived program store's file names were listed and its coverage ledgers counted, no record read beyond this run's brief; the store's redact-words.txt was read to match its words in this run's own files and none was written anywhere.",
+  "selected_companions": [
+    "DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+    "AI-AND-LLM.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [
+    {
+      "path": "~/.local/state/omp-seats/dotfiles/.state/sweep-2/security-audit/run-54",
+      "source_ref": "ea28db72f76649042732d4fc88f089b35eae4f90",
+      "findings": 0,
+      "ledger_units": 98,
+      "use": "The carry: every unit and its eleven candidate records, re-mapped through ea28db72..c6276bf8."
+    }
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "started_at": "2026-11-10T04:45:18Z",
+  "run_status": "incomplete",
+  "incomplete_reason": "candidate_validation_incomplete: 11 carried candidates have no fresh independent verifier on this seat (the delegation tool is denied by policy: tools.approval.task deny). All are proposed needs_validation; none is a finding. U418 yields no candidate.",
+  "unvalidated_candidates": [
+    {
+      "fingerprint": "records-sync/derived-store/publishes-what-the-checkout-ignore-rules-withheld",
+      "ledger_unit": "scripts/orchestrator/records-sync.sh#derived-walk-ignore-parity",
+      "record": "agents/parent-hunter/scratch/candidate-derived-sync-drops-ignore-rules.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-54",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/regime-store-root/program-records-outside-the-dsh-and-build-read-denies",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#dsh-deny-row-program-store-root",
+      "record": "agents/parent-hunter/scratch/candidate-store-root-outside-dsh-deny.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-54",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/lock-dir-write-root-shared-with-host-pnpm",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-pnpm-lock-dir",
+      "record": "agents/parent-hunter/scratch/candidate-lock-dir-shared.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-54",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/keychain/model-gh-resolves-the-operators-login",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#router-row-keychain-and-operator-gh-config",
+      "record": "agents/parent-hunter/scratch/candidate-router-keychain.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-54",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/router-credential-root/read-deny-follows-the-launching-callers-home",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#cred_root_omp-deny-row-home",
+      "record": "agents/parent-hunter/scratch/candidate-cred-root-home.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-54",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/credential-root/agent-token-readable-by-the-router-model",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#credential-root-read-by-the-router-model",
+      "record": "agents/parent-hunter/scratch/candidate-agent-token-readable.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-54",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "router-seat/allowLocalBinding/loopback-connect-and-every-interface-inbound",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#allow_local_binding-router",
+      "record": "agents/parent-hunter/scratch/candidate-router-local-binding.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-54",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "dsh-seat/profile-root-relink/write-grant-follows-session-made-link",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#profile-root-relink",
+      "record": "agents/parent-hunter/scratch/candidate-profile-root-relink.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-54",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/settings-file-in-session-write-root",
+      "ledger_unit": "scripts/update-agent-assets.sh#build_under_srt-settings-file",
+      "record": "agents/parent-hunter/scratch/candidate-settings-in-write-root.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-54",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "updater/build_under_srt/session-lockfile-names-the-build-hosts",
+      "ledger_unit": "scripts/update-agent-assets.sh#dsh_lockfile_hosts",
+      "record": "agents/parent-hunter/scratch/candidate-lockfile-hosts.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-54",
+      "on_default_branch": true
+    },
+    {
+      "fingerprint": "seats/shared-claude-config-dir/cross-seat-session-files",
+      "ledger_unit": "scripts/orchestrator/hcom-seat#claude_config-shared-directory-grant",
+      "record": "agents/parent-hunter/scratch/candidate-shared-claude-dir.json",
+      "proposed_verdict": "needs_validation",
+      "carried_from": "run-54",
+      "on_default_branch": true
+    }
+  ],
+  "agents": {
+    "planned": "4 reconnaissance agents, 1 hunter wave, 1 post-wave critic, 1 final-clean critic, 1 Phase 3 verifier per candidate (11), 1 Phase 5 verifier per final record",
+    "spent": "0 delegated agents: the delegation tool is denied by policy on this seat (refused in run-38 and run-39); every phase ran in the parent (agent_id parent-hunter)"
+  },
+  "critic_passes": [
+    {
+      "pass": "post-wave",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "accepted four new covered units (U418's deployed copy, generator, import and tests/docs), four out-of-scope units (U407/U413's pr-audit.sh, records sync 54, .ruff_cache; U222e folded into the carried U222 unit), the restated router profile unit and the five restated candidates (three router, records-sync, store-root)"
+    },
+    {
+      "pass": "final-clean",
+      "wave": 1,
+      "independent": false,
+      "missing_units": 0,
+      "reassign_ids": 0,
+      "result": "no accepted work; no placeholder, every top-level directory of the target has a verdict"
+    }
+  ],
+  "candidate_count": 11,
+  "findings_count": 0,
+  "finished_at": "2026-11-10T04:58:19Z",
+  "shared_files_written": [
+    "run-metadata.json",
+    "architecture.md",
+    "coverage-ledger.json",
+    "findings.json",
+    "REPORT.md",
+    "FINDINGS-DETAIL.md",
+    "NEEDS-VALIDATION.md"
+  ],
+  "resolved_candidates": [],
+  "ledger_units": 105,
+  "ledger_status_counts": {
+    "out_of_scope": 46,
+    "covered": 48,
+    "candidate": 11
+  }
+}

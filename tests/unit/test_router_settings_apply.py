@@ -313,19 +313,17 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self, *args: str, lever: Path = BODY, env: dict | None = None, cwd: Path | None = None
     ) -> subprocess.CompletedProcess:
         """The Python body with the entry's two paths given (U465d): the scratch store and the committed rendering, a
-        later `--source` or `--store` in `args` winning as argparse's last value."""
-        argv = [
-            sys.executable,
-            "-I",
-            str(lever),
-            "--store",
-            str(self.store),
-            "--source",
-            str(SOURCE),
-            "--profile",
-            str(self.profile),
-            *args,
-        ]
+        `--source` or `--store` in `args` replacing the default (U465e: the body takes each option once)."""
+        given = list(args)
+        argv = [sys.executable, "-I", str(lever)]
+        for option, default in (("--store", str(self.store)), ("--source", str(SOURCE))):
+            value = default
+            if option in given:
+                index = given.index(option)
+                value = given[index + 1]
+                del given[index : index + 2]
+            argv += [option, value]
+        argv += ["--profile", str(self.profile), *given]
         return subprocess.run(
             argv,
             capture_output=True,
@@ -1860,6 +1858,82 @@ class RouterSettingsApplyEntryTest(unittest.TestCase):
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(f"refused: {option.split('=')[0]} is the entry's", run.stderr)
                 self.assertNotIn("store:", run.stderr, "refused before the store is resolved")
+
+    def run_body(self, *args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
+        """The body as the entry runs it, with the scratch store and the committed rendering, in a dry run."""
+        rendering = ROOT / "home/dot_agents/router-source.json"
+        argv = [sys.executable, "-I", str(BODY), "--store", str(self.store), "--source", str(rendering)]
+        argv += ["--profile", str(self.profile), "--dry-run", *args]
+        return subprocess.run(
+            argv, cwd=cwd or self.checkout, env=self.env, capture_output=True, text=True, check=False, timeout=120
+        )
+
+    def test_a_the_body_takes_exact_options_each_once_and_the_entry_refuses_a_callers_abbreviated_store(self):
+        """U465e test (a) (verdicts/U465-9c0244e0.md P1 [f2 s8] `:126`): the entry refused the exact `--store` and
+        `--source` from the caller, but the body's argparse expanded `--sto` and `--sour`, and its last-wins rule let
+        a caller's value after the entry's two override the resolved paths. The body's grammar is exact names, each
+        at most once: `--sto` and `--sour` are refused as unrecognized, naming the option; a repeated `--store` or
+        `--source` (in either spelling) is refused naming the option; and the entry's dry run with a trailing `--sto
+        <dir>` from the caller is refused by the body, never resolved to that directory."""
+        other = self.root / "other-store"
+        other.mkdir()
+        (other / "decisions.tsv").write_text(DECISIONS)
+        rendering = ROOT / "home/dot_agents/router-source.json"
+        run = self.run_body()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertIn(f"store {self.store}\n", run.stdout)
+        for args in (("--sto", str(other)), ("--sour", str(rendering)), ("--sto=" + str(other),)):
+            with self.subTest(args=args):
+                run = self.run_body(*args)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"unrecognized arguments: {args[0]}", run.stderr)
+        for args in (
+            ("--store", str(other)),
+            ("--store=" + str(other),),
+            ("--source", str(rendering)),
+            ("--source=" + str(rendering),),
+        ):
+            with self.subTest(args=args):
+                run = self.run_body(*args)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"{args[0].split('=')[0]} is given more than once", run.stderr)
+        # The entry passes the caller's arguments after its own two: an abbreviation reaching the body is refused
+        # there, and the directory it named is nowhere in the output.
+        for args in (("--sto", str(other)), ("--sour", str(rendering))):
+            with self.subTest(entry=args):
+                run = self.run_entry(*args)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"unrecognized arguments: {args[0]}", run.stderr)
+                self.assertNotIn(str(other), run.stdout)
+
+    def test_b_the_entry_scrubs_the_inherited_git_variables_before_it_resolves_the_checkout(self):
+        """U465e test (b) (verdicts/U465-9c0244e0.md P1 [f2 s8] `:203`): the entry resolved the checkout with git
+        while inheriting the caller's `GIT_DIR` and `GIT_WORK_TREE`, so a call from outside any checkout with those
+        set resolved another checkout's store. The entry removes every `GIT_*` and `PERL*` variable before its first
+        read (pr-audit.sh's form, with the second pass that refuses a leftover): outside any checkout it refuses
+        exactly as it does with a clean environment, and inside the checkout it resolves the checkout's own store,
+        whatever repository the variables name."""
+        other = self.root / "other-repo"
+        git_init(other, env=self.env)
+        self.git("commit", "-q", "--allow-empty", "-m", "initial", cwd=other)
+        other_store = other / ".orchestration/orchestrate/regime-cutover"
+        other_store.mkdir(parents=True)
+        (other_store / "decisions.tsv").write_text(DECISIONS)
+        steered = {**self.env, "GIT_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other), "PERL5OPT": "-Mstrict"}
+        clean = self.run_entry(cwd=self.root)
+        self.assertEqual((clean.returncode, clean.stdout), (2, ""), clean.stderr)
+        self.assertIn("run from the repository checkout that holds the program store", clean.stderr)
+        self.env = steered
+        run = self.run_entry(cwd=self.root)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (2, "", clean.stderr))
+        self.assertNotIn(str(other_store), run.stderr + run.stdout)
+        run = self.run_entry()
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertEqual(
+            run.stderr, f"router-settings-apply: store: checkout {self.store} (pre-move form, removed by U221)\n"
+        )
+        self.assertIn(f"store {self.store}\n", run.stdout)
+        self.assertNotIn(str(other), run.stdout)
 
 
 if __name__ == "__main__":

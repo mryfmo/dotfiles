@@ -629,14 +629,14 @@
       "target": ".local/bin/common/router-settings-apply",
       "kind": "file",
       "executable": true,
-      "sha256": "87df17ca88f6564d7bb10b255b812f752b5514e1f234759d8be2ff982eb5e6f6"
+      "sha256": "3bf8a7632025f73b5a2bab0832979ae979346bd5f3244184b90f3c30d02c6fee"
     },
     {
       "source": "home/dot_local/bin/common/executable_router-settings-apply.py",
       "target": ".local/bin/common/router-settings-apply.py",
       "kind": "file",
       "executable": true,
-      "sha256": "1ff907d64767f9f94dae1268a4bcfdfb6115bdc528bc0b1f46a9176719a653e5"
+      "sha256": "d50b0510454b5102654606ee8efdb866263da6c965e3b88135058dd052a9b1b0"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-login-preflight",

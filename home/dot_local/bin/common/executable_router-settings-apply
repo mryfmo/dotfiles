@@ -8,10 +8,17 @@
 #   second checkout with the same slug read another checkout's derived store where regime-env refuses the mismatched
 #   origin (verdicts/U465-e6a9a84f.md P1 `:400` and P1 `:457`). From this round the lever is two pinned files, as
 #   `acp-broker` and `acp-relay.py` are: this bash entry owns the environment, and `router-settings-apply.py` beside it
-#   owns the settings logic and takes its inputs as given paths. The entry
+#   owns the settings logic and takes its inputs as given paths. Round 5 (U465e, verdicts/U465-9c0244e0.md P1 `:126`
+#   and P1 `:203`) closed two channels into that split: the body's argparse expanded `--sto` and let a caller's value
+#   after the entry's two win (the body's grammar is exact names, each once), and the entry resolved the checkout under
+#   the caller's `GIT_DIR` and `GIT_WORK_TREE` (the environment is scrubbed first). The entry
+#   0. removes every exported `GIT_*`, `PERL*` and `PYTHON*` variable before any external command runs (pr-audit.sh's
+#      form: a loop over `compgen -e`, a second listing that refuses a leftover) and sets only `GIT_NO_REPLACE_OBJECTS=1`
+#      and `GIT_TERMINAL_PROMPT=0`, so the git reads below, regime-env's own included, see the working directory alone;
 #   1. checks its own pin, then sources the pinned `git-isolated.sh` and `regime-env` beside it (a rewritten helper
 #      stops the entry);
-#   2. refuses a caller's own `--store` or `--source`: the two paths are this entry's, never the caller's;
+#   2. refuses a caller's own `--store` or `--source`: the two paths are this entry's, never the caller's (an
+#      abbreviation or a repeat that reaches the body is refused there by name);
 #   3. reads the checkout the working directory is in through `git_isolated` and refuses a linked worktree (the
 #      main checkout holds the orchestrator's record, U71), as pr-merge.sh does;
 #   4. runs `regime_env` (the slug, `REGIME_STORE_ROOT` held component by component from the physical HOME, the hcom
@@ -38,11 +45,41 @@
 # @stdout The body's: one line per block, or the dry run's lines (`store <path>`, `source <path>`, `eval.mode <mode>`, ...).
 # @stderr `router-settings-apply: store: derived <dir>` or `router-settings-apply: store: checkout <dir> (pre-move form, removed by U221)`, then the body's refusals; this entry's own refusal as `router-settings-apply: refused: <reason>`.
 # @exitcode 0 The body held the paths and the three blocks hold the kit's values (or the dry run printed them).
-# @exitcode 2 Refused here (a caller's `--store` or `--source`, outside a checkout, a linked worktree, regime-env's or store_resolve's refusal, a helper or the body unreadable, a link or rewritten, no python3), or the body's refusal.
+# @exitcode 2 Refused here (the environment cannot be listed or a `GIT_*`, `PERL*` or `PYTHON*` name cannot be removed, a caller's `--store` or `--source`, outside a checkout, a linked worktree, regime-env's or store_resolve's refusal, a helper or the body unreadable, a link or rewritten, no python3), or the body's refusal (an abbreviated or repeated option among them).
 # @example
 #   ~/.local/bin/common/router-settings-apply --dry-run
 #   ~/.local/bin/common/router-settings-apply
 set -euo pipefail
+
+# The environment is cleaned before any external command runs, the self-check's hash tools included (pr-audit.sh's
+# form, U71b audit rounds 7 and 17: the `shasum` fallback is a perl script, and an inherited GIT_* variable steers
+# every git; U465e, verdict U465-9c0244e0 P1 `:203`: the entry inherited the caller's GIT_DIR and GIT_WORK_TREE, so
+# a call from outside any checkout resolved another checkout's store, and regime-env's own git reads ran under them
+# too). Every statement up to here and in this block is a shell builtin. Every exported `GIT_*`, `PERL*` and
+# `PYTHON*` name is removed, a second listing refuses a leftover, and then only the lever's own are set: no replace
+# objects, no terminal prompt. The checkout is named from the working directory alone.
+git_names=$(compgen -e) || {
+    echo "router-settings-apply: refused: cannot list the environment to remove the caller's GIT_*, PERL* and PYTHON* variables" >&2
+    exit 2
+}
+while IFS= read -r git_name; do
+    [[ ${git_name} == GIT_* || ${git_name} == PERL* || ${git_name} == PYTHON* ]] || continue
+    unset -v "${git_name}" 2> /dev/null || {
+        echo "router-settings-apply: refused: cannot remove the caller's ${git_name}" >&2
+        exit 2
+    }
+done <<< "${git_names}"
+git_names=$(compgen -e) || {
+    echo "router-settings-apply: refused: cannot list the environment after the scrub" >&2
+    exit 2
+}
+while IFS= read -r git_name; do
+    [[ ${git_name} == GIT_* || ${git_name} == PERL* || ${git_name} == PYTHON* ]] || continue
+    echo "router-settings-apply: refused: ${git_name} is still in the environment after the scrub" >&2
+    exit 2
+done <<< "${git_names}"
+unset git_names git_name
+export GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
 #   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
@@ -121,6 +158,8 @@ refuse() {
 . "${LEVER_DIR}/regime-env"
 
 # The two paths are this entry's: a caller naming either would choose the store the body proves or the row it reads.
+# The exact flags are refused here; an abbreviation (`--sto`) or a repeat after the entry's two is the body's refusal
+# (U465e: its parser takes exact names, each once).
 for arg in "$@"; do
     case ${arg} in
     --store | --store=*) refuse "--store is the entry's: the program store is resolved here by regime-env and store_resolve, never given by the caller" ;;

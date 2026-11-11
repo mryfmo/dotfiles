@@ -96,11 +96,13 @@ above, a store whose decisions file cannot be read, an `observe_admission` outsi
 is no list of ids, a sender id outside its grammar or repeated, a wrapper that is no executable file, a port that
 answers nothing (`unreachable`, naming `127.0.0.1:<port>`), a 403 (naming the header), a 409 (naming the revision), a
 400 with `setup` (naming the code and its text), a 3xx (naming its Location; never followed), any other status, or a
-settings view without the `github` Source, the `eval` block or the `policy` block. A call without `--store` or
-`--source` is argparse's refusal (exit 2, the usage on stderr). Nothing is written to any file; the only network peer
-is `127.0.0.1:<port>`: the opener is built by hand (U353b, verdict P2 `:268`) with an empty proxy table, so a proxy
-named in the environment or the system settings is not consulted, and without a redirect handler, so a 3xx is a
-refusal and no request leaves the loopback port.
+settings view without the `github` Source, the `eval` block or the `policy` block. The option grammar is exact names,
+each at most once (U465e, verdict U465-9c0244e0 P1 `:126`: argparse expanded `--sto` and let a caller's value after
+the entry's two win): a call without `--store` or `--source`, with an abbreviated option, or with `--store` or
+`--source` given twice is argparse's refusal naming the option (exit 2, the usage on stderr). Nothing is written to
+any file; the only network peer is `127.0.0.1:<port>`: the opener is built by hand (U353b, verdict P2 `:268`) with an
+empty proxy table, so a proxy named in the environment or the system settings is not consulted, and without a
+redirect handler, so a 3xx is a refusal and no request leaves the loopback port.
 
 Before anything else the file hashes itself against its `claude.levers.sha256.router-settings-apply.py` pin in the
 manifest beside it (the deployed `~/.agents/agent-config.yaml` for the copy under the physical `~/.local/bin/common`,
@@ -663,9 +665,23 @@ def apply_block(api: Api, block: str, current: dict, desired: dict, revision: in
     return restarting
 
 
+class Once(argparse.Action):
+    """Store the option's value and refuse its second occurrence by name (U465e): the entry gives `--store` and
+    `--source` once each, and argparse's last-wins rule would otherwise let a caller's exact flag after them choose
+    the store the body proves or the row it reads."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if getattr(namespace, self.dest) is not None:
+            parser.error(f"{option_string} is given more than once; the entry gives it once, and a repeat is refused")
+        setattr(namespace, self.dest, values)
+
+
 def main(argv: list[str]) -> int:
+    # Exact option names only (U465e): with abbreviations `--sto <dir>` passed the entry's exact-flag refusal and
+    # overrode the resolved store.
     parser = argparse.ArgumentParser(
         prog=LEVER_SCRIPT,
+        allow_abbrev=False,
         description=(
             "the Python body of router-settings-apply, run by that entry alone: write the kit's GitHub Source row, "
             "accept mode, observe admission cell and allowed-sender list into the Router's settings store"
@@ -675,12 +691,14 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--store",
         required=True,
-        help="the program store the entry resolved (regime-env and store_resolve), a physical path; read for an auto row alone",
+        action=Once,
+        help="the program store the entry resolved (regime-env and store_resolve), a physical path; read for an auto row alone; once",
     )
     parser.add_argument(
         "--source",
         required=True,
-        help="the generator's rendering of the Source row, router-source.json beside the manifest, a physical path",
+        action=Once,
+        help="the generator's rendering of the Source row, router-source.json beside the manifest, a physical path; once",
     )
     parser.add_argument(
         "--profile",

@@ -198,6 +198,16 @@ DSH_SUBAGENT_ACP_PROVIDER = "acp"
 DSH_ACP_SEAT_PATH = "~/.local/bin/common/acp-seat"
 DSH_ACP_BROKER_SOCK_ENV = "ACP_BROKER_SOCK"
 DSH_ACP_SEAT_NAME = "router"
+# The subagent tool's three keys (U434, U434c; U466): one source for the base agent's `tool-subagent` row and the
+# Executor Session preset's nested row. `maxDepth: provider-managed` is required by the ACP provider (the pinned
+# tool-subagent's assertSubagentProviderConfiguration: the provider advertises no depthLimit capability, so a numeric
+# cap refuses the mount); the spawn-only keys (`agentPreset`, `modelSelection`) are no part of it, since the provider
+# refuses independent preset selection.
+DSH_SUBAGENT_TOOL_CONFIG = (
+    ("provider", DSH_SUBAGENT_ACP_PROVIDER),
+    ("toolName", "subagent"),
+    ("maxDepth", "provider-managed"),
+)
 # The DeepSeek harness plan's names: the kit's one profile and the Claude Code settings file whose hooks it mounts.
 DSH_PROFILE = "thak"
 DSH_HOOKS_SETTINGS = "~/.claude/settings.json"
@@ -225,6 +235,18 @@ DSH_ROUTER_WEBSERVER = {"host": "127.0.0.1", "port": 3082}
 # (hcom-seat seat_write_roots: DSH_HOME, exported into the dsh child as DSH_HOME), so the sandboxed launch can create
 # the store; the plugin requires an absolute path, and a launch without DSH_HOME gets a relative one it refuses.
 DSH_ROUTER_STATE_DIR = "router-state"
+# The Executor Session's agent preset (regime-cutover U466, U437's work, table row i8): WORKER_PRESET in the pinned
+# plugin's src/app/sessions.ts:48, defined by its bundle layer (cordis.patch.yml:20-120 at pin 8c32a9dc) with a nested
+# `tool-subagent` row on `provider: spawn`, an in-process child under the Router's own sandbox. The include plugin's
+# patch algorithm (vendor/include/src/index.ts `applyEntryPatches`) indexes rows by id at the top level and inside
+# `group: true` rows alone, and replaces a matched row's `config` whole; a preset row is no group and its config is an
+# object, so no patch reaches the nested row by id (measured under `dsh --dump-config`: `entry ... not found`, `is
+# not a group`), and dsh-superagent has no setting that makes the preset inherit the base row. The kit's form is its
+# own row set for the preset row: upstream's definition with the delegation group's `tool-subagent` on the three
+# keys above, so an Executor Session's subagent turn is an `omp acp` worker the broker starts in a sibling sandbox,
+# as the base agent's is. The router preset stays upstream's (U406 forbids a restatement that changes nothing).
+DSH_WORKER_PRESET_ROW = "dsh-superagent-worker-preset"
+DSH_WORKER_PRESET = "dsh-superagent-worker"
 DSH_ACCEPT_MODES = ("off", "observe", "auto")
 # The two words of the policy cell router-settings-apply writes (U416): the pulls row's unlistedUnaddressed cell of the
 # github Source's admission table; `explicit` is not admitted (it would accept an unlisted sender in observe mode).
@@ -2476,6 +2498,114 @@ def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
     return {key: str(value) for key, value in row.items()}
 
 
+def dsh_subagent_tool_config(indent: int) -> list[str]:
+    """The subagent tool's config keys at `indent` spaces, the one source for the base row and the preset's nested row."""
+    return [f"{' ' * indent}{key}: {value}" for key, value in DSH_SUBAGENT_TOOL_CONFIG]
+
+
+def dsh_worker_preset_row() -> list[str]:
+    """The kit's own row set for the Executor Session's preset (U466): the pinned plugin's `dsh-superagent-worker`
+    definition (name, description, order and plugins as its bundle layer ships them, the win32 gates included) with the
+    delegation group's `tool-subagent` on the ACP provider. The row is addressed by id with its config alone: the patch
+    algorithm replaces the config whole, and a `name` on the row would be checked against the bundle's, not needed."""
+    return [
+        f"- id: {DSH_WORKER_PRESET_ROW}",
+        "  config:",
+        f"    id: {DSH_WORKER_PRESET}",
+        "    name: dsh-superagent 执行器",
+        "    description: dsh-superagent 的执行器 Session 专用，不供手动选择。前台命令超 5 秒转入后台，只含执行工作所需的工具。",
+        "    order: 90",
+        "    plugins:",
+        "      - id: persona",
+        "        name: '@deepseek-ai/dsh-persona'",
+        "        config:",
+        "          prefix: You are a coding agent powered by the {{model}} model.",
+        "      - id: agent-instructions",
+        "        name: '@deepseek-ai/dsh-agent-instructions'",
+        "        config:",
+        "          maxBytes: 65536",
+        "      - id: time-context",
+        "        name: '@deepseek-ai/dsh-time-context'",
+        "      - id: shell",
+        "        name: cordis:group",
+        "        group: true",
+        "        isolate:",
+        "          shell: true",
+        "        config:",
+        "          - id: bash-sandbox",
+        "            name: '@deepseek-ai/dsh-bash-sandbox'",
+        "            disabled: !!js process.platform === 'win32'",
+        "            config:",
+        "              timeoutMs: 5000",
+        "              maxTimeoutMs: 5000",
+        "          - id: pwsh-sandbox",
+        "            name: '@deepseek-ai/dsh-pwsh-sandbox'",
+        "            disabled: !!js process.platform !== 'win32'",
+        "            config:",
+        "              timeoutMs: 5000",
+        "              maxTimeoutMs: 5000",
+        "          - id: tool-bash",
+        "            name: '@deepseek-ai/dsh-tool-bash'",
+        "            disabled: !!js process.platform === 'win32'",
+        "          - id: tool-pwsh",
+        "            name: '@deepseek-ai/dsh-tool-pwsh'",
+        "            disabled: !!js process.platform !== 'win32'",
+        "      - id: tool-fs",
+        "        name: '@deepseek-ai/dsh-tool-fs'",
+        "      - id: tool-fs-search",
+        "        name: '@deepseek-ai/dsh-tool-fs-search'",
+        "        config:",
+        "          sampleOverCapGlobResults: false",
+        "      - id: tool-jobs",
+        "        name: '@deepseek-ai/dsh-tool-jobs'",
+        "        config:",
+        "          waitTimeoutMs: 5000",
+        "          maxWaitTimeoutMs: 5000",
+        "      - id: skill-filesystem",
+        "        name: '@deepseek-ai/dsh-skill-filesystem'",
+        "      - id: tool-skill",
+        "        name: '@deepseek-ai/dsh-tool-skill'",
+        "      - id: compaction",
+        "        name: cordis:group",
+        "        group: true",
+        "        isolate:",
+        "          compaction: true",
+        "          toolResultPruner: true",
+        "        config:",
+        "          - id: compaction-basic",
+        "            name: '@deepseek-ai/dsh-compaction-basic'",
+        "          - id: command-compact",
+        "            name: '@deepseek-ai/dsh-command-compact'",
+        "          - id: tool-result-pruner",
+        "            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'",
+        "            config:",
+        "              thresholdChars: 8192",
+        "              headChars: 4096",
+        "              tailChars: 1024",
+        "      - id: delegation",
+        "        name: cordis:group",
+        "        group: true",
+        "        isolate:",
+        "          workflowEngine: true",
+        "        config:",
+        "          - id: tool-subagent-control",
+        "            name: '@deepseek-ai/dsh-tool-subagent-control'",
+        "          - id: tool-subagent",
+        "            name: '@deepseek-ai/dsh-tool-subagent'",
+        "            config:",
+        *dsh_subagent_tool_config(14),
+        "      - id: tool-todo",
+        "        name: '@deepseek-ai/dsh-tool-todo'",
+        "        config:",
+        "          allowParallelInProgress: true",
+        "      - id: tool-web",
+        "        name: '@deepseek-ai/dsh-tool-web'",
+        "        config:",
+        "          fetch: false",
+        "          searchTimeoutMs: 60000",
+    ]
+
+
 def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
     """The dsh-superagent Router profile (U317): its package.json (the Web profile's bundles; the superagent bundle,
     the omp-gateway plugin and the ACP subagent backend as link: dependencies the updater installs) and its cordis
@@ -2541,21 +2671,19 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
         # The subagent tool on the ACP provider (U434): a Router subagent turn is an `omp acp` worker the broker starts
         # in a sibling sandbox, never an in-process child under the Router's own sandbox. The web-app bundle ships this
         # row `disabled: true` (U434c, measured under `dsh --dump-config`), and the patch algorithm merges a row's keys
-        # other than `config`, so the enable is a key of the row. `maxDepth: provider-managed` is required (measured on
-        # this host, the pinned tool-subagent's assertSubagentProviderConfiguration): the ACP provider advertises no
-        # depthLimit capability, so a numeric cap refuses the mount.
+        # other than `config`, so the enable is a key of the row. The three keys are DSH_SUBAGENT_TOOL_CONFIG (U466).
         "- id: tool-subagent",
         "  disabled: false",
         "  config:",
-        f"    provider: {DSH_SUBAGENT_ACP_PROVIDER}",
-        "    toolName: subagent",
-        "    maxDepth: provider-managed",
+        *dsh_subagent_tool_config(4),
     ]
-    # No bash-sandbox row and no preset row (U406): the base bundle's sandbox stays on, and upstream's bundle layer
-    # inserts the two agent presets as shipped. The gateway insert, then the ACP provider (U434): `acp-seat` by its
+    # No bash-sandbox row (U406): the base bundle's sandbox stays on. One preset row (U466): the Executor Session's
+    # preset as the kit's own row set, its nested `tool-subagent` on the same three keys; the router preset is
+    # upstream's. Then the gateway insert and the ACP provider (U434): `acp-seat` by its
     # installed path, the socket from the launch's environment (a `!!js` value, the form the state root uses), the
     # fixed name, permission `allow` (the worker's own sandbox is the boundary; the client surfaces no prompt) and no
     # env row (the seam forwards HOME and the seat marker; `DSH_*` and credential-shaped names are scrubbed).
+    lines += dsh_worker_preset_row()
     lines += [
         "- insert:",
         *dsh_gateway_insert(dsh),

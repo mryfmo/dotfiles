@@ -2610,7 +2610,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             "    maxDepth: provider-managed\n",
             router,
         )
-        self.assertEqual(1, router.count("- id: tool-subagent\n"))
+        # One top-level row; U466 adds the worker preset's nested `tool-subagent` row (ten spaces in), the same keys.
+        self.assertEqual(1, len(re.findall(r"^- id: tool-subagent\n", router, re.MULTILINE)))
+        self.assertEqual(1, len(re.findall(r"^          - id: tool-subagent\n", router, re.MULTILINE)))
         self.assertLess(router.index("- id: tool-subagent\n"), router.index("- insert:\n"))
         self.assertNotIn("subagent-acp", thak)
         self.assertNotIn("tool-subagent", thak)
@@ -2638,6 +2640,51 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(["disabled: false", "config:"], keys, "the row's own keys, the enable beside the config")
         self.assertIn("    provider: acp\n", row[1])
         self.assertEqual(1, len(re.findall(r"^  disabled: false\n", router, re.MULTILINE)), router)
+        self.assertNotIn("tool-subagent", thak)
+
+    def test_the_router_patch_puts_the_worker_presets_subagent_tool_on_the_acp_provider_and_the_thak_patch_does_not(
+        self,
+    ) -> None:
+        """U466 (U437's work, table row i8): the Executor Session's preset `dsh-superagent-worker` carries its own nested
+        `tool-subagent` row with `provider: spawn` in the pinned plugin's bundle layer, and the include plugin's patch
+        algorithm indexes rows by id at the top level and inside `group: true` rows alone (vendor/include/src/index.ts
+        `buildMap`), so no patch reaches the nested row by id (measured, /tmp/u466/prototype.txt: `entry ... not found`,
+        `is not a group`). The kit's form is its own row set for the preset row `dsh-superagent-worker-preset`: the
+        rendered router patch carries that one preset row, whose `delegation` group's `tool-subagent` config is exactly
+        the three keys the base agent's row carries (one constant), no `provider: spawn` stands anywhere in the router
+        patch, the router preset is not restated, and the thak patch carries no preset row."""
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.module.ROOT = ROOT
+        router = self.module.render_dsh_router_profile(manifest)[ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"]
+        thak = self.module.render_dsh_profile_patch(manifest)[ROOT / "home/dot_dsh/profiles/thak/cordis.patch.yml"]
+        preset = re.search(r"^- id: dsh-superagent-worker-preset\n((?:  .*\n)+)", router, re.MULTILINE)
+        self.assertIsNotNone(preset, router)
+        self.assertEqual(1, router.count("- id: dsh-superagent-worker-preset\n"))
+        keys = [line[2:] for line in preset[1].splitlines() if not line.startswith("    ")]
+        self.assertEqual(["config:"], keys, "the preset row's own keys: the config alone (replaced whole by the patch)")
+        self.assertIn("    id: dsh-superagent-worker\n", preset[1])
+        delegation = re.search(r"^      - id: delegation\n((?:        .*\n)+)", preset[1], re.MULTILINE)
+        self.assertIsNotNone(delegation, preset[1])
+        nested = re.search(
+            r"^          - id: tool-subagent\n            name: '@deepseek-ai/dsh-tool-subagent'\n            config:\n"
+            r"((?:              .*\n)+)",
+            delegation[1],
+            re.MULTILINE,
+        )
+        self.assertIsNotNone(nested, delegation[1])
+        three = ["provider: acp", "toolName: subagent", "maxDepth: provider-managed"]
+        self.assertEqual(three, [line.strip() for line in nested[1].splitlines()])
+        base = re.search(r"^- id: tool-subagent\n  disabled: false\n  config:\n((?:    .*\n)+)", router, re.MULTILINE)
+        self.assertIsNotNone(base, router)
+        self.assertEqual(three, [line.strip() for line in base[1].splitlines()], "one source for both rows")
+        self.assertEqual(three, [f"{key}: {value}" for key, value in self.module.DSH_SUBAGENT_TOOL_CONFIG])
+        self.assertNotIn("provider: spawn", router)
+        self.assertNotIn("agentPreset:", router)
+        self.assertNotIn("dsh-superagent-router-preset", router)
+        self.assertNotIn("'@deepseek-ai/dsh-agent-preset'", router, "the row is addressed by id; no plugin name")
+        self.assertLess(router.index("- id: tool-subagent\n"), router.index("- id: dsh-superagent-worker-preset\n"))
+        self.assertLess(router.index("- id: dsh-superagent-worker-preset\n"), router.index("- insert:\n"))
+        self.assertNotIn("preset", thak)
         self.assertNotIn("tool-subagent", thak)
 
     def test_the_router_profile_declares_the_acp_plugin_as_a_link_dependency_and_the_thak_profile_does_not(

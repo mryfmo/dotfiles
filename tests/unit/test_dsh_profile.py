@@ -546,8 +546,9 @@ class DshRouterProfileTest(unittest.TestCase):
         reader) renders the manifest's Source row into `home/dot_agents/router-source.json`, a managed target chezmoi
         deploys beside the manifest as `~/.agents/router-source.json`, which `make render-check` holds to the manifest
         and the output index lists with its sha256 (the doctor's check of the deployed copy, as for a lever copy). The
-        object holds `generated_by` and the row's keys in their fixed order, `accept_mode_auto_row` only when the
-        manifest carries it; the committed rendering is the observe row with the empty list."""
+        object holds `generated_by` and the row's keys in their fixed order, every one present (U465d:
+        `accept_mode_auto_row` null when the manifest omits it); the committed rendering is the observe row with the
+        empty list."""
         generator = load_generator()
         path = generator.ROOT / "home/dot_agents/router-source.json"
         outputs = generator.render_router_source(copy.deepcopy(self.manifest))
@@ -561,6 +562,7 @@ class DshRouterProfileTest(unittest.TestCase):
                     "repository": github["repository"],
                     "accept_mode": "observe",
                     "accept_mode_row": github["accept_mode_row"],
+                    "accept_mode_auto_row": None,
                     "observe_admission": "inferred",
                     "allowed": [],
                 },
@@ -571,7 +573,7 @@ class DshRouterProfileTest(unittest.TestCase):
             ["generated_by", "source"], list(json.loads(rendered)), "the top level holds the header and the row alone"
         )
         self.assertEqual(
-            ["repository", "accept_mode", "accept_mode_row", "observe_admission", "allowed"],
+            ["repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission", "allowed"],
             list(json.loads(rendered)["source"]),
         )
         self.assertEqual(rendered, (ROOT / "home/dot_agents/router-source.json").read_text(), "the committed copy")
@@ -656,6 +658,81 @@ class DshRouterProfileTest(unittest.TestCase):
             self.assertEqual([], generator.parse_manifest(text)["assets"]["dsh-superagent"]["sources"]["github"]["allowed"])  # fmt: skip
             seen = generator.yaml.safe_load(cases["quoted-then-plain"])
             self.assertEqual([], seen["assets"]["dsh-superagent"]["sources"]["github"]["allowed"], "the last wins")
+
+    def test_c_the_generator_renders_every_field_with_its_default_and_refuses_what_the_validator_refuses_by_one_function(
+        self,
+    ) -> None:
+        """U465d test (c) (verdicts/U465-e6a9a84f.md P2 [f2 s5] `generate-agent-configs.py:2524`): a manifest row without
+        `observe_admission` passed generation and validation while the lever refused the rendering, and an auto row
+        beside observe passed generation while the validator refused it. One function in the generator,
+        `dsh_source_row`, applies the defaults and the refusals: the rendering carries every field (`accept_mode_auto_row`
+        as null when the manifest omits it, `observe_admission` as upstream's own default `ignore`, src/policy.ts, so an
+        omitted cell changes nothing upstream decides; the committed manifest names `inferred`), and the validator's
+        `validate_asset_sources` reads the row through that function, so the same bad row is refused with the same
+        words by both and the validator's text holds no row rule of its own."""
+        generator = load_generator()
+        spec = importlib.util.spec_from_file_location(
+            "validate_agent_assets", ROOT / "scripts/validate-agent-assets.py"
+        )
+        assert spec and spec.loader
+        validator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(validator)
+        path = generator.ROOT / "home/dot_agents/router-source.json"
+        keys = ["repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission", "allowed"]
+        self.assertEqual("ignore", generator.DSH_OBSERVE_ADMISSION_DEFAULT)
+        manifest = copy.deepcopy(self.manifest)
+        del manifest["assets"]["dsh-superagent"]["sources"]["github"]["observe_admission"]
+        row = json.loads(generator.render_router_source(manifest)[path])["source"]
+        self.assertEqual(keys, list(row), "every field is present, in the fixed order")
+        self.assertEqual(("ignore", None), (row["observe_admission"], row["accept_mode_auto_row"]))
+        validator.validate_asset_sources("dsh-superagent", copy.deepcopy(manifest["assets"]["dsh-superagent"]))
+        committed = json.loads((ROOT / "home/dot_agents/router-source.json").read_text())["source"]
+        self.assertEqual(keys, list(committed), "the committed rendering carries every field")
+        self.assertEqual(("inferred", None), (committed["observe_admission"], committed["accept_mode_auto_row"]))
+        label = "assets.dsh-superagent.sources.github"
+        bad = {
+            "an auto row beside observe": (
+                lambda row: row.update(accept_mode_auto_row="2026-11-08T00:00:00Z"),
+                f"{label}.accept_mode_auto_row belongs to accept_mode auto alone, not 'observe'",
+            ),
+            "a third word for the cell": (
+                lambda row: row.update(observe_admission="explicit"),
+                f"{label}.observe_admission 'explicit' is not one of ['inferred', 'ignore']",
+            ),
+            "a cell of the wrong type": (
+                lambda row: row.update(observe_admission=1),
+                f"{label}.observe_admission must be a string, not int: 1",
+            ),
+            "auto without its row": (
+                lambda row: row.update(accept_mode="auto"),
+                f"{label}.accept_mode auto needs accept_mode_auto_row beside accept_mode_row",
+            ),
+            "a missing first row": (
+                lambda row: row.pop("accept_mode_row"),
+                f"{label}.accept_mode_row must be a non-empty string",
+            ),
+            "an unknown key": (lambda row: row.update(bots=["x"]), f"{label} has unknown key(s) ['bots']"),
+            "a listed login beside observe": (
+                lambda row: row.update(allowed=["someone"]),
+                f"{label}.allowed names ['someone'] while accept_mode is 'observe'",
+            ),
+        }
+        for case, (mutate, expected) in bad.items():
+            with self.subTest(case=case):
+                manifest = copy.deepcopy(self.manifest)
+                mutate(manifest["assets"]["dsh-superagent"]["sources"]["github"])
+                with contextlib.redirect_stderr(io.StringIO()) as rendered, self.assertRaises(SystemExit):
+                    generator.render_router_source(manifest)
+                with contextlib.redirect_stderr(io.StringIO()) as validated, self.assertRaises(SystemExit):
+                    validator.validate_asset_sources(
+                        "dsh-superagent", copy.deepcopy(manifest["assets"]["dsh-superagent"])
+                    )
+                self.assertIn(expected, rendered.getvalue())
+                self.assertEqual(rendered.getvalue(), validated.getvalue(), "one function, one refusal")
+        text = (ROOT / "scripts/validate-agent-assets.py").read_text()
+        self.assertIn("dsh_source_row", text, "the validator reads the row through the generator's function")
+        for own in ("OBSERVE_ADMISSIONS = ", "ACCEPT_MODES = ", "LADDER_ROW_TIMESTAMP = ", "def validate_sender_ids"):
+            self.assertNotIn(own, text, f"the validator keeps no row rule of its own ({own.strip()})")
 
     def test_the_installer_pins_are_rendered_from_the_asset(self) -> None:
         # scripts/lib/installer-pins.sh is generated: the two constants the updater reads are the asset's pin and

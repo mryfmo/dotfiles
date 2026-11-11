@@ -1,11 +1,14 @@
-"""scripts/orchestrator/intake-observe.py over a fixture store built from the upstream schema (regime-cutover U317).
+"""scripts/orchestrator/intake-observe.py over a fixture store built from the upstream schema (regime-cutover U317;
+U465, the accept and refusal rows; U465d, the Source word).
 
-The fixture's tables are the `CREATE TABLE` text of the pinned dsh-superagent archive's `src/app/store.ts`: line 74
-(`thread`) and line 76 (`decision`), copied verbatim into SCHEMA below. The would-accept record is the one
-`src/policy.ts:57` returns for a positive assessment of an inferred candidate outside auto mode: `kind: 'ignore'`,
-`audit.would_accept: true`, a reason of code `observed` (`src/core/reasons.ts:25`, `Observe mode: would accept
-({text})`), saved as JSON in the `value` column by `src/app/store.ts:245`. Every row the lever writes names such a
-Decision and nothing else; the store is read read-only and a symlink or a non-regular file there is refused.
+The fixture's tables are the `CREATE TABLE` text of the pinned dsh-superagent archive's `src/app/store.ts`: line 72
+(`trigger`), line 74 (`thread`) and line 76 (`decision`), copied verbatim into SCHEMA below. The ladder Decisions the
+lever records are three kinds, each an allowlist of its own: the would-accept record observe mode leaves in place of an
+accept (`src/policy.ts:57`: `kind: 'ignore'`, `audit.would_accept: true`, a reason of code `observed`,
+`src/core/reasons.ts:25`), an accept (`kind: 'accept'`, `src/core/evals.ts:313`), and a gate refusal (an ignore whose
+reason carries `not_a_member` or `not_human` with the refused trigger's id, `src/core/evals.ts:97-103`); every row the
+lever writes names such a Decision and nothing else, under the Source word of the Decision's `threadKey`. The store is
+read read-only and a symlink or a non-regular file there is refused.
 """
 
 from __future__ import annotations
@@ -280,6 +283,44 @@ class IntakeObserveTest(unittest.TestCase):
                     result.stderr,
                 )
         self.assertEqual(text, self.tsv.read_text(), "nothing appended by a refused call")
+
+    def test_d_a_row_names_its_source_from_the_decisions_thread_key_and_a_discord_decision_is_not_labelled_github(
+        self,
+    ) -> None:
+        """U465d test (d) (verdicts/U465-e6a9a84f.md P2 [f1 s6] `intake-observe.py:240`): every row said `github-source`,
+        so an accept Decision of another Source was recorded as GitHub's. The Source word is read from the Decision's
+        `threadKey` (`<source>:<id>`, src/core/model.ts: `github:12`, `discord:guild/42`), so a row is
+        `<source>-source <kind>: ...`; a key without the `<source>:` prefix is recorded as `unknown-source`, never
+        guessed. The three kinds and the count are unchanged."""
+        self.save(
+            decision("g1", "github:12", "2026-11-07T01:00:00Z"),
+            decision(
+                "c1",
+                "discord:guild/42",
+                "2026-11-07T01:10:00Z",
+                kind="accept",
+                reason=[{"code": "said", "values": {"text": "ok"}}],
+                rules=["copy"],
+            ),
+            refusal("c2", "discord:guild/43", "2026-11-07T01:20:00Z", ("not_a_member", "t-c2")),
+            decision("u1", "no-source-key", "2026-11-07T01:30:00Z"),
+            triggers={"t-c2": trigger("t-c2", "github:43", "someone")},
+        )
+        result = self.run_lever("--kind", "all", str(self.db), str(self.tsv))
+        self.assertEqual((0, "4\n"), (result.returncode, result.stdout), result.stderr)
+        rows = self.rows()
+        self.assertEqual(
+            [
+                ("github-source would-accept: github:12 trigger=trigger-g1 rules=copy", "g1"),
+                ("discord-source accept: discord:guild/42 trigger=trigger-c1 rules=copy", "c1"),
+                ("discord-source refusal not_a_member: discord:guild/43 login=someone", "c2"),
+                ("unknown-source would-accept: no-source-key trigger=trigger-u1 rules=copy", "u1"),
+            ],
+            [(row[2], row[4]) for row in rows],
+        )
+        for row in rows[1:]:
+            self.assertNotIn("github", row[2], "a Decision of another Source is never labelled github")
+        self.assertEqual("1\n", self.run_lever("--kind", "accept", str(self.db), str(self.dir / "fresh.tsv")).stdout)
 
     def test_a_second_run_appends_nothing_and_only_newer_decisions_follow(self) -> None:
         self.save(

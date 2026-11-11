@@ -4,6 +4,7 @@
     "repository": "mryfmo/dotfiles",
     "accept_mode": "observe",
     "accept_mode_row": "2026-11-06T23:24:00Z",
+    "accept_mode_auto_row": null,
     "observe_admission": "inferred",
     "allowed": []
   }

@@ -88,7 +88,7 @@
       "target": ".agents/router-source.json",
       "kind": "file",
       "executable": false,
-      "sha256": "3c3f7160ce7a199cc6f758d0e787c384a70ef1ac3cbd27947c1e0849bf90241d"
+      "sha256": "76487b147ab44f396df837e31d597e9da8dc51430482c9c83bfc93026c97e14a"
     },
     {
       "source": "home/dot_claude/agents/express-explorer.md",
@@ -489,7 +489,7 @@
       "target": ".local/bin/common/intake-observe.py",
       "kind": "file",
       "executable": true,
-      "sha256": "553b1ed45384ca8ce1f4339af21d068745dd50b1a02c9351d2c54fd5130d419d"
+      "sha256": "ccee31491b0ca621e93aeeb18df9a1da1178fe0c76b97a0f55f9d522fd9844ce"
     },
     {
       "source": "home/dot_local/bin/common/executable_ledger-row.py",
@@ -629,7 +629,14 @@
       "target": ".local/bin/common/router-settings-apply",
       "kind": "file",
       "executable": true,
-      "sha256": "26fba9af7d9f8cf2de3f5f38073c4771498e286c50af331432a44f384848917b"
+      "sha256": "87df17ca88f6564d7bb10b255b812f752b5514e1f234759d8be2ff982eb5e6f6"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_router-settings-apply.py",
+      "target": ".local/bin/common/router-settings-apply.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "1ff907d64767f9f94dae1268a4bcfdfb6115bdc528bc0b1f46a9176719a653e5"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-login-preflight",
@@ -938,6 +945,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "router-settings-apply"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "router-settings-apply.py"
     },
     {
       "source": "home/dot_local/bin/common",

@@ -44,10 +44,13 @@ LEVERS = (
     "checkout-guard.sh",
     "router-gh",
     "router-settings-apply",
+    "router-settings-apply.py",
 )
 # The levers whose self-check is Python (hashlib and its own manifest read, no PATH tool): a sed or hash tool planted
-# on the caller's PATH is never consulted by them (brief-check.py, U104 round 3; router-settings-apply, U353).
-PYTHON_LEVERS = ("brief-check.py", "router-settings-apply")
+# on the caller's PATH is never consulted by them (brief-check.py, U104 round 3; router-settings-apply.py, the Python
+# body of the settings writer, U353, U465d: the entry `router-settings-apply` is bash since U465d and reads PATH's tools
+# like every shell lever).
+PYTHON_LEVERS = ("brief-check.py", "router-settings-apply.py")
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 
 
@@ -108,8 +111,8 @@ class LeverSelfCheckTest(unittest.TestCase):
     def test_a_rewritten_installed_lever_refuses_to_run(self):
         for name in LEVERS:
             with self.subTest(lever=name):
-                # The appended line is in the lever's own language, read from its interpreter line (router-settings-apply
-                # is Python without a `.py` suffix, U353d), so the self-check, not a parse error, is what refuses.
+                # The appended line is in the lever's own language, read from its interpreter line (the Python body
+                # router-settings-apply.py, U465d), so the self-check, not a parse error, is what refuses.
                 shebang = (self.bin / name).read_text().splitlines()[0]
                 with (self.bin / name).open("a") as lever:
                     lever.write('print("rewritten")\n' if "python" in shebang else "echo rewritten\n")
@@ -142,13 +145,13 @@ class LeverSelfCheckTest(unittest.TestCase):
 
         hcom-seat runs its self-check with PATH set to the system directories before any external command (U85
         round 4), so a producer planted on the caller's PATH is never consulted there and the check passes.
-        brief-check.py and router-settings-apply are Python (U104 round 3; U353, U353d): each hashes with hashlib and
-        reads the manifest itself, so it runs neither tool and a planted one is never consulted; each of
+        brief-check.py and router-settings-apply.py are Python (U104 round 3; U353, U353d, U465d): each hashes with
+        hashlib and reads the manifest itself, so it runs neither tool and a planted one is never consulted; each of
         brief-check.py's own reads is failed in `tests/unit/test_brief_check.py` (`InstalledBriefCheckTest`: manifest
         mode 000, a directory, no or two pin lines, HOME unset or missing, and the hash read of its own bytes: the copy
         on stdin so `<stdin>` is the path, and `builtins.open` raising in process, round 6), every one a refusal with
-        nothing on stdout; router-settings-apply's are the two tests below (U370) and, for the installed copy's altered
-        bytes, `tests/unit/test_router_settings_apply.py`'s.
+        nothing on stdout; router-settings-apply.py's are the two tests below (U370) and, for the installed copy's
+        altered bytes, `tests/unit/test_router_settings_apply.py`'s.
         """
         path_levers = [name for name in LEVERS if name != "hcom-seat" and name not in PYTHON_LEVERS]
         self.assertIn("router-gh", path_levers, "the gh wrapper's self-check reads sed and the hash tool from PATH")
@@ -168,27 +171,27 @@ class LeverSelfCheckTest(unittest.TestCase):
             self.assert_passed(self.run_lever(name, env=env))
 
     def test_router_settings_apply_refuses_a_manifest_it_cannot_read_and_runs_nothing_else(self):
-        """U370 (verdict U353-747995da P2 `:150`, standing order 21): the Python writer's manifest read fails closed under
+        """U370 (verdict U353-747995da P2 `:150`, standing order 21): the Python body's manifest read fails closed under
         a committed test. The deployed manifest of mode 000 is refused by name with exit 2 and nothing on stdout: the
-        lever's `--help` text, its first output once the self-check passes, never appears, so no argument was parsed
+        body's `--help` text, its first output once the self-check passes, never appears, so no argument was parsed
         and no request left. Root reads a mode 000 file, so the refusal cannot be forced there and the test skips."""
         if os.geteuid() == 0:
             self.skipTest("root reads a mode 000 manifest, so the unreadable-manifest refusal cannot be forced")
         manifest = self.home / ".agents/agent-config.yaml"
         manifest.chmod(0)
         self.addCleanup(manifest.chmod, 0o644)
-        run = self.run_lever("router-settings-apply", "--help")
+        run = self.run_lever("router-settings-apply.py", "--help")
         self.assert_refused(run, f"manifest unreadable: {manifest}")
         self.assertEqual("", run.stdout, "nothing else ran")
 
     def test_router_settings_apply_refuses_when_its_own_bytes_cannot_be_read_for_hashing(self):
-        """U370 (the same P2): the writer's read of its own file fails closed under a committed test. The lever hashes
+        """U370 (the same P2): the body's read of its own file fails closed under a committed test. The body hashes
         `<physical directory of __file__>/<basename of __file__>`; the installed copy run on stdin from the installed
         directory (brief-check.py's form, `tests/unit/test_brief_check.py` round 6) names `<install dir>/<stdin>`, and
         the test plants there what makes that one read fail: a directory, a file of mode 000 (not as root), and no
         entry. The manifest and the pin are read first and pass; the refusal names the self file, exit 2, nothing on
         stdout, so no argument was parsed and no request left."""
-        copy = self.bin / "router-settings-apply"
+        copy = self.bin / "router-settings-apply.py"
         self_path = self.bin / "<stdin>"
         cases = [("a directory", self_path.mkdir, self_path.rmdir), ("absent", None, None)]
         if os.geteuid() != 0:

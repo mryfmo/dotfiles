@@ -900,7 +900,13 @@ claude:
   # and the gh wrapper the Router's Source names as its cli (GH_CONFIG_DIR under
   # $DSH_HOME/router-credentials, the router role's one read grant beyond the
   # dsh row's; the login inside it is the operator's step). Both installed and
-  # pinned the same way.
+  # pinned the same way. Since U465d the writer is two pinned files, as acp-broker
+  # and acp-relay.py are: router-settings-apply is a bash entry that sources
+  # regime-env, resolves the program store by the shell levers' store_resolve
+  # (a linked worktree and a same-slug checkout refused) and names the Source
+  # rendering beside this file; router-settings-apply.py is the Python body it
+  # runs with both as given paths, pinned here and checked by the entry before
+  # it runs (and by itself), never run by a policy rule.
   # regime-store-move (U221, store move 5 of 5; read-only since U221d) judges
   # whether a program's live store may move out of the main checkout to the
   # derived store root and prints the operator's procedure, the copy included;
@@ -942,8 +948,9 @@ claude:
       acp-seat: 7b8f5c930f0b5d16702cb8e3a392047c522a7aaaac12ee28b089be9a80c25fa9
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431
       seat-settings-render.sh: 9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50
-      intake-observe.py: 553b1ed45384ca8ce1f4339af21d068745dd50b1a02c9351d2c54fd5130d419d
-      router-settings-apply: 26fba9af7d9f8cf2de3f5f38073c4771498e286c50af331432a44f384848917b
+      intake-observe.py: ccee31491b0ca621e93aeeb18df9a1da1178fe0c76b97a0f55f9d522fd9844ce
+      router-settings-apply: 87df17ca88f6564d7bb10b255b812f752b5514e1f234759d8be2ff982eb5e6f6
+      router-settings-apply.py: 1ff907d64767f9f94dae1268a4bcfdfb6115bdc528bc0b1f46a9176719a653e5
       router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
@@ -1467,9 +1474,11 @@ assets:
       is the decisions.tsv row that set the mode, and auto needs accept_mode_auto_row as well (the two row
       timestamps M-18 defines, distinct; router-settings-apply admits auto by that row and by the row's presence in
       the program store's decisions.tsv as a phase M-18 row whose decision begins `accept rung auto for
-      <repository>`, U465, U465b, U465c). The row reaches the lever as the generator's rendering
+      <repository>`, U465, U465b, U465c; the store is the one the shell levers read, resolved by the lever's bash
+      entry through regime-env and store_resolve, U465d). The row reaches the lever as the generator's rendering
       home/dot_agents/router-source.json (deployed beside this file; U465c: the lever parses no YAML, and the
-      generator refuses a key named twice in any spelling). allowed is the Source's identity set
+      generator refuses a key named twice in any spelling; U465d: every field is rendered, the defaults applied
+      once in the generator, observe_admission defaulting to upstream's ignore). allowed is the Source's identity set
       (policy.sources.github.allowed), written in auto alone. In observe mode with an empty list no accept path
       exists: a positive assessment is an ignore Decision marked would-accept (src/policy.ts:57, reason code observed).
     install_path: ~/.dsh/plugins/dsh-superagent

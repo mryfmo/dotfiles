@@ -1,5 +1,6 @@
-"""scripts/orchestrator/router-settings-apply against a fake Management API on a loopback port, and the `gh` wrapper
-scripts/orchestrator/router-gh the Router's `cli` names (regime-cutover U353, M-26 stage B).
+"""scripts/orchestrator/router-settings-apply (the bash entry: the program store by the shell levers' rule, U465d) and
+scripts/orchestrator/router-settings-apply.py (its Python body) against a fake Management API on a loopback port, and
+the `gh` wrapper scripts/orchestrator/router-gh the Router's `cli` names (regime-cutover U353, M-26 stage B).
 
 The fake API speaks the grammar of the pinned dsh-superagent archive (8c32a9dc): `GET settings` answers the settings view
 (`src/app/views/settings.ts:23-41`: `blocks.eval`, `blocks.policy` and each Source with its `value` and `revision`), `PUT settings/<block>`
@@ -31,9 +32,17 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scratch git helpers of the test tree (dotted runs too)
+from scratch_git import git_init, quiet_git_env
+
+# The lever is two pinned files since U465d: the bash entry, which resolves the program store by the shell levers' one
+# rule (regime-env and store_resolve) and names the rendering beside the manifest, and the Python body it runs with
+# both as given paths.
 LEVER = ROOT / "scripts/orchestrator/router-settings-apply"
+BODY = ROOT / "scripts/orchestrator/router-settings-apply.py"
 WRAPPER = ROOT / "scripts/orchestrator/router-gh"
 INSTALLED = ROOT / "home/dot_local/bin/common/executable_router-settings-apply"
+INSTALLED_BODY = ROOT / "home/dot_local/bin/common/executable_router-settings-apply.py"
 INSTALLED_WRAPPER = ROOT / "home/dot_local/bin/common/executable_router-gh"
 # The agent account's token as the login writes it into `<root>/gh/hosts.yml`: built at runtime and named without the
 # word the secret scan's `generic-token` rule keys on, inside the grammar the wrapper admits ([A-Za-z0-9_]).
@@ -118,6 +127,8 @@ SECOND_RUNG = (
 )
 DECISIONS = "ts\tphase\tdecision\twhy\tevidence\tresult\n" + FIRST_RUNG + SECOND_RUNG
 REMOVE = object()  # source_json: the key is removed from the row
+# The body's refusal of a rendering missing a key (U465d): the generator renders every key, so the file is not its rendering.
+MISSING_KEY = "; the generator renders every key of the row, so this file is not its rendering"
 
 
 class FakeApi(http.server.ThreadingHTTPServer):
@@ -274,7 +285,8 @@ class ProxyRecorderHandler(socketserver.BaseRequestHandler):
 
 class RouterSettingsApplyTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.dir = Path(tempfile.mkdtemp(prefix="router-settings-apply-"))
+        # Physical: the body holds every path it is given component by component, and macOS's /var is a link.
+        self.dir = Path(os.path.realpath(tempfile.mkdtemp(prefix="router-settings-apply-")))
         self.addCleanup(shutil.rmtree, self.dir, True)
         self.api = FakeApi()
         self.thread = threading.Thread(target=self.api.serve_forever, daemon=True)
@@ -288,18 +300,32 @@ class RouterSettingsApplyTest(unittest.TestCase):
         )
         self.env = {"PATH": os.environ["PATH"], "HOME": str(self.dir / "home"), "LC_ALL": "C"}
         (self.dir / "home").mkdir()
-        # The checkout the lever runs in (README: a lever runs with the checkout root as the working directory) and
-        # the program store in its checkout form, holding the ladder's two rows (U465b); physical, as the lever reads it.
-        self.checkout = Path(os.path.realpath(self.dir)) / "checkout"
+        # The checkout and the program store in its checkout form, holding the ladder's two rows (U465b); the body takes
+        # the store as a given path (U465d: the bash entry resolves it), so the tests pass `self.store` to it.
+        self.checkout = self.dir / "checkout"
         (self.checkout / ".git").mkdir(parents=True)
-        self.decisions = self.checkout / ".orchestration/orchestrate/regime-cutover/decisions.tsv"
-        self.decisions.parent.mkdir(parents=True)
+        self.store = self.checkout / ".orchestration/orchestrate/regime-cutover"
+        self.decisions = self.store / "decisions.tsv"
+        self.store.mkdir(parents=True)
         self.decisions.write_text(DECISIONS)
 
     def run_lever(
-        self, *args: str, lever: Path = LEVER, env: dict | None = None, cwd: Path | None = None
+        self, *args: str, lever: Path = BODY, env: dict | None = None, cwd: Path | None = None
     ) -> subprocess.CompletedProcess:
-        argv = [sys.executable, "-I", str(lever), "--profile", str(self.profile), *args]
+        """The Python body with the entry's two paths given (U465d): the scratch store and the committed rendering, a
+        later `--source` or `--store` in `args` winning as argparse's last value."""
+        argv = [
+            sys.executable,
+            "-I",
+            str(lever),
+            "--store",
+            str(self.store),
+            "--source",
+            str(SOURCE),
+            "--profile",
+            str(self.profile),
+            *args,
+        ]
         return subprocess.run(
             argv,
             capture_output=True,
@@ -596,7 +622,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertIn("policy unchanged (revision 2)\n", run.stdout)
         label = f"{LABEL}.allowed"
         cases = {
-            "no-list": (self.auto_source("no-list", AUTO_ROW, allowed=REMOVE), f"the rendered Source row {{path}} names no {label}"),
+            "no-list": (self.auto_source("no-list", AUTO_ROW, allowed=REMOVE), f"the rendered Source row {{path}} names no {label}{MISSING_KEY}"),
             "a-word": (
                 self.auto_source("a-word", AUTO_ROW, allowed="someone"),
                 f"{label} in {{path}} is not a list of sender ids: 'someone'",
@@ -645,6 +671,8 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(
             run.stdout,
             f"dry run: nothing is read from or written to the Management API at 127.0.0.1:{self.api.port}\n"
+            f"store {self.store}\n"
+            f"source {SOURCE}\n"
             "eval.mode observe\n"
             "allowed []\n"
             "admission.pulls.unlistedUnaddressed inferred\n"
@@ -665,13 +693,11 @@ class RouterSettingsApplyTest(unittest.TestCase):
 
     def test_the_auto_row_must_be_a_ladder_row_of_the_stores_decisions_and_an_unreadable_store_refuses(self):
         """U465b test (a) (verdict U465-4ae6f8c0 P1 `:319`): `accept_mode_auto_row` names a row the operator wrote in the
-        program store's decisions.tsv, so the lever reads that file (the store by the two-form rule the levers share:
-        the derived `<physical HOME>/.local/state/regime-store/<slug>/regime-cutover` when it exists, else the working
-        directory's checkout `.orchestration/orchestrate/regime-cutover`) and admits `auto` only when a row whose `ts`
-        cell is exactly the rendering's exists, is of phase M-18 and begins its decision with the auto marker
-        (U465c). A fabricated timestamp, a row of another phase or whose decision does not begin with the marker, two
-        rows, a file without the header, the first rung's own row, a store that cannot be read, an absent store, a
-        decisions file that is a link or no regular file, and a working directory outside a checkout are each one
+        program store's decisions.tsv, so the body reads that file (the store the entry gave it as `--store`, U465d) and
+        admits `auto` only when a row whose `ts` cell is exactly the rendering's exists, is of phase M-18 and begins
+        its decision with the auto marker (U465c). A fabricated timestamp, a row of another phase or whose decision
+        does not begin with the marker, two rows, a file without the header, the first rung's own row, a store that
+        cannot be read, an absent decisions file, and a decisions file that is a link or no regular file are each one
         refusal naming the row and the file, exit 2, before any request."""
         self.api.signed_out = False
         existing = self.auto_source("existing", AUTO_ROW)
@@ -770,38 +796,6 @@ class RouterSettingsApplyTest(unittest.TestCase):
         run = self.run_lever("--dry-run", "--source", str(existing))
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertTrue(run.stderr.startswith(unreadable), run.stderr)
-        # The two-form rule: the derived store, when it exists, is the one read, and the checkout's is not looked at.
-        derived = Path(os.path.realpath(self.dir / "home")) / ".local/state/regime-store/checkout/regime-cutover"
-        shutil.rmtree(self.checkout / ".orchestration")
-        run = self.run_lever("--dry-run", "--source", str(existing))
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertEqual(
-            run.stderr,
-            f"router-settings-apply: {self.checkout}/.orchestration is not a directory of this user (a symlink or a "
-            f"missing store); no derived store {derived} exists, so the checkout's own store is the one read\n",
-        )
-        derived.mkdir(parents=True)
-        (derived / "decisions.tsv").write_text(DECISIONS)
-        run = self.run_lever("--dry-run", "--source", str(existing))
-        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
-        self.assertIn("eval.mode auto\n", run.stdout)
-        elsewhere = self.dir / "elsewhere"
-        shutil.move(derived, elsewhere)
-        derived.symlink_to(elsewhere)
-        run = self.run_lever("--dry-run", "--source", str(existing))
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertEqual(
-            run.stderr,
-            f"router-settings-apply: {derived} is a symbolic link; the derived program store {derived} is reached from "
-            "the physical HOME through real directories of this user alone, and nothing is read through a link\n",
-        )
-        run = self.run_lever("--dry-run", "--source", str(existing), cwd=self.dir)
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertEqual(
-            run.stderr,
-            f"router-settings-apply: the working directory {os.path.realpath(self.dir)} is inside no git checkout; this "
-            "lever runs with the checkout root as the working directory, where the program store is found\n",
-        )
         self.assertEqual(self.api.requests, [], "no refusal reached the API")
 
     def test_the_first_rungs_row_or_a_row_of_another_repository_named_as_the_auto_row_is_refused_by_its_grammar(self):
@@ -855,61 +849,6 @@ class RouterSettingsApplyTest(unittest.TestCase):
                     self.assertEqual(run.stderr, f"router-settings-apply: {expected}\n")
         self.assertEqual(self.api.requests, [], "a dry run makes no request")
 
-    def test_a_symbolic_link_in_a_parent_component_of_the_store_path_is_refused_naming_the_component(self):
-        """U465c test (c) (verdict U465-db9a5e94 P1 `:467`): the derived store was held at its leaf alone, so a link in a
-        parent component redirected the decisions read. Every component from the physical HOME down (`.local`,
-        `state`, `regime-store`, `<slug>`, `regime-cutover`) is `os.lstat`ed and refused by name when it is a link or
-        not a directory of this user (the ledger-row.py / pr-merge.sh form); the checkout form's three components the
-        same; the decisions file is a regular file of this user. A chain that ends before the derived store exists
-        falls back to the checkout's store, as store_resolve does."""
-        self.api.signed_out = False
-        existing = self.auto_source("existing", AUTO_ROW)
-        home = Path(os.path.realpath(self.dir / "home"))
-        derived = home / ".local/state/regime-store/checkout/regime-cutover"
-        elsewhere = self.dir / "elsewhere-state"
-        (elsewhere / "regime-store/checkout/regime-cutover").mkdir(parents=True)
-        (elsewhere / "regime-store/checkout/regime-cutover/decisions.tsv").write_text(DECISIONS)
-        (home / ".local").mkdir()
-        (home / ".local/state").symlink_to(elsewhere)
-        self.assertTrue((derived / "decisions.tsv").is_file(), "the store is reachable through the link")
-        run = self.run_lever("--dry-run", "--source", str(existing))
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertEqual(
-            run.stderr,
-            f"router-settings-apply: {home}/.local/state is a symbolic link; the derived program store {derived} is "
-            "reached from the physical HOME through real directories of this user alone, and nothing is read through a "
-            "link\n",
-        )
-        # A component that is a regular file is refused the same way, by name.
-        (home / ".local/state").unlink()
-        (home / ".local/state").write_text("")
-        run = self.run_lever("--dry-run", "--source", str(existing))
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertEqual(
-            run.stderr,
-            f"router-settings-apply: {home}/.local/state exists but is not a directory of this user; the derived program "
-            f"store {derived} is reached through directories of this user alone\n",
-        )
-        # A chain that ends (no regime-store under state) is no derived store: the checkout's own store is read.
-        (home / ".local/state").unlink()
-        (home / ".local/state").mkdir()
-        run = self.run_lever("--dry-run", "--source", str(existing))
-        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
-        self.assertIn("eval.mode auto\n", run.stdout)
-        # The checkout form's components are held the same way: a link at `orchestrate` is refused by name.
-        orchestrate = self.checkout / ".orchestration/orchestrate"
-        moved = self.dir / "elsewhere-orchestrate"
-        shutil.move(orchestrate, moved)
-        orchestrate.symlink_to(moved)
-        run = self.run_lever("--dry-run", "--source", str(existing))
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertEqual(
-            run.stderr,
-            f"router-settings-apply: {orchestrate} is not a directory of this user (a symlink or a missing store); no "
-            f"derived store {derived} exists, so the checkout's own store is the one read\n",
-        )
-        self.assertEqual(self.api.requests, [], "no refusal reached the API")
-
     def test_the_dry_run_with_the_auto_rendering_and_the_stores_auto_row_prints_auto_and_the_ids(self):
         """U465c test (d) (verdict U465-db9a5e94 P2): the orchestrator effect's selector. With a scratch store holding
         the auto row of the right grammar and a rendering at `auto` listing two ids, the dry run prints `eval.mode
@@ -922,6 +861,8 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(
             run.stdout,
             f"dry run: nothing is read from or written to the Management API at 127.0.0.1:{self.api.port}\n"
+            f"store {self.store}\n"
+            f"source {auto}\n"
             "eval.mode auto\n"
             'allowed ["someone", "other-one"]\n'
             "admission.pulls.unlistedUnaddressed inferred\n"
@@ -945,6 +886,120 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(self.api.requests, [], "no request before the row is proven")
         self.assertEqual(self.api.eval["mode"], "off", "nothing was written")
 
+    def test_b_the_body_refuses_without_store_or_source_and_a_linked_component_in_either_naming_it(self):
+        """U465d test (b) (verdicts/U465-e6a9a84f.md P1 [f3 s8] `:400` and P1 [f2 s8] `:457`; the mechanism-change row
+        of 2026-11-11T11:54:59Z, form remove): the Python body resolves no path. It takes `--store` (the program store
+        the bash entry resolved through regime-env and store_resolve) and `--source` (the rendering beside the
+        manifest) as given, refuses to run without either (argparse's refusal: exit 2, nothing on stdout, no request)
+        and holds each by ledger-row.py's rule before anything else: a clean absolute path whose every component is
+        `os.lstat`ed and no link (a link is refused naming the component), the store a directory of this user, the
+        rendering a regular file of this user. The dry run echoes both as `store <path>` and `source <path>`, and the
+        body's text holds no resolver: no checkout walk, no slug, no root derived from HOME."""
+        self.api.signed_out = False
+        run = self.run_lever("--dry-run")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(run.stdout.splitlines()[1:3], [f"store {self.store}", f"source {SOURCE}"])
+        base = [sys.executable, "-I", str(BODY), "--profile", str(self.profile), "--dry-run"]
+        for missing, given in (("--store", ["--source", str(SOURCE)]), ("--source", ["--store", str(self.store)])):
+            with self.subTest(missing=missing):
+                run = subprocess.run(
+                    base + given,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=120,
+                    env=self.env,
+                    cwd=self.checkout,
+                )
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"the following arguments are required: {missing}", run.stderr)
+        # A link in a parent component of the store: the store moved and a link left at `orchestrate`.
+        orchestrate = self.checkout / ".orchestration/orchestrate"
+        moved = self.dir / "elsewhere-orchestrate"
+        shutil.move(orchestrate, moved)
+        orchestrate.symlink_to(moved)
+        self.assertTrue(self.decisions.is_file(), "the store is reachable through the link")
+        for args in (("--dry-run",), ()):
+            with self.subTest(store="a linked component", args=args):
+                run = self.run_lever(*args)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(
+                    run.stderr,
+                    f"router-settings-apply: {orchestrate} is a symbolic link; the program store {self.store} is "
+                    "reached through real directories alone, and nothing is read through a link\n",
+                )
+        orchestrate.unlink()
+        shutil.move(moved, orchestrate)
+        # The store itself a link, a regular file, absent, or a relative path.
+        link = self.dir / "store-link"
+        link.symlink_to(self.store)
+        run = self.run_lever("--dry-run", "--store", str(link))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: {link} is a symbolic link; the program store {link} is reached through real "
+            "directories alone, and nothing is read through a link\n",
+        )
+        plain = self.dir / "store-file"
+        plain.write_text("")
+        run = self.run_lever("--dry-run", "--store", str(plain))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: {plain} is not a directory of this user; the program store is read only as one\n",
+        )
+        absent = self.dir / "absent-store"
+        run = self.run_lever("--dry-run", "--store", str(absent))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: {absent} could not be examined: No such file or directory; the program store "
+            f"{absent} is given as a path this lever can prove, or not at all\n",
+        )
+        relative = "checkout/.orchestration/orchestrate/regime-cutover"
+        run = self.run_lever("--dry-run", "--store", relative, cwd=self.dir)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: the program store {relative} is not a clean absolute path; the entry passes "
+            "physical paths\n",
+        )
+        # The rendering through a link in a parent component, a rendering that is itself a link, and a directory.
+        linked_agents = self.dir / "linked-agents"
+        linked_agents.symlink_to(SOURCE.parent)
+        through = linked_agents / SOURCE.name
+        self.assertTrue(through.is_file(), "the rendering is reachable through the link")
+        run = self.run_lever("--dry-run", "--source", str(through))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: {linked_agents} is a symbolic link; the rendered Source row {through} is reached "
+            "through real directories alone, and nothing is read through a link\n",
+        )
+        source_link = self.dir / "router-source.json"
+        source_link.symlink_to(SOURCE)
+        run = self.run_lever("--dry-run", "--source", str(source_link))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: {source_link} is a symbolic link; the rendered Source row {source_link} is "
+            "reached through real directories alone, and nothing is read through a link\n",
+        )
+        directory = self.dir / "a-directory"
+        directory.mkdir()
+        run = self.run_lever("--dry-run", "--source", str(directory))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: {directory} is not a regular file of this user; the rendered Source row is read "
+            "only as one\n",
+        )
+        self.assertEqual(self.api.requests, [], "no refusal reached the API")
+        self.assertEqual((self.api.eval, self.api.policy), (EVAL_DEFAULT, POLICY_DEFAULT), "nothing changed")
+        body = BODY.read_text()
+        for resolver in ("checkout_toplevel", "store_directory", "regime-store", "SLUG", "show-toplevel", "getcwd"):
+            self.assertNotIn(resolver, body, f"the body resolves no store of its own ({resolver}); the entry does")
+
     def test_a_rendering_naming_a_key_twice_is_refused_by_name_and_one_naming_each_key_once_is_read(self):
         """U465c test (a) (verdict U465-db9a5e94 P1 `:407`; U465b P1 `:279` before it): two rounds patched a hand-written
         reader of the manifest's Source row to agree with yaml (a repeated key, then a quoted and an unquoted key), so
@@ -959,7 +1014,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         data = json.loads(text)
         self.assertEqual({"generated_by", "source"}, set(data))
         self.assertEqual(
-            {"repository": REPOSITORY, "accept_mode": "observe", "accept_mode_row": LADDER_ROW, "observe_admission": "inferred", "allowed": []},
+            {"repository": REPOSITORY, "accept_mode": "observe", "accept_mode_row": LADDER_ROW, "accept_mode_auto_row": None, "observe_admission": "inferred", "allowed": []},
             data["source"],
             "the committed rendering is the manifest's observe row (the generator writes it; make render-check holds it)",
         )  # fmt: skip
@@ -1001,11 +1056,11 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual((self.api.eval, self.api.policy), (EVAL_DEFAULT, POLICY_DEFAULT), "nothing changed")
         # The lever's source holds no reader of the manifest's Source row: the only manifest it reads by hand is its
         # pin block (brief-check.py's form), and the one YAML parser of the kit is the generator's.
-        lever = LEVER.read_text()
+        body = BODY.read_text()
         for reader in ("block_scalars", "block_list", "repeated_key", "manifest_block", "SOURCE_KEYS", "import yaml"):
-            self.assertNotIn(reader, lever, f"the lever reads the Source row from the rendering alone, not by {reader}")
-        self.assertIn("object_pairs_hook", lever)
-        self.assertIn("router-source.json", lever)
+            self.assertNotIn(reader, body, f"the body reads the Source row from the rendering alone, not by {reader}")
+        self.assertIn("object_pairs_hook", body)
+        self.assertIn("router-source.json", LEVER.read_text(), "the entry names the rendering beside the manifest")
 
     def test_the_allowed_list_is_written_in_auto_alone_and_rendered_empty_in_off_and_observe(self):
         """U465b test (c) (verdict U465-4ae6f8c0 P1 `:516`): a listed login's mention is `explicit` and accepted in every
@@ -1059,7 +1114,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
             "auto-word": self.source_json("auto-word", observe_admission="auto"),
         }
         expected = {
-            "no-cell": f"the rendered Source row {{path}} names no {LABEL}.observe_admission",
+            "no-cell": f"the rendered Source row {{path}} names no {LABEL}.observe_admission{MISSING_KEY}",
             "explicit": f"{LABEL}.observe_admission 'explicit' in {{path}} is not inferred or ignore; "
             "the pulls row's unlistedUnaddressed cell takes those two words alone (explicit would accept an unlisted sender's pull request in observe mode)",
             "auto-word": f"{LABEL}.observe_admission 'auto' in {{path}} is not inferred or ignore; "
@@ -1164,13 +1219,15 @@ class RouterSettingsApplyTest(unittest.TestCase):
             "auto-no-row": self.source_json("auto-no-row", accept_mode="auto"),
             "no-mode": self.source_json("no-mode", accept_mode=REMOVE),
             "no-first-row": self.source_json("no-first-row", accept_mode_row=REMOVE),
+            "no-auto-row-key": self.source_json("no-auto-row-key", accept_mode_auto_row=REMOVE),
             "first-row-no-timestamp": self.source_json("first-row-no-timestamp", accept_mode_row="yesterday"),
             "bad-repository": self.source_json("bad-repository", repository="mryfmo"),
         }
         expected = {
             "auto-no-row": f"{LABEL}.accept_mode 'auto' in {{path}} needs accept_mode_auto_row (the M-18 ladder's second row timestamp) beside accept_mode_row; the mode stays observe until that row is written",
-            "no-mode": f"the rendered Source row {{path}} names no {LABEL}.accept_mode",
-            "no-first-row": f"the rendered Source row {{path}} names no {LABEL}.accept_mode_row",
+            "no-mode": f"the rendered Source row {{path}} names no {LABEL}.accept_mode{MISSING_KEY}",
+            "no-first-row": f"the rendered Source row {{path}} names no {LABEL}.accept_mode_row{MISSING_KEY}",
+            "no-auto-row-key": f"the rendered Source row {{path}} names no {LABEL}.accept_mode_auto_row{MISSING_KEY}",
             "first-row-no-timestamp": f"{LABEL}.accept_mode_row 'yesterday' in {{path}} is not a decisions.tsv timestamp (YYYY-MM-DDTHH:MM:SSZ)",
             "bad-repository": f"{LABEL}.repository 'mryfmo' in {{path}} is not owner/name",
         }  # fmt: skip
@@ -1184,8 +1241,11 @@ class RouterSettingsApplyTest(unittest.TestCase):
         # file, never a fallback to the manifest (the rule of every lever for a missing input, standing order 21).
         run = self.run_lever("--source", str(self.dir / "absent.json"))
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn(
-            f"router-settings-apply: the rendered Source row {self.dir / 'absent.json'} could not be read: ", run.stderr
+        # The body holds the path first (U465d): an absent rendering is refused by the hold, naming the component.
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: {self.dir / 'absent.json'} could not be examined: No such file or directory; the "
+            f"rendered Source row {self.dir / 'absent.json'} is given as a path this lever can prove, or not at all\n",
         )
         # The profile refusals, each before any request.
         self.profile.write_text(PROFILE.read_text().replace("    port: 3082\n", ""))
@@ -1634,9 +1694,11 @@ class RouterSettingsApplyTest(unittest.TestCase):
                 self.assertIn("`GH_TOKEN`", prose)
 
     def test_the_installed_copies_are_the_checkout_bytes_the_pins_are_current_and_an_altered_copy_refuses(self):
-        # The lever and the wrapper are pinned like every lever (claude.levers.sha256): the chezmoi copy holds the same
-        # bytes, the pin is their sha256, and an installed copy whose bytes differ refuses (exit 2, nothing on stdout)
-        # before it reads or runs anything, naming the digest and the deployed manifest.
+        # The entry, the body and the wrapper are pinned like every lever (claude.levers.sha256): the chezmoi copy holds
+        # the same bytes, the pin is their sha256, and an installed copy whose bytes differ refuses (exit 2, nothing on
+        # stdout) before it reads or runs anything, naming the digest and the deployed manifest. The entry's copy stands
+        # alone under the scratch bin (no regime-env beside it), so past its own pin it refuses the missing helper by
+        # name; the self-check's refusal is the one asserted absent for a pinned copy.
         text = MANIFEST.read_text()
         home = self.dir / "installed"
         (home / ".local/bin/common").mkdir(parents=True)
@@ -1645,6 +1707,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         env = {**self.env, "HOME": str(home)}
         for name, source, installed in (
             ("router-settings-apply", LEVER, INSTALLED),
+            ("router-settings-apply.py", BODY, INSTALLED_BODY),
             ("router-gh", WRAPPER, INSTALLED_WRAPPER),
         ):
             with self.subTest(lever=name):
@@ -1659,15 +1722,15 @@ class RouterSettingsApplyTest(unittest.TestCase):
                 shutil.copy2(installed, copy_path)
                 argv = (
                     [sys.executable, "-I", str(copy_path), "--help"]
-                    if name.endswith("apply")
+                    if name.endswith(".py")
                     else [str(copy_path), "--version"]
                 )
                 run = subprocess.run(
                     argv, capture_output=True, text=True, check=False, env=env, timeout=60, cwd=self.dir
                 )
-                self.assertNotIn("refused:", run.stderr, "the pinned copy passes its self-check")
+                self.assertNotIn("refused: sha256", run.stderr, "the pinned copy passes its self-check")
                 with copy_path.open("a") as handle:
-                    handle.write('print("rewritten")\n' if name.endswith("apply") else "echo rewritten\n")
+                    handle.write('print("rewritten")\n' if name.endswith(".py") else "echo rewritten\n")
                 altered = hashlib.sha256(copy_path.read_bytes()).hexdigest()
                 run = subprocess.run(
                     argv, capture_output=True, text=True, check=False, env=env, timeout=60, cwd=self.dir
@@ -1680,6 +1743,123 @@ class RouterSettingsApplyTest(unittest.TestCase):
         # The credential root itself is not made by either lever: nothing under the scratch HOME beyond the layout.
         self.assertEqual(sorted(p.name for p in home.iterdir()), [".agents", ".local"])
         self.assertEqual(stat.S_IMODE((home / ".local/bin/common/router-gh").stat().st_mode) & 0o100, 0o100)
+
+
+class RouterSettingsApplyEntryTest(unittest.TestCase):
+    """The bash entry (U465d): the program store by the shell levers' one rule, the body run with the paths given."""
+
+    def setUp(self) -> None:
+        self.root = Path(os.path.realpath(tempfile.mkdtemp(prefix="router-settings-apply-entry-")))
+        self.addCleanup(shutil.rmtree, self.root, True)
+        self.home = self.root / "home"
+        self.home.mkdir()
+        gitconfig = self.root / "gitconfig"
+        gitconfig.write_text("[user]\n\tname = t\n\temail = t@example.invalid\n[init]\n\tdefaultBranch = main\n")
+        self.env = quiet_git_env(
+            {
+                "PATH": os.environ["PATH"],
+                "HOME": str(self.home),
+                "LC_ALL": "C",
+                "GIT_CONFIG_GLOBAL": str(gitconfig),
+                "GIT_CONFIG_NOSYSTEM": "1",
+            }
+        )
+        # The main checkout, basename `checkout` (the slug regime-env derives), with the program store in its checkout
+        # form; the derived store under the scratch HOME is absent until a test makes it.
+        self.checkout = self.root / "repos/checkout"
+        self.checkout.parent.mkdir()
+        git_init(self.checkout, env=self.env)
+        self.git("commit", "-q", "--allow-empty", "-m", "initial")
+        self.store = self.checkout / ".orchestration/orchestrate/regime-cutover"
+        self.store.mkdir(parents=True)
+        (self.store / "decisions.tsv").write_text(DECISIONS)
+        self.profile = self.root / "cordis.patch.yml"
+        self.profile.write_text(PROFILE.read_text())
+
+    def git(self, *args: str, cwd: Path | None = None) -> str:
+        return subprocess.run(
+            ["git", *args], cwd=cwd or self.checkout, env=self.env, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    def run_entry(self, *args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
+        """The entry as the coordinator runs it, in a dry run: no Management API is reached, so the profile's port is
+        the committed one."""
+        return subprocess.run(
+            [str(LEVER), "--profile", str(self.profile), "--dry-run", *args],
+            cwd=cwd or self.checkout,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+
+    def test_a_the_entry_resolves_the_store_by_the_shared_shell_rule_and_refuses_a_linked_worktree_and_a_same_slug_checkout(
+        self,
+    ):
+        """U465d test (a) (verdicts/U465-e6a9a84f.md P1 [f3 s8] `:400` and P1 [f2 s8] `:457`): the Python lever read a
+        linked worktree's decisions.tsv where the shell levers read the main checkout's, and another same-slug
+        checkout's derived store where regime-env refuses the mismatched origin. The one rule lives in the shell: the
+        entry sources the pinned regime-env (the slug, the store root, the hcom store's origin binding) and resolves
+        the store by store_resolve (the derived store when it exists, else the checkout's `.orchestration/orchestrate/
+        regime-cutover`), refuses a linked worktree before anything else, and runs the pinned body with `--store` and
+        `--source` (the rendering beside the manifest), which the body echoes in its dry run. A caller's own `--store`
+        or `--source` is refused: the entry owns both paths."""
+        rendering = ROOT / "home/dot_agents/router-source.json"
+        run = self.run_entry()
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertEqual(
+            run.stderr, f"router-settings-apply: store: checkout {self.store} (pre-move form, removed by U221)\n"
+        )
+        self.assertEqual(
+            run.stdout.splitlines()[1:5],
+            [f"store {self.store}", f"source {rendering}", "eval.mode observe", "allowed []"],
+        )
+        # The derived store, when it exists, is the one named (store_resolve's first form), the checkout's not looked at.
+        derived = self.home / ".local/state/regime-store/checkout/regime-cutover"
+        derived.mkdir(parents=True)
+        (derived / "decisions.tsv").write_text(DECISIONS)
+        run = self.run_entry()
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertEqual(run.stderr, f"router-settings-apply: store: derived {derived}\n")
+        self.assertIn(f"store {derived}\n", run.stdout)
+        # A linked worktree as the working directory is refused before any store is resolved (the shell levers' rule).
+        linked = self.root / "linked"
+        self.git("worktree", "add", "-q", "--detach", str(linked))
+        run = self.run_entry(cwd=linked)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("refused: a linked worktree", run.stderr)
+        self.assertIn(str(linked), run.stderr)
+        self.assertNotIn("store:", run.stderr, "no store was resolved")
+        # A second checkout of the same slug is refused by the hcom store's origin binding (regime-env), while the
+        # bound checkout still resolves.
+        other = self.root / "elsewhere/checkout"
+        other.parent.mkdir()
+        git_init(other, env=self.env)
+        self.git("commit", "-q", "--allow-empty", "-m", "initial", cwd=other)
+        origin = self.home / ".local/state/hcom/checkout/origin"
+        origin.parent.mkdir(parents=True)
+        origin.write_text(f"{self.checkout}\n")
+        run = self.run_entry(cwd=other)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(
+            f"router-settings-apply: refused: the store {origin.parent} belongs to {self.checkout}, not {other} "
+            "(same slug checkout)",
+            run.stderr,
+        )
+        run = self.run_entry()
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertIn(f"store {derived}\n", run.stdout)
+        # Outside a checkout, and a caller's own --store or --source, each refused by the entry before the body runs.
+        run = self.run_entry(cwd=self.root)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("run from the repository checkout that holds the program store", run.stderr)
+        for option in ("--store", "--store=/x", "--source", "--source=/x"):
+            with self.subTest(option=option):
+                run = self.run_entry(option) if "=" in option else self.run_entry(option, "/x")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"refused: {option.split('=')[0]} is the entry's", run.stderr)
+                self.assertNotIn("store:", run.stderr, "refused before the store is resolved")
 
 
 if __name__ == "__main__":

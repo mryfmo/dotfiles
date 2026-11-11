@@ -11,22 +11,25 @@ its own and nothing else a row:
 - would-accept: the record observe mode leaves in place of an accept (upstream docs/002-authorization.md, "Accept
   mode and rules"): `src/policy.ts:57` returns `{ kind: 'ignore', audit: { ..., would_accept: true, proposal },
   reason: { code: 'observed', ... } }` for a positive assessment of an inferred candidate outside `auto`. The row is
-  `ts \\t intake-observe \\t github-source would-accept: <thread label> trigger=<ids> rules=<rule ids> \\t <reason text>
-  \\t <decision id> \\t -`. A Decision is this kind when its `kind` is `ignore`, its `audit.would_accept` is `true`
-  and one of its reasons carries the code `observed`.
+  `ts \\t intake-observe \\t <source>-source would-accept: <thread label> trigger=<ids> rules=<rule ids> \\t <reason
+  text> \\t <decision id> \\t -`. A Decision is this kind when its `kind` is `ignore`, its `audit.would_accept` is
+  `true` and one of its reasons carries the code `observed`.
 - accept: `kind: 'accept'` (`src/policy.ts:59`, recorded by `src/core/evals.ts:313` with the reason, the rule ids
-  the matches named, the audit and the ticket it started). The row is `github-source accept: <thread label>
+  the matches named, the audit and the ticket it started). The row is `<source>-source accept: <thread label>
   trigger=<ids> rules=<rule ids>[ ticket=<ticket id>] \\t <reason text> \\t <decision id> \\t -`; the rule ids are the
   Decision's `rules`, else the `rule_id`s of `audit.matches`.
 - refusal: an ignore Decision whose reasons carry a gate refusal code with the refused trigger's id
   (`src/core/evals.ts:97-103`, one Decision per batch, one reason per refused trigger): `not_a_member` (the sender is
   not on the Source's allowed list, `src/policy.ts:210`) or `not_human` (a bot, CI or the agent itself,
-  `src/policy.ts:173-175`). One row per such reason: `github-source refusal <code>: <thread label> login=<login>
+  `src/policy.ts:173-175`). One row per such reason: `<source>-source refusal <code>: <thread label> login=<login>
   \\t <reason text> \\t <decision id> \\t -`, the login the `actor.id` of the trigger row the reason names (the
   `trigger` table, `src/app/store.ts:72`; `unknown` when that row is gone). The gate's other codes
   (`admission_ignored`, `no_mention`) and every other ignore (`noRuleMatched`, `directionUnsettled`, a stop, a
   policy change) are not rows.
 
+`<source>` is the Decision's own Source, read from its `threadKey` (`<source>:<id>`, `src/core/model.ts`: `github:12`,
+`discord:guild/42`), so a Decision of another Source is recorded under its own word and never as GitHub's (U465d,
+verdict U465-e6a9a84f P2 `:240`); a key without the `<source>:` prefix is recorded as `unknown`, never guessed.
 The Store saves a Decision as JSON in the `value` column of the `decision` table (`src/app/store.ts:76`, `CREATE
 TABLE IF NOT EXISTS decision (id TEXT PRIMARY KEY, thread TEXT NOT NULL, value TEXT NOT NULL)`; the save at `:245`).
 The thread label is the Thread's `meta.label` when its Source set one, else the thread key; the reason text is the
@@ -73,6 +76,9 @@ WOULD_ACCEPT_CODE = "observed"
 # on the Source's allowed list, or is no human (a bot, CI, the agent itself). The gate's other two codes
 # (admission_ignored, no_mention) and every other ignore are not rows: the allowlist is these two words.
 REFUSAL_CODES = ("not_a_member", "not_human")
+# The Source word of a Decision's threadKey (`<source>:<id>`), the grammar of an upstream Source id (U465d); a key
+# outside it is recorded under `unknown`.
+SOURCE_WORD = re.compile(r"[a-z0-9][a-z0-9_-]*")
 WOULD_ACCEPT, ACCEPT, REFUSAL, ALL = "would-accept", "accept", "refusal", "all"
 KINDS = (WOULD_ACCEPT, ACCEPT, REFUSAL, ALL)
 # rounds-check.py DECISIONS_HEADER, joined by tabs: the first line of a table this lever creates.
@@ -282,6 +288,15 @@ def read_decisions(database: str) -> tuple[dict[str, dict], dict[str, dict], dic
         connection.close()
 
 
+def source_word(decision: dict) -> str:
+    """The Source a Decision belongs to, read from its `threadKey` (`<source>:<id>`, src/core/model.ts: `github:12`,
+    `discord:guild/42`; U465d, verdict U465-e6a9a84f P2 `:240`: every row said github-source, so another Source's
+    accept was recorded as GitHub's): the word before the first colon when it is `[a-z0-9][a-z0-9_-]*`, else
+    `unknown`, never a guess."""
+    word, separator, _ = str(decision.get("threadKey", "")).partition(":")
+    return word if separator and SOURCE_WORD.fullmatch(word) else "unknown"
+
+
 def thread_label(decision: dict, threads: dict[str, dict]) -> str:
     key = str(decision.get("threadKey", ""))
     thread = threads.get(key, {})
@@ -299,6 +314,7 @@ def ladder_rows(
     if kind is None:
         return []
     label = thread_label(decision, threads)
+    source = source_word(decision)
 
     def row(text: str, why: str) -> str:
         return "\t".join([now, LEVER, flat(text), flat(why), flat(decision_id), "-"])
@@ -308,7 +324,7 @@ def ladder_rows(
             (
                 REFUSAL,
                 row(
-                    f"github-source refusal {reason['code']}: {label} "
+                    f"{source}-source refusal {reason['code']}: {label} "
                     f"login={logins.get(str(reason.get('triggerId', '')), 'unknown')}",
                     reason_text(reason),
                 ),
@@ -323,7 +339,7 @@ def ladder_rows(
         if isinstance(decision.get("rules"), list)
         else [str(match.get("rule_id")) for match in matches if isinstance(match, dict) and match.get("rule_id")]
     )
-    text = f"github-source {kind}: {label} trigger={','.join(str(item) for item in triggers)} rules={','.join(rules)}"
+    text = f"{source}-source {kind}: {label} trigger={','.join(str(item) for item in triggers)} rules={','.join(rules)}"
     if kind == ACCEPT and decision.get("ticketId"):
         text += f" ticket={decision['ticketId']}"
     return [(kind, row(text, reason_text(decision.get("reason"))))]

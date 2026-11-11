@@ -273,6 +273,7 @@ LEVERS = (
     "regime-store-move",
     "router-gh",
     "router-settings-apply",
+    "router-settings-apply.py",
     "seat-login-preflight",
     "seat-settings-render.sh",
     "worker-worktree.sh",

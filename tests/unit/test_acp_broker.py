@@ -2151,6 +2151,90 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 self.assertEqual(err, "", "nothing refused and nothing remained")
                 self.assert_broker_dir_stands_empty(sock)
 
+    def relay_pid_by_socket(self, sock):
+        """The relay's pid found by the socket path in its argv (`pgrep -f`): the relay alone names the socket, the
+        broker's argv names the Router and a connection names no socket; None when none or several run. For the
+        window where the broker has two children (the relay and an injected sleep), where relay_pid cannot tell."""
+        run = subprocess.run(["pgrep", "-f", str(sock)], capture_output=True, text=True, check=False)
+        pids = run.stdout.split()
+        return int(pids[0]) if len(pids) == 1 else None
+
+    def end_orphan(self, pid):
+        """End a relay a red run left behind (TERM, so it removes its socket; KILL when it stays), so the scratch is
+        removable and no process outlives the test."""
+        if pid is None or not self.alive(pid):
+            return
+        os.kill(pid, signal.SIGTERM)
+        deadline = time.monotonic() + 10
+        while self.alive(pid) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        if self.alive(pid):
+            os.kill(pid, signal.SIGKILL)
+
+    def test_a_signal_during_the_relays_fork_is_deferred_until_the_child_is_known_and_leaves_no_relay_and_no_socket(
+        self,
+    ):
+        """U447c (verdict U447-669dee44 P1 `acp-broker:1280`, class handler-window): bash runs a trap right after the
+        simple command the signal arrived in, so a HUP, INT or TERM between the relay's `&` and `child=$!` ran
+        broker_signal with `child` empty: nothing was signalled or waited for, broker_cleanup read the socket the
+        orphaned relay had bound as another broker's, and the broker exited 2 with the relay alive and the socket
+        standing. Bash cannot block a signal, so the window is closed by deferral: `forking=1` before the `&`, cleared
+        after `child=$!`; while it is set the handler records the signal and returns, and the recorded signal is
+        handled right after the flag is cleared, with the child known. Measured with a scratch copy of the lever
+        holding one `/bin/sleep 1` right after the relay's `&` line and before `child=$!` (the copy differs from the
+        source by that line alone, asserted with difflib; pinned in the scratch manifest): a HUP, INT or TERM to the
+        broker once that sleep runs as its child (the window; the relay runs free meanwhile, so the socket may or may
+        not exist at that instant) ends the broker by that signal with nothing on stderr, at most the readiness line
+        on stdout, no relay process left (found by the socket path in its argv) and the socket gone, the directory
+        standing empty. At 669dee44 the same copy of that head's lever exits 2 naming the standing socket, with the
+        relay alive: red."""
+        broker, _helper = self.scratch_checkout()
+        source = BROKER.read_text()
+        lines = source.splitlines(keepends=True)
+        fork_tail = ' --connection "${seats_root}" "${router}" "${scratch}" &\n'
+        at = [i for i, line in enumerate(lines) if line.endswith(fork_tail)]
+        self.assertEqual(len(at), 1, f"the one line the sleep follows: the relay's fork, ending {fork_tail!r}")
+        self.assertEqual(lines[at[0] + 1].strip(), "child=$!", "the sleep sits before `child=$!`")
+        injected = lines[at[0] + 1][: len(lines[at[0] + 1]) - len(lines[at[0] + 1].lstrip())] + "/bin/sleep 1\n"
+        lines.insert(at[0] + 1, injected)
+        broker.write_text("".join(lines))
+        changed = [
+            line
+            for line in difflib.unified_diff(source.splitlines(), broker.read_text().splitlines(), lineterm="", n=0)
+            if line[:1] in "+-" and line[:3] not in ("+++", "---")
+        ]
+        self.assertEqual(changed, ["+" + injected.rstrip("\n")], "the copy differs from the source by that one line")
+        self.pin_lever(broker, broker)
+        for n, sig in enumerate((signal.SIGHUP, signal.SIGINT, signal.SIGTERM), start=1):
+            with self.subTest(signal=sig.name):
+                name, cwd = self.make_router(f"router-20261111-00003{n}-1")
+                proc, sock = self.launch_broker(name, cwd, broker=broker)
+                self.wait_for(
+                    lambda: self.sleeping_child(proc.pid) or proc.poll() is not None,
+                    "the injected sleep under the broker, between the relay's fork and `child=$!`",
+                    seconds=60,
+                )
+                if proc.poll() is not None:
+                    out, err = proc.communicate()
+                    self.fail(f"the broker ended before the fork window: {proc.returncode} {out!r} {err!r}")
+                relay = self.relay_pid_by_socket(sock)
+                self.addCleanup(self.end_orphan, relay)
+                self.assertIsNotNone(relay, "the relay runs under the broker during the window")
+                proc.send_signal(sig)
+                self.wait_for(lambda: proc.poll() is not None, "the broker's end by the signal", seconds=60)
+                # The relay's state at the broker's end is the observable; an orphan (a red run) holds the broker's
+                # stdout pipe open, so it is ended before the pipe is read to EOF, and the socket it stood on is noted.
+                orphaned, socket_stood = self.alive(relay), sock.exists()
+                self.end_orphan(relay)
+                status, out, err = self.stop_broker(proc, sig)
+                self.assertEqual(status, -sig, err)
+                self.assertEqual(err, "", "nothing refused and nothing remained")
+                self.assertIn(out, ("", f"acp-broker: listening on {sock}\n"), "at most the readiness line")
+                self.assertFalse(orphaned, f"the relay {relay} ended with the broker, not orphaned")
+                self.assertFalse(socket_stood, "the socket is gone at the broker's end")
+                self.assertIsNone(self.relay_pid_by_socket(sock), "no process names the socket any more")
+                self.assert_broker_dir_stands_empty(sock)
+
     def test_a_readiness_fragment_without_a_newline_fails_start_broker_by_its_deadline_rather_than_hanging(self):
         """U447b (verdict U447-a52a1452 P2 `test_acp_broker.py:366`): at a52a1452 start_broker waited with `select`
         and then `readline`, so a fragment without a newline satisfied the select and the readline blocked past the

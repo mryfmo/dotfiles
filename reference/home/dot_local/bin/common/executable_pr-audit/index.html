@@ -6092,7 +6092,7 @@
 <span class="c1"># before the first line runs) and reads no BASH_ENV, SHELLOPTS, BASHOPTS, CDPATH or GLOBIGNORE. Measured on macOS's</span>
 <span class="c1"># /bin/bash 3.2.57 and Ubuntu's /bin/bash 5.2.21: with `-p` an exported `jobs` stays the builtin, without it the</span>
 <span class="c1"># function wins. The decision has to be made by the shebang: any check or re-exec written in the script runs in a shell</span>
-<span class="c1"># that has already imported the functions, and the builtins it would use (exec, compgen, unset) can be among them.</span>
+<span class="c1"># that has already imported the functions, and the builtins it would use (exec, unset) can be among them.</span>
 <span class="c1"># A run without `-p` (`bash pr-audit.sh` by hand) is refused; its caller already chose the shell.</span>
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$-</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*p*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"pr-audit.sh: refused: run it by its path (its interpreter is /bin/bash -p), not through another shell"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
@@ -6102,26 +6102,32 @@
 
 <span class="c1"># The environment is cleaned before any external command runs, the self-check's hash tools included (U71b audit round</span>
 <span class="c1"># 17: the `shasum` fallback is a perl script, and a caller's PERL5OPT ran its code before the clean-up). Every statement</span>
-<span class="c1"># up to here and in this block is a shell builtin. No git variable of the caller reaches any git this lever runs (U71b</span>
-<span class="c1"># audit round 7: an inherited GIT_GRAFT_FILE rewrote the ancestry, so merge-base(main, head) was the head and the</span>
-<span class="c1"># audited range was empty); rather than name the variables a tool reads (a list that misses the next one), every</span>
-<span class="c1"># exported `GIT_*`, `PERL*` (PERL5OPT, PERL5LIB, PERL5DB and the rest load code into every perl: `shasum`, the bounded</span>
-<span class="c1"># gh and git calls, the path resolution) and `PYTHON*` name is removed (the codex supervisor's python runs isolated,</span>
-<span class="c1"># `-I -S`, as well). A failed listing or removal refuses. Then only the lever's own are set: no replace objects, no</span>
-<span class="c1"># terminal prompt. The checkout is named from the cwd alone, and the audited repository is created fresh with no</span>
-<span class="c1"># template, so it holds no grafts file (checked before its first read, below) and no refs but the two it fetches.</span>
-<span class="nv">git_names</span><span class="o">=</span><span class="k">$(</span><span class="nb">compgen</span><span class="w"> </span>-e<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"pr-audit.sh: refused: cannot list the environment to remove the caller's GIT_*, PERL* and PYTHON* variables"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
-<span class="o">}</span>
-<span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>git_name<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">git_name</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>GIT_*<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="si">${</span><span class="nv">git_name</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>PERL*<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="si">${</span><span class="nv">git_name</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>PYTHON*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="c1"># up to here and in this block is a reserved word, a parameter expansion or a shell builtin, and none runs a listing</span>
+<span class="c1"># command or opens a file. No git variable of the caller reaches any git this lever runs (U71b audit round 7: an</span>
+<span class="c1"># inherited GIT_GRAFT_FILE rewrote the ancestry, so merge-base(main, head) was the head and the audited range was</span>
+<span class="c1"># empty); rather than name the variables a tool reads (a list that misses the next one), every `GIT_*`, `PERL*`</span>
+<span class="c1"># (PERL5OPT, PERL5LIB, PERL5DB and the rest load code into every perl: `shasum`, the bounded gh and git calls, the path</span>
+<span class="c1"># resolution) and `PYTHON*` name is removed (the codex supervisor's python runs isolated, `-I -S`, as well). The names</span>
+<span class="c1"># come from the prefix expansions `${!GIT_@}`, `${!PERL@}` and `${!PYTHON@}` (regime-cutover U474, verdict</span>
+<span class="c1"># U465-59601417 P1 `:71`, the same form here: the earlier loop read `compgen -e` through a here-string, which bash</span>
+<span class="c1"># backs with a temporary file, made by /bin/bash 3.2.57 under /tmp, else under the working directory, never under</span>
+<span class="c1"># TMPDIR; with both denied the redirection failed and `set -e` skipped the loop with no refusal, so the caller's</span>
+<span class="c1"># variables survived into the self-check's shasum; measured with sandbox-exec, the expansions name every variable and</span>
+<span class="c1"># the loop runs). A removal that fails refuses, and a second expansion refuses a leftover. Then only the lever's own</span>
+<span class="c1"># are set: no replace objects, no terminal prompt. The checkout is named from the cwd alone, and the audited</span>
+<span class="c1"># repository is created fresh with no template, so it holds no grafts file (checked before its first read, below) and</span>
+<span class="c1"># no refs but the two it fetches.</span>
+<span class="k">for</span><span class="w"> </span>git_name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!GIT_@</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!PERL@</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!PYTHON@</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">    </span><span class="nb">unset</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">git_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"pr-audit.sh: refused: cannot remove the caller's </span><span class="si">${</span><span class="nv">git_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="o">}</span>
-<span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">git_names</span><span class="si">}</span><span class="s2">"</span>
-<span class="nb">unset</span><span class="w"> </span>git_names<span class="w"> </span>git_name
+<span class="k">done</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!GIT_@</span><span class="si">}${</span><span class="p">!PERL@</span><span class="si">}${</span><span class="p">!PYTHON@</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"pr-audit.sh: refused: a GIT_*, PERL* or PYTHON* variable is still set after the scrub: </span><span class="si">${</span><span class="p">!GIT_@</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="p">!PERL@</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="p">!PYTHON@</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="k">fi</span>
+<span class="nb">unset</span><span class="w"> </span>git_name
 <span class="nb">export</span><span class="w"> </span><span class="nv">GIT_NO_REPLACE_OBJECTS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">GIT_TERMINAL_PROMPT</span><span class="o">=</span><span class="m">0</span>
 
 <span class="c1"># @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):</span>

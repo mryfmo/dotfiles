@@ -19,6 +19,9 @@ sends TERM here the moment its own signal arrives, and a TERM between the bind a
 this process by the default disposition with the socket bound, which the broker then read as another broker's), so
 a signal at any instant after the pin check ends this process through that one path: during the bind or the listen
 it only sets the flag, no readiness line is printed, and the start-up ends through the stop with the socket removed.
+The flag's read and the readiness line are one step under the three signals blocked (regime-cutover U447b), so the
+line is printed only when no signal has been handled, and a signal sent meanwhile is delivered after the line and
+ends this process as any later one does; a line never follows the listener's closure.
 Exit 0 when the socket is gone, 2 when it remains or a refusal happened (every reason on stderr), and nothing else is
 written anywhere. The standard library alone, under `-I -S`: no site packages, no `PYTHON*` variable, no script
 directory on the path.
@@ -40,6 +43,8 @@ LEVERS_KEYS = ("claude", "levers", "sha256")
 CHUNK = 65536
 # A handler is given this long after SIGTERM to end its omp and remove its slot before the relay stops waiting.
 STOP_GRACE = 30.0
+# The signals that end the relay: handled from before the bind, blocked across the readiness line's print.
+STOP_SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
 
 
 def refuse(reason):
@@ -232,7 +237,7 @@ class Relay:
             refuse(f"cannot enter the broker directory {directory}: {exc}")
         # Armed before the socket exists (regime-cutover U447): from here a HUP, INT or TERM ends this process through
         # stop() and remove_socket(), whichever start-up step it lands in.
-        for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        for signum in STOP_SIGNALS:
             signal.signal(signum, self.on_signal)
         listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
@@ -248,9 +253,14 @@ class Relay:
             refuse(f"cannot listen on the broker socket {self.sock_path}: {exc}")
         self.listener = listener
         # The readiness line is the last start-up step and the one readiness sign (hcom-seat reads it through its
-        # FIFO, the test fixture from the broker's stdout): a signal that already arrived leaves no line.
+        # FIFO, the test fixture from the broker's stdout). The flag's read, the print and the flush are one step
+        # with the three signals blocked (regime-cutover U447b, verdict U447-a52a1452 P1): a signal that already
+        # arrived leaves no line, and one sent meanwhile is delivered at the unblock and ends this process as any
+        # post-readiness signal does, so a line never follows the listener's closure.
+        signal.pthread_sigmask(signal.SIG_BLOCK, STOP_SIGNALS)
         if not self.stopping:
             print(f"acp-broker: listening on {self.sock_path}", flush=True)
+        signal.pthread_sigmask(signal.SIG_UNBLOCK, STOP_SIGNALS)
         while not self.stopping:
             try:
                 conn, _ = self.listener.accept()

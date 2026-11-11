@@ -397,6 +397,18 @@ class DshRouterProfileTest(unittest.TestCase):
             lambda row: row.update(allowed=["someone", "Someone"]),
             f"{label} repeats 'Someone' (GitHub logins that differ by case alone are one login)",
         )
+        # U465b (verdict U465-4ae6f8c0 P1 `:516`): the list is written in auto alone; a listed login beside observe
+        # or off is a dormant grant (a listed login's mention is explicit in every mode) and the manifest is refused.
+        refused(
+            lambda row: row.update(allowed=["someone"]),
+            f"{label} names ['someone'] while accept_mode is 'observe'; the identity set is written in auto alone, so "
+            "the list is [] in off and observe",
+        )
+        refused(
+            lambda row: row.update(accept_mode="off", allowed=["someone"]),
+            f"{label} names ['someone'] while accept_mode is 'off'; the identity set is written in auto alone, so "
+            "the list is [] in off and observe",
+        )
         refused(lambda row: row.update(repository="dotfiles"), "repository 'dotfiles' is not owner/name")
         refused(
             lambda row: row.update(accept_mode_row="yesterday"),
@@ -430,8 +442,11 @@ class DshRouterProfileTest(unittest.TestCase):
         validator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(validator)
         validator.validate_asset_sources("dsh-superagent", copy.deepcopy(self.asset))
+        # A listed identity set is admitted beside auto and its row alone (U465b).
         listed = copy.deepcopy(self.asset)
-        listed["sources"]["github"]["allowed"] = ["someone", "other-one"]
+        listed["sources"]["github"].update(
+            accept_mode="auto", accept_mode_auto_row="2026-11-08T00:00:00Z", allowed=["someone", "other-one"]
+        )
         validator.validate_asset_sources("dsh-superagent", listed)
 
         def refused(name: str, mutate, expected: str) -> None:
@@ -482,6 +497,18 @@ class DshRouterProfileTest(unittest.TestCase):
             "dsh-superagent",
             lambda asset: asset["sources"]["github"].update(allowed=["someone", "SOMEONE"]),
             f"{label} repeats 'SOMEONE' (GitHub logins that differ by case alone are one login)",
+        )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(allowed=["someone"]),
+            f"{label} names ['someone'] while accept_mode is 'observe'; the identity set is written in auto alone, so "
+            "the list is [] in off and observe",
+        )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(accept_mode="off", allowed=["someone"]),
+            f"{label} names ['someone'] while accept_mode is 'off'; the identity set is written in auto alone, so "
+            "the list is [] in off and observe",
         )
         refused(
             "dsh-superagent",

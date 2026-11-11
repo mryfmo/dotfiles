@@ -151,9 +151,12 @@ sandbox rows disabled. The GitHub Source row
 (`assets.dsh-superagent.sources.github`: the repository,
 `accept_mode: observe`, the M-18 ladder row, and `allowed`, the Source's
 identity set, empty today) is data for the Management API save; `auto` is
-admitted only beside `accept_mode_auto_row` (U465), and in observe mode with an
-empty list a positive assessment is an ignore Decision marked would-accept and
-nothing is accepted.
+admitted only beside an `accept_mode_auto_row` that the program store's
+`decisions.tsv` holds as a phase M-18 row naming the rung (U465, U465b), the
+list is written in `auto` alone (`[]` in `off` and `observe`, and the asset
+validator refuses a listed login beside those modes), and in observe mode with
+an empty list a positive assessment is an ignore Decision marked would-accept
+and nothing is accepted.
 `hcom-seat router -- --no-open` starts the Router under srt, and
 `intake-observe.py [--kind would-accept|accept|refusal|all] <orchestrator.sqlite> <decisions.tsv>`
 appends the ladder's Decisions as rows (would-accept, accept, and the refusals

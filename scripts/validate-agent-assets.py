@@ -1367,7 +1367,8 @@ INSTALLING_ASSET_SOURCES = {
 # with fixed values: the repository against `owner/name`, the accept mode against the three the upstream Policy knows
 # (dsh-superagent src/policy.ts:84), `auto` only with the two row timestamps the M-18 ladder defines, and `allowed`
 # (U465), the Source's identity set router-settings-apply writes into policy.sources.github.allowed, a list of GitHub
-# logins (src/sources/github.ts:72), present always and `[]` when no sender is listed.
+# logins (src/sources/github.ts:72), present always, `[]` when no sender is listed and `[]` whenever the mode is not
+# `auto` (U465b: a listed login's mention is explicit in every mode, so a list beside observe is a dormant grant).
 SOURCED_ASSET = "dsh-superagent"
 ASSET_SOURCE_KEYS = {
     "github": ("repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission", "allowed")
@@ -1399,8 +1400,8 @@ def validate_sender_ids(label: str, allowed: Any) -> None:
 
 def validate_asset_sources(name: str, asset: dict[str, Any]) -> None:
     """Refuse a `sources` block outside the sourced asset, an unknown Source or key, a repository outside `owner/name`,
-    a mode outside the three, `auto` without `accept_mode_auto_row`, and an `allowed` that is absent or no list of
-    sender ids; each refusal names the key."""
+    a mode outside the three, `auto` without `accept_mode_auto_row`, an `allowed` that is absent or no list of
+    sender ids, and a listed sender beside a mode other than `auto`; each refusal names the key."""
     sources = asset.get("sources")
     if sources is None:
         return
@@ -1442,6 +1443,11 @@ def validate_asset_sources(name: str, asset: dict[str, Any]) -> None:
             )
         if mode != "auto" and "accept_mode_auto_row" in row:
             fail(f"{label}.accept_mode_auto_row belongs only to accept_mode auto, not {mode!r}")
+        if mode != "auto" and row["allowed"]:
+            fail(
+                f"{label}.allowed names {row['allowed']} while accept_mode is {mode!r}; the identity set is written in "
+                "auto alone, so the list is [] in off and observe"
+            )
         if "observe_admission" in row and row["observe_admission"] not in OBSERVE_ADMISSIONS:
             fail(f"{label}.observe_admission {row['observe_admission']!r} is not one of {list(OBSERVE_ADMISSIONS)}")
 

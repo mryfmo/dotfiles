@@ -24,9 +24,16 @@ as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the Router 
     (`src/sources/github.ts:174`, `issues?state=all`, read when `observeIssues || observePulls`) receives every new pull
     request with the token's `Pull requests` permission and runs whether or not the notifications poll fails (`:282-286`).
   - `eval`: the current eval block with `mode` set to the accept mode (`src/policy.ts:83-87`): `off`, `observe`, or
-    `auto` when the manifest row carries `accept_mode_auto_row` (a decisions.tsv timestamp, the M-18 ladder's second
-    row; U465). `auto` without that row, a row that is no timestamp, or the row beside another mode, is a refusal
-    naming the row: the rung is admitted by its dated manifest row and by nothing else.
+    `auto` by a two-key proof (U465, U465b): the manifest row carries `accept_mode_auto_row` (a decisions.tsv
+    timestamp, the M-18 ladder's second row), and that row exists in the program store's `decisions.tsv` with exactly
+    that `ts`, phase `M-18` and the word `auto` in its decision. The store is the one the shell levers' `store_resolve`
+    chooses: the derived `<physical HOME>/.local/state/regime-store/<slug>/regime-cutover` when it exists, else the
+    checkout's `.orchestration/orchestrate/regime-cutover`, the checkout being the working directory's (README: a
+    lever runs with the checkout root as the working directory); it is read for an `auto` row alone. `auto` without
+    the manifest row, a row that is no timestamp, the row beside another mode, the first rung's own row, a row the
+    store does not hold (a fabricated timestamp), a row of another phase or without the word, and a store that cannot
+    be read (standing order 21) are each a refusal naming the row and the file: the rung is admitted by the operator's
+    dated row and by nothing else.
   - `policy`: the current block with the github Source's admission cell `sources.github.admission.pulls.unlistedUnaddressed`
     set to the manifest's `observe_admission` (`src/policy.ts:76-84`, `src/admission.ts:13`) and its `allowed` list set
     to the manifest row's `allowed` ids as `{"id": <login>}` rows (`src/sources/github.ts:72`: an id is `[A-Za-z0-9-]+`;
@@ -35,9 +42,14 @@ as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the Router 
     `not_a_member` before any assessment (`src/policy.ts:192-210`; measured on the i2 probes, decisions
     2026-11-10T04:08:19Z), while `inferred` makes it a candidate that observe mode can only record as an ignore
     Decision with `audit.would_accept` (`src/policy.ts:55-57`), never accept. The allowed list is the Source's
-    identity set (a listed login's mention is `explicit`, accepted even in observe mode; an unlisted login's message
-    is refused `not_a_member`): the kit's row replaces the store's list, never merges with it, so no entry the panel
-    made survives a run (R-45: the Router is granted nothing beyond the kit's rows). The committed list is empty.
+    identity set (a listed login's mention is `explicit`, accepted in every mode; an unlisted login's message is
+    refused `not_a_member`), so it is a function of the mode (U465b): the manifest's ids in `auto`, `[]` in `off` and
+    `observe` whatever the manifest says (the asset validator refuses a listed login beside those modes, so the
+    manifest cannot carry a dormant grant); the kit's row replaces the store's list, never merges with it, so no
+    entry the panel made survives a run (R-45: the Router is granted nothing beyond the kit's rows). The committed
+    list is empty. The Source row is read as text (the manifest readers below), and a key named twice in it is a
+    refusal naming the key (U465b): yaml.safe_load, the validators' reader, resolves the last and a text reader may
+    resolve the first, so a row the two would read differently is refused rather than read.
 - A block already equal to the kit's is not written: a second run PUTs nothing (`unchanged`). After a save the Router
   answers `restarting: true` while setup is pending or a setup field changed (`src/app/settings.ts:176`), and the API is
   unavailable for a moment; before the next PUT this lever polls `GET settings` until it answers again, for at most
@@ -57,9 +69,11 @@ Exit 0 when the three blocks hold the kit's values. With `--dry-run` the manifes
 read and held to their forms as in a run, the values a run would write are printed (`eval.mode <mode>`, `allowed <JSON
 list of ids>`, `admission.pulls.unlistedUnaddressed <cell>`, `repository <owner/name>`, `cli <path>`) and the Management
 API is not called: nothing is read from it or written to it. Every refusal is one line on stderr,
-`router-settings-apply: <reason>`, and exit 2: a manifest or profile that cannot be read or lacks its row, `auto` without
-its dated row, an `observe_admission` outside its two words, an `allowed` that is no list, a sender id outside its
-grammar or repeated, a wrapper that is no executable file, a port
+`router-settings-apply: <reason>`, and exit 2: a manifest or profile that cannot be read or lacks its row, a Source row
+naming a key twice, `auto` without its dated row or with a row the store's decisions.tsv does not hold as described
+above, a store that cannot be read, a working directory outside a checkout (for an `auto` row), an `observe_admission`
+outside its two words, an `allowed` that is no list, a sender id outside its grammar or repeated, a wrapper that is no
+executable file, a port
 that answers nothing (`unreachable`, naming `127.0.0.1:<port>`), a 403 (naming the header), a 409 (naming the revision), a
 400 with `setup` (naming the code and its text), a 3xx (naming its Location; never followed), any other status, or a
 settings view without the `github` Source, the `eval` block or the `policy` block. Nothing is written to any file; the only network peer is
@@ -85,6 +99,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 LEVER = "router-settings-apply"
 WRAPPER = "router-gh"
@@ -105,6 +120,20 @@ ADMISSION_SOURCE = "github"
 ADMISSION_ROW = "pulls"
 ADMISSION_CELL = "unlistedUnaddressed"
 OBSERVE_ADMISSIONS_APPLIED = ("inferred", "ignore")
+# The auto admission's second key (U465b): `accept_mode_auto_row` must name a row of the program store's decisions.tsv
+# (header `ts phase decision why evidence result`) of the ladder's phase whose decision names the auto rung. The store
+# follows the shell levers' store_resolve: `<physical HOME>/.local/state/regime-store/<slug>/<program>` (regime-env's
+# derivation; the slug is the checkout's basename lower-cased, `[^a-z0-9_-]` replaced by `-`, at most 40 characters)
+# when it exists, else `<checkout>/.orchestration/orchestrate/<program>`, the checkout being the working directory's.
+PROGRAM = "regime-cutover"
+STORE_ROOT = (".local", "state", "regime-store")
+STORE_CHECKOUT = (".orchestration", "orchestrate")
+DECISIONS = "decisions.tsv"
+DECISIONS_HEADER = ("ts", "phase", "decision")
+LADDER_PHASE = "M-18"
+AUTO_WORD = re.compile(r"\bauto\b")
+SLUG_OUTSIDE = re.compile(r"[^a-z0-9_-]")
+SLUG_LENGTH = 40
 # The levers block of the manifest, read as text by indentation alone, never parsed as YAML (brief-check.py's reader):
 # a mapping key is a bare `<key>:` line; a pin is `<name>: <64 hex>` at the one indentation the first pin fixes.
 MAPPING_KEY = re.compile(r"^(\S+):$")
@@ -290,14 +319,22 @@ def read_lines(path: str, what: str) -> list[str]:
 
 
 def source_row(manifest: str) -> tuple[str, str, str, list[str]]:
-    """The manifest's repository, accept mode, observe admission and allowed sender ids, each held to its form: `auto`
-    needs `accept_mode_auto_row` (a decisions.tsv timestamp, the M-18 ladder's second row) and that row belongs to
-    `auto` alone; a third word for the cell is refused; the allowed list must be a list of GitHub logins, none
-    repeated (by case: GitHub logins differing by case alone are one login)."""
+    """The manifest's repository, accept mode, observe admission and allowed sender ids, each held to its form: the
+    row names no key twice; `auto` needs `accept_mode_auto_row` (a decisions.tsv timestamp, the M-18 ladder's second
+    row, not the first rung's own row), that row belongs to `auto` alone and must exist in the program store's
+    decisions.tsv (ladder_row); a third word for the cell is refused; the allowed list must be a list of GitHub logins,
+    none repeated (by case: GitHub logins differing by case alone are one login). The list returned is the manifest's;
+    policy_allowed decides what the mode lets the policy carry."""
     block = manifest_block(read_lines(manifest, "the manifest"), SOURCE_KEYS)
     label = ".".join(SOURCE_KEYS)
     if block is None:
         raise Refusal(f"the manifest {manifest} names no {label} mapping")
+    repeated = repeated_key(block)
+    if repeated is not None:
+        raise Refusal(
+            f"{label} in {manifest} names the key {repeated!r} twice; a Source row's keys are unique, and a row this "
+            "lever and yaml would read differently is refused rather than read"
+        )
     row = block_scalars(block)
     for key in ("repository", "accept_mode", "observe_admission"):
         if not row.get(key):
@@ -322,6 +359,11 @@ def source_row(manifest: str) -> tuple[str, str, str, list[str]]:
         )
     if auto_row is not None and mode != "auto":
         raise Refusal(f"{label}.accept_mode_auto_row in {manifest} belongs to accept_mode auto alone, not {mode!r}")
+    if auto_row is not None and auto_row == row.get("accept_mode_row"):
+        raise Refusal(
+            f"{label}.accept_mode_auto_row {auto_row!r} in {manifest} is the accept_mode_row itself; the ladder's second "
+            "row is not its first"
+        )
     if row["observe_admission"] not in OBSERVE_ADMISSIONS_APPLIED:
         raise Refusal(
             f"{label}.observe_admission {row['observe_admission']!r} in {manifest} is not "
@@ -344,7 +386,139 @@ def source_row(manifest: str) -> tuple[str, str, str, list[str]]:
                 f"{label}.allowed in {manifest} repeats {sender!r} (GitHub logins that differ by case alone are one login)"
             )
         seen.add(sender.lower())
+    if auto_row is not None:
+        ladder_row(auto_row, manifest, label)
     return row["repository"], mode, row["observe_admission"], allowed
+
+
+def repeated_key(block: list[str]) -> str | None:
+    """The first key named twice at the block's own depth (a bare `key:` or a `key: value` line), else None (U465b,
+    verdict U465-4ae6f8c0 P1 `:279`): yaml.safe_load, the validators' reader, resolves a repeated key to its last value
+    and the text readers here resolved `allowed` to its first, so a row the two would read differently is refused."""
+    seen: set[str] = set()
+    entries = None
+    for line in block:
+        text = line.lstrip(" ")
+        indent = len(line) - len(text)
+        if entries is None:
+            entries = indent
+        if indent != entries:
+            continue
+        match = MAPPING_KEY.match(text) or SCALAR.match(text)
+        if match is None:
+            continue
+        if match.group(1) in seen:
+            return match.group(1)
+        seen.add(match.group(1))
+    return None
+
+
+def policy_allowed(mode: str, allowed: list[str]) -> list[str]:
+    """The ids written into policy.sources.github.allowed, a function of the mode (U465b, verdict U465-4ae6f8c0 P1
+    `:516`): the manifest's list in `auto`, empty in `off` and `observe`, since a listed login's mention is `explicit`
+    and accepted in every mode (src/policy.ts), so a list beside observe would open an accept path without the auto
+    row."""
+    return list(allowed) if mode == "auto" else []
+
+
+def checkout_toplevel() -> str:
+    """The checkout the working directory is in, the nearest ancestor holding a `.git` entry (a directory, or the file
+    of a linked worktree): what `git rev-parse --show-toplevel` answers, read from the physical working directory
+    without running git (README: a lever runs with the checkout root as the working directory)."""
+    try:
+        cwd = Path(os.path.realpath(os.getcwd()))
+    except OSError as error:
+        raise Refusal(f"the working directory could not be read: {error}") from None
+    for candidate in (cwd, *cwd.parents):
+        marker = candidate / ".git"
+        if marker.is_symlink() or marker.exists():
+            return str(candidate)
+    raise Refusal(
+        f"the working directory {cwd} is inside no git checkout; this lever runs with the checkout root as the working "
+        "directory, where the program store is found"
+    )
+
+
+def owned_directory(path: str) -> bool:
+    """store_resolve's test of a store component, `-d`, `! -L` and `-O`: a directory of this user and no symbolic link.
+    A stat that fails answers False, so an unreadable chain refuses rather than passes (standing order 21)."""
+    try:
+        return not os.path.islink(path) and os.path.isdir(path) and os.stat(path).st_uid == os.geteuid()
+    except OSError:
+        return False
+
+
+def store_directory(toplevel: str) -> str:
+    """The program store by the two-form rule (store_resolve in pr-merge.sh and records-sync.sh; U216, U465b): the
+    derived `<physical HOME>/.local/state/regime-store/<slug>/<program>` when it exists (a link there is refused by name
+    before anything is read through it, an entry that is not a directory of this user is refused by name), else the
+    checkout's `.orchestration/orchestrate/<program>`, each of whose three components must be a directory of this user
+    and no link. Nothing is written."""
+    home = os.environ.get("HOME", "")
+    if not home or not os.path.isdir(home):
+        raise Refusal("HOME names no directory, so no store root can be derived under it")
+    slug = SLUG_OUTSIDE.sub("-", os.path.basename(toplevel).lower())[:SLUG_LENGTH]
+    derived = os.path.join(os.path.realpath(home), *STORE_ROOT, slug, PROGRAM)
+    if os.path.islink(derived):
+        raise Refusal(
+            f"{derived} is a symlink; the derived program store is a plain directory of this user, and nothing is read "
+            "through a link"
+        )
+    if os.path.lexists(derived):
+        if not owned_directory(derived):
+            raise Refusal(
+                f"{derived} exists but is not a directory of this user; the derived program store is read only as one"
+            )
+        return derived
+    path = toplevel
+    for part in (*STORE_CHECKOUT, PROGRAM):
+        path = os.path.join(path, part)
+        if not owned_directory(path):
+            raise Refusal(
+                f"{path} is not a directory of this user (a symlink or a missing store); no derived store {derived} "
+                "exists, so the checkout's own store is the one read"
+            )
+    return path
+
+
+def ladder_row(ts: str, manifest: str, label: str) -> None:
+    """The auto admission's second key (U465b, verdict U465-4ae6f8c0 P1 `:319`): the manifest's `accept_mode_auto_row`
+    names a row the operator wrote in the program store's decisions.tsv, so the file is read whole and `auto` is
+    admitted only when exactly one row's `ts` cell is the manifest's, its phase is the ladder's and its decision names
+    the auto rung; a file that cannot be read or does not start with the decisions header is a refusal (standing order
+    21), never a pass. Rows are the file's lines split on tabs, as the store's tables are written."""
+    path = os.path.join(store_directory(checkout_toplevel()), DECISIONS)
+    key = f"{label}.accept_mode_auto_row {ts!r} in {manifest}"
+    proof = (
+        f"auto is admitted by one dated row the operator wrote there (phase {LADDER_PHASE}, naming the auto rung) and "
+        "by nothing else"
+    )
+    try:
+        with open(path, "rb") as handle:
+            lines = handle.read().decode("utf-8", "replace").splitlines()
+    except OSError as error:
+        raise Refusal(f"{key} cannot be proven: {path} could not be read: {error}") from None
+    rows = [line.split("\t") for line in lines if line]
+    if not rows or tuple(rows[0][: len(DECISIONS_HEADER)]) != DECISIONS_HEADER:
+        raise Refusal(
+            f"{path} does not start with the decisions header ({', '.join(DECISIONS_HEADER)}, ...), so no row of it "
+            f"proves {key}"
+        )
+    found = [cells for cells in rows[1:] if cells[0] == ts]
+    if len(found) != 1:
+        count = "no row" if not found else f"{len(found)} rows"
+        raise Refusal(f"{key} names {count} of {path}; {proof}")
+    cells = found[0] + ["", ""]  # a short row has an empty phase and decision, each refused below
+    if cells[1] != LADDER_PHASE:
+        raise Refusal(
+            f"the row {ts} of {path} is of phase {cells[1]!r}, not {LADDER_PHASE}; auto is admitted by the ladder's row "
+            "and by nothing else"
+        )
+    if not AUTO_WORD.search(cells[2]):
+        raise Refusal(
+            f"the row {ts} of {path} does not name the auto rung in its decision; auto is admitted by the ladder's row "
+            "and by nothing else"
+        )
 
 
 def webserver_port(profile: str) -> int:
@@ -568,12 +742,13 @@ def main(argv: list[str]) -> int:
         profile = os.path.join(dsh_home, "profiles/router/cordis.patch.yml")
     try:
         repository, mode, cell, allowed = source_row(args.manifest)
+        senders = policy_allowed(mode, allowed)
         port = webserver_port(profile)
         cli = wrapper_path(directory)
         if args.dry_run:
             print(f"dry run: nothing is read from or written to the Management API at {HOST}:{port}")
             print(f"eval.mode {mode}")
-            print(f"allowed {json.dumps(allowed)}")
+            print(f"allowed {json.dumps(senders)}")
             print(f"admission.{ADMISSION_ROW}.{ADMISSION_CELL} {cell}")
             print(f"repository {repository}")
             print(f"cli {cli}")
@@ -587,9 +762,9 @@ def main(argv: list[str]) -> int:
         if restarting:
             api.settings_after_restart()
             (source, source_revision), (_, _), (policy, policy_revision) = block_views(api.settings(), api.where())
-        # The admission cell and the allowed list next (U416, U465): a policy save changes policyVersion and restarts
-        # nothing, so no wait here.
-        apply_block(api, POLICY_BLOCK, policy, desired_policy(policy, cell, allowed), policy_revision)
+        # The admission cell and the allowed list next (U416, U465; the list as the mode admits it, U465b): a policy save
+        # changes policyVersion and restarts nothing, so no wait here.
+        apply_block(api, POLICY_BLOCK, policy, desired_policy(policy, cell, senders), policy_revision)
         refusals: list[str] = []
         try:
             apply_block(api, SOURCE_BLOCK, source, desired_source(source, repository, cli), source_revision)

@@ -2450,7 +2450,8 @@ def dsh_github_source(asset: dict[str, Any]) -> dict[str, Any]:
     second M-18 row timestamp beside the first, `observe_admission` against the two words router-settings-apply writes
     into the pulls row's unlistedUnaddressed cell (U416), and `allowed` (U465), the Source's identity set the same lever
     writes into policy.sources.github.allowed: present always, a list of GitHub logins (`[A-Za-z0-9-]+`), none repeated
-    by case. An unknown key is refused by name."""
+    by case, and empty unless the mode is `auto` (U465b: the lever writes the list in auto alone). An unknown key is
+    refused by name."""
     sources = asset.get("sources")
     if not isinstance(sources, dict) or not isinstance(sources.get("github"), dict):
         fail(
@@ -2492,6 +2493,11 @@ def dsh_github_source(asset: dict[str, Any]) -> dict[str, Any]:
         if item.lower() in seen:
             fail(f"{label}.allowed repeats {item!r} (GitHub logins that differ by case alone are one login)")
         seen.add(item.lower())
+    if row["accept_mode"] != "auto" and allowed:
+        fail(
+            f"{label}.allowed names {allowed} while accept_mode is {row['accept_mode']!r}; the identity set is written "
+            "in auto alone, so the list is [] in off and observe"
+        )
     return {key: (list(value) if key == "allowed" else str(value)) for key, value in row.items()}
 
 

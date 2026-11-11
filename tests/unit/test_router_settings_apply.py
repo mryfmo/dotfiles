@@ -97,6 +97,17 @@ SIGNED_OUT = {
     "values": {"output": "gh: To get started with GitHub CLI, please run:  gh auth login"},
     "detail": "The agent GitHub CLI cannot read its account.",
 }
+# The program store's decisions.tsv as the lever reads it for the auto admission (U465b): the header, the ladder's
+# first row (the committed manifest's accept_mode_row) and its second row, the one `accept_mode_auto_row` may name.
+LADDER_ROW = "2026-11-06T23:24:00Z"
+AUTO_ROW = "2026-11-12T00:00:00Z"
+DECISIONS = (
+    "ts\tphase\tdecision\twhy\tevidence\tresult\n"
+    f"{LADDER_ROW}\tM-18\tgithub-source: off -> observe: the first rung of the accept ladder; the next rung (auto) needs "
+    "two row timestamps\torders 41, 48\tagent://M26Ground\tU317 brief names this row as accept_mode_row\n"
+    f"{AUTO_ROW}\tM-18\tgithub-source: observe -> auto: the second rung of the accept ladder, the allowed list named\t"
+    "order 41\tthe operator's words\tthe manifest row accept_mode_auto_row\n"
+)
 
 
 class FakeApi(http.server.ThreadingHTTPServer):
@@ -267,12 +278,38 @@ class RouterSettingsApplyTest(unittest.TestCase):
         )
         self.env = {"PATH": os.environ["PATH"], "HOME": str(self.dir / "home"), "LC_ALL": "C"}
         (self.dir / "home").mkdir()
+        # The checkout the lever runs in (README: a lever runs with the checkout root as the working directory) and
+        # the program store in its checkout form, holding the ladder's two rows (U465b); physical, as the lever reads it.
+        self.checkout = Path(os.path.realpath(self.dir)) / "checkout"
+        (self.checkout / ".git").mkdir(parents=True)
+        self.decisions = self.checkout / ".orchestration/orchestrate/regime-cutover/decisions.tsv"
+        self.decisions.parent.mkdir(parents=True)
+        self.decisions.write_text(DECISIONS)
 
-    def run_lever(self, *args: str, lever: Path = LEVER, env: dict | None = None) -> subprocess.CompletedProcess:
+    def run_lever(
+        self, *args: str, lever: Path = LEVER, env: dict | None = None, cwd: Path | None = None
+    ) -> subprocess.CompletedProcess:
         argv = [sys.executable, "-I", str(lever), "--profile", str(self.profile), *args]
         return subprocess.run(
-            argv, capture_output=True, text=True, check=False, timeout=120, env=env or self.env, cwd=self.dir
+            argv,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+            env=env or self.env,
+            cwd=cwd or self.checkout,
         )
+
+    def auto_manifest(self, name: str, ts: str, allowed: str = "[]") -> Path:
+        """The committed manifest with its Source row at `auto` beside `accept_mode_auto_row: <ts>` and `allowed` as given."""
+        text = MANIFEST.read_text()
+        row = f'        accept_mode: observe\n        accept_mode_row: "{LADDER_ROW}"\n'
+        self.assertIn(row, text, "the manifest's Source row as this test knows it")
+        self.assertIn("        allowed: []\n", text, "the committed manifest's list is empty")
+        altered = text.replace(row, row.replace("observe", "auto") + f'        accept_mode_auto_row: "{ts}"\n')
+        path = self.dir / f"{name}.yaml"
+        path.write_text(altered.replace("        allowed: []\n", f"        allowed: {allowed}\n"))
+        return path
 
     def puts(self) -> list[dict]:
         return [entry for entry in self.api.requests if entry["method"] == "PUT"]
@@ -520,6 +557,9 @@ class RouterSettingsApplyTest(unittest.TestCase):
         text = MANIFEST.read_text()
         line = "        allowed: []\n"
         self.assertIn(line, text, "the committed manifest's list is empty")
+        # The list is written in auto alone (U465b), so the listed manifests carry the mode and its row from the store.
+        row = f'        accept_mode: observe\n        accept_mode_row: "{LADDER_ROW}"\n'
+        auto_row = row.replace("observe", "auto") + f'        accept_mode_auto_row: "{AUTO_ROW}"\n'
         panel = {"allowed": [{"id": "someone"}], "admission": {"pulls": {"unlistedUnaddressed": "inferred"}}}
         self.api.policy = {"rules": [], "sources": {"github": copy.deepcopy(panel)}}
         run = self.run_lever()
@@ -531,20 +571,23 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(policy[0]["body"], {"value": {"rules": [], "sources": ADMISSION_CELL}, "revision": 0})
         self.assertEqual(self.api.policy["sources"]["github"]["allowed"], [])
         listed = self.dir / "listed.yaml"
-        listed.write_text(text.replace(line, "        allowed:\n          - someone\n          - other-one\n"))
+        listed.write_text(
+            text.replace(line, "        allowed:\n          - someone\n          - other-one\n").replace(row, auto_row)
+        )
         self.api.requests.clear()
         run = self.run_lever("--manifest", str(listed))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
-        (policy,) = self.puts()
+        (policy,) = [entry for entry in self.puts() if entry["path"] == API + "settings/policy"]
         entry = {"allowed": [{"id": "someone"}, {"id": "other-one"}], "admission": panel["admission"]}
         self.assertEqual(policy["body"], {"value": {"rules": [], "sources": {"github": entry}}, "revision": 1})
         self.assertEqual(
-            run.stdout, "eval unchanged (revision 1)\npolicy saved (revision 2)\nsource:github unchanged (revision 1)\n"
+            run.stdout,
+            "eval saved (revision 2, restarting)\npolicy saved (revision 2)\nsource:github unchanged (revision 1)\n",
         )
         self.assertEqual(self.api.policy["sources"]["github"], entry)
         # The same list in the flow form, with quotes: nothing to write.
         flow = self.dir / "flow.yaml"
-        flow.write_text(text.replace(line, '        allowed: ["someone", other-one]\n'))
+        flow.write_text(text.replace(line, '        allowed: ["someone", other-one]\n').replace(row, auto_row))
         self.api.requests.clear()
         run = self.run_lever("--manifest", str(flow))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
@@ -627,6 +670,203 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("names 'some_one', which is not a sender id", run.stderr)
         self.assertEqual(self.api.requests, [])
+
+    def test_the_auto_row_must_be_a_ladder_row_of_the_stores_decisions_and_an_unreadable_store_refuses(self):
+        """U465b test (a) (verdict U465-4ae6f8c0 P1 `:319`): `accept_mode_auto_row` names a row the operator wrote in the
+        program store's decisions.tsv, so the lever reads that file (the store by the two-form rule the levers share:
+        the derived `<HOME>/.local/state/regime-store/<slug>/regime-cutover` when it exists, else the working
+        directory's checkout `.orchestration/orchestrate/regime-cutover`) and admits `auto` only when a row whose `ts`
+        cell is exactly the manifest's exists, is of phase M-18 and names the auto rung in its decision. A fabricated
+        timestamp, a row of another phase or without the word, two rows, a file without the header, the first rung's
+        own row, a store that cannot be read, an absent store and a working directory outside a checkout are each one
+        refusal naming the row and the file, exit 2, before any request."""
+        self.api.signed_out = False
+        label = "assets.dsh-superagent.sources.github"
+        existing = self.auto_manifest("existing", AUTO_ROW)
+        run = self.run_lever("--dry-run", "--manifest", str(existing))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertIn("eval.mode auto\n", run.stdout)
+        self.assertEqual(self.api.requests, [])
+        proof = "auto is admitted by one dated row the operator wrote there (phase M-18, naming the auto rung) and by nothing else"
+        fabricated = self.auto_manifest("fabricated", "2099-01-01T00:00:00Z")
+        for args in (("--dry-run",), ()):
+            with self.subTest(args=args):
+                self.api.requests.clear()
+                run = self.run_lever(*args, "--manifest", str(fabricated))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(
+                    run.stderr,
+                    f"router-settings-apply: {label}.accept_mode_auto_row '2099-01-01T00:00:00Z' in {fabricated} names no "
+                    f"row of {self.decisions}; {proof}\n",
+                )
+                self.assertEqual(self.api.requests, [], "no request before the row is proven")
+        self.assertEqual(self.api.eval["mode"], "off", "nothing was written")
+        first = self.auto_manifest("first-rung", LADDER_ROW)
+        run = self.run_lever("--dry-run", "--manifest", str(first))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: {label}.accept_mode_auto_row '{LADDER_ROW}' in {first} is the accept_mode_row "
+            "itself; the ladder's second row is not its first\n",
+        )
+        stores = {
+            "another-phase": (
+                DECISIONS.replace(f"{AUTO_ROW}\tM-18\t", f"{AUTO_ROW}\toperator\t"),
+                f"the row {AUTO_ROW} of {self.decisions} is of phase 'operator', not M-18; auto is admitted by the "
+                "ladder's row and by nothing else",
+            ),
+            "no-auto-word": (
+                DECISIONS.replace("observe -> auto: the second rung", "observe -> the next rung: the second rung"),
+                f"the row {AUTO_ROW} of {self.decisions} does not name the auto rung in its decision; auto is admitted "
+                "by the ladder's row and by nothing else",
+            ),
+            "two-rows": (
+                DECISIONS + DECISIONS.splitlines()[2] + "\n",
+                f"{label}.accept_mode_auto_row '{AUTO_ROW}' in {existing} names 2 rows of {self.decisions}; {proof}",
+            ),
+            "no-header": (
+                "ts\tdecision\n" + DECISIONS.splitlines()[2] + "\n",
+                f"{self.decisions} does not start with the decisions header (ts, phase, decision, ...), so no row of it "
+                f"proves {label}.accept_mode_auto_row '{AUTO_ROW}' in {existing}",
+            ),
+        }
+        for case, (table, expected) in stores.items():
+            with self.subTest(case=case):
+                self.assertNotEqual(table, DECISIONS, "the fixture changed the table")
+                self.decisions.write_text(table)
+                run = self.run_lever("--dry-run", "--manifest", str(existing))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, f"router-settings-apply: {expected}\n")
+        self.decisions.write_text(DECISIONS)
+        unreadable = (
+            f"router-settings-apply: {label}.accept_mode_auto_row '{AUTO_ROW}' in {existing} cannot be proven: "
+            f"{self.decisions} could not be read: "
+        )
+        if os.geteuid() != 0:
+            self.decisions.chmod(0)
+            run = self.run_lever("--dry-run", "--manifest", str(existing))
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertTrue(run.stderr.startswith(unreadable), run.stderr)
+            self.decisions.chmod(0o600)
+        self.decisions.unlink()
+        run = self.run_lever("--dry-run", "--manifest", str(existing))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertTrue(run.stderr.startswith(unreadable), run.stderr)
+        # The two-form rule: the derived store, when it exists, is the one read, and the checkout's is not looked at.
+        derived = Path(os.path.realpath(self.dir / "home")) / ".local/state/regime-store/checkout/regime-cutover"
+        shutil.rmtree(self.checkout / ".orchestration")
+        run = self.run_lever("--dry-run", "--manifest", str(existing))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: {self.checkout}/.orchestration is not a directory of this user (a symlink or a "
+            f"missing store); no derived store {derived} exists, so the checkout's own store is the one read\n",
+        )
+        derived.mkdir(parents=True)
+        (derived / "decisions.tsv").write_text(DECISIONS)
+        run = self.run_lever("--dry-run", "--manifest", str(existing))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertIn("eval.mode auto\n", run.stdout)
+        elsewhere = self.dir / "elsewhere"
+        shutil.move(derived, elsewhere)
+        derived.symlink_to(elsewhere)
+        run = self.run_lever("--dry-run", "--manifest", str(existing))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: {derived} is a symlink; the derived program store is a plain directory of this "
+            "user, and nothing is read through a link\n",
+        )
+        run = self.run_lever("--dry-run", "--manifest", str(existing), cwd=self.dir)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: the working directory {os.path.realpath(self.dir)} is inside no git checkout; this "
+            "lever runs with the checkout root as the working directory, where the program store is found\n",
+        )
+        self.assertEqual(self.api.requests, [], "no refusal reached the API")
+
+    def test_a_source_row_with_a_repeated_key_is_refused_by_name_before_any_request(self):
+        """U465b test (b) (verdict U465-4ae6f8c0 P1 `:279`): a Source row naming one key twice is a malformed manifest.
+        yaml.safe_load (the validator's and the generator's reader) resolves the last `allowed`, while this lever's list
+        reader resolved the first, so `allowed: [unauthorized]` before the committed `allowed: []` rendered a grant the
+        validators saw as absent. The row's reader now refuses any repeated key by name, exit 2, nothing on stdout and
+        no request, in a run and a dry run alike."""
+        self.api.signed_out = False
+        text = MANIFEST.read_text()
+        first = f'        accept_mode_row: "{LADDER_ROW}"\n'
+        self.assertIn(first, text, "the manifest's Source row as this test knows it")
+        label = "assets.dsh-superagent.sources.github"
+        cases = {
+            "allowed-flow": (text.replace(first, first + "        allowed: [unauthorized]\n"), "allowed"),
+            "allowed-block": (text.replace(first, first + "        allowed:\n          - unauthorized\n"), "allowed"),
+            "repository": (text.replace(first, first + "        repository: someone/else\n"), "repository"),
+            "accept-mode": (text.replace(first, first + "        accept_mode: auto\n"), "accept_mode"),
+        }
+        for case, (altered, key) in cases.items():
+            for args in (("--dry-run",), ()):
+                with self.subTest(case=case, args=args):
+                    self.assertNotEqual(altered, text, "the fixture changed the manifest")
+                    self.api.requests.clear()
+                    path = self.dir / f"{case}.yaml"
+                    path.write_text(altered)
+                    run = self.run_lever(*args, "--manifest", str(path))
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertEqual(
+                        run.stderr,
+                        f"router-settings-apply: {label} in {path} names the key {key!r} twice; a Source row's keys are "
+                        "unique, and a row this lever and yaml would read differently is refused rather than read\n",
+                    )
+                    self.assertEqual(self.api.requests, [], "no request before the row is read whole")
+        self.assertEqual((self.api.eval, self.api.policy), (EVAL_DEFAULT, POLICY_DEFAULT), "nothing changed")
+
+    def test_the_allowed_list_is_written_in_auto_alone_and_rendered_empty_in_off_and_observe(self):
+        """U465b test (c) (verdict U465-4ae6f8c0 P1 `:516`): a listed login's mention is `explicit` and accepted in every
+        mode (upstream src/policy.ts), so a non-empty list written beside `observe` opened an accept path without the
+        auto row. The policy's allowed list is a function of (mode, list): the manifest's ids in `auto` (with its row in
+        the store), `[]` in `off` and `observe` whatever the manifest says; the validator refuses such a manifest, and
+        this lever renders the empty list, prints it in a dry run and writes it over the store's entry."""
+        self.api.signed_out = False
+        text = MANIFEST.read_text()
+        line = "        allowed: []\n"
+        self.assertIn(line, text, "the committed manifest's list is empty")
+        observe = self.dir / "observe-listed.yaml"
+        observe.write_text(text.replace(line, "        allowed: [someone]\n"))
+        run = self.run_lever("--dry-run", "--manifest", str(observe))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertIn("eval.mode observe\nallowed []\n", run.stdout)
+        off = self.dir / "off-listed.yaml"
+        off.write_text(
+            text.replace(line, "        allowed: [someone]\n").replace("accept_mode: observe", "accept_mode: off")
+        )
+        run = self.run_lever("--dry-run", "--manifest", str(off))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertIn("eval.mode off\nallowed []\n", run.stdout)
+        self.assertEqual(self.api.requests, [], "a dry run makes no request")
+        panel = {"allowed": [{"id": "someone"}], "admission": {"pulls": {"unlistedUnaddressed": "inferred"}}}
+        self.api.policy = {"rules": [], "sources": {"github": copy.deepcopy(panel)}}
+        run = self.run_lever("--manifest", str(observe))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        (policy,) = [entry for entry in self.puts() if entry["path"] == API + "settings/policy"]
+        self.assertEqual(policy["body"], {"value": {"rules": [], "sources": ADMISSION_CELL}, "revision": 0})
+        self.assertEqual(
+            self.api.policy["sources"]["github"]["allowed"],
+            [],
+            "the panel's entry is gone and the manifest's not written",
+        )
+        auto = self.auto_manifest("auto-listed", AUTO_ROW, "[someone]")
+        self.api.requests.clear()
+        run = self.run_lever("--dry-run", "--manifest", str(auto))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertIn('eval.mode auto\nallowed ["someone"]\n', run.stdout)
+        self.assertEqual(self.api.requests, [])
+        run = self.run_lever("--manifest", str(auto))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        (policy,) = [entry for entry in self.puts() if entry["path"] == API + "settings/policy"]
+        entry = {"allowed": [{"id": "someone"}], "admission": panel["admission"]}
+        self.assertEqual(policy["body"], {"value": {"rules": [], "sources": {"github": entry}}, "revision": 1})
+        self.assertEqual(self.api.policy["sources"]["github"], entry)
+        self.assertEqual(self.api.eval["mode"], "auto")
 
     def test_a_manifest_without_the_observe_admission_scalar_or_with_a_third_word_refuses_before_any_request(self):
         """U416 test (c): the scalar takes `inferred` or `ignore`; absent or any other word (`explicit`: an unlisted

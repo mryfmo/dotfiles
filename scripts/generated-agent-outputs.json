@@ -426,7 +426,7 @@
       "target": ".local/bin/common/acp-relay.py",
       "kind": "file",
       "executable": true,
-      "sha256": "8966bdc48cc185282dc4e0e81e56e4d58394f428739bb1d79e978dc0547d4dad"
+      "sha256": "20f2aac43796339246df45b0e4a2e0eb42314802966ac7094cd3743f964fe269"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-seat",

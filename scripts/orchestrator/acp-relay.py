@@ -435,7 +435,10 @@ def map_session_cwd(line, task):
         top = member_spans(members)
         if "method" not in top or "params" not in top:
             return line, None
-        if top["method"][0] != "session/new" or not isinstance(top["params"][0], dict):  # lint-comparisons: allow a JSON-RPC method name, not a path
+        method = top["method"][0]
+        if method != "session/new":  # lint-comparisons: allow a JSON-RPC method name, not a path
+            return line, None
+        if not isinstance(top["params"][0], dict):
             return line, None
         _params, params_start, params_end = top["params"]
         inner, inner_end = object_members(text, params_start)

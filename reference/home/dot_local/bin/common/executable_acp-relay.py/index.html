@@ -5877,9 +5877,35 @@
 <span class="s2">Exit 0 when the socket is gone, 2 when it remains or a refusal happened (every reason on stderr), and nothing else is</span>
 <span class="s2">written anywhere. The standard library alone, under `-I -S`: no site packages, no `PYTHON*` variable, no script</span>
 <span class="s2">directory on the path.</span>
+
+<span class="s2">The second entry point, `python3 -I -S acp-relay.py --map-session-cwd &lt;task&gt; -- &lt;command...&gt;` (regime-cutover U449b,</span>
+<span class="s2">table row s22; U449's trace): the connection handler runs it inside the worker's sandbox in place of the bare `omp acp`</span>
+<span class="s2">command, after the same self-check. dsh-subagent-acp names the Router's own task directory as the ACP `session/new`</span>
+<span class="s2">cwd, a directory the worker's settings deny by design (R-45), so Claude Code died at its spawn there; the broker's side,</span>
+<span class="s2">which owns the slot's task, maps that one field onto it before omp reads the request. The mapper starts the command</span>
+<span class="s2">with a pipe for its stdin and the command's stdout as its own (the connection, untouched), copies its stdin to the</span>
+<span class="s2">command line by line, and rewrites exactly one shape (`map_session_cwd`): a JSON object whose `method` is `session/new`</span>
+<span class="s2">and whose `params.cwd` is a string. The rewrite is textual (regime-cutover U449c, verdict U449-6017f53f): a scanner</span>
+<span class="s2">over the line (json.JSONDecoder.raw_decode member by member at the top level and inside `params`, after a streaming</span>
+<span class="s2">count of the nesting against NESTING_CAP) locates the cwd string token, and that token alone is replaced by the task,</span>
+<span class="s2">JSON-quoted; every other byte of the line, the spacing, the key order, an escaped method, a lone surrogate or a number</span>
+<span class="s2">beyond a double in another field, the terminator, stays as the Router sent it (the earlier re-serialisation changed</span>
+<span class="s2">those bytes, raised on a lone surrogate and wrote `Infinity` for a huge number). The mapper is total: whenever the line</span>
+<span class="s2">is not that shape (no cwd, a non-string cwd, no params object, another method, a JSON value that is no object), is not</span>
+<span class="s2">valid JSON or not UTF-8, is nested beyond NESTING_CAP, repeats a key at either level, carries bytes after the object or</span>
+<span class="s2">is longer than LINE_CAP, and whenever anything inside raises, the line passes through byte for byte; the copier forwards</span>
+<span class="s2">every line it read, the mapped line or the original, and a record that cannot be written costs no line. Each mapping is</span>
+<span class="s2">recorded on stderr as `acp-relay.py: session cwd &lt;original, JSON-quoted&gt; mapped to &lt;task&gt;`; the handler gives the</span>
+<span class="s2">launch's stderr a file in the slot and its reaper carries the record into the launch log when omp has ended (an</span>
+<span class="s2">inherited descriptor does not survive srt, measured for U449b: fd 6 is closed in the sandboxed child, so stderr is the</span>
+<span class="s2">one channel besides the stream). The command's stderr is a pipe the mapper drains onto the same stderr, with a line that</span>
+<span class="s2">would begin like the record prefixed `omp: `, so no worker line can be read as the record. The mapper ends when its</span>
+<span class="s2">stdin ends (the command's stdin closed, so omp reads EOF) or the command exits, and exits with the command's status</span>
+<span class="s2">(128 plus the signal number when a signal ended it).</span>
 <span class="s2">"""</span>
 
 import<span class="w"> </span>hashlib
+import<span class="w"> </span>json
 import<span class="w"> </span>os
 import<span class="w"> </span>re
 import<span class="w"> </span>signal
@@ -5893,285 +5919,496 @@ import<span class="w"> </span>threading
 <span class="nv">LEVER_PIN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(\S+): ([0-9a-f]{64})</span>$<span class="s2">"</span><span class="o">)</span>
 <span class="nv">LEVERS_KEYS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"claude"</span>,<span class="w"> </span><span class="s2">"levers"</span>,<span class="w"> </span><span class="s2">"sha256"</span><span class="o">)</span>
 <span class="nv">CHUNK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">65536</span>
-<span class="c1"># A handler is given this long after SIGTERM to end its omp and remove its slot before the relay stops waiting.</span>
-<span class="nv">STOP_GRACE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">30</span>.0
-<span class="c1"># The signals that end the relay: handled from before the bind, blocked across the readiness line's print.</span>
-<span class="nv">STOP_SIGNALS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>signal.SIGTERM,<span class="w"> </span>signal.SIGINT,<span class="w"> </span>signal.SIGHUP<span class="o">)</span>
+<span class="c1"># A stream line longer than this passes through unparsed, in pieces: the mapper holds no more of the Router's bytes.</span>
+<span class="nv">LINE_CAP</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="s">&lt;&lt; 20</span>
+<span class="s">RECORD_PREFIX = b"acp-relay.py: session cwd "</span>
+<span class="s"># A line that opens more arrays and objects inside one another than this passes through unparsed (a `session/new` is</span>
+<span class="s"># five deep): the streaming bound that keeps the parser's recursion out of the copier.</span>
+<span class="s">NESTING_CAP = 64</span>
+<span class="s"># One JSON string token (the unrolled form: no alternation under a repeat) or one bracket, for the nesting count.</span>
+<span class="s">JSON_TOKEN = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"|[\[{\]}]')</span>
+<span class="s">JSON_SPACE = re.compile(r"[ \t\n\r]*")</span>
+<span class="s"># A handler is given this long after SIGTERM to end its omp and remove its slot before the relay stops waiting.</span>
+<span class="s">STOP_GRACE = 30.0</span>
+<span class="s"># The signals that end the relay: handled from before the bind, blocked across the readiness line's print.</span>
+<span class="s">STOP_SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)</span>
 
 
-def<span class="w"> </span>refuse<span class="o">(</span>reason<span class="o">)</span>:
-<span class="w">    </span><span class="s2">"""Print the refusal in the shell levers' words on stderr and exit 2."""</span>
-<span class="w">    </span>print<span class="o">(</span>f<span class="s2">"{LEVER}: refused: {reason}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
-<span class="w">    </span>sys.exit<span class="o">(</span><span class="m">2</span><span class="o">)</span>
+<span class="s">def refuse(reason):</span>
+<span class="s">    """Print the refusal in the shell levers' words on stderr and exit 2</span>.<span class="s2">"""</span>
+<span class="s2">    print(f"</span><span class="o">{</span>LEVER<span class="o">}</span>:<span class="w"> </span>refused:<span class="w"> </span><span class="o">{</span>reason<span class="o">}</span><span class="s2">", file=sys.stderr)</span>
+<span class="s2">    sys.exit(2)</span>
 
 
-def<span class="w"> </span>manifest_pin<span class="o">(</span>lines,<span class="w"> </span>manifest<span class="o">)</span>:
-<span class="w">    </span><span class="s2">"""The sha256 pinned for this file under the manifest's `claude.levers.sha256` block, read as text by</span>
-<span class="s2">    indentation alone (the rule of `brief-check.py`): the top-level `claude:` mapping, its `levers:` key, its</span>
-<span class="s2">    `sha256:` key, then one pin line per lever at one indentation. None or two pins is a refusal."""</span>
-<span class="w">    </span><span class="nv">depth</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="nv">indents</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
-<span class="w">    </span><span class="nv">pins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
-<span class="w">    </span><span class="nv">pin_indent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>lines:
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>line.strip<span class="o">()</span><span class="w"> </span>or<span class="w"> </span>line.lstrip<span class="o">()</span>.startswith<span class="o">(</span><span class="s2">"#"</span><span class="o">)</span>:
-<span class="w">            </span><span class="k">continue</span>
-<span class="w">        </span><span class="nv">indent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>len<span class="o">(</span>line<span class="o">)</span><span class="w"> </span>-<span class="w"> </span>len<span class="o">(</span>line.lstrip<span class="o">(</span><span class="s2">" "</span><span class="o">))</span>
-<span class="w">        </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.strip<span class="o">()</span>
-<span class="w">        </span><span class="k">while</span><span class="w"> </span>indents<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>indents<span class="o">[</span>-1<span class="o">]</span>:
-<span class="w">            </span>indents.pop<span class="o">()</span>
-<span class="w">            </span>depth<span class="w"> </span>-<span class="o">=</span><span class="w"> </span><span class="m">1</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">depth</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>len<span class="o">(</span>LEVERS_KEYS<span class="o">)</span>:
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>pin_indent<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">                </span><span class="nv">pin_indent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>indent
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>indent<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>pin_indent:
-<span class="w">                </span><span class="k">break</span>
-<span class="w">            </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>LEVER_PIN.match<span class="o">(</span>text<span class="o">)</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">                </span>refuse<span class="o">(</span>f<span class="s2">"the levers block of {manifest} holds a line that is no pin: {text!r}"</span><span class="o">)</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>LEVER:
-<span class="w">                </span>pins.append<span class="o">(</span>match.group<span class="o">(</span><span class="m">2</span><span class="o">))</span>
-<span class="w">            </span><span class="k">continue</span>
-<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>MAPPING_KEY.match<span class="o">(</span>text<span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>depth<span class="w"> </span>&lt;<span class="w"> </span>len<span class="o">(</span>LEVERS_KEYS<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>LEVERS_KEYS<span class="o">[</span>depth<span class="o">]</span>:
-<span class="w">            </span>indents.append<span class="o">(</span>indent<span class="o">)</span>
-<span class="w">            </span><span class="nv">depth</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">1</span>
-<span class="w">            </span><span class="k">continue</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>depth<span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>&gt;<span class="w"> </span>indents<span class="o">[</span>-1<span class="o">]</span>:
-<span class="w">            </span><span class="k">continue</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>depth<span class="w"> </span>&lt;<span class="w"> </span>len<span class="o">(</span>LEVERS_KEYS<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>not<span class="w"> </span>pins:
-<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"no claude.levers.sha256 block in {manifest}"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>pins<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">1</span>:
-<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"no single sha256 pin for {LEVER} in {manifest}"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>pins<span class="o">[</span><span class="m">0</span><span class="o">]</span>
+<span class="s2">def manifest_pin(lines, manifest):</span>
+<span class="s2">    """</span>The<span class="w"> </span>sha256<span class="w"> </span>pinned<span class="w"> </span><span class="k">for</span><span class="w"> </span>this<span class="w"> </span>file<span class="w"> </span>under<span class="w"> </span>the<span class="w"> </span>manifest<span class="s1">'s `claude.levers.sha256` block, read as text by</span>
+<span class="s1">    indentation alone (the rule of `brief-check.py`): the top-level `claude:` mapping, its `levers:` key, its</span>
+<span class="s1">    `sha256:` key, then one pin line per lever at one indentation. None or two pins is a refusal."""</span>
+<span class="s1">    depth = 0</span>
+<span class="s1">    indents = []</span>
+<span class="s1">    pins = []</span>
+<span class="s1">    pin_indent = None</span>
+<span class="s1">    for line in lines:</span>
+<span class="s1">        if not line.strip() or line.lstrip().startswith("#"):</span>
+<span class="s1">            continue</span>
+<span class="s1">        indent = len(line) - len(line.lstrip(" "))</span>
+<span class="s1">        text = line.strip()</span>
+<span class="s1">        while indents and indent &lt;= indents[-1]:</span>
+<span class="s1">            indents.pop()</span>
+<span class="s1">            depth -= 1</span>
+<span class="s1">        if depth == len(LEVERS_KEYS):</span>
+<span class="s1">            if pin_indent is None:</span>
+<span class="s1">                pin_indent = indent</span>
+<span class="s1">            if indent != pin_indent:</span>
+<span class="s1">                break</span>
+<span class="s1">            match = LEVER_PIN.match(text)</span>
+<span class="s1">            if match is None:</span>
+<span class="s1">                refuse(f"the levers block of {manifest} holds a line that is no pin: {text!r}")</span>
+<span class="s1">            if match.group(1) == LEVER:</span>
+<span class="s1">                pins.append(match.group(2))</span>
+<span class="s1">            continue</span>
+<span class="s1">        match = MAPPING_KEY.match(text)</span>
+<span class="s1">        if match is not None and depth &lt; len(LEVERS_KEYS) and match.group(1) == LEVERS_KEYS[depth]:</span>
+<span class="s1">            indents.append(indent)</span>
+<span class="s1">            depth += 1</span>
+<span class="s1">            continue</span>
+<span class="s1">        if depth &gt; 0 and indent &gt; indents[-1]:</span>
+<span class="s1">            continue</span>
+<span class="s1">    if depth &lt; len(LEVERS_KEYS) and not pins:</span>
+<span class="s1">        refuse(f"no claude.levers.sha256 block in {manifest}")</span>
+<span class="s1">    if len(pins) != 1:</span>
+<span class="s1">        refuse(f"no single sha256 pin for {LEVER} in {manifest}")</span>
+<span class="s1">    return pins[0]</span>
 
 
-def<span class="w"> </span>lever_self_check<span class="o">()</span>:
-<span class="w">    </span><span class="s2">"""Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31): the</span>
-<span class="s2">    deployed `~/.agents/agent-config.yaml` when this file's physical directory is the physical `~/.local/bin/common`,</span>
-<span class="s2">    else the checkout's `home/dot_agents/agent-config.yaml` two levels up. Every read is checked (standing order</span>
-<span class="s2">    21)."""</span>
-<span class="w">    </span><span class="nv">directory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.realpath<span class="o">(</span>os.path.dirname<span class="o">(</span>os.path.abspath<span class="o">(</span>__file__<span class="o">)))</span>
-<span class="w">    </span><span class="nv">self_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>directory,<span class="w"> </span>os.path.basename<span class="o">(</span>__file__<span class="o">))</span>
-<span class="w">    </span><span class="nv">home</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">"HOME"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>home<span class="w"> </span>and<span class="w"> </span>os.path.isdir<span class="o">(</span>home<span class="o">)</span><span class="w"> </span>and<span class="w"> </span><span class="nv">directory</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>os.path.realpath<span class="o">(</span>os.path.join<span class="o">(</span>home,<span class="w"> </span><span class="s2">".local/bin/common"</span><span class="o">))</span>:
-<span class="w">        </span><span class="nv">manifest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>home,<span class="w"> </span><span class="s2">".agents/agent-config.yaml"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">else</span>:
-<span class="w">        </span><span class="nv">manifest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>directory,<span class="w"> </span><span class="s2">"../../home/dot_agents/agent-config.yaml"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>os.access<span class="o">(</span>manifest,<span class="w"> </span>os.R_OK<span class="o">)</span>:
-<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"manifest unreadable: {manifest}"</span><span class="o">)</span>
-<span class="w">    </span>try:
-<span class="w">        </span>with<span class="w"> </span>open<span class="o">(</span>manifest,<span class="w"> </span><span class="s2">"rb"</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>handle:
-<span class="w">            </span><span class="nv">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>handle.read<span class="o">()</span>.decode<span class="o">(</span><span class="s2">"utf-8"</span>,<span class="w"> </span><span class="s2">"replace"</span><span class="o">)</span>.splitlines<span class="o">()</span>
-<span class="w">    </span>except<span class="w"> </span>OSError:
-<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot read {manifest}"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">pin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>manifest_pin<span class="o">(</span>lines,<span class="w"> </span>manifest<span class="o">)</span>
-<span class="w">    </span>try:
-<span class="w">        </span>with<span class="w"> </span>open<span class="o">(</span>self_path,<span class="w"> </span><span class="s2">"rb"</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>handle:
-<span class="w">            </span><span class="nv">digest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hashlib.sha256<span class="o">(</span>handle.read<span class="o">())</span>.hexdigest<span class="o">()</span>
-<span class="w">    </span>except<span class="w"> </span>OSError:
-<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot hash {self_path}"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>digest<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>pin:
-<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"sha256 {digest} of {self_path} differs from the pin in {manifest}"</span><span class="o">)</span>
+<span class="s1">def lever_self_check():</span>
+<span class="s1">    """Refuse to run unless this file'</span>s<span class="w"> </span>sha256<span class="w"> </span>equals<span class="w"> </span>its<span class="w"> </span>pin<span class="w"> </span><span class="k">in</span><span class="w"> </span>the<span class="w"> </span>manifest<span class="w"> </span>beside<span class="w"> </span>it<span class="w"> </span><span class="o">(</span>regime-cutover<span class="w"> </span>U31<span class="o">)</span>:<span class="w"> </span>the
+<span class="w">    </span>deployed<span class="w"> </span><span class="sb">`</span>~/.agents/agent-config.yaml<span class="sb">`</span><span class="w"> </span>when<span class="w"> </span>this<span class="w"> </span>file<span class="s1">'s physical directory is the physical `~/.local/bin/common`,</span>
+<span class="s1">    else the checkout'</span>s<span class="w"> </span><span class="sb">`</span>home/dot_agents/agent-config.yaml<span class="sb">`</span><span class="w"> </span>two<span class="w"> </span>levels<span class="w"> </span>up.<span class="w"> </span>Every<span class="w"> </span><span class="nb">read</span><span class="w"> </span>is<span class="w"> </span>checked<span class="w"> </span><span class="o">(</span>standing<span class="w"> </span>order
+<span class="w">    </span><span class="m">21</span><span class="o">)</span>.<span class="s2">"""</span>
+<span class="s2">    directory = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))</span>
+<span class="s2">    self_path = os.path.join(directory, os.path.basename(__file__))</span>
+<span class="s2">    home = os.environ.get("</span>HOME<span class="s2">", "")</span>
+<span class="s2">    if home and os.path.isdir(home) and directory == os.path.realpath(os.path.join(home, "</span>.local/bin/common<span class="s2">")):</span>
+<span class="s2">        manifest = os.path.join(home, "</span>.agents/agent-config.yaml<span class="s2">")</span>
+<span class="s2">    else:</span>
+<span class="s2">        manifest = os.path.join(directory, "</span>../../home/dot_agents/agent-config.yaml<span class="s2">")</span>
+<span class="s2">    if not os.access(manifest, os.R_OK):</span>
+<span class="s2">        refuse(f"</span>manifest<span class="w"> </span>unreadable:<span class="w"> </span><span class="o">{</span>manifest<span class="o">}</span><span class="s2">")</span>
+<span class="s2">    try:</span>
+<span class="s2">        with open(manifest, "</span>rb<span class="s2">") as handle:</span>
+<span class="s2">            lines = handle.read().decode("</span>utf-8<span class="s2">", "</span>replace<span class="s2">").splitlines()</span>
+<span class="s2">    except OSError:</span>
+<span class="s2">        refuse(f"</span>cannot<span class="w"> </span><span class="nb">read</span><span class="w"> </span><span class="o">{</span>manifest<span class="o">}</span><span class="s2">")</span>
+<span class="s2">    pin = manifest_pin(lines, manifest)</span>
+<span class="s2">    try:</span>
+<span class="s2">        with open(self_path, "</span>rb<span class="s2">") as handle:</span>
+<span class="s2">            digest = hashlib.sha256(handle.read()).hexdigest()</span>
+<span class="s2">    except OSError:</span>
+<span class="s2">        refuse(f"</span>cannot<span class="w"> </span><span class="nb">hash</span><span class="w"> </span><span class="o">{</span>self_path<span class="o">}</span><span class="s2">")</span>
+<span class="s2">    if digest != pin:</span>
+<span class="s2">        refuse(f"</span>sha256<span class="w"> </span><span class="o">{</span>digest<span class="o">}</span><span class="w"> </span>of<span class="w"> </span><span class="o">{</span>self_path<span class="o">}</span><span class="w"> </span>differs<span class="w"> </span>from<span class="w"> </span>the<span class="w"> </span>pin<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span>manifest<span class="o">}</span><span class="s2">")</span>
 
 
-class<span class="w"> </span>Relay:
-<span class="w">    </span><span class="s2">"""One listener, one handler process per connection, two copy threads per handler."""</span>
+<span class="s2">class Relay:</span>
+<span class="s2">    """</span>One<span class="w"> </span>listener,<span class="w"> </span>one<span class="w"> </span>handler<span class="w"> </span>process<span class="w"> </span>per<span class="w"> </span>connection,<span class="w"> </span>two<span class="w"> </span>copy<span class="w"> </span>threads<span class="w"> </span>per<span class="w"> </span>handler.<span class="s2">"""</span>
 
-<span class="w">    </span>def<span class="w"> </span>__init__<span class="o">(</span>self,<span class="w"> </span>sock_path,<span class="w"> </span>handler<span class="o">)</span>:
-<span class="w">        </span>self.sock_path<span class="w"> </span><span class="o">=</span><span class="w"> </span>sock_path
-<span class="w">        </span>self.handler<span class="w"> </span><span class="o">=</span><span class="w"> </span>handler
-<span class="w">        </span>self.listener<span class="w"> </span><span class="o">=</span><span class="w"> </span>None
-<span class="w">        </span>self.stopping<span class="w"> </span><span class="o">=</span><span class="w"> </span>False
-<span class="w">        </span>self.lock<span class="w"> </span><span class="o">=</span><span class="w"> </span>threading.Lock<span class="o">()</span>
-<span class="w">        </span>self.children<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
-<span class="w">        </span>self.threads<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="s2">    def __init__(self, sock_path, handler):</span>
+<span class="s2">        self.sock_path = sock_path</span>
+<span class="s2">        self.handler = handler</span>
+<span class="s2">        self.listener = None</span>
+<span class="s2">        self.stopping = False</span>
+<span class="s2">        self.lock = threading.Lock()</span>
+<span class="s2">        self.children = {}</span>
+<span class="s2">        self.threads = []</span>
 
-<span class="w">    </span>def<span class="w"> </span>serve<span class="o">(</span>self,<span class="w"> </span>conn<span class="o">)</span>:
-<span class="w">        </span><span class="s2">"""Start the handler for `conn` and copy bytes both ways until the handler exits; then close `conn`.</span>
-<span class="s2">        The start and the registration happen under the one lock `stop` takes (verdict U343d-136fbe0a P2 `:250`):</span>
-<span class="s2">        a stop that began first turns the connection away unstarted, and a handler that was started is in the</span>
-<span class="s2">        table before `stop` reads it, so no handler escapes the termination."""</span>
-<span class="w">        </span>with<span class="w"> </span>self.lock:
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>self.stopping:
-<span class="w">                </span><span class="nv">child</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
-<span class="w">            </span><span class="k">else</span>:
-<span class="w">                </span>try:
-<span class="w">                    </span><span class="nv">child</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>subprocess.Popen<span class="o">(</span>
-<span class="w">                        </span>self.handler,<span class="w"> </span><span class="nv">stdin</span><span class="o">=</span>subprocess.PIPE,<span class="w"> </span><span class="nv">stdout</span><span class="o">=</span>subprocess.PIPE,<span class="w"> </span><span class="nv">stderr</span><span class="o">=</span>None,<span class="w"> </span><span class="nv">close_fds</span><span class="o">=</span>True
-<span class="w">                    </span><span class="o">)</span>
-<span class="w">                </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>exc:
-<span class="w">                    </span>print<span class="o">(</span>f<span class="s2">"{LEVER}: cannot start the connection handler {self.handler[0]}: {exc}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
-<span class="w">                    </span><span class="nv">child</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
-<span class="w">                </span><span class="k">else</span>:
-<span class="w">                    </span>self.children<span class="o">[</span>child.pid<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>child
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>child<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">            </span>try:
-<span class="w">                </span>conn.sendall<span class="o">(</span>b<span class="s2">"acp-broker: refused: cannot start the connection handler\n"</span><span class="o">)</span>
-<span class="w">            </span>except<span class="w"> </span>OSError:
-<span class="w">                </span>pass
-<span class="w">            </span>conn.close<span class="o">()</span>
-<span class="w">            </span><span class="k">return</span>
-<span class="w">        </span><span class="nv">sending</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>True<span class="o">]</span>
+<span class="s2">    def serve(self, conn):</span>
+<span class="s2">        """</span>Start<span class="w"> </span>the<span class="w"> </span>handler<span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="sb">`</span>conn<span class="sb">`</span><span class="w"> </span>and<span class="w"> </span>copy<span class="w"> </span>bytes<span class="w"> </span>both<span class="w"> </span>ways<span class="w"> </span><span class="k">until</span><span class="w"> </span>the<span class="w"> </span>handler<span class="w"> </span>exits<span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span>close<span class="w"> </span><span class="sb">`</span>conn<span class="sb">`</span>.
+<span class="w">        </span>The<span class="w"> </span>start<span class="w"> </span>and<span class="w"> </span>the<span class="w"> </span>registration<span class="w"> </span>happen<span class="w"> </span>under<span class="w"> </span>the<span class="w"> </span>one<span class="w"> </span>lock<span class="w"> </span><span class="sb">`</span>stop<span class="sb">`</span><span class="w"> </span>takes<span class="w"> </span><span class="o">(</span>verdict<span class="w"> </span>U343d-136fbe0a<span class="w"> </span>P2<span class="w"> </span><span class="sb">`</span>:250<span class="sb">`</span><span class="o">)</span>:
+<span class="w">        </span>a<span class="w"> </span>stop<span class="w"> </span>that<span class="w"> </span>began<span class="w"> </span>first<span class="w"> </span>turns<span class="w"> </span>the<span class="w"> </span>connection<span class="w"> </span>away<span class="w"> </span>unstarted,<span class="w"> </span>and<span class="w"> </span>a<span class="w"> </span>handler<span class="w"> </span>that<span class="w"> </span>was<span class="w"> </span>started<span class="w"> </span>is<span class="w"> </span><span class="k">in</span><span class="w"> </span>the
+<span class="w">        </span>table<span class="w"> </span>before<span class="w"> </span><span class="sb">`</span>stop<span class="sb">`</span><span class="w"> </span>reads<span class="w"> </span>it,<span class="w"> </span>so<span class="w"> </span>no<span class="w"> </span>handler<span class="w"> </span>escapes<span class="w"> </span>the<span class="w"> </span>termination.<span class="s2">"""</span>
+<span class="s2">        with self.lock:</span>
+<span class="s2">            if self.stopping:</span>
+<span class="s2">                child = None</span>
+<span class="s2">            else:</span>
+<span class="s2">                try:</span>
+<span class="s2">                    child = subprocess.Popen(</span>
+<span class="s2">                        self.handler, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=None, close_fds=True</span>
+<span class="s2">                    )</span>
+<span class="s2">                except OSError as exc:</span>
+<span class="s2">                    print(f"</span><span class="o">{</span>LEVER<span class="o">}</span>:<span class="w"> </span>cannot<span class="w"> </span>start<span class="w"> </span>the<span class="w"> </span>connection<span class="w"> </span>handler<span class="w"> </span><span class="o">{</span>self.handler<span class="o">[</span><span class="m">0</span><span class="o">]}</span>:<span class="w"> </span><span class="o">{</span>exc<span class="o">}</span><span class="s2">", file=sys.stderr)</span>
+<span class="s2">                    child = None</span>
+<span class="s2">                else:</span>
+<span class="s2">                    self.children[child.pid] = child</span>
+<span class="s2">        if child is None:</span>
+<span class="s2">            try:</span>
+<span class="s2">                conn.sendall(b"</span>acp-broker:<span class="w"> </span>refused:<span class="w"> </span>cannot<span class="w"> </span>start<span class="w"> </span>the<span class="w"> </span>connection<span class="w"> </span>handler<span class="se">\n</span><span class="s2">")</span>
+<span class="s2">            except OSError:</span>
+<span class="s2">                pass</span>
+<span class="s2">            conn.close()</span>
+<span class="s2">            return</span>
+<span class="s2">        sending = [True]</span>
 
-<span class="w">        </span>def<span class="w"> </span>to_child<span class="o">()</span>:
-<span class="w">            </span><span class="c1"># The connection's bytes to the handler's stdin; the client's close (or loss) closes that stdin, so omp</span>
-<span class="w">            </span><span class="c1"># reads EOF.</span>
-<span class="w">            </span>try:
-<span class="w">                </span><span class="k">while</span><span class="w"> </span>True:
-<span class="w">                    </span><span class="nv">chunk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>conn.recv<span class="o">(</span>CHUNK<span class="o">)</span>
-<span class="w">                    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>chunk:
-<span class="w">                        </span><span class="k">break</span>
-<span class="w">                    </span>child.stdin.write<span class="o">(</span>chunk<span class="o">)</span>
-<span class="w">                    </span>child.stdin.flush<span class="o">()</span>
-<span class="w">            </span>except<span class="w"> </span>OSError:
-<span class="w">                </span>pass
+<span class="s2">        def to_child():</span>
+<span class="s2">            # The connection's bytes to the handler's stdin; the client's close (or loss) closes that stdin, so omp</span>
+<span class="s2">            # reads EOF.</span>
+<span class="s2">            try:</span>
+<span class="s2">                while True:</span>
+<span class="s2">                    chunk = conn.recv(CHUNK)</span>
+<span class="s2">                    if not chunk:</span>
+<span class="s2">                        break</span>
+<span class="s2">                    child.stdin.write(chunk)</span>
+<span class="s2">                    child.stdin.flush()</span>
+<span class="s2">            except OSError:</span>
+<span class="s2">                pass</span>
+<span class="s2">            try:</span>
+<span class="s2">                child.stdin.close()</span>
+<span class="s2">            except OSError:</span>
+<span class="s2">                pass</span>
+
+<span class="s2">        def to_conn():</span>
+<span class="s2">            # The handler's stdout to the connection, drained to the end even when the client is gone, so the handler</span>
+<span class="s2">            # never meets a broken pipe before it has logged the exit and removed its slot.</span>
+<span class="s2">            while True:</span>
+<span class="s2">                chunk = child.stdout.read1(CHUNK)</span>
+<span class="s2">                if not chunk:</span>
+<span class="s2">                    break</span>
+<span class="s2">                if sending[0]:</span>
+<span class="s2">                    try:</span>
+<span class="s2">                        conn.sendall(chunk)</span>
+<span class="s2">                    except OSError:</span>
+<span class="s2">                        sending[0] = False</span>
+<span class="s2">                        try:</span>
+<span class="s2">                            child.stdin.close()</span>
+<span class="s2">                        except OSError:</span>
+<span class="s2">                            pass</span>
+<span class="s2">            try:</span>
+<span class="s2">                conn.shutdown(socket.SHUT_WR)</span>
+<span class="s2">            except OSError:</span>
+<span class="s2">                pass</span>
+
+<span class="s2">        reader = threading.Thread(target=to_child, daemon=True)</span>
+<span class="s2">        writer = threading.Thread(target=to_conn, daemon=True)</span>
+<span class="s2">        reader.start()</span>
+<span class="s2">        writer.start()</span>
+<span class="s2">        writer.join()</span>
+<span class="s2">        child.wait()</span>
+<span class="s2">        # The handler is gone: the connection ends now, which also releases a reader still waiting on the client.</span>
+<span class="s2">        try:</span>
+<span class="s2">            conn.shutdown(socket.SHUT_RDWR)</span>
+<span class="s2">        except OSError:</span>
+<span class="s2">            pass</span>
+<span class="s2">        conn.close()</span>
+<span class="s2">        reader.join()</span>
+<span class="s2">        with self.lock:</span>
+<span class="s2">            self.children.pop(child.pid, None)</span>
+
+<span class="s2">    def on_signal(self, signum, frame):</span>
+<span class="s2">        self.stopping = True</span>
+<span class="s2">        # The listener is set once it accepts: a signal during the bind or the listen closes nothing, and run() reads</span>
+<span class="s2">        # the flag before the readiness line; a signal in the accept loop makes the retried accept fail at once.</span>
+<span class="s2">        if self.listener is not None:</span>
+<span class="s2">            try:</span>
+<span class="s2">                self.listener.close()</span>
+<span class="s2">            except OSError:</span>
+<span class="s2">                pass</span>
+
+<span class="s2">    def run(self):</span>
+<span class="s2">        # The socket is bound by its name from its own directory: a Unix socket path is capped at 104 bytes on macOS</span>
+<span class="s2">        # (108 on Linux), and `&lt;seats-root&gt;/.state/&lt;router seat&gt;/broker/sock` under a long HOME or seats root exceeds</span>
+<span class="s2">        # it; the directory is the relay's cwd from here on (every handler enters the task cwd itself).</span>
+<span class="s2">        directory, base = os.path.split(self.sock_path)</span>
+<span class="s2">        try:</span>
+<span class="s2">            os.chdir(directory)</span>
+<span class="s2">        except OSError as exc:</span>
+<span class="s2">            refuse(f"</span>cannot<span class="w"> </span>enter<span class="w"> </span>the<span class="w"> </span>broker<span class="w"> </span>directory<span class="w"> </span><span class="o">{</span>directory<span class="o">}</span>:<span class="w"> </span><span class="o">{</span>exc<span class="o">}</span><span class="s2">")</span>
+<span class="s2">        # Armed before the socket exists (regime-cutover U447): from here a HUP, INT or TERM ends this process through</span>
+<span class="s2">        # stop() and remove_socket(), whichever start-up step it lands in.</span>
+<span class="s2">        for signum in STOP_SIGNALS:</span>
+<span class="s2">            signal.signal(signum, self.on_signal)</span>
+<span class="s2">        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)</span>
+<span class="s2">        try:</span>
+<span class="s2">            listener.bind(base)</span>
+<span class="s2">        except OSError as exc:</span>
+<span class="s2">            refuse(f"</span>cannot<span class="w"> </span><span class="nb">bind</span><span class="w"> </span>the<span class="w"> </span>broker<span class="w"> </span>socket<span class="w"> </span><span class="o">{</span>self.sock_path<span class="o">}</span>:<span class="w"> </span><span class="o">{</span>exc<span class="o">}</span><span class="s2">")</span>
+<span class="s2">        try:</span>
+<span class="s2">            os.chmod(self.sock_path, 0o600)</span>
+<span class="s2">            listener.listen(16)</span>
+<span class="s2">        except OSError as exc:</span>
+<span class="s2">            listener.close()</span>
+<span class="s2">            self.remove_socket()</span>
+<span class="s2">            refuse(f"</span>cannot<span class="w"> </span>listen<span class="w"> </span>on<span class="w"> </span>the<span class="w"> </span>broker<span class="w"> </span>socket<span class="w"> </span><span class="o">{</span>self.sock_path<span class="o">}</span>:<span class="w"> </span><span class="o">{</span>exc<span class="o">}</span><span class="s2">")</span>
+<span class="s2">        self.listener = listener</span>
+<span class="s2">        # The readiness line is the last start-up step and the one readiness sign (hcom-seat reads it through its</span>
+<span class="s2">        # FIFO, the test fixture from the broker's stdout). The flag's read, the print and the flush are one step</span>
+<span class="s2">        # with the three signals blocked (regime-cutover U447b, verdict U447-a52a1452 P1): a signal that already</span>
+<span class="s2">        # arrived leaves no line, and one sent meanwhile is delivered at the unblock and ends this process as any</span>
+<span class="s2">        # post-readiness signal does, so a line never follows the listener's closure.</span>
+<span class="s2">        signal.pthread_sigmask(signal.SIG_BLOCK, STOP_SIGNALS)</span>
+<span class="s2">        if not self.stopping:</span>
+<span class="s2">            print(f"</span>acp-broker:<span class="w"> </span>listening<span class="w"> </span>on<span class="w"> </span><span class="o">{</span>self.sock_path<span class="o">}</span><span class="s2">", flush=True)</span>
+<span class="s2">        signal.pthread_sigmask(signal.SIG_UNBLOCK, STOP_SIGNALS)</span>
+<span class="s2">        while not self.stopping:</span>
+<span class="s2">            try:</span>
+<span class="s2">                conn, _ = self.listener.accept()</span>
+<span class="s2">            except OSError:</span>
+<span class="s2">                # The listener was closed by the signal handler, or accept failed: either way the relay ends.</span>
+<span class="s2">                break</span>
+<span class="s2">            thread = threading.Thread(target=self.serve, args=(conn,), daemon=True)</span>
+<span class="s2">            thread.start()</span>
+<span class="s2">            self.threads.append(thread)</span>
+<span class="s2">        self.stop()</span>
+<span class="s2">        return 0 if self.remove_socket() else 2</span>
+
+<span class="s2">    def stop(self):</span>
+<span class="s2">        """</span>Terminate<span class="w"> </span>every<span class="w"> </span>live<span class="w"> </span>handler<span class="w"> </span>and<span class="w"> </span><span class="nb">wait</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>each:<span class="w"> </span>its<span class="w"> </span><span class="nb">trap</span><span class="w"> </span>ends<span class="w"> </span>omp,<span class="w"> </span>logs<span class="w"> </span>the<span class="w"> </span><span class="nb">exit</span><span class="w"> </span>and<span class="w"> </span>removes<span class="w"> </span>its<span class="w"> </span>slot.
+<span class="w">        </span>The<span class="w"> </span>stopping<span class="w"> </span>flag<span class="w"> </span>is<span class="w"> </span><span class="nb">set</span><span class="w"> </span>under<span class="w"> </span>the<span class="w"> </span>lock<span class="w"> </span>before<span class="w"> </span>the<span class="w"> </span>table<span class="w"> </span>is<span class="w"> </span>read,<span class="w"> </span>so<span class="w"> </span>a<span class="w"> </span><span class="sb">`</span>serve<span class="sb">`</span><span class="w"> </span>that<span class="w"> </span>passed<span class="w"> </span>the<span class="w"> </span>flag<span class="w"> </span>has
+<span class="w">        </span>its<span class="w"> </span>handler<span class="w"> </span><span class="k">in</span><span class="w"> </span>the<span class="w"> </span>table.<span class="s2">"""</span>
+<span class="s2">        try:</span>
+<span class="s2">            self.listener.close()</span>
+<span class="s2">        except OSError:</span>
+<span class="s2">            pass</span>
+<span class="s2">        with self.lock:</span>
+<span class="s2">            self.stopping = True</span>
+<span class="s2">            children = list(self.children.values())</span>
+<span class="s2">        for child in children:</span>
+<span class="s2">            try:</span>
+<span class="s2">                child.terminate()</span>
+<span class="s2">            except OSError:</span>
+<span class="s2">                pass</span>
+<span class="s2">        for child in children:</span>
+<span class="s2">            try:</span>
+<span class="s2">                child.wait(timeout=STOP_GRACE)</span>
+<span class="s2">            except subprocess.TimeoutExpired:</span>
+<span class="s2">                print(</span>
+<span class="s2">                    f"</span><span class="o">{</span>LEVER<span class="o">}</span>:<span class="w"> </span>a<span class="w"> </span>connection<span class="w"> </span>handler<span class="w"> </span><span class="o">(</span>pid<span class="w"> </span><span class="o">{</span>child.pid<span class="o">})</span><span class="w"> </span>did<span class="w"> </span>not<span class="w"> </span>end<span class="w"> </span>within<span class="w"> </span><span class="o">{</span>STOP_GRACE:.0f<span class="o">}</span><span class="w"> </span>s<span class="s2">",</span>
+<span class="s2">                    file=sys.stderr,</span>
+<span class="s2">                )</span>
+<span class="s2">                child.kill()</span>
+<span class="s2">                child.wait()</span>
+<span class="s2">        for thread in self.threads:</span>
+<span class="s2">            thread.join(timeout=STOP_GRACE)</span>
+
+<span class="s2">    def remove_socket(self):</span>
+<span class="s2">        """</span>Remove<span class="w"> </span>the<span class="w"> </span>socket<span class="w"> </span>file<span class="p">;</span><span class="w"> </span>True<span class="w"> </span>when<span class="w"> </span>it<span class="w"> </span>is<span class="w"> </span>gone<span class="w"> </span><span class="o">(</span>an<span class="w"> </span>absence<span class="w"> </span>is<span class="w"> </span><span class="nb">read</span><span class="w"> </span>from<span class="w"> </span>the<span class="w"> </span>error,<span class="w"> </span>standing<span class="w"> </span>order<span class="w"> </span><span class="m">21</span><span class="o">)</span>.<span class="s2">"""</span>
+<span class="s2">        try:</span>
+<span class="s2">            os.unlink(self.sock_path)</span>
+<span class="s2">        except FileNotFoundError:</span>
+<span class="s2">            pass</span>
+<span class="s2">        except OSError as exc:</span>
+<span class="s2">            print(f"</span><span class="o">{</span>LEVER<span class="o">}</span>:<span class="w"> </span>cannot<span class="w"> </span>remove<span class="w"> </span>the<span class="w"> </span>broker<span class="w"> </span>socket<span class="w"> </span><span class="o">{</span>self.sock_path<span class="o">}</span>:<span class="w"> </span><span class="o">{</span>exc<span class="o">}</span><span class="s2">", file=sys.stderr)</span>
+<span class="s2">        if os.path.lexists(self.sock_path):</span>
+<span class="s2">            print(f"</span><span class="o">{</span>LEVER<span class="o">}</span>:<span class="w"> </span>the<span class="w"> </span>broker<span class="w"> </span>socket<span class="w"> </span><span class="o">{</span>self.sock_path<span class="o">}</span><span class="w"> </span>remains<span class="w"> </span>after<span class="w"> </span>its<span class="w"> </span>removal<span class="s2">", file=sys.stderr)</span>
+<span class="s2">            return False</span>
+<span class="s2">        return True</span>
+
+
+<span class="s2">def nesting_exceeds(text, cap):</span>
+<span class="s2">    """</span>True<span class="w"> </span>when<span class="w"> </span>the<span class="w"> </span>JSON<span class="w"> </span>text<span class="w"> </span>opens<span class="w"> </span>more<span class="w"> </span>than<span class="w"> </span><span class="sb">`</span>cap<span class="sb">`</span><span class="w"> </span>arrays<span class="w"> </span>and<span class="w"> </span>objects<span class="w"> </span>inside<span class="w"> </span>one<span class="w"> </span>another:<span class="w"> </span>a<span class="w"> </span>count<span class="w"> </span>of<span class="w"> </span>the<span class="w"> </span>brackets
+<span class="w">    </span>outside<span class="w"> </span>the<span class="w"> </span>string<span class="w"> </span>tokens,<span class="w"> </span>streamed<span class="w"> </span>over<span class="w"> </span>the<span class="w"> </span>text,<span class="w"> </span>never<span class="w"> </span>a<span class="w"> </span>parse.<span class="s2">"""</span>
+<span class="s2">    depth = 0</span>
+<span class="s2">    for match in JSON_TOKEN.finditer(text):</span>
+<span class="s2">        token = match.group()</span>
+<span class="s2">        if token[0] == '"</span><span class="s1">':</span>
+<span class="s1">            continue</span>
+<span class="s1">        if token in "[{":</span>
+<span class="s1">            depth += 1</span>
+<span class="s1">            if depth &gt; cap:</span>
+<span class="s1">                return True</span>
+<span class="s1">        elif depth:</span>
+<span class="s1">            depth -= 1</span>
+<span class="s1">    return False</span>
+
+
+<span class="s1">def object_members(text, start):</span>
+<span class="s1">    """The members of the JSON object at `start` (after any whitespace) as (key, value, value start, value end) and</span>
+<span class="s1">    the index after its closing brace; ValueError when no object is there (IndexError at the text'</span>s<span class="w"> </span>end<span class="o">)</span>.<span class="s2">"""</span>
+<span class="s2">    decoder = json.JSONDecoder()</span>
+<span class="s2">    members = []</span>
+<span class="s2">    i = JSON_SPACE.match(text, start).end()</span>
+<span class="s2">    if text[i] != "</span><span class="o">{</span><span class="s2">":</span>
+<span class="s2">        raise ValueError("</span>no<span class="w"> </span>object<span class="s2">")</span>
+<span class="s2">    i = JSON_SPACE.match(text, i + 1).end()</span>
+<span class="s2">    if text[i] == "</span><span class="o">}</span><span class="s2">":</span>
+<span class="s2">        return members, i + 1</span>
+<span class="s2">    while True:</span>
+<span class="s2">        if text[i] != '"</span><span class="s1">':</span>
+<span class="s1">            raise ValueError("no key")</span>
+<span class="s1">        key, i = decoder.raw_decode(text, i)</span>
+<span class="s1">        i = JSON_SPACE.match(text, i).end()</span>
+<span class="s1">        if text[i] != ":":</span>
+<span class="s1">            raise ValueError("no colon")</span>
+<span class="s1">        i = JSON_SPACE.match(text, i + 1).end()</span>
+<span class="s1">        value, end = decoder.raw_decode(text, i)</span>
+<span class="s1">        members.append((key, value, i, end))</span>
+<span class="s1">        i = JSON_SPACE.match(text, end).end()</span>
+<span class="s1">        if text[i] == ",":</span>
+<span class="s1">            i = JSON_SPACE.match(text, i + 1).end()</span>
+<span class="s1">            continue</span>
+<span class="s1">        if text[i] == "}":</span>
+<span class="s1">            return members, i + 1</span>
+<span class="s1">        raise ValueError("no comma")</span>
+
+
+<span class="s1">def member_spans(members):</span>
+<span class="s1">    """{key: (value, value start, value end)}; ValueError on a repeated key (JSON.parse keeps the last; the shape</span>
+<span class="s1">    is ambiguous and this lever maps neither)."""</span>
+<span class="s1">    spans = {}</span>
+<span class="s1">    for key, value, start, end in members:</span>
+<span class="s1">        if key in spans:</span>
+<span class="s1">            raise ValueError("repeated key")</span>
+<span class="s1">        spans[key] = (value, start, end)</span>
+<span class="s1">    return spans</span>
+
+
+<span class="s1">def map_session_cwd(line, task):</span>
+<span class="s1">    """The one mapping of the stream (regime-cutover U449b): (the line to pass on, the original cwd or None). A JSON</span>
+<span class="s1">    object whose `method` is `session/new` and whose `params.cwd` is a string becomes the same bytes with the cwd</span>
+<span class="s1">    string token alone replaced by `task`, JSON-quoted (regime-cutover U449c: a textual substitution at the token'</span>s
+<span class="w">    </span>position,<span class="w"> </span>so<span class="w"> </span>the<span class="w"> </span>spacing,<span class="w"> </span>the<span class="w"> </span>key<span class="w"> </span>order<span class="w"> </span>and<span class="w"> </span>every<span class="w"> </span>other<span class="w"> </span>field<span class="w"> </span>stay<span class="w"> </span>byte<span class="w"> </span><span class="k">for</span><span class="w"> </span>byte,<span class="w"> </span>a<span class="w"> </span>lone<span class="w"> </span>surrogate<span class="w"> </span>or<span class="w"> </span>a<span class="w"> </span>huge
+<span class="w">    </span>number<span class="w"> </span>elsewhere<span class="w"> </span>included<span class="o">)</span><span class="p">;</span><span class="w"> </span>every<span class="w"> </span>other<span class="w"> </span>line<span class="w"> </span>is<span class="w"> </span>returned<span class="w"> </span>as<span class="w"> </span>it<span class="w"> </span>is,<span class="w"> </span>with<span class="w"> </span>None.<span class="w"> </span>Total:<span class="w"> </span>the<span class="w"> </span>parse<span class="w"> </span>is<span class="w"> </span>bounded
+<span class="w">    </span><span class="o">(</span>NESTING_CAP,<span class="w"> </span>LINE_CAP<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>whatever<span class="w"> </span>raises<span class="w"> </span>inside<span class="w"> </span>yields<span class="w"> </span>the<span class="w"> </span>identity.<span class="s2">"""</span>
+<span class="s2">    try:</span>
+<span class="s2">        if len(line) &gt; LINE_CAP:</span>
+<span class="s2">            return line, None</span>
+<span class="s2">        body = line</span>
+<span class="s2">        end = b""</span>
+<span class="s2">        for terminator in (b"</span><span class="se">\r\n</span><span class="s2">", b"</span><span class="se">\n</span><span class="s2">"):</span>
+<span class="s2">            if body.endswith(terminator):</span>
+<span class="s2">                end = terminator</span>
+<span class="s2">                body = body[: -len(terminator)]</span>
+<span class="s2">                break</span>
+<span class="s2">        text = body.decode("</span>utf-8<span class="s2">")</span>
+<span class="s2">        if nesting_exceeds(text, NESTING_CAP):</span>
+<span class="s2">            return line, None</span>
+<span class="s2">        members, after = object_members(text, 0)</span>
+<span class="s2">        if JSON_SPACE.match(text, after).end() != len(text):</span>
+<span class="s2">            return line, None</span>
+<span class="s2">        top = member_spans(members)</span>
+<span class="s2">        if "</span>method<span class="s2">" not in top or "</span>params<span class="s2">" not in top:</span>
+<span class="s2">            return line, None</span>
+<span class="s2">        method = top["</span>method<span class="s2">"][0]</span>
+<span class="s2">        if method != "</span>session/new<span class="s2">":  # lint-comparisons: allow a JSON-RPC method name, not a path</span>
+<span class="s2">            return line, None</span>
+<span class="s2">        if not isinstance(top["</span>params<span class="s2">"][0], dict):</span>
+<span class="s2">            return line, None</span>
+<span class="s2">        _params, params_start, params_end = top["</span>params<span class="s2">"]</span>
+<span class="s2">        inner, inner_end = object_members(text, params_start)</span>
+<span class="s2">        if inner_end != params_end:</span>
+<span class="s2">            return line, None</span>
+<span class="s2">        params = member_spans(inner)</span>
+<span class="s2">        if "</span>cwd<span class="s2">" not in params or not isinstance(params["</span>cwd<span class="s2">"][0], str):</span>
+<span class="s2">            return line, None</span>
+<span class="s2">        original, cwd_start, cwd_end = params["</span>cwd<span class="s2">"]</span>
+<span class="s2">        mapped = text[:cwd_start] + json.dumps(task) + text[cwd_end:]</span>
+<span class="s2">        return mapped.encode("</span>utf-8<span class="s2">") + end, original</span>
+<span class="s2">    except Exception:  # the mapper is total: a line the scan or the parse cannot take passes as it came</span>
+<span class="s2">        return line, None</span>
+
+
+<span class="s2">class MapperStderr:</span>
+<span class="s2">    """</span>This<span class="w"> </span>process<span class="s1">'s stderr under one lock, shared by the record and the command'</span>s<span class="w"> </span>forwarded<span class="w"> </span>stderr:<span class="w"> </span>a<span class="w"> </span>record
+<span class="w">    </span>always<span class="w"> </span>starts<span class="w"> </span>a<span class="w"> </span>line<span class="w"> </span><span class="o">(</span>a<span class="w"> </span>newline<span class="w"> </span>closes<span class="w"> </span>a<span class="w"> </span>forwarded<span class="w"> </span>piece<span class="w"> </span>that<span class="w"> </span>did<span class="w"> </span>not<span class="w"> </span>end<span class="w"> </span>with<span class="w"> </span>one<span class="o">)</span>,<span class="w"> </span>and<span class="w"> </span>a<span class="w"> </span>forwarded<span class="w"> </span>line<span class="w"> </span>that
+<span class="w">    </span>begins<span class="w"> </span>like<span class="w"> </span>the<span class="w"> </span>record<span class="w"> </span>is<span class="w"> </span>prefixed<span class="w"> </span><span class="sb">`</span>omp:<span class="w"> </span><span class="sb">`</span>,<span class="w"> </span>so<span class="w"> </span>the<span class="w"> </span>reaper<span class="s1">'s read of the launch'</span>s<span class="w"> </span>stderr<span class="w"> </span>file<span class="w"> </span>takes<span class="w"> </span>the<span class="w"> </span>mapper<span class="s1">'s</span>
+<span class="s1">    lines alone as records."""</span>
+
+<span class="s1">    def __init__(self):</span>
+<span class="s1">        self.out = sys.stderr.buffer</span>
+<span class="s1">        self.lock = threading.Lock()</span>
+<span class="s1">        self.at_start = True</span>
+
+<span class="s1">    def forward(self, piece):</span>
+<span class="s1">        with self.lock:</span>
+<span class="s1">            if self.at_start and piece.startswith(RECORD_PREFIX):</span>
+<span class="s1">                self.out.write(b"omp: ")</span>
+<span class="s1">            self.out.write(piece)</span>
+<span class="s1">            self.out.flush()</span>
+<span class="s1">            self.at_start = piece.endswith(b"\n")</span>
+
+<span class="s1">    def record(self, original, task):</span>
+<span class="s1">        with self.lock:</span>
+<span class="s1">            if not self.at_start:</span>
+<span class="s1">                self.out.write(b"\n")</span>
+<span class="s1">            self.out.write(RECORD_PREFIX + json.dumps(original).encode() + f" mapped to {task}\n".encode())</span>
+<span class="s1">            self.out.flush()</span>
+<span class="s1">            self.at_start = True</span>
+
+
+<span class="s1">def forward_stderr(pipe, stderr):</span>
+<span class="s1">    """Copy the command'</span>s<span class="w"> </span>stderr<span class="w"> </span>to<span class="w"> </span><span class="sb">`</span>stderr<span class="sb">`</span><span class="w"> </span><span class="o">(</span>MapperStderr<span class="o">)</span>,<span class="w"> </span>line<span class="w"> </span>by<span class="w"> </span>line,<span class="w"> </span>LINE_CAP<span class="w"> </span>pieces<span class="w"> </span><span class="k">for</span><span class="w"> </span>a<span class="w"> </span>longer<span class="w"> </span>line.<span class="s2">"""</span>
+<span class="s2">    try:</span>
+<span class="s2">        while True:</span>
+<span class="s2">            piece = pipe.readline(LINE_CAP)</span>
+<span class="s2">            if not piece:</span>
+<span class="s2">                break</span>
+<span class="s2">            stderr.forward(piece)</span>
+<span class="s2">    except (OSError, ValueError):</span>
+<span class="s2">        pass</span>
+
+
+<span class="s2">def map_session_cwd_run(task, command):</span>
+<span class="s2">    """</span>The<span class="w"> </span><span class="sb">`</span>--map-session-cwd<span class="sb">`</span><span class="w"> </span>entry:<span class="w"> </span>run<span class="w"> </span><span class="sb">`</span><span class="nb">command</span><span class="sb">`</span><span class="w"> </span>with<span class="w"> </span>a<span class="w"> </span>pipe<span class="w"> </span><span class="k">for</span><span class="w"> </span>its<span class="w"> </span>stdin,<span class="w"> </span>copy<span class="w"> </span>this<span class="w"> </span>process<span class="s1">'s stdin to it with</span>
+<span class="s1">    `map_session_cwd` over every whole line (a line beyond LINE_CAP passes through in pieces, unparsed), record each</span>
+<span class="s1">    mapping on stderr, drain the command'</span>s<span class="w"> </span>stderr<span class="w"> </span>through<span class="w"> </span>forward_stderr,<span class="w"> </span>and<span class="w"> </span>end<span class="w"> </span>with<span class="w"> </span>the<span class="w"> </span>command<span class="s1">'s status."""</span>
+<span class="s1">    try:</span>
+<span class="s1">        child = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=None, stderr=subprocess.PIPE, close_fds=True)</span>
+<span class="s1">    except OSError as exc:</span>
+<span class="s1">        refuse(f"cannot start {command[0]}: {exc}")</span>
+<span class="s1">    stderr = MapperStderr()</span>
+<span class="s1">    drain = threading.Thread(target=forward_stderr, args=(child.stderr, stderr), daemon=True)</span>
+<span class="s1">    drain.start()</span>
+
+<span class="s1">    def copy_stdin():</span>
+<span class="s1">        source = sys.stdin.buffer</span>
+<span class="s1">        mid_line = False</span>
+<span class="s1">        try:</span>
+<span class="s1">            while True:</span>
+<span class="s1">                piece = source.readline(LINE_CAP)</span>
+<span class="s1">                if not piece:</span>
+<span class="s1">                    break</span>
+<span class="s1">                whole = piece.endswith(b"\n")</span>
+<span class="s1">                out = piece</span>
+<span class="s1">                if not mid_line and (whole or len(piece) &lt; LINE_CAP):</span>
+<span class="s1">                    out, original = map_session_cwd(piece, task)</span>
+<span class="s1">                    if original is not None:</span>
+<span class="s1">                        try:</span>
+<span class="s1">                            stderr.record(original, task)</span>
+<span class="s1">                        except Exception:  # a record that cannot be written costs no line of the stream</span>
+<span class="s1">                            pass</span>
+<span class="s1">                mid_line = not whole</span>
+<span class="s1">                child.stdin.write(out)</span>
+<span class="s1">                child.stdin.flush()</span>
+<span class="s1">        except Exception:  # the command'</span>s<span class="w"> </span>stdin<span class="w"> </span>is<span class="w"> </span>gone<span class="w"> </span><span class="o">(</span>omp<span class="w"> </span>exited<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>this<span class="w"> </span>process<span class="err">'</span>s<span class="w"> </span>stdin<span class="w"> </span>failed:<span class="w"> </span>the<span class="w"> </span>copy<span class="w"> </span>ends
+<span class="w">            </span>pass
+<span class="w">        </span>finally:
 <span class="w">            </span>try:
 <span class="w">                </span>child.stdin.close<span class="o">()</span>
 <span class="w">            </span>except<span class="w"> </span>OSError:
 <span class="w">                </span>pass
 
-<span class="w">        </span>def<span class="w"> </span>to_conn<span class="o">()</span>:
-<span class="w">            </span><span class="c1"># The handler's stdout to the connection, drained to the end even when the client is gone, so the handler</span>
-<span class="w">            </span><span class="c1"># never meets a broken pipe before it has logged the exit and removed its slot.</span>
-<span class="w">            </span><span class="k">while</span><span class="w"> </span>True:
-<span class="w">                </span><span class="nv">chunk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>child.stdout.read1<span class="o">(</span>CHUNK<span class="o">)</span>
-<span class="w">                </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>chunk:
-<span class="w">                    </span><span class="k">break</span>
-<span class="w">                </span><span class="k">if</span><span class="w"> </span>sending<span class="o">[</span><span class="m">0</span><span class="o">]</span>:
-<span class="w">                    </span>try:
-<span class="w">                        </span>conn.sendall<span class="o">(</span>chunk<span class="o">)</span>
-<span class="w">                    </span>except<span class="w"> </span>OSError:
-<span class="w">                        </span>sending<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>False
-<span class="w">                        </span>try:
-<span class="w">                            </span>child.stdin.close<span class="o">()</span>
-<span class="w">                        </span>except<span class="w"> </span>OSError:
-<span class="w">                            </span>pass
-<span class="w">            </span>try:
-<span class="w">                </span>conn.shutdown<span class="o">(</span>socket.SHUT_WR<span class="o">)</span>
-<span class="w">            </span>except<span class="w"> </span>OSError:
-<span class="w">                </span>pass
-
-<span class="w">        </span><span class="nv">reader</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>threading.Thread<span class="o">(</span><span class="nv">target</span><span class="o">=</span>to_child,<span class="w"> </span><span class="nv">daemon</span><span class="o">=</span>True<span class="o">)</span>
-<span class="w">        </span><span class="nv">writer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>threading.Thread<span class="o">(</span><span class="nv">target</span><span class="o">=</span>to_conn,<span class="w"> </span><span class="nv">daemon</span><span class="o">=</span>True<span class="o">)</span>
-<span class="w">        </span>reader.start<span class="o">()</span>
-<span class="w">        </span>writer.start<span class="o">()</span>
-<span class="w">        </span>writer.join<span class="o">()</span>
-<span class="w">        </span>child.wait<span class="o">()</span>
-<span class="w">        </span><span class="c1"># The handler is gone: the connection ends now, which also releases a reader still waiting on the client.</span>
-<span class="w">        </span>try:
-<span class="w">            </span>conn.shutdown<span class="o">(</span>socket.SHUT_RDWR<span class="o">)</span>
-<span class="w">        </span>except<span class="w"> </span>OSError:
-<span class="w">            </span>pass
-<span class="w">        </span>conn.close<span class="o">()</span>
-<span class="w">        </span>reader.join<span class="o">()</span>
-<span class="w">        </span>with<span class="w"> </span>self.lock:
-<span class="w">            </span>self.children.pop<span class="o">(</span>child.pid,<span class="w"> </span>None<span class="o">)</span>
-
-<span class="w">    </span>def<span class="w"> </span>on_signal<span class="o">(</span>self,<span class="w"> </span>signum,<span class="w"> </span>frame<span class="o">)</span>:
-<span class="w">        </span>self.stopping<span class="w"> </span><span class="o">=</span><span class="w"> </span>True
-<span class="w">        </span><span class="c1"># The listener is set once it accepts: a signal during the bind or the listen closes nothing, and run() reads</span>
-<span class="w">        </span><span class="c1"># the flag before the readiness line; a signal in the accept loop makes the retried accept fail at once.</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>self.listener<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
-<span class="w">            </span>try:
-<span class="w">                </span>self.listener.close<span class="o">()</span>
-<span class="w">            </span>except<span class="w"> </span>OSError:
-<span class="w">                </span>pass
-
-<span class="w">    </span>def<span class="w"> </span>run<span class="o">(</span>self<span class="o">)</span>:
-<span class="w">        </span><span class="c1"># The socket is bound by its name from its own directory: a Unix socket path is capped at 104 bytes on macOS</span>
-<span class="w">        </span><span class="c1"># (108 on Linux), and `&lt;seats-root&gt;/.state/&lt;router seat&gt;/broker/sock` under a long HOME or seats root exceeds</span>
-<span class="w">        </span><span class="c1"># it; the directory is the relay's cwd from here on (every handler enters the task cwd itself).</span>
-<span class="w">        </span>directory,<span class="w"> </span><span class="nv">base</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.split<span class="o">(</span>self.sock_path<span class="o">)</span>
-<span class="w">        </span>try:
-<span class="w">            </span>os.chdir<span class="o">(</span>directory<span class="o">)</span>
-<span class="w">        </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>exc:
-<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"cannot enter the broker directory {directory}: {exc}"</span><span class="o">)</span>
-<span class="w">        </span><span class="c1"># Armed before the socket exists (regime-cutover U447): from here a HUP, INT or TERM ends this process through</span>
-<span class="w">        </span><span class="c1"># stop() and remove_socket(), whichever start-up step it lands in.</span>
-<span class="w">        </span><span class="k">for</span><span class="w"> </span>signum<span class="w"> </span><span class="k">in</span><span class="w"> </span>STOP_SIGNALS:
-<span class="w">            </span>signal.signal<span class="o">(</span>signum,<span class="w"> </span>self.on_signal<span class="o">)</span>
-<span class="w">        </span><span class="nv">listener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>socket.socket<span class="o">(</span>socket.AF_UNIX,<span class="w"> </span>socket.SOCK_STREAM<span class="o">)</span>
-<span class="w">        </span>try:
-<span class="w">            </span>listener.bind<span class="o">(</span>base<span class="o">)</span>
-<span class="w">        </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>exc:
-<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"cannot bind the broker socket {self.sock_path}: {exc}"</span><span class="o">)</span>
-<span class="w">        </span>try:
-<span class="w">            </span>os.chmod<span class="o">(</span>self.sock_path,<span class="w"> </span>0o600<span class="o">)</span>
-<span class="w">            </span>listener.listen<span class="o">(</span><span class="m">16</span><span class="o">)</span>
-<span class="w">        </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>exc:
-<span class="w">            </span>listener.close<span class="o">()</span>
-<span class="w">            </span>self.remove_socket<span class="o">()</span>
-<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"cannot listen on the broker socket {self.sock_path}: {exc}"</span><span class="o">)</span>
-<span class="w">        </span>self.listener<span class="w"> </span><span class="o">=</span><span class="w"> </span>listener
-<span class="w">        </span><span class="c1"># The readiness line is the last start-up step and the one readiness sign (hcom-seat reads it through its</span>
-<span class="w">        </span><span class="c1"># FIFO, the test fixture from the broker's stdout). The flag's read, the print and the flush are one step</span>
-<span class="w">        </span><span class="c1"># with the three signals blocked (regime-cutover U447b, verdict U447-a52a1452 P1): a signal that already</span>
-<span class="w">        </span><span class="c1"># arrived leaves no line, and one sent meanwhile is delivered at the unblock and ends this process as any</span>
-<span class="w">        </span><span class="c1"># post-readiness signal does, so a line never follows the listener's closure.</span>
-<span class="w">        </span>signal.pthread_sigmask<span class="o">(</span>signal.SIG_BLOCK,<span class="w"> </span>STOP_SIGNALS<span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>self.stopping:
-<span class="w">            </span>print<span class="o">(</span>f<span class="s2">"acp-broker: listening on {self.sock_path}"</span>,<span class="w"> </span><span class="nv">flush</span><span class="o">=</span>True<span class="o">)</span>
-<span class="w">        </span>signal.pthread_sigmask<span class="o">(</span>signal.SIG_UNBLOCK,<span class="w"> </span>STOP_SIGNALS<span class="o">)</span>
-<span class="w">        </span><span class="k">while</span><span class="w"> </span>not<span class="w"> </span>self.stopping:
-<span class="w">            </span>try:
-<span class="w">                </span>conn,<span class="w"> </span><span class="nv">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>self.listener.accept<span class="o">()</span>
-<span class="w">            </span>except<span class="w"> </span>OSError:
-<span class="w">                </span><span class="c1"># The listener was closed by the signal handler, or accept failed: either way the relay ends.</span>
-<span class="w">                </span><span class="k">break</span>
-<span class="w">            </span><span class="nv">thread</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>threading.Thread<span class="o">(</span><span class="nv">target</span><span class="o">=</span>self.serve,<span class="w"> </span><span class="nv">args</span><span class="o">=(</span>conn,<span class="o">)</span>,<span class="w"> </span><span class="nv">daemon</span><span class="o">=</span>True<span class="o">)</span>
-<span class="w">            </span>thread.start<span class="o">()</span>
-<span class="w">            </span>self.threads.append<span class="o">(</span>thread<span class="o">)</span>
-<span class="w">        </span>self.stop<span class="o">()</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>self.remove_socket<span class="o">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="m">2</span>
-
-<span class="w">    </span>def<span class="w"> </span>stop<span class="o">(</span>self<span class="o">)</span>:
-<span class="w">        </span><span class="s2">"""Terminate every live handler and wait for each: its trap ends omp, logs the exit and removes its slot.</span>
-<span class="s2">        The stopping flag is set under the lock before the table is read, so a `serve` that passed the flag has</span>
-<span class="s2">        its handler in the table."""</span>
-<span class="w">        </span>try:
-<span class="w">            </span>self.listener.close<span class="o">()</span>
-<span class="w">        </span>except<span class="w"> </span>OSError:
-<span class="w">            </span>pass
-<span class="w">        </span>with<span class="w"> </span>self.lock:
-<span class="w">            </span>self.stopping<span class="w"> </span><span class="o">=</span><span class="w"> </span>True
-<span class="w">            </span><span class="nv">children</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>list<span class="o">(</span>self.children.values<span class="o">())</span>
-<span class="w">        </span><span class="k">for</span><span class="w"> </span>child<span class="w"> </span><span class="k">in</span><span class="w"> </span>children:
-<span class="w">            </span>try:
-<span class="w">                </span>child.terminate<span class="o">()</span>
-<span class="w">            </span>except<span class="w"> </span>OSError:
-<span class="w">                </span>pass
-<span class="w">        </span><span class="k">for</span><span class="w"> </span>child<span class="w"> </span><span class="k">in</span><span class="w"> </span>children:
-<span class="w">            </span>try:
-<span class="w">                </span>child.wait<span class="o">(</span><span class="nv">timeout</span><span class="o">=</span>STOP_GRACE<span class="o">)</span>
-<span class="w">            </span>except<span class="w"> </span>subprocess.TimeoutExpired:
-<span class="w">                </span>print<span class="o">(</span>
-<span class="w">                    </span>f<span class="s2">"{LEVER}: a connection handler (pid {child.pid}) did not end within {STOP_GRACE:.0f} s"</span>,
-<span class="w">                    </span><span class="nv">file</span><span class="o">=</span>sys.stderr,
-<span class="w">                </span><span class="o">)</span>
-<span class="w">                </span>child.kill<span class="o">()</span>
-<span class="w">                </span>child.wait<span class="o">()</span>
-<span class="w">        </span><span class="k">for</span><span class="w"> </span>thread<span class="w"> </span><span class="k">in</span><span class="w"> </span>self.threads:
-<span class="w">            </span>thread.join<span class="o">(</span><span class="nv">timeout</span><span class="o">=</span>STOP_GRACE<span class="o">)</span>
-
-<span class="w">    </span>def<span class="w"> </span>remove_socket<span class="o">(</span>self<span class="o">)</span>:
-<span class="w">        </span><span class="s2">"""Remove the socket file; True when it is gone (an absence is read from the error, standing order 21)."""</span>
-<span class="w">        </span>try:
-<span class="w">            </span>os.unlink<span class="o">(</span>self.sock_path<span class="o">)</span>
-<span class="w">        </span>except<span class="w"> </span>FileNotFoundError:
-<span class="w">            </span>pass
-<span class="w">        </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>exc:
-<span class="w">            </span>print<span class="o">(</span>f<span class="s2">"{LEVER}: cannot remove the broker socket {self.sock_path}: {exc}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>os.path.lexists<span class="o">(</span>self.sock_path<span class="o">)</span>:
-<span class="w">            </span>print<span class="o">(</span>f<span class="s2">"{LEVER}: the broker socket {self.sock_path} remains after its removal"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
-<span class="w">            </span><span class="k">return</span><span class="w"> </span>False
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>True
+<span class="w">    </span><span class="nv">copier</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>threading.Thread<span class="o">(</span><span class="nv">target</span><span class="o">=</span>copy_stdin,<span class="w"> </span><span class="nv">daemon</span><span class="o">=</span>True<span class="o">)</span>
+<span class="w">    </span>copier.start<span class="o">()</span>
+<span class="w">    </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>child.wait<span class="o">()</span>
+<span class="w">    </span><span class="c1"># The copier may still sit in a read of a stdin nobody has closed: the command is gone, so this process ends now.</span>
+<span class="w">    </span>drain.join<span class="o">(</span><span class="m">2</span>.0<span class="o">)</span>
+<span class="w">    </span>sys.stderr.flush<span class="o">()</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>status<span class="w"> </span>&lt;<span class="w"> </span><span class="m">0</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">128</span><span class="w"> </span>-<span class="w"> </span>status
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>status
 
 
 def<span class="w"> </span>main<span class="o">(</span>argv<span class="o">)</span>:
 <span class="w">    </span>lever_self_check<span class="o">()</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>argv<span class="o">)</span><span class="w"> </span>&gt;<span class="o">=</span><span class="w"> </span><span class="m">4</span><span class="w"> </span>and<span class="w"> </span>argv<span class="o">[</span><span class="m">1</span><span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--map-session-cwd"</span><span class="w"> </span>and<span class="w"> </span>argv<span class="o">[</span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--"</span>:
+<span class="w">        </span><span class="nv">task</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>argv<span class="o">[</span><span class="m">2</span><span class="o">]</span>
+<span class="w">        </span><span class="nb">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>argv<span class="o">[</span><span class="m">4</span>:<span class="o">]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>os.path.isabs<span class="o">(</span>task<span class="o">)</span>:
+<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"the task {task!r} is not an absolute path"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span><span class="nb">command</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>os.path.isabs<span class="o">(</span>command<span class="o">[</span><span class="m">0</span><span class="o">])</span>:
+<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"the command {command[:1]!r} is not an absolute path"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>map_session_cwd_run<span class="o">(</span>task,<span class="w"> </span><span class="nb">command</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>argv<span class="o">)</span><span class="w"> </span>&lt;<span class="w"> </span><span class="m">4</span><span class="w"> </span>or<span class="w"> </span>argv<span class="o">[</span><span class="m">2</span><span class="o">]</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"--"</span>:
-<span class="w">        </span>refuse<span class="o">(</span><span class="s2">"usage: acp-relay.py &lt;socket path&gt; -- &lt;handler argv...&gt;"</span><span class="o">)</span>
+<span class="w">        </span>refuse<span class="o">(</span><span class="s2">"usage: acp-relay.py &lt;socket path&gt; -- &lt;handler argv...&gt; | --map-session-cwd &lt;task&gt; -- &lt;command...&gt;"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">sock_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>argv<span class="o">[</span><span class="m">1</span><span class="o">]</span>
 <span class="w">    </span><span class="nv">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>argv<span class="o">[</span><span class="m">3</span>:<span class="o">]</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>os.path.isabs<span class="o">(</span>sock_path<span class="o">)</span>:

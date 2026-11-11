@@ -1,0 +1,20 @@
+U439 acceptance, run in the seat 2026-11-11T01:45:10Z
+1. ls run-78: FINDINGS-DETAIL.md NEEDS-VALIDATION.md REPORT.md agents architecture.md coverage-ledger.json findings.json preflight.txt run-metadata.json summary.txt validation.txt 
+2. validate-findings: PASS: 0 findings valid
+   exit=0
+3. validate-coverage-ledger: PASS: 234 coverage units valid
+   exit=0
+4. grep -c 5ba30064f90df03412928006a6d76d5c0aabb87f run-metadata.json: 1
+5. git status --porcelain (target): []
+   target HEAD: 5ba30064f90df03412928006a6d76d5c0aabb87f
+scanner self-test (dummy word, home path, email; expect 1 1 1 1): {"word":1,"home":1,"homeShape":1,"email":1}
+content scan (agents/parent-hunter/scratch/scan-outputs.cjs): agents/parent-hunter/scratch/accept.sh: redact-word hits per word 0 0 0 0 0; home 0; /Users|/home shape 0; email-shaped 1
+coverage-ledger.json: redact-word hits per word 0 0 0 0 0; home 0; /Users|/home shape 3; email-shaped 3
+files 31; words 5; totals {"word":0,"home":0,"homeShape":3,"email":4}
+independence probe (this run, 2026-11-11T01:41Z): eval -> Tool "eval" is blocked by user policy; task (one-agent scout probe) -> Tool "task" is blocked by user policy (run_status incomplete, run-metadata.json incomplete_reason)
+preflight head: 5ba30064f90df03412928006a6d76d5c0aabb87f
+preflight status --porcelain: '' (empty = clean)
+preflight started: 2026-11-11T01:40:23Z
+scan note: home 0 and redact words 0 in every file; the 3 /Users-or-/home-shape hits are repo-relative fragments (/home/.ssh and /home/dot_agents in carried prose, and ../../home/dot_agents/agent-config.yaml), no user; the email-shaped hits are the self-test dummy (a@example.com) in agents/parent-hunter/scratch/accept.sh, the quoted noreply@anthropic.com commit trailer (2) and a url.git@github.com git config key, in carried ledger rows (the same rows as run-77)
+local check note: no new local check ran in run-78; the five artifacts the carried checks cite were promoted from run-77 by agents/parent-hunter/scratch/promote.cjs
+run started: 2026-11-11T01:40:23Z (agents/parent-hunter/scratch/start.iso)

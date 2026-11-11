@@ -909,7 +909,7 @@ claude:
   # policy row.
   levers:
     sha256:
-      hcom-seat: e0a45a259583785b2d2dc6dc4ffd3704c3823c9d108ad042a37b14c1b87fd692
+      hcom-seat: e83343bd148c3e4a3a418aa8287e93cb977143b874457f3e53357a1635640294
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -939,7 +939,7 @@ claude:
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       acp-broker: 7956cd3808eb03f3333e04126b0392173df2e9730e564a79ff12ca58803477e2
       acp-relay.py: d2b4852980affd6b536666fb46d6caa736def9f48924a608bf6f81440124a6b9
-      acp-seat: af9e65d77241ab147cabc158dadfbb49350bc12e008aad9e77c2257da67d62d6
+      acp-seat: 7b8f5c930f0b5d16702cb8e3a392047c522a7aaaac12ee28b089be9a80c25fa9
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431
       seat-settings-render.sh: 9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50
       intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f

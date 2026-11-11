@@ -1044,7 +1044,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     [f"HOME={self.home}", f"PATH={self.tools}:/usr/bin:/bin:/usr/sbin:/sbin", f"DSH_HOME={self.dsh_home}",
                      "OMP_PROFILE=dsh", f"CLAUDE_CONFIG_DIR={Path(self.seats, '.state/claude')}", "USER=u321"],
                 )  # fmt: skip
-                # U345: the broker socket rides after the inherited names, before the shim.
+                # U434: the broker socket rides after the inherited names, before the shim.
                 self.assertRegex(
                     line[8],
                     rf"^ACP_BROKER_SOCK={re.escape(self.seats)}/\.state/router-\d{{8}}-\d{{6}}-\d+/broker/sock$",
@@ -1215,7 +1215,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                         "--", "--version", "--flag", "-x", "value")  # fmt: skip
         self.assertEqual(run.returncode, 0, run.stderr)
         line = shlex.split(run.stdout)
-        # U345: the broker socket's name rides last in the environment list, before the shim.
+        # U434: the broker socket's name rides last in the environment list, before the shim.
         self.assertRegex(
             line[7], rf"^ACP_BROKER_SOCK={re.escape(self.seats)}/\.state/router-\d{{8}}-\d{{6}}-\d+/broker/sock$"
         )
@@ -3126,7 +3126,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.dsh_calls(), [])
 
     def test_the_router_launch_carries_the_broker_socket_as_acp_broker_sock_and_the_dsh_launch_carries_none(self):
-        """U345 (M-22 Part B, table row s21): the router row's environment list gains `ACP_BROKER_SOCK=<state
+        """U434 (M-22 Part B, table row s21): the router row's environment list gains `ACP_BROKER_SOCK=<state
         slot>/broker/sock`, the socket broker_start names, so the profile's `subagent-acp` row can run `acp-seat
         --socket $ACP_BROKER_SOCK` inside the Router's sandbox. The dry run prints it in the launch line after the
         inherited names and before the shim; a launch's dsh receives it and the socket it names listens when dsh

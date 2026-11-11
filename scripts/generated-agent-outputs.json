@@ -433,7 +433,7 @@
       "target": ".local/bin/common/acp-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "af9e65d77241ab147cabc158dadfbb49350bc12e008aad9e77c2257da67d62d6"
+      "sha256": "7b8f5c930f0b5d16702cb8e3a392047c522a7aaaac12ee28b089be9a80c25fa9"
     },
     {
       "source": "home/dot_local/bin/common/executable_brief-check.py",
@@ -475,7 +475,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "e0a45a259583785b2d2dc6dc4ffd3704c3823c9d108ad042a37b14c1b87fd692"
+      "sha256": "e83343bd148c3e4a3a418aa8287e93cb977143b874457f3e53357a1635640294"
     },
     {
       "source": "home/dot_local/bin/common/executable_intake-observe.py",

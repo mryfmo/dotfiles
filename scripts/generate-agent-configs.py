@@ -182,7 +182,7 @@ DSH_GATEWAY_PROVIDER = "claude-bridge"
 DSH_GATEWAY_COMMAND = ("omp", "auth-gateway", "stdio")
 DSH_GATEWAY_PLUGIN = "dsh-omp-gateway"
 DSH_GATEWAY_LINK = "link:../../plugins/omp-gateway"
-# The Router's subagent provider (regime-cutover U345, M-22 Part B, table row s21): the pinned tree's out-of-process
+# The Router's subagent provider (regime-cutover U434, M-22 Part B, table row s21): the pinned tree's out-of-process
 # ACP backend (`packages/subagent/subagent-acp`: `Config {providerName, command, args, permission, env}`, the child
 # spawned per request in the request's cwd), whose command is `acp-seat`, the broker's thin client installed and
 # pinned beside the levers and readable inside the dsh row (`~/.local/bin` is in no deny row), spelled through HOME
@@ -2531,7 +2531,7 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
         f"- id: {DSH_SUPERAGENT_PLUGIN}",
         "  config:",
         f"    stateDir: !!js process.env.DSH_HOME + '/{DSH_ROUTER_STATE_DIR}'",
-        # The subagent tool on the ACP provider (U345): a Router subagent turn is an `omp acp` worker the broker starts
+        # The subagent tool on the ACP provider (U434): a Router subagent turn is an `omp acp` worker the broker starts
         # in a sibling sandbox, never an in-process child under the Router's own sandbox. `maxDepth: provider-managed`
         # is required (measured on this host, the pinned tool-subagent's assertSubagentProviderConfiguration): the ACP
         # provider advertises no depthLimit capability, so a numeric cap refuses the mount.
@@ -2542,7 +2542,7 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
         "    maxDepth: provider-managed",
     ]
     # No bash-sandbox row and no preset row (U406): the base bundle's sandbox stays on, and upstream's bundle layer
-    # inserts the two agent presets as shipped. The gateway insert, then the ACP provider (U345): `acp-seat` by its
+    # inserts the two agent presets as shipped. The gateway insert, then the ACP provider (U434): `acp-seat` by its
     # installed path, the socket from the launch's environment (a `!!js` value, the form the state root uses), the
     # fixed name, permission `allow` (the worker's own sandbox is the boundary; the client surfaces no prompt) and no
     # env row (the seam forwards HOME and the seat marker; `DSH_*` and credential-shaped names are scrubbed).

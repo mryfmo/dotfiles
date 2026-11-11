@@ -2568,7 +2568,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             self.assertNotIn("extensions:", expected[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"])
 
     def test_the_router_profile_runs_its_subagents_through_acp_seat_and_the_thak_profile_does_not(self) -> None:
-        """U345 (M-22 Part B, table row s21): the rendered router patch inserts `subagent-acp`, the pinned tree's
+        """U434 (M-22 Part B, table row s21): the rendered router patch inserts `subagent-acp`, the pinned tree's
         out-of-process ACP backend, whose command is the installed `acp-seat` (the broker's thin client, run inside
         the Router's sandbox by its absolute path under HOME) with exactly four args: the launch's socket read from
         `ACP_BROKER_SOCK` (hcom-seat's router row sets it) and the fixed name `router`; `tool-subagent` is repointed

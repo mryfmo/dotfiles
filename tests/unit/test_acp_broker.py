@@ -3046,7 +3046,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         return run, headers[0].decode() if headers else None
 
     def test_the_client_defaults_the_repository_to_its_cwd_and_the_ref_to_head(self):
-        """U345 (M-22 Part B, table row s21): `dsh-subagent-acp` spawns the client per request in the request's cwd
+        """U434 (M-22 Part B, table row s21): `dsh-subagent-acp` spawns the client per request in the request's cwd
         with the row's fixed args (`--socket`, `--name`), so a client run in a repository directory without `--repo`
         and `--ref` sends the header `ACP-SEAT v1 repo=<that directory> ref=HEAD name=<name>` (the broker judges the
         path as it judges any header repository); `--repo` and `--ref` given keep their values, singly or together;

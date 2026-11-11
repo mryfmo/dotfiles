@@ -296,7 +296,7 @@ class DshRouterProfileTest(unittest.TestCase):
             ],
             list(self.rows),
         )
-        # U345: the subagent tool runs on the ACP provider the insert mounts; the gateway insert comes first.
+        # U434: the subagent tool runs on the ACP provider the insert mounts; the gateway insert comes first.
         self.assertEqual(
             "  config:\n    provider: acp\n    toolName: subagent\n    maxDepth: provider-managed\n",
             self.rows["id: tool-subagent"],

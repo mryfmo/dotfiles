@@ -412,7 +412,7 @@
       "target": ".local/bin/common/acp-broker",
       "kind": "file",
       "executable": true,
-      "sha256": "cc74864e036b2e997370ae42845320e73835fe7164173ae1fd8b015e3a0950b9"
+      "sha256": "41c40027e0c102dad8e0bda0410496d28ddd5cb14391acff55b5d2d607606b70"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-record-place.py",
@@ -426,7 +426,7 @@
       "target": ".local/bin/common/acp-relay.py",
       "kind": "file",
       "executable": true,
-      "sha256": "87029b8a17d9d84261761bf13851fdd8e6e1ac1627d60717b67a4064afa379c9"
+      "sha256": "30f4664ebbd57548120961f292533223bc1e944bb92c8de922fb7c0e68810ad4"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-seat",

@@ -151,8 +151,9 @@
 #   of control characters, becomes the launch-log line `session cwd <original> mapped to <task>` (the original stays
 #   JSON-quoted: the Router's string never reaches the log raw); every other line (omp's own stderr, which the mapper
 #   forwards with `omp: ` before any line that begins like the record, srt's) goes to this process's stderr as it did
-#   before, at omp's end; the read takes the file's first MiB. The record is the mapper's alone: omp's stderr is a
-#   pipe the mapper drains, so no worker line is read as it.
+#   before, at omp's end. The read is a plain redirection into a bounded loop (regime-cutover U449c, standing order
+#   21): the first MiB, the open's status read and a file that cannot be opened named. The record is the mapper's
+#   alone: omp's stderr is a pipe the mapper drains, so no worker line is read as it.
 #   The push. When omp exits, the worker's HEAD goes back into the repository the header named as
 #   `refs/acp-seat/<name>/<utc stamp>-<pid>`, read and written the way the clone was, across two boundaries: the
 #   worker's git (worker_git, inside the worker's sandbox under the slot's settings, U343f) packs the commits above
@@ -449,6 +450,9 @@ reaper=''
 push_word=''
 # The reaper's grace in seconds between TERM to omp's process group and KILL (regime-cutover U343g), named once.
 reaper_grace=5
+# The bytes of the launch's stderr file the reaper reads (launch_stderr_lines); the rest of a worker's flood is named
+# and not read.
+launch_stderr_cap=1048576
 # The broker directory's identity (`<device>:<inode>`, regime-cutover U343h): read once by the listener after its take
 # of the directory hcom-seat made (U343i), carried to each connection in ACP_BROKER_DIR_ID, and the identity the record
 # helper holds every write to.
@@ -1486,16 +1490,40 @@ mapping_line() {
 #   mapper's records, `acp-relay.py: session cwd <original, JSON-quoted> mapped to <task>`, anchored at the line's
 #   start, ending in this slot's task and free of control characters, go to the launch log through mapping_line;
 #   every other line (omp's and srt's stderr; a worker line that began like a record carries the mapper's `omp: `)
-#   goes to this process's stderr as it did before the file. The first MiB is read (a worker's flood of stderr ends
-#   the read, named); a file that is absent, a link or unreadable is one stderr line, never a refusal.
+#   goes to this process's stderr as it did before the file. The file is opened by a plain redirection on
+#   launch_stderr_read and the redirection's status is read (regime-cutover U449c, verdict U449-6017f53f P2 :1509,
+#   standing order 21: a process substitution's status was never read, so a `head` that failed read as an empty
+#   file, and shellcheck SC2312 held CI red): a file that cannot be opened is named; a file that is absent is nothing
+#   to read; a link or a non-regular file is named and not opened. Never refuses: the exit line follows in the caller.
 launch_stderr_lines() {
-    local file=${slot}/stderr line rest
+    local file=${slot}/stderr status=0
     [[ -e ${file} || -L ${file} ]] || return 0
     if [[ -L ${file} || ! -f ${file} ]]; then
         echo "acp-broker: the launch's stderr file ${file} is not a regular file; its lines are not read" >&2
         return 0
     fi
-    while IFS= read -r line || [[ -n ${line} ]]; do
+    launch_stderr_read "${slot}" < "${file}" || status=$?
+    if ((status != 0)); then
+        echo "acp-broker: cannot open the launch's stderr file ${file} for reading; its lines are not read" >&2
+    fi
+    return 0
+}
+
+# @description The loop of launch_stderr_lines over its stdin, the launch's stderr file: one line per `read` (at most
+#   `launch_stderr_cap` bytes and one, so a line without end holds no more than that), a byte counter against the
+#   cap (LC_ALL=C: a character is a byte), the mapper's records to the launch log and every other line to this
+#   process's stderr. `read` ends the loop with 1 at the file's end and at a read error alike (bash names the error
+#   itself); the open is the caller's to judge.
+# @arg $1 string The slot, for the cap's line (the file is `<slot>/stderr`).
+# @exitcode 0 Always: the loop ends at the file's end or at the cap (named).
+launch_stderr_read() {
+    local LC_ALL=C line rest bytes=0
+    while IFS= read -r -n "$((launch_stderr_cap + 1))" line || [[ -n ${line} ]]; do
+        bytes=$((bytes + ${#line} + 1))
+        if ((bytes > launch_stderr_cap)); then
+            echo "acp-broker: the launch's stderr file $1/stderr holds more than ${launch_stderr_cap} bytes; the rest is not read" >&2
+            return 0
+        fi
         case ${line} in
         'acp-relay.py: session cwd '*)
             rest=${line#acp-relay.py: }
@@ -1506,7 +1534,7 @@ launch_stderr_lines() {
             ;;
         esac
         printf '%s\n' "${line}" >&2
-    done < <(/usr/bin/head -c 1048576 -- "${file}" || echo "acp-broker: cannot read the launch's stderr file ${file}" >&2)
+    done
     return 0
 }
 

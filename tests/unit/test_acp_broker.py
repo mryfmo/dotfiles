@@ -39,6 +39,7 @@ from scratch_git import git_init
 ROOT = test_hcom_seat.ROOT
 BROKER = ROOT / "scripts/orchestrator/acp-broker"
 CLIENT = ROOT / "scripts/orchestrator/acp-seat"
+RELAY = ROOT / "scripts/orchestrator/acp-relay.py"
 SYSTEM_PATH = test_hcom_seat.SYSTEM_PATH
 BASH_OWN_NAMES = test_hcom_seat_dsh.BASH_OWN_NAMES
 FOUR_WORDS = "write-denied read-denied ssh-denied debug-denied"
@@ -238,6 +239,14 @@ def one_mib_line():
     line = (head + blob + tail).encode()
     assert len(line) == size and json.loads(line)["params"]["blob"] == blob
     return line
+
+
+def load_relay():
+    """acp-relay.py as a module (its `main` is guarded), for the table test of `map_session_cwd` (U449b)."""
+    spec = importlib.util.spec_from_file_location("acp_relay", RELAY)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class AcpBrokerTest(test_hcom_seat.SeatFixture):
@@ -783,9 +792,10 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.scratch_git("rev-parse", "--abbrev-ref", "HEAD", cwd=task), "HEAD", "detached")
         self.assertEqual(
             sorted(p.name for p in slot_path.iterdir()),
-            ["control", "ready", "settings.json", "task"],
-            "no pack left behind (the two pipes, U343o)",
+            ["control", "ready", "settings.json", "stderr", "task"],
+            "no pack left behind (the two pipes, U343o; the launch's stderr file, U449b)",
         )
+        self.assertEqual(stat.S_IMODE(os.lstat(slot_path / "stderr").st_mode), 0o600)
         self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
         self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
@@ -1856,10 +1866,117 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(stat.S_IMODE(os.lstat(log_dir / "w1.log").st_mode), 0o600)
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
+    def test_the_session_new_cwd_is_mapped_onto_the_slots_task_and_the_original_is_logged(self):
+        """U449b (table row s22; U449's trace): dsh-subagent-acp names the Router's own task as the ACP `session/new`
+        cwd, a directory the worker's sandbox denies by design (R-45), so Claude Code died at its spawn. The broker's
+        side maps that one field onto the slot's task before omp reads it: the fake omp, which echoes its stdin,
+        receives the `session/new` line with `params.cwd` equal to the slot's task and every other member as sent;
+        the launch log gains `session cwd "<original>" mapped to <task>` between the start and the exit lines, the
+        original JSON-quoted (an untrusted string of the Router's: a control character never reaches the log raw).
+        A `session/new` without a cwd, with a non-string cwd, with no params object or none at all, a line that is
+        not JSON or not UTF-8, a JSON line that is no object, and every other method pass through byte for byte."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        conn, slot, task = self.held_connection(sock, repo, "w1")
+        router_task = f"{cwd}/task"
+        request = {"jsonrpc": "2.0", "id": 2, "method": "session/new", "params": {"cwd": router_task, "mcpServers": []}}
+        conn.sendall(json.dumps(request, separators=(",", ":")).encode() + b"\n")
+        echoed = self.recv_line(conn)
+        self.assertEqual(json.loads(echoed), {**request, "params": {"cwd": str(task), "mcpServers": []}})
+        self.assertNotIn(router_task.encode(), echoed)
+        odd_cwd = "/tmp/x\né y"
+        odd = {
+            "jsonrpc": "2.0",
+            "id": "three",
+            "method": "session/new",
+            "params": {"cwd": odd_cwd, "mcpServers": [{"name": "m"}]},
+        }
+        conn.sendall(json.dumps(odd).encode() + b"\r\n")
+        echoed = self.recv_line(conn)
+        self.assertTrue(echoed.endswith(b"\r\n"), echoed)
+        self.assertEqual(json.loads(echoed), {**odd, "params": {"cwd": str(task), "mcpServers": [{"name": "m"}]}})
+        rt = router_task.encode()
+        through = (
+            b'{"jsonrpc":"2.0","id":4,"method":"session/new","params":{"mcpServers":[]}}\n',
+            b'{"jsonrpc":"2.0","id":5,"method":"session/new","params":{"cwd":7,"mcpServers":[]}}\n',
+            b'{"jsonrpc":"2.0","id":6,"method":"session/new","params":{"cwd":["' + rt + b'"]}}\n',
+            b'{"jsonrpc":"2.0","id":7,"method":"session/new","params":"' + rt + b'"}\n',
+            b'{"jsonrpc":"2.0","id":8,"method":"session/new"}\n',
+            b'{"jsonrpc":"2.0","id":9,"method":"session/prompt","params":{"cwd":"' + rt + b'","sessionId":"s"}}\n',
+            b'{"jsonrpc":"2.0","id":10,"method":"session/load","params":{"cwd":"' + rt + b'"}}\r\n',
+            b'{"jsonrpc":"2.0","method":"session/cancel","params":{"cwd":"' + rt + b'"}}\n',
+            b'["session/new", {"cwd": "' + rt + b'"}]\n',
+            b'"session/new"\n',
+            b"session/new cwd=" + rt + b"\n",
+            b'{"jsonrpc":"2.0","id":11,"method":"session/new","params":{"cwd":"' + rt + b'"}\n',
+            b'\xff\xfe{"method":"session/new","params":{"cwd":"' + rt + b'"}}\n',
+            PING,
+        )
+        for raw in through:
+            with self.subTest(line=raw[:48]):
+                conn.sendall(raw)
+                self.assertEqual(self.recv_line(conn), raw)
+        self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
+        lines = self.log_lines("w1")
+        stamp = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"
+        self.assertEqual(len(lines), 5, lines)
+        self.assertRegex(lines[0], rf"^{stamp} acp-broker: canary {FOUR_WORDS}$")
+        self.assertRegex(lines[1], rf"^{stamp} acp-broker: omp acp start omp 18\.12\.6 cwd {re.escape(str(task))} ")
+        self.assertRegex(
+            lines[2],
+            rf"^{stamp} acp-broker: session cwd {re.escape(json.dumps(router_task))} mapped to {re.escape(str(task))}$",
+        )
+        self.assertRegex(
+            lines[3],
+            rf"^{stamp} acp-broker: session cwd {re.escape(json.dumps(odd_cwd))} mapped to {re.escape(str(task))}$",
+        )
+        self.assertNotIn("\né", lines[3], "the control and non-ASCII characters are escaped, never raw")
+        self.assertRegex(lines[4], rf"^{stamp} acp-broker: omp acp exit 0 push=none$")
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_the_session_cwd_mapping_is_one_function_from_the_line_to_the_line(self):
+        """acp-relay.py `map_session_cwd(line, task)` returns (the line, the original cwd): identity and None for
+        every line but a `session/new` object whose `params.cwd` is a string, which becomes the task with the line's
+        own terminator kept (U449b, the brief's data shape; tested by table)."""
+        relay = load_relay()
+        task = "/seats/.state/acp-w1-20260101-000000-1/task"
+        mapped = (
+            b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"' + task.encode() + b'","mcpServers":[]}}'
+        )
+        table = (
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"/r","mcpServers":[]}}\n', mapped + b"\n", "/r"),
+            (b'{"jsonrpc": "2.0", "id": 1, "method": "session/new", "params": {"cwd": "/r", "mcpServers": []}}\r\n', mapped + b"\r\n", "/r"),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"/r","mcpServers":[]}}', mapped, "/r"),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"","mcpServers":[]}}\n', mapped + b"\n", ""),
+            ('{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"/é\\n","mcpServers":[]}}\n'.encode(), mapped + b"\n", "/é\n"),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"' + task.encode() + b'","mcpServers":[]}}\n', mapped + b"\n", task),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"mcpServers":[]}}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":null}}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":["/r"]}}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":[]}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new"}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/prompt","params":{"cwd":"/r"}}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":["session/new"],"params":{"cwd":"/r"}}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"result":{"cwd":"/r"}}\n', None, None),
+            (b'["session/new",{"cwd":"/r"}]\n', None, None),
+            (b'"session/new"\n', None, None),
+            (b"7\n", None, None),
+            (b"\n", None, None),
+            (b"", None, None),
+            (b"not json\n", None, None),
+            (b'{"method":"session/new","params":{"cwd":"/r"}\n', None, None),
+            (b'\xff{"method":"session/new","params":{"cwd":"/r"}}\n', None, None),
+        )  # fmt: skip
+        for line, expected, original in table:
+            with self.subTest(line=line[:60]):
+                self.assertEqual(relay.map_session_cwd(line, task), (line if expected is None else expected, original))
+
     def test_srt_and_omp_run_by_their_physical_argv_under_the_listed_environment(self):
         """srt, omp and git are found through a link directory first on the caller's PATH and run by their physical
         files (the fake records argv0); omp's environment holds exactly the listed names; the srt argv is `--settings
-        <slot settings> -- /usr/bin/env PATH=<seat path> <omp argv> acp --profile dsh` in the slot's task; the clone's
+        <slot settings> -- /usr/bin/env PATH=<seat path> <python3 argv> -I -S <acp-relay.py> --map-session-cwd <task>
+        -- <omp argv> acp --profile dsh` in the slot's task (U449b: the mapper runs inside the sandbox); the clone's
         two git runs and the canary run under the Router's own settings file, the push's read of the worker's HEAD
         under the slot's (U343f)."""
         name, cwd = self.make_router()
@@ -1921,7 +2038,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                                               f"{self.home}/.ssh", f"{self.home_real}/.claude/debug/acp-broker-canary-" + slot.rsplit("-", 1)[1]])  # fmt: skip
         self.assertEqual(version_call["argv"], ["--settings", settings, "--", "/usr/bin/env", f"PATH={seat_path}",
                                                 str(self.python), str(self.bindir / "omp"), "--version"])  # fmt: skip
+        relay = str(BROKER.resolve().parent / "acp-relay.py")
         self.assertEqual(launch_call["argv"], ["--settings", settings, "--", "/usr/bin/env", f"PATH={seat_path}",
+                                               str(self.python), "-I", "-S", relay, "--map-session-cwd", task, "--",
                                                str(self.python), str(self.bindir / "omp"), "acp", "--profile", "dsh"])  # fmt: skip
         self.assertEqual(launch_call["cwd"], task)
         self.assertEqual(

@@ -17,9 +17,28 @@ and removes its slot) and waits for each, then removes the socket; the directory
 when the socket is gone, 2 when it remains or a refusal happened (every reason on stderr), and nothing else is
 written anywhere. The standard library alone, under `-I -S`: no site packages, no `PYTHON*` variable, no script
 directory on the path.
+
+The second entry point, `python3 -I -S acp-relay.py --map-session-cwd <task> -- <command...>` (regime-cutover U449b,
+table row s22; U449's trace): the connection handler runs it inside the worker's sandbox in place of the bare `omp acp`
+command, after the same self-check. dsh-subagent-acp names the Router's own task directory as the ACP `session/new`
+cwd, a directory the worker's settings deny by design (R-45), so Claude Code died at its spawn there; the broker's side,
+which owns the slot's task, maps that one field onto it before omp reads the request. The mapper starts the command
+with a pipe for its stdin and the command's stdout as its own (the connection, untouched), copies its stdin to the
+command line by line, and rewrites exactly one shape (`map_session_cwd`): a JSON object whose `method` is `session/new`
+and whose `params.cwd` is a string gets the task as `params.cwd`, re-serialised compactly with the line's own terminator;
+every other line (no cwd, a non-string cwd, no params object, another method, a JSON value that is no object, a line
+that is not JSON or not UTF-8, a line longer than LINE_CAP) passes through byte for byte. Each mapping is recorded on
+stderr as `acp-relay.py: session cwd <original, JSON-quoted> mapped to <task>`; the handler gives the launch's stderr a
+file in the slot and its reaper carries the record into the launch log when omp has ended (an inherited descriptor does
+not survive srt, measured for U449b: fd 6 is closed in the sandboxed child, so stderr is the one channel besides the
+stream). The command's stderr is a pipe the mapper drains onto the same stderr, with a line that would begin like the
+record prefixed `omp: `, so no worker line can be read as the record. The mapper ends when its stdin ends (the command's
+stdin closed, so omp reads EOF) or the command exits, and exits with the command's status (128 plus the signal number
+when a signal ended it).
 """
 
 import hashlib
+import json
 import os
 import re
 import signal
@@ -33,6 +52,9 @@ MAPPING_KEY = re.compile(r"^(\S+):$")
 LEVER_PIN = re.compile(r"^(\S+): ([0-9a-f]{64})$")
 LEVERS_KEYS = ("claude", "levers", "sha256")
 CHUNK = 65536
+# A stream line longer than this passes through unparsed, in pieces: the mapper holds no more of the Router's bytes.
+LINE_CAP = 1 << 20
+RECORD_PREFIX = b"acp-relay.py: session cwd "
 # A handler is given this long after SIGTERM to end its omp and remove its slot before the relay stops waiting.
 STOP_GRACE = 30.0
 
@@ -292,10 +314,132 @@ class Relay:
         return True
 
 
+def map_session_cwd(line, task):
+    """The one mapping of the stream (regime-cutover U449b): (the line to pass on, the original cwd or None). A JSON
+    object whose `method` is `session/new` and whose `params.cwd` is a string becomes the same object with `params.cwd`
+    equal to `task`, serialised compactly (the JS form the Router sends) with the line's own terminator; every other
+    line is returned as it is, with None."""
+    body = line
+    end = b""
+    for terminator in (b"\r\n", b"\n"):
+        if body.endswith(terminator):
+            end = terminator
+            body = body[: -len(terminator)]
+            break
+    try:
+        request = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        return line, None
+    if not isinstance(request, dict) or request.get("method") != "session/new":
+        return line, None
+    params = request.get("params")
+    if not isinstance(params, dict) or not isinstance(params.get("cwd"), str):
+        return line, None
+    original = params["cwd"]
+    params["cwd"] = task
+    return json.dumps(request, ensure_ascii=False, separators=(",", ":")).encode("utf-8") + end, original
+
+
+class MapperStderr:
+    """This process's stderr under one lock, shared by the record and the command's forwarded stderr: a record
+    always starts a line (a newline closes a forwarded piece that did not end with one), and a forwarded line that
+    begins like the record is prefixed `omp: `, so the reaper's read of the launch's stderr file takes the mapper's
+    lines alone as records."""
+
+    def __init__(self):
+        self.out = sys.stderr.buffer
+        self.lock = threading.Lock()
+        self.at_start = True
+
+    def forward(self, piece):
+        with self.lock:
+            if self.at_start and piece.startswith(RECORD_PREFIX):
+                self.out.write(b"omp: ")
+            self.out.write(piece)
+            self.out.flush()
+            self.at_start = piece.endswith(b"\n")
+
+    def record(self, original, task):
+        with self.lock:
+            if not self.at_start:
+                self.out.write(b"\n")
+            self.out.write(RECORD_PREFIX + json.dumps(original).encode() + f" mapped to {task}\n".encode())
+            self.out.flush()
+            self.at_start = True
+
+
+def forward_stderr(pipe, stderr):
+    """Copy the command's stderr to `stderr` (MapperStderr), line by line, LINE_CAP pieces for a longer line."""
+    try:
+        while True:
+            piece = pipe.readline(LINE_CAP)
+            if not piece:
+                break
+            stderr.forward(piece)
+    except OSError:
+        pass
+
+
+def map_session_cwd_run(task, command):
+    """The `--map-session-cwd` entry: run `command` with a pipe for its stdin, copy this process's stdin to it with
+    `map_session_cwd` over every whole line (a line beyond LINE_CAP passes through in pieces, unparsed), record each
+    mapping on stderr, drain the command's stderr through forward_stderr, and end with the command's status."""
+    try:
+        child = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=None, stderr=subprocess.PIPE, close_fds=True)
+    except OSError as exc:
+        refuse(f"cannot start {command[0]}: {exc}")
+    stderr = MapperStderr()
+    drain = threading.Thread(target=forward_stderr, args=(child.stderr, stderr), daemon=True)
+    drain.start()
+
+    def copy_stdin():
+        source = sys.stdin.buffer
+        mid_line = False
+        try:
+            while True:
+                piece = source.readline(LINE_CAP)
+                if not piece:
+                    break
+                whole = piece.endswith(b"\n")
+                if mid_line or not (whole or len(piece) < LINE_CAP):
+                    out = piece
+                else:
+                    out, original = map_session_cwd(piece, task)
+                    if original is not None:
+                        stderr.record(original, task)
+                mid_line = not whole
+                child.stdin.write(out)
+                child.stdin.flush()
+        except (OSError, ValueError):
+            pass
+        try:
+            child.stdin.close()
+        except OSError:
+            pass
+
+    copier = threading.Thread(target=copy_stdin, daemon=True)
+    copier.start()
+    status = child.wait()
+    # The copier may still sit in a read of a stdin nobody has closed: the command is gone, so this process ends now.
+    drain.join(2.0)
+    sys.stderr.flush()
+    if status < 0:
+        return 128 - status
+    return status
+
+
 def main(argv):
     lever_self_check()
+    if len(argv) >= 4 and argv[1] == "--map-session-cwd" and argv[3] == "--":
+        task = argv[2]
+        command = argv[4:]
+        if not os.path.isabs(task):
+            refuse(f"the task {task!r} is not an absolute path")
+        if not command or not os.path.isabs(command[0]):
+            refuse(f"the command {command[:1]!r} is not an absolute path")
+        return map_session_cwd_run(task, command)
     if len(argv) < 4 or argv[2] != "--":
-        refuse("usage: acp-relay.py <socket path> -- <handler argv...>")
+        refuse("usage: acp-relay.py <socket path> -- <handler argv...> | --map-session-cwd <task> -- <command...>")
     sock_path = argv[1]
     handler = argv[3:]
     if not os.path.isabs(sock_path):

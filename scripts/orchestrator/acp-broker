@@ -130,16 +130,43 @@
 #   lever makes and writes nothing under `.state/<name>` any more), then omp's version is read under the same
 #   settings and `omp acp start omp <version> cwd <task> repo <path> ref <rev> base <commit>` logged, then the
 #   launch, then `omp acp exit <status> push=<word>`, the reaper's line, written only when omp ran; a log line that
-#   cannot be appended refuses by name. The three lines of one launch are in that order.
+#   cannot be appended refuses by name. The three lines of one launch are in that order; between the start and the
+#   exit line the reaper appends one `session cwd <original> mapped to <task>` line per mapped request (the
+#   paragraph below).
 #   The launch. `/usr/bin/env -i HOME PATH OMP_PROFILE=dsh CLAUDE_CONFIG_DIR AWS_SHARED_CREDENTIALS_FILE=/dev/null
 #   AWS_CONFIG_FILE=/dev/null HCOM_SEAT_SANDBOX=<slot> [USER LANG when this process has them] <srt> --settings
-#   <slot>/settings.json -- /usr/bin/env PATH=<seat path> <omp> acp --profile dsh`, in the slot's task, its stdin and
-#   stdout the connection, in a process group of its own (job control on for the one start), so the reaper ends
-#   omp and every descendant in that group with one signal; nothing else of this process's environment reaches srt or
-#   omp, and `CLAUDE_CODE_OAUTH_TOKEN` is unset before the first child (U312). `HCOM_SEAT_SANDBOX` makes `hcom-seat`
-#   and this lever refuse inside the worker. The outer PATH is the private tool directory and the system
-#   directories; inside, omp gets that list followed by this process's caller's absolute PATH entries (the
+#   <slot>/settings.json -- /usr/bin/env PATH=<seat path> <python3> -I -S <acp-relay.py> --map-session-cwd <task> --
+#   <omp> acp --profile dsh`, in the slot's task, its stdin and stdout the connection, its stderr the file
+#   `<slot>/stderr`, in a process group of its own (job control on for the one start), so the reaper ends the mapper,
+#   omp and every descendant in that group with one signal; nothing else of this process's environment reaches srt,
+#   the mapper or omp, and `CLAUDE_CODE_OAUTH_TOKEN` is unset before the first child (U312). `HCOM_SEAT_SANDBOX`
+#   makes `hcom-seat` and this lever refuse inside the worker. The outer PATH is the private tool directory and the
+#   system directories; inside, omp gets that list followed by this process's caller's absolute PATH entries (the
 #   construction of `hcom-seat`'s seat path).
+#   The session cwd (regime-cutover U449b, table row s22; U449's trace /tmp/u449/trace.txt). dsh-subagent-acp names
+#   the Router's own task directory as the ACP `session/new` cwd (its lib/index.js `request.cwd` into `session.new
+#   { cwd }`), omp makes it the session cwd and claude-bridge spawns Claude Code there; the worker's settings deny the
+#   Router's state slot by design (R-45: no worker row names the Router's cwd), so Claude Code died at its spawn
+#   (`An unknown error occurred (Unexpected)`, node's `uv_cwd` EPERM, M-21), while the same settings let it start and
+#   reach the API in the slot's task. The Router's cwd is untrusted input at the sandbox boundary, like the header's
+#   repository path: nothing is granted for it. The broker's side, which owns the slot's task, maps it: the launch
+#   runs the relay helper's second entry point `acp-relay.py --map-session-cwd <task> -- <omp> acp --profile dsh`
+#   inside the worker's sandbox under the pinned python (measured for U449b under the worker's rendered settings:
+#   python 3.15.2 runs there with the helper's imports, the helper's own pin check passes, hcom-seat's private copy
+#   directory reads), which copies the connection's bytes to omp's stdin line by line and rewrites exactly one
+#   shape, a `session/new` object whose `params.cwd` is a string, to the slot's task, leaving every other line byte
+#   for byte (acp-relay.py map_session_cwd, tested by table). The helper's pin is held here before the launch
+#   (relay_helper_check, the listener's check) and by the helper itself at its start. Each mapping is recorded on the
+#   mapper's stderr as `acp-relay.py: session cwd <original, JSON-quoted> mapped to <task>`; an inherited descriptor
+#   does not survive srt (measured: fd 6 is closed in the sandboxed child), so the launch's stderr is the file
+#   `<slot>/stderr`, opened by this process in the slot it made, and the reaper reads it once omp's group has ended,
+#   before the exit line: a line in the record's shape, anchored at its start, ending in ` mapped to <task>` and free
+#   of control characters, becomes the launch-log line `session cwd <original> mapped to <task>` (the original stays
+#   JSON-quoted: the Router's string never reaches the log raw); every other line (omp's own stderr, which the mapper
+#   forwards with `omp: ` before any line that begins like the record, srt's) goes to this process's stderr as it did
+#   before, at omp's end. The read is a plain redirection into a bounded loop (regime-cutover U449c, standing order
+#   21): the first MiB, the open's status read and a file that cannot be opened named. The record is the mapper's
+#   alone: omp's stderr is a pipe the mapper drains, so no worker line is read as it.
 #   The push. When omp exits, the worker's HEAD goes back into the repository the header named as
 #   `refs/acp-seat/<name>/<utc stamp>-<pid>`, read and written the way the clone was, across two boundaries: the
 #   worker's git (worker_git, inside the worker's sandbox under the slot's settings, U343f) packs the commits above
@@ -442,6 +469,9 @@ reaper=''
 push_word=''
 # The reaper's grace in seconds between TERM to omp's process group and KILL (regime-cutover U343g), named once.
 reaper_grace=5
+# The bytes of the launch's stderr file the reaper reads (launch_stderr_lines); the rest of a worker's flood is named
+# and not read.
+launch_stderr_cap=1048576
 # The broker directory's identity (`<device>:<inode>`, regime-cutover U343h): read once by the listener after its take
 # of the directory hcom-seat made (U343i), carried to each connection in ACP_BROKER_DIR_ID, and the identity the record
 # helper holds every write to.
@@ -1246,8 +1276,12 @@ wait_child() {
     done
 }
 
-if ((! connection)); then
-    # The relay helper beside this file, held to its own pin before it runs (the sourced-helper rule of regime-env).
+# @description Hold the relay helper beside this file to its `claude.levers.sha256` pin (the sourced-helper rule of
+#   regime-env): the listener before the relay runs, a connection before the slot exists (the launch runs the helper's
+#   mapper inside the worker's sandbox, U449b); the helper checks the same pin itself when it starts.
+# @set helper The helper's path.
+relay_helper_check() {
+    local helper_pin helper_digest
     helper=${LEVER_DIR}/acp-relay.py
     [[ -r ${helper} && ! -L ${helper} ]] || refuse "the relay helper is unreadable or a link beside this script: ${helper}"
     helper_pin=$(sed -n -E 's/^      acp-relay\.py: ([0-9a-f]{64})$/\1/p' "${LEVER_MANIFEST}") || refuse "cannot read ${LEVER_MANIFEST}"
@@ -1260,6 +1294,10 @@ if ((! connection)); then
     helper_digest=${helper_digest%% *}
     [[ ${helper_digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash ${helper}"
     [[ ${helper_digest} == "${helper_pin}" ]] || refuse "sha256 ${helper_digest} of ${helper} differs from the pin in ${LEVER_MANIFEST}"
+}
+
+if ((! connection)); then
+    relay_helper_check
     self_file=${LEVER_DIR}/${BASH_SOURCE[0]##*/}
     [[ -r ${self_file} ]] || refuse "cannot read ${self_file}"
     # The broker directory is hcom-seat's (regime-cutover U343i; the header's first paragraph): the router launch made
@@ -1477,6 +1515,70 @@ exit_line() {
     if [[ -L ${log} ]] || ! printf '%s acp-broker: %s\n' "${when}" "${line}" 2> /dev/null >> "${log}"; then
         echo "acp-broker: cannot append the exit line '${line}' to the launch log ${log}; the slot's removal and the record follow" >&2
     fi
+    return 0
+}
+
+# @description Append one `session cwd <original> mapped to <task>` line to the launch log without refusing (the
+#   reaper's form, exit_line); a log that cannot be appended (or is a link) is one stderr line naming the record.
+# @arg $1 string The record, `session cwd <original, JSON-quoted> mapped to <task>`.
+mapping_line() {
+    local when
+    when=$(utc_stamp log) || when=unknown-time
+    if [[ -L ${log} ]] || ! printf '%s acp-broker: %s\n' "${when}" "$1" 2> /dev/null >> "${log}"; then
+        echo "acp-broker: cannot append the session cwd record '$1' to the launch log ${log}" >&2
+    fi
+    return 0
+}
+
+# @description Read the launch's stderr file `<slot>/stderr` once omp's group has ended (regime-cutover U449b): the
+#   mapper's records, `acp-relay.py: session cwd <original, JSON-quoted> mapped to <task>`, anchored at the line's
+#   start, ending in this slot's task and free of control characters, go to the launch log through mapping_line;
+#   every other line (omp's and srt's stderr; a worker line that began like a record carries the mapper's `omp: `)
+#   goes to this process's stderr as it did before the file. The file is opened by a plain redirection on
+#   launch_stderr_read and the redirection's status is read (regime-cutover U449c, verdict U449-6017f53f P2 :1509,
+#   standing order 21: a process substitution's status was never read, so a `head` that failed read as an empty
+#   file, and shellcheck SC2312 held CI red): a file that cannot be opened is named; a file that is absent is nothing
+#   to read; a link or a non-regular file is named and not opened. Never refuses: the exit line follows in the caller.
+launch_stderr_lines() {
+    local file=${slot}/stderr status=0
+    [[ -e ${file} || -L ${file} ]] || return 0
+    if [[ -L ${file} || ! -f ${file} ]]; then
+        echo "acp-broker: the launch's stderr file ${file} is not a regular file; its lines are not read" >&2
+        return 0
+    fi
+    launch_stderr_read "${slot}" < "${file}" || status=$?
+    if ((status != 0)); then
+        echo "acp-broker: cannot open the launch's stderr file ${file} for reading; its lines are not read" >&2
+    fi
+    return 0
+}
+
+# @description The loop of launch_stderr_lines over its stdin, the launch's stderr file: one line per `read` (at most
+#   `launch_stderr_cap` bytes and one, so a line without end holds no more than that), a byte counter against the
+#   cap (LC_ALL=C: a character is a byte), the mapper's records to the launch log and every other line to this
+#   process's stderr. `read` ends the loop with 1 at the file's end and at a read error alike (bash names the error
+#   itself); the open is the caller's to judge.
+# @arg $1 string The slot, for the cap's line (the file is `<slot>/stderr`).
+# @exitcode 0 Always: the loop ends at the file's end or at the cap (named).
+launch_stderr_read() {
+    local LC_ALL=C line rest bytes=0
+    while IFS= read -r -n "$((launch_stderr_cap + 1))" line || [[ -n ${line} ]]; do
+        bytes=$((bytes + ${#line} + 1))
+        if ((bytes > launch_stderr_cap)); then
+            echo "acp-broker: the launch's stderr file $1/stderr holds more than ${launch_stderr_cap} bytes; the rest is not read" >&2
+            return 0
+        fi
+        case ${line} in
+        'acp-relay.py: session cwd '*)
+            rest=${line#acp-relay.py: }
+            if [[ ${rest} == *" mapped to ${task}" && ${rest} != *[[:cntrl:]]* ]]; then # lint-comparisons: allow a suffix test against this connection's own task string, no path compare
+                mapping_line "${rest}"
+                continue
+            fi
+            ;;
+        esac
+        printf '%s\n' "${line}" >&2
+    done
     return 0
 }
 
@@ -1781,8 +1883,10 @@ connection_reaper() {
         fi
     fi
     # The exit line only when omp ran (the log keeps the three lines of one launch); a connection that never started
-    # omp leaves no line and its record ends `status=2 push=skipped`, whatever the handler's last line said.
+    # omp leaves no line and its record ends `status=2 push=skipped`, whatever the handler's last line said. The
+    # session cwd records of the launch's stderr file go before the exit line (U449b).
     if ((started)); then
+        launch_stderr_lines
         exit_line "${status}" "${word}"
     else
         status=2
@@ -1813,8 +1917,10 @@ connection_reaper() {
 # trap waited on omp). A signal that arrives while a child runs (mkdir, mkfifo) runs the trap when the child
 # returns, during a builtin (exec) at once, and during the ready read it interrupts the read.
 # The record helper beside this file is held before the slot exists (regime-cutover U343h): a helper that is a link,
-# another user's or writable by others refuses here, with nothing made.
+# another user's or writable by others refuses here, with nothing made. The relay helper, whose mapper the launch runs
+# inside the worker's sandbox (U449b), is held to its pin here too.
 record_helper_path_check
+relay_helper_check
 ensure_own_dir 'the state directory' "${seats_real}/.state"
 trap 'slot_trap' HUP INT TERM
 /bin/mkdir "${slot}" || refuse "cannot create the per-connection slot ${slot}"
@@ -1908,11 +2014,12 @@ log_line "omp acp start omp ${version} cwd ${task} repo ${repo} ref ${ref} base 
 # refuses nothing more on the stream once the record line is written.
 printf 'acp-broker: record %s\n' "${slot_name}" || refuse "cannot write the record line to the connection; omp acp not started"
 # omp runs as a child, not an exec, so the push can follow and the reaper be told; the explicit `<&0` keeps the
-# connection as its stdin (a background command gets /dev/null otherwise), its stdout is the connection, and the
-# control pipe is closed for it. Job control is on for the one start, so the job gets a process group of its own and
-# the reaper can end omp with every descendant in that group by one signal (verdict U343d-136fbe0a P2 :1079).
+# connection as its stdin (a background command gets /dev/null otherwise), its stdout is the connection, its stderr
+# the slot's file the reaper reads for the mapper's records (U449b), and the control pipe is closed for it. Job
+# control is on for the one start, so the job gets a process group of its own and the reaper can end the mapper, omp
+# and every descendant in that group by one signal (verdict U343d-136fbe0a P2 :1079).
 set -m
-/usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${omp_cmd[@]}" acp --profile dsh <&0 4>&- &
+/usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${python_cmd[@]}" -I -S "${helper}" --map-session-cwd "${task}" -- "${omp_cmd[@]}" acp --profile dsh <&0 4>&- 2>> "${slot}/stderr" &
 child=$!
 set +m
 printf 'start %s\n' "${child}" >&4 || echo "acp-broker: cannot tell the reaper that omp started (pid ${child})" >&2

@@ -25,9 +25,35 @@ ends this process as any later one does; a line never follows the listener's clo
 Exit 0 when the socket is gone, 2 when it remains or a refusal happened (every reason on stderr), and nothing else is
 written anywhere. The standard library alone, under `-I -S`: no site packages, no `PYTHON*` variable, no script
 directory on the path.
+
+The second entry point, `python3 -I -S acp-relay.py --map-session-cwd <task> -- <command...>` (regime-cutover U449b,
+table row s22; U449's trace): the connection handler runs it inside the worker's sandbox in place of the bare `omp acp`
+command, after the same self-check. dsh-subagent-acp names the Router's own task directory as the ACP `session/new`
+cwd, a directory the worker's settings deny by design (R-45), so Claude Code died at its spawn there; the broker's side,
+which owns the slot's task, maps that one field onto it before omp reads the request. The mapper starts the command
+with a pipe for its stdin and the command's stdout as its own (the connection, untouched), copies its stdin to the
+command line by line, and rewrites exactly one shape (`map_session_cwd`): a JSON object whose `method` is `session/new`
+and whose `params.cwd` is a string. The rewrite is textual (regime-cutover U449c, verdict U449-6017f53f): a scanner
+over the line (json.JSONDecoder.raw_decode member by member at the top level and inside `params`, after a streaming
+count of the nesting against NESTING_CAP) locates the cwd string token, and that token alone is replaced by the task,
+JSON-quoted; every other byte of the line, the spacing, the key order, an escaped method, a lone surrogate or a number
+beyond a double in another field, the terminator, stays as the Router sent it (the earlier re-serialisation changed
+those bytes, raised on a lone surrogate and wrote `Infinity` for a huge number). The mapper is total: whenever the line
+is not that shape (no cwd, a non-string cwd, no params object, another method, a JSON value that is no object), is not
+valid JSON or not UTF-8, is nested beyond NESTING_CAP, repeats a key at either level, carries bytes after the object or
+is longer than LINE_CAP, and whenever anything inside raises, the line passes through byte for byte; the copier forwards
+every line it read, the mapped line or the original, and a record that cannot be written costs no line. Each mapping is
+recorded on stderr as `acp-relay.py: session cwd <original, JSON-quoted> mapped to <task>`; the handler gives the
+launch's stderr a file in the slot and its reaper carries the record into the launch log when omp has ended (an
+inherited descriptor does not survive srt, measured for U449b: fd 6 is closed in the sandboxed child, so stderr is the
+one channel besides the stream). The command's stderr is a pipe the mapper drains onto the same stderr, with a line that
+would begin like the record prefixed `omp: `, so no worker line can be read as the record. The mapper ends when its
+stdin ends (the command's stdin closed, so omp reads EOF) or the command exits, and exits with the command's status
+(128 plus the signal number when a signal ended it).
 """
 
 import hashlib
+import json
 import os
 import re
 import signal
@@ -41,6 +67,15 @@ MAPPING_KEY = re.compile(r"^(\S+):$")
 LEVER_PIN = re.compile(r"^(\S+): ([0-9a-f]{64})$")
 LEVERS_KEYS = ("claude", "levers", "sha256")
 CHUNK = 65536
+# A stream line longer than this passes through unparsed, in pieces: the mapper holds no more of the Router's bytes.
+LINE_CAP = 1 << 20
+RECORD_PREFIX = b"acp-relay.py: session cwd "
+# A line that opens more arrays and objects inside one another than this passes through unparsed (a `session/new` is
+# five deep): the streaming bound that keeps the parser's recursion out of the copier.
+NESTING_CAP = 64
+# One JSON string token (the unrolled form: no alternation under a repeat) or one bracket, for the nesting count.
+JSON_TOKEN = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"|[\[{\]}]')
+JSON_SPACE = re.compile(r"[ \t\n\r]*")
 # A handler is given this long after SIGTERM to end its omp and remove its slot before the relay stops waiting.
 STOP_GRACE = 30.0
 # The signals that end the relay: handled from before the bind, blocked across the readiness line's print.
@@ -316,10 +351,212 @@ class Relay:
         return True
 
 
+def nesting_exceeds(text, cap):
+    """True when the JSON text opens more than `cap` arrays and objects inside one another: a count of the brackets
+    outside the string tokens, streamed over the text, never a parse."""
+    depth = 0
+    for match in JSON_TOKEN.finditer(text):
+        token = match.group()
+        if token[0] == '"':
+            continue
+        if token in "[{":
+            depth += 1
+            if depth > cap:
+                return True
+        elif depth:
+            depth -= 1
+    return False
+
+
+def object_members(text, start):
+    """The members of the JSON object at `start` (after any whitespace) as (key, value, value start, value end) and
+    the index after its closing brace; ValueError when no object is there (IndexError at the text's end)."""
+    decoder = json.JSONDecoder()
+    members = []
+    i = JSON_SPACE.match(text, start).end()
+    if text[i] != "{":
+        raise ValueError("no object")
+    i = JSON_SPACE.match(text, i + 1).end()
+    if text[i] == "}":
+        return members, i + 1
+    while True:
+        if text[i] != '"':
+            raise ValueError("no key")
+        key, i = decoder.raw_decode(text, i)
+        i = JSON_SPACE.match(text, i).end()
+        if text[i] != ":":
+            raise ValueError("no colon")
+        i = JSON_SPACE.match(text, i + 1).end()
+        value, end = decoder.raw_decode(text, i)
+        members.append((key, value, i, end))
+        i = JSON_SPACE.match(text, end).end()
+        if text[i] == ",":
+            i = JSON_SPACE.match(text, i + 1).end()
+            continue
+        if text[i] == "}":
+            return members, i + 1
+        raise ValueError("no comma")
+
+
+def member_spans(members):
+    """{key: (value, value start, value end)}; ValueError on a repeated key (JSON.parse keeps the last; the shape
+    is ambiguous and this lever maps neither)."""
+    spans = {}
+    for key, value, start, end in members:
+        if key in spans:
+            raise ValueError("repeated key")
+        spans[key] = (value, start, end)
+    return spans
+
+
+def map_session_cwd(line, task):
+    """The one mapping of the stream (regime-cutover U449b): (the line to pass on, the original cwd or None). A JSON
+    object whose `method` is `session/new` and whose `params.cwd` is a string becomes the same bytes with the cwd
+    string token alone replaced by `task`, JSON-quoted (regime-cutover U449c: a textual substitution at the token's
+    position, so the spacing, the key order and every other field stay byte for byte, a lone surrogate or a huge
+    number elsewhere included); every other line is returned as it is, with None. Total: the parse is bounded
+    (NESTING_CAP, LINE_CAP) and whatever raises inside yields the identity."""
+    try:
+        if len(line) > LINE_CAP:
+            return line, None
+        body = line
+        end = b""
+        for terminator in (b"\r\n", b"\n"):
+            if body.endswith(terminator):
+                end = terminator
+                body = body[: -len(terminator)]
+                break
+        text = body.decode("utf-8")
+        if nesting_exceeds(text, NESTING_CAP):
+            return line, None
+        members, after = object_members(text, 0)
+        if JSON_SPACE.match(text, after).end() != len(text):
+            return line, None
+        top = member_spans(members)
+        if "method" not in top or "params" not in top:
+            return line, None
+        method = top["method"][0]
+        if method != "session/new":  # lint-comparisons: allow a JSON-RPC method name, not a path
+            return line, None
+        if not isinstance(top["params"][0], dict):
+            return line, None
+        _params, params_start, params_end = top["params"]
+        inner, inner_end = object_members(text, params_start)
+        if inner_end != params_end:
+            return line, None
+        params = member_spans(inner)
+        if "cwd" not in params or not isinstance(params["cwd"][0], str):
+            return line, None
+        original, cwd_start, cwd_end = params["cwd"]
+        mapped = text[:cwd_start] + json.dumps(task) + text[cwd_end:]
+        return mapped.encode("utf-8") + end, original
+    except Exception:  # the mapper is total: a line the scan or the parse cannot take passes as it came
+        return line, None
+
+
+class MapperStderr:
+    """This process's stderr under one lock, shared by the record and the command's forwarded stderr: a record
+    always starts a line (a newline closes a forwarded piece that did not end with one), and a forwarded line that
+    begins like the record is prefixed `omp: `, so the reaper's read of the launch's stderr file takes the mapper's
+    lines alone as records."""
+
+    def __init__(self):
+        self.out = sys.stderr.buffer
+        self.lock = threading.Lock()
+        self.at_start = True
+
+    def forward(self, piece):
+        with self.lock:
+            if self.at_start and piece.startswith(RECORD_PREFIX):
+                self.out.write(b"omp: ")
+            self.out.write(piece)
+            self.out.flush()
+            self.at_start = piece.endswith(b"\n")
+
+    def record(self, original, task):
+        with self.lock:
+            if not self.at_start:
+                self.out.write(b"\n")
+            self.out.write(RECORD_PREFIX + json.dumps(original).encode() + f" mapped to {task}\n".encode())
+            self.out.flush()
+            self.at_start = True
+
+
+def forward_stderr(pipe, stderr):
+    """Copy the command's stderr to `stderr` (MapperStderr), line by line, LINE_CAP pieces for a longer line."""
+    try:
+        while True:
+            piece = pipe.readline(LINE_CAP)
+            if not piece:
+                break
+            stderr.forward(piece)
+    except (OSError, ValueError):
+        pass
+
+
+def map_session_cwd_run(task, command):
+    """The `--map-session-cwd` entry: run `command` with a pipe for its stdin, copy this process's stdin to it with
+    `map_session_cwd` over every whole line (a line beyond LINE_CAP passes through in pieces, unparsed), record each
+    mapping on stderr, drain the command's stderr through forward_stderr, and end with the command's status."""
+    try:
+        child = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=None, stderr=subprocess.PIPE, close_fds=True)
+    except OSError as exc:
+        refuse(f"cannot start {command[0]}: {exc}")
+    stderr = MapperStderr()
+    drain = threading.Thread(target=forward_stderr, args=(child.stderr, stderr), daemon=True)
+    drain.start()
+
+    def copy_stdin():
+        source = sys.stdin.buffer
+        mid_line = False
+        try:
+            while True:
+                piece = source.readline(LINE_CAP)
+                if not piece:
+                    break
+                whole = piece.endswith(b"\n")
+                out = piece
+                if not mid_line and (whole or len(piece) < LINE_CAP):
+                    out, original = map_session_cwd(piece, task)
+                    if original is not None:
+                        try:
+                            stderr.record(original, task)
+                        except Exception:  # a record that cannot be written costs no line of the stream
+                            pass
+                mid_line = not whole
+                child.stdin.write(out)
+                child.stdin.flush()
+        except Exception:  # the command's stdin is gone (omp exited) or this process's stdin failed: the copy ends
+            pass
+        finally:
+            try:
+                child.stdin.close()
+            except OSError:
+                pass
+
+    copier = threading.Thread(target=copy_stdin, daemon=True)
+    copier.start()
+    status = child.wait()
+    # The copier may still sit in a read of a stdin nobody has closed: the command is gone, so this process ends now.
+    drain.join(2.0)
+    sys.stderr.flush()
+    if status < 0:
+        return 128 - status
+    return status
+
+
 def main(argv):
     lever_self_check()
+    if len(argv) >= 4 and argv[1] == "--map-session-cwd" and argv[3] == "--":
+        task = argv[2]
+        command = argv[4:]
+        if not os.path.isabs(task):
+            refuse(f"the task {task!r} is not an absolute path")
+        if not command or not os.path.isabs(command[0]):
+            refuse(f"the command {command[:1]!r} is not an absolute path")
+        return map_session_cwd_run(task, command)
     if len(argv) < 4 or argv[2] != "--":
-        refuse("usage: acp-relay.py <socket path> -- <handler argv...>")
+        refuse("usage: acp-relay.py <socket path> -- <handler argv...> | --map-session-cwd <task> -- <command...>")
     sock_path = argv[1]
     handler = argv[3:]
     if not os.path.isabs(sock_path):

@@ -40,6 +40,7 @@ from scratch_git import git_init
 ROOT = test_hcom_seat.ROOT
 BROKER = ROOT / "scripts/orchestrator/acp-broker"
 CLIENT = ROOT / "scripts/orchestrator/acp-seat"
+RELAY = ROOT / "scripts/orchestrator/acp-relay.py"
 SYSTEM_PATH = test_hcom_seat.SYSTEM_PATH
 BASH_OWN_NAMES = test_hcom_seat_dsh.BASH_OWN_NAMES
 FOUR_WORDS = "write-denied read-denied ssh-denied debug-denied"
@@ -239,6 +240,14 @@ def one_mib_line():
     line = (head + blob + tail).encode()
     assert len(line) == size and json.loads(line)["params"]["blob"] == blob
     return line
+
+
+def load_relay():
+    """acp-relay.py as a module (its `main` is guarded), for the table test of `map_session_cwd` (U449b)."""
+    spec = importlib.util.spec_from_file_location("acp_relay", RELAY)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class AcpBrokerTest(test_hcom_seat.SeatFixture):
@@ -811,9 +820,10 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.scratch_git("rev-parse", "--abbrev-ref", "HEAD", cwd=task), "HEAD", "detached")
         self.assertEqual(
             sorted(p.name for p in slot_path.iterdir()),
-            ["control", "ready", "settings.json", "task"],
-            "no pack left behind (the two pipes, U343o)",
+            ["control", "ready", "settings.json", "stderr", "task"],
+            "no pack left behind (the two pipes, U343o; the launch's stderr file, U449b)",
         )
+        self.assertEqual(stat.S_IMODE(os.lstat(slot_path / "stderr").st_mode), 0o600)
         self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
         self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
@@ -1884,10 +1894,215 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(stat.S_IMODE(os.lstat(log_dir / "w1.log").st_mode), 0o600)
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
+    def test_the_session_new_cwd_is_mapped_onto_the_slots_task_and_the_original_is_logged(self):
+        """U449b (table row s22; U449's trace): dsh-subagent-acp names the Router's own task as the ACP `session/new`
+        cwd, a directory the worker's sandbox denies by design (R-45), so Claude Code died at its spawn. The broker's
+        side maps that one field onto the slot's task before omp reads it: the fake omp, which echoes its stdin,
+        receives the `session/new` line with `params.cwd` equal to the slot's task and every other member as sent;
+        the launch log gains `session cwd "<original>" mapped to <task>` between the start and the exit lines, the
+        original JSON-quoted (an untrusted string of the Router's: a control character never reaches the log raw).
+        A `session/new` without a cwd, with a non-string cwd, with no params object or none at all, a line that is
+        not JSON or not UTF-8, a JSON line that is no object, and every other method pass through byte for byte."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        conn, slot, task = self.held_connection(sock, repo, "w1")
+        router_task = f"{cwd}/task"
+        request = {"jsonrpc": "2.0", "id": 2, "method": "session/new", "params": {"cwd": router_task, "mcpServers": []}}
+        conn.sendall(json.dumps(request, separators=(",", ":")).encode() + b"\n")
+        echoed = self.recv_line(conn)
+        self.assertEqual(json.loads(echoed), {**request, "params": {"cwd": str(task), "mcpServers": []}})
+        self.assertNotIn(router_task.encode(), echoed)
+        odd_cwd = "/tmp/x\né y"
+        odd = {
+            "jsonrpc": "2.0",
+            "id": "three",
+            "method": "session/new",
+            "params": {"cwd": odd_cwd, "mcpServers": [{"name": "m"}]},
+        }
+        conn.sendall(json.dumps(odd).encode() + b"\r\n")
+        echoed = self.recv_line(conn)
+        self.assertTrue(echoed.endswith(b"\r\n"), echoed)
+        self.assertEqual(json.loads(echoed), {**odd, "params": {"cwd": str(task), "mcpServers": [{"name": "m"}]}})
+        rt = router_task.encode()
+        through = (
+            b'{"jsonrpc":"2.0","id":4,"method":"session/new","params":{"mcpServers":[]}}\n',
+            b'{"jsonrpc":"2.0","id":5,"method":"session/new","params":{"cwd":7,"mcpServers":[]}}\n',
+            b'{"jsonrpc":"2.0","id":6,"method":"session/new","params":{"cwd":["' + rt + b'"]}}\n',
+            b'{"jsonrpc":"2.0","id":7,"method":"session/new","params":"' + rt + b'"}\n',
+            b'{"jsonrpc":"2.0","id":8,"method":"session/new"}\n',
+            b'{"jsonrpc":"2.0","id":9,"method":"session/prompt","params":{"cwd":"' + rt + b'","sessionId":"s"}}\n',
+            b'{"jsonrpc":"2.0","id":10,"method":"session/load","params":{"cwd":"' + rt + b'"}}\r\n',
+            b'{"jsonrpc":"2.0","method":"session/cancel","params":{"cwd":"' + rt + b'"}}\n',
+            b'["session/new", {"cwd": "' + rt + b'"}]\n',
+            b'"session/new"\n',
+            b"session/new cwd=" + rt + b"\n",
+            b'{"jsonrpc":"2.0","id":11,"method":"session/new","params":{"cwd":"' + rt + b'"}\n',
+            b'\xff\xfe{"method":"session/new","params":{"cwd":"' + rt + b'"}}\n',
+            PING,
+        )
+        for raw in through:
+            with self.subTest(line=raw[:48]):
+                conn.sendall(raw)
+                self.assertEqual(self.recv_line(conn), raw)
+        self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
+        lines = self.log_lines("w1")
+        stamp = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"
+        self.assertEqual(len(lines), 5, lines)
+        self.assertRegex(lines[0], rf"^{stamp} acp-broker: canary {FOUR_WORDS}$")
+        self.assertRegex(lines[1], rf"^{stamp} acp-broker: omp acp start omp 18\.12\.6 cwd {re.escape(str(task))} ")
+        self.assertRegex(
+            lines[2],
+            rf"^{stamp} acp-broker: session cwd {re.escape(json.dumps(router_task))} mapped to {re.escape(str(task))}$",
+        )
+        self.assertRegex(
+            lines[3],
+            rf"^{stamp} acp-broker: session cwd {re.escape(json.dumps(odd_cwd))} mapped to {re.escape(str(task))}$",
+        )
+        self.assertNotIn("\né", lines[3], "the control and non-ASCII characters are escaped, never raw")
+        self.assertRegex(lines[4], rf"^{stamp} acp-broker: omp acp exit 0 push=none$")
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_the_session_cwd_mapping_is_one_function_from_the_line_to_the_line(self):
+        """acp-relay.py `map_session_cwd(line, task)` returns (the line, the original cwd): identity and None for
+        every line but a `session/new` object whose `params.cwd` is a string, whose cwd string token alone becomes the
+        task and every other byte of the line stays as it came (U449c: the spacing, the key order, an escaped method,
+        a lone surrogate or a number beyond a double elsewhere in the request, the terminator; tested by table). The
+        mapper is total (verdict U449-6017f53f P1 `:330`, P1 `:340`, P2 `:340`): a line nested beyond NESTING_CAP, a
+        repeated key, a line over LINE_CAP, bytes after the object, an invalid escape or a raw control character
+        anywhere, an empty line and a bare terminator pass through unchanged and nothing raises."""
+        relay = load_relay()
+        task = "/seats/.state/acp-w1-20260101-000000-1/task"
+        t = task.encode()
+        mapped = b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"' + t + b'","mcpServers":[]}}'
+        deep = b"[" * 60 + b"]" * 60
+        table = (
+            # mapped: the cwd token replaced, every other byte kept
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"/r","mcpServers":[]}}\n', mapped + b"\n", "/r"),
+            (b'{"jsonrpc": "2.0", "id": 1, "method": "session/new", "params": {"cwd": "/r", "mcpServers": []}}\r\n', b'{"jsonrpc": "2.0", "id": 1, "method": "session/new", "params": {"cwd": "' + t + b'", "mcpServers": []}}\r\n', "/r"),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"/r","mcpServers":[]}}', mapped, "/r"),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"","mcpServers":[]}}\n', mapped + b"\n", ""),
+            ('{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"/é\\n","mcpServers":[]}}\n'.encode(), mapped + b"\n", "/é\n"),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"' + t + b'","mcpServers":[]}}\n', mapped + b"\n", task),
+            (b'{"params":{"mcpServers":[],"cwd":"/r"},"method":"session/new","id":1,"jsonrpc":"2.0"}\n', b'{"params":{"mcpServers":[],"cwd":"' + t + b'"},"method":"session/new","id":1,"jsonrpc":"2.0"}\n', "/r"),
+            (b'{"method":"session\\/new","params":{"cwd":"\\u002fr"}}\n', b'{"method":"session\\/new","params":{"cwd":"' + t + b'"}}\n', "/r"),
+            (b'  {"method":"session/new","params":{"cwd":"/r"}}  \n', b'  {"method":"session/new","params":{"cwd":"' + t + b'"}}  \n', "/r"),
+            (b'{"jsonrpc":"2.0","id":"\\ud800","method":"session/new","params":{"cwd":"/r","mcpServers":[{"name":"\\udfff"}]}}\n', b'{"jsonrpc":"2.0","id":"\\ud800","method":"session/new","params":{"cwd":"' + t + b'","mcpServers":[{"name":"\\udfff"}]}}\n', "/r"),
+            (b'{"method":"session/new","params":{"cwd":"\\ud800/r"}}\n', b'{"method":"session/new","params":{"cwd":"' + t + b'"}}\n', "\ud800/r"),
+            (b'{"jsonrpc":"2.0","id":1e1000000,"method":"session/new","params":{"cwd":"/r","n":-1e1000000}}\n', b'{"jsonrpc":"2.0","id":1e1000000,"method":"session/new","params":{"cwd":"' + t + b'","n":-1e1000000}}\n', "/r"),
+            (b'{"method":"session/new","params":{"cwd":"/r","x":' + deep + b"}}\n", b'{"method":"session/new","params":{"cwd":"' + t + b'","x":' + deep + b"}}\n", "/r"),
+            # identity: not the shape
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"mcpServers":[]}}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":null}}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":["/r"]}}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":[]}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/new"}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":"session/prompt","params":{"cwd":"/r"}}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":["session/new"],"params":{"cwd":"/r"}}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"result":{"cwd":"/r"}}\n', None, None),
+            (b'["session/new",{"cwd":"/r"}]\n', None, None),
+            (b'"session/new"\n', None, None),
+            (b"7\n", None, None),
+            (b"\n", None, None),
+            (b"", None, None),
+            (b"not json\n", None, None),
+            (b'{"method":"session/new","params":{"cwd":"/r"}\n', None, None),
+            (b'\xff{"method":"session/new","params":{"cwd":"/r"}}\n', None, None),
+            # identity: the mapper's bounds, an ambiguous shape, a line that is not valid JSON; nothing raises
+            (b'{"method":"session/new","params":{"cwd":"/r","x":' + b"[" * 70 + b"]" * 70 + b"}}\n", None, None),
+            (b'{"a":' + b"[" * 200000 + b"]" * 200000 + b',"method":"session/new","params":{"cwd":"/r"}}\n', None, None),
+            (b'{"method":"session/new","params":{"cwd":"/a","cwd":"/b"}}\n', None, None),
+            (b'{"method":"ping","method":"session/new","params":{"cwd":"/r"}}\n', None, None),
+            (b'{"method":"session/new","params":{"cwd":"/r"}} x\n', None, None),
+            (b'{"method":"session/new","params":{"cwd":"/r"},"x":"\\q"}\n', None, None),
+            (b'{"method":"session/new","params":{"cwd":"/r\t"}}\n', None, None),
+            (b'{"method":"session/new","params":{"cwd":"/r","pad":"' + b"x" * (1 << 20) + b'"}}\n', None, None),
+            (b'{"jsonrpc":"2.0","id":1,"method":"ping"}\r\n', None, None),
+            (b"\r\n", None, None),
+            (b"   \n", None, None),
+        )  # fmt: skip
+        for line, expected, original in table:
+            with self.subTest(line=line[:60]):
+                self.assertEqual(relay.map_session_cwd(line, task), (line if expected is None else expected, original))
+
+    def test_the_copier_forwards_every_line_it_read_whatever_the_mapper_made_of_it(self):
+        """U449c (verdict U449-6017f53f P1 `acp-relay.py:330` and P1 `:340`): a 400 KB line of nested arrays raised
+        RecursionError in the copier thread, which died with omp's stdin open, so the connection hung; a request with
+        an escaped lone surrogate elsewhere raised UnicodeEncodeError at the re-serialisation and the `session/new`
+        line was dropped. The mapper is total and the copier forwards every line it read: `map_session_cwd_run` on
+        `/bin/cat` with the stream (the nested line, a `session/new`, a `session/new` carrying a lone surrogate and a
+        number beyond a double elsewhere, a ping, then EOF) gives cat every line, the first and the last unchanged,
+        the second and the third mapped with their other bytes as sent; one record per mapping on stderr; the mapper
+        ends 0 when the stream ends (cat reads EOF), within the timeout."""
+        task = "/seats/.state/acp-w1-20260101-000000-1/task"
+        t = task.encode()
+        nested = b'{"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"/r","x":' + b"[" * 200000 + b"]" * 200000 + b"}}\n"  # fmt: skip
+        new = b'{"jsonrpc":"2.0","id":2,"method":"session/new","params":{"cwd":"/r","mcpServers":[]}}\n'
+        odd = b'{"jsonrpc":"2.0","id":"\\ud800","method":"session/new","params":{"cwd":"/r","n":1e1000000}}\r\n'
+        code = textwrap.dedent(
+            f"""\
+            import importlib.util, sys
+            spec = importlib.util.spec_from_file_location("acp_relay", {str(RELAY)!r})
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            sys.exit(module.map_session_cwd_run({task!r}, ["/bin/cat"]))
+            """
+        )
+        run = subprocess.run(
+            [sys.executable, "-I", "-S", "-c", code], input=nested + new + odd + PING, capture_output=True, timeout=30,
+            check=False,
+        )  # fmt: skip
+        self.assertEqual(run.returncode, 0, run.stderr)
+        mapped = new.replace(b'"cwd":"/r"', b'"cwd":"' + t + b'"') + odd.replace(b'"cwd":"/r"', b'"cwd":"' + t + b'"')
+        self.assertEqual(run.stdout, nested + mapped + PING)
+        self.assertEqual(run.stderr, (b'acp-relay.py: session cwd "/r" mapped to ' + t + b"\n") * 2)
+
+    def test_a_launch_stderr_file_the_reaper_cannot_open_is_named_and_the_exit_line_is_still_written(self):
+        """U449c (verdict U449-6017f53f P2 `acp-broker:1509`, standing order 21): the reaper read the launch's stderr
+        file through a process substitution whose status nothing read (a `head` that failed read as an empty file and
+        the loop returned 0; shellcheck SC2312 on every CI leg). The file is read by a plain redirection into a bounded
+        loop and the redirection's status is read: with the file made unreadable (mode 0) while the worker runs, after
+        a `session/new` the mapper recorded, the broker's stderr names the file it could not open and the log holds the
+        start and the exit lines with no mapping line between them; with a directory put at the file's name the
+        regular-file gate names it. The exit line, the record and the slot's removal follow each time."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        request = b'{"jsonrpc":"2.0","id":2,"method":"session/new","params":{"cwd":"/r","mcpServers":[]}}\n'
+        conn, slot, task = self.held_connection(sock, repo, "w1")
+        conn.sendall(request)
+        self.assertIn(b'"cwd":"' + str(task).encode() + b'"', self.recv_line(conn))
+        unreadable = self.seats_path / ".state" / slot / "stderr"
+        unreadable.chmod(0)
+        self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
+        conn, slot, task = self.held_connection(sock, repo, "w1")
+        conn.sendall(request)
+        self.assertIn(b'"cwd":"' + str(task).encode() + b'"', self.recv_line(conn))
+        directory = self.seats_path / ".state" / slot / "stderr"
+        directory.unlink()
+        directory.mkdir(mode=0o700)
+        self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
+        self.wait_for(lambda: self.acp_slots() == [], "the slots' removal")
+        lines = self.log_lines("w1")
+        self.assertEqual(len(lines), 6, lines)
+        stamp = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"
+        for n in (2, 5):
+            self.assertRegex(lines[n], rf"^{stamp} acp-broker: omp acp exit 0 push=none$")
+        self.assertEqual([line for line in lines if "session cwd" in line], [], "no record was read from either file")
+        status, _out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertIn(
+            f"acp-broker: cannot open the launch's stderr file {unreadable} for reading; its lines are not read\n", err
+        )
+        self.assertIn(
+            f"acp-broker: the launch's stderr file {directory} is not a regular file; its lines are not read\n", err
+        )
+
     def test_srt_and_omp_run_by_their_physical_argv_under_the_listed_environment(self):
         """srt, omp and git are found through a link directory first on the caller's PATH and run by their physical
         files (the fake records argv0); omp's environment holds exactly the listed names; the srt argv is `--settings
-        <slot settings> -- /usr/bin/env PATH=<seat path> <omp argv> acp --profile dsh` in the slot's task; the clone's
+        <slot settings> -- /usr/bin/env PATH=<seat path> <python3 argv> -I -S <acp-relay.py> --map-session-cwd <task>
+        -- <omp argv> acp --profile dsh` in the slot's task (U449b: the mapper runs inside the sandbox); the clone's
         two git runs and the canary run under the Router's own settings file, the push's read of the worker's HEAD
         under the slot's (U343f)."""
         name, cwd = self.make_router()
@@ -1949,7 +2164,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                                               f"{self.home}/.ssh", f"{self.home_real}/.claude/debug/acp-broker-canary-" + slot.rsplit("-", 1)[1]])  # fmt: skip
         self.assertEqual(version_call["argv"], ["--settings", settings, "--", "/usr/bin/env", f"PATH={seat_path}",
                                                 str(self.python), str(self.bindir / "omp"), "--version"])  # fmt: skip
+        relay = str(BROKER.resolve().parent / "acp-relay.py")
         self.assertEqual(launch_call["argv"], ["--settings", settings, "--", "/usr/bin/env", f"PATH={seat_path}",
+                                               str(self.python), "-I", "-S", relay, "--map-session-cwd", task, "--",
                                                str(self.python), str(self.bindir / "omp"), "acp", "--profile", "dsh"])  # fmt: skip
         self.assertEqual(launch_call["cwd"], task)
         self.assertEqual(

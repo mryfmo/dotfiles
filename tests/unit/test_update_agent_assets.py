@@ -7408,6 +7408,55 @@ class DshSuperagentTest(unittest.TestCase):
                 self.assertIn(f"the dependency names of {package} could not be read", result.stderr)
                 self.assertEqual([], self.srt_calls(home))
 
+    def test_the_dependency_reader_refuses_a_non_object_table_and_reads_an_absent_table_as_empty(self):
+        """U434c (round 3 of U434; verdicts/U434-1faa81f1 P2 [f1 s4]): the reader is a parser at the boundary. A
+        `dependencies` that is a list or a string, or a package.json that is a JSON array, refuses the step with one
+        stderr line naming the file and the shape before any srt run (round 2's `dict(...)` read an empty list as an
+        empty table and skipped the repair silently); a package.json without a `dependencies` key is an empty table:
+        no name, no refusal, no srt run."""
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            profile = dsh_home / "profiles/router"
+            package = profile / "package.json"
+
+            def rerun():
+                for log in (home / "calls", home / "calls.settings", profile / "pnpm-calls"):
+                    log.unlink(missing_ok=True)
+                return self.run_step(home, payload, digest, dsh_home=dsh_home)
+
+            for case, text, shape in (
+                ("dependencies: []", '{"name": "router", "dependencies": []}\n', "dependencies list"),
+                ('dependencies: "x"', '{"name": "router", "dependencies": "x"}\n', "dependencies str"),
+                ("a top-level JSON array", '[{"dependencies": {"a": "link:../a"}}]\n', "top level list"),
+            ):
+                package.write_text(text)
+                with self.subTest(case=case):
+                    result = rerun()
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(
+                        f"update_dsh_superagent: {package} is not a JSON object whose dependencies is an object"
+                        f" ({shape}); the dependency names are not read.",
+                        result.stderr,
+                    )
+                    self.assertIn(
+                        f"update_dsh_superagent: the dependency names of {package} could not be read;"
+                        " the installed tree and the record are untouched.",
+                        result.stderr,
+                    )
+                    self.assertEqual(self.TOOL_CALLS, self.calls(home), "no srt, no download")
+                    self.assertEqual([], self.pnpm_calls(profile))
+            package.write_text('{"name": "router"}\n')
+            with self.subTest(case="dependencies absent"):
+                result = rerun()
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertNotIn("has no node_modules entry", result.stdout)
+                self.assertNotIn("could not be read", result.stderr)
+                self.assertEqual(self.TOOL_CALLS, self.calls(home), "an empty table: no srt, no download")
+                self.assertEqual([], self.pnpm_calls(profile))
+
     def test_a_receipt_read_that_fails_refuses_the_step_before_any_download(self):
         with tempfile.TemporaryDirectory() as directory:
             home, dsh_home = self.opted_in_home(directory)

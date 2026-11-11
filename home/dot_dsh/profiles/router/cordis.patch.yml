@@ -29,6 +29,7 @@
   config:
     stateDir: !!js process.env.DSH_HOME + '/router-state'
 - id: tool-subagent
+  disabled: false
   config:
     provider: acp
     toolName: subagent

@@ -296,9 +296,10 @@ class DshRouterProfileTest(unittest.TestCase):
             ],
             list(self.rows),
         )
-        # U434: the subagent tool runs on the ACP provider the insert mounts; the gateway insert comes first.
+        # U434: the subagent tool runs on the ACP provider the insert mounts; the gateway insert comes first. U434c: the
+        # web-app bundle ships the row disabled, so the kit's row enables it beside its config.
         self.assertEqual(
-            "  config:\n    provider: acp\n    toolName: subagent\n    maxDepth: provider-managed\n",
+            "  disabled: false\n  config:\n    provider: acp\n    toolName: subagent\n    maxDepth: provider-managed\n",
             self.rows["id: tool-subagent"],
         )
         self.assertEqual(["omp-gateway", "subagent-acp"], list(self.plugins))

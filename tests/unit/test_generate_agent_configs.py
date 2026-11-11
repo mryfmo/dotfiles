@@ -2602,7 +2602,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             [line.strip().removeprefix("- ") for line in args[1].splitlines()],
         )
         self.assertIn(
-            "- id: tool-subagent\n  config:\n    provider: acp\n    toolName: subagent\n    maxDepth: provider-managed\n",
+            "- id: tool-subagent\n"
+            "  disabled: false\n"
+            "  config:\n"
+            "    provider: acp\n"
+            "    toolName: subagent\n"
+            "    maxDepth: provider-managed\n",
             router,
         )
         self.assertEqual(1, router.count("- id: tool-subagent\n"))
@@ -2615,6 +2620,25 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual("~/.local/bin/common/acp-seat", self.module.DSH_ACP_SEAT_PATH)
         self.assertEqual("ACP_BROKER_SOCK", self.module.DSH_ACP_BROKER_SOCK_ENV)
         self.assertIn("acp-seat", manifest["claude"]["levers"]["sha256"])
+
+    def test_the_router_patch_enables_the_subagent_tool_the_web_app_bundle_disables_and_the_thak_patch_has_no_row(
+        self,
+    ) -> None:
+        """U434c (round 3 of U434; verdicts/U434-1faa81f1 P1 [f5 s8]): the web-app bundle ships the top-level
+        `tool-subagent` row `disabled: true` (the round-1 dump), and the patch algorithm merges a row's keys other
+        than `config`, so the rendered router row carries `disabled: false` directly under the row beside its ACP
+        config; the round-1 real run needed an overlay for that one key. The thak patch has no `tool-subagent` row."""
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.module.ROOT = ROOT
+        router = self.module.render_dsh_router_profile(manifest)[ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"]
+        thak = self.module.render_dsh_profile_patch(manifest)[ROOT / "home/dot_dsh/profiles/thak/cordis.patch.yml"]
+        row = re.search(r"^- id: tool-subagent\n((?:  .*\n)+)", router, re.MULTILINE)
+        self.assertIsNotNone(row, router)
+        keys = [line[2:] for line in row[1].splitlines() if not line.startswith("    ")]
+        self.assertEqual(["disabled: false", "config:"], keys, "the row's own keys, the enable beside the config")
+        self.assertIn("    provider: acp\n", row[1])
+        self.assertEqual(1, len(re.findall(r"^  disabled: false\n", router, re.MULTILINE)), router)
+        self.assertNotIn("tool-subagent", thak)
 
     def test_the_router_profile_declares_the_acp_plugin_as_a_link_dependency_and_the_thak_profile_does_not(
         self,

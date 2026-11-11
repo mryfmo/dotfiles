@@ -2539,10 +2539,13 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
         "  config:",
         f"    stateDir: !!js process.env.DSH_HOME + '/{DSH_ROUTER_STATE_DIR}'",
         # The subagent tool on the ACP provider (U434): a Router subagent turn is an `omp acp` worker the broker starts
-        # in a sibling sandbox, never an in-process child under the Router's own sandbox. `maxDepth: provider-managed`
-        # is required (measured on this host, the pinned tool-subagent's assertSubagentProviderConfiguration): the ACP
-        # provider advertises no depthLimit capability, so a numeric cap refuses the mount.
+        # in a sibling sandbox, never an in-process child under the Router's own sandbox. The web-app bundle ships this
+        # row `disabled: true` (U434c, measured under `dsh --dump-config`), and the patch algorithm merges a row's keys
+        # other than `config`, so the enable is a key of the row. `maxDepth: provider-managed` is required (measured on
+        # this host, the pinned tool-subagent's assertSubagentProviderConfiguration): the ACP provider advertises no
+        # depthLimit capability, so a numeric cap refuses the mount.
         "- id: tool-subagent",
+        "  disabled: false",
         "  config:",
         f"    provider: {DSH_SUBAGENT_ACP_PROVIDER}",
         "    toolName: subagent",

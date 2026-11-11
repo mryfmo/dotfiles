@@ -2711,10 +2711,25 @@ function update_dsh_superagent() (
         fi
     }
     # The rerun condition of the already-installed branch (U434b): the dependency names of the deployed profile's
-    # package.json, read with the reader's status, each without a node_modules entry printed on one line.
+    # package.json, each without a node_modules entry printed on one line. The reader is a parser at the boundary
+    # (U434c): the file must be a JSON object whose `dependencies` is an object (absent: an empty table); any other
+    # shape, or a file that is not JSON, is one stderr line naming the file and the shape and the step's refusal,
+    # never an empty table that skips the repair.
     dsh_superagent_missing_dependencies() {
         local names name
-        names="$(python3 -I -S -c 'import json, sys; print("\n".join(dict(json.load(open(sys.argv[1], encoding="utf-8")).get("dependencies", {}))))' "${DSH_HOME}/profiles/router/package.json" 2> /dev/null)" || {
+        names="$(python3 -I -S -c '
+import json, sys
+path = sys.argv[1]
+try:
+    data = json.load(open(path, encoding="utf-8"))
+except (OSError, ValueError) as error:
+    sys.exit(f"update_dsh_superagent: {path} could not be read as JSON ({type(error).__name__}); the dependency names are not read.")
+table = data.get("dependencies", {}) if isinstance(data, dict) else None
+if not isinstance(table, dict):
+    shape = f"dependencies {type(table).__name__}" if isinstance(data, dict) else f"top level {type(data).__name__}"
+    sys.exit(f"update_dsh_superagent: {path} is not a JSON object whose dependencies is an object ({shape}); the dependency names are not read.")
+print("\n".join(table))
+' "${DSH_HOME}/profiles/router/package.json")" || {
             printf 'update_dsh_superagent: the dependency names of %s could not be read; %s\n' "${DSH_HOME}/profiles/router/package.json" "$1" >&2
             return 1
         }

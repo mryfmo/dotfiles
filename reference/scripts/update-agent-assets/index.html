@@ -5893,6 +5893,7 @@
 <li><code>dsh_record</code></li>
 <li><code>dsh_superagent_canary</code></li>
 <li><code>dsh_superagent_lockfile_hosts</code></li>
+<li><code>dsh_superagent_missing_dependencies</code></li>
 <li><code>dsh_superagent_record</code></li>
 <li><code>dsh_superagent_tool</code></li>
 <li><code>ensure_claude_plugin_marketplace</code></li>
@@ -8613,10 +8614,12 @@
 <span class="c1">#   profiles/router is a WARN with exit 0 (the kit has not rendered the profile here).</span>
 <span class="c1">#   ~/.agents/.installed-manifest.json: absent, or a regular file that is not a symlink; the step's recorded</span>
 <span class="c1">#   source_version equal to the pin with the tree in place is the already-installed exit (the profile install is</span>
-<span class="c1">#   run again, under srt, only when the profile's node_modules holds no dsh-superagent entry).</span>
+<span class="c1">#   run again, under srt, when a dependency the deployed profile's package.json declares has no node_modules entry;</span>
+<span class="c1">#   the names are read from that file, never hard-coded, so a dependency row the kit adds later installs on the next</span>
+<span class="c1">#   make update without an updater edit; U434b).</span>
 <span class="c1">#   Every producer the step reads (pwd -P, mise which, shasum, tar's member list, jq, grep on the lockfiles,</span>
-<span class="c1">#   the three mktemp) refuses the step on a failed answer (standing order 21); a download that fails is one WARN line,</span>
-<span class="c1">#   nothing installed, nothing recorded.</span>
+<span class="c1">#   python3 on the profile's package.json, the three mktemp) refuses the step on a failed answer (standing order 21);</span>
+<span class="c1">#   a download that fails is one WARN line, nothing installed, nothing recorded.</span>
 <span class="c1"># @exitcode 0 Installed, already installed, no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh or the router</span>
 <span class="c1">#   profile absent (a WARN), or the download failed (a WARN; nothing installed or recorded).</span>
 <span class="c1"># @exitcode 1 A constant malformed, a producer read, a shape check, a tool absent, the digest check, the archive member</span>
@@ -8624,7 +8627,7 @@
 <span class="c1">#   the record failed; the line printed names the state left.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>update_dsh_superagent<span class="o">()</span><span class="w"> </span><span class="o">(</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">download_dir</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>tarball<span class="w"> </span>actual<span class="w"> </span><span class="nv">tree</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">settings</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">profile_settings</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">canary</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>members<span class="w"> </span>member<span class="w"> </span>top<span class="w"> </span><span class="nv">previous</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>recorded<span class="w"> </span>install_dir<span class="w"> </span>row
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">download_dir</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>tarball<span class="w"> </span>actual<span class="w"> </span><span class="nv">tree</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">settings</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">profile_settings</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">canary</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>members<span class="w"> </span>member<span class="w"> </span>top<span class="w"> </span><span class="nv">previous</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>recorded<span class="w"> </span>install_dir<span class="w"> </span>row<span class="w"> </span>missing
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>dsh_home_real<span class="w"> </span>physical
 <span class="w">    </span><span class="nv">install_dir</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">DSH_HOME</span><span class="k">:-</span><span class="si">}</span><span class="s2">/plugins/dsh-superagent"</span>
 <span class="w">    </span>dsh_superagent_record<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -8649,6 +8652,34 @@
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'update_dsh_superagent: the sandbox does not hold (canary: %s); %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">probe</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="c1"># The rerun condition of the already-installed branch (U434b): the dependency names of the deployed profile's</span>
+<span class="w">    </span><span class="c1"># package.json, each without a node_modules entry printed on one line. The reader is a parser at the boundary</span>
+<span class="w">    </span><span class="c1"># (U434c): the file must be a JSON object whose `dependencies` is an object (absent: an empty table); any other</span>
+<span class="w">    </span><span class="c1"># shape, or a file that is not JSON, is one stderr line naming the file and the shape and the step's refusal,</span>
+<span class="w">    </span><span class="c1"># never an empty table that skips the repair.</span>
+<span class="w">    </span>dsh_superagent_missing_dependencies<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span>names<span class="w"> </span>name
+<span class="w">        </span><span class="nv">names</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>python3<span class="w"> </span>-I<span class="w"> </span>-S<span class="w"> </span>-c<span class="w"> </span><span class="s1">'</span>
+<span class="s1">import json, sys</span>
+<span class="s1">path = sys.argv[1]</span>
+<span class="s1">try:</span>
+<span class="s1">    data = json.load(open(path, encoding="utf-8"))</span>
+<span class="s1">except (OSError, ValueError) as error:</span>
+<span class="s1">    sys.exit(f"update_dsh_superagent: {path} could not be read as JSON ({type(error).__name__}); the dependency names are not read.")</span>
+<span class="s1">table = data.get("dependencies", {}) if isinstance(data, dict) else None</span>
+<span class="s1">if not isinstance(table, dict):</span>
+<span class="s1">    shape = f"dependencies {type(table).__name__}" if isinstance(data, dict) else f"top level {type(data).__name__}"</span>
+<span class="s1">    sys.exit(f"update_dsh_superagent: {path} is not a JSON object whose dependencies is an object ({shape}); the dependency names are not read.")</span>
+<span class="s1">print("\n".join(table))</span>
+<span class="s1">'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DSH_HOME</span><span class="si">}</span><span class="s2">/profiles/router/package.json"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'update_dsh_superagent: the dependency names of %s could not be read; %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DSH_HOME</span><span class="si">}</span><span class="s2">/profiles/router/package.json"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>name<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">            </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">            </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DSH_HOME</span><span class="si">}</span><span class="s2">/profiles/router/node_modules/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">names</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="c1"># The lockfile hosts: pnpm fetches a `tarball:` row from the host it names, and the build's network is the registry</span>
 <span class="w">    </span><span class="c1"># (DSH_SUPERAGENT_REGISTRY_HOST) alone, so a lockfile naming another host refuses the step naming it; a host is</span>
@@ -8756,7 +8787,9 @@
 <span class="w">    </span><span class="nv">canary</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">.canary"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">recorded</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DSH_SUPERAGENT_COMMIT</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">/package.json"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'dsh-superagent %s is already installed at %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DSH_SUPERAGENT_COMMIT</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DSH_HOME</span><span class="si">}</span><span class="s2">/profiles/router/node_modules/dsh-superagent"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">missing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dsh_superagent_missing_dependencies<span class="w"> </span><span class="s2">"the installed tree and the record are untouched."</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'update_dsh_superagent: the router profile has no node_modules entry for %s; the profile install runs again inside srt.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing</span><span class="p">//</span><span class="s1">$'\n'</span><span class="p">/ </span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DSH_HOME</span><span class="si">}</span><span class="s2">/profiles/router/pnpm-lock.yaml"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">                </span>dsh_superagent_lockfile_hosts<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DSH_HOME</span><span class="si">}</span><span class="s2">/profiles/router/pnpm-lock.yaml"</span><span class="w"> </span><span class="s2">"the installed tree and the record are untouched."</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">            </span><span class="k">fi</span>

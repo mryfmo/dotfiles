@@ -5853,12 +5853,16 @@
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env -S python3 -I</span>
 <span class="s2">"""The thin client of `acp-broker`, run inside the Router's sandbox by `dsh-subagent-acp` (regime-cutover U343, M-24).</span>
 
-<span class="s2">`acp-seat --socket &lt;path&gt; --repo &lt;path&gt; --ref &lt;rev&gt; --name &lt;name&gt;` connects to the broker's Unix socket (the one</span>
+<span class="s2">`acp-seat --socket &lt;path&gt; --name &lt;name&gt; [--repo &lt;path&gt;] [--ref &lt;rev&gt;]` connects to the broker's Unix socket (the one</span>
 <span class="s2">directory the router row's `network.allowUnixSockets` opens, U342), sends the header line `ACP-SEAT v1 repo=&lt;path&gt;</span>
 <span class="s2">ref=&lt;rev&gt; name=&lt;name&gt;` (regime-cutover U343e: the Router names a repository and a ref, never a path that becomes a</span>
 <span class="s2">grant), then relays its stdin to the socket and the socket to its stdout until either side closes, byte for byte: the</span>
 <span class="s2">ACP stream `dsh-subagent-acp` writes reaches the worker's `omp acp` through the broker, and the worker's reaches it</span>
-<span class="s2">back. The broker, outside every sandbox, does everything else: it judges the header, clones the ref into a directory</span>
+<span class="s2">back. `--repo` defaults to this process's working directory and `--ref` to `HEAD` (regime-cutover U434, M-22 Part B):</span>
+<span class="s2">`dsh-subagent-acp` spawns the client per request in the request's cwd with the fixed args of the Router profile's</span>
+<span class="s2">`subagent-acp` row (`--socket </span><span class="nv">$ACP_BROKER_SOCK</span><span class="s2"> --name router`), and the broker judges the defaulted path as it judges</span>
+<span class="s2">any header repository (an absolute clean path to a repository it can read inside the Router's settings). The broker,</span>
+<span class="s2">outside every sandbox, does everything else: it judges the header, clones the ref into a directory</span>
 <span class="s2">of its own, renders the worker's settings, runs the canary, starts the worker in a sibling sandbox, logs the launch</span>
 <span class="s2">and pushes the worker's HEAD back as `refs/acp-seat/&lt;name&gt;/&lt;stamp&gt;`. This client never starts a sandbox and runs no</span>
 <span class="s2">tool of its own; it is the stream and nothing more.</span>
@@ -5909,7 +5913,9 @@ import<span class="w"> </span>threading
 <span class="nv">FIRST_LINE_LIMIT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">4096</span>
 <span class="nv">CHUNK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">65536</span>
 <span class="nv">OPTIONS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"--socket"</span>,<span class="w"> </span><span class="s2">"--repo"</span>,<span class="w"> </span><span class="s2">"--ref"</span>,<span class="w"> </span><span class="s2">"--name"</span><span class="o">)</span>
-<span class="nv">USAGE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"usage: acp-seat --socket &lt;path&gt; --repo &lt;path&gt; --ref &lt;rev&gt; --name &lt;name&gt;"</span>
+<span class="nv">REQUIRED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"--socket"</span>,<span class="w"> </span><span class="s2">"--name"</span><span class="o">)</span>
+<span class="nv">DEFAULT_REF</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"HEAD"</span>
+<span class="nv">USAGE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"usage: acp-seat --socket &lt;path&gt; --name &lt;name&gt; [--repo &lt;path&gt;] [--ref &lt;rev&gt;]"</span>
 
 
 def<span class="w"> </span>refuse<span class="o">(</span>reason<span class="o">)</span>:
@@ -5987,7 +5993,8 @@ def<span class="w"> </span>lever_self_check<span class="o">()</span>:
 
 
 def<span class="w"> </span>parse_options<span class="o">(</span>argv<span class="o">)</span>:
-<span class="w">    </span><span class="s2">"""The four options, each exactly once, nothing else."""</span>
+<span class="w">    </span><span class="s2">"""The four options, each at most once, nothing else; `--socket` and `--name` required, `--repo` defaulted to the</span>
+<span class="s2">    working directory (the request's cwd, read once here) and `--ref` to HEAD when absent (U434)."""</span>
 <span class="w">    </span><span class="nv">options</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
 <span class="w">    </span><span class="nv">index</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">while</span><span class="w"> </span>index<span class="w"> </span>&lt;<span class="w"> </span>len<span class="o">(</span>argv<span class="o">)</span>:
@@ -5998,8 +6005,14 @@ def<span class="w"> </span>parse_options<span class="o">(</span>argv<span class=
 <span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"{flag} given twice; {USAGE}"</span><span class="o">)</span>
 <span class="w">        </span>options<span class="o">[</span>flag<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>argv<span class="o">[</span>index<span class="w"> </span>+<span class="w"> </span><span class="m">1</span><span class="o">]</span>
 <span class="w">        </span><span class="nv">index</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">2</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>set<span class="o">(</span>options<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>set<span class="o">(</span>OPTIONS<span class="o">)</span>:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>any<span class="o">(</span>flag<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>options<span class="w"> </span><span class="k">for</span><span class="w"> </span>flag<span class="w"> </span><span class="k">in</span><span class="w"> </span>REQUIRED<span class="o">)</span>:
 <span class="w">        </span>refuse<span class="o">(</span>USAGE<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="s2">"--repo"</span><span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>options:
+<span class="w">        </span>try:
+<span class="w">            </span>options<span class="o">[</span><span class="s2">"--repo"</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.getcwd<span class="o">()</span>
+<span class="w">        </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>exc:
+<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"cannot read the working directory for the default --repo: {exc}"</span><span class="o">)</span>
+<span class="w">    </span>options.setdefault<span class="o">(</span><span class="s2">"--ref"</span>,<span class="w"> </span>DEFAULT_REF<span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>tuple<span class="o">(</span>options<span class="o">[</span>flag<span class="o">]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>flag<span class="w"> </span><span class="k">in</span><span class="w"> </span>OPTIONS<span class="o">)</span>
 
 

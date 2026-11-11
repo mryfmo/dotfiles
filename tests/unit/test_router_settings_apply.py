@@ -418,12 +418,12 @@ class RouterSettingsApplyTest(unittest.TestCase):
 
     def test_a_policy_holding_the_cell_other_rows_and_another_source_is_unchanged_and_a_put_changes_the_one_cell(self):
         """U416 test (b): a view whose policy already holds `inferred` beside other admission rows, other cells of the
-        pulls row, an allowed list, rules and another Source's entry is not written; when the cell differs, the PUT
-        keeps every one of them and changes the one cell."""
+        pulls row, the manifest's allowed list (empty), rules and another Source's entry is not written; when the cell
+        differs, the PUT keeps every one of them and changes the one cell."""
         self.api.signed_out = False
         rules = [{"id": "copy", "text": "Explicit requests to correct a typo."}]
         github = {
-            "allowed": [{"id": "someone"}],
+            "allowed": [],
             "bots": ["dependabot[bot]"],
             "admission": {
                 "pulls": {"unlistedUnaddressed": "inferred", "listedAddressed": "explicit"},
@@ -461,6 +461,172 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
         (policy,) = self.puts()
         self.assertEqual(policy["body"]["value"], {"rules": rules, "sources": {"slack": slack, **ADMISSION_CELL}})
+
+    def test_auto_is_rendered_with_its_dated_manifest_row_and_refused_without_it_naming_the_row(self):
+        """U465 test (a), the accept rung: `accept_mode: auto` beside `accept_mode_auto_row` (a decisions.tsv timestamp,
+        the M-18 ladder's second row) renders `eval.mode` auto; `auto` without that row, with a value that is no
+        timestamp, or the row beside `observe`, is one refusal naming the row before any request. The committed
+        manifest stays observe: the flip is one manifest row after U466."""
+        self.api.signed_out = False
+        text = MANIFEST.read_text()
+        row = '        accept_mode: observe\n        accept_mode_row: "2026-11-06T23:24:00Z"\n'
+        self.assertIn(row, text, "the manifest's Source row as this test knows it")
+        self.assertNotIn("accept_mode: auto", text, "the committed manifest holds observe")
+        auto_row = '        accept_mode: auto\n        accept_mode_row: "2026-11-06T23:24:00Z"\n'
+        auto = self.dir / "auto.yaml"
+        auto.write_text(text.replace(row, auto_row + '        accept_mode_auto_row: "2026-11-12T00:00:00Z"\n'))
+        run = self.run_lever("--manifest", str(auto))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        evaluation = self.puts()[0]
+        self.assertEqual(evaluation["path"], API + "settings/eval")
+        self.assertEqual(evaluation["body"], {"value": {**EVAL_DEFAULT, "mode": "auto"}, "revision": 0})
+        self.assertEqual(self.api.eval["mode"], "auto")
+        self.assertEqual(run.stdout.splitlines()[0], "eval saved (revision 1, restarting)")
+        label = "assets.dsh-superagent.sources.github"
+        cases = {
+            "no-auto-row": (
+                text.replace(row, auto_row),
+                f"{label}.accept_mode 'auto' in {{path}} needs accept_mode_auto_row (the M-18 ladder's second row "
+                "timestamp) beside accept_mode_row; the mode stays observe until that row is written",
+            ),
+            "auto-row-no-timestamp": (
+                text.replace(row, auto_row + "        accept_mode_auto_row: tomorrow\n"),
+                f"{label}.accept_mode_auto_row 'tomorrow' in {{path}} is not a decisions.tsv timestamp (YYYY-MM-DDTHH:MM:SSZ)",
+            ),
+            "auto-row-beside-observe": (
+                text.replace(row, row + '        accept_mode_auto_row: "2026-11-12T00:00:00Z"\n'),
+                f"{label}.accept_mode_auto_row in {{path}} belongs to accept_mode auto alone, not 'observe'",
+            ),
+        }
+        for case, (altered, expected) in cases.items():
+            with self.subTest(case=case):
+                self.assertNotEqual(altered, text, "the fixture changed the manifest")
+                self.api.requests.clear()
+                path = self.dir / f"{case}.yaml"
+                path.write_text(altered)
+                run = self.run_lever("--manifest", str(path))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, "router-settings-apply: " + expected.format(path=path) + "\n")
+                self.assertEqual(self.api.requests, [], "no request before the manifest is read whole")
+        self.assertEqual(self.api.eval["mode"], "auto", "the refusals wrote nothing")
+
+    def test_the_allowed_list_is_rendered_from_the_manifest_and_an_absent_list_or_a_bad_id_refuses(self):
+        """U465 test (a), the identity set: `policy.sources.github.allowed` is the manifest row's `allowed` list as
+        `{"id": <id>}` rows in the manifest's order (src/sources/github.ts:72: an id is `[A-Za-z0-9-]+`), written over
+        whatever the store holds (R-45: the kit's row is the Source's one identity set), in the block form and the flow
+        form alike; the committed list is empty. A row without the list, a value that is no list, an id outside the
+        grammar and a repeated id are each one refusal naming it before any request."""
+        self.api.signed_out = False
+        text = MANIFEST.read_text()
+        line = "        allowed: []\n"
+        self.assertIn(line, text, "the committed manifest's list is empty")
+        panel = {"allowed": [{"id": "someone"}], "admission": {"pulls": {"unlistedUnaddressed": "inferred"}}}
+        self.api.policy = {"rules": [], "sources": {"github": copy.deepcopy(panel)}}
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        policy = [entry for entry in self.puts() if entry["path"] == API + "settings/policy"]
+        self.assertEqual(
+            len(policy), 1, "the panel's entry differs from the kit's empty list, so the policy is written"
+        )
+        self.assertEqual(policy[0]["body"], {"value": {"rules": [], "sources": ADMISSION_CELL}, "revision": 0})
+        self.assertEqual(self.api.policy["sources"]["github"]["allowed"], [])
+        listed = self.dir / "listed.yaml"
+        listed.write_text(text.replace(line, "        allowed:\n          - someone\n          - other-one\n"))
+        self.api.requests.clear()
+        run = self.run_lever("--manifest", str(listed))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        (policy,) = self.puts()
+        entry = {"allowed": [{"id": "someone"}, {"id": "other-one"}], "admission": panel["admission"]}
+        self.assertEqual(policy["body"], {"value": {"rules": [], "sources": {"github": entry}}, "revision": 1})
+        self.assertEqual(
+            run.stdout, "eval unchanged (revision 1)\npolicy saved (revision 2)\nsource:github unchanged (revision 1)\n"
+        )
+        self.assertEqual(self.api.policy["sources"]["github"], entry)
+        # The same list in the flow form, with quotes: nothing to write.
+        flow = self.dir / "flow.yaml"
+        flow.write_text(text.replace(line, '        allowed: ["someone", other-one]\n'))
+        self.api.requests.clear()
+        run = self.run_lever("--manifest", str(flow))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(self.puts(), [])
+        self.assertIn("policy unchanged (revision 2)\n", run.stdout)
+        label = "assets.dsh-superagent.sources.github.allowed"
+        cases = {
+            "no-list": (text.replace(line, ""), f"the manifest {{path}} names no {label} list"),
+            "a-word": (
+                text.replace(line, "        allowed: someone\n"),
+                f"{label} in {{path}} is not a list of sender ids (`[]`, `[a, b]` or `- a` lines)",
+            ),
+            "a-bare-key": (
+                text.replace(line, "        allowed:\n"),
+                f"{label} in {{path}} is not a list of sender ids (`[]`, `[a, b]` or `- a` lines)",
+            ),
+            "underscore": (
+                text.replace(line, "        allowed:\n          - some_one\n"),
+                f"{label} in {{path}} names 'some_one', which is not a sender id of the form [A-Za-z0-9-]+",
+            ),
+            "space": (
+                text.replace(line, "        allowed: [some one]\n"),
+                f"{label} in {{path}} names 'some one', which is not a sender id of the form [A-Za-z0-9-]+",
+            ),
+            "bot": (
+                text.replace(line, "        allowed: [dependabot[bot]]\n"),
+                f"{label} in {{path}} names 'dependabot[bot]', which is not a sender id of the form [A-Za-z0-9-]+",
+            ),
+            "repeated": (
+                text.replace(line, "        allowed: [someone, Someone]\n"),
+                f"{label} in {{path}} repeats 'Someone' (GitHub logins that differ by case alone are one login)",
+            ),
+        }
+        for case, (altered, expected) in cases.items():
+            with self.subTest(case=case):
+                self.assertNotEqual(altered, text, "the fixture changed the manifest")
+                self.api.requests.clear()
+                path = self.dir / f"{case}.yaml"
+                path.write_text(altered)
+                run = self.run_lever("--manifest", str(path))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, "router-settings-apply: " + expected.format(path=path) + "\n")
+                self.assertEqual(self.api.requests, [], "no request before the manifest is read whole")
+        self.assertEqual(self.api.policy["sources"]["github"], entry, "the refusals wrote nothing")
+
+    def test_a_dry_run_prints_the_desired_values_from_the_manifest_and_the_profile_and_makes_no_request(self):
+        """U465 test (a), the desired settings' text: `--dry-run` reads the manifest row, the profile's webserver row and
+        the wrapper as a run does and prints what a run would write (the mode, the allowed ids as a JSON list, the
+        admission cell, the repository, the wrapper) without calling the Management API: the fake records no request
+        and nothing changes; a refusal of the row is the same refusal, exit 2, nothing on stdout."""
+        self.api.signed_out = False
+        run = self.run_lever("--dry-run")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(self.api.requests, [], "a dry run makes no request")
+        self.assertEqual(
+            run.stdout,
+            f"dry run: nothing is read from or written to the Management API at 127.0.0.1:{self.api.port}\n"
+            "eval.mode observe\n"
+            "allowed []\n"
+            "admission.pulls.unlistedUnaddressed inferred\n"
+            "repository mryfmo/dotfiles\n"
+            f"cli {WRAPPER}\n",
+        )
+        self.assertEqual((self.api.eval, self.api.policy), (EVAL_DEFAULT, POLICY_DEFAULT), "nothing changed")
+        text = MANIFEST.read_text()
+        row = '        accept_mode: observe\n        accept_mode_row: "2026-11-06T23:24:00Z"\n'
+        listed = self.dir / "listed.yaml"
+        listed.write_text(
+            text.replace(
+                row, row.replace("observe", "auto") + '        accept_mode_auto_row: "2026-11-12T00:00:00Z"\n'
+            ).replace("        allowed: []\n", "        allowed: [someone, other-one]\n")
+        )
+        run = self.run_lever("--dry-run", "--manifest", str(listed))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertIn('eval.mode auto\nallowed ["someone", "other-one"]\nadmission.pulls', run.stdout)
+        self.assertEqual(self.api.requests, [])
+        bad = self.dir / "bad.yaml"
+        bad.write_text(text.replace("        allowed: []\n", "        allowed: [some_one]\n"))
+        run = self.run_lever("--dry-run", "--manifest", str(bad))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("names 'some_one', which is not a sender id", run.stderr)
+        self.assertEqual(self.api.requests, [])
 
     def test_a_manifest_without_the_observe_admission_scalar_or_with_a_third_word_refuses_before_any_request(self):
         """U416 test (c): the scalar takes `inferred` or `ignore`; absent or any other word (`explicit`: an unlisted
@@ -578,19 +744,19 @@ class RouterSettingsApplyTest(unittest.TestCase):
         )
         self.assertEqual(self.api.source["config"]["repository"], "mryfmo/dotfiles")
 
-    def test_auto_an_absent_row_a_missing_port_a_foreign_host_and_a_missing_block_each_refuse(self):
+    def test_auto_without_its_row_an_absent_row_a_missing_port_a_foreign_host_and_a_missing_block_each_refuse(self):
         self.api.signed_out = False
         text = MANIFEST.read_text()
         row = '        accept_mode: observe\n        accept_mode_row: "2026-11-06T23:24:00Z"\n'
         self.assertIn(row, text, "the manifest's Source row as this test knows it")
         manifests = {
-            "auto": text.replace(row, "        accept_mode: auto\n        accept_mode_row: \"2026-11-06T23:24:00Z\"\n        accept_mode_auto_row: \"2026-11-07T00:00:00Z\"\n"),
+            "auto-no-row": text.replace(row, "        accept_mode: auto\n        accept_mode_row: \"2026-11-06T23:24:00Z\"\n"),
             "no-row": text.replace(row, "        accept_mode_row: \"2026-11-06T23:24:00Z\"\n"),
             "no-mapping": text.replace("    sources:\n      github:\n        repository: mryfmo/dotfiles\n" + row, "").replace("        observe_admission: inferred\n", ""),
             "bad-repository": text.replace("        repository: mryfmo/dotfiles\n", "        repository: mryfmo\n"),
         }  # fmt: skip
         expected = {
-            "auto": "assets.dsh-superagent.sources.github.accept_mode 'auto' in {path} is not applied by this lever; it applies off or observe alone, and the M-18 ladder's second rung is the operator's row",
+            "auto-no-row": "assets.dsh-superagent.sources.github.accept_mode 'auto' in {path} needs accept_mode_auto_row (the M-18 ladder's second row timestamp) beside accept_mode_row; the mode stays observe until that row is written",
             "no-row": "the manifest {path} names no assets.dsh-superagent.sources.github.accept_mode",
             "no-mapping": "the manifest {path} names no assets.dsh-superagent.sources.github mapping",
             "bad-repository": "assets.dsh-superagent.sources.github.repository 'mryfmo' in {path} is not owner/name",

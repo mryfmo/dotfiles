@@ -231,6 +231,8 @@ DSH_ACCEPT_MODES = ("off", "observe", "auto")
 DSH_OBSERVE_ADMISSIONS = ("inferred", "ignore")
 DSH_SOURCE_REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 DSH_LADDER_ROW_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+# A sender id of the Source's allowed list (U465), a GitHub login (dsh-superagent src/sources/github.ts:72).
+DSH_SENDER_ID_RE = re.compile(r"^[A-Za-z0-9-]+$")
 # The plan's base profile: the shipped bundle whose patch already turns the HMR, credentials and account rows off.
 DSH_BASE_PROFILE = "headless"
 OMP_RETIRED_ROUTES = ("openai-codex",)
@@ -2442,11 +2444,13 @@ def dsh_gateway_insert(dsh: dict[str, dict[str, Any]]) -> list[str]:
     ]
 
 
-def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
+def dsh_github_source(asset: dict[str, Any]) -> dict[str, Any]:
     """The superagent asset's GitHub Source row, each value compared with its fixed set: the repository against
     `owner/name`, the accept mode against the three the upstream Policy knows (src/policy.ts:84), `auto` only with the
     second M-18 row timestamp beside the first, `observe_admission` against the two words router-settings-apply writes
-    into the pulls row's unlistedUnaddressed cell (U416). An unknown key is refused by name."""
+    into the pulls row's unlistedUnaddressed cell (U416), and `allowed` (U465), the Source's identity set the same lever
+    writes into policy.sources.github.allowed: present always, a list of GitHub logins (`[A-Za-z0-9-]+`), none repeated
+    by case. An unknown key is refused by name."""
     sources = asset.get("sources")
     if not isinstance(sources, dict) or not isinstance(sources.get("github"), dict):
         fail(
@@ -2455,7 +2459,8 @@ def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
     row = sources["github"]
     label = f"assets.{DSH_SUPERAGENT_ASSET}.sources.github"
     unknown = sorted(
-        set(row) - {"repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission"}
+        set(row)
+        - {"repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission", "allowed"}
     )
     if unknown:
         fail(f"{label} has unknown key(s) {unknown}")
@@ -2473,7 +2478,21 @@ def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
         fail(f"{label}.accept_mode auto needs accept_mode_auto_row beside accept_mode_row (the M-18 ladder's two rows)")
     if "observe_admission" in row and row["observe_admission"] not in DSH_OBSERVE_ADMISSIONS:
         fail(f"{label}.observe_admission {row['observe_admission']!r} is not one of {list(DSH_OBSERVE_ADMISSIONS)}")
-    return {key: str(value) for key, value in row.items()}
+    if "allowed" not in row:
+        fail(f"{label}.allowed is missing (the Source's identity set; [] when no sender is listed)")
+    allowed = row["allowed"]
+    if not isinstance(allowed, list):
+        fail(f"{label}.allowed must be a list of sender ids, not {type(allowed).__name__}: {allowed!r}")
+    seen: set[str] = set()
+    for item in allowed:
+        if not isinstance(item, str):
+            fail(f"{label}.allowed must be a list of sender ids, not {type(item).__name__}: {item!r}")
+        if not DSH_SENDER_ID_RE.fullmatch(item):
+            fail(f"{label}.allowed names {item!r}, which is not a sender id of the form [A-Za-z0-9-]+")
+        if item.lower() in seen:
+            fail(f"{label}.allowed repeats {item!r} (GitHub logins that differ by case alone are one login)")
+        seen.add(item.lower())
+    return {key: (list(value) if key == "allowed" else str(value)) for key, value in row.items()}
 
 
 def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
@@ -2507,11 +2526,13 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
         },
     }
     auto_row = f", accept_mode_auto_row {github['accept_mode_auto_row']}" if "accept_mode_auto_row" in github else ""
+    senders = ", ".join(github["allowed"])
+    allowed_text = f"the allowed list: {senders}." if senders else "the allowed list is empty."
     lines = [
         f"# {GENERATED_HEADER}",
         f"# dsh-superagent pin {asset['pin']}; the Router runs under srt through `hcom-seat router -- --no-open`.",
         f"# GitHub Source (assets.{DSH_SUPERAGENT_ASSET}.sources.github): repository {github['repository']}, accept_mode",
-        f"# {github['accept_mode']} (M-18 ladder row {github['accept_mode_row']}{auto_row}); the allowed list is empty.",
+        f"# {github['accept_mode']} (M-18 ladder row {github['accept_mode_row']}{auto_row}); {allowed_text}",
         "# These two values live in the Router's settings store (upstream docs/006-deployment.md, Settings), where the",
         "# lever `router-settings-apply` writes them through the Management API after the launch's ready line, with the",
         "# Source's `cli` set to `router-gh`, the gh wrapper whose GH_CONFIG_DIR is $DSH_HOME/router-credentials/gh (the",

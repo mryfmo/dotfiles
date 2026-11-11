@@ -482,7 +482,7 @@
       "target": ".local/bin/common/intake-observe.py",
       "kind": "file",
       "executable": true,
-      "sha256": "e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f"
+      "sha256": "553b1ed45384ca8ce1f4339af21d068745dd50b1a02c9351d2c54fd5130d419d"
     },
     {
       "source": "home/dot_local/bin/common/executable_ledger-row.py",
@@ -622,7 +622,7 @@
       "target": ".local/bin/common/router-settings-apply",
       "kind": "file",
       "executable": true,
-      "sha256": "105865474f5c52d552f53b86764fab2b25d6699851ab30ca8a24e7ac579d39f5"
+      "sha256": "98b9524ee228da6c3ab6c03538d4d147c4c7155c0765893ddcaa768626797a2a"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-login-preflight",

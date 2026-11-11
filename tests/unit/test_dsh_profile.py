@@ -225,6 +225,9 @@ class DshRouterProfileTest(unittest.TestCase):
         self.assertRegex(github["repository"], r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
         self.assertIn(f"repository {github['repository']}, accept_mode\n# observe", self.patch)
         self.assertIn(f"ladder row {github['accept_mode_row']}", self.patch)
+        self.assertEqual(
+            [], github["allowed"], "the committed identity set is empty (U465; the operator names ids later)"
+        )
         self.assertIn("the allowed list is empty", self.patch)
         self.assertIn(f"pin {self.asset['pin']}", self.patch)
 
@@ -378,7 +381,22 @@ class DshRouterProfileTest(unittest.TestCase):
             lambda row: row.update(accept_mode="always"),
             "accept_mode 'always' is not one of ['off', 'observe', 'auto']",
         )
-        refused(lambda row: row.update(allowed="someone"), "unknown key(s) ['allowed']")
+        label = "assets.dsh-superagent.sources.github.allowed"
+        refused(
+            lambda row: row.pop("allowed"),
+            f"{label} is missing (the Source's identity set; [] when no sender is listed)",
+        )
+        refused(lambda row: row.update(allowed="someone"), f"{label} must be a list of sender ids, not str: 'someone'")
+        refused(lambda row: row.update(allowed=None), f"{label} must be a list of sender ids, not NoneType: None")
+        refused(lambda row: row.update(allowed=[1]), f"{label} must be a list of sender ids, not int: 1")
+        refused(
+            lambda row: row.update(allowed=["some_one"]),
+            f"{label} names 'some_one', which is not a sender id of the form [A-Za-z0-9-]+",
+        )
+        refused(
+            lambda row: row.update(allowed=["someone", "Someone"]),
+            f"{label} repeats 'Someone' (GitHub logins that differ by case alone are one login)",
+        )
         refused(lambda row: row.update(repository="dotfiles"), "repository 'dotfiles' is not owner/name")
         refused(
             lambda row: row.update(accept_mode_row="yesterday"),
@@ -386,7 +404,7 @@ class DshRouterProfileTest(unittest.TestCase):
         )
         manifest = copy.deepcopy(base)
         manifest["assets"]["dsh-superagent"]["sources"]["github"].update(
-            accept_mode="auto", accept_mode_auto_row="2026-11-08T00:00:00Z"
+            accept_mode="auto", accept_mode_auto_row="2026-11-08T00:00:00Z", allowed=["someone", "other-one"]
         )
         outputs = generator.render_dsh_router_profile(manifest)
         patch = outputs[generator.ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"]
@@ -394,11 +412,17 @@ class DshRouterProfileTest(unittest.TestCase):
             "accept_mode\n# auto (M-18 ladder row 2026-11-06T23:24:00Z, accept_mode_auto_row 2026-11-08T00:00:00Z)",
             patch,
         )
+        self.assertIn("the allowed list: someone, other-one.", patch)
+        self.assertNotIn("the allowed list is empty", patch)
 
-    def test_the_validator_refuses_sources_outside_the_asset_unknown_keys_and_auto_without_its_row(self) -> None:
+    def test_the_validator_refuses_sources_outside_the_asset_unknown_keys_a_bad_sender_id_and_auto_without_its_row(
+        self,
+    ) -> None:
         # The validator's own allowlist (scripts/validate-agent-assets.py validate_asset_sources), not the renderer's:
-        # the real asset passes; `sources` under another asset, an unknown Source, an unknown key, a repository that is
-        # not owner/name and `auto` without accept_mode_auto_row are each a refusal naming the key.
+        # the real asset passes, with an empty or a listed identity set; `sources` under another asset, an unknown
+        # Source, an unknown key, a repository that is not owner/name, an `allowed` that is no list of sender ids
+        # (U465: ids `[A-Za-z0-9-]+`, src/sources/github.ts:72, no repeat) and `auto` without accept_mode_auto_row
+        # are each a refusal naming the key.
         spec = importlib.util.spec_from_file_location(
             "validate_agent_assets", ROOT / "scripts/validate-agent-assets.py"
         )
@@ -406,6 +430,9 @@ class DshRouterProfileTest(unittest.TestCase):
         validator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(validator)
         validator.validate_asset_sources("dsh-superagent", copy.deepcopy(self.asset))
+        listed = copy.deepcopy(self.asset)
+        listed["sources"]["github"]["allowed"] = ["someone", "other-one"]
+        validator.validate_asset_sources("dsh-superagent", listed)
 
         def refused(name: str, mutate, expected: str) -> None:
             asset = copy.deepcopy(self.asset)
@@ -427,8 +454,34 @@ class DshRouterProfileTest(unittest.TestCase):
         )
         refused(
             "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(bots=["x"]),
+            "has unknown key(s) ['bots']",
+        )
+        label = "assets.dsh-superagent.sources.github.allowed"
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].pop("allowed"),
+            f"{label} is missing (the Source's identity set; [] when no sender is listed)",
+        )
+        refused(
+            "dsh-superagent",
             lambda asset: asset["sources"]["github"].update(allowed="x"),
-            "has unknown key(s) ['allowed']",
+            f"{label} must be a list of sender ids, not str: 'x'",
+        )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(allowed=[{"id": "someone"}]),
+            f"{label} must be a list of sender ids, not dict: {{'id': 'someone'}}",
+        )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(allowed=["dependabot[bot]"]),
+            f"{label} names 'dependabot[bot]', which is not a sender id of the form [A-Za-z0-9-]+",
+        )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(allowed=["someone", "SOMEONE"]),
+            f"{label} repeats 'SOMEONE' (GitHub logins that differ by case alone are one login)",
         )
         refused(
             "dsh-superagent",

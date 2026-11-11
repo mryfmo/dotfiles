@@ -27,8 +27,9 @@ LEVER = ROOT / "scripts/orchestrator/intake-observe.py"
 INSTALLED = ROOT / "home/dot_local/bin/common/executable_intake-observe.py"
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 ROUNDS_CHECK = ROOT / "scripts/orchestrator/rounds-check.py"
-# src/app/store.ts:74 and :76 of dsh-superagent-prototype at 8c32a9dc5d72c033816c6a8110b37f40cf94fba4.
+# src/app/store.ts:72, :74 and :76 of dsh-superagent-prototype at 8c32a9dc5d72c033816c6a8110b37f40cf94fba4.
 SCHEMA = (
+    "CREATE TABLE IF NOT EXISTS trigger (id TEXT PRIMARY KEY, value TEXT NOT NULL, at TEXT NOT NULL);",
     "CREATE TABLE IF NOT EXISTS thread (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
     "CREATE TABLE IF NOT EXISTS decision (id TEXT PRIMARY KEY, thread TEXT NOT NULL, value TEXT NOT NULL);",
 )
@@ -58,6 +59,31 @@ def decision(identifier: str, thread: str, at: str, **fields) -> dict:
     return base
 
 
+def refusal(identifier: str, thread: str, at: str, *reasons: tuple[str, str], **fields) -> dict:
+    """A gate refusal as src/core/evals.ts:97-103 records it (measured on the live store 2026-11-11): `kind: 'ignore'`,
+    one reason `{code, triggerId}` per refused trigger, no audit; `reasons` are (code, trigger id) pairs."""
+    base = decision(identifier, thread, at, triggerIds=[trigger_id for _, trigger_id in reasons], strength="inferred")
+    del base["audit"]
+    base["reason"] = [{"code": code, "triggerId": trigger_id} for code, trigger_id in reasons]
+    base.update(fields)
+    return base
+
+
+def trigger(identifier: str, thread: str, login: str, at: str = "2026-11-10T02:49:03.000Z", human: bool = True) -> dict:
+    """A Trigger as the GitHub Source records it (src/core/model.ts Trigger; the actor's id is the sender's login)."""
+    return {
+        "id": identifier,
+        "source": "github",
+        "threads": [{"source": "github", "id": thread.removeprefix("github:")}],
+        "actor": {"source": "github", "id": login},
+        "human": human,
+        "at": at,
+        "text": "a comment",
+        "channel": {"source": "github", "thread": thread, "address": {"number": thread.removeprefix("github:")}},
+        "meta": {"number": int(thread.removeprefix("github:")), "isPr": True, "kind": "conversation"},
+    }
+
+
 class IntakeObserveTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -72,14 +98,19 @@ class IntakeObserveTest(unittest.TestCase):
         connection.commit()
         connection.close()
 
-    def save(self, *decisions: dict, threads: dict[str, dict] | None = None) -> None:
-        """The Store's writes: `INSERT INTO decision VALUES (?,?,?)` with the JSON value (src/app/store.ts:245)."""
+    def save(
+        self, *decisions: dict, threads: dict[str, dict] | None = None, triggers: dict[str, dict] | None = None
+    ) -> None:
+        """The Store's writes: `INSERT INTO decision VALUES (?,?,?)` with the JSON value (src/app/store.ts:245), the
+        thread rows and the trigger rows (`trigger (id, value, at)`, store.ts:72)."""
         connection = sqlite3.connect(self.db)
         for entry in decisions:
             connection.execute(
                 "INSERT INTO decision VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value, thread=excluded.thread",
                 (entry["id"], entry["threadKey"], json.dumps(entry)),
             )
+        for key, entry in (triggers or {}).items():
+            connection.execute("INSERT OR REPLACE INTO trigger VALUES (?,?,?)", (key, json.dumps(entry), entry["at"]))
         for key, thread in (threads or {}).items():
             connection.execute("INSERT OR REPLACE INTO thread VALUES (?,?)", (key, json.dumps(thread)))
         connection.commit()
@@ -96,23 +127,31 @@ class IntakeObserveTest(unittest.TestCase):
         return [line.split("\t") for line in self.tsv.read_text().splitlines()[1:]]
 
     def test_the_fixture_schema_is_the_archives_create_table_text(self) -> None:
-        # store.ts:74 and :76 at the pin; a bump that changes either line changes this fixture with it.
-        self.assertEqual("CREATE TABLE IF NOT EXISTS thread (key TEXT PRIMARY KEY, value TEXT NOT NULL);", SCHEMA[0])
+        # store.ts:72, :74 and :76 at the pin; a bump that changes any of the lines changes this fixture with it.
+        self.assertEqual(
+            "CREATE TABLE IF NOT EXISTS trigger (id TEXT PRIMARY KEY, value TEXT NOT NULL, at TEXT NOT NULL);",
+            SCHEMA[0],
+        )
+        self.assertEqual("CREATE TABLE IF NOT EXISTS thread (key TEXT PRIMARY KEY, value TEXT NOT NULL);", SCHEMA[1])
         self.assertEqual(
             "CREATE TABLE IF NOT EXISTS decision (id TEXT PRIMARY KEY, thread TEXT NOT NULL, value TEXT NOT NULL);",
-            SCHEMA[1],
+            SCHEMA[2],
         )
 
     def test_appends_one_row_per_would_accept_decision_and_prints_the_count(self) -> None:
         self.save(
             decision("d1", "github:12", "2026-11-07T01:00:00Z"),
             decision("d2", "github:12", "2026-11-07T01:10:00Z", reason=[{"code": "noRuleMatched"}], audit={}),
+            # An accept Decision (src/core/evals.ts:313: the reason, the rules the matches named, the audit, the
+            # ticket): a row of its own since U465, outside the would-accept count.
             decision(
                 "d3",
                 "github:14",
                 "2026-11-07T01:20:00Z",
                 kind="accept",
                 reason=[{"code": "said", "values": {"text": "ok"}}],
+                rules=["copy"],
+                ticketId="ticket-d3",
             ),
             # would_accept without the observe code: not this lever's row (the allowlist needs both).
             decision("d4", "github:15", "2026-11-07T01:30:00Z", reason=[{"code": "said", "values": {"text": "x"}}]),
@@ -121,19 +160,126 @@ class IntakeObserveTest(unittest.TestCase):
         )
         result = self.run_lever()
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual("2\n", result.stdout)
+        self.assertEqual("2\n", result.stdout, "the count printed is the would-accept count")
         rows = self.rows()
-        self.assertEqual(2, len(rows))
+        self.assertEqual(3, len(rows))
         for row in rows:
             self.assertEqual(6, len(row), row)
             self.assertRegex(row[0], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
             self.assertEqual("intake-observe", row[1])
-            self.assertEqual("Observe mode: would accept (a typo fix in README.md)", row[3])
             self.assertEqual("-", row[5])
+        for row in (rows[0], rows[2]):
+            self.assertEqual("Observe mode: would accept (a typo fix in README.md)", row[3])
         self.assertEqual("github-source would-accept: github:12 trigger=trigger-d1 rules=copy", rows[0][2])
         self.assertEqual("d1", rows[0][4])
-        self.assertEqual("github-source would-accept: #13 Fix the typo trigger=t-a,t-b rules=copy", rows[1][2])
-        self.assertEqual("d5", rows[1][4])
+        self.assertEqual("github-source accept: github:14 trigger=trigger-d3 rules=copy ticket=ticket-d3", rows[1][2])
+        self.assertEqual("ok", rows[1][3], "the accept's reason as reasonText renders `said`")
+        self.assertEqual("d3", rows[1][4])
+        self.assertEqual("github-source would-accept: #13 Fix the typo trigger=t-a,t-b rules=copy", rows[2][2])
+        self.assertEqual("d5", rows[2][4])
+
+    def test_a_refusal_is_a_row_naming_the_code_the_thread_and_the_login_from_the_trigger_row(self) -> None:
+        """U465 (table row i7): an ignore Decision whose reason code is `not_a_member` or `not_human` (the gate's
+        refusals, src/policy.ts:173-210, recorded by src/core/evals.ts:97-103 with the refused trigger's id on the
+        reason) is one row per refusal, `github-source refusal <code>: <thread> login=<login>`, the login the actor id
+        of the trigger row the reason names (store.ts:72); the why column is the reason as reasonText renders a code
+        without a template, the evidence the Decision id. The other gate codes and every other ignore are no row; a
+        trigger row no longer in the store names the login unknown; a second run appends nothing."""
+        self.save(
+            refusal("r1", "github:748", "2026-11-10T02:49:27.082Z", ("not_a_member", "t-748")),
+            refusal("r2", "github:746", "2026-11-10T02:50:00.000Z", ("not_human", "t-746")),
+            refusal(
+                "r3", "github:750", "2026-11-10T02:51:00.000Z", ("not_human", "t-750a"), ("not_a_member", "t-750b")
+            ),
+            refusal("r4", "github:751", "2026-11-10T02:52:00.000Z", ("admission_ignored", "t-751")),
+            refusal("r5", "github:752", "2026-11-10T02:53:00.000Z", ("no_mention", "t-752")),
+            refusal("r6", "github:753", "2026-11-10T02:54:00.000Z", ("not_a_member", "t-gone")),
+            decision("d7", "github:754", "2026-11-10T02:55:00.000Z", reason=[{"code": "noRuleMatched"}], audit={}),
+            threads={"github:750": {"key": "github:750", "meta": {"label": "#750 Two senders"}}},
+            triggers={
+                "t-748": trigger("t-748", "github:748", "mryfmo"),
+                "t-746": trigger("t-746", "github:746", "coderabbitai[bot]", human=False),
+                "t-750a": trigger("t-750a", "github:750", "github-actions[bot]", human=False),
+                "t-750b": trigger("t-750b", "github:750", "Other-One"),
+                "t-751": trigger("t-751", "github:751", "someone"),
+                "t-752": trigger("t-752", "github:752", "someone"),
+            },
+        )
+        result = self.run_lever()
+        self.assertEqual((0, "0\n"), (result.returncode, result.stdout), result.stderr)
+        rows = self.rows()
+        self.assertEqual(
+            [
+                ("github-source refusal not_a_member: github:748 login=mryfmo", "t-748: not_a_member", "r1"),
+                ("github-source refusal not_human: github:746 login=coderabbitai[bot]", "t-746: not_human", "r2"),
+                (
+                    "github-source refusal not_human: #750 Two senders login=github-actions[bot]",
+                    "t-750a: not_human",
+                    "r3",
+                ),
+                ("github-source refusal not_a_member: #750 Two senders login=Other-One", "t-750b: not_a_member", "r3"),
+                ("github-source refusal not_a_member: github:753 login=unknown", "t-gone: not_a_member", "r6"),
+            ],
+            [(row[2], row[3], row[4]) for row in rows],
+        )
+        for row in rows:
+            self.assertEqual(6, len(row), row)
+            self.assertEqual(("intake-observe", "-"), (row[1], row[5]))
+        text = self.tsv.read_text()
+        again = self.run_lever()
+        self.assertEqual((0, "0\n"), (again.returncode, again.stdout), again.stderr)
+        self.assertEqual(text, self.tsv.read_text(), "a second run appends nothing")
+        self.assertEqual("5\n", self.run_lever("--kind", "refusal", str(self.db), str(self.dir / "fresh.tsv")).stdout)
+
+    def test_the_kind_flag_selects_the_count_printed_and_every_kind_is_recorded_whatever_the_flag(self) -> None:
+        """U465: the count printed stays the would-accept count (the rows i2 and i6 read it) unless `--kind accept`,
+        `--kind refusal` or `--kind all` is given, the one flag; the rows appended are the same whatever the flag, so
+        the records of the three rungs are never a function of how the lever was called. A kind outside the four is
+        the usage refusal, exit 2, nothing appended."""
+        accept = {"kind": "accept", "reason": [{"code": "said", "values": {"text": "ok"}}], "rules": ["copy"]}
+        self.save(
+            decision("w1", "github:1", "2026-11-07T01:00:00Z"),
+            decision("a1", "github:2", "2026-11-07T01:10:00Z", **accept),
+            refusal("r1", "github:3", "2026-11-07T01:20:00Z", ("not_a_member", "t-3")),
+            decision("w2", "github:4", "2026-11-07T01:30:00Z"),
+            triggers={"t-3": trigger("t-3", "github:3", "someone")},
+        )
+        result = self.run_lever()
+        self.assertEqual((0, "2\n"), (result.returncode, result.stdout), result.stderr)
+        self.assertEqual(["w1", "a1", "r1", "w2"], [row[4] for row in self.rows()], "every kind is recorded")
+        self.save(
+            decision("w3", "github:5", "2026-11-07T02:00:00Z"),
+            decision("a2", "github:6", "2026-11-07T02:10:00Z", **accept),
+            refusal("r2", "github:7", "2026-11-07T02:20:00Z", ("not_human", "t-7")),
+            refusal("r3", "github:8", "2026-11-07T02:30:00Z", ("not_human", "t-8a"), ("not_a_member", "t-8b")),
+        )
+        result = self.run_lever("--kind", "accept", str(self.db), str(self.tsv))
+        self.assertEqual((0, "1\n"), (result.returncode, result.stdout), result.stderr)
+        self.assertEqual(["w1", "a1", "r1", "w2", "w3", "a2", "r2", "r3", "r3"], [row[4] for row in self.rows()])
+        self.save(
+            decision("w4", "github:9", "2026-11-07T03:00:00Z"),
+            decision("a3", "github:10", "2026-11-07T03:10:00Z", **accept),
+        )
+        result = self.run_lever("--kind=all", str(self.db), str(self.tsv))
+        self.assertEqual((0, "2\n"), (result.returncode, result.stdout), result.stderr)
+        self.save(refusal("r4", "github:11", "2026-11-07T04:00:00Z", ("not_a_member", "t-11")))
+        result = self.run_lever("--kind", "refusal", str(self.db), str(self.tsv))
+        self.assertEqual((0, "1\n"), (result.returncode, result.stdout), result.stderr)
+        result = self.run_lever("--kind", "would-accept", str(self.db), str(self.tsv))
+        self.assertEqual((0, "0\n"), (result.returncode, result.stdout), result.stderr)
+        # The refusal count of the second batch, read from a fresh table: r2, r3 (two rows), r4 after the earlier ones.
+        fresh = self.run_lever("--kind", "refusal", str(self.db), str(self.dir / "fresh.tsv"))
+        self.assertEqual((0, "5\n"), (fresh.returncode, fresh.stdout), fresh.stderr)
+        text = self.tsv.read_text()
+        for argv in (("--kind", "bogus", str(self.db), str(self.tsv)), ("--kind", str(self.db), str(self.tsv))):
+            with self.subTest(argv=argv):
+                result = self.run_lever(*argv)
+                self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
+                self.assertIn(
+                    "usage: intake-observe.py [--kind would-accept|accept|refusal|all] <orchestrator.sqlite> <decisions.tsv>",
+                    result.stderr,
+                )
+        self.assertEqual(text, self.tsv.read_text(), "nothing appended by a refused call")
 
     def test_a_second_run_appends_nothing_and_only_newer_decisions_follow(self) -> None:
         self.save(
@@ -212,7 +358,10 @@ class IntakeObserveTest(unittest.TestCase):
     def test_usage_and_the_installed_copy(self) -> None:
         result = self.run_lever(str(self.db))
         self.assertEqual(2, result.returncode)
-        self.assertIn("usage: intake-observe.py <orchestrator.sqlite> <decisions.tsv>", result.stderr)
+        self.assertIn(
+            "usage: intake-observe.py [--kind would-accept|accept|refusal|all] <orchestrator.sqlite> <decisions.tsv>",
+            result.stderr,
+        )
         self.assertEqual(LEVER.read_bytes(), INSTALLED.read_bytes(), "the deployed copy holds the same bytes")
         self.assertTrue(os.access(LEVER, os.X_OK))
 

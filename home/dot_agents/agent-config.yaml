@@ -942,8 +942,8 @@ claude:
       acp-seat: 7b8f5c930f0b5d16702cb8e3a392047c522a7aaaac12ee28b089be9a80c25fa9
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431
       seat-settings-render.sh: 9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50
-      intake-observe.py: e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f
-      router-settings-apply: 105865474f5c52d552f53b86764fab2b25d6699851ab30ca8a24e7ac579d39f5
+      intake-observe.py: 553b1ed45384ca8ce1f4339af21d068745dd50b1a02c9351d2c54fd5130d419d
+      router-settings-apply: 98b9524ee228da6c3ab6c03538d4d147c4c7155c0765893ddcaa768626797a2a
       router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
@@ -1465,8 +1465,9 @@ assets:
       the archive's scripts/dsh-superagent (tmux, the harness outside any sandbox). sources.github is the kit's
       GitHub Source row: the repository the Source watches and the accept mode of the M-18 ladder; accept_mode_row
       is the decisions.tsv row that set the mode, and auto needs accept_mode_auto_row as well (the two row
-      timestamps M-18 defines). In observe mode the allowed list is empty, so no accept path exists: a positive
-      assessment is an ignore Decision marked would-accept (src/policy.ts:57, reason code observed).
+      timestamps M-18 defines; router-settings-apply admits auto by that row alone, U465). allowed is the Source's
+      identity set (policy.sources.github.allowed). In observe mode with an empty list no accept path exists: a
+      positive assessment is an ignore Decision marked would-accept (src/policy.ts:57, reason code observed).
     install_path: ~/.dsh/plugins/dsh-superagent
     installer: scripts/update-agent-assets.sh#update_dsh_superagent
     render:
@@ -1480,8 +1481,14 @@ assets:
         # observe_admission is the one policy cell router-settings-apply writes (sources.github.admission.pulls
         # .unlistedUnaddressed, U416): the M-18 observe rung records a would-accept Decision only through this cell
         # (inferred; upstream's default ignore sends every unlisted human's pull request to not_a_member before any
-        # assessment, measured 2026-11-10T04:08:19Z), while the allowed list is the auto rung's lever and stays empty.
+        # assessment, measured 2026-11-10T04:08:19Z), while the allowed list below is the auto rung's lever.
         observe_admission: inferred
+        # allowed is the Source's identity set (U465, rows i6 and i7): the GitHub logins router-settings-apply writes
+        # into policy.sources.github.allowed as {id} rows (src/sources/github.ts:72, ids [A-Za-z0-9-]+), replacing
+        # the store's list. A listed login's mention is explicit (accepted even in observe mode); an unlisted login's
+        # message is refused not_a_member, which intake-observe.py records naming the login. Empty today: the
+        # operator names the ids by a decisions row before the flip to auto (one manifest row, after U466).
+        allowed: []
   graphifyy:
     source: github-release
     upstream: Graphify-Labs/graphify

@@ -1,8 +1,8 @@
 #!/usr/bin/env -S python3 -I
-"""Make the dsh-superagent Router's settings store equal to the kit's GitHub Source row, accept mode and observe
-admission cell (regime-cutover U353, M-26 stage B; U416).
+"""Make the dsh-superagent Router's settings store equal to the kit's GitHub Source row: the repository, the accept
+mode, the observe admission cell and the allowed-sender list (regime-cutover U353, M-26 stage B; U416; U465).
 
-`router-settings-apply [--manifest <agent-config.yaml>] [--profile <cordis.patch.yml>] [--wait <seconds>]` is run by the
+`router-settings-apply [--manifest <agent-config.yaml>] [--profile <cordis.patch.yml>] [--wait <seconds>] [--dry-run]` is run by the
 coordinator outside every sandbox, as the operator's user, after `hcom-seat router -- --no-open` has printed its ready
 line. The Router learns its Sources from the settings store under `stateDir`, never from the plugin config (upstream
 `src/deployment.ts:33-44` refuses `repository` there, naming the Source as where it moved), so the values the kit renders
@@ -23,16 +23,21 @@ as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the Router 
     `notifications` scope, which the M-25 handout's fine-grained token does not carry, while the repository stream
     (`src/sources/github.ts:174`, `issues?state=all`, read when `observeIssues || observePulls`) receives every new pull
     request with the token's `Pull requests` permission and runs whether or not the notifications poll fails (`:282-286`).
-  - `eval`: the current eval block with `mode` set to the accept mode (`src/policy.ts:83-87`). `auto` is refused here:
-    the M-18 ladder's second rung is the operator's row, and this unit applies `off` or `observe` alone.
+  - `eval`: the current eval block with `mode` set to the accept mode (`src/policy.ts:83-87`): `off`, `observe`, or
+    `auto` when the manifest row carries `accept_mode_auto_row` (a decisions.tsv timestamp, the M-18 ladder's second
+    row; U465). `auto` without that row, a row that is no timestamp, or the row beside another mode, is a refusal
+    naming the row: the rung is admitted by its dated manifest row and by nothing else.
   - `policy`: the current block with the github Source's admission cell `sources.github.admission.pulls.unlistedUnaddressed`
-    set to the manifest's `observe_admission` (`src/policy.ts:76-84`, `src/admission.ts:13`), its `rules`, the github
-    `allowed` list (empty when absent) and every other row, cell and Source carried as read. Without this cell the
-    observe rung records nothing: the kit's allowed list is empty and upstream's default for the cell is `ignore`, so
-    every unlisted human's pull request falls to `not_a_member` before any assessment (`src/policy.ts:192-210`; measured
-    on the i2 probes, decisions 2026-11-10T04:08:19Z), while `inferred` makes it a candidate that observe mode can only
-    record as an ignore Decision with `audit.would_accept` (`src/policy.ts:55-57`), never accept. The allowed list is
-    the auto rung's lever (a listed login's mention is `explicit`, accepted even in observe mode) and stays untouched.
+    set to the manifest's `observe_admission` (`src/policy.ts:76-84`, `src/admission.ts:13`) and its `allowed` list set
+    to the manifest row's `allowed` ids as `{"id": <login>}` rows (`src/sources/github.ts:72`: an id is `[A-Za-z0-9-]+`;
+    U465), its `rules` and every other row, cell and Source carried as read. Without the cell the observe rung records
+    nothing: upstream's default for the cell is `ignore`, so every unlisted human's pull request falls to
+    `not_a_member` before any assessment (`src/policy.ts:192-210`; measured on the i2 probes, decisions
+    2026-11-10T04:08:19Z), while `inferred` makes it a candidate that observe mode can only record as an ignore
+    Decision with `audit.would_accept` (`src/policy.ts:55-57`), never accept. The allowed list is the Source's
+    identity set (a listed login's mention is `explicit`, accepted even in observe mode; an unlisted login's message
+    is refused `not_a_member`): the kit's row replaces the store's list, never merges with it, so no entry the panel
+    made survives a run (R-45: the Router is granted nothing beyond the kit's rows). The committed list is empty.
 - A block already equal to the kit's is not written: a second run PUTs nothing (`unchanged`). After a save the Router
   answers `restarting: true` while setup is pending or a setup field changed (`src/app/settings.ts:176`), and the API is
   unavailable for a moment; before the next PUT this lever polls `GET settings` until it answers again, for at most
@@ -48,9 +53,13 @@ as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the Router 
   which the coordinator runs this lever again.
 
 Output: one line per block on stdout, `<block> saved (revision <n>[, restarting])` or `<block> unchanged (revision <n>)`.
-Exit 0 when the three blocks hold the kit's values. Every refusal is one line on stderr, `router-settings-apply: <reason>`,
-and exit 2: a manifest or profile that cannot be read or lacks its row, `auto`, an `observe_admission` outside its two
-words, a wrapper that is no executable file, a port
+Exit 0 when the three blocks hold the kit's values. With `--dry-run` the manifest row, the profile and the wrapper are
+read and held to their forms as in a run, the values a run would write are printed (`eval.mode <mode>`, `allowed <JSON
+list of ids>`, `admission.pulls.unlistedUnaddressed <cell>`, `repository <owner/name>`, `cli <path>`) and the Management
+API is not called: nothing is read from it or written to it. Every refusal is one line on stderr,
+`router-settings-apply: <reason>`, and exit 2: a manifest or profile that cannot be read or lacks its row, `auto` without
+its dated row, an `observe_admission` outside its two words, an `allowed` that is no list, a sender id outside its
+grammar or repeated, a wrapper that is no executable file, a port
 that answers nothing (`unreachable`, naming `127.0.0.1:<port>`), a 403 (naming the header), a 409 (naming the revision), a
 400 with `setup` (naming the code and its text), a 3xx (naming its Location; never followed), any other status, or a
 settings view without the `github` Source, the `eval` block or the `policy` block. Nothing is written to any file; the only network peer is
@@ -84,7 +93,11 @@ HEADER = "x-orchestrator-request"
 API = "/orchestrator/api/"
 SOURCE_BLOCK = "source:github"
 EVAL_BLOCK = "eval"
-ACCEPT_MODES_APPLIED = ("off", "observe")
+ACCEPT_MODES_APPLIED = ("off", "observe", "auto")
+# The M-18 ladder's row timestamps (decisions.tsv `ts`): `auto` is admitted by `accept_mode_auto_row` alone (U465).
+LADDER_ROW = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+# A sender id of the github Source's allowed list, a GitHub login (src/sources/github.ts:72; U465).
+SENDER_ID = re.compile(r"^[A-Za-z0-9-]+$")
 POLICY_BLOCK = "policy"
 # The one policy cell this lever writes (U416): the pulls row's unlistedUnaddressed cell of the github Source's admission
 # table (src/admission.ts), from the manifest's observe_admission, whose two words are the cell's values short of explicit.
@@ -186,30 +199,22 @@ def manifest_levers(lines: list[str], manifest: str) -> tuple[tuple[str, str], .
     return tuple(pins)
 
 
-def manifest_scalars(lines: list[str], mapping: tuple[str, ...]) -> dict[str, str] | None:
-    """The `<key>: <value>` scalars directly under the mapping named by the key tuple `mapping` (top-level key first),
-    read by the indentation walk of manifest_levers; a value's surrounding quotes are removed. None when the manifest
-    has no such mapping."""
-    found: dict[str, str] = {}
+def manifest_block(lines: list[str], mapping: tuple[str, ...]) -> list[str] | None:
+    """The lines inside the mapping named by the key tuple `mapping` (top-level key first), read by the indentation
+    walk of manifest_levers: every non-blank, non-comment line after the mapping's key indented deeper than it, up to
+    the first line that is not. None when the manifest has no such mapping."""
+    found: list[str] = []
     keys: list[tuple[int, str]] = []
     block = None
-    entries = None
     for line in lines:
         text = line.lstrip(" ")
         if not text or text.startswith("#"):
             continue
         indent = len(line) - len(text)
         if block is not None:
-            if indent <= block or (entries is not None and indent < entries):
+            if indent <= block:
                 break
-            if entries is None:
-                entries = indent
-            match = SCALAR.match(text)
-            if indent == entries and match:
-                value = match.group(2).strip()
-                if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-                    value = value[1:-1]
-                found[match.group(1)] = value
+            found.append(line)
             continue
         while keys and indent <= keys[-1][0]:
             keys.pop()
@@ -221,6 +226,61 @@ def manifest_scalars(lines: list[str], mapping: tuple[str, ...]) -> dict[str, st
     return found if block is not None else None
 
 
+def unquoted(value: str) -> str:
+    """A scalar or list item with its surrounding quotes removed."""
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        value = value[1:-1]
+    return value
+
+
+def block_scalars(block: list[str]) -> dict[str, str]:
+    """The `<key>: <value>` scalars at the block's own depth, the first line's indentation."""
+    found: dict[str, str] = {}
+    entries = None
+    for line in block:
+        text = line.lstrip(" ")
+        indent = len(line) - len(text)
+        if entries is None:
+            entries = indent
+        match = SCALAR.match(text)
+        if indent == entries and match:
+            found[match.group(1)] = unquoted(match.group(2))
+    return found
+
+
+def block_list(block: list[str], key: str) -> list[str] | str | None:
+    """The list under `key` at the block's own depth: the flow form `key: [a, b]` (`[]` empty) or `key:` followed by
+    `- a` lines indented deeper, each item's quotes removed. None when the key is absent; a string naming what was
+    found when the key holds something that is no list (a word, nothing, a mapping), for the caller's refusal."""
+    entries = None
+    for index, line in enumerate(block):
+        text = line.lstrip(" ")
+        indent = len(line) - len(text)
+        if entries is None:
+            entries = indent
+        if indent != entries:
+            continue
+        if text == f"{key}:":
+            items: list[str] = []
+            for later in block[index + 1 :]:
+                later_text = later.lstrip(" ")
+                if len(later) - len(later_text) <= entries:
+                    break
+                if not later_text.startswith("- "):
+                    return "a mapping"
+                items.append(unquoted(later_text[2:]))
+            return items if items else "nothing"
+        match = SCALAR.match(text)
+        if match and match.group(1) == key:
+            value = match.group(2).strip()
+            if value.startswith("[") and value.endswith("]"):
+                inner = value[1:-1].strip()
+                return [unquoted(item) for item in inner.split(",")] if inner else []
+            return value
+    return None
+
+
 def read_lines(path: str, what: str) -> list[str]:
     try:
         with open(path, "rb") as handle:
@@ -229,30 +289,62 @@ def read_lines(path: str, what: str) -> list[str]:
         raise Refusal(f"{what} {path} could not be read: {error}") from None
 
 
-def source_row(manifest: str) -> tuple[str, str, str]:
-    """The manifest's repository, accept mode and observe admission, each held to its form; `auto` and a third word for
-    the cell are refused here."""
-    row = manifest_scalars(read_lines(manifest, "the manifest"), SOURCE_KEYS)
+def source_row(manifest: str) -> tuple[str, str, str, list[str]]:
+    """The manifest's repository, accept mode, observe admission and allowed sender ids, each held to its form: `auto`
+    needs `accept_mode_auto_row` (a decisions.tsv timestamp, the M-18 ladder's second row) and that row belongs to
+    `auto` alone; a third word for the cell is refused; the allowed list must be a list of GitHub logins, none
+    repeated (by case: GitHub logins differing by case alone are one login)."""
+    block = manifest_block(read_lines(manifest, "the manifest"), SOURCE_KEYS)
     label = ".".join(SOURCE_KEYS)
-    if row is None:
+    if block is None:
         raise Refusal(f"the manifest {manifest} names no {label} mapping")
+    row = block_scalars(block)
     for key in ("repository", "accept_mode", "observe_admission"):
         if not row.get(key):
             raise Refusal(f"the manifest {manifest} names no {label}.{key}")
     if not REPOSITORY.fullmatch(row["repository"]):
         raise Refusal(f"{label}.repository {row['repository']!r} in {manifest} is not owner/name")
-    if row["accept_mode"] not in ACCEPT_MODES_APPLIED:
+    mode = row["accept_mode"]
+    if mode not in ACCEPT_MODES_APPLIED:
         raise Refusal(
-            f"{label}.accept_mode {row['accept_mode']!r} in {manifest} is not applied by this lever; it applies "
-            f"{' or '.join(ACCEPT_MODES_APPLIED)} alone, and the M-18 ladder's second rung is the operator's row"
+            f"{label}.accept_mode {mode!r} in {manifest} is not one of {', '.join(ACCEPT_MODES_APPLIED)} "
+            "(src/policy.ts:84)"
         )
+    auto_row = row.get("accept_mode_auto_row")
+    if mode == "auto" and auto_row is None:
+        raise Refusal(
+            f"{label}.accept_mode 'auto' in {manifest} needs accept_mode_auto_row (the M-18 ladder's second row "
+            "timestamp) beside accept_mode_row; the mode stays observe until that row is written"
+        )
+    if auto_row is not None and not LADDER_ROW.fullmatch(auto_row):
+        raise Refusal(
+            f"{label}.accept_mode_auto_row {auto_row!r} in {manifest} is not a decisions.tsv timestamp (YYYY-MM-DDTHH:MM:SSZ)"
+        )
+    if auto_row is not None and mode != "auto":
+        raise Refusal(f"{label}.accept_mode_auto_row in {manifest} belongs to accept_mode auto alone, not {mode!r}")
     if row["observe_admission"] not in OBSERVE_ADMISSIONS_APPLIED:
         raise Refusal(
             f"{label}.observe_admission {row['observe_admission']!r} in {manifest} is not "
             f"{' or '.join(OBSERVE_ADMISSIONS_APPLIED)}; the {ADMISSION_ROW} row's {ADMISSION_CELL} cell takes those two "
             "words alone (explicit would accept an unlisted sender's pull request in observe mode)"
         )
-    return row["repository"], row["accept_mode"], row["observe_admission"]
+    allowed = block_list(block, "allowed")
+    if allowed is None:
+        raise Refusal(f"the manifest {manifest} names no {label}.allowed list")
+    if isinstance(allowed, str):
+        raise Refusal(f"{label}.allowed in {manifest} is not a list of sender ids (`[]`, `[a, b]` or `- a` lines)")
+    seen: set[str] = set()
+    for sender in allowed:
+        if not SENDER_ID.fullmatch(sender):
+            raise Refusal(
+                f"{label}.allowed in {manifest} names {sender!r}, which is not a sender id of the form [A-Za-z0-9-]+"
+            )
+        if sender.lower() in seen:
+            raise Refusal(
+                f"{label}.allowed in {manifest} repeats {sender!r} (GitHub logins that differ by case alone are one login)"
+            )
+        seen.add(sender.lower())
+    return row["repository"], mode, row["observe_admission"], allowed
 
 
 def webserver_port(profile: str) -> int:
@@ -392,7 +484,11 @@ def block_views(settings: dict, where: str) -> tuple[tuple[dict, int], tuple[dic
     views: list[tuple[dict, int]] = []
     for name in (EVAL_BLOCK, POLICY_BLOCK):
         block = blocks.get(name) if isinstance(blocks, dict) else None
-        if not isinstance(block, dict) or not isinstance(block.get("value"), dict) or not isinstance(block.get("revision"), int):
+        if (
+            not isinstance(block, dict)
+            or not isinstance(block.get("value"), dict)
+            or not isinstance(block.get("revision"), int)
+        ):
             raise Refusal(f"{where} answered GET settings without the {name} block (its value and revision)")
         views.append((block["value"], block["revision"]))
     return (github["value"], github["revision"]), views[0], views[1]
@@ -407,17 +503,17 @@ def desired_eval(current: dict, mode: str) -> dict:
     return {**current, "mode": mode}
 
 
-def desired_policy(current: dict, cell: str) -> dict:
-    """The policy block as read with the github Source's `pulls.unlistedUnaddressed` cell set to `cell`: the rules, the
-    allowed list (empty when absent), the other rows and cells and every other Source's entry unchanged."""
+def desired_policy(current: dict, cell: str, allowed: list[str]) -> dict:
+    """The policy block as read with the github Source's `pulls.unlistedUnaddressed` cell set to `cell` and its
+    `allowed` list set to the manifest's ids as `{"id": <login>}` rows (replaced, never merged: the kit's row is the
+    Source's one identity set); the rules, the other rows and cells and every other Source's entry unchanged."""
     sources = current.get("sources") if isinstance(current.get("sources"), dict) else {}
     github = sources.get(ADMISSION_SOURCE) if isinstance(sources.get(ADMISSION_SOURCE), dict) else {}
     admission = github.get("admission") if isinstance(github.get("admission"), dict) else {}
     row = admission.get(ADMISSION_ROW) if isinstance(admission.get(ADMISSION_ROW), dict) else {}
-    allowed = github.get("allowed") if isinstance(github.get("allowed"), list) else []
     entry = {
         **github,
-        "allowed": allowed,
+        "allowed": [{"id": sender} for sender in allowed],
         "admission": {**admission, ADMISSION_ROW: {**row, ADMISSION_CELL: cell}},
     }
     return {**current, "rules": current.get("rules", []), "sources": {**sources, ADMISSION_SOURCE: entry}}
@@ -437,7 +533,11 @@ def apply_block(api: Api, block: str, current: dict, desired: dict, revision: in
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
-        prog=LEVER, description="write the kit's GitHub Source row, accept mode and observe admission cell into the Router's settings store"
+        prog=LEVER,
+        description=(
+            "write the kit's GitHub Source row, accept mode, observe admission cell and allowed-sender list into the "
+            "Router's settings store"
+        ),
     )
     directory = lever_directory()
     parser.add_argument(
@@ -456,15 +556,28 @@ def main(argv: list[str]) -> int:
         default=60.0,
         help="seconds to wait for the Router after a save that restarts it (default 60)",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="read the manifest row, the profile and the wrapper, print the values a run would write, and call the Management API not at all",
+    )
     args = parser.parse_args(argv[1:])
     profile = args.profile
     if profile is None:
         dsh_home = os.environ.get("DSH_HOME") or os.path.join(os.environ.get("HOME", ""), ".dsh")
         profile = os.path.join(dsh_home, "profiles/router/cordis.patch.yml")
     try:
-        repository, mode, cell = source_row(args.manifest)
+        repository, mode, cell, allowed = source_row(args.manifest)
         port = webserver_port(profile)
         cli = wrapper_path(directory)
+        if args.dry_run:
+            print(f"dry run: nothing is read from or written to the Management API at {HOST}:{port}")
+            print(f"eval.mode {mode}")
+            print(f"allowed {json.dumps(allowed)}")
+            print(f"admission.{ADMISSION_ROW}.{ADMISSION_CELL} {cell}")
+            print(f"repository {repository}")
+            print(f"cli {cli}")
+            return 0
         api = Api(port, args.wait)
         (source, source_revision), (evaluation, eval_revision), (policy, policy_revision) = block_views(
             api.settings(), api.where()
@@ -474,8 +587,9 @@ def main(argv: list[str]) -> int:
         if restarting:
             api.settings_after_restart()
             (source, source_revision), (_, _), (policy, policy_revision) = block_views(api.settings(), api.where())
-        # The admission cell next (U416): a policy save changes policyVersion and restarts nothing, so no wait here.
-        apply_block(api, POLICY_BLOCK, policy, desired_policy(policy, cell), policy_revision)
+        # The admission cell and the allowed list next (U416, U465): a policy save changes policyVersion and restarts
+        # nothing, so no wait here.
+        apply_block(api, POLICY_BLOCK, policy, desired_policy(policy, cell, allowed), policy_revision)
         refusals: list[str] = []
         try:
             apply_block(api, SOURCE_BLOCK, source, desired_source(source, repository, cli), source_revision)

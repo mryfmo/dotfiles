@@ -1365,10 +1365,12 @@ INSTALLING_ASSET_SOURCES = {
 # The one asset whose Source rows the kit renders (regime-cutover U317): the superagent intake's GitHub Source. `sources`
 # is admitted under this asset alone, each Source is one of the kinds below, and each row is a fixed key set compared
 # with fixed values: the repository against `owner/name`, the accept mode against the three the upstream Policy knows
-# (dsh-superagent src/policy.ts:84), `auto` only with the two row timestamps the M-18 ladder defines.
+# (dsh-superagent src/policy.ts:84), `auto` only with the two row timestamps the M-18 ladder defines, and `allowed`
+# (U465), the Source's identity set router-settings-apply writes into policy.sources.github.allowed, a list of GitHub
+# logins (src/sources/github.ts:72), present always and `[]` when no sender is listed.
 SOURCED_ASSET = "dsh-superagent"
 ASSET_SOURCE_KEYS = {
-    "github": ("repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission")
+    "github": ("repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission", "allowed")
 }
 ASSET_SOURCE_REQUIRED = ("repository", "accept_mode", "accept_mode_row")
 ACCEPT_MODES = ("off", "observe", "auto")
@@ -1376,11 +1378,29 @@ ACCEPT_MODES = ("off", "observe", "auto")
 OBSERVE_ADMISSIONS = ("inferred", "ignore")
 SOURCE_REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
 LADDER_ROW_TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+SENDER_ID = re.compile(r"[A-Za-z0-9-]+")
+
+
+def validate_sender_ids(label: str, allowed: Any) -> None:
+    """The Source's identity set (U465): a list, each item a GitHub login (`[A-Za-z0-9-]+`; no `[bot]` suffix, no
+    `{id}` mapping), none repeated by case (GitHub logins that differ by case alone are one login)."""
+    if not isinstance(allowed, list):
+        fail(f"{label}.allowed must be a list of sender ids, not {type(allowed).__name__}: {allowed!r}")
+    seen: set[str] = set()
+    for item in allowed:
+        if not isinstance(item, str):
+            fail(f"{label}.allowed must be a list of sender ids, not {type(item).__name__}: {item!r}")
+        if not SENDER_ID.fullmatch(item):
+            fail(f"{label}.allowed names {item!r}, which is not a sender id of the form [A-Za-z0-9-]+")
+        if item.lower() in seen:
+            fail(f"{label}.allowed repeats {item!r} (GitHub logins that differ by case alone are one login)")
+        seen.add(item.lower())
 
 
 def validate_asset_sources(name: str, asset: dict[str, Any]) -> None:
     """Refuse a `sources` block outside the sourced asset, an unknown Source or key, a repository outside `owner/name`,
-    a mode outside the three, and `auto` without `accept_mode_auto_row`; each refusal names the key."""
+    a mode outside the three, `auto` without `accept_mode_auto_row`, and an `allowed` that is absent or no list of
+    sender ids; each refusal names the key."""
     sources = asset.get("sources")
     if sources is None:
         return
@@ -1401,9 +1421,12 @@ def validate_asset_sources(name: str, asset: dict[str, Any]) -> None:
         missing = [key for key in ASSET_SOURCE_REQUIRED if not row.get(key)]
         if missing:
             fail(f"{label} is missing {missing}")
+        if "allowed" not in row:
+            fail(f"{label}.allowed is missing (the Source's identity set; [] when no sender is listed)")
         for key, value in row.items():
-            if not isinstance(value, str):
+            if key != "allowed" and not isinstance(value, str):
                 fail(f"{label}.{key} must be a string, not {type(value).__name__}: {value!r}")
+        validate_sender_ids(label, row["allowed"])
         if not SOURCE_REPOSITORY.fullmatch(row["repository"]):
             fail(f"{label}.repository {row['repository']!r} is not owner/name")
         mode = row["accept_mode"]

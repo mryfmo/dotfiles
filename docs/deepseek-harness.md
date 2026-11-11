@@ -148,12 +148,16 @@ panel to `127.0.0.1:3082`, puts `stateDir` at `$DSH_HOME/router-state` (inside
 the role's write root; the listener itself waits for a `router` role with the
 loopback grant, U321), and restates the bundle's two agent presets with their
 sandbox rows disabled. The GitHub Source row
-(`assets.dsh-superagent.sources.github`: the repository and
-`accept_mode: observe`, the M-18 ladder row) is data for the Management API
-save; in observe mode the allowed list is empty, so a positive assessment is an
-ignore Decision marked would-accept and nothing is accepted.
+(`assets.dsh-superagent.sources.github`: the repository,
+`accept_mode: observe`, the M-18 ladder row, and `allowed`, the Source's
+identity set, empty today) is data for the Management API save; `auto` is
+admitted only beside `accept_mode_auto_row` (U465), and in observe mode with an
+empty list a positive assessment is an ignore Decision marked would-accept and
+nothing is accepted.
 `hcom-seat router -- --no-open` starts the Router under srt, and
-`intake-observe.py <orchestrator.sqlite> <decisions.tsv>` appends the
-would-accept Decisions as rows, reading the store read-only, creating the table
-with the `decisions.tsv` header when it is absent, and refusing to run when its
-own sha256 differs from its manifest pin.
+`intake-observe.py [--kind would-accept|accept|refusal|all] <orchestrator.sqlite> <decisions.tsv>`
+appends the ladder's Decisions as rows (would-accept, accept, and the refusals
+`not_a_member` and `not_human` naming the sender's login; the count printed is
+the would-accept count unless the flag names another kind), reading the store
+read-only, creating the table with the `decisions.tsv` header when it is
+absent, and refusing to run when its own sha256 differs from its manifest pin.

@@ -629,7 +629,7 @@
       "target": ".local/bin/common/router-settings-apply",
       "kind": "file",
       "executable": true,
-      "sha256": "3bf8a7632025f73b5a2bab0832979ae979346bd5f3244184b90f3c30d02c6fee"
+      "sha256": "46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2"
     },
     {
       "source": "home/dot_local/bin/common/executable_router-settings-apply.py",

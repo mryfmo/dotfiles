@@ -1935,6 +1935,85 @@ class RouterSettingsApplyEntryTest(unittest.TestCase):
         self.assertIn(f"store {self.store}\n", run.stdout)
         self.assertNotIn(str(other), run.stdout)
 
+    def test_a_the_entry_runs_in_privileged_mode_and_scrubs_by_prefix_expansion_under_a_poisoned_environment(self):
+        """U465f test (a) (verdicts/U465-59601417.md P1 [f2 s8] `:71` and P1 [f2 s8] `:61`): the scrub read a
+        here-string, which bash writes to a temporary file, so with TMPDIR denied the redirection failed and `set -e`
+        skipped the loop without a refusal; and the `#!/usr/bin/env bash` shebang let bash import a caller's exported
+        `compgen` (and `set`, `unset`) function before line 1 ran, so both listings saw no `GIT_*`. The entry runs under
+        `/bin/bash -p` (no function imported, `$-` carries `p`) and scrubs by prefix expansion (`${!GIT_@}`: a
+        parameter expansion, no command and no file): run by its path with the three functions exported, `GIT_DIR` and
+        `GIT_WORK_TREE` naming another repository that holds a store of its own, `PERL5OPT` and `PYTHONPATH` set and
+        `TMPDIR` a directory that does not exist, from outside any checkout it refuses exactly as with a clean
+        environment, and inside the checkout it resolves the checkout's own store."""
+        other = self.root / "other-repo"
+        git_init(other, env=self.env)
+        self.git("commit", "-q", "--allow-empty", "-m", "initial", cwd=other)
+        other_store = other / ".orchestration/orchestrate/regime-cutover"
+        other_store.mkdir(parents=True)
+        (other_store / "decisions.tsv").write_text(DECISIONS)
+        clean = self.run_entry(cwd=self.root)
+        self.assertEqual((clean.returncode, clean.stdout), (2, ""), clean.stderr)
+        self.assertIn("run from the repository checkout that holds the program store", clean.stderr)
+        # The exported functions in the form bash exports them (`BASH_FUNC_<name>%%`, the post-Shellshock encoding
+        # of /bin/bash 3.2.57 and 5.2): a `compgen` that lists PATH alone, a `set` and an `unset` that do nothing.
+        self.env = {
+            **self.env,
+            "BASH_FUNC_compgen%%": "() { echo PATH; }",
+            "BASH_FUNC_set%%": "() { :; }",
+            "BASH_FUNC_unset%%": "() { :; }",
+            "GIT_DIR": str(other / ".git"),
+            "GIT_WORK_TREE": str(other),
+            "PERL5OPT": "-Mstrict",
+            "PYTHONPATH": str(self.root / "nowhere"),
+            "TMPDIR": str(self.root / "no-such-tmpdir"),
+        }
+        run = self.run_entry(cwd=self.root)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (2, "", clean.stderr))
+        self.assertNotIn(str(other_store), run.stderr + run.stdout)
+        run = self.run_entry()
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertEqual(
+            run.stderr, f"router-settings-apply: store: checkout {self.store} (pre-move form, removed by U221)\n"
+        )
+        self.assertIn(f"store {self.store}\n", run.stdout)
+        self.assertNotIn(str(other), run.stdout)
+
+    def test_b_the_entry_refuses_a_run_through_another_shell_by_name(self):
+        """U465f test (b): the decision for privileged mode is made by the shebang (`#!/bin/bash -p`), since a guard
+        or re-exec written in the script runs in a shell that has already imported the caller's functions. A run
+        through another shell by name (`bash <entry>`, `/bin/bash <entry>`: no `-p`) is refused as pr-audit.sh
+        refuses it, exit 2 and nothing on stdout, before any store is resolved; the same shell with `-p` runs."""
+        self.assertEqual("#!/bin/bash -p", LEVER.read_text().splitlines()[0])
+        self.assertEqual("#!/bin/bash -p", INSTALLED.read_text().splitlines()[0])
+        for shell in (["bash"], ["/bin/bash"]):
+            with self.subTest(shell=shell):
+                run = subprocess.run(
+                    [*shell, str(LEVER), "--profile", str(self.profile), "--dry-run"],
+                    cwd=self.checkout,
+                    env=self.env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=120,
+                )
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(
+                    "router-settings-apply: refused: run it by its path (its interpreter is /bin/bash -p), not "
+                    "through another shell\n",
+                    run.stderr,
+                )
+        run = subprocess.run(
+            ["/bin/bash", "-p", str(LEVER), "--profile", str(self.profile), "--dry-run"],
+            cwd=self.checkout,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertIn(f"store {self.store}\n", run.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

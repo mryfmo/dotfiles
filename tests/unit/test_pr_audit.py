@@ -2551,6 +2551,65 @@ class PrAuditTest(unittest.TestCase):
         run = self.run_lever("7", PERL5OPT="-MU71bNoSuchModule")
         self.assertEqual(run.returncode, 0, run.stderr)
 
+    def test_the_scrub_runs_when_bash_can_make_no_temporary_file(self):
+        """Regime-cutover U474 (verdicts/U465-59601417.md P1 [f2 s8] `:71`, the same form here): the scrub's `while
+        read` loop read a here-string, which bash backs with a temporary file; when none can be made the redirection
+        fails and `set -e` skips the loop with no refusal, so the caller's variables survive. The scrub now reads the
+        prefix expansions `${!GIT_@}`, `${!PERL@}` and `${!PYTHON@}` (a parameter expansion: no command, no file).
+        The run: `GIT_DIR` and `GIT_WORK_TREE` naming another repository, `PERL5OPT` naming a module that does not
+        exist, `PYTHONPATH` set, `TMPDIR` a directory that does not exist, PATH holding `sed` and `shasum` alone (the
+        self-check's perl fallback is the first external command after the scrub) and an argument the usage check
+        refuses, after the self-check and before any git, perl or gh of the lever's own. Scrubbed, the self-check
+        passes and the usage refusal is the clean environment's, byte for byte; skipped, the surviving PERL5OPT
+        breaks shasum and the self-check refuses with `cannot hash`. Measured on /bin/bash 3.2.57: the here-document
+        file is made under /tmp, else under the working directory, never under TMPDIR (a nonexistent TMPDIR alone
+        changes nothing), so on macOS both are denied through sandbox-exec; elsewhere the run has the nonexistent
+        TMPDIR alone and this test holds the fixed form without reaching the old one's failure."""
+        shasum = shutil.which("shasum", path=self.env["PATH"])
+        if shasum is None:
+            self.skipTest("no shasum here")
+        farm = Path(tempfile.mkdtemp(dir=self.root, prefix="hash-farm-"))
+        for tool in ("sed", "shasum"):
+            (farm / tool).symlink_to(shutil.which(tool, path=self.env["PATH"]))
+        other = self.root / "other-repo"
+        git_init(other, env=self.env, cwd=self.root)
+        poison = {
+            "PATH": str(farm),
+            "TMPDIR": str(self.root / "no-such-tmpdir"),
+            "GIT_DIR": str(other / ".git"),
+            "GIT_WORK_TREE": str(other),
+            "PERL5OPT": "-MU474NoSuchModule",
+            "PYTHONPATH": str(self.root / "nowhere"),
+        }
+        wrapper = []
+        if sys.platform == "darwin" and Path("/usr/bin/sandbox-exec").exists():
+            roots = ("/tmp", "/private/tmp", "/var/tmp", "/private/var/tmp", str(self.root))
+            denied = " ".join(f'(subpath "{root}")' for root in roots)
+            wrapper = ["/usr/bin/sandbox-exec", "-p", f"(version 1)(allow default)(deny file-write* {denied})"]
+        args = ("7", "--records")
+        clean = subprocess.run(
+            [str(LEVER), *args],
+            cwd=self.repo,
+            env={**self.env, "PATH": str(farm)},
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(clean.returncode, 2, clean.stderr)
+        self.assertIn("refused: usage:", clean.stderr)
+        run = subprocess.run(
+            [*wrapper, str(LEVER), *args],
+            cwd=self.repo,
+            env={**self.env, **poison},
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertNotIn("cannot create temp file", run.stderr, "the scrub still reads a here-string")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (2, "", clean.stderr))
+
     def test_no_python3_on_path_refuses(self):
         bindir = Path(tempfile.mkdtemp(dir=self.root, prefix="nopython-"))
         for tool in (

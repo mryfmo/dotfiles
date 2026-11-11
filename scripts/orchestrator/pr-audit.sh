@@ -169,7 +169,7 @@
 # before the first line runs) and reads no BASH_ENV, SHELLOPTS, BASHOPTS, CDPATH or GLOBIGNORE. Measured on macOS's
 # /bin/bash 3.2.57 and Ubuntu's /bin/bash 5.2.21: with `-p` an exported `jobs` stays the builtin, without it the
 # function wins. The decision has to be made by the shebang: any check or re-exec written in the script runs in a shell
-# that has already imported the functions, and the builtins it would use (exec, compgen, unset) can be among them.
+# that has already imported the functions, and the builtins it would use (exec, unset) can be among them.
 # A run without `-p` (`bash pr-audit.sh` by hand) is refused; its caller already chose the shell.
 if [[ $- != *p* ]]; then
     echo "pr-audit.sh: refused: run it by its path (its interpreter is /bin/bash -p), not through another shell" >&2
@@ -179,26 +179,32 @@ set -euo pipefail
 
 # The environment is cleaned before any external command runs, the self-check's hash tools included (U71b audit round
 # 17: the `shasum` fallback is a perl script, and a caller's PERL5OPT ran its code before the clean-up). Every statement
-# up to here and in this block is a shell builtin. No git variable of the caller reaches any git this lever runs (U71b
-# audit round 7: an inherited GIT_GRAFT_FILE rewrote the ancestry, so merge-base(main, head) was the head and the
-# audited range was empty); rather than name the variables a tool reads (a list that misses the next one), every
-# exported `GIT_*`, `PERL*` (PERL5OPT, PERL5LIB, PERL5DB and the rest load code into every perl: `shasum`, the bounded
-# gh and git calls, the path resolution) and `PYTHON*` name is removed (the codex supervisor's python runs isolated,
-# `-I -S`, as well). A failed listing or removal refuses. Then only the lever's own are set: no replace objects, no
-# terminal prompt. The checkout is named from the cwd alone, and the audited repository is created fresh with no
-# template, so it holds no grafts file (checked before its first read, below) and no refs but the two it fetches.
-git_names=$(compgen -e) || {
-    echo "pr-audit.sh: refused: cannot list the environment to remove the caller's GIT_*, PERL* and PYTHON* variables" >&2
-    exit 2
-}
-while IFS= read -r git_name; do
-    [[ ${git_name} == GIT_* || ${git_name} == PERL* || ${git_name} == PYTHON* ]] || continue
+# up to here and in this block is a reserved word, a parameter expansion or a shell builtin, and none runs a listing
+# command or opens a file. No git variable of the caller reaches any git this lever runs (U71b audit round 7: an
+# inherited GIT_GRAFT_FILE rewrote the ancestry, so merge-base(main, head) was the head and the audited range was
+# empty); rather than name the variables a tool reads (a list that misses the next one), every `GIT_*`, `PERL*`
+# (PERL5OPT, PERL5LIB, PERL5DB and the rest load code into every perl: `shasum`, the bounded gh and git calls, the path
+# resolution) and `PYTHON*` name is removed (the codex supervisor's python runs isolated, `-I -S`, as well). The names
+# come from the prefix expansions `${!GIT_@}`, `${!PERL@}` and `${!PYTHON@}` (regime-cutover U474, verdict
+# U465-59601417 P1 `:71`, the same form here: the earlier loop read `compgen -e` through a here-string, which bash
+# backs with a temporary file, made by /bin/bash 3.2.57 under /tmp, else under the working directory, never under
+# TMPDIR; with both denied the redirection failed and `set -e` skipped the loop with no refusal, so the caller's
+# variables survived into the self-check's shasum; measured with sandbox-exec, the expansions name every variable and
+# the loop runs). A removal that fails refuses, and a second expansion refuses a leftover. Then only the lever's own
+# are set: no replace objects, no terminal prompt. The checkout is named from the cwd alone, and the audited
+# repository is created fresh with no template, so it holds no grafts file (checked before its first read, below) and
+# no refs but the two it fetches.
+for git_name in "${!GIT_@}" "${!PERL@}" "${!PYTHON@}"; do
     unset -v "${git_name}" 2> /dev/null || {
         echo "pr-audit.sh: refused: cannot remove the caller's ${git_name}" >&2
         exit 2
     }
-done <<< "${git_names}"
-unset git_names git_name
+done
+if [[ -n "${!GIT_@}${!PERL@}${!PYTHON@}" ]]; then
+    echo "pr-audit.sh: refused: a GIT_*, PERL* or PYTHON* variable is still set after the scrub: ${!GIT_@} ${!PERL@} ${!PYTHON@}" >&2
+    exit 2
+fi
+unset git_name
 export GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):

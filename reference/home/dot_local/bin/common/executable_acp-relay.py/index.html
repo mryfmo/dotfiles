@@ -5865,8 +5865,16 @@
 <span class="s2">the handler's. When the client closes its side the handler's stdin closes, so omp sees EOF; when the client is gone</span>
 <span class="s2">the handler's output is drained until it exits, so the handler never dies on a broken pipe before it removes its slot.</span>
 <span class="s2">A hangup, interrupt or termination closes the listener, terminates every live handler (whose own trap ends its omp</span>
-<span class="s2">and removes its slot) and waits for each, then removes the socket; the directory is `acp-broker`'s to remove. Exit 0</span>
-<span class="s2">when the socket is gone, 2 when it remains or a refusal happened (every reason on stderr), and nothing else is</span>
+<span class="s2">and removes its slot) and waits for each, then removes the socket; the directory is `acp-broker`'s to remove. The</span>
+<span class="s2">handlers of the three signals are installed before the socket is bound (regime-cutover U447: `acp-broker`'s trap</span>
+<span class="s2">sends TERM here the moment its own signal arrives, and a TERM between the bind and the handlers' installation ended</span>
+<span class="s2">this process by the default disposition with the socket bound, which the broker then read as another broker's), so</span>
+<span class="s2">a signal at any instant after the pin check ends this process through that one path: during the bind or the listen</span>
+<span class="s2">it only sets the flag, no readiness line is printed, and the start-up ends through the stop with the socket removed.</span>
+<span class="s2">The flag's read and the readiness line are one step under the three signals blocked (regime-cutover U447b), so the</span>
+<span class="s2">line is printed only when no signal has been handled, and a signal sent meanwhile is delivered after the line and</span>
+<span class="s2">ends this process as any later one does; a line never follows the listener's closure.</span>
+<span class="s2">Exit 0 when the socket is gone, 2 when it remains or a refusal happened (every reason on stderr), and nothing else is</span>
 <span class="s2">written anywhere. The standard library alone, under `-I -S`: no site packages, no `PYTHON*` variable, no script</span>
 <span class="s2">directory on the path.</span>
 <span class="s2">"""</span>
@@ -5887,6 +5895,8 @@ import<span class="w"> </span>threading
 <span class="nv">CHUNK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">65536</span>
 <span class="c1"># A handler is given this long after SIGTERM to end its omp and remove its slot before the relay stops waiting.</span>
 <span class="nv">STOP_GRACE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">30</span>.0
+<span class="c1"># The signals that end the relay: handled from before the bind, blocked across the readiness line's print.</span>
+<span class="nv">STOP_SIGNALS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>signal.SIGTERM,<span class="w"> </span>signal.SIGINT,<span class="w"> </span>signal.SIGHUP<span class="o">)</span>
 
 
 def<span class="w"> </span>refuse<span class="o">(</span>reason<span class="o">)</span>:
@@ -6060,6 +6070,8 @@ class<span class="w"> </span>Relay:
 
 <span class="w">    </span>def<span class="w"> </span>on_signal<span class="o">(</span>self,<span class="w"> </span>signum,<span class="w"> </span>frame<span class="o">)</span>:
 <span class="w">        </span>self.stopping<span class="w"> </span><span class="o">=</span><span class="w"> </span>True
+<span class="w">        </span><span class="c1"># The listener is set once it accepts: a signal during the bind or the listen closes nothing, and run() reads</span>
+<span class="w">        </span><span class="c1"># the flag before the readiness line; a signal in the accept loop makes the retried accept fail at once.</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>self.listener<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
 <span class="w">            </span>try:
 <span class="w">                </span>self.listener.close<span class="o">()</span>
@@ -6075,20 +6087,32 @@ class<span class="w"> </span>Relay:
 <span class="w">            </span>os.chdir<span class="o">(</span>directory<span class="o">)</span>
 <span class="w">        </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>exc:
 <span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"cannot enter the broker directory {directory}: {exc}"</span><span class="o">)</span>
-<span class="w">        </span>self.listener<span class="w"> </span><span class="o">=</span><span class="w"> </span>socket.socket<span class="o">(</span>socket.AF_UNIX,<span class="w"> </span>socket.SOCK_STREAM<span class="o">)</span>
+<span class="w">        </span><span class="c1"># Armed before the socket exists (regime-cutover U447): from here a HUP, INT or TERM ends this process through</span>
+<span class="w">        </span><span class="c1"># stop() and remove_socket(), whichever start-up step it lands in.</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>signum<span class="w"> </span><span class="k">in</span><span class="w"> </span>STOP_SIGNALS:
+<span class="w">            </span>signal.signal<span class="o">(</span>signum,<span class="w"> </span>self.on_signal<span class="o">)</span>
+<span class="w">        </span><span class="nv">listener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>socket.socket<span class="o">(</span>socket.AF_UNIX,<span class="w"> </span>socket.SOCK_STREAM<span class="o">)</span>
 <span class="w">        </span>try:
-<span class="w">            </span>self.listener.bind<span class="o">(</span>base<span class="o">)</span>
+<span class="w">            </span>listener.bind<span class="o">(</span>base<span class="o">)</span>
 <span class="w">        </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>exc:
 <span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"cannot bind the broker socket {self.sock_path}: {exc}"</span><span class="o">)</span>
 <span class="w">        </span>try:
 <span class="w">            </span>os.chmod<span class="o">(</span>self.sock_path,<span class="w"> </span>0o600<span class="o">)</span>
-<span class="w">            </span>self.listener.listen<span class="o">(</span><span class="m">16</span><span class="o">)</span>
+<span class="w">            </span>listener.listen<span class="o">(</span><span class="m">16</span><span class="o">)</span>
 <span class="w">        </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>exc:
+<span class="w">            </span>listener.close<span class="o">()</span>
 <span class="w">            </span>self.remove_socket<span class="o">()</span>
 <span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"cannot listen on the broker socket {self.sock_path}: {exc}"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">for</span><span class="w"> </span>signum<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span>signal.SIGTERM,<span class="w"> </span>signal.SIGINT,<span class="w"> </span>signal.SIGHUP<span class="o">)</span>:
-<span class="w">            </span>signal.signal<span class="o">(</span>signum,<span class="w"> </span>self.on_signal<span class="o">)</span>
-<span class="w">        </span>print<span class="o">(</span>f<span class="s2">"acp-broker: listening on {self.sock_path}"</span>,<span class="w"> </span><span class="nv">flush</span><span class="o">=</span>True<span class="o">)</span>
+<span class="w">        </span>self.listener<span class="w"> </span><span class="o">=</span><span class="w"> </span>listener
+<span class="w">        </span><span class="c1"># The readiness line is the last start-up step and the one readiness sign (hcom-seat reads it through its</span>
+<span class="w">        </span><span class="c1"># FIFO, the test fixture from the broker's stdout). The flag's read, the print and the flush are one step</span>
+<span class="w">        </span><span class="c1"># with the three signals blocked (regime-cutover U447b, verdict U447-a52a1452 P1): a signal that already</span>
+<span class="w">        </span><span class="c1"># arrived leaves no line, and one sent meanwhile is delivered at the unblock and ends this process as any</span>
+<span class="w">        </span><span class="c1"># post-readiness signal does, so a line never follows the listener's closure.</span>
+<span class="w">        </span>signal.pthread_sigmask<span class="o">(</span>signal.SIG_BLOCK,<span class="w"> </span>STOP_SIGNALS<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>self.stopping:
+<span class="w">            </span>print<span class="o">(</span>f<span class="s2">"acp-broker: listening on {self.sock_path}"</span>,<span class="w"> </span><span class="nv">flush</span><span class="o">=</span>True<span class="o">)</span>
+<span class="w">        </span>signal.pthread_sigmask<span class="o">(</span>signal.SIG_UNBLOCK,<span class="w"> </span>STOP_SIGNALS<span class="o">)</span>
 <span class="w">        </span><span class="k">while</span><span class="w"> </span>not<span class="w"> </span>self.stopping:
 <span class="w">            </span>try:
 <span class="w">                </span>conn,<span class="w"> </span><span class="nv">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>self.listener.accept<span class="o">()</span>

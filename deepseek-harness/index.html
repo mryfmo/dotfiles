@@ -2501,6 +2501,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_router-settings-apply.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_router-settings-apply.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_seat-login-preflight/" class="md-nav__link">
         
   
@@ -5889,15 +5917,35 @@ panel to <code>127.0.0.1:3082</code>, puts <code>stateDir</code> at <code>$DSH_H
 the role's write root; the listener itself waits for a <code>router</code> role with the
 loopback grant, U321), and restates the bundle's two agent presets with their
 sandbox rows disabled. The GitHub Source row
-(<code>assets.dsh-superagent.sources.github</code>: the repository and
-<code>accept_mode: observe</code>, the M-18 ladder row) is data for the Management API
-save; in observe mode the allowed list is empty, so a positive assessment is an
-ignore Decision marked would-accept and nothing is accepted.
+(<code>assets.dsh-superagent.sources.github</code>: the repository,
+<code>accept_mode: observe</code>, the M-18 ladder row, and <code>allowed</code>, the Source's
+identity set, empty today) is data for the Management API save, and it reaches
+<code>router-settings-apply</code> as the generator's rendering <code>router-source.json</code>
+beside the manifest (deployed as <code>~/.agents/router-source.json</code>; U465c: the
+lever parses no YAML, the generator's PyYAML is the kit's one reader of the
+manifest and refuses a key named twice in any spelling, <code>make render-check</code>
+holds the rendering to the manifest, every field is rendered with its default
+applied once in the generator (U465d), and the lever's JSON reader refuses a
+key named twice, a missing key or a file outside the generator's form by
+name); <code>auto</code> is
+admitted only beside an <code>accept_mode_auto_row</code> distinct from the first row that
+the program store's <code>decisions.tsv</code> holds as a phase M-18 row whose decision
+begins with <code>accept rung auto for &lt;repository&gt;</code> (U465, U465b, U465c), the store
+resolved by the lever's bash entry through the shell levers' one rule
+(<code>regime-env</code> and <code>store_resolve</code>: the main checkout, a linked worktree and a
+same-slug checkout refused, U465d) and held by its Python body component by
+component (a link refused by name), the list is written in <code>auto</code> alone
+(<code>[]</code> in <code>off</code> and <code>observe</code>, and the asset validator refuses a listed login
+beside those modes), and in observe mode with an empty list a positive
+assessment is an ignore Decision marked would-accept and nothing is accepted.
 <code>hcom-seat router -- --no-open</code> starts the Router under srt, and
-<code>intake-observe.py &lt;orchestrator.sqlite&gt; &lt;decisions.tsv&gt;</code> appends the
-would-accept Decisions as rows, reading the store read-only, creating the table
-with the <code>decisions.tsv</code> header when it is absent, and refusing to run when its
-own sha256 differs from its manifest pin.</p>
+<code>intake-observe.py [--kind would-accept|accept|refusal|all] &lt;orchestrator.sqlite&gt; &lt;decisions.tsv&gt;</code>
+appends the ladder's Decisions as rows (would-accept, accept, and the refusals
+<code>not_a_member</code> and <code>not_human</code> naming the sender's login, each row under the
+Source word of its Decision's thread key, U465d; the count printed is
+the would-accept count unless the flag names another kind), reading the store
+read-only, creating the table with the <code>decisions.tsv</code> header when it is
+absent, and refusing to run when its own sha256 differs from its manifest pin.</p>
 
 
 

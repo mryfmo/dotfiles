@@ -14,7 +14,7 @@
         <link rel="prev" href="../executable_router-gh/">
       
       
-        <link rel="next" href="../executable_seat-login-preflight/">
+        <link rel="next" href="../executable_router-settings-apply.py/">
       
       
         
@@ -2544,6 +2544,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2558,6 +2569,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_router-settings-apply.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_router-settings-apply.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -5815,6 +5854,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5843,509 +5893,305 @@
 
 
 <h1 id="homedot_localbincommonexecutable_router-settings-apply">home/dot_local/bin/common/executable_router-settings-apply<a class="headerlink" href="#homedot_localbincommonexecutable_router-settings-apply" title="Permanent link">&para;</a></h1>
+<p>Regime-cutover U465d (round 4 of U465, the mechanism-change row of 2026-11-11T11:54:59Z, form remove): the Python lever resolved the program store itself (the checkout from the working directory, the derived store by its leaf), so in a linked worktree it read the worktree's decisions.tsv where the shell levers read the main checkout's, and a second checkout with the same slug read another checkout's derived store where regime-env refuses the mismatched origin (verdicts/U465-e6a9a84f.md P1 <code>:400</code> and P1 <code>:457</code>). From this round the lever is two pinned files, as <code>acp-broker</code> and <code>acp-relay.py</code> are: this bash entry owns the environment, and <code>router-settings-apply.py</code> beside it owns the settings logic and takes its inputs as given paths. Round 5 (U465e, verdicts/U465-9c0244e0.md P1 <code>:126</code> and P1 <code>:203</code>) closed two channels into that split: the body's argparse expanded <code>--sto</code> and let a caller's value after the entry's two win (the body's grammar is exact names, each once), and the entry resolved the checkout under the caller's <code>GIT_DIR</code> and <code>GIT_WORK_TREE</code> (the environment is scrubbed first). Round 6 (U465f, verdicts/U465-59601417.md P1 <code>:71</code> and P1 <code>:61</code>) closed two channels into the scrub itself: its here-string failed open when bash could not write the temporary file a here-string is (TMPDIR denied: the redirection failed and <code>set -e</code> skipped the loop with no refusal), and the <code>#!/usr/bin/env bash</code> shebang let bash import a caller's exported <code>compgen</code>, <code>set</code> and <code>unset</code> functions before line 1 ran. The interpreter is <code>/bin/bash -p</code> (pr-audit.sh's form): privileged mode imports no function and reads no BASH_ENV, SHELLOPTS, BASHOPTS, CDPATH or GLOBIGNORE, and the decision is the shebang's, not a re-exec's, because a re-exec would run in the shell that had already imported the functions (the comment above the guard carries the measurement). The entry 0. refuses a run through another shell by name (no <code>p</code> in <code>$-</code>), then removes every <code>GIT_*</code>, <code>PERL*</code> and <code>PYTHON*</code> variable before any external command runs, by the prefix expansions <code>${!GIT_@}</code>, <code>${!PERL@}</code> and <code>${!PYTHON@}</code> (parameter expansions: no listing command, no here-string, no file; a second expansion refuses a leftover) and sets only <code>GIT_NO_REPLACE_OBJECTS=1</code> and <code>GIT_TERMINAL_PROMPT=0</code>, so the git reads below, regime-env's own included, see the working directory alone; 1. checks its own pin, then sources the pinned <code>git-isolated.sh</code> and <code>regime-env</code> beside it (a rewritten helper stops the entry); 2. refuses a caller's own <code>--store</code> or <code>--source</code>: the two paths are this entry's, never the caller's (an abbreviation or a repeat that reaches the body is refused there by name); 3. reads the checkout the working directory is in through <code>git_isolated</code> and refuses a linked worktree (the main checkout holds the orchestrator's record, U71), as pr-merge.sh does; 4. runs <code>regime_env</code> (the slug, <code>REGIME_STORE_ROOT</code> held component by component from the physical HOME, the hcom store's <code>origin</code> binding: a store bound to another checkout of the same slug refuses; <code>--unbound-ok</code> as in pr-merge.sh, since this host's pre-U33 hcom store carries no <code>origin</code>) and <code>store_resolve regime-cutover</code>, the shell levers' one store rule in the exact form pr-merge.sh, pr-close.sh and records-sync.sh carry: the derived <code>${REGIME_STORE_ROOT}/regime-cutover</code> when it exists (a link or a non-directory there refused by name), else the checkout's <code>.orchestration/orchestrate/regime-cutover</code>, its three components each a directory of this user and no link; the form chosen is printed once on stderr (<code>store: derived &lt;dir&gt;</code>, or <code>store: checkout &lt;dir&gt; (pre-move form, removed by U221)</code>); 5. names the rendering <code>router-source.json</code> beside the manifest the pin came from (<code>~/.agents/</code> for the installed copy, the checkout's <code>home/dot_agents/</code> otherwise; U465c), its directory resolved physically; 6. hashes <code>router-settings-apply.py</code> beside it against its <code>claude.levers.sha256.router-settings-apply.py</code> pin (the body checks the same pin itself when it starts) and <code>exec</code>s <code>python3 -I &lt;body&gt; --store &lt;store&gt; --source &lt;rendering&gt; "$@"</code>, so the body's refusals, output and exit status are this command's. The body holds both paths by ledger-row.py's rule (every component <code>lstat</code>ed and no link, the store a directory of this user, the rendering a regular file of this user) and derives nothing: no checkout walk, no slug, no root. Run by the coordinator outside every sandbox, as the operator's user, with the checkout root as the working directory, after <code>hcom-seat router -- --no-open</code> has printed its ready line; the body's header documents the settings it writes (<code>eval</code>, <code>policy</code>, <code>source:github</code>) and its <code>--dry-run</code>.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_router-settings-apply</code></li>
 <li>Category: shell executable</li>
 <li>Renderer: <code>shell-fallback</code></li>
 </ul>
+<h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>body_check</code></li>
+<li><code>lever_self_check</code></li>
+<li><code>refuse</code></li>
+<li><code>store_resolve</code></li>
+</ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env -S python3 -I</span>
-<span class="s2">"""Make the dsh-superagent Router's settings store equal to the kit's GitHub Source row, accept mode and observe</span>
-<span class="s2">admission cell (regime-cutover U353, M-26 stage B; U416).</span>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/bin/bash -p</span>
+<span class="c1"># @file router-settings-apply</span>
+<span class="c1"># @brief The settings writer's entry: resolve the program store by the shell levers' one rule, name the Source rendering beside the manifest, and run the pinned Python body with both as given paths.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   Regime-cutover U465d (round 4 of U465, the mechanism-change row of 2026-11-11T11:54:59Z, form remove): the Python</span>
+<span class="c1">#   lever resolved the program store itself (the checkout from the working directory, the derived store by its leaf),</span>
+<span class="c1">#   so in a linked worktree it read the worktree's decisions.tsv where the shell levers read the main checkout's, and a</span>
+<span class="c1">#   second checkout with the same slug read another checkout's derived store where regime-env refuses the mismatched</span>
+<span class="c1">#   origin (verdicts/U465-e6a9a84f.md P1 `:400` and P1 `:457`). From this round the lever is two pinned files, as</span>
+<span class="c1">#   `acp-broker` and `acp-relay.py` are: this bash entry owns the environment, and `router-settings-apply.py` beside it</span>
+<span class="c1">#   owns the settings logic and takes its inputs as given paths. Round 5 (U465e, verdicts/U465-9c0244e0.md P1 `:126`</span>
+<span class="c1">#   and P1 `:203`) closed two channels into that split: the body's argparse expanded `--sto` and let a caller's value</span>
+<span class="c1">#   after the entry's two win (the body's grammar is exact names, each once), and the entry resolved the checkout under</span>
+<span class="c1">#   the caller's `GIT_DIR` and `GIT_WORK_TREE` (the environment is scrubbed first). Round 6 (U465f,</span>
+<span class="c1">#   verdicts/U465-59601417.md P1 `:71` and P1 `:61`) closed two channels into the scrub itself: its here-string failed</span>
+<span class="c1">#   open when bash could not write the temporary file a here-string is (TMPDIR denied: the redirection failed and</span>
+<span class="c1">#   `set -e` skipped the loop with no refusal), and the `#!/usr/bin/env bash` shebang let bash import a caller's exported</span>
+<span class="c1">#   `compgen`, `set` and `unset` functions before line 1 ran. The interpreter is `/bin/bash -p` (pr-audit.sh's form):</span>
+<span class="c1">#   privileged mode imports no function and reads no BASH_ENV, SHELLOPTS, BASHOPTS, CDPATH or GLOBIGNORE, and the</span>
+<span class="c1">#   decision is the shebang's, not a re-exec's, because a re-exec would run in the shell that had already imported the</span>
+<span class="c1">#   functions (the comment above the guard carries the measurement). The entry</span>
+<span class="c1">#   0. refuses a run through another shell by name (no `p` in `$-`), then removes every `GIT_*`, `PERL*` and `PYTHON*`</span>
+<span class="c1">#      variable before any external command runs, by the prefix expansions `${!GIT_@}`, `${!PERL@}` and `${!PYTHON@}`</span>
+<span class="c1">#      (parameter expansions: no listing command, no here-string, no file; a second expansion refuses a leftover) and</span>
+<span class="c1">#      sets only `GIT_NO_REPLACE_OBJECTS=1` and `GIT_TERMINAL_PROMPT=0`, so the git reads below, regime-env's own</span>
+<span class="c1">#      included, see the working directory alone;</span>
+<span class="c1">#   1. checks its own pin, then sources the pinned `git-isolated.sh` and `regime-env` beside it (a rewritten helper</span>
+<span class="c1">#      stops the entry);</span>
+<span class="c1">#   2. refuses a caller's own `--store` or `--source`: the two paths are this entry's, never the caller's (an</span>
+<span class="c1">#      abbreviation or a repeat that reaches the body is refused there by name);</span>
+<span class="c1">#   3. reads the checkout the working directory is in through `git_isolated` and refuses a linked worktree (the</span>
+<span class="c1">#      main checkout holds the orchestrator's record, U71), as pr-merge.sh does;</span>
+<span class="c1">#   4. runs `regime_env` (the slug, `REGIME_STORE_ROOT` held component by component from the physical HOME, the hcom</span>
+<span class="c1">#      store's `origin` binding: a store bound to another checkout of the same slug refuses; `--unbound-ok` as in</span>
+<span class="c1">#      pr-merge.sh, since this host's pre-U33 hcom store carries no `origin`) and `store_resolve regime-cutover`, the</span>
+<span class="c1">#      shell levers' one store rule in the exact form pr-merge.sh, pr-close.sh and records-sync.sh carry: the derived</span>
+<span class="c1">#      `${REGIME_STORE_ROOT}/regime-cutover` when it exists (a link or a non-directory there refused by name), else</span>
+<span class="c1">#      the checkout's `.orchestration/orchestrate/regime-cutover`, its three components each a directory of this user</span>
+<span class="c1">#      and no link; the form chosen is printed once on stderr (`store: derived &lt;dir&gt;`, or `store: checkout &lt;dir&gt;</span>
+<span class="c1">#      (pre-move form, removed by U221)`);</span>
+<span class="c1">#   5. names the rendering `router-source.json` beside the manifest the pin came from (`~/.agents/` for the installed</span>
+<span class="c1">#      copy, the checkout's `home/dot_agents/` otherwise; U465c), its directory resolved physically;</span>
+<span class="c1">#   6. hashes `router-settings-apply.py` beside it against its `claude.levers.sha256.router-settings-apply.py` pin</span>
+<span class="c1">#      (the body checks the same pin itself when it starts) and `exec`s `python3 -I &lt;body&gt; --store &lt;store&gt; --source</span>
+<span class="c1">#      &lt;rendering&gt; "$@"`, so the body's refusals, output and exit status are this command's.</span>
+<span class="c1">#   The body holds both paths by ledger-row.py's rule (every component `lstat`ed and no link, the store a directory of</span>
+<span class="c1">#   this user, the rendering a regular file of this user) and derives nothing: no checkout walk, no slug, no root.</span>
+<span class="c1">#   Run by the coordinator outside every sandbox, as the operator's user, with the checkout root as the working</span>
+<span class="c1">#   directory, after `hcom-seat router -- --no-open` has printed its ready line; the body's header documents the</span>
+<span class="c1">#   settings it writes (`eval`, `policy`, `source:github`) and its `--dry-run`.</span>
+<span class="c1"># @option --profile &lt;path&gt; The rendered router cordis.patch.yml (the body's option; default $DSH_HOME/profiles/router/cordis.patch.yml).</span>
+<span class="c1"># @option --wait &lt;seconds&gt; Seconds to wait for the Router after a save that restarts it (the body's option; default 60).</span>
+<span class="c1"># @option --dry-run Hold the paths, read the rendering, the profile and the wrapper, print the inputs and the values a run would write, and call the Management API not at all (the body's option).</span>
+<span class="c1"># @stdout The body's: one line per block, or the dry run's lines (`store &lt;path&gt;`, `source &lt;path&gt;`, `eval.mode &lt;mode&gt;`, ...).</span>
+<span class="c1"># @stderr `router-settings-apply: store: derived &lt;dir&gt;` or `router-settings-apply: store: checkout &lt;dir&gt; (pre-move form, removed by U221)`, then the body's refusals; this entry's own refusal as `router-settings-apply: refused: &lt;reason&gt;`.</span>
+<span class="c1"># @exitcode 0 The body held the paths and the three blocks hold the kit's values (or the dry run printed them).</span>
+<span class="c1"># @exitcode 2 Refused here (a run through another shell by name, without `-p`; a `GIT_*`, `PERL*` or `PYTHON*` name cannot be removed or is still set after the scrub; a caller's `--store` or `--source`, outside a checkout, a linked worktree, regime-env's or store_resolve's refusal, a helper or the body unreadable, a link or rewritten, no python3), or the body's refusal (an abbreviated or repeated option among them).</span>
+<span class="c1"># @example</span>
+<span class="c1">#   ~/.local/bin/common/router-settings-apply --dry-run</span>
+<span class="c1">#   ~/.local/bin/common/router-settings-apply</span>
+<span class="c1"># The interpreter is /bin/bash in privileged mode (`-p`, pr-audit.sh's form since U71b audit round 16; U465f, verdict</span>
+<span class="c1"># U465-59601417 P1 `:61`): bash then imports no function from the environment (a caller's exported</span>
+<span class="c1"># `BASH_FUNC_compgen%%`, `BASH_FUNC_set%%` or `BASH_FUNC_unset%%` would otherwise replace a builtin before the first</span>
+<span class="c1"># line runs) and reads no BASH_ENV, SHELLOPTS, BASHOPTS, CDPATH or GLOBIGNORE. Measured on macOS's /bin/bash 3.2.57</span>
+<span class="c1"># (and pr-audit.sh's measurement on Ubuntu's 5.2.21): under that poison without `-p`, `type -t` names `compgen`, `set`,</span>
+<span class="c1"># `unset`, `exec` and `builtin` each a function; with `-p` every name stays a builtin and `$-` carries `p`. The decision</span>
+<span class="c1"># has to be made by the shebang: a check or re-exec written in the script runs in a shell that has already imported</span>
+<span class="c1"># the functions, and the builtins it would use (exec, unset) can be among them. A run without `-p`</span>
+<span class="c1"># (`bash router-settings-apply` by hand) is refused; its caller already chose the shell. The `BASH_FUNC_*` strings</span>
+<span class="c1"># themselves stay in the environment and pass to the children, which are `python3 -I` (the body) and `git rev-parse`</span>
+<span class="c1"># (through git_isolated), neither a shell; a child that is a shell is out of this entry's scope.</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$-</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*p*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"router-settings-apply: refused: run it by its path (its interpreter is /bin/bash -p), not through another shell"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="k">fi</span>
+<span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
 
-<span class="s2">`router-settings-apply [--manifest &lt;agent-config.yaml&gt;] [--profile &lt;cordis.patch.yml&gt;] [--wait &lt;seconds&gt;]` is run by the</span>
-<span class="s2">coordinator outside every sandbox, as the operator's user, after `hcom-seat router -- --no-open` has printed its ready</span>
-<span class="s2">line. The Router learns its Sources from the settings store under `stateDir`, never from the plugin config (upstream</span>
-<span class="s2">`src/deployment.ts:33-44` refuses `repository` there, naming the Source as where it moved), so the values the kit renders</span>
-<span class="s2">as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the Router through this lever alone:</span>
-
-<span class="s2">- The manifest's `assets.dsh-superagent.sources.github` row gives `repository` (`owner/name`), `accept_mode` and</span>
-<span class="s2">  `observe_admission` (`inferred` or `ignore`); the rendered router profile's `webserver` row gives the port (its host</span>
-<span class="s2">  must be `127.0.0.1`, the only host this lever ever connects to). The Source's `cli` is the physical path of `router-gh` beside this file, the `gh` wrapper whose</span>
-<span class="s2">  `GH_CONFIG_DIR` is `&lt;DSH_HOME&gt;/router-credentials/gh` (upstream docs/006-deployment.md "</span>Agent<span class="w"> </span>GitHub<span class="w"> </span>account<span class="s2">").</span>
-<span class="s2">- `GET settings` at `http://127.0.0.1:&lt;port&gt;/orchestrator/api/settings` with the `x-orchestrator-request: 1` header</span>
-<span class="s2">  (upstream `src/app/http.ts:75-78`: the host `127.0.0.1:&lt;port&gt;` and that header, else 403) gives each block's current</span>
-<span class="s2">  `value` and `revision`. For a block whose value differs from the kit's, `PUT settings/&lt;block&gt;` carries</span>
-<span class="s2">  `{"</span>value<span class="s2">": &lt;the whole block&gt;, "</span>revision<span class="s2">": &lt;the revision read&gt;}` (upstream `src/app/http.ts:196-202`, `src/app/settings.ts:148-151`:</span>
-<span class="s2">  a stale revision is 409). The three blocks, written in the order `eval`, `policy`, `source:github`:</span>
-<span class="s2">  - `source:github`: `{"</span>enabled<span class="s2">": true, "</span>config<span class="s2">": {&lt;the current config&gt;, "</span>repository<span class="s2">": &lt;repository&gt;, "</span>cli<span class="s2">": &lt;router-gh&gt;,</span>
-<span class="s2">    "</span>observePulls<span class="s2">": true}}` (`src/sources/github.ts:25-28`, the Source's config keys). `observePulls` is the observe</span>
-<span class="s2">    path: the notifications poll (`src/sources/github.ts:304`, `notifications?all=true`) needs a classic token with the</span>
-<span class="s2">    `notifications` scope, which the M-25 handout's fine-grained token does not carry, while the repository stream</span>
-<span class="s2">    (`src/sources/github.ts:174`, `issues?state=all`, read when `observeIssues || observePulls`) receives every new pull</span>
-<span class="s2">    request with the token's `Pull requests` permission and runs whether or not the notifications poll fails (`:282-286`).</span>
-<span class="s2">  - `eval`: the current eval block with `mode` set to the accept mode (`src/policy.ts:83-87`). `auto` is refused here:</span>
-<span class="s2">    the M-18 ladder's second rung is the operator's row, and this unit applies `off` or `observe` alone.</span>
-<span class="s2">  - `policy`: the current block with the github Source's admission cell `sources.github.admission.pulls.unlistedUnaddressed`</span>
-<span class="s2">    set to the manifest's `observe_admission` (`src/policy.ts:76-84`, `src/admission.ts:13`), its `rules`, the github</span>
-<span class="s2">    `allowed` list (empty when absent) and every other row, cell and Source carried as read. Without this cell the</span>
-<span class="s2">    observe rung records nothing: the kit's allowed list is empty and upstream's default for the cell is `ignore`, so</span>
-<span class="s2">    every unlisted human's pull request falls to `not_a_member` before any assessment (`src/policy.ts:192-210`; measured</span>
-<span class="s2">    on the i2 probes, decisions 2026-11-10T04:08:19Z), while `inferred` makes it a candidate that observe mode can only</span>
-<span class="s2">    record as an ignore Decision with `audit.would_accept` (`src/policy.ts:55-57`), never accept. The allowed list is</span>
-<span class="s2">    the auto rung's lever (a listed login's mention is `explicit`, accepted even in observe mode) and stays untouched.</span>
-<span class="s2">- A block already equal to the kit's is not written: a second run PUTs nothing (`unchanged`). After a save the Router</span>
-<span class="s2">  answers `restarting: true` while setup is pending or a setup field changed (`src/app/settings.ts:176`), and the API is</span>
-<span class="s2">  unavailable for a moment; before the next PUT this lever polls `GET settings` until it answers again, for at most</span>
-<span class="s2">  `--wait` seconds (default 60).</span>
-<span class="s2">- `eval` is saved before `source:github` (regime-cutover U353b, verdict U353-8791100f P2 `:401`): a store whose mode is</span>
-<span class="s2">  `auto` would otherwise poll under `auto` from the Source's restart until the mode is written, so the safe mode is in</span>
-<span class="s2">  place before the Source is enabled or its setup fields change. `policy` goes between them: its save changes</span>
-<span class="s2">  `policyVersion` and restarts nothing (measured 2026-11-10T03:03Z, `restarting: false`), so no wait precedes the Source.</span>
-<span class="s2">- Saving `source:github` runs the Router's account probe first (`src/app/settings.ts:167`, `src/app/setup.ts:61-66`,</span>
-<span class="s2">  `src/deployment.ts:87-105`: `&lt;cli&gt; api user`, then `repos/&lt;name&gt;` for push); without the agent account's login in the</span>
-<span class="s2">  credential root the Router answers 400 with `setup.code` `agentCliSignedOut` and saves nothing. This lever names that</span>
-<span class="s2">  refusal, with `eval` already saved, and exits 2: the token is the operator's step (docs/engagement-handout.md), after</span>
-<span class="s2">  which the coordinator runs this lever again.</span>
-
-<span class="s2">Output: one line per block on stdout, `&lt;block&gt; saved (revision &lt;n&gt;[, restarting])` or `&lt;block&gt; unchanged (revision &lt;n&gt;)`.</span>
-<span class="s2">Exit 0 when the three blocks hold the kit's values. Every refusal is one line on stderr, `router-settings-apply: &lt;reason&gt;`,</span>
-<span class="s2">and exit 2: a manifest or profile that cannot be read or lacks its row, `auto`, an `observe_admission` outside its two</span>
-<span class="s2">words, a wrapper that is no executable file, a port</span>
-<span class="s2">that answers nothing (`unreachable`, naming `127.0.0.1:&lt;port&gt;`), a 403 (naming the header), a 409 (naming the revision), a</span>
-<span class="s2">400 with `setup` (naming the code and its text), a 3xx (naming its Location; never followed), any other status, or a</span>
-<span class="s2">settings view without the `github` Source, the `eval` block or the `policy` block. Nothing is written to any file; the only network peer is</span>
-<span class="s2">`127.0.0.1:&lt;port&gt;`: the opener is built by hand (U353b, verdict P2 `:268`) with an empty proxy table, so a proxy named in</span>
-<span class="s2">the environment or the system settings is not consulted, and without a redirect handler, so a 3xx is a refusal and no</span>
-<span class="s2">request leaves the loopback port.</span>
-
-<span class="s2">Before anything else the file hashes itself against its `claude.levers.sha256.router-settings-apply` pin in the manifest</span>
-<span class="s2">beside it (the deployed `~/.agents/agent-config.yaml` for the copy under the physical `~/.local/bin/common`, else the</span>
-<span class="s2">checkout's `home/dot_agents/agent-config.yaml` two levels up) and refuses to run (exit 2, nothing on stdout) when the</span>
-<span class="s2">digest differs, in brief-check.py's form. Standing order 21: every producer's status is read; a read that fails is a</span>
-<span class="s2">refusal, never a pass.</span>
-<span class="s2">"""</span>
-
-from<span class="w"> </span>__future__<span class="w"> </span>import<span class="w"> </span>annotations
-
-import<span class="w"> </span>argparse
-import<span class="w"> </span>hashlib
-import<span class="w"> </span>json
-import<span class="w"> </span>os
-import<span class="w"> </span>re
-import<span class="w"> </span>sys
-import<span class="w"> </span><span class="nb">time</span>
-import<span class="w"> </span>urllib.error
-import<span class="w"> </span>urllib.request
-
-<span class="nv">LEVER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"router-settings-apply"</span>
-<span class="nv">WRAPPER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"router-gh"</span>
-<span class="nv">HOST</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"127.0.0.1"</span>
-<span class="nv">HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"x-orchestrator-request"</span>
-<span class="nv">API</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/orchestrator/api/"</span>
-<span class="nv">SOURCE_BLOCK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"source:github"</span>
-<span class="nv">EVAL_BLOCK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"eval"</span>
-<span class="nv">ACCEPT_MODES_APPLIED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"off"</span>,<span class="w"> </span><span class="s2">"observe"</span><span class="o">)</span>
-<span class="nv">POLICY_BLOCK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"policy"</span>
-<span class="c1"># The one policy cell this lever writes (U416): the pulls row's unlistedUnaddressed cell of the github Source's admission</span>
-<span class="c1"># table (src/admission.ts), from the manifest's observe_admission, whose two words are the cell's values short of explicit.</span>
-<span class="nv">ADMISSION_SOURCE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"github"</span>
-<span class="nv">ADMISSION_ROW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"pulls"</span>
-<span class="nv">ADMISSION_CELL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"unlistedUnaddressed"</span>
-<span class="nv">OBSERVE_ADMISSIONS_APPLIED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"inferred"</span>,<span class="w"> </span><span class="s2">"ignore"</span><span class="o">)</span>
-<span class="c1"># The levers block of the manifest, read as text by indentation alone, never parsed as YAML (brief-check.py's reader):</span>
-<span class="c1"># a mapping key is a bare `&lt;key&gt;:` line; a pin is `&lt;name&gt;: &lt;64 hex&gt;` at the one indentation the first pin fixes.</span>
-<span class="nv">MAPPING_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(\S+):</span>$<span class="s2">"</span><span class="o">)</span>
-<span class="nv">SCALAR</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(\S+): (.+)</span>$<span class="s2">"</span><span class="o">)</span>
-<span class="nv">LEVER_PIN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(\S+): ([0-9a-f]{64})</span>$<span class="s2">"</span><span class="o">)</span>
-<span class="nv">LEVERS_KEYS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"claude"</span>,<span class="w"> </span><span class="s2">"levers"</span>,<span class="w"> </span><span class="s2">"sha256"</span><span class="o">)</span>
-<span class="nv">SOURCE_KEYS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"assets"</span>,<span class="w"> </span><span class="s2">"dsh-superagent"</span>,<span class="w"> </span><span class="s2">"sources"</span>,<span class="w"> </span><span class="s2">"github"</span><span class="o">)</span>
-<span class="nv">REPOSITORY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+</span>$<span class="s2">"</span><span class="o">)</span>
-<span class="c1"># The webserver row as scripts/generate-agent-configs.py renders it (DSH_ROUTER_WEBSERVER), host first, then port.</span>
-<span class="nv">WEBSERVER_ROW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^- id: webserver\n  config:\n    host: (\S+)\n    port: (\d+)\n"</span>,<span class="w"> </span>re.MULTILINE<span class="o">)</span>
-
-
-class<span class="w"> </span>Refusal<span class="o">(</span>Exception<span class="o">)</span>:
-<span class="w">    </span><span class="s2">"""One refusal line; main prints it and exits 2."""</span>
-
-
-def<span class="w"> </span>refuse_to_run<span class="o">(</span>reason:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>None:
-<span class="w">    </span><span class="s2">"""The self-check's refusal, in the shell levers' words on stderr: exit 2 and nothing was read or written."""</span>
-<span class="w">    </span>print<span class="o">(</span>f<span class="s2">"{LEVER}: refused: {reason}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
-<span class="w">    </span>sys.exit<span class="o">(</span><span class="m">2</span><span class="o">)</span>
-
-
-def<span class="w"> </span>lever_directory<span class="o">()</span><span class="w"> </span>-&gt;<span class="w"> </span>str:
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>os.path.realpath<span class="o">(</span>os.path.dirname<span class="o">(</span>os.path.abspath<span class="o">(</span>__file__<span class="o">)))</span>
-
-
-def<span class="w"> </span>manifest_beside<span class="o">(</span>directory:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str:
-<span class="w">    </span><span class="s2">"""The manifest the pin and the Source row come from: the deployed one for the installed copy, else the checkout's."""</span>
-<span class="w">    </span><span class="nv">home</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">"HOME"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>home<span class="w"> </span>and<span class="w"> </span>os.path.isdir<span class="o">(</span>home<span class="o">)</span><span class="w"> </span>and<span class="w"> </span><span class="nv">directory</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>os.path.realpath<span class="o">(</span>os.path.join<span class="o">(</span>home,<span class="w"> </span><span class="s2">".local/bin/common"</span><span class="o">))</span>:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>os.path.join<span class="o">(</span>home,<span class="w"> </span><span class="s2">".agents/agent-config.yaml"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>os.path.join<span class="o">(</span>directory,<span class="w"> </span><span class="s2">"../../home/dot_agents/agent-config.yaml"</span><span class="o">)</span>
-
-
-def<span class="w"> </span>lever_self_check<span class="o">()</span><span class="w"> </span>-&gt;<span class="w"> </span>None:
-<span class="w">    </span><span class="s2">"""Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31; U317b)."""</span>
-<span class="w">    </span><span class="nv">directory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>lever_directory<span class="o">()</span>
-<span class="w">    </span><span class="nv">self_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>directory,<span class="w"> </span>os.path.basename<span class="o">(</span>__file__<span class="o">))</span>
-<span class="w">    </span><span class="nv">manifest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>manifest_beside<span class="o">(</span>directory<span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>os.access<span class="o">(</span>manifest,<span class="w"> </span>os.R_OK<span class="o">)</span>:
-<span class="w">        </span>refuse_to_run<span class="o">(</span>f<span class="s2">"manifest unreadable: {manifest}"</span><span class="o">)</span>
-<span class="w">    </span>try:
-<span class="w">        </span>with<span class="w"> </span>open<span class="o">(</span>manifest,<span class="w"> </span><span class="s2">"rb"</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>handle:
-<span class="w">            </span><span class="nv">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>handle.read<span class="o">()</span>.decode<span class="o">(</span><span class="s2">"utf-8"</span>,<span class="w"> </span><span class="s2">"replace"</span><span class="o">)</span>.splitlines<span class="o">()</span>
-<span class="w">    </span>except<span class="w"> </span>OSError:
-<span class="w">        </span>refuse_to_run<span class="o">(</span>f<span class="s2">"cannot read {manifest}"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">pins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>digest<span class="w"> </span><span class="k">for</span><span class="w"> </span>name,<span class="w"> </span>digest<span class="w"> </span><span class="k">in</span><span class="w"> </span>manifest_levers<span class="o">(</span>lines,<span class="w"> </span>manifest<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>LEVER<span class="o">]</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>pins<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">1</span>:
-<span class="w">        </span>refuse_to_run<span class="o">(</span>f<span class="s2">"no single sha256 pin for {LEVER} in {manifest}"</span><span class="o">)</span>
-<span class="w">    </span>try:
-<span class="w">        </span>with<span class="w"> </span>open<span class="o">(</span>self_path,<span class="w"> </span><span class="s2">"rb"</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>handle:
-<span class="w">            </span><span class="nv">digest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hashlib.sha256<span class="o">(</span>handle.read<span class="o">())</span>.hexdigest<span class="o">()</span>
-<span class="w">    </span>except<span class="w"> </span>OSError:
-<span class="w">        </span>refuse_to_run<span class="o">(</span>f<span class="s2">"cannot hash {self_path}"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>digest<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>pins<span class="o">[</span><span class="m">0</span><span class="o">]</span>:
-<span class="w">        </span>refuse_to_run<span class="o">(</span>f<span class="s2">"sha256 {digest} of {self_path} differs from the pin in {manifest}"</span><span class="o">)</span>
-
-
-def<span class="w"> </span>manifest_levers<span class="o">(</span>lines:<span class="w"> </span>list<span class="o">[</span>str<span class="o">]</span>,<span class="w"> </span>manifest:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>tuple<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]</span>,<span class="w"> </span>...<span class="o">]</span>:
-<span class="w">    </span><span class="s2">"""The `(name, sha256)` pins under the manifest's `claude.levers.sha256` mapping, in file order (brief-check.py,</span>
-<span class="s2">    U136): the mapping keys are walked by indentation, so `levers:` counts only under the top-level `claude:` and</span>
-<span class="s2">    `sha256:` only under that `levers:`; inside the block, blank and comment lines are skipped, the entries share the</span>
-<span class="s2">    indentation of the first pin, and the list ends at the first line indented less. An entry that is not</span>
-<span class="s2">    `&lt;name&gt;: &lt;64 hex&gt;` is a refusal naming the line; no entry at all is the missing-block refusal."""</span>
-<span class="w">    </span>pins:<span class="w"> </span>list<span class="o">[</span>tuple<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
-<span class="w">    </span>keys:<span class="w"> </span>list<span class="o">[</span>tuple<span class="o">[</span>int,<span class="w"> </span>str<span class="o">]]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span><span class="w">  </span><span class="c1"># the open mapping keys as (indentation, key), outermost first</span>
-<span class="w">    </span><span class="nv">block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="w">  </span><span class="c1"># the indentation of the `sha256:` key once the path is open</span>
-<span class="w">    </span><span class="nv">entries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="w">  </span><span class="c1"># the indentation of the pin lines, fixed by the first</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>lines,<span class="w"> </span><span class="m">1</span><span class="o">)</span>:
-<span class="w">        </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.lstrip<span class="o">(</span><span class="s2">" "</span><span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>text<span class="w"> </span>or<span class="w"> </span>text.startswith<span class="o">(</span><span class="s2">"#"</span><span class="o">)</span>:
-<span class="w">            </span><span class="k">continue</span>
-<span class="w">        </span><span class="nv">indent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>len<span class="o">(</span>line<span class="o">)</span><span class="w"> </span>-<span class="w"> </span>len<span class="o">(</span>text<span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>block<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>indent<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>block<span class="w"> </span>or<span class="w"> </span><span class="o">(</span>entries<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>&lt;<span class="w"> </span>entries<span class="o">)</span>:
-<span class="w">                </span><span class="k">break</span>
-<span class="w">            </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>LEVER_PIN.match<span class="o">(</span>text<span class="o">)</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span>or<span class="w"> </span><span class="o">(</span>entries<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>entries<span class="o">)</span>:
-<span class="w">                </span>refuse_to_run<span class="o">(</span>f<span class="s2">"line {number} of {manifest} is not a `&lt;name&gt;: &lt;sha256&gt;` pin under claude.levers.sha256"</span><span class="o">)</span>
-<span class="w">            </span><span class="nv">entries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>indent
-<span class="w">            </span>pins.append<span class="o">((</span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span>,<span class="w"> </span>match.group<span class="o">(</span><span class="m">2</span><span class="o">)))</span>
-<span class="w">            </span><span class="k">continue</span>
-<span class="w">        </span><span class="k">while</span><span class="w"> </span>keys<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>keys<span class="o">[</span>-1<span class="o">][</span><span class="m">0</span><span class="o">]</span>:
-<span class="w">            </span>keys.pop<span class="o">()</span>
-<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>MAPPING_KEY.match<span class="o">(</span>text<span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>and<span class="w"> </span><span class="o">(</span>keys<span class="w"> </span>or<span class="w"> </span><span class="nv">indent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">)</span>:
-<span class="w">            </span>keys.append<span class="o">((</span>indent,<span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)))</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>tuple<span class="o">(</span>key<span class="w"> </span><span class="k">for</span><span class="w"> </span>_,<span class="w"> </span>key<span class="w"> </span><span class="k">in</span><span class="w"> </span>keys<span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>LEVERS_KEYS:
-<span class="w">                </span><span class="nv">block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>indent
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>pins:
-<span class="w">        </span>refuse_to_run<span class="o">(</span>f<span class="s2">"no claude.levers.sha256 block in {manifest}"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>tuple<span class="o">(</span>pins<span class="o">)</span>
-
-
-def<span class="w"> </span>manifest_scalars<span class="o">(</span>lines:<span class="w"> </span>list<span class="o">[</span>str<span class="o">]</span>,<span class="w"> </span>mapping:<span class="w"> </span>tuple<span class="o">[</span>str,<span class="w"> </span>...<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>None:
-<span class="w">    </span><span class="s2">"""The `&lt;key&gt;: &lt;value&gt;` scalars directly under the mapping named by the key tuple `mapping` (top-level key first),</span>
-<span class="s2">    read by the indentation walk of manifest_levers; a value's surrounding quotes are removed. None when the manifest</span>
-<span class="s2">    has no such mapping."""</span>
-<span class="w">    </span>found:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
-<span class="w">    </span>keys:<span class="w"> </span>list<span class="o">[</span>tuple<span class="o">[</span>int,<span class="w"> </span>str<span class="o">]]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
-<span class="w">    </span><span class="nv">block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
-<span class="w">    </span><span class="nv">entries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>lines:
-<span class="w">        </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.lstrip<span class="o">(</span><span class="s2">" "</span><span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>text<span class="w"> </span>or<span class="w"> </span>text.startswith<span class="o">(</span><span class="s2">"#"</span><span class="o">)</span>:
-<span class="w">            </span><span class="k">continue</span>
-<span class="w">        </span><span class="nv">indent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>len<span class="o">(</span>line<span class="o">)</span><span class="w"> </span>-<span class="w"> </span>len<span class="o">(</span>text<span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>block<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>indent<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>block<span class="w"> </span>or<span class="w"> </span><span class="o">(</span>entries<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>&lt;<span class="w"> </span>entries<span class="o">)</span>:
-<span class="w">                </span><span class="k">break</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>entries<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">                </span><span class="nv">entries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>indent
-<span class="w">            </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>SCALAR.match<span class="o">(</span>text<span class="o">)</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nv">indent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>entries<span class="w"> </span>and<span class="w"> </span>match:
-<span class="w">                </span><span class="nv">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">2</span><span class="o">)</span>.strip<span class="o">()</span>
-<span class="w">                </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>value<span class="o">)</span><span class="w"> </span>&gt;<span class="o">=</span><span class="w"> </span><span class="m">2</span><span class="w"> </span>and<span class="w"> </span>value<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>value<span class="o">[</span>-1<span class="o">]</span><span class="w"> </span>and<span class="w"> </span>value<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"\"'"</span>:
-<span class="w">                    </span><span class="nv">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>value<span class="o">[</span><span class="m">1</span>:-1<span class="o">]</span>
-<span class="w">                </span>found<span class="o">[</span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>value
-<span class="w">            </span><span class="k">continue</span>
-<span class="w">        </span><span class="k">while</span><span class="w"> </span>keys<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>keys<span class="o">[</span>-1<span class="o">][</span><span class="m">0</span><span class="o">]</span>:
-<span class="w">            </span>keys.pop<span class="o">()</span>
-<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>MAPPING_KEY.match<span class="o">(</span>text<span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>and<span class="w"> </span><span class="o">(</span>keys<span class="w"> </span>or<span class="w"> </span><span class="nv">indent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">)</span>:
-<span class="w">            </span>keys.append<span class="o">((</span>indent,<span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)))</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>tuple<span class="o">(</span>key<span class="w"> </span><span class="k">for</span><span class="w"> </span>_,<span class="w"> </span>key<span class="w"> </span><span class="k">in</span><span class="w"> </span>keys<span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>mapping:
-<span class="w">                </span><span class="nv">block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>indent
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>found<span class="w"> </span><span class="k">if</span><span class="w"> </span>block<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>None
-
-
-def<span class="w"> </span>read_lines<span class="o">(</span>path:<span class="w"> </span>str,<span class="w"> </span>what:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>list<span class="o">[</span>str<span class="o">]</span>:
-<span class="w">    </span>try:
-<span class="w">        </span>with<span class="w"> </span>open<span class="o">(</span>path,<span class="w"> </span><span class="s2">"rb"</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>handle:
-<span class="w">            </span><span class="k">return</span><span class="w"> </span>handle.read<span class="o">()</span>.decode<span class="o">(</span><span class="s2">"utf-8"</span>,<span class="w"> </span><span class="s2">"replace"</span><span class="o">)</span>.splitlines<span class="o">()</span>
-<span class="w">    </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>error:
-<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"{what} {path} could not be read: {error}"</span><span class="o">)</span><span class="w"> </span>from<span class="w"> </span>None
-
-
-def<span class="w"> </span>source_row<span class="o">(</span>manifest:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>str,<span class="w"> </span>str,<span class="w"> </span>str<span class="o">]</span>:
-<span class="w">    </span><span class="s2">"""The manifest's repository, accept mode and observe admission, each held to its form; `auto` and a third word for</span>
-<span class="s2">    the cell are refused here."""</span>
-<span class="w">    </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>manifest_scalars<span class="o">(</span>read_lines<span class="o">(</span>manifest,<span class="w"> </span><span class="s2">"the manifest"</span><span class="o">)</span>,<span class="w"> </span>SOURCE_KEYS<span class="o">)</span>
-<span class="w">    </span><span class="nv">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"."</span>.join<span class="o">(</span>SOURCE_KEYS<span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>row<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"the manifest {manifest} names no {label} mapping"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>key<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="s2">"repository"</span>,<span class="w"> </span><span class="s2">"accept_mode"</span>,<span class="w"> </span><span class="s2">"observe_admission"</span><span class="o">)</span>:
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>row.get<span class="o">(</span>key<span class="o">)</span>:
-<span class="w">            </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"the manifest {manifest} names no {label}.{key}"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>REPOSITORY.fullmatch<span class="o">(</span>row<span class="o">[</span><span class="s2">"repository"</span><span class="o">])</span>:
-<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"{label}.repository {row['repository']!r} in {manifest} is not owner/name"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>row<span class="o">[</span><span class="s2">"accept_mode"</span><span class="o">]</span><span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>ACCEPT_MODES_APPLIED:
-<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>
-<span class="w">            </span>f<span class="s2">"{label}.accept_mode {row['accept_mode']!r} in {manifest} is not applied by this lever; it applies "</span>
-<span class="w">            </span>f<span class="s2">"{' or '.join(ACCEPT_MODES_APPLIED)} alone, and the M-18 ladder's second rung is the operator's row"</span>
-<span class="w">        </span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>row<span class="o">[</span><span class="s2">"observe_admission"</span><span class="o">]</span><span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>OBSERVE_ADMISSIONS_APPLIED:
-<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>
-<span class="w">            </span>f<span class="s2">"{label}.observe_admission {row['observe_admission']!r} in {manifest} is not "</span>
-<span class="w">            </span>f<span class="s2">"{' or '.join(OBSERVE_ADMISSIONS_APPLIED)}; the {ADMISSION_ROW} row's {ADMISSION_CELL} cell takes those two "</span>
-<span class="w">            </span><span class="s2">"words alone (explicit would accept an unlisted sender's pull request in observe mode)"</span>
-<span class="w">        </span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>row<span class="o">[</span><span class="s2">"repository"</span><span class="o">]</span>,<span class="w"> </span>row<span class="o">[</span><span class="s2">"accept_mode"</span><span class="o">]</span>,<span class="w"> </span>row<span class="o">[</span><span class="s2">"observe_admission"</span><span class="o">]</span>
-
-
-def<span class="w"> </span>webserver_port<span class="o">(</span>profile:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>int:
-<span class="w">    </span><span class="s2">"""The rendered router profile's webserver port; its host must be the loopback address this lever connects to."""</span>
-<span class="w">    </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"\n"</span>.join<span class="o">(</span>read_lines<span class="o">(</span>profile,<span class="w"> </span><span class="s2">"the router profile"</span><span class="o">))</span><span class="w"> </span>+<span class="w"> </span><span class="s2">"\n"</span>
-<span class="w">    </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>WEBSERVER_ROW.search<span class="o">(</span>text<span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"the router profile {profile} names no webserver host and port in the rendered form"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>HOST:
-<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"the router profile {profile} binds the webserver to {match.group(1)}, not {HOST}"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>int<span class="o">(</span>match.group<span class="o">(</span><span class="m">2</span><span class="o">))</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span><span class="m">1</span><span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>port<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span><span class="m">65535</span>:
-<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"the router profile {profile} names the webserver port {port}, outside 1 to 65535"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>port
-
-
-def<span class="w"> </span>wrapper_path<span class="o">(</span>directory:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str:
-<span class="w">    </span><span class="s2">"""The physical path of router-gh beside this file, an executable regular file."""</span>
-<span class="w">    </span><span class="nv">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>directory,<span class="w"> </span>WRAPPER<span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>os.path.islink<span class="o">(</span>path<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>os.path.isfile<span class="o">(</span>path<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>os.access<span class="o">(</span>path,<span class="w"> </span>os.X_OK<span class="o">)</span>:
-<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"the gh wrapper {path} is not an executable file beside this lever"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>path
-
-
-def<span class="w"> </span>loopback_opener<span class="o">()</span><span class="w"> </span>-&gt;<span class="w"> </span>urllib.request.OpenerDirector:
-<span class="w">    </span><span class="s2">"""An opener that speaks to the loopback port alone (regime-cutover U353b): urllib's default opener honours the</span>
-<span class="s2">    environment's and the system's proxy settings for a loopback host too and follows a redirect wherever it points,</span>
-<span class="s2">    so it is built by hand here: an empty proxy table, the http handler, and the error processor that turns every</span>
-<span class="s2">    status outside 2xx into an HTTPError (a 3xx included, no redirect handler being present); no https, file or ftp</span>
-<span class="s2">    handler, so nothing but `http://127.0.0.1:&lt;port&gt;` can be opened through it."""</span>
-<span class="w">    </span><span class="nv">opener</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>urllib.request.OpenerDirector<span class="o">()</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>handler<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span>
-<span class="w">        </span>urllib.request.ProxyHandler<span class="o">({})</span>,
-<span class="w">        </span>urllib.request.HTTPHandler<span class="o">()</span>,
-<span class="w">        </span>urllib.request.HTTPDefaultErrorHandler<span class="o">()</span>,
-<span class="w">        </span>urllib.request.HTTPErrorProcessor<span class="o">()</span>,
-<span class="w">    </span><span class="o">)</span>:
-<span class="w">        </span>opener.add_handler<span class="o">(</span>handler<span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>opener
-
-
-class<span class="w"> </span>Api:
-<span class="w">    </span><span class="s2">"""The Management API at one loopback port: GET and PUT with the header, each answer read whole as JSON."""</span>
-
-<span class="w">    </span>def<span class="w"> </span>__init__<span class="o">(</span>self,<span class="w"> </span>port:<span class="w"> </span>int,<span class="w"> </span>wait:<span class="w"> </span>float<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>None:
-<span class="w">        </span>self.port<span class="w"> </span><span class="o">=</span><span class="w"> </span>port
-<span class="w">        </span>self.wait<span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">wait</span>
-<span class="w">        </span>self.base<span class="w"> </span><span class="o">=</span><span class="w"> </span>f<span class="s2">"http://{HOST}:{port}{API}"</span>
-<span class="w">        </span>self.opener<span class="w"> </span><span class="o">=</span><span class="w"> </span>loopback_opener<span class="o">()</span>
-
-<span class="w">    </span>def<span class="w"> </span>where<span class="o">(</span>self<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"the Management API at {HOST}:{self.port}"</span>
-
-<span class="w">    </span>def<span class="w"> </span>request<span class="o">(</span>self,<span class="w"> </span>method:<span class="w"> </span>str,<span class="w"> </span>route:<span class="w"> </span>str,<span class="w"> </span>body:<span class="w"> </span>dict<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">None</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict:
-<span class="w">        </span><span class="nv">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="w"> </span><span class="k">if</span><span class="w"> </span>body<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>json.dumps<span class="o">(</span>body<span class="o">)</span>.encode<span class="o">()</span>
-<span class="w">        </span><span class="nv">headers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>HEADER:<span class="w"> </span><span class="s2">"1"</span><span class="o">}</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>data<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
-<span class="w">            </span>headers<span class="o">[</span><span class="s2">"content-type"</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"application/json"</span>
-<span class="w">        </span><span class="nv">request</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>urllib.request.Request<span class="o">(</span>self.base<span class="w"> </span>+<span class="w"> </span>route,<span class="w"> </span><span class="nv">data</span><span class="o">=</span>data,<span class="w"> </span><span class="nv">method</span><span class="o">=</span>method,<span class="w"> </span><span class="nv">headers</span><span class="o">=</span>headers<span class="o">)</span>
-<span class="w">        </span><span class="nv">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>f<span class="s2">"{method} {route}"</span>
-<span class="w">        </span>try:
-<span class="w">            </span>with<span class="w"> </span>self.opener.open<span class="o">(</span>request,<span class="w"> </span><span class="nv">timeout</span><span class="o">=</span><span class="m">30</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>response:<span class="w">  </span><span class="c1"># the loopback host alone, no proxy, no redirect</span>
-<span class="w">                </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>response.read<span class="o">()</span>.decode<span class="o">(</span><span class="s2">"utf-8"</span>,<span class="w"> </span><span class="s2">"replace"</span><span class="o">)</span>
-<span class="w">                </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>response.status
-<span class="w">        </span>except<span class="w"> </span>urllib.error.HTTPError<span class="w"> </span>as<span class="w"> </span>error:
-<span class="w">            </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>error.read<span class="o">()</span>.decode<span class="o">(</span><span class="s2">"utf-8"</span>,<span class="w"> </span><span class="s2">"replace"</span><span class="o">)</span>
-<span class="w">            </span>raise<span class="w"> </span>Refusal<span class="o">(</span>self.describe<span class="o">(</span>label,<span class="w"> </span>error.code,<span class="w"> </span>text,<span class="w"> </span>error.headers.get<span class="o">(</span><span class="s2">"location"</span><span class="o">)))</span><span class="w"> </span>from<span class="w"> </span>None
-<span class="w">        </span>except<span class="w"> </span><span class="o">(</span>urllib.error.URLError,<span class="w"> </span>OSError<span class="o">)</span><span class="w"> </span>as<span class="w"> </span>error:
-<span class="w">            </span><span class="nv">reason</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>getattr<span class="o">(</span>error,<span class="w"> </span><span class="s2">"reason"</span>,<span class="w"> </span>error<span class="o">)</span>
-<span class="w">            </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"{self.where()} is unreachable for {label}: {reason}"</span><span class="o">)</span><span class="w"> </span>from<span class="w"> </span>None
-<span class="w">        </span>try:
-<span class="w">            </span><span class="nv">answer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>json.loads<span class="o">(</span>text<span class="o">)</span>
-<span class="w">        </span>except<span class="w"> </span>json.JSONDecodeError<span class="w"> </span>as<span class="w"> </span>error:
-<span class="w">            </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"{self.where()} answered {status} to {label} with no JSON object: {error}"</span><span class="o">)</span><span class="w"> </span>from<span class="w"> </span>None
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>answer,<span class="w"> </span>dict<span class="o">)</span>:
-<span class="w">            </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"{self.where()} answered {status} to {label} with no JSON object"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>answer
-
-<span class="w">    </span>def<span class="w"> </span>describe<span class="o">(</span>self,<span class="w"> </span>label:<span class="w"> </span>str,<span class="w"> </span>code:<span class="w"> </span>int,<span class="w"> </span>text:<span class="w"> </span>str,<span class="w"> </span>location:<span class="w"> </span>str<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">None</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str:
-<span class="w">        </span><span class="s2">"""One refusal for a status outside 2xx: the 403 names the header, the 409 the revision, the 400 its setup code,</span>
-<span class="s2">        a 3xx its Location (never followed: the lever speaks to the loopback port alone)."""</span>
-<span class="w">        </span>try:
-<span class="w">            </span><span class="nv">answer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>json.loads<span class="o">(</span>text<span class="o">)</span>
-<span class="w">        </span>except<span class="w"> </span>json.JSONDecodeError:
-<span class="w">            </span><span class="nv">answer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
-<span class="w">        </span><span class="nv">error</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>answer.get<span class="o">(</span><span class="s2">"error"</span>,<span class="w"> </span>text.strip<span class="o">())</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>answer,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>text.strip<span class="o">()</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="m">300</span><span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>code<span class="w"> </span>&lt;<span class="w"> </span><span class="m">400</span>:
-<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
-<span class="w">                </span>f<span class="s2">"{self.where()} answered {code} to {label}: a redirect to {location or 'no Location'} is not followed; "</span>
-<span class="w">                </span>f<span class="s2">"this lever speaks to {HOST}:{self.port} alone"</span>
-<span class="w">            </span><span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">403</span>:
-<span class="w">            </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"{self.where()} answered 403 to {label}: the {HEADER} header or the Host was not accepted ({error})"</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">409</span>:
-<span class="w">            </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"{self.where()} answered 409 to {label}: the revision read was stale ({error})"</span>
-<span class="w">        </span><span class="nv">setup</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>answer.get<span class="o">(</span><span class="s2">"setup"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>answer,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>None
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">400</span><span class="w"> </span>and<span class="w"> </span>isinstance<span class="o">(</span>setup,<span class="w"> </span>dict<span class="o">)</span>:
-<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
-<span class="w">                </span>f<span class="s2">"{self.where()} answered 400 to {label}: setup {setup.get('code')}: {setup.get('detail', error)}; the "</span>
-<span class="w">                </span>f<span class="s2">"agent account's gh login under the credential root {WRAPPER} names is the operator's step "</span>
-<span class="w">                </span><span class="s2">"(docs/engagement-handout.md), after which this lever runs again"</span>
-<span class="w">            </span><span class="o">)</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"{self.where()} answered {code} to {label}: {error}"</span>
-
-<span class="w">    </span>def<span class="w"> </span>settings<span class="o">(</span>self<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>self.request<span class="o">(</span><span class="s2">"GET"</span>,<span class="w"> </span><span class="s2">"settings"</span><span class="o">)</span>
-
-<span class="w">    </span>def<span class="w"> </span>settings_after_restart<span class="o">(</span>self<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>None:
-<span class="w">        </span><span class="s2">"""Poll GET settings until the restarted Router answers, for at most `wait` seconds; a 403 refuses at once."""</span>
-<span class="w">        </span><span class="nv">deadline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>time.monotonic<span class="o">()</span><span class="w"> </span>+<span class="w"> </span>self.wait
-<span class="w">        </span><span class="k">while</span><span class="w"> </span>True:
-<span class="w">            </span>try:
-<span class="w">                </span>self.settings<span class="o">()</span>
-<span class="w">                </span><span class="k">return</span>
-<span class="w">            </span>except<span class="w"> </span>Refusal<span class="w"> </span>as<span class="w"> </span>refusal:
-<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="s2">"unreachable"</span><span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>str<span class="o">(</span>refusal<span class="o">)</span><span class="w"> </span>and<span class="w"> </span><span class="s2">" answered 5"</span><span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>str<span class="o">(</span>refusal<span class="o">)</span>:
-<span class="w">                    </span>raise
-<span class="w">                </span><span class="k">if</span><span class="w"> </span>time.monotonic<span class="o">()</span><span class="w"> </span>&gt;<span class="o">=</span><span class="w"> </span>deadline:
-<span class="w">                    </span>raise<span class="w"> </span>Refusal<span class="o">(</span>
-<span class="w">                        </span>f<span class="s2">"{self.where()} did not answer within {self.wait:g} s after its restart: {refusal}"</span>
-<span class="w">                    </span><span class="o">)</span><span class="w"> </span>from<span class="w"> </span>None
-<span class="w">                </span>time.sleep<span class="o">(</span><span class="m">1</span><span class="o">)</span>
-
-
-def<span class="w"> </span>block_views<span class="o">(</span>settings:<span class="w"> </span>dict,<span class="w"> </span>where:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>tuple<span class="o">[</span>dict,<span class="w"> </span>int<span class="o">]</span>,<span class="w"> </span>tuple<span class="o">[</span>dict,<span class="w"> </span>int<span class="o">]</span>,<span class="w"> </span>tuple<span class="o">[</span>dict,<span class="w"> </span>int<span class="o">]]</span>:
-<span class="w">    </span><span class="s2">"""The github Source's, the eval block's and the policy block's (value, revision) from a settings view, each</span>
-<span class="s2">    refused when absent."""</span>
-<span class="w">    </span><span class="nv">sources</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>settings.get<span class="o">(</span><span class="s2">"sources"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">github</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
-<span class="w">        </span>next<span class="o">((</span>s<span class="w"> </span><span class="k">for</span><span class="w"> </span>s<span class="w"> </span><span class="k">in</span><span class="w"> </span>sources<span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>s,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>s.get<span class="o">(</span><span class="s2">"id"</span><span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"github"</span><span class="o">)</span>,<span class="w"> </span>None<span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>sources,<span class="w"> </span>list<span class="o">)</span>
-<span class="w">        </span><span class="k">else</span><span class="w"> </span>None
-<span class="w">    </span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>github<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>github.get<span class="o">(</span><span class="s2">"value"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>github.get<span class="o">(</span><span class="s2">"revision"</span><span class="o">)</span>,<span class="w"> </span>int<span class="o">)</span>:
-<span class="w">        </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"{where} answered GET settings without the Source github (its value and revision)"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">blocks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>settings.get<span class="o">(</span><span class="s2">"blocks"</span><span class="o">)</span>
-<span class="w">    </span>views:<span class="w"> </span>list<span class="o">[</span>tuple<span class="o">[</span>dict,<span class="w"> </span>int<span class="o">]]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span>EVAL_BLOCK,<span class="w"> </span>POLICY_BLOCK<span class="o">)</span>:
-<span class="w">        </span><span class="nv">block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>blocks.get<span class="o">(</span>name<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>blocks,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>None
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>block,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>block.get<span class="o">(</span><span class="s2">"value"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>block.get<span class="o">(</span><span class="s2">"revision"</span><span class="o">)</span>,<span class="w"> </span>int<span class="o">)</span>:
-<span class="w">            </span>raise<span class="w"> </span>Refusal<span class="o">(</span>f<span class="s2">"{where} answered GET settings without the {name} block (its value and revision)"</span><span class="o">)</span>
-<span class="w">        </span>views.append<span class="o">((</span>block<span class="o">[</span><span class="s2">"value"</span><span class="o">]</span>,<span class="w"> </span>block<span class="o">[</span><span class="s2">"revision"</span><span class="o">]))</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>github<span class="o">[</span><span class="s2">"value"</span><span class="o">]</span>,<span class="w"> </span>github<span class="o">[</span><span class="s2">"revision"</span><span class="o">])</span>,<span class="w"> </span>views<span class="o">[</span><span class="m">0</span><span class="o">]</span>,<span class="w"> </span>views<span class="o">[</span><span class="m">1</span><span class="o">]</span>
-
-
-def<span class="w"> </span>desired_source<span class="o">(</span>current:<span class="w"> </span>dict,<span class="w"> </span>repository:<span class="w"> </span>str,<span class="w"> </span>cli:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict:
-<span class="w">    </span><span class="nv">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>current.get<span class="o">(</span><span class="s2">"config"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>current.get<span class="o">(</span><span class="s2">"config"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span><span class="s2">"enabled"</span>:<span class="w"> </span>True,<span class="w"> </span><span class="s2">"config"</span>:<span class="w"> </span><span class="o">{</span>**config,<span class="w"> </span><span class="s2">"repository"</span>:<span class="w"> </span>repository,<span class="w"> </span><span class="s2">"cli"</span>:<span class="w"> </span>cli,<span class="w"> </span><span class="s2">"observePulls"</span>:<span class="w"> </span>True<span class="o">}}</span>
-
-
-def<span class="w"> </span>desired_eval<span class="o">(</span>current:<span class="w"> </span>dict,<span class="w"> </span>mode:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict:
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>**current,<span class="w"> </span><span class="s2">"mode"</span>:<span class="w"> </span>mode<span class="o">}</span>
-
-
-def<span class="w"> </span>desired_policy<span class="o">(</span>current:<span class="w"> </span>dict,<span class="w"> </span>cell:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict:
-<span class="w">    </span><span class="s2">"""The policy block as read with the github Source's `pulls.unlistedUnaddressed` cell set to `cell`: the rules, the</span>
-<span class="s2">    allowed list (empty when absent), the other rows and cells and every other Source's entry unchanged."""</span>
-<span class="w">    </span><span class="nv">sources</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>current.get<span class="o">(</span><span class="s2">"sources"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>current.get<span class="o">(</span><span class="s2">"sources"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
-<span class="w">    </span><span class="nv">github</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sources.get<span class="o">(</span>ADMISSION_SOURCE<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>sources.get<span class="o">(</span>ADMISSION_SOURCE<span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
-<span class="w">    </span><span class="nv">admission</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>github.get<span class="o">(</span><span class="s2">"admission"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>github.get<span class="o">(</span><span class="s2">"admission"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
-<span class="w">    </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>admission.get<span class="o">(</span>ADMISSION_ROW<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>admission.get<span class="o">(</span>ADMISSION_ROW<span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
-<span class="w">    </span><span class="nv">allowed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>github.get<span class="o">(</span><span class="s2">"allowed"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>github.get<span class="o">(</span><span class="s2">"allowed"</span><span class="o">)</span>,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">[]</span>
-<span class="w">    </span><span class="nv">entry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span>**github,
-<span class="w">        </span><span class="s2">"allowed"</span>:<span class="w"> </span>allowed,
-<span class="w">        </span><span class="s2">"admission"</span>:<span class="w"> </span><span class="o">{</span>**admission,<span class="w"> </span>ADMISSION_ROW:<span class="w"> </span><span class="o">{</span>**row,<span class="w"> </span>ADMISSION_CELL:<span class="w"> </span>cell<span class="o">}}</span>,
+<span class="c1"># The environment is cleaned before any external command runs, the self-check's hash tools included (pr-audit.sh's</span>
+<span class="c1"># form, U71b audit rounds 7 and 17: the `shasum` fallback is a perl script, and an inherited GIT_* variable steers</span>
+<span class="c1"># every git; U465e, verdict U465-9c0244e0 P1 `:203`: the entry inherited the caller's GIT_DIR and GIT_WORK_TREE, so</span>
+<span class="c1"># a call from outside any checkout resolved another checkout's store, and regime-env's own git reads ran under them</span>
+<span class="c1"># too). Every statement up to here and in this block is a reserved word, a parameter expansion or a shell builtin,</span>
+<span class="c1"># and none runs a listing command or opens a file: the names come from the prefix expansions `${!GIT_@}`, `${!PERL@}`</span>
+<span class="c1"># and `${!PYTHON@}` (U465f, verdict U465-59601417 P1 `:71`: the round-5 form read `compgen -e` through a here-string,</span>
+<span class="c1"># which bash writes to a temporary file, so with TMPDIR denied the redirection failed and `set -e` skipped the loop</span>
+<span class="c1"># with no refusal; measured on 3.2.57 with TMPDIR=/nonexistent, the expansions name every variable and the loop</span>
+<span class="c1"># runs). Every such name is removed, a second expansion refuses a leftover, and then only the lever's own are set: no</span>
+<span class="c1"># replace objects, no terminal prompt. The checkout is named from the working directory alone.</span>
+<span class="k">for</span><span class="w"> </span>git_name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!GIT_@</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!PERL@</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!PYTHON@</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="nb">unset</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">git_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"router-settings-apply: refused: cannot remove the caller's </span><span class="si">${</span><span class="nv">git_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="o">}</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>**current,<span class="w"> </span><span class="s2">"rules"</span>:<span class="w"> </span>current.get<span class="o">(</span><span class="s2">"rules"</span>,<span class="w"> </span><span class="o">[])</span>,<span class="w"> </span><span class="s2">"sources"</span>:<span class="w"> </span><span class="o">{</span>**sources,<span class="w"> </span>ADMISSION_SOURCE:<span class="w"> </span>entry<span class="o">}}</span>
+<span class="k">done</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="p">!GIT_@</span><span class="si">}${</span><span class="p">!PERL@</span><span class="si">}${</span><span class="p">!PYTHON@</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"router-settings-apply: refused: still in the environment after the scrub: </span><span class="si">${</span><span class="p">!GIT_@</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="p">!PERL@</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="p">!PYTHON@</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="k">fi</span>
+<span class="nb">unset</span><span class="w"> </span>git_name
+<span class="nb">export</span><span class="w"> </span><span class="nv">GIT_NO_REPLACE_OBJECTS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">GIT_TERMINAL_PROMPT</span><span class="o">=</span><span class="m">0</span>
 
+<span class="c1"># @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):</span>
+<span class="c1">#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot</span>
+<span class="c1">#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the</span>
+<span class="c1">#   file. The pin is the `claude.levers.sha256.&lt;name&gt;` line, which `scripts/generate-agent-configs.py` refreshes.</span>
+<span class="c1"># @set LEVER_MANIFEST The manifest the pin came from, beside which the Source rendering lies.</span>
+<span class="c1"># @set LEVER_DIR The physical directory of this file, where the sourced helpers and the Python body sit.</span>
+lever_self_check<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>src<span class="w"> </span>dir<span class="w"> </span>self<span class="w"> </span>name<span class="w"> </span>pin<span class="w"> </span>digest<span class="w"> </span>home
+<span class="w">    </span><span class="c1"># The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.</span>
+<span class="w">    </span><span class="nv">src</span><span class="o">=</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">src</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>*/*<span class="o">)</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span><span class="si">${</span><span class="nv">src</span><span class="p">%/*</span><span class="si">}</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span>.<span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span>/
+<span class="w">    </span><span class="nv">dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">src</span><span class="p">##*/</span><span class="si">}</span><span class="s2">: refused: cannot resolve the script directory of </span><span class="si">${</span><span class="nv">src</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">self</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/<span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2034 # read by the levers that source regime-env from this directory</span>
+<span class="w">    </span><span class="nv">LEVER_DIR</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>
+<span class="w">    </span><span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">self</span><span class="p">##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">home</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local/bin/common"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
+<span class="w">        </span><span class="nv">LEVER_MANIFEST</span><span class="o">=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/agent-config.yaml
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">LEVER_MANIFEST</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/../../home/dot_agents/agent-config.yaml
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">: refused: manifest unreadable: </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">pin</span><span class="o">=</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>-E<span class="w"> </span><span class="s2">"s/^      </span><span class="si">${</span><span class="nv">name</span><span class="p">//./</span><span class="se">\\</span><span class="p">.</span><span class="si">}</span><span class="s2">: ([0-9a-f]{64})\$/\\1/p"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">: refused: cannot read </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">64</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">: refused: no single sha256 pin for </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2"> in </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>sha256sum<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>sha256sum<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">digest</span><span class="o">=</span><span class="si">${</span><span class="nv">digest</span><span class="p">%% *</span><span class="si">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">digest</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">64</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">: refused: cannot hash </span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">digest</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">: refused: sha256 </span><span class="si">${</span><span class="nv">digest</span><span class="si">}</span><span class="s2"> of </span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2"> differs from the pin in </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span>
+lever_self_check
 
-def<span class="w"> </span>apply_block<span class="o">(</span>api:<span class="w"> </span>Api,<span class="w"> </span>block:<span class="w"> </span>str,<span class="w"> </span>current:<span class="w"> </span>dict,<span class="w"> </span>desired:<span class="w"> </span>dict,<span class="w"> </span>revision:<span class="w"> </span>int<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>bool:
-<span class="w">    </span><span class="s2">"""PUT `block` when it differs; print the line; True when the Router restarts after the save."""</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>json.dumps<span class="o">(</span>current,<span class="w"> </span><span class="nv">sort_keys</span><span class="o">=</span>True<span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>json.dumps<span class="o">(</span>desired,<span class="w"> </span><span class="nv">sort_keys</span><span class="o">=</span>True<span class="o">)</span>:
-<span class="w">        </span>print<span class="o">(</span>f<span class="s2">"{block} unchanged (revision {revision})"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>False
-<span class="w">    </span><span class="nv">answer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>api.request<span class="o">(</span><span class="s2">"PUT"</span>,<span class="w"> </span>f<span class="s2">"settings/{block}"</span>,<span class="w"> </span><span class="o">{</span><span class="s2">"value"</span>:<span class="w"> </span>desired,<span class="w"> </span><span class="s2">"revision"</span>:<span class="w"> </span>revision<span class="o">})</span>
-<span class="w">    </span><span class="nv">saved</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>answer.get<span class="o">(</span><span class="s2">"revision"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">restarting</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>answer.get<span class="o">(</span><span class="s2">"restarting"</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>True
-<span class="w">    </span>print<span class="o">(</span>f<span class="s2">"{block} saved (revision {saved}{', restarting' if restarting else ''})"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>restarting
+<span class="nv">lever</span><span class="o">=</span>router-settings-apply
 
+<span class="c1"># @description Print the refusal on stderr and exit 2 (the refusal grammar producer-status-check.sh reads).</span>
+<span class="c1"># @arg $@ string The reason.</span>
+refuse<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2">: refused: </span><span class="nv">$*</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
 
-def<span class="w"> </span>main<span class="o">(</span>argv:<span class="w"> </span>list<span class="o">[</span>str<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>int:
-<span class="w">    </span><span class="nv">parser</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>argparse.ArgumentParser<span class="o">(</span>
-<span class="w">        </span><span class="nv">prog</span><span class="o">=</span>LEVER,<span class="w"> </span><span class="nv">description</span><span class="o">=</span><span class="s2">"write the kit's GitHub Source row, accept mode and observe admission cell into the Router's settings store"</span>
-<span class="w">    </span><span class="o">)</span>
-<span class="w">    </span><span class="nv">directory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>lever_directory<span class="o">()</span>
-<span class="w">    </span>parser.add_argument<span class="o">(</span>
-<span class="w">        </span><span class="s2">"--manifest"</span>,
-<span class="w">        </span><span class="nv">default</span><span class="o">=</span>manifest_beside<span class="o">(</span>directory<span class="o">)</span>,
-<span class="w">        </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the agent-config.yaml to read (default: the one beside this lever's install)"</span>,
-<span class="w">    </span><span class="o">)</span>
-<span class="w">    </span>parser.add_argument<span class="o">(</span>
-<span class="w">        </span><span class="s2">"--profile"</span>,
-<span class="w">        </span><span class="nv">default</span><span class="o">=</span>None,
-<span class="w">        </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the rendered router cordis.patch.yml (default: </span><span class="nv">$DSH_HOME</span><span class="s2">/profiles/router/cordis.patch.yml, DSH_HOME defaulting to ~/.dsh)"</span>,
-<span class="w">    </span><span class="o">)</span>
-<span class="w">    </span>parser.add_argument<span class="o">(</span>
-<span class="w">        </span><span class="s2">"--wait"</span>,
-<span class="w">        </span><span class="nv">type</span><span class="o">=</span>float,
-<span class="w">        </span><span class="nv">default</span><span class="o">=</span><span class="m">60</span>.0,
-<span class="w">        </span><span class="nv">help</span><span class="o">=</span><span class="s2">"seconds to wait for the Router after a save that restarts it (default 60)"</span>,
-<span class="w">    </span><span class="o">)</span>
-<span class="w">    </span><span class="nv">args</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>parser.parse_args<span class="o">(</span>argv<span class="o">[</span><span class="m">1</span>:<span class="o">])</span>
-<span class="w">    </span><span class="nv">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>args.profile
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>profile<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">        </span><span class="nv">dsh_home</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">"DSH_HOME"</span><span class="o">)</span><span class="w"> </span>or<span class="w"> </span>os.path.join<span class="o">(</span>os.environ.get<span class="o">(</span><span class="s2">"HOME"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">)</span>,<span class="w"> </span><span class="s2">".dsh"</span><span class="o">)</span>
-<span class="w">        </span><span class="nv">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>dsh_home,<span class="w"> </span><span class="s2">"profiles/router/cordis.patch.yml"</span><span class="o">)</span>
-<span class="w">    </span>try:
-<span class="w">        </span>repository,<span class="w"> </span>mode,<span class="w"> </span><span class="nv">cell</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>source_row<span class="o">(</span>args.manifest<span class="o">)</span>
-<span class="w">        </span><span class="nv">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>webserver_port<span class="o">(</span>profile<span class="o">)</span>
-<span class="w">        </span><span class="nv">cli</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>wrapper_path<span class="o">(</span>directory<span class="o">)</span>
-<span class="w">        </span><span class="nv">api</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Api<span class="o">(</span>port,<span class="w"> </span>args.wait<span class="o">)</span>
-<span class="w">        </span><span class="o">(</span>source,<span class="w"> </span>source_revision<span class="o">)</span>,<span class="w"> </span><span class="o">(</span>evaluation,<span class="w"> </span>eval_revision<span class="o">)</span>,<span class="w"> </span><span class="o">(</span>policy,<span class="w"> </span>policy_revision<span class="o">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>block_views<span class="o">(</span>
-<span class="w">            </span>api.settings<span class="o">()</span>,<span class="w"> </span>api.where<span class="o">()</span>
-<span class="w">        </span><span class="o">)</span>
-<span class="w">        </span><span class="c1"># The mode first (U353b): the Source restarts into polling under whatever mode the store holds.</span>
-<span class="w">        </span><span class="nv">restarting</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>apply_block<span class="o">(</span>api,<span class="w"> </span>EVAL_BLOCK,<span class="w"> </span>evaluation,<span class="w"> </span>desired_eval<span class="o">(</span>evaluation,<span class="w"> </span>mode<span class="o">)</span>,<span class="w"> </span>eval_revision<span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>restarting:
-<span class="w">            </span>api.settings_after_restart<span class="o">()</span>
-<span class="w">            </span><span class="o">(</span>source,<span class="w"> </span>source_revision<span class="o">)</span>,<span class="w"> </span><span class="o">(</span>_,<span class="w"> </span>_<span class="o">)</span>,<span class="w"> </span><span class="o">(</span>policy,<span class="w"> </span>policy_revision<span class="o">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>block_views<span class="o">(</span>api.settings<span class="o">()</span>,<span class="w"> </span>api.where<span class="o">())</span>
-<span class="w">        </span><span class="c1"># The admission cell next (U416): a policy save changes policyVersion and restarts nothing, so no wait here.</span>
-<span class="w">        </span>apply_block<span class="o">(</span>api,<span class="w"> </span>POLICY_BLOCK,<span class="w"> </span>policy,<span class="w"> </span>desired_policy<span class="o">(</span>policy,<span class="w"> </span>cell<span class="o">)</span>,<span class="w"> </span>policy_revision<span class="o">)</span>
-<span class="w">        </span>refusals:<span class="w"> </span>list<span class="o">[</span>str<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
-<span class="w">        </span>try:
-<span class="w">            </span>apply_block<span class="o">(</span>api,<span class="w"> </span>SOURCE_BLOCK,<span class="w"> </span>source,<span class="w"> </span>desired_source<span class="o">(</span>source,<span class="w"> </span>repository,<span class="w"> </span>cli<span class="o">)</span>,<span class="w"> </span>source_revision<span class="o">)</span>
-<span class="w">        </span>except<span class="w"> </span>Refusal<span class="w"> </span>as<span class="w"> </span>refusal:
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="s2">" answered 400 "</span><span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>str<span class="o">(</span>refusal<span class="o">)</span>:
-<span class="w">                </span>raise
-<span class="w">            </span>refusals.append<span class="o">(</span>str<span class="o">(</span>refusal<span class="o">))</span>
-<span class="w">    </span>except<span class="w"> </span>Refusal<span class="w"> </span>as<span class="w"> </span>refusal:
-<span class="w">        </span>print<span class="o">(</span>f<span class="s2">"{LEVER}: {refusal}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>refusal<span class="w"> </span><span class="k">in</span><span class="w"> </span>refusals:
-<span class="w">        </span>print<span class="o">(</span>f<span class="s2">"{LEVER}: {refusal}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>refusals<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="m">0</span>
+<span class="c1"># The one isolated git (U113) and the regime derivation (U33, U215, U216), each sourced from the directory this entry</span>
+<span class="c1"># runs from and self-checked like a lever, so a rewritten copy stops this entry.</span>
+<span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span>/git-isolated.sh<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"git-isolated.sh unreadable beside this script: </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span>
+<span class="c1"># shellcheck source=scripts/orchestrator/git-isolated.sh</span>
+.<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span>
+<span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span>/regime-env<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"regime-env unreadable beside this script: </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/regime-env"</span>
+<span class="c1"># shellcheck source=scripts/orchestrator/regime-env</span>
+.<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/regime-env"</span>
 
+<span class="c1"># The two paths are this entry's: a caller naming either would choose the store the body proves or the row it reads.</span>
+<span class="c1"># The exact flags are refused here; an abbreviation (`--sto`) or a repeat after the entry's two is the body's refusal</span>
+<span class="c1"># (U465e: its parser takes exact names, each once).</span>
+<span class="k">for</span><span class="w"> </span>arg<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">arg</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>--store<span class="w"> </span><span class="p">|</span><span class="w"> </span>--store<span class="o">=</span>*<span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"--store is the entry's: the program store is resolved here by regime-env and store_resolve, never given by the caller"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>--source<span class="w"> </span><span class="p">|</span><span class="w"> </span>--source<span class="o">=</span>*<span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"--source is the entry's: the rendering is router-source.json beside the manifest, never given by the caller"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="k">done</span>
 
-<span class="k">if</span><span class="w"> </span><span class="nv">__name__</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"__main__"</span>:
-<span class="w">    </span>lever_self_check<span class="o">()</span>
-<span class="w">    </span>sys.exit<span class="o">(</span>main<span class="o">(</span>sys.argv<span class="o">))</span>
+<span class="c1"># @description Choose the program store this lever reads (regime-cutover U216, store move 2 of 5,</span>
+<span class="c1">#   handoff/07-store-move-design.md; U215 gave regime-env the root): the derived store `${REGIME_STORE_ROOT}/&lt;program&gt;`</span>
+<span class="c1">#   when that directory exists, the root being the fixed derivation `&lt;physical HOME&gt;/.local/state/regime-store/&lt;slug&gt;`</span>
+<span class="c1">#   the sourced regime-env exports after holding every component of it; else the pre-move form</span>
+<span class="c1">#   `&lt;toplevel&gt;/.orchestration/orchestrate/&lt;program&gt;`, this main checkout's own store, which stands until U221 moves the</span>
+<span class="c1">#   live store of this program to the root and removes this form. One rule, two forms: while the derived store exists</span>
+<span class="c1">#   the checkout form is refused (the caller refuses a path naming it, naming both forms), and while it does not the</span>
+<span class="c1">#   checkout form is read as before U216. The per-component holds of the chain walk (U71) stay and apply to the form</span>
+<span class="c1">#   chosen: a symbolic link at `&lt;root&gt;/&lt;program&gt;` is refused by name before anything is read through it, an entry</span>
+<span class="c1">#   there that is not a directory of this user is refused by name, and only an absent one falls through to the</span>
+<span class="c1">#   checkout chain, whose three components are each a directory of this user and no symlink. The root's own</span>
+<span class="c1">#   components are held by regime-env (`regime_store_root`). Nothing is written. The form chosen is printed once on</span>
+<span class="c1">#   stderr (`store: derived &lt;dir&gt;`, or `store: checkout &lt;dir&gt; (pre-move form, removed by U221)`), the line the</span>
+<span class="c1">#   coordinator reads after the deploy. The same text stands in pr-merge.sh and pr-close.sh (standing order 36: no</span>
+<span class="c1">#   helper file); this entry carries it so the settings writer reads the store the shell levers read (U465d).</span>
+<span class="c1"># @arg $1 string The program name.</span>
+<span class="c1"># @set store The chosen store, `pwd -P` form (the root and the toplevel are both physical).</span>
+<span class="c1"># @set store_form `derived` or `checkout`.</span>
+<span class="c1"># @set store_derived The derived candidate `${REGIME_STORE_ROOT}/&lt;program&gt;`.</span>
+<span class="c1"># @set store_checkout The checkout candidate `&lt;toplevel&gt;/.orchestration/orchestrate/&lt;program&gt;`.</span>
+<span class="c1"># shellcheck disable=SC2034 # store_form is read by the other levers' callers; the function is one text with theirs</span>
+store_resolve<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">program</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span>path<span class="w"> </span>part
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">REGIME_STORE_ROOT</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>refuse<span class="w"> </span><span class="s2">"regime-env derived no store root for </span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">; the program store is judged under it (U216)"</span>
+<span class="w">    </span><span class="nv">store_derived</span><span class="o">=</span><span class="si">${</span><span class="nv">REGIME_STORE_ROOT</span><span class="si">}</span>/<span class="si">${</span><span class="nv">program</span><span class="si">}</span>
+<span class="w">    </span><span class="nv">store_checkout</span><span class="o">=</span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span>/.orchestration/orchestrate/<span class="si">${</span><span class="nv">program</span><span class="si">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">store_derived</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">store_derived</span><span class="si">}</span><span class="s2"> is a symlink; the derived program store is a plain directory of this user under the store root </span><span class="si">${</span><span class="nv">REGIME_STORE_ROOT</span><span class="si">}</span><span class="s2">, and nothing is read through a link"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">store_derived</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">store_derived</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-O<span class="w"> </span><span class="si">${</span><span class="nv">store_derived</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">store_derived</span><span class="si">}</span><span class="s2"> exists but is not a directory of this user; the derived program store under </span><span class="si">${</span><span class="nv">REGIME_STORE_ROOT</span><span class="si">}</span><span class="s2"> is read only as one"</span>
+<span class="w">        </span><span class="nv">store</span><span class="o">=</span><span class="si">${</span><span class="nv">store_derived</span><span class="si">}</span>
+<span class="w">        </span><span class="nv">store_form</span><span class="o">=</span>derived
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2">: store: derived </span><span class="si">${</span><span class="nv">store</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">path</span><span class="o">=</span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>.orchestration<span class="w"> </span>orchestrate<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">program</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">path</span><span class="o">=</span><span class="si">${</span><span class="nv">path</span><span class="si">}</span>/<span class="si">${</span><span class="nv">part</span><span class="si">}</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-O<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2"> is not a directory of this user (a symlink or a missing store); no derived store </span><span class="si">${</span><span class="nv">store_derived</span><span class="si">}</span><span class="s2"> exists, so </span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2"> reads only the checkout's own store (the pre-move form, until U221)"</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="nv">store</span><span class="o">=</span><span class="si">${</span><span class="nv">store_checkout</span><span class="si">}</span>
+<span class="w">    </span><span class="nv">store_form</span><span class="o">=</span>checkout
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2">: store: checkout </span><span class="si">${</span><span class="nv">store</span><span class="si">}</span><span class="s2"> (pre-move form, removed by U221)"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Hold the Python body beside this file as acp-broker holds acp-relay.py (relay_helper_check): readable,</span>
+<span class="c1">#   no link, and its sha256 equal to its `claude.levers.sha256.router-settings-apply.py` pin in the manifest this</span>
+<span class="c1">#   entry's pin came from; the body checks the same pin itself when it starts. Every read is status-checked.</span>
+<span class="c1"># @set body The body's path.</span>
+body_check<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>body_pin<span class="w"> </span>body_digest
+<span class="w">    </span><span class="nv">body</span><span class="o">=</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span>/router-settings-apply.py
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">body</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">body</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the Python body is unreadable or a link beside this script: </span><span class="si">${</span><span class="nv">body</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">body_pin</span><span class="o">=</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>-E<span class="w"> </span><span class="s1">'s/^      router-settings-apply\.py: ([0-9a-f]{64})$/\1/p'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">body_pin</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">64</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"no single sha256 pin for router-settings-apply.py in </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>sha256sum<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">body_digest</span><span class="o">=</span><span class="k">$(</span>sha256sum<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">body</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">body_digest</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">body_digest</span><span class="o">=</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">body</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">body_digest</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">body_digest</span><span class="o">=</span><span class="si">${</span><span class="nv">body_digest</span><span class="p">%% *</span><span class="si">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">body_digest</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">64</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot hash </span><span class="si">${</span><span class="nv">body</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">body_digest</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">body_pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"sha256 </span><span class="si">${</span><span class="nv">body_digest</span><span class="si">}</span><span class="s2"> of </span><span class="si">${</span><span class="nv">body</span><span class="si">}</span><span class="s2"> differs from the pin in </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="nv">python</span><span class="o">=</span><span class="k">$(</span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>python3<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'no python3 found (it runs the body, router-settings-apply.py beside this script)'</span>
+<span class="c1"># The checkout the entry runs in, by its physical path, and it must be the main checkout: a linked worktree (a</span>
+<span class="c1"># worker's clone) holds a copy of the store that is not the orchestrator's record (U71, bot P1 4370212009; the</span>
+<span class="c1"># auditor's reproduction of round 3: a forged worktree auto row).</span>
+<span class="nv">toplevel</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'run from the repository checkout that holds the program store'</span>
+<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'run from the repository checkout that holds the program store'</span>
+<span class="nv">toplevel</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve </span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">git_dir</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--absolute-git-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'cannot read the git directory'</span>
+<span class="nv">common_dir</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span>
+<span class="w">    </span>refuse<span class="w"> </span><span class="s1">'cannot read the git common directory'</span>
+<span class="nv">git_dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">git_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve </span><span class="si">${</span><span class="nv">git_dir</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">common_dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve </span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">git_dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
+<span class="w">    </span>refuse<span class="w"> </span><span class="s2">"a linked worktree: </span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">; run from the main checkout, where the orchestrator keeps its store"</span>
+<span class="c1"># U216: regime-env derives `REGIME_STORE_ROOT` for this checkout (its own refusals name this lever). This entry reads</span>
+<span class="c1"># nothing in the hcom store, so the store's `origin` binding is not asked of it (`--unbound-ok`, as pr-merge.sh: the</span>
+<span class="c1"># dotfiles program runs on the pre-U33 store pair and its derived hcom store carries no `origin`); the collision</span>
+<span class="c1"># refusal (an `origin` naming another checkout of the same slug) and every store-root hold stay. The helper's refusal</span>
+<span class="c1"># (return 1) is this entry's refusal status, exit 2.</span>
+regime_env<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--unbound-ok<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+store_resolve<span class="w"> </span>regime-cutover
+
+<span class="c1"># The rendering beside the manifest the pin came from (U465c), its directory resolved physically: the body holds every</span>
+<span class="c1"># component of the path it is given, and `${HOME}` or the checkout's `../..` form is not that.</span>
+<span class="nv">source_dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="p">%/*</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve the manifest directory of </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">source_json</span><span class="o">=</span><span class="si">${</span><span class="nv">source_dir</span><span class="si">}</span>/router-source.json
+
+body_check
+<span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">python</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-I<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">body</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--store<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">store</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--source<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
 </code></pre></div>
 
 

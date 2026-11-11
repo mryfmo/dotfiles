@@ -2570,6 +2570,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_router-settings-apply.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_router-settings-apply.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_seat-login-preflight/" class="md-nav__link">
         
   
@@ -5851,35 +5879,58 @@
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env -S python3 -I</span>
-<span class="s2">"""Append the dsh-superagent Router's would-accept Decisions to a decisions.tsv as rows (regime-cutover U317, the M-18</span>
-<span class="s2">ladder's observe rung).</span>
+<span class="s2">"""Append the dsh-superagent Router's ladder Decisions to a decisions.tsv as rows (regime-cutover U317, the M-18</span>
+<span class="s2">ladder's observe rung; U465, the accept rung and the refusals, table rows i6 and i7).</span>
 
-<span class="s2">`intake-observe.py &lt;orchestrator.sqlite&gt; &lt;decisions.tsv&gt;` reads the Router's store read-only and appends one row per</span>
-<span class="s2">would-accept Decision newer than the last row it wrote, then prints the count of rows appended. A would-accept</span>
-<span class="s2">Decision is the record observe mode leaves in place of an accept (upstream docs/002-authorization.md, "</span>Accept<span class="w"> </span>mode
-and<span class="w"> </span>rules<span class="s2">"): `src/policy.ts:57` returns `{ kind: 'ignore', audit: { ..., would_accept: true, proposal }, reason: {</span>
-<span class="s2">code: 'observed', ... } }` for a positive assessment of an inferred candidate outside `auto`, and the Store saves the</span>
-<span class="s2">Decision as JSON in the `value` column of the `decision` table (`src/app/store.ts:76`, `CREATE TABLE IF NOT EXISTS</span>
-<span class="s2">decision (id TEXT PRIMARY KEY, thread TEXT NOT NULL, value TEXT NOT NULL)`; the save at `:245`). The row shape is</span>
-<span class="s2">`ts \\t intake-observe \\t github-source would-accept: &lt;thread label&gt; trigger=&lt;ids&gt; rules=&lt;rule ids&gt; \\t &lt;reason text&gt;</span>
-<span class="s2">\\t &lt;decision id&gt; \\t -`: the thread label is the Thread's `meta.label` when its Source set one, else the thread key;</span>
-<span class="s2">the reason text is the Decision's reasons rendered as `src/core/reasons.ts` renders them (`Observe mode: would accept</span>
-<span class="s2">({text})`); tabs and newlines inside any field become spaces.</span>
+<span class="s2">`intake-observe.py [--kind would-accept|accept|refusal|all] &lt;orchestrator.sqlite&gt; &lt;decisions.tsv&gt;` reads the Router's</span>
+<span class="s2">store read-only and appends one row per ladder Decision newer than the last row it wrote, then prints a count: the</span>
+<span class="s2">would-accept rows appended by default (the count rows i2 and i6 read), else the rows of the kind the one flag names,</span>
+<span class="s2">or every row with `all`. The rows appended are the same whatever the flag. The Decision kinds, each an allowlist of</span>
+<span class="s2">its own and nothing else a row:</span>
 
-<span class="s2">The closing form is an allowlist: a Decision is written only when its `kind` is `ignore`, its `audit.would_accept` is</span>
-<span class="s2">`true` and one of its reasons carries the code `observed`; every other Decision, whatever else it says, is not this</span>
-<span class="s2">lever's to record. "</span>Newer<span class="s2">" is the Decision's `at` after the `at` of the Decision the last `intake-observe` row names</span>
-<span class="s2">(the row's fifth column), and a Decision already named by a row is never written twice; when the named Decision is</span>
-<span class="s2">no longer in the store, every would-accept Decision not yet named is written.</span>
+<span class="s2">- would-accept: the record observe mode leaves in place of an accept (upstream docs/002-authorization.md, "</span>Accept
+<span class="w">  </span>mode<span class="w"> </span>and<span class="w"> </span>rules<span class="s2">"): `src/policy.ts:57` returns `{ kind: 'ignore', audit: { ..., would_accept: true, proposal },</span>
+<span class="s2">  reason: { code: 'observed', ... } }` for a positive assessment of an inferred candidate outside `auto`. The row is</span>
+<span class="s2">  `ts \\t intake-observe \\t &lt;source&gt;-source would-accept: &lt;thread label&gt; trigger=&lt;ids&gt; rules=&lt;rule ids&gt; \\t &lt;reason</span>
+<span class="s2">  text&gt; \\t &lt;decision id&gt; \\t -`. A Decision is this kind when its `kind` is `ignore`, its `audit.would_accept` is</span>
+<span class="s2">  `true` and one of its reasons carries the code `observed`.</span>
+<span class="s2">- accept: `kind: 'accept'` (`src/policy.ts:59`, recorded by `src/core/evals.ts:313` with the reason, the rule ids</span>
+<span class="s2">  the matches named, the audit and the ticket it started). The row is `&lt;source&gt;-source accept: &lt;thread label&gt;</span>
+<span class="s2">  trigger=&lt;ids&gt; rules=&lt;rule ids&gt;[ ticket=&lt;ticket id&gt;] \\t &lt;reason text&gt; \\t &lt;decision id&gt; \\t -`; the rule ids are the</span>
+<span class="s2">  Decision's `rules`, else the `rule_id`s of `audit.matches`.</span>
+<span class="s2">- refusal: an ignore Decision whose reasons carry a gate refusal code with the refused trigger's id</span>
+<span class="s2">  (`src/core/evals.ts:97-103`, one Decision per batch, one reason per refused trigger): `not_a_member` (the sender is</span>
+<span class="s2">  not on the Source's allowed list, `src/policy.ts:210`) or `not_human` (a bot, CI or the agent itself,</span>
+<span class="s2">  `src/policy.ts:173-175`). One row per such reason: `&lt;source&gt;-source refusal &lt;code&gt;: &lt;thread label&gt; login=&lt;login&gt;</span>
+<span class="s2">  \\t &lt;reason text&gt; \\t &lt;decision id&gt; \\t -`, the login the `actor.id` of the trigger row the reason names (the</span>
+<span class="s2">  `trigger` table, `src/app/store.ts:72`; `unknown` when that row is gone). The gate's other codes</span>
+<span class="s2">  (`admission_ignored`, `no_mention`) and every other ignore (`noRuleMatched`, `directionUnsettled`, a stop, a</span>
+<span class="s2">  policy change) are not rows.</span>
+
+<span class="s2">`&lt;source&gt;` is the Decision's own Source, read from its `threadKey` (`&lt;source&gt;:&lt;id&gt;`, `src/core/model.ts`: `github:12`,</span>
+<span class="s2">`discord:guild/42`), so a Decision of another Source is recorded under its own word and never as GitHub's (U465d,</span>
+<span class="s2">verdict U465-e6a9a84f P2 `:240`); a key without the `&lt;source&gt;:` prefix is recorded as `unknown`, never guessed.</span>
+<span class="s2">The Store saves a Decision as JSON in the `value` column of the `decision` table (`src/app/store.ts:76`, `CREATE</span>
+<span class="s2">TABLE IF NOT EXISTS decision (id TEXT PRIMARY KEY, thread TEXT NOT NULL, value TEXT NOT NULL)`; the save at `:245`).</span>
+<span class="s2">The thread label is the Thread's `meta.label` when its Source set one, else the thread key; the reason text is the</span>
+<span class="s2">Decision's reasons rendered as `src/core/reasons.ts` renders them (`Observe mode: would accept ({text})`, `{text}` for</span>
+<span class="s2">`said`, the bare code with its `&lt;trigger id&gt;: ` prefix for a code without a template); tabs and newlines inside any</span>
+<span class="s2">field become spaces.</span>
+
+<span class="s2">"</span>Newer<span class="s2">" is the Decision's `at` after the `at` of the Decision the last `intake-observe` row names (the row's fifth</span>
+<span class="s2">column), and a Decision already named by a row is never written twice; when the named Decision is no longer in the</span>
+<span class="s2">store, every ladder Decision not yet named is written. The three kinds share the one cursor, so a table the observe</span>
+<span class="s2">rung alone wrote carries on from its last row.</span>
 
 <span class="s2">The database path must be a regular file that is not a symlink (a Router that keeps its store elsewhere is read</span>
 <span class="s2">nowhere else), and it is opened read-only (`mode=ro`); the decisions.tsv path must be absent or a regular file that</span>
 <span class="s2">is not a symlink, and the rows are appended in one write after every Decision has been read. A table this lever</span>
 <span class="s2">creates starts with the store's header, `ts\\tphase\\tdecision\\twhy\\tevidence\\tresult`, the one `rounds-check.py`</span>
 <span class="s2">reads (round 2: a created table without it was rejected there). Exit 0 with the count on stdout; exit 2 with one</span>
-<span class="s2">line on stderr and nothing appended for usage, a refused path, a store that cannot be read, a `value` that is not</span>
-<span class="s2">the JSON object the schema promises, a table that cannot be read (round 2: that read escaped the refusal handler as</span>
-<span class="s2">a traceback), or a row that cannot be appended.</span>
+<span class="s2">line on stderr and nothing appended for usage (a kind outside the four included), a refused path, a store that</span>
+<span class="s2">cannot be read (a store without the `trigger` table included), a `value` that is not the JSON object the schema</span>
+<span class="s2">promises, a table that cannot be read (round 2: that read escaped the refusal handler as a traceback), or a row that</span>
+<span class="s2">cannot be appended.</span>
 
 <span class="s2">Before anything else the file hashes itself against its `claude.levers.sha256.intake-observe.py` pin in the</span>
 <span class="s2">manifest beside it (the deployed `~/.agents/agent-config.yaml` for the copy under the physical `~/.local/bin/common`,</span>
@@ -5899,7 +5950,17 @@ import<span class="w"> </span>urllib.parse
 
 <span class="nv">LEVER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"intake-observe"</span>
 <span class="nv">LEVER_SCRIPT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"intake-observe.py"</span>
+<span class="nv">USAGE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"usage: intake-observe.py [--kind would-accept|accept|refusal|all] &lt;orchestrator.sqlite&gt; &lt;decisions.tsv&gt;"</span>
 <span class="nv">WOULD_ACCEPT_CODE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"observed"</span>
+<span class="c1"># The gate's refusal codes this lever records (src/policy.ts:173, :175, :210; U465, table row i7): the sender is not</span>
+<span class="c1"># on the Source's allowed list, or is no human (a bot, CI, the agent itself). The gate's other two codes</span>
+<span class="c1"># (admission_ignored, no_mention) and every other ignore are not rows: the allowlist is these two words.</span>
+<span class="nv">REFUSAL_CODES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"not_a_member"</span>,<span class="w"> </span><span class="s2">"not_human"</span><span class="o">)</span>
+<span class="c1"># The Source word of a Decision's threadKey (`&lt;source&gt;:&lt;id&gt;`), the grammar of an upstream Source id (U465d); a key</span>
+<span class="c1"># outside it is recorded under `unknown`.</span>
+<span class="nv">SOURCE_WORD</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"[a-z0-9][a-z0-9_-]*"</span><span class="o">)</span>
+WOULD_ACCEPT,<span class="w"> </span>ACCEPT,<span class="w"> </span>REFUSAL,<span class="w"> </span><span class="nv">ALL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"would-accept"</span>,<span class="w"> </span><span class="s2">"accept"</span>,<span class="w"> </span><span class="s2">"refusal"</span>,<span class="w"> </span><span class="s2">"all"</span>
+<span class="nv">KINDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>WOULD_ACCEPT,<span class="w"> </span>ACCEPT,<span class="w"> </span>REFUSAL,<span class="w"> </span>ALL<span class="o">)</span>
 <span class="c1"># rounds-check.py DECISIONS_HEADER, joined by tabs: the first line of a table this lever creates.</span>
 <span class="nv">DECISIONS_HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"ts\tphase\tdecision\twhy\tevidence\tresult"</span>
 <span class="c1"># The levers block of the manifest, read as text by indentation alone, never parsed as YAML (brief-check.py's reader):</span>
@@ -5907,12 +5968,15 @@ import<span class="w"> </span>urllib.parse
 <span class="nv">MAPPING_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(\S+):</span>$<span class="s2">"</span><span class="o">)</span>
 <span class="nv">LEVER_PIN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(\S+): ([0-9a-f]{64})</span>$<span class="s2">"</span><span class="o">)</span>
 <span class="nv">LEVERS_KEYS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"claude"</span>,<span class="w"> </span><span class="s2">"levers"</span>,<span class="w"> </span><span class="s2">"sha256"</span><span class="o">)</span>
+<span class="c1"># src/core/reasons.ts REASONS, the templates of the codes a ladder row can carry; a code outside them renders as itself.</span>
 <span class="nv">REASON_TEMPLATES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="s2">"said"</span>:<span class="w"> </span><span class="s2">"{text}"</span>,
 <span class="w">    </span><span class="s2">"observed"</span>:<span class="w"> </span><span class="s2">"Observe mode: would accept ({text})"</span>,
 <span class="w">    </span><span class="s2">"directionUnsettled"</span>:<span class="w"> </span><span class="o">(</span>
 <span class="w">        </span><span class="s2">"Implementation intent or target direction is not established, or a product/design decision is still required"</span>
 <span class="w">    </span><span class="o">)</span>,
 <span class="w">    </span><span class="s2">"noRuleMatched"</span>:<span class="w"> </span><span class="s2">"No enabled admission rule matched"</span>,
+<span class="w">    </span><span class="s2">"senderNotMember"</span>:<span class="w"> </span><span class="s2">"The sender is not on the Source's list"</span>,
 <span class="o">}</span>
 
 
@@ -6031,6 +6095,13 @@ def<span class="w"> </span>reason_text<span class="o">(</span>reasons:<span clas
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"; "</span>.join<span class="o">(</span>parts<span class="o">)</span>
 
 
+def<span class="w"> </span>reasons_of<span class="o">(</span>decision:<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>list<span class="o">[</span>dict<span class="o">]</span>:
+<span class="w">    </span><span class="s2">"""The Decision's reasons as a list of the dict reasons it carries (`reason` is one Reason or a list of them)."""</span>
+<span class="w">    </span><span class="nv">reasons</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decision.get<span class="o">(</span><span class="s2">"reason"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">items</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>reasons<span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>reasons,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">[</span>reasons<span class="o">]</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">[</span>reason<span class="w"> </span><span class="k">for</span><span class="w"> </span>reason<span class="w"> </span><span class="k">in</span><span class="w"> </span>items<span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>reason,<span class="w"> </span>dict<span class="o">)]</span>
+
+
 def<span class="w"> </span>would_accept<span class="o">(</span>decision:<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>bool:
 <span class="w">    </span><span class="s2">"""The allowlist: an ignore Decision marked would_accept whose reasons carry the observe code (src/policy.ts:57)."""</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>decision.get<span class="o">(</span><span class="s2">"kind"</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"ignore"</span>:
@@ -6038,9 +6109,27 @@ def<span class="w"> </span>would_accept<span class="o">(</span>decision:<span cl
 <span class="w">    </span><span class="nv">audit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decision.get<span class="o">(</span><span class="s2">"audit"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>audit,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>audit.get<span class="o">(</span><span class="s2">"would_accept"</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>True:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>False
-<span class="w">    </span><span class="nv">reasons</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decision.get<span class="o">(</span><span class="s2">"reason"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">items</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>reasons<span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>reasons,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">[</span>reasons<span class="o">]</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>any<span class="o">(</span>isinstance<span class="o">(</span>reason,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>reason.get<span class="o">(</span><span class="s2">"code"</span><span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>WOULD_ACCEPT_CODE<span class="w"> </span><span class="k">for</span><span class="w"> </span>reason<span class="w"> </span><span class="k">in</span><span class="w"> </span>items<span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>any<span class="o">(</span>reason.get<span class="o">(</span><span class="s2">"code"</span><span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>WOULD_ACCEPT_CODE<span class="w"> </span><span class="k">for</span><span class="w"> </span>reason<span class="w"> </span><span class="k">in</span><span class="w"> </span>reasons_of<span class="o">(</span>decision<span class="o">))</span>
+
+
+def<span class="w"> </span>refusals<span class="o">(</span>decision:<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>list<span class="o">[</span>dict<span class="o">]</span>:
+<span class="w">    </span><span class="s2">"""The gate refusals among an ignore Decision's reasons (src/core/evals.ts:97: `{code, triggerId}` per refused</span>
+<span class="s2">    trigger), those whose code is one of REFUSAL_CODES; empty for every other Decision."""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>decision.get<span class="o">(</span><span class="s2">"kind"</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"ignore"</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">[</span>reason<span class="w"> </span><span class="k">for</span><span class="w"> </span>reason<span class="w"> </span><span class="k">in</span><span class="w"> </span>reasons_of<span class="o">(</span>decision<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>reason.get<span class="o">(</span><span class="s2">"code"</span><span class="o">)</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>REFUSAL_CODES<span class="o">]</span>
+
+
+def<span class="w"> </span>row_kind<span class="o">(</span>decision:<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str<span class="w"> </span><span class="p">|</span><span class="w"> </span>None:
+<span class="w">    </span><span class="s2">"""The ladder row a Decision is: `accept` by its kind (src/core/evals.ts:313), `would-accept` by the observe</span>
+<span class="s2">    allowlist, `refusal` by a gate refusal code among its reasons; None for every other Decision."""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>decision.get<span class="o">(</span><span class="s2">"kind"</span><span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"accept"</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>ACCEPT
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>would_accept<span class="o">(</span>decision<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>WOULD_ACCEPT
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>refusals<span class="o">(</span>decision<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>REFUSAL
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>None
 
 
 def<span class="w"> </span>written_rows<span class="o">(</span>path:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>list<span class="o">[</span>list<span class="o">[</span>str<span class="o">]]</span>:
@@ -6051,8 +6140,9 @@ def<span class="w"> </span>written_rows<span class="o">(</span>path:<span class=
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">[</span>line.rstrip<span class="o">(</span><span class="s2">"\n"</span><span class="o">)</span>.split<span class="o">(</span><span class="s2">"\t"</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>handle<span class="w"> </span><span class="k">if</span><span class="w"> </span>line.split<span class="o">(</span><span class="s2">"\t"</span><span class="o">)[</span><span class="m">1</span>:2<span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="o">[</span>LEVER<span class="o">]]</span>
 
 
-def<span class="w"> </span>read_decisions<span class="o">(</span>database:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>dict<span class="o">[</span>str,<span class="w"> </span>dict<span class="o">]</span>,<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>dict<span class="o">]]</span>:
-<span class="w">    </span><span class="s2">"""Every Decision by id and every Thread by key, read from the store read-only."""</span>
+def<span class="w"> </span>read_decisions<span class="o">(</span>database:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>dict<span class="o">[</span>str,<span class="w"> </span>dict<span class="o">]</span>,<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>dict<span class="o">]</span>,<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]]</span>:
+<span class="w">    </span><span class="s2">"""Every Decision by id, every Thread by key and every trigger's actor id (the sender's login) by trigger id, read</span>
+<span class="s2">    from the store read-only."""</span>
 <span class="w">    </span><span class="nv">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"file:"</span><span class="w"> </span>+<span class="w"> </span>urllib.parse.quote<span class="o">(</span>os.path.abspath<span class="o">(</span>database<span class="o">))</span><span class="w"> </span>+<span class="w"> </span><span class="s2">"?mode=ro"</span>
 <span class="w">    </span><span class="nv">connection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sqlite3.connect<span class="o">(</span>uri,<span class="w"> </span><span class="nv">uri</span><span class="o">=</span>True<span class="o">)</span>
 <span class="w">    </span>try:
@@ -6067,9 +6157,24 @@ def<span class="w"> </span>read_decisions<span class="o">(</span>database:<span 
 <span class="w">            </span><span class="nv">thread</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>json.loads<span class="o">(</span>value<span class="o">)</span>
 <span class="w">            </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>thread,<span class="w"> </span>dict<span class="o">)</span>:
 <span class="w">                </span>threads<span class="o">[</span>str<span class="o">(</span>key<span class="o">)]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>thread
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>decisions,<span class="w"> </span>threads
+<span class="w">        </span>logins:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>trigger_id,<span class="w"> </span>value<span class="w"> </span><span class="k">in</span><span class="w"> </span>connection.execute<span class="o">(</span><span class="s2">"SELECT id, value FROM trigger"</span><span class="o">)</span>:
+<span class="w">            </span><span class="nv">trigger</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>json.loads<span class="o">(</span>value<span class="o">)</span>
+<span class="w">            </span><span class="nv">actor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>trigger.get<span class="o">(</span><span class="s2">"actor"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>trigger,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>isinstance<span class="o">(</span>trigger.get<span class="o">(</span><span class="s2">"actor"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>actor.get<span class="o">(</span><span class="s2">"id"</span><span class="o">)</span>,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>actor<span class="o">[</span><span class="s2">"id"</span><span class="o">]</span>:
+<span class="w">                </span>logins<span class="o">[</span>str<span class="o">(</span>trigger_id<span class="o">)]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>actor<span class="o">[</span><span class="s2">"id"</span><span class="o">]</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>decisions,<span class="w"> </span>threads,<span class="w"> </span>logins
 <span class="w">    </span>finally:
 <span class="w">        </span>connection.close<span class="o">()</span>
+
+
+def<span class="w"> </span>source_word<span class="o">(</span>decision:<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str:
+<span class="w">    </span><span class="s2">"""The Source a Decision belongs to, read from its `threadKey` (`&lt;source&gt;:&lt;id&gt;`, src/core/model.ts: `github:12`,</span>
+<span class="s2">    `discord:guild/42`; U465d, verdict U465-e6a9a84f P2 `:240`: every row said github-source, so another Source's</span>
+<span class="s2">    accept was recorded as GitHub's): the word before the first colon when it is `[a-z0-9][a-z0-9_-]*`, else</span>
+<span class="s2">    `unknown`, never a guess."""</span>
+<span class="w">    </span>word,<span class="w"> </span>separator,<span class="w"> </span><span class="nv">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>str<span class="o">(</span>decision.get<span class="o">(</span><span class="s2">"threadKey"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">))</span>.partition<span class="o">(</span><span class="s2">":"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>word<span class="w"> </span><span class="k">if</span><span class="w"> </span>separator<span class="w"> </span>and<span class="w"> </span>SOURCE_WORD.fullmatch<span class="o">(</span>word<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"unknown"</span>
 
 
 def<span class="w"> </span>thread_label<span class="o">(</span>decision:<span class="w"> </span>dict,<span class="w"> </span>threads:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>dict<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>str:
@@ -6080,50 +6185,93 @@ def<span class="w"> </span>thread_label<span class="o">(</span>decision:<span cl
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>str<span class="o">(</span>label<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>label,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>label<span class="w"> </span><span class="k">else</span><span class="w"> </span>key
 
 
-def<span class="w"> </span>new_rows<span class="o">(</span>decisions:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>dict<span class="o">]</span>,<span class="w"> </span>threads:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>dict<span class="o">]</span>,<span class="w"> </span>written:<span class="w"> </span>list<span class="o">[</span>list<span class="o">[</span>str<span class="o">]]</span>,<span class="w"> </span>now:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>list<span class="o">[</span>str<span class="o">]</span>:
+def<span class="w"> </span>ladder_rows<span class="o">(</span>
+<span class="w">    </span>decision_id:<span class="w"> </span>str,<span class="w"> </span>decision:<span class="w"> </span>dict,<span class="w"> </span>threads:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>dict<span class="o">]</span>,<span class="w"> </span>logins:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]</span>,<span class="w"> </span>now:<span class="w"> </span>str
+<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>list<span class="o">[</span>tuple<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]]</span>:
+<span class="w">    </span><span class="s2">"""The (kind, row) pairs one Decision yields: one row for a would-accept or an accept, one per gate refusal among</span>
+<span class="s2">    a refusal Decision's reasons, none for any other Decision."""</span>
+<span class="w">    </span><span class="nv">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>row_kind<span class="o">(</span>decision<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>kind<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="nv">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>thread_label<span class="o">(</span>decision,<span class="w"> </span>threads<span class="o">)</span>
+<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>source_word<span class="o">(</span>decision<span class="o">)</span>
+
+<span class="w">    </span>def<span class="w"> </span>row<span class="o">(</span>text:<span class="w"> </span>str,<span class="w"> </span>why:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">"\t"</span>.join<span class="o">([</span>now,<span class="w"> </span>LEVER,<span class="w"> </span>flat<span class="o">(</span>text<span class="o">)</span>,<span class="w"> </span>flat<span class="o">(</span>why<span class="o">)</span>,<span class="w"> </span>flat<span class="o">(</span>decision_id<span class="o">)</span>,<span class="w"> </span><span class="s2">"-"</span><span class="o">])</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">kind</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>REFUSAL:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">[</span>
+<span class="w">            </span><span class="o">(</span>
+<span class="w">                </span>REFUSAL,
+<span class="w">                </span>row<span class="o">(</span>
+<span class="w">                    </span>f<span class="s2">"{source}-source refusal {reason['code']}: {label} "</span>
+<span class="w">                    </span>f<span class="s2">"login={logins.get(str(reason.get('triggerId', '')), 'unknown')}"</span>,
+<span class="w">                    </span>reason_text<span class="o">(</span>reason<span class="o">)</span>,
+<span class="w">                </span><span class="o">)</span>,
+<span class="w">            </span><span class="o">)</span>
+<span class="w">            </span><span class="k">for</span><span class="w"> </span>reason<span class="w"> </span><span class="k">in</span><span class="w"> </span>refusals<span class="o">(</span>decision<span class="o">)</span>
+<span class="w">        </span><span class="o">]</span>
+<span class="w">    </span><span class="nv">triggers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decision.get<span class="o">(</span><span class="s2">"triggerIds"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>decision.get<span class="o">(</span><span class="s2">"triggerIds"</span><span class="o">)</span>,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="nv">audit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decision.get<span class="o">(</span><span class="s2">"audit"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>decision.get<span class="o">(</span><span class="s2">"audit"</span><span class="o">)</span>,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
+<span class="w">    </span><span class="nv">matches</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>audit.get<span class="o">(</span><span class="s2">"matches"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>audit.get<span class="o">(</span><span class="s2">"matches"</span><span class="o">)</span>,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="nv">rules</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
+<span class="w">        </span><span class="o">[</span>str<span class="o">(</span>rule<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>rule<span class="w"> </span><span class="k">in</span><span class="w"> </span>decision<span class="o">[</span><span class="s2">"rules"</span><span class="o">]]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>decision.get<span class="o">(</span><span class="s2">"rules"</span><span class="o">)</span>,<span class="w"> </span>list<span class="o">)</span>
+<span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="o">[</span>str<span class="o">(</span>match.get<span class="o">(</span><span class="s2">"rule_id"</span><span class="o">))</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>match<span class="w"> </span><span class="k">in</span><span class="w"> </span>matches<span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>match,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>match.get<span class="o">(</span><span class="s2">"rule_id"</span><span class="o">)]</span>
+<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>f<span class="s2">"{source}-source {kind}: {label} trigger={','.join(str(item) for item in triggers)} rules={','.join(rules)}"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">kind</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>ACCEPT<span class="w"> </span>and<span class="w"> </span>decision.get<span class="o">(</span><span class="s2">"ticketId"</span><span class="o">)</span>:
+<span class="w">        </span><span class="nv">text</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>f<span class="s2">" ticket={decision['ticketId']}"</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">[(</span>kind,<span class="w"> </span>row<span class="o">(</span>text,<span class="w"> </span>reason_text<span class="o">(</span>decision.get<span class="o">(</span><span class="s2">"reason"</span><span class="o">))))]</span>
+
+
+def<span class="w"> </span>new_rows<span class="o">(</span>
+<span class="w">    </span>decisions:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>dict<span class="o">]</span>,<span class="w"> </span>threads:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>dict<span class="o">]</span>,<span class="w"> </span>logins:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]</span>,<span class="w"> </span>written:<span class="w"> </span>list<span class="o">[</span>list<span class="o">[</span>str<span class="o">]]</span>,<span class="w"> </span>now:<span class="w"> </span>str
+<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>list<span class="o">[</span>tuple<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]]</span>:
+<span class="w">    </span><span class="s2">"""The (kind, row) pairs of every ladder Decision newer than the last row's and not yet named by a row."""</span>
 <span class="w">    </span><span class="nv">named</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>row<span class="o">[</span><span class="m">4</span><span class="o">]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>written<span class="w"> </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>row<span class="o">)</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">4</span><span class="o">}</span>
 <span class="w">    </span><span class="nv">since</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">""</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>written:
 <span class="w">        </span><span class="nv">last</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>written<span class="o">[</span>-1<span class="o">][</span><span class="m">4</span><span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>written<span class="o">[</span>-1<span class="o">])</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">""</span>
 <span class="w">        </span><span class="nv">since</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>str<span class="o">(</span>decisions.get<span class="o">(</span>last,<span class="w"> </span><span class="o">{})</span>.get<span class="o">(</span><span class="s2">"at"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">))</span>
-<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span>rows:<span class="w"> </span>list<span class="o">[</span>tuple<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>decision_id,<span class="w"> </span>decision<span class="w"> </span><span class="k">in</span><span class="w"> </span>decisions.items<span class="o">()</span>:
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>decision_id<span class="w"> </span><span class="k">in</span><span class="w"> </span>named<span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>would_accept<span class="o">(</span>decision<span class="o">)</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>decision_id<span class="w"> </span><span class="k">in</span><span class="w"> </span>named:
 <span class="w">            </span><span class="k">continue</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>since<span class="w"> </span>and<span class="w"> </span>str<span class="o">(</span>decision.get<span class="o">(</span><span class="s2">"at"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">))</span><span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>since:
 <span class="w">            </span><span class="k">continue</span>
-<span class="w">        </span><span class="nv">triggers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decision.get<span class="o">(</span><span class="s2">"triggerIds"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>decision.get<span class="o">(</span><span class="s2">"triggerIds"</span><span class="o">)</span>,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">[]</span>
-<span class="w">        </span><span class="nv">audit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decision<span class="o">[</span><span class="s2">"audit"</span><span class="o">]</span>
-<span class="w">        </span><span class="nv">matches</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>audit.get<span class="o">(</span><span class="s2">"matches"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>audit.get<span class="o">(</span><span class="s2">"matches"</span><span class="o">)</span>,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">[]</span>
-<span class="w">        </span><span class="nv">rules</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>str<span class="o">(</span>match.get<span class="o">(</span><span class="s2">"rule_id"</span><span class="o">))</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>match<span class="w"> </span><span class="k">in</span><span class="w"> </span>matches<span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>match,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>match.get<span class="o">(</span><span class="s2">"rule_id"</span><span class="o">)]</span>
-<span class="w">        </span>rows.append<span class="o">(</span>
-<span class="w">            </span><span class="s2">"\t"</span>.join<span class="o">(</span>
-<span class="w">                </span><span class="o">[</span>
-<span class="w">                    </span>now,
-<span class="w">                    </span>LEVER,
-<span class="w">                    </span>flat<span class="o">(</span>
-<span class="w">                        </span>f<span class="s2">"github-source would-accept: {thread_label(decision, threads)} "</span>
-<span class="w">                        </span>f<span class="s2">"trigger={','.join(str(item) for item in triggers)} rules={','.join(rules)}"</span>
-<span class="w">                    </span><span class="o">)</span>,
-<span class="w">                    </span>flat<span class="o">(</span>reason_text<span class="o">(</span>decision.get<span class="o">(</span><span class="s2">"reason"</span><span class="o">)))</span>,
-<span class="w">                    </span>flat<span class="o">(</span>decision_id<span class="o">)</span>,
-<span class="w">                    </span><span class="s2">"-"</span>,
-<span class="w">                </span><span class="o">]</span>
-<span class="w">            </span><span class="o">)</span>
-<span class="w">        </span><span class="o">)</span>
+<span class="w">        </span>rows.extend<span class="o">(</span>ladder_rows<span class="o">(</span>decision_id,<span class="w"> </span>decision,<span class="w"> </span>threads,<span class="w"> </span>logins,<span class="w"> </span>now<span class="o">))</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>rows
 
 
+def<span class="w"> </span>parse_argv<span class="o">(</span>argv:<span class="w"> </span>list<span class="o">[</span>str<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>str,<span class="w"> </span>str,<span class="w"> </span>str<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>None:
+<span class="w">    </span><span class="s2">"""The kind counted, the store path and the table path; None for anything else (the usage refusal)."""</span>
+<span class="w">    </span>kind,<span class="w"> </span><span class="nv">rest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>WOULD_ACCEPT,<span class="w"> </span>argv<span class="o">[</span><span class="m">1</span>:<span class="o">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>rest<span class="w"> </span>and<span class="w"> </span>rest<span class="o">[</span><span class="m">0</span><span class="o">]</span>.startswith<span class="o">(</span><span class="s2">"--kind"</span><span class="o">)</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>rest<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--kind"</span>:
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>rest<span class="o">)</span><span class="w"> </span>&lt;<span class="w"> </span><span class="m">2</span>:
+<span class="w">                </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">            </span>kind,<span class="w"> </span><span class="nv">rest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>rest<span class="o">[</span><span class="m">1</span><span class="o">]</span>,<span class="w"> </span>rest<span class="o">[</span><span class="m">2</span>:<span class="o">]</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span>rest<span class="o">[</span><span class="m">0</span><span class="o">]</span>.startswith<span class="o">(</span><span class="s2">"--kind="</span><span class="o">)</span>:
+<span class="w">            </span>kind,<span class="w"> </span><span class="nv">rest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>rest<span class="o">[</span><span class="m">0</span><span class="o">][</span>len<span class="o">(</span><span class="s2">"--kind="</span><span class="o">)</span><span class="w"> </span>:<span class="o">]</span>,<span class="w"> </span>rest<span class="o">[</span><span class="m">1</span>:<span class="o">]</span>
+<span class="w">        </span><span class="k">else</span>:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>kind<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>KINDS<span class="w"> </span>or<span class="w"> </span>len<span class="o">(</span>rest<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">2</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>kind,<span class="w"> </span>rest<span class="o">[</span><span class="m">0</span><span class="o">]</span>,<span class="w"> </span>rest<span class="o">[</span><span class="m">1</span><span class="o">]</span>
+
+
 def<span class="w"> </span>main<span class="o">(</span>argv:<span class="w"> </span>list<span class="o">[</span>str<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>int:
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>argv<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">3</span>:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>refuse<span class="o">(</span><span class="s2">"usage: intake-observe.py &lt;orchestrator.sqlite&gt; &lt;decisions.tsv&gt;"</span><span class="o">)</span>
-<span class="w">    </span>database,<span class="w"> </span><span class="nv">table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>argv<span class="o">[</span><span class="m">1</span><span class="o">]</span>,<span class="w"> </span>argv<span class="o">[</span><span class="m">2</span><span class="o">]</span>
+<span class="w">    </span><span class="nv">parsed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>parse_argv<span class="o">(</span>argv<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>parsed<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>refuse<span class="o">(</span>USAGE<span class="o">)</span>
+<span class="w">    </span>counted,<span class="w"> </span>database,<span class="w"> </span><span class="nv">table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>parsed
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>path,<span class="w"> </span>what,<span class="w"> </span>allow_absent<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">((</span>database,<span class="w"> </span><span class="s2">"the store"</span>,<span class="w"> </span>False<span class="o">)</span>,<span class="w"> </span><span class="o">(</span>table,<span class="w"> </span><span class="s2">"the decisions table"</span>,<span class="w"> </span>True<span class="o">))</span>:
 <span class="w">        </span><span class="nv">reason</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>regular_file<span class="o">(</span>path,<span class="w"> </span>what,<span class="w"> </span><span class="nv">allow_absent</span><span class="o">=</span>allow_absent<span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>reason:
 <span class="w">            </span><span class="k">return</span><span class="w"> </span>refuse<span class="o">(</span>reason<span class="o">)</span>
 <span class="w">    </span>try:
-<span class="w">        </span>decisions,<span class="w"> </span><span class="nv">threads</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>read_decisions<span class="o">(</span>database<span class="o">)</span>
+<span class="w">        </span>decisions,<span class="w"> </span>threads,<span class="w"> </span><span class="nv">logins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>read_decisions<span class="o">(</span>database<span class="o">)</span>
 <span class="w">    </span>except<span class="w"> </span><span class="o">(</span>sqlite3.Error,<span class="w"> </span>ValueError,<span class="w"> </span>json.JSONDecodeError<span class="o">)</span><span class="w"> </span>as<span class="w"> </span>error:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>refuse<span class="o">(</span>f<span class="s2">"the store {database} could not be read: {error}"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">now</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>datetime.datetime.now<span class="o">(</span>datetime.timezone.utc<span class="o">)</span>.strftime<span class="o">(</span><span class="s2">"%Y-%m-%dT%H:%M:%SZ"</span><span class="o">)</span>
@@ -6131,15 +6279,15 @@ def<span class="w"> </span>main<span class="o">(</span>argv:<span class="w"> </s
 <span class="w">        </span><span class="nv">written</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>written_rows<span class="o">(</span>table<span class="o">)</span>
 <span class="w">    </span>except<span class="w"> </span><span class="o">(</span>OSError,<span class="w"> </span>UnicodeDecodeError<span class="o">)</span><span class="w"> </span>as<span class="w"> </span>error:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>refuse<span class="o">(</span>f<span class="s2">"the decisions table {table} could not be read: {error}"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>new_rows<span class="o">(</span>decisions,<span class="w"> </span>threads,<span class="w"> </span>written,<span class="w"> </span>now<span class="o">)</span>
+<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>new_rows<span class="o">(</span>decisions,<span class="w"> </span>threads,<span class="w"> </span>logins,<span class="w"> </span>written,<span class="w"> </span>now<span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>rows:
 <span class="w">        </span><span class="nv">header</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">""</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>os.path.lexists<span class="o">(</span>table<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>DECISIONS_HEADER<span class="w"> </span>+<span class="w"> </span><span class="s2">"\n"</span>
 <span class="w">        </span>try:
 <span class="w">            </span>with<span class="w"> </span>open<span class="o">(</span>table,<span class="w"> </span><span class="s2">"a"</span>,<span class="w"> </span><span class="nv">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span>,<span class="w"> </span><span class="nv">newline</span><span class="o">=</span><span class="s2">""</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>handle:
-<span class="w">                </span>handle.write<span class="o">(</span>header<span class="w"> </span>+<span class="w"> </span><span class="s2">""</span>.join<span class="o">(</span>row<span class="w"> </span>+<span class="w"> </span><span class="s2">"\n"</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>rows<span class="o">))</span>
+<span class="w">                </span>handle.write<span class="o">(</span>header<span class="w"> </span>+<span class="w"> </span><span class="s2">""</span>.join<span class="o">(</span>row<span class="w"> </span>+<span class="w"> </span><span class="s2">"\n"</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>_,<span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>rows<span class="o">))</span>
 <span class="w">        </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>error:
 <span class="w">            </span><span class="k">return</span><span class="w"> </span>refuse<span class="o">(</span>f<span class="s2">"the decisions table {table} could not be appended: {error}"</span><span class="o">)</span>
-<span class="w">    </span>print<span class="o">(</span>len<span class="o">(</span>rows<span class="o">))</span>
+<span class="w">    </span>print<span class="o">(</span>sum<span class="o">(</span><span class="m">1</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>kind,<span class="w"> </span>_<span class="w"> </span><span class="k">in</span><span class="w"> </span>rows<span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">counted</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>ALL<span class="w"> </span>or<span class="w"> </span><span class="nv">kind</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>counted<span class="o">))</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 
 

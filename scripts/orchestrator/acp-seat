@@ -1,12 +1,16 @@
 #!/usr/bin/env -S python3 -I
 """The thin client of `acp-broker`, run inside the Router's sandbox by `dsh-subagent-acp` (regime-cutover U343, M-24).
 
-`acp-seat --socket <path> --repo <path> --ref <rev> --name <name>` connects to the broker's Unix socket (the one
+`acp-seat --socket <path> --name <name> [--repo <path>] [--ref <rev>]` connects to the broker's Unix socket (the one
 directory the router row's `network.allowUnixSockets` opens, U342), sends the header line `ACP-SEAT v1 repo=<path>
 ref=<rev> name=<name>` (regime-cutover U343e: the Router names a repository and a ref, never a path that becomes a
 grant), then relays its stdin to the socket and the socket to its stdout until either side closes, byte for byte: the
 ACP stream `dsh-subagent-acp` writes reaches the worker's `omp acp` through the broker, and the worker's reaches it
-back. The broker, outside every sandbox, does everything else: it judges the header, clones the ref into a directory
+back. `--repo` defaults to this process's working directory and `--ref` to `HEAD` (regime-cutover U345, M-22 Part B):
+`dsh-subagent-acp` spawns the client per request in the request's cwd with the fixed args of the Router profile's
+`subagent-acp` row (`--socket $ACP_BROKER_SOCK --name router`), and the broker judges the defaulted path as it judges
+any header repository (an absolute clean path to a repository it can read inside the Router's settings). The broker,
+outside every sandbox, does everything else: it judges the header, clones the ref into a directory
 of its own, renders the worker's settings, runs the canary, starts the worker in a sibling sandbox, logs the launch
 and pushes the worker's HEAD back as `refs/acp-seat/<name>/<stamp>`. This client never starts a sandbox and runs no
 tool of its own; it is the stream and nothing more.
@@ -57,7 +61,9 @@ STATUS_LINE = re.compile(r"\Astatus=([0-9]+) push=([A-Za-z0-9./_-]+)\Z")
 FIRST_LINE_LIMIT = 4096
 CHUNK = 65536
 OPTIONS = ("--socket", "--repo", "--ref", "--name")
-USAGE = "usage: acp-seat --socket <path> --repo <path> --ref <rev> --name <name>"
+REQUIRED = ("--socket", "--name")
+DEFAULT_REF = "HEAD"
+USAGE = "usage: acp-seat --socket <path> --name <name> [--repo <path>] [--ref <rev>]"
 
 
 def refuse(reason):
@@ -135,7 +141,8 @@ def lever_self_check():
 
 
 def parse_options(argv):
-    """The four options, each exactly once, nothing else."""
+    """The four options, each at most once, nothing else; `--socket` and `--name` required, `--repo` defaulted to the
+    working directory (the request's cwd, read once here) and `--ref` to HEAD when absent (U345)."""
     options = {}
     index = 1
     while index < len(argv):
@@ -146,8 +153,14 @@ def parse_options(argv):
             refuse(f"{flag} given twice; {USAGE}")
         options[flag] = argv[index + 1]
         index += 2
-    if set(options) != set(OPTIONS):
+    if any(flag not in options for flag in REQUIRED):
         refuse(USAGE)
+    if "--repo" not in options:
+        try:
+            options["--repo"] = os.getcwd()
+        except OSError as exc:
+            refuse(f"cannot read the working directory for the default --repo: {exc}")
+    options.setdefault("--ref", DEFAULT_REF)
     return tuple(options[flag] for flag in OPTIONS)
 
 

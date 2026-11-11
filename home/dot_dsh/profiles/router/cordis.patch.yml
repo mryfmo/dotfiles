@@ -28,6 +28,11 @@
 - id: dsh-superagent
   config:
     stateDir: !!js process.env.DSH_HOME + '/router-state'
+- id: tool-subagent
+  config:
+    provider: acp
+    toolName: subagent
+    maxDepth: provider-managed
 - insert:
     - id: omp-gateway
       name: dsh-omp-gateway
@@ -41,3 +46,15 @@
         models:
           - claude-bridge/claude-haiku-5-5
           - claude-bridge/claude-opus-5-5
+    - id: subagent-acp
+      name: '@deepseek-ai/dsh-subagent-acp'
+      config:
+        providerName: acp
+        command: !!js process.env.HOME + '/.local/bin/common/acp-seat'
+        args:
+          - --socket
+          - !!js process.env.ACP_BROKER_SOCK
+          - --name
+          - router
+        permission: allow
+        env: {}

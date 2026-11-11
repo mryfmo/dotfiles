@@ -1044,8 +1044,13 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     [f"HOME={self.home}", f"PATH={self.tools}:/usr/bin:/bin:/usr/sbin:/sbin", f"DSH_HOME={self.dsh_home}",
                      "OMP_PROFILE=dsh", f"CLAUDE_CONFIG_DIR={Path(self.seats, '.state/claude')}", "USER=u321"],
                 )  # fmt: skip
-                self.assertRegex(line[8], rf"^{re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
-                self.assertEqual(line[9:], ["--profile", "router", "--version"])
+                # U345: the broker socket rides after the inherited names, before the shim.
+                self.assertRegex(
+                    line[8],
+                    rf"^ACP_BROKER_SOCK={re.escape(self.seats)}/\.state/router-\d{{8}}-\d{{6}}-\d+/broker/sock$",
+                )
+                self.assertRegex(line[9], rf"^{re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
+                self.assertEqual(line[10:], ["--profile", "router", "--version"])
                 self.assertEqual(
                     len(self.calls_of("srt")), before + 1, "the dry run reads the srt version and starts nothing"
                 )
@@ -1210,8 +1215,12 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                         "--", "--version", "--flag", "-x", "value")  # fmt: skip
         self.assertEqual(run.returncode, 0, run.stderr)
         line = shlex.split(run.stdout)
-        self.assertRegex(line[7], rf"^{re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
-        self.assertEqual(line[8:], ["--profile", "router", "--version", "--flag", "-x", "value"])
+        # U345: the broker socket's name rides last in the environment list, before the shim.
+        self.assertRegex(
+            line[7], rf"^ACP_BROKER_SOCK={re.escape(self.seats)}/\.state/router-\d{{8}}-\d{{6}}-\d+/broker/sock$"
+        )
+        self.assertRegex(line[8], rf"^{re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
+        self.assertEqual(line[9:], ["--profile", "router", "--version", "--flag", "-x", "value"])
         self.assertEqual(line.count("--profile"), 1)
         run = self.launch("--", "--profile", "thak", "--version")
         self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
@@ -3115,6 +3124,43 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 else:
                     self.assertEqual(run.stderr, "")
         self.assertEqual(self.dsh_calls(), [])
+
+    def test_the_router_launch_carries_the_broker_socket_as_acp_broker_sock_and_the_dsh_launch_carries_none(self):
+        """U345 (M-22 Part B, table row s21): the router row's environment list gains `ACP_BROKER_SOCK=<state
+        slot>/broker/sock`, the socket broker_start names, so the profile's `subagent-acp` row can run `acp-seat
+        --socket $ACP_BROKER_SOCK` inside the Router's sandbox. The dry run prints it in the launch line after the
+        inherited names and before the shim; a launch's dsh receives it and the socket it names listens when dsh
+        starts; the dsh row's line and environment hold no such name."""
+        run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run",
+                        "--", "--version", USER="u345")  # fmt: skip
+        self.assertEqual(run.returncode, 0, run.stderr)
+        line = shlex.split(run.stdout)
+        shim = re.match(rf"^{re.escape(self.seats)}/\.sandbox/(router-\d{{8}}-\d{{6}}-\d+)/bin/dsh$", line[9])
+        self.assertIsNotNone(shim, line)
+        self.assertEqual(line[7:9], ["USER=u345", f"ACP_BROKER_SOCK={self.seats}/.state/{shim[1]}/broker/sock"])
+        self.assertEqual(line[10:], ["--profile", "router", "--version"])
+        self.assertEqual(sum(entry.startswith("ACP_BROKER_SOCK=") for entry in line), 1)
+        run = self.launch("--dry-run", "--", "--version", USER="u345")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        line = shlex.split(run.stdout)
+        self.assertEqual([entry for entry in line if entry.startswith("ACP_BROKER_SOCK=")], [])
+        self.assertRegex(line[8], rf"^{re.escape(self.seats)}/\.sandbox/dsh-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
+        self.assertEqual(self.dsh_calls(), [], "the dry runs start nothing")
+        self.assertFalse(Path(self.seats).exists(), "the dry runs make no seats root and no slot")
+        run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version")
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        (router_call,) = self.dsh_calls()
+        state = Path(router_call["cwd"]).parent
+        self.assertRegex(state.name, r"^router-\d{8}-\d{6}-\d+$")
+        self.assertEqual(router_call["env"]["ACP_BROKER_SOCK"], f"{state}/broker/sock")
+        self.assertTrue(router_call["broker_sock"], "the socket the name points at listened when dsh started")
+        self.assertIn(f"acp-broker: listening on {state}/broker/sock\n", run.stderr)
+        run = self.launch("--", "--version")
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        dsh_call = self.dsh_calls()[-1]
+        self.assertNotIn("ACP_BROKER_SOCK", dsh_call["env"])
+        self.assertFalse(dsh_call["broker_sock"], "the dsh row starts no broker")
+        self.assertEqual(self.slots(), ([], []), "both launches' slots are gone")
 
 
 if __name__ == "__main__":

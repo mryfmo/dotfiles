@@ -182,6 +182,19 @@ DSH_GATEWAY_PROVIDER = "claude-bridge"
 DSH_GATEWAY_COMMAND = ("omp", "auth-gateway", "stdio")
 DSH_GATEWAY_PLUGIN = "dsh-omp-gateway"
 DSH_GATEWAY_LINK = "link:../../plugins/omp-gateway"
+# The Router's subagent provider (regime-cutover U345, M-22 Part B, table row s21): the pinned tree's out-of-process
+# ACP backend (`packages/subagent/subagent-acp`: `Config {providerName, command, args, permission, env}`, the child
+# spawned per request in the request's cwd), whose command is `acp-seat`, the broker's thin client installed and
+# pinned beside the levers and readable inside the dsh row (`~/.local/bin` is in no deny row), spelled through HOME
+# as the router patch spells its state root; its args name the launch's broker socket by the environment variable
+# hcom-seat's router row sets and the fixed worker name. The client defaults the repository to the request's cwd and
+# the ref to HEAD. `tool-subagent` is repointed to the provider, the shape the U313 spike composed under
+# `dsh --dump-config` (decisions 2026-11-06T23:13:00Z).
+DSH_SUBAGENT_ACP_PLUGIN = "@deepseek-ai/dsh-subagent-acp"
+DSH_SUBAGENT_ACP_PROVIDER = "acp"
+DSH_ACP_SEAT_PATH = "~/.local/bin/common/acp-seat"
+DSH_ACP_BROKER_SOCK_ENV = "ACP_BROKER_SOCK"
+DSH_ACP_SEAT_NAME = "router"
 # The DeepSeek harness plan's names: the kit's one profile and the Claude Code settings file whose hooks it mounts.
 DSH_PROFILE = "thak"
 DSH_HOOKS_SETTINGS = "~/.claude/settings.json"
@@ -2518,10 +2531,37 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
         f"- id: {DSH_SUPERAGENT_PLUGIN}",
         "  config:",
         f"    stateDir: !!js process.env.DSH_HOME + '/{DSH_ROUTER_STATE_DIR}'",
+        # The subagent tool on the ACP provider (U345): a Router subagent turn is an `omp acp` worker the broker starts
+        # in a sibling sandbox, never an in-process child under the Router's own sandbox. `maxDepth: provider-managed`
+        # is required (measured on this host, the pinned tool-subagent's assertSubagentProviderConfiguration): the ACP
+        # provider advertises no depthLimit capability, so a numeric cap refuses the mount.
+        "- id: tool-subagent",
+        "  config:",
+        f"    provider: {DSH_SUBAGENT_ACP_PROVIDER}",
+        "    toolName: subagent",
+        "    maxDepth: provider-managed",
     ]
     # No bash-sandbox row and no preset row (U406): the base bundle's sandbox stays on, and upstream's bundle layer
-    # inserts the two agent presets as shipped.
-    lines += ["- insert:", *dsh_gateway_insert(dsh)]
+    # inserts the two agent presets as shipped. The gateway insert, then the ACP provider (U345): `acp-seat` by its
+    # installed path, the socket from the launch's environment (a `!!js` value, the form the state root uses), the
+    # fixed name, permission `allow` (the worker's own sandbox is the boundary; the client surfaces no prompt) and no
+    # env row (the seam forwards HOME and the seat marker; `DSH_*` and credential-shaped names are scrubbed).
+    lines += [
+        "- insert:",
+        *dsh_gateway_insert(dsh),
+        "    - id: subagent-acp",
+        f"      name: '{DSH_SUBAGENT_ACP_PLUGIN}'",
+        "      config:",
+        f"        providerName: {DSH_SUBAGENT_ACP_PROVIDER}",
+        f"        command: !!js process.env.HOME + '{DSH_ACP_SEAT_PATH.removeprefix('~')}'",
+        "        args:",
+        "          - --socket",
+        f"          - !!js process.env.{DSH_ACP_BROKER_SOCK_ENV}",
+        "          - --name",
+        f"          - {DSH_ACP_SEAT_NAME}",
+        "        permission: allow",
+        "        env: {}",
+    ]
     profile_dir = ROOT / "home/dot_dsh/profiles" / DSH_ROUTER_PROFILE
     return {
         profile_dir / "package.json": json.dumps(package, indent=2) + "\n",

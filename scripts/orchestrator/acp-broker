@@ -37,13 +37,26 @@
 #   `claude.levers.sha256` pin was checked here; per connection it starts `acp-broker --connection <the same three
 #   arguments>` with the connection as its stdin and stdout and copies bytes both ways until either side closes.
 #   The socket is the relay's alone (regime-cutover U343j, verdict U343i-76a5c83b P1 :1061): it binds `sock` and
-#   removes it at its end, a signal to it included. The take is a check before that bind, so two brokers started
-#   together can both pass it, and the bind decides: the relay that loses it refuses (`cannot bind the broker
-#   socket`) and exits 2, and this process, which until this round removed the socket after its relay ended whatever
-#   had bound it, removes nothing when the socket stands after the relay's end (another broker's listener, or one
-#   the relay could not remove; the records beside it are that broker's) and exits 2 naming it. The records no
+#   removes it at its end, a signal to it included; its handlers for HUP, INT and TERM are installed before the bind
+#   (regime-cutover U447: the trap below sends it TERM the moment this process's signal arrives, and a TERM between
+#   the bind and those handlers ended the relay by the default disposition with the socket bound, which this process
+#   read as another broker's and exited 2; the test fixture took the socket's existence for readiness, so it signalled
+#   in that window). The take is a check before that bind, so two brokers started together can both pass it, and the
+#   bind decides: the relay that loses it refuses (`cannot bind the broker socket`) and exits 2, and this process,
+#   which until this round removed the socket after its relay ended whatever had bound it, removes nothing when the
+#   socket stands after the relay's end (another broker's listener, or one the relay could not remove; the records
+#   beside it are that broker's) and exits 2 naming it. The records no
 #   client read are removed by this process once the listener ended and the socket is gone, and by the trap a
-#   hangup, interrupt or termination runs before this process ends by that signal; the directory is hcom-seat's and
+#   hangup, interrupt or termination runs before this process ends by that signal. The trap is armed before the
+#   relay's fork, and a signal during the fork, between the `&` and `child=$!`, is recorded and handled once the
+#   child is known (regime-cutover U447c, verdict U447-669dee44 P1 :1280: bash runs a trap right after the command
+#   the signal arrived in and can block no signal, so until this round such a signal ran the trap with `child` empty,
+#   which signalled nothing, read the socket the orphaned relay had bound as another broker's and exited 2; the
+#   window is closed by deferral, one flag and one recorded signal, no second cleanup path). Which signals arrive is
+#   the launch's: `hcom-seat` starts this lever as a background job of a non-interactive bash, which inherits SIGINT
+#   ignored, and bash refuses to trap a signal ignored at entry, so under hcom-seat the broker is ended by
+#   hcom-seat's TERM (and a HUP), and a direct INT reaches it only when it is started in the foreground (the test
+#   fixture's form, where the INT cases hold); no caller delivers INT to the broker. The directory is hcom-seat's and
 #   stands (no `rmdir` here): the launch's slot removal takes it with the Router's state slot.
 #   The header (regime-cutover U343e, the mechanism-change row of 2026-11-07T09:41:47Z: the Router names no path
 #   that becomes a grant). The first line of a connection is `ACP-SEAT v1 repo=<path> ref=<rev> name=<name>`: the
@@ -241,7 +254,9 @@
 # @env HOME The user's home; the private tool directory, the omp profile and the credential denies derive from it.
 # @env DSH_HOME The Router's home (hcom-seat's seat_env); its credential root `<DSH_HOME>/router-credentials` is the
 #   one deny of the worker beyond the Router's table (U343l). Nothing else of the home reaches the worker.
-# @stdout `acp-broker: listening on <sock>` once the socket accepts; in a connection, the one line `acp-broker: record
+# @stdout `acp-broker: listening on <sock>` once the socket accepts, the last start-up step and the one readiness sign
+#   (hcom-seat reads it through its FIFO and the test fixture from this stdout, neither the socket's existence; U447;
+#   a signal that arrived before it leaves no line); in a connection, the one line `acp-broker: record
 #   <id>` (or the refusal), then omp's stdout and nothing else of the broker's.
 # @exitcode 0 The listener ended on its own with the socket gone (the relay's removal), the records removed and the
 #   directory standing; in a connection, omp exited 0 and the reaper removed the slot.
@@ -418,6 +433,10 @@ connection=0
 slot=''
 slot_made=0
 child=''
+# The listener's signal state (U447c): `forking` is 1 from right before the relay's `&` to right after `child=$!`,
+# and a signal that arrives then is recorded in `deferred_signal` and handled once the child is known.
+forking=0
+deferred_signal=''
 # The connection's reaper pid once forked (regime-cutover U343o): from then on the reaper owns the slot's removal.
 reaper=''
 push_word=''
@@ -1176,11 +1195,21 @@ broker_cleanup() {
 # @description The listener's signal trap: a hangup, interrupt or termination ends the relay (and, through it, every
 #   worker it started; the relay removes its socket), removes the records once the socket is gone and then ends this
 #   process by the same signal, its disposition restored; a socket that stands, or a record that could not be
-#   removed, is exit 2 whatever the signal, each named by broker_cleanup and told apart by its status.
+#   removed, is exit 2 whatever the signal, each named by broker_cleanup and told apart by its status. Two states
+#   (regime-cutover U447c, verdict U447-669dee44 P1 :1280): while `forking` is set (from right before the relay's `&`
+#   to right after `child=$!`) the signal is recorded in `deferred_signal` and the handler returns, since bash runs a
+#   trap right after the command the signal arrived in and `child` may be empty there; once the flag is cleared the
+#   recorded signal is handled by this same function with the child known. One handler, one flag, one recorded
+#   signal; the body below is the one cleanup path. Which signals the launch can deliver is the header's: under
+#   hcom-seat a TERM (and a HUP); a direct INT only when started in the foreground, the test fixture's form.
 # @arg $1 string The signal name.
 # shellcheck disable=SC2329 # invoked by the trap installed below
 broker_signal() {
     local removed=0
+    if ((forking)); then
+        deferred_signal=$1
+        return 0
+    fi
     trap - HUP INT TERM
     if [[ -n ${child} ]]; then
         if kill -TERM "${child}" 2> /dev/null; then :; fi
@@ -1269,7 +1298,19 @@ if ((! connection)); then
     # refused there.
     broker_dir_id=$(/usr/bin/stat "${lstat_args[@]}" -- "${broker_dir}") || refuse "cannot read the identity of the broker directory ${broker_dir}"
     [[ ${broker_dir_id} =~ ^[0-9]+:[0-9]+$ ]] || refuse "the identity of the broker directory ${broker_dir} read as '${broker_dir_id}', not <device>:<inode>"
-    # Installed before the relay starts, so a signal while it listens removes what it made.
+    # The start-up is a sequence of states: this process started, the relay forked, the socket bound, the readiness
+    # line printed, serving. The trap is armed before the fork, so from the first state a HUP, INT or TERM ends this
+    # process by that signal with the relay ended (its own handlers precede its bind, U447), the socket and the
+    # records gone and the directory standing; before the trap nothing exists to remove, and the signal's default
+    # disposition ends this process the same way. Bash runs a trap right after the simple command the signal arrived
+    # in and can block no signal, so between the relay's `&` and `child=$!` the trap would run with `child` empty
+    # (regime-cutover U447c, verdict U447-669dee44 P1 :1280: the relay orphaned with the socket bound, the broker
+    # exit 2); the window is closed by deferral: `forking` is set right before the `&` and cleared right after
+    # `child=$!`, broker_signal records a signal that arrives meanwhile and returns, and the recorded signal is
+    # handled right after the flag is cleared, with the child known. Under hcom-seat the signals are its TERM (and a
+    # HUP): the broker is a background job of a non-interactive bash there, which inherits SIGINT ignored, and bash
+    # refuses to trap a signal ignored at entry; a direct INT reaches the broker only when it is started in the
+    # foreground (the test fixture's form). No caller delivers INT to the broker.
     # shellcheck disable=SC2064 # expanded now on purpose: the handler needs the signal's name
     for sig in HUP INT TERM; do trap "broker_signal ${sig}" "${sig}"; done
     # The relay runs as a child: it removes its socket at its end, and the records go here once it has; every
@@ -1277,8 +1318,11 @@ if ((! connection)); then
     # re-enters this lever by its physical path under /bin/bash (the interpreter line), with the same three arguments
     # and the caller's PATH, from which each connection resolves the tools as this process did; the broker directory's
     # identity travels in its environment (regime-cutover U343h).
+    forking=1
     ACP_BROKER_DIR_ID=${broker_dir_id} PATH=${caller_path} "${python_cmd[@]}" -I -S "${helper}" "${sock}" -- /bin/bash "${self_file}" --connection "${seats_root}" "${router}" "${scratch}" &
     child=$!
+    forking=0
+    if [[ -n ${deferred_signal} ]]; then broker_signal "${deferred_signal}"; fi
     wait_child "${child}"
     status=${child_status}
     trap - HUP INT TERM

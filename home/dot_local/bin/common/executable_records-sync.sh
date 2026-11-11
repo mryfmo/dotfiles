@@ -56,8 +56,13 @@
 #   start, set as GIT_AUTHOR_*/GIT_COMMITTER_* for that command alone, and the same repository pushes
 #   `<commit>:refs/heads/records/sync-<n>` to the https URL. It then opens the pull request with
 #   `gh pr create --base main --head records/sync-<n> --title ... --body-file ...`, `gh` also reading no user or
-#   system git config. The body lists the `units.tsv` ids and the `decisions.tsv` timestamps the sync adds or changes
-#   and the line `Program-Unit: <program>/<unit>`, which the `regime` check requires (U28c F2). Every `GIT_*`
+#   system git config. The body (render_body, U445) holds `## Summary` with the `units.tsv` ids and the `decisions.tsv`
+#   timestamps the sync adds or changes, `## Threat table` with one row per changed path (the risk-and-bound sentence
+#   of its kind, read from the first component below the program's prefix; past 150 paths, one row per kind with its
+#   count, so the body stays under the 120 KiB the regime workflow accepts) and one row for the orchestrator's gates
+#   that read the carried records, `## Contract` (U108) and the line `Program-Unit: <program>/<unit>`, which the
+#   `regime` check requires (U28c F2); it is written before the commit and the push, so a refused row leaves nothing
+#   pushed. Every `GIT_*`
 #   variable the caller exported (GIT_AUTHOR_*, GIT_COMMITTER_*, GIT_CONFIG_*, GIT_DIR and the rest) is removed
 #   before anything else runs, by a loop over `compgen -e` with no here-string, and a second pass refuses if any is
 #   left. No branch, worktree or file of the checkout is created; the scratch directory is removed on every exit.
@@ -66,12 +71,16 @@
 # @option --program <name> The program directory, under `${REGIME_STORE_ROOT}` when that root exists, else under
 #   `.orchestration/orchestrate/`; default: the only one there.
 # @option --unit <U<n>> The unit the body's `Program-Unit:` line names; default: U20, the records unit.
+# @option --render-body <rows-file> <n> <program> <derived|checkout> <units-line> <decisions-line> The dry form, last
+#   on the line (U445): print the body for the rows file (one line per changed path: `copy` or `deletion`, a tab, the
+#   published path) to stdout and exit 0, with no git or gh call and nothing created; `--unit` applies. The tests'
+#   entry point.
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
-# @stdout One receipt line: `synced branch=records/sync-<n> files=<n> pr=<url>`.
+# @stdout One receipt line: `synced branch=records/sync-<n> files=<n> pr=<url>`; with `--render-body`, the body.
 # @exitcode 0 The pull request was opened.
 # @exitcode 1 A `git` or `gh` step, or the masking, failed; nothing was pushed unless the receipt says so.
 # @exitcode 2 Refused: usage, a linked worktree, the program, the copy set, the identifier scan, the identity, a
-#   push URL that is not https, or nothing to sync.
+#   push URL that is not https, a row or argument of the body, or nothing to sync.
 # @example
 #   ~/.local/bin/common/records-sync.sh --program regime-cutover --unit U20
 set -euo pipefail
@@ -164,7 +173,7 @@ git_env_scrub
 . "${LEVER_DIR}/regime-env"
 
 lever='records-sync.sh'
-usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n> (default U20)]'
+usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n> (default U20)] | records-sync.sh [--unit U<n>] --render-body <rows-file> <n> <program> <derived|checkout> <units-line> <decisions-line>'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
 footer='Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>'
 pr_footer='🤖 Generated with [Claude Code](https://claude.com/claude-code)'
@@ -322,9 +331,184 @@ store_resolve() {
     echo "${lever}: store: checkout ${store} (pre-move form, removed by U221)" >&2
 }
 
+# The kinds of a carried path (U445): the first component below the program's prefix names the kind, and each kind has
+# the risk-and-bound sentence its Threat table row carries (the form the sync 54 and PR 759 bodies were accepted with,
+# added by hand until this unit). The two arrays are read by one index, which kind_of sets.
+# shellcheck disable=SC2016 # the backticks are Markdown code spans
+kind_labels=(
+    '`briefs/`'
+    '`verdicts/`'
+    '`sweeps/`'
+    '`handoff/`'
+    '`handouts/`'
+    '`ledger.tsv`'
+    '`decisions.tsv`'
+    '`dispositions.tsv`'
+    '`units.tsv`'
+    '`tests/*.tsv`'
+    'other records of the store'
+)
+kind_risks=(
+    'text the workers read, checked by brief-check.py; no code'
+    "text read by ledger-row.py's scorer and pr-merge.sh"
+    'JSON and text the merge gate names and never opens'
+    'text for the operator and the next coordinator'
+    'text for the operator and the next coordinator'
+    'read by pr-merge.sh and rounds-check.py; every row written by a lever'
+    'rounds-check.py reads mechanism-change rows'
+    'pr-merge.sh reads'
+    'brief-check.py and the coordinator read; no gate'
+    'check-tables.py validates'
+    'a record of the program store; no code, no lever'
+)
+# U445: past this many changed paths the Threat table lists each kind once with its count, so the body stays well under
+# the 120 KiB the regime workflow accepts (decisions 2026-11-10: it failed on a 135 KB body).
+row_cap=150
+
+# @description Name the kind of one carried path by its first component below the program's prefix (U445): one case
+#   per kind of kind_labels, `tests/` for its `.tsv` tables only, anything else a plain record.
+# @arg $1 string The path below the program's prefix.
+# @set kind The index into kind_labels and kind_risks.
+kind_of() {
+    case $1 in # lint-comparisons: allow the kind of a record is its first path component, the table the body states
+    briefs/*) kind=0 ;;
+    verdicts/*) kind=1 ;;
+    sweeps/*) kind=2 ;;
+    handoff/*) kind=3 ;;
+    handouts/*) kind=4 ;;
+    ledger.tsv) kind=5 ;;
+    decisions.tsv) kind=6 ;;
+    dispositions.tsv) kind=7 ;;
+    units.tsv) kind=8 ;;
+    tests/*.tsv) kind=9 ;;
+    *) kind=10 ;;
+    esac
+}
+
+# @description Write the pull request's body (U445; the one writer, which `--render-body` runs dry): `## Summary` with
+#   the units and decisions lines, `## Threat table` with one row per changed path (the kind's sentence; the change
+#   `masked copy of the live store's file` or `deletion`; status `closed`; the lever's own checks as evidence) or, past
+#   row_cap paths, one row per kind with its count, the rule stated in the line above the table, and one row for the
+#   orchestrator's gates that read the carried records; `## Contract` (U108: what pr-audit.sh judges the pull request
+#   against, a body without one is refused); the line `Program-Unit: <program>/<unit>` the `regime` check requires
+#   (U28c F2); and the footer. The rows file holds one line per changed path: `copy` or `deletion`, a tab, the
+#   published path. A malformed row, a path outside the program's prefix or holding a control character or a backtick
+#   (the path is written as a Markdown code span), a file that ends mid-entry or holds no row, and an argument outside
+#   its shape are refused. The body is built in one variable and written once, so a short write is the function's
+#   status. Only the program name, the paths and the lines given are interpolated.
+# @arg $1 string The rows file.
+# @arg $2 string The sync number.
+# @arg $3 string The program name.
+# @arg $4 string The store's form, `derived` or `checkout`.
+# @arg $5 string The `units.tsv` ids added or changed, space-separated (empty: none).
+# @arg $6 string The `decisions.tsv` timestamps added or changed, space-separated (empty: none).
+# @stdout The body.
+# shellcheck disable=SC2016 # the backticks are Markdown code spans
+render_body() {
+    local rows=$1 n=$2 program=$3 form=$4 units=$5 decisions=$6
+    local prefix line change path rel cell listed shape chunk out='' i copies=0 deletions=0 kind=0
+    local paths=() changes=() kinds=() kind_copies=() kind_deletions=() contract=()
+    local copy_evidence='`--scan-identifiers` zero findings over every carried copy; the change set equals the computed set; the regime check at the head'
+    local deletion_evidence='never read, only removed; the change set equals the computed set; the regime check at the head'
+    local group_evidence='`--scan-identifiers` zero findings over every carried copy; a deletion is never read, only removed; the change set equals the computed set; the regime check at the head'
+    [[ ${n} =~ ^[1-9][0-9]*$ ]] || refuse "the sync number is not a positive integer: ${n}"
+    [[ ${program} =~ ^[a-z0-9][a-z0-9_-]*$ ]] || refuse "the program name is outside [a-z0-9][a-z0-9_-]*: ${program}"
+    case ${form} in # lint-comparisons: allow the form name, not a path
+    derived | checkout) ;;
+    *) refuse "the store form is neither derived nor checkout: ${form}" ;;
+    esac
+    [[ -r ${rows} ]] || refuse "cannot read the rows file of the body: ${rows}"
+    prefix=.orchestration/orchestrate/${program}
+    for ((i = 0; i < ${#kind_labels[@]}; i++)); do
+        kind_copies[i]=0
+        kind_deletions[i]=0
+    done
+    line=''
+    while IFS= read -r line; do
+        change=${line%%$'\t'*}
+        path=${line#*$'\t'}
+        [[ ${line} == *$'\t'* && -n ${path} ]] || refuse "a row of the body is not <change><TAB><path>: ${line}" # lint-comparisons: allow the row's shape, not a path comparison
+        case ${change} in
+        copy | deletion) ;;
+        *) refuse "a row's change is neither copy nor deletion: ${change}" ;;
+        esac
+        [[ ${path} != *[[:cntrl:]]* && ${path} != *'`'* ]] || refuse 'a path of the body holds a control character or a backtick' # lint-comparisons: allow a character test on the raw path
+
+        case ${path} in # lint-comparisons: allow a published path, refused unless under the program's prefix
+        "${prefix}"/?*) ;;
+        *) refuse "a path of the body is outside ${prefix}/: ${path}" ;;
+        esac
+        rel=${path#"${prefix}/"}
+        kind_of "${rel}"
+        paths+=("${path}")
+        changes+=("${change}")
+        kinds+=("${kind}")
+        if [[ ${change} == copy ]]; then
+            copies=$((copies + 1))
+            kind_copies[kind]=$((kind_copies[kind] + 1))
+        else
+            deletions=$((deletions + 1))
+            kind_deletions[kind]=$((kind_deletions[kind] + 1))
+        fi
+    done < "${rows}"
+    [[ -z ${line} ]] || refuse 'the rows file of the body ends mid-entry'
+    ((${#paths[@]} > 0)) || refuse 'the rows file of the body holds no row'
+    # U220: the contract's first row names the store's form; the derived store's place is a home-directory path, which
+    # no published text names.
+    if [[ ${form} == derived ]]; then # lint-comparisons: allow the form name, not a path
+        listed="the derived program store \`<store root>/${program}/\` (every regular file below it, \`redact-words.txt\` excluded; U220), published at \`${prefix}/\`"
+    else
+        listed="\`${prefix}/\`, tracked or untracked and not git-ignored, \`redact-words.txt\` excluded"
+    fi
+    contract=(
+        "The changed paths are the store's files (${listed}) whose masked copy or executable mode differs from origin/main, plus every path origin/main holds under that directory that the listing does not hold as a regular file; the new tree's change set against origin/main is checked to equal exactly that set."
+        'No path lies outside that directory.'
+        'Every copy was masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`, with the program'"'"'s `redact-words.txt` when present.'
+        'The commit was built in a repository with no user, system or checkout configuration, and pushed over https with no user configuration.'
+        'Left out: the content of the records is not reviewed for truth, only by the identifier scan.'
+    )
+    printf -v chunk '## Summary\n\nRecords sync %s of `%s` (%s file(s)), carried by `records-sync.sh` from the program store (%s form) and compared with origin/main; every copy was masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`.\n\n' "${n}" "${program}" "${#paths[@]}" "${form}"
+    out+=${chunk}
+    printf -v chunk -- '- units.tsv rows added or changed: %s\n- decisions.tsv rows added or changed: %s\n\n' "${units:-none}" "${decisions:-none}"
+    out+=${chunk}
+    if ((${#paths[@]} <= row_cap)); then
+        shape='each path'
+    else
+        shape='each kind with its count'
+    fi
+    printf -v chunk '## Threat table\n\nOne row per changed path up to %s rows; past that cap, one row per directory kind with its count; and one row for the orchestrator'"'"'s gates that read the carried records. This sync changes %s path(s): %s copied, %s deleted; the table lists %s. Every path lies under `%s/`; the records are text and tables, no code and no lever.\n\n' "${row_cap}" "${#paths[@]}" "${copies}" "${deletions}" "${shape}" "${prefix}"
+    out+=${chunk}
+    out+='| Path or effect | Change | Risk and bound | Status | Evidence |'$'\n''| --- | --- | --- | --- | --- |'$'\n'
+    if ((${#paths[@]} <= row_cap)); then
+        for ((i = 0; i < ${#paths[@]}; i++)); do
+            cell=${paths[i]//|/\\|}
+            if [[ ${changes[i]} == copy ]]; then
+                printf -v chunk '| `%s` | %s | %s | closed | %s |\n' "${cell}" "masked copy of the live store's file" "${kind_risks[${kinds[i]}]}" "${copy_evidence}"
+            else
+                printf -v chunk '| `%s` | deletion | %s | closed | %s |\n' "${cell}" "${kind_risks[${kinds[i]}]}" "${deletion_evidence}"
+            fi
+            out+=${chunk}
+        done
+    else
+        for ((i = 0; i < ${#kind_labels[@]}; i++)); do
+            ((kind_copies[i] + kind_deletions[i] > 0)) || continue
+            printf -v chunk '| %s (%s paths) | %s masked copies of the live store'"'"'s files, %s deletions | %s | closed | %s |\n' "${kind_labels[i]}" "$((kind_copies[i] + kind_deletions[i]))" "${kind_copies[i]}" "${kind_deletions[i]}" "${kind_risks[i]}" "${group_evidence}"
+            out+=${chunk}
+        done
+    fi
+    out+="| the orchestrator's gates (pr-merge.sh, rounds-check.py, pr-audit.sh) | read the carried ledger, decisions and dispositions | a row that admits a merge or hides a round | closed | every ledger row by its lever; mechanism-change rows name one form; rounds-check.py --all 0 refused |"$'\n\n'
+    out+='## Contract'$'\n\n'
+    printf -v chunk -- '- %s\n' "${contract[@]}"
+    out+=${chunk}
+    printf -v chunk '\nProgram-Unit: %s/%s\n\n%s\n' "${program}" "${unit}" "${pr_footer}"
+    out+=${chunk}
+    printf '%s' "${out}"
+}
+
 base=origin/main
 program=''
 unit=U20
+render=()
 while (($#)); do
     case $1 in
     --base | --program | --unit)
@@ -336,12 +520,23 @@ while (($#)); do
         esac
         shift 2
         ;;
+    --render-body)
+        # U445: the dry form, the tests' entry point: exactly six arguments, the body on stdout after the option checks
+        # below, before any git or gh call.
+        (($# == 7)) || refuse "${usage}"
+        render=("$2" "$3" "$4" "$5" "$6" "$7")
+        shift 7
+        ;;
     *) refuse "${usage}" ;;
     esac
 done
 [[ ${base} == origin/main ]] || refuse "--base accepts only origin/main: ${base}" # lint-comparisons: allow a git ref name, not a path
 [[ ${unit} =~ ^U[0-9]+$ ]] || refuse "--unit is not a plain unit id U<n>: ${unit}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
+if ((${#render[@]})); then
+    render_body "${render[@]}" || fail 'cannot write the body'
+    exit 0
+fi
 
 toplevel=$(git_isolated rev-parse --show-toplevel 2> /dev/null) || refuse 'not in a git checkout'
 git_dir=$(git_isolated rev-parse --path-format=absolute --git-dir) || refuse 'cannot read the git directory'
@@ -555,7 +750,9 @@ fi
 export GIT_INDEX_FILE=${scratch}/index
 git_scratch read-tree "${main}" || fail 'git read-tree failed'
 expected=${scratch}/expected
+rows=${scratch}/rows
 : > "${expected}" || fail 'cannot write the expected change set'
+: > "${rows}" || fail 'cannot write the rows of the body'
 # A bare repository has no work tree, which `update-index --force-remove` asks for; an `--index-info` line of mode 0
 # removes the path from the index without one. The zero object id has main's length (SHA-1 or SHA-256).
 zero=${main//?/0}
@@ -563,6 +760,7 @@ for path in ${gone[@]+"${gone[@]}"}; do
     printf '0 %s\t%s\0' "${zero}" "${path}" | git_scratch update-index -z --index-info ||
         fail "git update-index removing ${path} failed"
     printf '%s\0' "${path}" >> "${expected}" || fail 'cannot write the expected change set'
+    printf 'deletion\t%s\n' "${path}" >> "${rows}" || fail 'cannot write the rows of the body'
 done
 for path in ${files[@]+"${files[@]}"}; do
     blob=$(git_scratch hash-object -w --no-filters -- "${copies}/${path}") || fail "git hash-object ${path} failed"
@@ -573,6 +771,7 @@ for path in ${files[@]+"${files[@]}"}; do
     git_scratch update-index --add --cacheinfo "${mode},${blob},${path}" || fail "git update-index ${path} failed"
     if [[ ${base_entries} != *$'\n'"${path}"$'\t'"${mode} blob ${blob}"$'\n'* ]]; then # lint-comparisons: allow a repository-relative path and an object id as git prints them
         printf '%s\0' "${path}" >> "${expected}" || fail 'cannot write the expected change set'
+        printf 'copy\t%s\n' "${path}" >> "${rows}" || fail 'cannot write the rows of the body'
     fi
 done
 new_tree=$(git_scratch write-tree) || fail 'git write-tree failed'
@@ -612,6 +811,11 @@ title="chore(records): ${program} sync ${n}"
 message=$(printf '%s\n\n%s\n\n%s\n' "${title}" \
     "Carries ${count} file(s) of ${records}/ from the program store (${store_form} form), compared with origin/main (records-sync.sh)." \
     "${footer}") || fail 'cannot write the commit message'
+# U445: the body is written here, before the commit and the push, so a refused row leaves nothing pushed; its rows are
+# the computed change set (every deletion, every copy that differs from main), sorted as the change set is.
+body=${scratch}/body.md
+LC_ALL=C sort "${rows}" > "${rows}.sorted" || fail 'cannot sort the rows of the body'
+render_body "${rows}.sorted" "${n}" "${program}" "${store_form}" "${units}" "${decisions}" > "${body}" || fail 'cannot write the body'
 # U101: author and committer come only from the environment set here, the identity read at the start.
 commit=$(printf '%s\n' "${message}" |
     GIT_AUTHOR_NAME=${author_name} GIT_AUTHOR_EMAIL=${author_email} \
@@ -619,34 +823,6 @@ commit=$(printf '%s\n' "${message}" |
         git_scratch commit-tree "${new_tree}" -p "${main}" -F -) || fail 'git commit-tree failed'
 git_scratch -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
     push --quiet "${push_url}" "${commit}:refs/heads/${branch}" || fail "git push ${branch} failed; nothing was opened"
-body=${scratch}/body.md
-# U220: the contract's first row names the store's form; the derived store's place is a home-directory path, which no
-# published text names.
-if [[ ${store_form} == derived ]]; then # lint-comparisons: allow the form name store_resolve set, not a path
-    listed="the derived program store \`<store root>/${program}/\` (every regular file below it, \`redact-words.txt\` excluded; U220), published at \`.orchestration/orchestrate/${program}/\`"
-else
-    listed="\`.orchestration/orchestrate/${program}/\`, tracked or untracked and not git-ignored, \`redact-words.txt\` excluded"
-fi
-# U108: the `## Contract` section is what pr-audit.sh judges the pull request against (a body without one is
-# refused), so every records sync gets an orchestrator verdict. Only the program name is interpolated.
-# shellcheck disable=SC2016 # the backticks are Markdown code spans
-contract=(
-    "The changed paths are the store's files (${listed}) whose masked copy or executable mode differs from origin/main, plus every path origin/main holds under that directory that the listing does not hold as a regular file; the new tree's change set against origin/main is checked to equal exactly that set."
-    'No path lies outside that directory.'
-    'Every copy was masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`, with the program'"'"'s `redact-words.txt` when present.'
-    'The commit was built in a repository with no user, system or checkout configuration, and pushed over https with no user configuration.'
-    'Left out: the content of the records is not reviewed for truth, only by the identifier scan.'
-)
-{
-    # shellcheck disable=SC2016 # the backticks are Markdown code spans
-    printf '## Summary\n\nRecords sync %s of `%s` (%s file(s)), carried by `records-sync.sh` from the program store (%s form) and compared with origin/main; every copy was masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`.\n\n' "${n}" "${program}" "${count}" "${store_form}"
-    printf -- '- units.tsv rows added or changed: %s\n' "${units:-none}"
-    printf -- '- decisions.tsv rows added or changed: %s\n\n' "${decisions:-none}"
-    printf '## Contract\n\n'
-    printf -- '- %s\n' "${contract[@]}"
-    printf '\nProgram-Unit: %s/%s\n\n' "${program}" "${unit}"
-    printf '%s\n' "${pr_footer}"
-} > "${body}" || fail 'cannot write the body'
 url=$(gh_plain pr create --base main --head "${branch}" --title "${title}" --body-file "${body}") ||
     fail "gh pr create failed; the branch ${branch} is pushed"
 echo "synced branch=${branch} files=${count} pr=${url}"

@@ -5903,6 +5903,22 @@
 <span class="s2">CHANGE and CONTEXT before three or more rounds found the form. The forms are one tuple of four. A later unit adds a</span>
 <span class="s2">term by adding a row. Only SCOPE, FORBIDDEN and the other sections name paths and limits, so a term there fires</span>
 <span class="s2">nothing.</span>
+
+<span class="s2">A brief whose unit id another row of the store's `units.tsv` holds is refused too (regime-cutover U436: on 2026-11-11</span>
+<span class="s2">the coordinator numbered a new unit U345 while `units.tsv` held U345 as a done sweep unit of 2026-11-07; this check</span>
+<span class="s2">passed the brief, the unit ran for an hour, and pr-audit.sh refused at the pull request because two files matched</span>
+<span class="s2">`briefs/U345-*.md`). The brief's path as given is `&lt;store&gt;/briefs/&lt;file&gt;` and the store is the parent of `briefs/`; a</span>
+<span class="s2">path whose directory is not named `briefs`, or whose file name does not start with a unit id (`U`, digits, an optional</span>
+<span class="s2">lowercase letter run, then `-`), has no register and is judged without this check. The register `&lt;store&gt;/units.tsv`</span>
+<span class="s2">is read once by one grammar: the header line is exactly `id track state branch pr head_sha brief note`, tab-separated,</span>
+<span class="s2">and every row has eight cells; a missing file is no register (a scratch brief beside no store passes as before), and</span>
+<span class="s2">a file that cannot be read or decoded, a wrong header or a row of another width is exit 2 naming the file and the</span>
+<span class="s2">line, never a pass (standing order 21). The decision over every row whose id is this file's: no such row passes; a</span>
+<span class="s2">row whose brief cell equals `briefs/&lt;file&gt;` passes; a row whose brief cell is empty or another path is the exit-1 line</span>
+<span class="s2">`unit id U&lt;n&gt; is taken: line &lt;k&gt; of &lt;store&gt;/units.tsv holds it with brief cell "</span>&lt;cell&gt;<span class="s2">", not briefs/&lt;file&gt;` (`an empty</span>
+<span class="s2">brief cell` for an empty one), printed before the other reasons. Equality is the whole rule: a row written before the</span>
+<span class="s2">store move (`orchestrate/&lt;program&gt;/briefs/&lt;file&gt;`) refuses the brief it names, a finding for the coordinator's records,</span>
+<span class="s2">not a reason to widen the rule.</span>
 <span class="s2">"""</span>
 
 import<span class="w"> </span>argparse
@@ -6150,6 +6166,13 @@ def<span class="w"> </span>word_pattern<span class="o">(</span>terms<span class=
 <span class="nv">TRUST_WORD</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>word_pattern<span class="o">(</span>TRUST_WORDS<span class="o">)</span>
 <span class="c1"># One pattern per gate class over its rows' terms; a class whose pattern finds nothing in ACCEPTANCE is one reason.</span>
 <span class="nv">GATE_WORDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>cls:<span class="w"> </span>word_pattern<span class="o">([</span>term<span class="w"> </span><span class="k">for</span><span class="w"> </span>row,<span class="w"> </span>_,<span class="w"> </span>term<span class="w"> </span><span class="k">in</span><span class="w"> </span>GATES<span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">row</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>cls<span class="o">])</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>cls<span class="w"> </span><span class="k">in</span><span class="w"> </span>GATE_CLASSES<span class="o">}</span>
+<span class="c1"># The store's id register (U436): the brief's path as given is `&lt;store&gt;/briefs/&lt;file&gt;` and `units.tsv` sits beside</span>
+<span class="c1"># `briefs/`, its header exactly these names, tab-separated, every row that many cells; the brief cell is the path</span>
+<span class="c1"># relative to the store. A unit id is `U`, digits, an optional lowercase letter run, then the `-` of the file name.</span>
+<span class="nv">BRIEFS_DIR</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"briefs"</span>
+<span class="nv">UNITS_FILE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"units.tsv"</span>
+<span class="nv">UNITS_HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"id"</span>,<span class="w"> </span><span class="s2">"track"</span>,<span class="w"> </span><span class="s2">"state"</span>,<span class="w"> </span><span class="s2">"branch"</span>,<span class="w"> </span><span class="s2">"pr"</span>,<span class="w"> </span><span class="s2">"head_sha"</span>,<span class="w"> </span><span class="s2">"brief"</span>,<span class="w"> </span><span class="s2">"note"</span><span class="o">)</span>
+<span class="nv">UNIT_ID</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"(U[0-9]+[a-z]*)-"</span><span class="o">)</span>
 
 
 def<span class="w"> </span>matched_term<span class="o">(</span>pattern,<span class="w"> </span>terms,<span class="w"> </span>text<span class="o">)</span>:
@@ -6162,6 +6185,14 @@ def<span class="w"> </span>matched_term<span class="o">(</span>pattern,<span cla
 
 class<span class="w"> </span>BriefError<span class="o">(</span>Exception<span class="o">)</span>:
 <span class="w">    </span><span class="s2">"""The text is not a brief in the grammar, so nothing is judged (exit 2)."""</span>
+
+
+class<span class="w"> </span>StoreError<span class="o">(</span>BriefError<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The store's `units.tsv` cannot be read by the one grammar, so nothing is judged (exit 2); `file` names it."""</span>
+
+<span class="w">    </span>def<span class="w"> </span>__init__<span class="o">(</span>self,<span class="w"> </span>file,<span class="w"> </span>message<span class="o">)</span>:
+<span class="w">        </span>super<span class="o">()</span>.__init__<span class="o">(</span>message<span class="o">)</span>
+<span class="w">        </span>self.file<span class="w"> </span><span class="o">=</span><span class="w"> </span>file
 
 
 def<span class="w"> </span>heading<span class="o">(</span>line<span class="o">)</span>:
@@ -6319,6 +6350,50 @@ def<span class="w"> </span>judge<span class="o">(</span>found<span class="o">)</
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>reasons
 
 
+def<span class="w"> </span>taken_unit_id<span class="o">(</span>path<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The refusal line when another row of the store's `units.tsv` holds this brief's unit id, else None (U436).</span>
+
+<span class="s2">    The path is read as given, unresolved: its directory must be named `briefs` and its file name must start with a</span>
+<span class="s2">    unit id, else there is no store and no id to look up. The register is `units.tsv` beside `briefs/`; a missing one</span>
+<span class="s2">    is no register (a scratch brief passes as before), and one that cannot be read or decoded, whose first line is</span>
+<span class="s2">    not the header, or holding a row of another width raises StoreError naming the file and the line, so a failed</span>
+<span class="s2">    store read is never a pass (standing order 21). Every row is read, not the first with the id: a duplicated id</span>
+<span class="s2">    whose second row names another file refuses too. The decision is equality of the row's brief cell with this</span>
+<span class="s2">    file's store-relative path, `briefs/&lt;file&gt;`, and nothing looser: a row written before the store move</span>
+<span class="s2">    (`orchestrate/&lt;program&gt;/briefs/&lt;file&gt;`) refuses the brief it names, a finding for the coordinator's records.</span>
+<span class="s2">    """</span>
+<span class="w">    </span>directory,<span class="w"> </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.split<span class="o">(</span>path<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>os.path.basename<span class="o">(</span>directory<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>BRIEFS_DIR:<span class="w">  </span><span class="c1"># lint-comparisons: allow the brief's spelled directory name</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>UNIT_ID.match<span class="o">(</span>name<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span><span class="nv">unit_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">units</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>os.path.dirname<span class="o">(</span>directory<span class="o">)</span>,<span class="w"> </span>UNITS_FILE<span class="o">)</span>
+<span class="w">    </span>try:
+<span class="w">        </span>with<span class="w"> </span>open<span class="o">(</span>units,<span class="w"> </span><span class="nv">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>handle:
+<span class="w">            </span><span class="nv">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>handle.read<span class="o">()</span>.splitlines<span class="o">()</span>
+<span class="w">    </span>except<span class="w"> </span>FileNotFoundError:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span>except<span class="w"> </span><span class="o">(</span>OSError,<span class="w"> </span>UnicodeDecodeError<span class="o">)</span><span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>raise<span class="w"> </span>StoreError<span class="o">(</span>units,<span class="w"> </span>str<span class="o">(</span>error<span class="o">))</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>lines<span class="w"> </span>or<span class="w"> </span>lines<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"\t"</span>.join<span class="o">(</span>UNITS_HEADER<span class="o">)</span>:
+<span class="w">        </span>raise<span class="w"> </span>StoreError<span class="o">(</span>units,<span class="w"> </span>f<span class="s2">"line 1 is not the header ({', '.join(UNITS_HEADER)})"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>lines<span class="o">[</span><span class="m">1</span>:<span class="o">]</span>,<span class="w"> </span><span class="m">2</span><span class="o">)</span>:
+<span class="w">        </span><span class="nv">cells</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.split<span class="o">(</span><span class="s2">"\t"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>cells<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>len<span class="o">(</span>UNITS_HEADER<span class="o">)</span>:
+<span class="w">            </span>raise<span class="w"> </span>StoreError<span class="o">(</span>units,<span class="w"> </span>f<span class="s2">"line {number} has {len(cells)} columns, not {len(UNITS_HEADER)}"</span><span class="o">)</span>
+<span class="w">        </span>rows.append<span class="o">((</span>number,<span class="w"> </span>cells<span class="o">[</span>UNITS_HEADER.index<span class="o">(</span><span class="s2">"id"</span><span class="o">)]</span>,<span class="w"> </span>cells<span class="o">[</span>UNITS_HEADER.index<span class="o">(</span><span class="s2">"brief"</span><span class="o">)]))</span>
+<span class="w">    </span><span class="nv">relative</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>f<span class="s2">"{BRIEFS_DIR}/{name}"</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>row_id,<span class="w"> </span>cell<span class="w"> </span><span class="k">in</span><span class="w"> </span>rows:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>row_id<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>unit_id<span class="w"> </span>or<span class="w"> </span><span class="nv">cell</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>relative:<span class="w">  </span><span class="c1"># lint-comparisons: allow the register's spelled brief cell</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">held</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>f<span class="s1">'brief cell "{cell}"'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>cell<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"an empty brief cell"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"unit id {unit_id} is taken: line {number} of {units} holds it with {held}, not {relative}"</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>None
+
+
 def<span class="w"> </span>main<span class="o">(</span><span class="nv">argv</span><span class="o">=</span>None<span class="o">)</span>:
 <span class="w">    </span><span class="nv">parser</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>argparse.ArgumentParser<span class="o">(</span><span class="nv">description</span><span class="o">=</span>__doc__.splitlines<span class="o">()[</span><span class="m">0</span><span class="o">])</span>
 <span class="w">    </span>parser.add_argument<span class="o">(</span><span class="s2">"brief"</span>,<span class="w"> </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the brief file, .orchestration/orchestrate/&lt;program&gt;/briefs/U&lt;n&gt;-&lt;slug&gt;.md"</span><span class="o">)</span>
@@ -6334,7 +6409,12 @@ def<span class="w"> </span>main<span class="o">(</span><span class="nv">argv</sp
 <span class="w">    </span>except<span class="w"> </span>BriefError<span class="w"> </span>as<span class="w"> </span>error:
 <span class="w">        </span>print<span class="o">(</span>f<span class="s2">"brief-check: cannot read {args.brief}: {error}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
-<span class="w">    </span><span class="nv">reasons</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>judge<span class="o">(</span>found<span class="o">)</span>
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">taken</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>taken_unit_id<span class="o">(</span>args.brief<span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>StoreError<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>print<span class="o">(</span>f<span class="s2">"brief-check: cannot read {error.file}: {error}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="nv">reasons</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">([</span>taken<span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>taken<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">[])</span><span class="w"> </span>+<span class="w"> </span>judge<span class="o">(</span>found<span class="o">)</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>reason<span class="w"> </span><span class="k">in</span><span class="w"> </span>reasons:
 <span class="w">        </span>print<span class="o">(</span>f<span class="s2">"brief-check: {args.brief}: {reason}"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>reasons<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="m">0</span>

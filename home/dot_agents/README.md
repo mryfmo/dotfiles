@@ -5,6 +5,7 @@ This directory is the canonical source for AI-agent assets shared by Codex, Clau
 ## Single source of truth
 
 - `agent-config.yaml` is the only hand-edited source for shared agent settings.
+- `router-source.json` is generated from the manifest's `assets.dsh-superagent.sources.github` row and deployed beside it as `~/.agents/router-source.json`; `router-settings-apply` reads the Router's Source row from it alone (regime-cutover U465c), so the row is hand-edited in `agent-config.yaml` and regenerated, never here.
 - `skills/` is the canonical cross-agent skill tree and is exposed as `~/.agents/skills`; `skills.audience` in the manifest names the agents that list each skill there (and each installer-owned one), and the generator renders that one map per agent:
   - Claude Code receives generated symlinks under `~/.claude/skills` for the skills that name `claude`; a link a skill loses is retired through a generated `.chezmoiremove` block.
   - Codex reads `~/.agents/skills` itself; each skill there that does not name `codex` gets a `[[skills.config]]` entry with `enabled = false` in the managed Codex config (by its `SKILL.md` path, the form Codex 0.163.0 honours).

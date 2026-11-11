@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import hashlib
 import importlib.util
 import io
 import json
@@ -414,6 +415,12 @@ class DshRouterProfileTest(unittest.TestCase):
             lambda row: row.update(accept_mode_row="yesterday"),
             "accept_mode_row 'yesterday' is not a decisions.tsv timestamp",
         )
+        # U465c (verdict U465-db9a5e94 P1 `:517`): the auto row is a row of its own, so the two timestamps differ.
+        refused(
+            lambda row: row.update(accept_mode="auto", accept_mode_auto_row=row["accept_mode_row"]),
+            "accept_mode_auto_row '2026-11-06T23:24:00Z' is the accept_mode_row itself; the ladder's second row is "
+            "not its first",
+        )
         manifest = copy.deepcopy(base)
         manifest["assets"]["dsh-superagent"]["sources"]["github"].update(
             accept_mode="auto", accept_mode_auto_row="2026-11-08T00:00:00Z", allowed=["someone", "other-one"]
@@ -525,6 +532,130 @@ class DshRouterProfileTest(unittest.TestCase):
             lambda asset: asset["sources"]["github"].update(accept_mode="auto"),
             "accept_mode auto needs accept_mode_auto_row beside accept_mode_row",
         )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(
+                accept_mode="auto", accept_mode_auto_row=asset["sources"]["github"]["accept_mode_row"]
+            ),
+            "accept_mode_auto_row '2026-11-06T23:24:00Z' is the accept_mode_row itself; the ladder's second row is "
+            "not its first",
+        )
+
+    def test_the_generator_renders_the_source_row_as_the_json_the_lever_reads_and_the_index_pins_it(self) -> None:
+        """U465c (verdict U465-db9a5e94 P1 `:407`): the lever reads no YAML; the generator (PyYAML, the kit's one YAML
+        reader) renders the manifest's Source row into `home/dot_agents/router-source.json`, a managed target chezmoi
+        deploys beside the manifest as `~/.agents/router-source.json`, which `make render-check` holds to the manifest
+        and the output index lists with its sha256 (the doctor's check of the deployed copy, as for a lever copy). The
+        object holds `generated_by` and the row's keys in their fixed order, `accept_mode_auto_row` only when the
+        manifest carries it; the committed rendering is the observe row with the empty list."""
+        generator = load_generator()
+        path = generator.ROOT / "home/dot_agents/router-source.json"
+        outputs = generator.render_router_source(copy.deepcopy(self.manifest))
+        self.assertEqual([path], list(outputs))
+        rendered = outputs[path]
+        github = self.asset["sources"]["github"]
+        self.assertEqual(
+            {
+                "generated_by": generator.GENERATED_HEADER,
+                "source": {
+                    "repository": github["repository"],
+                    "accept_mode": "observe",
+                    "accept_mode_row": github["accept_mode_row"],
+                    "observe_admission": "inferred",
+                    "allowed": [],
+                },
+            },
+            json.loads(rendered),
+        )
+        self.assertEqual(
+            ["generated_by", "source"], list(json.loads(rendered)), "the top level holds the header and the row alone"
+        )
+        self.assertEqual(
+            ["repository", "accept_mode", "accept_mode_row", "observe_admission", "allowed"],
+            list(json.loads(rendered)["source"]),
+        )
+        self.assertEqual(rendered, (ROOT / "home/dot_agents/router-source.json").read_text(), "the committed copy")
+        self.assertTrue(rendered.endswith("\n") and not rendered.endswith("\n\n"))
+        index = json.loads((ROOT / "scripts/generated-agent-outputs.json").read_text())
+        (entry,) = [entry for entry in index["outputs"] if entry["source"] == "home/dot_agents/router-source.json"]
+        self.assertEqual(
+            {
+                "source": "home/dot_agents/router-source.json",
+                "target": ".agents/router-source.json",
+                "kind": "file",
+                "executable": False,
+                "sha256": hashlib.sha256(rendered.encode()).hexdigest(),
+            },
+            entry,
+        )
+        self.assertIn(
+            {"source": "home/dot_agents", "target": ".agents", "glob": "router-source.json"},
+            index["scopes"],
+            "a stale rendering is an orphan the generator and the doctor report",
+        )
+        self.assertIn(("home/dot_agents", "router-source.json"), generator.GENERATED_SCOPES)
+        # At auto with its row and two ids, the row carries the sixth key in its place and the ids in order.
+        manifest = copy.deepcopy(self.manifest)
+        manifest["assets"]["dsh-superagent"]["sources"]["github"].update(
+            accept_mode="auto", accept_mode_auto_row="2026-11-12T00:00:00Z", allowed=["someone", "other-one"]
+        )
+        row = json.loads(generator.render_router_source(manifest)[path])["source"]
+        self.assertEqual(
+            ["repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission", "allowed"],
+            list(row),
+        )
+        self.assertEqual(("auto", "2026-11-12T00:00:00Z", ["someone", "other-one"]), (row["accept_mode"], row["accept_mode_auto_row"], row["allowed"]))  # fmt: skip
+        # A manifest without the sourced asset renders no file, like the router profile.
+        manifest = copy.deepcopy(self.manifest)
+        del manifest["assets"]["dsh-superagent"]["sources"]
+        self.assertEqual({}, generator.render_router_source(manifest))
+
+    def test_the_one_yaml_reader_refuses_a_manifest_naming_a_key_twice_in_quoted_and_unquoted_forms(self) -> None:
+        """U465c (verdict U465-db9a5e94 P1 `:407`): `yaml.safe_load` resolves a repeated key to its last value, so a
+        manifest holding `"allowed": [unauthorized]` and `allowed: []` read as the empty list to the validators while a
+        text reader saw the first. The kit's one YAML reader, the generator's `parse_yaml` (PyYAML's SafeLoader with a
+        mapping constructor that refuses a key named twice, the two forms compared after the scalar is built, so a
+        quoted and an unquoted spelling are one key), refuses the manifest naming the key and both lines; the
+        validator's `load_yaml` reads through it, so the asset validation refuses the same file. A raw-text check
+        would be one more hand-written reader of YAML, the premise this round drops. Without PyYAML both refuse to run
+        (`make unit-test` installs none; the asset validation and render-check run with it)."""
+        generator = load_generator()
+        spec = importlib.util.spec_from_file_location(
+            "validate_agent_assets", ROOT / "scripts/validate-agent-assets.py"
+        )
+        assert spec and spec.loader
+        validator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(validator)
+        text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        first = '        accept_mode_row: "2026-11-06T23:24:00Z"\n'
+        self.assertEqual(1, text.count(first), "the manifest's Source row as this test knows it")
+        cases = {
+            "quoted-then-plain": text.replace(first, first + '        "allowed": [unauthorized]\n'),
+            "plain-then-plain": text.replace(first, first + "        allowed: [unauthorized]\n"),
+            "single-quoted": text.replace(first, first + "        'allowed': [unauthorized]\n"),
+        }
+        duplicate = self.temp_dir / "duplicate.yaml"
+        for case, altered in cases.items():
+            with self.subTest(case=case):
+                self.assertNotEqual(altered, text)
+                duplicate.write_text(altered)
+                lines = altered.splitlines()
+                here = lines.index(first.rstrip("\n")) + 2
+                later = lines.index("        allowed: []") + 1
+                expected = f"names the key 'allowed' twice (lines {here} and {later})"
+                if generator.yaml is None:
+                    expected = "PyYAML is required"
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    generator.parse_manifest(altered)
+                self.assertIn(expected, stderr.getvalue())
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    validator.load_yaml(duplicate)
+                self.assertIn(expected, stderr.getvalue())
+        if generator.yaml is not None:
+            # The same text with the key once parses, and yaml.safe_load alone (the reader dropped) saw the last.
+            self.assertEqual([], generator.parse_manifest(text)["assets"]["dsh-superagent"]["sources"]["github"]["allowed"])  # fmt: skip
+            seen = generator.yaml.safe_load(cases["quoted-then-plain"])
+            self.assertEqual([], seen["assets"]["dsh-superagent"]["sources"]["github"]["allowed"], "the last wins")
 
     def test_the_installer_pins_are_rendered_from_the_asset(self) -> None:
         # scripts/lib/installer-pins.sh is generated: the two constants the updater reads are the asset's pin and

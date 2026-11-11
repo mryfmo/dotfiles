@@ -150,13 +150,21 @@ loopback grant, U321), and restates the bundle's two agent presets with their
 sandbox rows disabled. The GitHub Source row
 (`assets.dsh-superagent.sources.github`: the repository,
 `accept_mode: observe`, the M-18 ladder row, and `allowed`, the Source's
-identity set, empty today) is data for the Management API save; `auto` is
-admitted only beside an `accept_mode_auto_row` that the program store's
-`decisions.tsv` holds as a phase M-18 row naming the rung (U465, U465b), the
-list is written in `auto` alone (`[]` in `off` and `observe`, and the asset
-validator refuses a listed login beside those modes), and in observe mode with
-an empty list a positive assessment is an ignore Decision marked would-accept
-and nothing is accepted.
+identity set, empty today) is data for the Management API save, and it reaches
+`router-settings-apply` as the generator's rendering `router-source.json`
+beside the manifest (deployed as `~/.agents/router-source.json`; U465c: the
+lever parses no YAML, the generator's PyYAML is the kit's one reader of the
+manifest and refuses a key named twice in any spelling, `make render-check`
+holds the rendering to the manifest, and the lever's JSON reader refuses a key
+named twice or a file outside the generator's form by name); `auto` is
+admitted only beside an `accept_mode_auto_row` distinct from the first row that
+the program store's `decisions.tsv` holds as a phase M-18 row whose decision
+begins with `accept rung auto for <repository>` (U465, U465b, U465c), the store
+path proved component by component from the physical HOME down (a link or a
+directory of another user refused by name), the list is written in `auto` alone
+(`[]` in `off` and `observe`, and the asset validator refuses a listed login
+beside those modes), and in observe mode with an empty list a positive
+assessment is an ignore Decision marked would-accept and nothing is accepted.
 `hcom-seat router -- --no-open` starts the Router under srt, and
 `intake-observe.py [--kind would-accept|accept|refusal|all] <orchestrator.sqlite> <decisions.tsv>`
 appends the ladder's Decisions as rows (would-accept, accept, and the refusals

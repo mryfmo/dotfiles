@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import collections.abc
 import copy
 import glob
 import hashlib
@@ -44,10 +45,47 @@ def load_manifest(text: str | None = None) -> dict[str, Any]:
     return parse_manifest(read_exact(MANIFEST_PATH) if text is None else text)
 
 
-def parse_manifest(text: str) -> dict[str, Any]:
+class DuplicateKey(ValueError):
+    """A YAML mapping names one key twice (regime-cutover U465c, verdict U465-db9a5e94 P1 `:407`)."""
+
+
+def strict_loader() -> type:
+    """PyYAML's SafeLoader with one more rule: a mapping that names a key twice is refused. `yaml.safe_load` keeps the
+    last value silently, so `allowed: [x]` above `allowed: []` read as the empty list to every PyYAML reader while a
+    text reader saw the first (U465b), and a quoted spelling of the same key evaded a text-level repeat check (U465c).
+    The two spellings are compared after the key scalar is constructed, so `"allowed"`, `'allowed'` and `allowed` are
+    one key here, which no raw-text check can decide. Built on first use: PyYAML is absent under make unit-test."""
+
+    class UniqueKeyLoader(yaml.SafeLoader):
+        def construct_mapping(self, node: Any, deep: bool = False) -> dict[Any, Any]:
+            seen: dict[Any, Any] = {}
+            for key_node, _value_node in node.value:
+                key = self.construct_object(key_node, deep=deep)
+                if not isinstance(key, collections.abc.Hashable):
+                    continue  # PyYAML's own refusal of an unhashable key follows below
+                if key in seen:
+                    raise DuplicateKey(
+                        f"names the key {key!r} twice (lines {seen[key].line + 1} and {key_node.start_mark.line + 1})"
+                    )
+                seen[key] = key_node.start_mark
+            return super().construct_mapping(node, deep=deep)
+
+    return UniqueKeyLoader
+
+
+def parse_yaml(text: str, where: str) -> Any:
+    """The kit's one YAML reader (U465c): `text` loaded with strict_loader, a key named twice a refusal naming `where`,
+    the key and both lines. Every other YAML error propagates as PyYAML raises it."""
     if yaml is None:
         fail("PyYAML is required: uv run --with pyyaml scripts/generate-agent-configs.py")
-    data = yaml.safe_load(text)
+    try:
+        return yaml.load(text, Loader=strict_loader())
+    except DuplicateKey as error:
+        fail(f"{where} {error}; the kit reads a mapping whose keys are unique, so neither value is taken")
+
+
+def parse_manifest(text: str) -> dict[str, Any]:
+    data = parse_yaml(text, str(MANIFEST_PATH))
     if not isinstance(data, dict):
         fail(f"{MANIFEST_PATH} must contain a YAML mapping")
     if data.get("schema_version") != 1:
@@ -2477,6 +2515,12 @@ def dsh_github_source(asset: dict[str, Any]) -> dict[str, Any]:
             fail(f"{label}.{key} {row[key]!r} is not a decisions.tsv timestamp")
     if row["accept_mode"] == "auto" and "accept_mode_auto_row" not in row:
         fail(f"{label}.accept_mode auto needs accept_mode_auto_row beside accept_mode_row (the M-18 ladder's two rows)")
+    if row.get("accept_mode_auto_row") == row["accept_mode_row"]:
+        # U465c (verdict U465-db9a5e94 P1 `:517`): the auto row is a row of its own grammar in the store, never the first.
+        fail(
+            f"{label}.accept_mode_auto_row {row['accept_mode_row']!r} is the accept_mode_row itself; the ladder's second "
+            "row is not its first"
+        )
     if "observe_admission" in row and row["observe_admission"] not in DSH_OBSERVE_ADMISSIONS:
         fail(f"{label}.observe_admission {row['observe_admission']!r} is not one of {list(DSH_OBSERVE_ADMISSIONS)}")
     if "allowed" not in row:
@@ -2499,6 +2543,33 @@ def dsh_github_source(asset: dict[str, Any]) -> dict[str, Any]:
             "in auto alone, so the list is [] in off and observe"
         )
     return {key: (list(value) if key == "allowed" else str(value)) for key, value in row.items()}
+
+
+# The Source row as router-settings-apply reads it (U465c, verdict U465-db9a5e94 P1 `:407`): a JSON rendering beside
+# the manifest, deployed by chezmoi as ~/.agents/router-source.json, so the lever parses no YAML and this generator is
+# the kit's one reader of the row; render-check holds the file to the manifest, and the output index carries its
+# sha256 so the doctor holds the deployed copy as it holds a lever copy. The row's keys in this fixed order.
+ROUTER_SOURCE_PATH = "home/dot_agents/router-source.json"
+DSH_SOURCE_ROW_KEYS = (
+    "repository",
+    "accept_mode",
+    "accept_mode_row",
+    "accept_mode_auto_row",
+    "observe_admission",
+    "allowed",
+)
+
+
+def render_router_source(manifest: dict[str, Any]) -> dict[Path, str]:
+    """The rendering of `assets.dsh-superagent.sources.github` for router-settings-apply: an object of `generated_by`
+    and `source`, the row with its keys in DSH_SOURCE_ROW_KEYS order (`accept_mode_auto_row` only when the manifest
+    carries it), refused as dsh_github_source refuses it; nothing when the asset carries no Source rows."""
+    asset = manifest.get("assets", {}).get(DSH_SUPERAGENT_ASSET)
+    if not isinstance(asset, dict) or "sources" not in asset:
+        return {}
+    github = dsh_github_source(asset)
+    row = {key: github[key] for key in DSH_SOURCE_ROW_KEYS if key in github}
+    return {ROOT / ROUTER_SOURCE_PATH: json_dumps({"generated_by": GENERATED_HEADER, "source": row})}
 
 
 def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
@@ -2814,6 +2885,8 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs.update(render_standing_rule_outputs(manifest, outputs))
     outputs.update(render_dsh_profile_patch(manifest))
     outputs.update(render_dsh_router_profile(manifest))
+    router_source = render_router_source(manifest)
+    outputs.update(router_source)
     remove_path = ROOT / CHEZMOIREMOVE
     current = outputs.get(remove_path)
     if current is None:
@@ -2821,7 +2894,9 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs[remove_path] = render_chezmoiremove(
         current, skill_removals(manifest, current), SKILL_REMOVALS_BEGIN, SKILL_REMOVALS_END
     )
-    outputs[ROOT / OUTPUT_INDEX_PATH] = render_output_index(outputs, lever_pins(manifest), skill_index(manifest))
+    pins = dict(lever_pins(manifest))
+    pins.update((path, hashlib.sha256(text.encode()).hexdigest()) for path, text in router_source.items())
+    outputs[ROOT / OUTPUT_INDEX_PATH] = render_output_index(outputs, pins, skill_index(manifest))
     return outputs
 
 
@@ -2948,6 +3023,8 @@ GENERATED_SCOPES = (
     ("home/dot_agents/codex-audit", "*"),
     ("home/dot_agents/omp/profiles", "*"),
     ("home/dot_agents/plugins", "**/*"),
+    # The lever's rendering of the Source row (U465c): one explicit name, so the manifest beside it stays hand-edited.
+    ("home/dot_agents", "router-source.json"),
     ("home/dot_claude/agents", "*"),
     ("home/dot_claude/skills", "**/*"),
     ("home/dot_codex", "*.config.toml"),

@@ -943,7 +943,7 @@ claude:
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431
       seat-settings-render.sh: 9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50
       intake-observe.py: 553b1ed45384ca8ce1f4339af21d068745dd50b1a02c9351d2c54fd5130d419d
-      router-settings-apply: c439937135cb842ee47a93196ff222e7400cd7764309a23773c3529496e0b44b
+      router-settings-apply: 26fba9af7d9f8cf2de3f5f38073c4771498e286c50af331432a44f384848917b
       router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
@@ -1465,8 +1465,11 @@ assets:
       the archive's scripts/dsh-superagent (tmux, the harness outside any sandbox). sources.github is the kit's
       GitHub Source row: the repository the Source watches and the accept mode of the M-18 ladder; accept_mode_row
       is the decisions.tsv row that set the mode, and auto needs accept_mode_auto_row as well (the two row
-      timestamps M-18 defines; router-settings-apply admits auto by that row and by the row's presence in the
-      program store's decisions.tsv, U465 and U465b). allowed is the Source's identity set
+      timestamps M-18 defines, distinct; router-settings-apply admits auto by that row and by the row's presence in
+      the program store's decisions.tsv as a phase M-18 row whose decision begins `accept rung auto for
+      <repository>`, U465, U465b, U465c). The row reaches the lever as the generator's rendering
+      home/dot_agents/router-source.json (deployed beside this file; U465c: the lever parses no YAML, and the
+      generator refuses a key named twice in any spelling). allowed is the Source's identity set
       (policy.sources.github.allowed), written in auto alone. In observe mode with an empty list no accept path
       exists: a positive assessment is an ignore Decision marked would-accept (src/policy.ts:57, reason code observed).
     install_path: ~/.dsh/plugins/dsh-superagent

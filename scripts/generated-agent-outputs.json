@@ -84,6 +84,13 @@
       "executable": false
     },
     {
+      "source": "home/dot_agents/router-source.json",
+      "target": ".agents/router-source.json",
+      "kind": "file",
+      "executable": false,
+      "sha256": "3c3f7160ce7a199cc6f758d0e787c384a70ef1ac3cbd27947c1e0849bf90241d"
+    },
+    {
       "source": "home/dot_claude/agents/express-explorer.md",
       "target": ".claude/agents/express-explorer.md",
       "kind": "file",
@@ -622,7 +629,7 @@
       "target": ".local/bin/common/router-settings-apply",
       "kind": "file",
       "executable": true,
-      "sha256": "c439937135cb842ee47a93196ff222e7400cd7764309a23773c3529496e0b44b"
+      "sha256": "26fba9af7d9f8cf2de3f5f38073c4771498e286c50af331432a44f384848917b"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-login-preflight",
@@ -711,6 +718,11 @@
       "source": "home/dot_agents/plugins",
       "target": ".agents/plugins",
       "glob": "**/*"
+    },
+    {
+      "source": "home/dot_agents",
+      "target": ".agents",
+      "glob": "router-source.json"
     },
     {
       "source": "home/dot_claude/agents",

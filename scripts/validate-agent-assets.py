@@ -361,9 +361,12 @@ def fail(message: str) -> None:
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
+    """One YAML file as a mapping, read through the generator's parse_yaml (U465c): the kit's one YAML reader, which
+    refuses a key named twice in any spelling, so a manifest the validators and a text reader would read differently
+    is refused rather than read; a raw-text check here would be one more hand-written reader of YAML."""
     if yaml is None:
         fail("PyYAML is required")
-    data = yaml.safe_load(path.read_text()) or {}
+    data = generator().parse_yaml(path.read_text(), str(path)) or {}
     if not isinstance(data, dict):
         fail(f"{path} must be a mapping")
     return data
@@ -1440,6 +1443,11 @@ def validate_asset_sources(name: str, asset: dict[str, Any]) -> None:
             fail(
                 f"{label}.accept_mode auto needs accept_mode_auto_row beside accept_mode_row (the two row timestamps "
                 "the M-18 ladder defines); the mode stays observe until that row is written"
+            )
+        if mode == "auto" and row["accept_mode_auto_row"] == row["accept_mode_row"]:
+            fail(
+                f"{label}.accept_mode_auto_row {row['accept_mode_row']!r} is the accept_mode_row itself; the ladder's "
+                "second row is not its first (U465c: the auto row is a row of its own grammar in the store)"
             )
         if mode != "auto" and "accept_mode_auto_row" in row:
             fail(f"{label}.accept_mode_auto_row belongs only to accept_mode auto, not {mode!r}")

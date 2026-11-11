@@ -1,0 +1,10 @@
+{
+  "generated_by": "Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.",
+  "source": {
+    "repository": "mryfmo/dotfiles",
+    "accept_mode": "observe",
+    "accept_mode_row": "2026-11-06T23:24:00Z",
+    "observe_admission": "inferred",
+    "allowed": []
+  }
+}

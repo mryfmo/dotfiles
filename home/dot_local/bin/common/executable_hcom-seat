@@ -3284,6 +3284,12 @@ foreground)
     for var in USER LANG TERM; do
         if [[ $'\n'${inherited}$'\n' == *$'\n'"${var}"$'\n'* && -n ${!var:-} ]]; then seat_env+=("${var}=${!var}"); fi
     done
+    # The router row's broker socket (regime-cutover U434, M-22 Part B): the Router's profile runs its subagents
+    # through `acp-seat --socket $ACP_BROKER_SOCK --name router` (the `subagent-acp` insert of
+    # home/dot_dsh/profiles/router/cordis.patch.yml), so the launch names the socket broker_start will listen on,
+    # spelled as broker_start spells it (the physical state slot). A request's cwd is any directory under the Router's
+    # scratch cwd, so no relative rule from there finds the socket; the name does. The dsh row carries none.
+    if ((broker)); then seat_env+=("ACP_BROKER_SOCK=${broker_dir_phys}/sock"); fi
     argv=(/usr/bin/env -i "${seat_env[@]}" "${sandbox}/bin/${shim_tool}" ${dsh_args[@]+"${dsh_args[@]}"})
     ;;
 esac

@@ -278,7 +278,9 @@ class DshRouterProfileTest(unittest.TestCase):
             self.assertNotIn(f"id: {preset}", self.rows, sorted(self.rows))
         self.assertNotIn("preset", self.patch)
 
-    def test_the_rows_are_the_thak_form_rows_the_webserver_the_state_dir_and_the_gateway_insert_in_order(self) -> None:
+    def test_the_rows_are_the_thak_form_rows_the_webserver_the_state_dir_the_subagent_tool_and_the_inserts_in_order(
+        self,
+    ) -> None:
         self.assertEqual(
             [
                 "id: session-log-deepseek",
@@ -289,10 +291,20 @@ class DshRouterProfileTest(unittest.TestCase):
                 "id: agent-default-model",
                 "id: webserver",
                 "id: dsh-superagent",
+                "id: tool-subagent",
                 "insert:",
             ],
             list(self.rows),
         )
+        # U434: the subagent tool runs on the ACP provider the insert mounts; the gateway insert comes first. U434c: the
+        # web-app bundle ships the row disabled, so the kit's row enables it beside its config.
+        self.assertEqual(
+            "  disabled: false\n  config:\n    provider: acp\n    toolName: subagent\n    maxDepth: provider-managed\n",
+            self.rows["id: tool-subagent"],
+        )
+        self.assertEqual(["omp-gateway", "subagent-acp"], list(self.plugins))
+        self.assertNotIn("subagent-acp", self.thak)
+        self.assertNotIn("tool-subagent", self.thak)
 
     def test_no_api_key_row_is_enabled_and_no_model_id_outside_model_profiles(self) -> None:
         for name, text in (("cordis.patch.yml", self.patch), ("package.json", json.dumps(self.package))):
@@ -332,8 +344,14 @@ class DshRouterProfileTest(unittest.TestCase):
         # dependencies (the bundle the profile composes is the one the updater installs).
         bundles = ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-superagent"]
         self.assertEqual({"manifestVersion": 1, "profile": {"bundles": bundles}}, self.package["dsh"])
+        # U434b: the subagent-acp insert's package is a dependency too, linked through dsh/current to the pinned
+        # tree's built package, so the deployed profile resolves it without a hand-made link.
         self.assertEqual(
-            {"dsh-superagent": "link:../../plugins/dsh-superagent", GATEWAY_PLUGIN: "link:../../plugins/omp-gateway"},
+            {
+                "dsh-superagent": "link:../../plugins/dsh-superagent",
+                GATEWAY_PLUGIN: "link:../../plugins/omp-gateway",
+                "@deepseek-ai/dsh-subagent-acp": "link:../../dsh/current/packages/subagent/subagent-acp",
+            },
             self.package["dependencies"],
         )
         self.assertIn(

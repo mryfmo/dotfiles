@@ -1,0 +1,5 @@
+# Findings detail: dotfiles at 1faa81f1a17a494c859caa79c55c57d447d8b352
+
+This run's `findings.json` holds no confirmed record, so there is no medium, high or critical detail to copy.
+
+No hunter, critic or verifier agent could run on this seat: task and eval are blocked by user policy (run-metadata.json `incomplete_reason`). The U434b hunt adds one unvalidated lead, proposed `needs_validation` with no severity: `update-agent-assets/update_dsh_superagent:profile-install-rerun-on-a-router-writable-package-json`. The already-installed branch re-runs the router profile install on the dependencies of a package.json the Router can write, in a sandbox that reads the hcom stores the Router is denied. Its blockers are chezmoi's handling of an edited target, pnpm's script policy and the carried question of the Router's write. It is in `NEEDS-VALIDATION.md`. The new link: dependency itself crosses no boundary. Every carried lead stays an unvalidated `candidate` unit in `coverage-ledger.json`. One is proposed `confirmed` (`records-sync/redaction/account-identity-residue-in-published-row`, proposed `low`, unverified). It is not a finding, and the ledger describes it.

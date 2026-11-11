@@ -2535,11 +2535,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual((run.returncode, run.stdout), (2, b""), run.stderr)
         self.assertIn(b"acp-seat: refused: cannot connect to the broker socket", run.stderr)
         run = subprocess.run(
-            [str(CLIENT), "--socket", str(sock), "--repo", str(repo), "--name", "w1"], input=PING,
+            [str(CLIENT), "--socket", str(sock), "--repo", str(repo), "--ref", "HEAD"], input=PING,
             env=self.broker_env(HCOM_SEAT_SANDBOX="x"), capture_output=True, check=False,
         )  # fmt: skip
         self.assertEqual((run.returncode, run.stdout), (2, b""), run.stderr)
-        self.assertIn(b"usage: acp-seat --socket <path> --repo <path> --ref <rev> --name <name>", run.stderr)
+        self.assertIn(b"usage: acp-seat --socket <path> --name <name> [--repo <path>] [--ref <rev>]", run.stderr)
         run = subprocess.run(
             [str(CLIENT), "--socket", str(sock), "--cwd", str(repo), "--ref", "HEAD", "--name", "w1"], input=PING,
             env=self.broker_env(HCOM_SEAT_SANDBOX="x"), capture_output=True, check=False,
@@ -3233,6 +3233,98 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(json.dumps(rendered).count(str(dsh_home)), 2)
         self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def header_sent_by(self, argv, cwd):
+        """The client run with `argv` after `--socket <scratch>` in `cwd` (the request's cwd `dsh-subagent-acp`
+        spawns it in) against a scratch server in the broker's place that records the header line and answers a
+        refusal: (the completed run, the header text or None when none was sent)."""
+        sock = Path(self.temp.name).resolve() / "h" / "sock"
+        sock.parent.mkdir(exist_ok=True)
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        here = os.getcwd()
+        os.chdir(sock.parent)
+        try:
+            server.bind(sock.name)
+        finally:
+            os.chdir(here)
+        server.listen(1)
+        headers = []
+
+        def serve():
+            conn, _ = server.accept()
+            data = bytearray()
+            while not data.endswith(b"\n") and len(data) < 4096:
+                chunk = conn.recv(4096)
+                if not chunk:
+                    break
+                data += chunk
+            headers.append(bytes(data))
+            try:
+                conn.sendall(b"acp-broker: refused: scratch\n")
+                conn.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            conn.close()
+
+        thread = threading.Thread(target=serve, daemon=True)
+        thread.start()
+        run = subprocess.run(
+            [str(CLIENT), "--socket", str(sock), *argv], cwd=cwd, input=b"",
+            env=self.broker_env(HCOM_SEAT_SANDBOX="/scratch/sandbox"), capture_output=True, check=False,
+        )  # fmt: skip
+        if not headers:
+            # The client refused before connecting: one empty connection releases the server's accept.
+            poke = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            os.chdir(sock.parent)
+            try:
+                poke.connect(sock.name)
+            finally:
+                os.chdir(here)
+            poke.close()
+            thread.join(timeout=30)
+            headers.clear()
+        thread.join(timeout=30)
+        server.close()
+        sock.unlink()
+        return run, headers[0].decode() if headers else None
+
+    def test_the_client_defaults_the_repository_to_its_cwd_and_the_ref_to_head(self):
+        """U434 (M-22 Part B, table row s21): `dsh-subagent-acp` spawns the client per request in the request's cwd
+        with the row's fixed args (`--socket`, `--name`), so a client run in a repository directory without `--repo`
+        and `--ref` sends the header `ACP-SEAT v1 repo=<that directory> ref=HEAD name=<name>` (the broker judges the
+        path as it judges any header repository); `--repo` and `--ref` given keep their values, singly or together;
+        `--socket` or `--name` missing, or a flag outside the four, is refused with the usage line before anything
+        is sent, as now; omp never runs."""
+        repo, _base = self.make_repo(Path(self.temp.name).resolve() / "u345" / "repo")
+        run, header = self.header_sent_by(["--name", "w1"], cwd=repo)
+        self.assertEqual(header, f"ACP-SEAT v1 repo={repo} ref=HEAD name=w1\n")
+        self.assertEqual((run.returncode, run.stdout), (2, b""), run.stderr)
+        self.assertIn(b"acp-broker: refused: scratch\n", run.stderr)
+        run, header = self.header_sent_by(["--repo", "/x/y", "--ref", "v1.2", "--name", "w2"], cwd=repo)
+        self.assertEqual(header, "ACP-SEAT v1 repo=/x/y ref=v1.2 name=w2\n")
+        run, header = self.header_sent_by(["--ref", "main", "--name", "w3"], cwd=repo)
+        self.assertEqual(header, f"ACP-SEAT v1 repo={repo} ref=main name=w3\n")
+        run, header = self.header_sent_by(["--repo", "/x/y", "--name", "w4"], cwd=repo)
+        self.assertEqual(header, "ACP-SEAT v1 repo=/x/y ref=HEAD name=w4\n")
+        usage = b"usage: acp-seat --socket <path> --name <name> [--repo <path>] [--ref <rev>]"
+        for label, argv in (
+            ("--name missing", ["--repo", str(repo), "--ref", "HEAD"]),
+            ("--name missing, nothing else", []),
+            ("a flag outside the four", ["--name", "w1", "--cwd", str(repo)]),
+            ("--name given twice", ["--name", "w1", "--name", "w1"]),
+        ):
+            with self.subTest(case=label):
+                run, header = self.header_sent_by(argv, cwd=repo)
+                self.assertIsNone(header, "nothing was sent")
+                self.assertEqual((run.returncode, run.stdout), (2, b""), run.stderr)
+                self.assertIn(usage, run.stderr)
+        run = subprocess.run(
+            [str(CLIENT), "--name", "w1"], cwd=repo, input=b"",
+            env=self.broker_env(HCOM_SEAT_SANDBOX="/scratch/sandbox"), capture_output=True, check=False,
+        )  # fmt: skip
+        self.assertEqual((run.returncode, run.stdout), (2, b""), run.stderr)
+        self.assertIn(usage, run.stderr)
+        self.assertEqual(self.calls_of("omp"), [])
 
 
 if __name__ == "__main__":

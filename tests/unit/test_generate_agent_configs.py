@@ -2567,6 +2567,115 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         for role in manifest["omp"]["roles"]:
             self.assertNotIn("extensions:", expected[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"])
 
+    def test_the_router_profile_runs_its_subagents_through_acp_seat_and_the_thak_profile_does_not(self) -> None:
+        """U434 (M-22 Part B, table row s21): the rendered router patch inserts `subagent-acp`, the pinned tree's
+        out-of-process ACP backend, whose command is the installed `acp-seat` (the broker's thin client, run inside
+        the Router's sandbox by its absolute path under HOME) with exactly four args: the launch's socket read from
+        `ACP_BROKER_SOCK` (hcom-seat's router row sets it) and the fixed name `router`; `tool-subagent` is repointed
+        to that provider as a row of the list, before the insert. The thak patch holds neither row."""
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.module.ROOT = ROOT
+        router = self.module.render_dsh_router_profile(manifest)[ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"]
+        thak = self.module.render_dsh_profile_patch(manifest)[ROOT / "home/dot_dsh/profiles/thak/cordis.patch.yml"]
+        self.assertIn(
+            "    - id: subagent-acp\n"
+            "      name: '@deepseek-ai/dsh-subagent-acp'\n"
+            "      config:\n"
+            "        providerName: acp\n"
+            "        command: !!js process.env.HOME + '/.local/bin/common/acp-seat'\n"
+            "        args:\n"
+            "          - --socket\n"
+            "          - !!js process.env.ACP_BROKER_SOCK\n"
+            "          - --name\n"
+            "          - router\n"
+            "        permission: allow\n"
+            "        env: {}\n",
+            router,
+        )
+        self.assertEqual(1, router.count("- id: subagent-acp\n"))
+        block = re.search(r"    - id: subagent-acp\n(?:      .*\n)+", router)
+        self.assertIsNotNone(block)
+        args = re.search(r"        args:\n((?:          - .*\n)+)", block[0])
+        self.assertIsNotNone(args)
+        self.assertEqual(
+            ["--socket", "!!js process.env.ACP_BROKER_SOCK", "--name", "router"],
+            [line.strip().removeprefix("- ") for line in args[1].splitlines()],
+        )
+        self.assertIn(
+            "- id: tool-subagent\n"
+            "  disabled: false\n"
+            "  config:\n"
+            "    provider: acp\n"
+            "    toolName: subagent\n"
+            "    maxDepth: provider-managed\n",
+            router,
+        )
+        self.assertEqual(1, router.count("- id: tool-subagent\n"))
+        self.assertLess(router.index("- id: tool-subagent\n"), router.index("- insert:\n"))
+        self.assertNotIn("subagent-acp", thak)
+        self.assertNotIn("tool-subagent", thak)
+        self.assertNotIn("ACP_BROKER_SOCK", thak)
+        # The rows render from constants beside the gateway's, and the client they name is an installed, pinned lever.
+        self.assertEqual("@deepseek-ai/dsh-subagent-acp", self.module.DSH_SUBAGENT_ACP_PLUGIN)
+        self.assertEqual("~/.local/bin/common/acp-seat", self.module.DSH_ACP_SEAT_PATH)
+        self.assertEqual("ACP_BROKER_SOCK", self.module.DSH_ACP_BROKER_SOCK_ENV)
+        self.assertIn("acp-seat", manifest["claude"]["levers"]["sha256"])
+
+    def test_the_router_patch_enables_the_subagent_tool_the_web_app_bundle_disables_and_the_thak_patch_has_no_row(
+        self,
+    ) -> None:
+        """U434c (round 3 of U434; verdicts/U434-1faa81f1 P1 [f5 s8]): the web-app bundle ships the top-level
+        `tool-subagent` row `disabled: true` (the round-1 dump), and the patch algorithm merges a row's keys other
+        than `config`, so the rendered router row carries `disabled: false` directly under the row beside its ACP
+        config; the round-1 real run needed an overlay for that one key. The thak patch has no `tool-subagent` row."""
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.module.ROOT = ROOT
+        router = self.module.render_dsh_router_profile(manifest)[ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"]
+        thak = self.module.render_dsh_profile_patch(manifest)[ROOT / "home/dot_dsh/profiles/thak/cordis.patch.yml"]
+        row = re.search(r"^- id: tool-subagent\n((?:  .*\n)+)", router, re.MULTILINE)
+        self.assertIsNotNone(row, router)
+        keys = [line[2:] for line in row[1].splitlines() if not line.startswith("    ")]
+        self.assertEqual(["disabled: false", "config:"], keys, "the row's own keys, the enable beside the config")
+        self.assertIn("    provider: acp\n", row[1])
+        self.assertEqual(1, len(re.findall(r"^  disabled: false\n", router, re.MULTILINE)), router)
+        self.assertNotIn("tool-subagent", thak)
+
+    def test_the_router_profile_declares_the_acp_plugin_as_a_link_dependency_and_the_thak_profile_does_not(
+        self,
+    ) -> None:
+        """U434b (round 2 of U434; verdicts/U434-8c3cfec2 P1 [f8 s6]): the package the `subagent-acp` insert names is
+        a `link:` dependency of the rendered router package.json, the path from `$DSH_HOME/profiles/router` through
+        the `dsh/current` link to the pinned tree's built package, so the updater's profile install resolves it on a
+        deploy without a hand-made link; the insert's name and the dependency's name are one constant beside the
+        gateway's; the thak package.json declares no such row."""
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.module.ROOT = ROOT
+        router = self.module.render_dsh_router_profile(manifest)
+        package = json.loads(router[ROOT / "home/dot_dsh/profiles/router/package.json"])
+        link = "link:../../dsh/current/packages/subagent/subagent-acp"
+        self.assertEqual(
+            {
+                "dsh-superagent": "link:../../plugins/dsh-superagent",
+                "dsh-omp-gateway": "link:../../plugins/omp-gateway",
+                "@deepseek-ai/dsh-subagent-acp": link,
+            },
+            package["dependencies"],
+        )
+        insert = re.search(
+            r"    - id: subagent-acp\n      name: '([^']+)'\n",
+            router[ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"],
+        )
+        self.assertIsNotNone(insert)
+        self.assertIn(insert[1], package["dependencies"], "the insert names a package the profile declares")
+        self.assertEqual(self.module.DSH_SUBAGENT_ACP_PLUGIN, insert[1])
+        self.assertEqual(link, self.module.DSH_SUBAGENT_ACP_LINK)
+        self.assertEqual(link, package["dependencies"][self.module.DSH_SUBAGENT_ACP_PLUGIN])
+        thak = json.loads(
+            self.module.render_dsh_profile_patch(manifest)[ROOT / "home/dot_dsh/profiles/thak/package.json"]
+        )
+        self.assertNotIn("@deepseek-ai/dsh-subagent-acp", thak["dependencies"])
+        self.assertNotIn("subagent-acp", json.dumps(thak))
+
     def test_manifest_adds_one_allowlisted_omp_model_per_profile_and_nothing_else(self) -> None:
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
         profiles: dict[str, list[str]] = {}

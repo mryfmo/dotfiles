@@ -6614,6 +6614,13 @@ class DshSuperagentTest(unittest.TestCase):
         "exit 0\n"
     )
     CANARY_TEXT = '/bin/sh -c if true 2> /dev/null > "$1"; then echo write-open; else echo write-denied; fi canary '
+    PROFILE_PACKAGE = {
+        "name": "router",
+        "dependencies": {
+            "dsh-superagent": "link:../../plugins/dsh-superagent",
+            "dsh-omp-gateway": "link:../../plugins/omp-gateway",
+        },
+    }
 
     def archive(
         self,
@@ -6646,7 +6653,9 @@ class DshSuperagentTest(unittest.TestCase):
         home = Path(directory)
         dsh_home = home / ".dsh"
         (dsh_home / "profiles/router").mkdir(parents=True)
-        (dsh_home / "profiles/router/package.json").write_text('{"name": "router"}\n')
+        # The dependency table the kit renders (the two link rows of U317 and U227b); the step reads the rerun
+        # condition from it (U434b), so the fixture declares what the deployed package.json declares.
+        (dsh_home / "profiles/router/package.json").write_text(json.dumps(self.PROFILE_PACKAGE) + "\n")
         (dsh_home / "plugins/omp-gateway").mkdir(parents=True)
         (home / "tmp").mkdir()
         # The fake node lives apart from the fake pnpm: build_under_srt hands srt a PATH of the two tool directories,
@@ -7281,7 +7290,8 @@ class DshSuperagentTest(unittest.TestCase):
                 ["dsh-superagent", "omp-gateway"], self.plugin_entries(dsh_home), "the previous tree is gone"
             )
             (home / "calls").unlink()
-            (dsh_home / "profiles/router/node_modules/dsh-superagent").mkdir(parents=True)
+            for name in self.PROFILE_PACKAGE["dependencies"]:
+                (dsh_home / "profiles/router/node_modules" / name).mkdir(parents=True)
             again = self.run_step(home, payload, digest, dsh_home=dsh_home)
             self.assertEqual(0, again.returncode, again.stdout + again.stderr)
             self.assertIn(f"dsh-superagent {self.COMMIT} is already installed at {install}.", again.stdout)
@@ -7309,6 +7319,143 @@ class DshSuperagentTest(unittest.TestCase):
                 self.plugin_entries(dsh_home),
                 "the settings file and the canary are gone",
             )
+
+    def test_the_already_installed_branch_reruns_the_profile_install_for_a_declared_dependency_without_an_entry(self):
+        """U434b (round 2 of U434; verdicts/U434-8c3cfec2 P1 [f8 s6]): the rerun condition is the deployed
+        package.json's dependency table, never one hard-coded name. With dsh-superagent installed and every earlier
+        row linked but `@deepseek-ai/dsh-subagent-acp` absent from node_modules, the profile install runs once inside
+        srt after its canary; with every declared name present it does not; a third, made-up name the kit declares
+        later is read the same way, and two absent names install once; a package.json that cannot be read refuses the
+        step naming the file, before any srt run (standing order 21)."""
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            install = dsh_home / "plugins/dsh-superagent"
+            profile = dsh_home / "profiles/router"
+            modules = profile / "node_modules"
+            package = profile / "package.json"
+            acp = "@deepseek-ai/dsh-subagent-acp"
+            declared = self.PROFILE_PACKAGE["dependencies"] | {
+                acp: "link:../../dsh/current/packages/subagent/subagent-acp"
+            }
+            repair = [
+                f"srt --settings {install}.profile.srt-settings.json -- {self.CANARY_TEXT}{install}.canary",
+                f"srt --settings {install}.profile.srt-settings.json -- pnpm install",
+            ]
+
+            def rerun():
+                for log in (home / "calls", home / "calls.settings", profile / "pnpm-calls"):
+                    log.unlink(missing_ok=True)
+                return self.run_step(home, payload, digest, dsh_home=dsh_home)
+
+            package.write_text(json.dumps({"name": "router", "dependencies": declared}) + "\n")
+            for name in self.PROFILE_PACKAGE["dependencies"]:
+                (modules / name).mkdir(parents=True)
+            with self.subTest(case="the ACP plugin declared, its node_modules entry absent"):
+                result = rerun()
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"dsh-superagent {self.COMMIT} is already installed at {install}.", result.stdout)
+                self.assertIn(f"the router profile has no node_modules entry for {acp}", result.stdout)
+                self.assertEqual(repair, self.srt_calls(home), "one canary and one profile install, no download")
+                self.assertEqual(1, len(self.pnpm_calls(profile)))
+                self.assertEqual(
+                    self.TOOL_CALLS * 3, [call for call in self.calls(home) if not call.startswith("srt ")]
+                )
+            (modules / acp).mkdir(parents=True)
+            with self.subTest(case="every declared name present"):
+                result = rerun()
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(self.TOOL_CALLS, self.calls(home), "the tools are read, then no srt")
+                self.assertEqual([], self.pnpm_calls(profile))
+            made_up = "made-up-plugin"
+            package.write_text(
+                json.dumps({"name": "router", "dependencies": declared | {made_up: "link:../../plugins/made-up"}})
+                + "\n"
+            )
+            with self.subTest(case="a made-up third name the kit declares later"):
+                result = rerun()
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"the router profile has no node_modules entry for {made_up}", result.stdout)
+                self.assertEqual(repair, self.srt_calls(home), "the name comes from the deployed package.json")
+            shutil.rmtree(modules / "@deepseek-ai")
+            with self.subTest(case="two names absent install once"):
+                result = rerun()
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"the router profile has no node_modules entry for {acp} {made_up}", result.stdout)
+                self.assertEqual(repair, self.srt_calls(home))
+                self.assertEqual(1, len(self.pnpm_calls(profile)))
+            for case, text in (
+                ("no JSON", "not json\n"),
+                ("a dependency table that is no object", '{"dependencies": 3}\n'),
+            ):
+                package.write_text(text)
+                with self.subTest(case=case):
+                    result = rerun()
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(
+                        f"update_dsh_superagent: the dependency names of {package} could not be read;"
+                        " the installed tree and the record are untouched.",
+                        result.stderr,
+                    )
+                    self.assertEqual(self.TOOL_CALLS, self.calls(home), "no srt, no download")
+                    self.assertEqual([], self.pnpm_calls(profile))
+            package.unlink()
+            with self.subTest(case="the file absent"):
+                result = rerun()
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"the dependency names of {package} could not be read", result.stderr)
+                self.assertEqual([], self.srt_calls(home))
+
+    def test_the_dependency_reader_refuses_a_non_object_table_and_reads_an_absent_table_as_empty(self):
+        """U434c (round 3 of U434; verdicts/U434-1faa81f1 P2 [f1 s4]): the reader is a parser at the boundary. A
+        `dependencies` that is a list or a string, or a package.json that is a JSON array, refuses the step with one
+        stderr line naming the file and the shape before any srt run (round 2's `dict(...)` read an empty list as an
+        empty table and skipped the repair silently); a package.json without a `dependencies` key is an empty table:
+        no name, no refusal, no srt run."""
+        with tempfile.TemporaryDirectory() as directory:
+            home, dsh_home = self.opted_in_home(directory)
+            payload, digest = self.archive(home)
+            result = self.run_step(home, payload, digest, dsh_home=dsh_home)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            profile = dsh_home / "profiles/router"
+            package = profile / "package.json"
+
+            def rerun():
+                for log in (home / "calls", home / "calls.settings", profile / "pnpm-calls"):
+                    log.unlink(missing_ok=True)
+                return self.run_step(home, payload, digest, dsh_home=dsh_home)
+
+            for case, text, shape in (
+                ("dependencies: []", '{"name": "router", "dependencies": []}\n', "dependencies list"),
+                ('dependencies: "x"', '{"name": "router", "dependencies": "x"}\n', "dependencies str"),
+                ("a top-level JSON array", '[{"dependencies": {"a": "link:../a"}}]\n', "top level list"),
+            ):
+                package.write_text(text)
+                with self.subTest(case=case):
+                    result = rerun()
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(
+                        f"update_dsh_superagent: {package} is not a JSON object whose dependencies is an object"
+                        f" ({shape}); the dependency names are not read.",
+                        result.stderr,
+                    )
+                    self.assertIn(
+                        f"update_dsh_superagent: the dependency names of {package} could not be read;"
+                        " the installed tree and the record are untouched.",
+                        result.stderr,
+                    )
+                    self.assertEqual(self.TOOL_CALLS, self.calls(home), "no srt, no download")
+                    self.assertEqual([], self.pnpm_calls(profile))
+            package.write_text('{"name": "router"}\n')
+            with self.subTest(case="dependencies absent"):
+                result = rerun()
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertNotIn("has no node_modules entry", result.stdout)
+                self.assertNotIn("could not be read", result.stderr)
+                self.assertEqual(self.TOOL_CALLS, self.calls(home), "an empty table: no srt, no download")
+                self.assertEqual([], self.pnpm_calls(profile))
 
     def test_a_receipt_read_that_fails_refuses_the_step_before_any_download(self):
         with tempfile.TemporaryDirectory() as directory:

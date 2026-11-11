@@ -189,8 +189,11 @@ DSH_GATEWAY_LINK = "link:../../plugins/omp-gateway"
 # as the router patch spells its state root; its args name the launch's broker socket by the environment variable
 # hcom-seat's router row sets and the fixed worker name. The client defaults the repository to the request's cwd and
 # the ref to HEAD. `tool-subagent` is repointed to the provider, the shape the U313 spike composed under
-# `dsh --dump-config` (decisions 2026-11-06T23:13:00Z).
+# `dsh --dump-config` (decisions 2026-11-06T23:13:00Z). The package is a `link:` dependency of the router profile
+# (U434b): the path from `$DSH_HOME/profiles/router` through the `dsh/current` link to the pinned tree's built
+# package, the form the two plugin rows take, so the updater's profile install resolves it with no hand-made link.
 DSH_SUBAGENT_ACP_PLUGIN = "@deepseek-ai/dsh-subagent-acp"
+DSH_SUBAGENT_ACP_LINK = "link:../../dsh/current/packages/subagent/subagent-acp"
 DSH_SUBAGENT_ACP_PROVIDER = "acp"
 DSH_ACP_SEAT_PATH = "~/.local/bin/common/acp-seat"
 DSH_ACP_BROKER_SOCK_ENV = "ACP_BROKER_SOCK"
@@ -2474,13 +2477,13 @@ def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
 
 
 def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
-    """The dsh-superagent Router profile (U317): its package.json (the Web profile's bundles, the superagent bundle and
-    the omp-gateway plugin as link: dependencies the updater installs) and its cordis patch: the thak-form rows (the
-    session log upload off, the official API and API-key rows disabled, the default model on the gateway provider),
-    the webserver's loopback bind, the plugin's stateDir under $DSH_HOME (the dsh write root), the GitHub Source row as
-    data, and the gateway insert. Unlike thak, the router keeps the base bundle's bash-sandbox row on (U406): upstream's
-    permission presets need a confining executor, and srt stays the seat's outer boundary. A manifest whose profiles
-    name no dsh model renders no profile, like the thak renderer."""
+    """The dsh-superagent Router profile (U317): its package.json (the Web profile's bundles; the superagent bundle,
+    the omp-gateway plugin and the ACP subagent backend as link: dependencies the updater installs) and its cordis
+    patch: the thak-form rows (the session log upload off, the official API and API-key rows disabled, the default
+    model on the gateway provider), the webserver's loopback bind, the plugin's stateDir under $DSH_HOME (the dsh
+    write root), the GitHub Source row as data, and the gateway insert. Unlike thak, the router keeps the base
+    bundle's bash-sandbox row on (U406): upstream's permission presets need a confining executor, and srt stays the
+    seat's outer boundary. A manifest whose profiles name no dsh model renders no profile, like the thak renderer."""
     dsh = {name: profile["dsh"] for name, profile in model_profiles(manifest).items() if "dsh" in profile}
     if not dsh:
         return {}
@@ -2497,7 +2500,11 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
         "name": DSH_ROUTER_PROFILE,
         "private": True,
         "dsh": {"manifestVersion": 1, "profile": {"bundles": list(DSH_ROUTER_BUNDLES)}},
-        "dependencies": {DSH_SUPERAGENT_PLUGIN: DSH_SUPERAGENT_LINK, DSH_GATEWAY_PLUGIN: DSH_GATEWAY_LINK},
+        "dependencies": {
+            DSH_SUPERAGENT_PLUGIN: DSH_SUPERAGENT_LINK,
+            DSH_GATEWAY_PLUGIN: DSH_GATEWAY_LINK,
+            DSH_SUBAGENT_ACP_PLUGIN: DSH_SUBAGENT_ACP_LINK,
+        },
     }
     auto_row = f", accept_mode_auto_row {github['accept_mode_auto_row']}" if "accept_mode_auto_row" in github else ""
     lines = [

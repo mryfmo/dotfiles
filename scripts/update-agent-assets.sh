@@ -2671,10 +2671,12 @@ function dsh_superagent_tool() {
 #   profiles/router is a WARN with exit 0 (the kit has not rendered the profile here).
 #   ~/.agents/.installed-manifest.json: absent, or a regular file that is not a symlink; the step's recorded
 #   source_version equal to the pin with the tree in place is the already-installed exit (the profile install is
-#   run again, under srt, only when the profile's node_modules holds no dsh-superagent entry).
+#   run again, under srt, when a dependency the deployed profile's package.json declares has no node_modules entry;
+#   the names are read from that file, never hard-coded, so a dependency row the kit adds later installs on the next
+#   make update without an updater edit; U434b).
 #   Every producer the step reads (pwd -P, mise which, shasum, tar's member list, jq, grep on the lockfiles,
-#   the three mktemp) refuses the step on a failed answer (standing order 21); a download that fails is one WARN line,
-#   nothing installed, nothing recorded.
+#   python3 on the profile's package.json, the three mktemp) refuses the step on a failed answer (standing order 21);
+#   a download that fails is one WARN line, nothing installed, nothing recorded.
 # @exitcode 0 Installed, already installed, no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh or the router
 #   profile absent (a WARN), or the download failed (a WARN; nothing installed or recorded).
 # @exitcode 1 A constant malformed, a producer read, a shape check, a tool absent, the digest check, the archive member
@@ -2682,7 +2684,7 @@ function dsh_superagent_tool() {
 #   the record failed; the line printed names the state left.
 #
 function update_dsh_superagent() (
-    local download_dir="" tarball actual tree="" settings="" profile_settings="" canary="" members member top previous="" recorded install_dir row
+    local download_dir="" tarball actual tree="" settings="" profile_settings="" canary="" members member top previous="" recorded install_dir row missing
     local dsh_home_real physical
     install_dir="${DSH_HOME:-}/plugins/dsh-superagent"
     dsh_superagent_record() {
@@ -2707,6 +2709,19 @@ function update_dsh_superagent() (
             printf 'update_dsh_superagent: the sandbox does not hold (canary: %s); %s\n' "${probe}" "$3" >&2
             return 1
         fi
+    }
+    # The rerun condition of the already-installed branch (U434b): the dependency names of the deployed profile's
+    # package.json, read with the reader's status, each without a node_modules entry printed on one line.
+    dsh_superagent_missing_dependencies() {
+        local names name
+        names="$(python3 -I -S -c 'import json, sys; print("\n".join(dict(json.load(open(sys.argv[1], encoding="utf-8")).get("dependencies", {}))))' "${DSH_HOME}/profiles/router/package.json" 2> /dev/null)" || {
+            printf 'update_dsh_superagent: the dependency names of %s could not be read; %s\n' "${DSH_HOME}/profiles/router/package.json" "$1" >&2
+            return 1
+        }
+        while IFS= read -r name; do
+            [ -n "${name}" ] || continue
+            [ -e "${DSH_HOME}/profiles/router/node_modules/${name}" ] || printf '%s\n' "${name}"
+        done <<< "${names}"
     }
     # The lockfile hosts: pnpm fetches a `tarball:` row from the host it names, and the build's network is the registry
     # (DSH_SUPERAGENT_REGISTRY_HOST) alone, so a lockfile naming another host refuses the step naming it; a host is
@@ -2814,7 +2829,9 @@ function update_dsh_superagent() (
     canary="${install_dir}.canary"
     if [ "${recorded}" = "${DSH_SUPERAGENT_COMMIT}" ] && [ -f "${install_dir}/package.json" ]; then
         printf 'dsh-superagent %s is already installed at %s.\n' "${DSH_SUPERAGENT_COMMIT}" "${install_dir}"
-        if [ ! -e "${DSH_HOME}/profiles/router/node_modules/dsh-superagent" ]; then
+        missing="$(dsh_superagent_missing_dependencies "the installed tree and the record are untouched.")" || return 1
+        if [ -n "${missing}" ]; then
+            printf 'update_dsh_superagent: the router profile has no node_modules entry for %s; the profile install runs again inside srt.\n' "${missing//$'\n'/ }"
             if [ -e "${DSH_HOME}/profiles/router/pnpm-lock.yaml" ]; then
                 dsh_superagent_lockfile_hosts "${DSH_HOME}/profiles/router/pnpm-lock.yaml" "the installed tree and the record are untouched." || return 1
             fi

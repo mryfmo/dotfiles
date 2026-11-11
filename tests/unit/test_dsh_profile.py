@@ -343,8 +343,14 @@ class DshRouterProfileTest(unittest.TestCase):
         # dependencies (the bundle the profile composes is the one the updater installs).
         bundles = ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-superagent"]
         self.assertEqual({"manifestVersion": 1, "profile": {"bundles": bundles}}, self.package["dsh"])
+        # U434b: the subagent-acp insert's package is a dependency too, linked through dsh/current to the pinned
+        # tree's built package, so the deployed profile resolves it without a hand-made link.
         self.assertEqual(
-            {"dsh-superagent": "link:../../plugins/dsh-superagent", GATEWAY_PLUGIN: "link:../../plugins/omp-gateway"},
+            {
+                "dsh-superagent": "link:../../plugins/dsh-superagent",
+                GATEWAY_PLUGIN: "link:../../plugins/omp-gateway",
+                "@deepseek-ai/dsh-subagent-acp": "link:../../dsh/current/packages/subagent/subagent-acp",
+            },
             self.package["dependencies"],
         )
         self.assertIn(

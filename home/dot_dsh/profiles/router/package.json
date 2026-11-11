@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "dsh-superagent": "link:../../plugins/dsh-superagent",
-    "dsh-omp-gateway": "link:../../plugins/omp-gateway"
+    "dsh-omp-gateway": "link:../../plugins/omp-gateway",
+    "@deepseek-ai/dsh-subagent-acp": "link:../../dsh/current/packages/subagent/subagent-acp"
   }
 }

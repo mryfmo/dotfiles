@@ -2616,6 +2616,42 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual("ACP_BROKER_SOCK", self.module.DSH_ACP_BROKER_SOCK_ENV)
         self.assertIn("acp-seat", manifest["claude"]["levers"]["sha256"])
 
+    def test_the_router_profile_declares_the_acp_plugin_as_a_link_dependency_and_the_thak_profile_does_not(
+        self,
+    ) -> None:
+        """U434b (round 2 of U434; verdicts/U434-8c3cfec2 P1 [f8 s6]): the package the `subagent-acp` insert names is
+        a `link:` dependency of the rendered router package.json, the path from `$DSH_HOME/profiles/router` through
+        the `dsh/current` link to the pinned tree's built package, so the updater's profile install resolves it on a
+        deploy without a hand-made link; the insert's name and the dependency's name are one constant beside the
+        gateway's; the thak package.json declares no such row."""
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.module.ROOT = ROOT
+        router = self.module.render_dsh_router_profile(manifest)
+        package = json.loads(router[ROOT / "home/dot_dsh/profiles/router/package.json"])
+        link = "link:../../dsh/current/packages/subagent/subagent-acp"
+        self.assertEqual(
+            {
+                "dsh-superagent": "link:../../plugins/dsh-superagent",
+                "dsh-omp-gateway": "link:../../plugins/omp-gateway",
+                "@deepseek-ai/dsh-subagent-acp": link,
+            },
+            package["dependencies"],
+        )
+        insert = re.search(
+            r"    - id: subagent-acp\n      name: '([^']+)'\n",
+            router[ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"],
+        )
+        self.assertIsNotNone(insert)
+        self.assertIn(insert[1], package["dependencies"], "the insert names a package the profile declares")
+        self.assertEqual(self.module.DSH_SUBAGENT_ACP_PLUGIN, insert[1])
+        self.assertEqual(link, self.module.DSH_SUBAGENT_ACP_LINK)
+        self.assertEqual(link, package["dependencies"][self.module.DSH_SUBAGENT_ACP_PLUGIN])
+        thak = json.loads(
+            self.module.render_dsh_profile_patch(manifest)[ROOT / "home/dot_dsh/profiles/thak/package.json"]
+        )
+        self.assertNotIn("@deepseek-ai/dsh-subagent-acp", thak["dependencies"])
+        self.assertNotIn("subagent-acp", json.dumps(thak))
+
     def test_manifest_adds_one_allowlisted_omp_model_per_profile_and_nothing_else(self) -> None:
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
         profiles: dict[str, list[str]] = {}

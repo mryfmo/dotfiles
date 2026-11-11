@@ -84,6 +84,13 @@
       "executable": false
     },
     {
+      "source": "home/dot_agents/router-source.json",
+      "target": ".agents/router-source.json",
+      "kind": "file",
+      "executable": false,
+      "sha256": "76487b147ab44f396df837e31d597e9da8dc51430482c9c83bfc93026c97e14a"
+    },
+    {
       "source": "home/dot_claude/agents/express-explorer.md",
       "target": ".claude/agents/express-explorer.md",
       "kind": "file",
@@ -482,7 +489,7 @@
       "target": ".local/bin/common/intake-observe.py",
       "kind": "file",
       "executable": true,
-      "sha256": "e909cc6aac3b430535de4b02ebe0c7fb24c12ee1a8fa1587ff7987dcfe55310f"
+      "sha256": "ccee31491b0ca621e93aeeb18df9a1da1178fe0c76b97a0f55f9d522fd9844ce"
     },
     {
       "source": "home/dot_local/bin/common/executable_ledger-row.py",
@@ -622,7 +629,14 @@
       "target": ".local/bin/common/router-settings-apply",
       "kind": "file",
       "executable": true,
-      "sha256": "105865474f5c52d552f53b86764fab2b25d6699851ab30ca8a24e7ac579d39f5"
+      "sha256": "46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_router-settings-apply.py",
+      "target": ".local/bin/common/router-settings-apply.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "d50b0510454b5102654606ee8efdb866263da6c965e3b88135058dd052a9b1b0"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-login-preflight",
@@ -711,6 +725,11 @@
       "source": "home/dot_agents/plugins",
       "target": ".agents/plugins",
       "glob": "**/*"
+    },
+    {
+      "source": "home/dot_agents",
+      "target": ".agents",
+      "glob": "router-source.json"
     },
     {
       "source": "home/dot_claude/agents",
@@ -926,6 +945,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "router-settings-apply"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "router-settings-apply.py"
     },
     {
       "source": "home/dot_local/bin/common",

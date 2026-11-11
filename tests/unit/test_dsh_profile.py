@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import hashlib
 import importlib.util
 import io
 import json
@@ -225,6 +226,9 @@ class DshRouterProfileTest(unittest.TestCase):
         self.assertRegex(github["repository"], r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
         self.assertIn(f"repository {github['repository']}, accept_mode\n# observe", self.patch)
         self.assertIn(f"ladder row {github['accept_mode_row']}", self.patch)
+        self.assertEqual(
+            [], github["allowed"], "the committed identity set is empty (U465; the operator names ids later)"
+        )
         self.assertIn("the allowed list is empty", self.patch)
         self.assertIn(f"pin {self.asset['pin']}", self.patch)
 
@@ -412,15 +416,48 @@ class DshRouterProfileTest(unittest.TestCase):
             lambda row: row.update(accept_mode="always"),
             "accept_mode 'always' is not one of ['off', 'observe', 'auto']",
         )
-        refused(lambda row: row.update(allowed="someone"), "unknown key(s) ['allowed']")
+        label = "assets.dsh-superagent.sources.github.allowed"
+        refused(
+            lambda row: row.pop("allowed"),
+            f"{label} is missing (the Source's identity set; [] when no sender is listed)",
+        )
+        refused(lambda row: row.update(allowed="someone"), f"{label} must be a list of sender ids, not str: 'someone'")
+        refused(lambda row: row.update(allowed=None), f"{label} must be a list of sender ids, not NoneType: None")
+        refused(lambda row: row.update(allowed=[1]), f"{label} must be a list of sender ids, not int: 1")
+        refused(
+            lambda row: row.update(allowed=["some_one"]),
+            f"{label} names 'some_one', which is not a sender id of the form [A-Za-z0-9-]+",
+        )
+        refused(
+            lambda row: row.update(allowed=["someone", "Someone"]),
+            f"{label} repeats 'Someone' (GitHub logins that differ by case alone are one login)",
+        )
+        # U465b (verdict U465-4ae6f8c0 P1 `:516`): the list is written in auto alone; a listed login beside observe
+        # or off is a dormant grant (a listed login's mention is explicit in every mode) and the manifest is refused.
+        refused(
+            lambda row: row.update(allowed=["someone"]),
+            f"{label} names ['someone'] while accept_mode is 'observe'; the identity set is written in auto alone, so "
+            "the list is [] in off and observe",
+        )
+        refused(
+            lambda row: row.update(accept_mode="off", allowed=["someone"]),
+            f"{label} names ['someone'] while accept_mode is 'off'; the identity set is written in auto alone, so "
+            "the list is [] in off and observe",
+        )
         refused(lambda row: row.update(repository="dotfiles"), "repository 'dotfiles' is not owner/name")
         refused(
             lambda row: row.update(accept_mode_row="yesterday"),
             "accept_mode_row 'yesterday' is not a decisions.tsv timestamp",
         )
+        # U465c (verdict U465-db9a5e94 P1 `:517`): the auto row is a row of its own, so the two timestamps differ.
+        refused(
+            lambda row: row.update(accept_mode="auto", accept_mode_auto_row=row["accept_mode_row"]),
+            "accept_mode_auto_row '2026-11-06T23:24:00Z' is the accept_mode_row itself; the ladder's second row is "
+            "not its first",
+        )
         manifest = copy.deepcopy(base)
         manifest["assets"]["dsh-superagent"]["sources"]["github"].update(
-            accept_mode="auto", accept_mode_auto_row="2026-11-08T00:00:00Z"
+            accept_mode="auto", accept_mode_auto_row="2026-11-08T00:00:00Z", allowed=["someone", "other-one"]
         )
         outputs = generator.render_dsh_router_profile(manifest)
         patch = outputs[generator.ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"]
@@ -428,11 +465,17 @@ class DshRouterProfileTest(unittest.TestCase):
             "accept_mode\n# auto (M-18 ladder row 2026-11-06T23:24:00Z, accept_mode_auto_row 2026-11-08T00:00:00Z)",
             patch,
         )
+        self.assertIn("the allowed list: someone, other-one.", patch)
+        self.assertNotIn("the allowed list is empty", patch)
 
-    def test_the_validator_refuses_sources_outside_the_asset_unknown_keys_and_auto_without_its_row(self) -> None:
+    def test_the_validator_refuses_sources_outside_the_asset_unknown_keys_a_bad_sender_id_and_auto_without_its_row(
+        self,
+    ) -> None:
         # The validator's own allowlist (scripts/validate-agent-assets.py validate_asset_sources), not the renderer's:
-        # the real asset passes; `sources` under another asset, an unknown Source, an unknown key, a repository that is
-        # not owner/name and `auto` without accept_mode_auto_row are each a refusal naming the key.
+        # the real asset passes, with an empty or a listed identity set; `sources` under another asset, an unknown
+        # Source, an unknown key, a repository that is not owner/name, an `allowed` that is no list of sender ids
+        # (U465: ids `[A-Za-z0-9-]+`, src/sources/github.ts:72, no repeat) and `auto` without accept_mode_auto_row
+        # are each a refusal naming the key.
         spec = importlib.util.spec_from_file_location(
             "validate_agent_assets", ROOT / "scripts/validate-agent-assets.py"
         )
@@ -440,6 +483,12 @@ class DshRouterProfileTest(unittest.TestCase):
         validator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(validator)
         validator.validate_asset_sources("dsh-superagent", copy.deepcopy(self.asset))
+        # A listed identity set is admitted beside auto and its row alone (U465b).
+        listed = copy.deepcopy(self.asset)
+        listed["sources"]["github"].update(
+            accept_mode="auto", accept_mode_auto_row="2026-11-08T00:00:00Z", allowed=["someone", "other-one"]
+        )
+        validator.validate_asset_sources("dsh-superagent", listed)
 
         def refused(name: str, mutate, expected: str) -> None:
             asset = copy.deepcopy(self.asset)
@@ -461,8 +510,46 @@ class DshRouterProfileTest(unittest.TestCase):
         )
         refused(
             "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(bots=["x"]),
+            "has unknown key(s) ['bots']",
+        )
+        label = "assets.dsh-superagent.sources.github.allowed"
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].pop("allowed"),
+            f"{label} is missing (the Source's identity set; [] when no sender is listed)",
+        )
+        refused(
+            "dsh-superagent",
             lambda asset: asset["sources"]["github"].update(allowed="x"),
-            "has unknown key(s) ['allowed']",
+            f"{label} must be a list of sender ids, not str: 'x'",
+        )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(allowed=[{"id": "someone"}]),
+            f"{label} must be a list of sender ids, not dict: {{'id': 'someone'}}",
+        )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(allowed=["dependabot[bot]"]),
+            f"{label} names 'dependabot[bot]', which is not a sender id of the form [A-Za-z0-9-]+",
+        )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(allowed=["someone", "SOMEONE"]),
+            f"{label} repeats 'SOMEONE' (GitHub logins that differ by case alone are one login)",
+        )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(allowed=["someone"]),
+            f"{label} names ['someone'] while accept_mode is 'observe'; the identity set is written in auto alone, so "
+            "the list is [] in off and observe",
+        )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(accept_mode="off", allowed=["someone"]),
+            f"{label} names ['someone'] while accept_mode is 'off'; the identity set is written in auto alone, so "
+            "the list is [] in off and observe",
         )
         refused(
             "dsh-superagent",
@@ -479,6 +566,207 @@ class DshRouterProfileTest(unittest.TestCase):
             lambda asset: asset["sources"]["github"].update(accept_mode="auto"),
             "accept_mode auto needs accept_mode_auto_row beside accept_mode_row",
         )
+        refused(
+            "dsh-superagent",
+            lambda asset: asset["sources"]["github"].update(
+                accept_mode="auto", accept_mode_auto_row=asset["sources"]["github"]["accept_mode_row"]
+            ),
+            "accept_mode_auto_row '2026-11-06T23:24:00Z' is the accept_mode_row itself; the ladder's second row is "
+            "not its first",
+        )
+
+    def test_the_generator_renders_the_source_row_as_the_json_the_lever_reads_and_the_index_pins_it(self) -> None:
+        """U465c (verdict U465-db9a5e94 P1 `:407`): the lever reads no YAML; the generator (PyYAML, the kit's one YAML
+        reader) renders the manifest's Source row into `home/dot_agents/router-source.json`, a managed target chezmoi
+        deploys beside the manifest as `~/.agents/router-source.json`, which `make render-check` holds to the manifest
+        and the output index lists with its sha256 (the doctor's check of the deployed copy, as for a lever copy). The
+        object holds `generated_by` and the row's keys in their fixed order, every one present (U465d:
+        `accept_mode_auto_row` null when the manifest omits it); the committed rendering is the observe row with the
+        empty list."""
+        generator = load_generator()
+        path = generator.ROOT / "home/dot_agents/router-source.json"
+        outputs = generator.render_router_source(copy.deepcopy(self.manifest))
+        self.assertEqual([path], list(outputs))
+        rendered = outputs[path]
+        github = self.asset["sources"]["github"]
+        self.assertEqual(
+            {
+                "generated_by": generator.GENERATED_HEADER,
+                "source": {
+                    "repository": github["repository"],
+                    "accept_mode": "observe",
+                    "accept_mode_row": github["accept_mode_row"],
+                    "accept_mode_auto_row": None,
+                    "observe_admission": "inferred",
+                    "allowed": [],
+                },
+            },
+            json.loads(rendered),
+        )
+        self.assertEqual(
+            ["generated_by", "source"], list(json.loads(rendered)), "the top level holds the header and the row alone"
+        )
+        self.assertEqual(
+            ["repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission", "allowed"],
+            list(json.loads(rendered)["source"]),
+        )
+        self.assertEqual(rendered, (ROOT / "home/dot_agents/router-source.json").read_text(), "the committed copy")
+        self.assertTrue(rendered.endswith("\n") and not rendered.endswith("\n\n"))
+        index = json.loads((ROOT / "scripts/generated-agent-outputs.json").read_text())
+        (entry,) = [entry for entry in index["outputs"] if entry["source"] == "home/dot_agents/router-source.json"]
+        self.assertEqual(
+            {
+                "source": "home/dot_agents/router-source.json",
+                "target": ".agents/router-source.json",
+                "kind": "file",
+                "executable": False,
+                "sha256": hashlib.sha256(rendered.encode()).hexdigest(),
+            },
+            entry,
+        )
+        self.assertIn(
+            {"source": "home/dot_agents", "target": ".agents", "glob": "router-source.json"},
+            index["scopes"],
+            "a stale rendering is an orphan the generator and the doctor report",
+        )
+        self.assertIn(("home/dot_agents", "router-source.json"), generator.GENERATED_SCOPES)
+        # At auto with its row and two ids, the row carries the sixth key in its place and the ids in order.
+        manifest = copy.deepcopy(self.manifest)
+        manifest["assets"]["dsh-superagent"]["sources"]["github"].update(
+            accept_mode="auto", accept_mode_auto_row="2026-11-12T00:00:00Z", allowed=["someone", "other-one"]
+        )
+        row = json.loads(generator.render_router_source(manifest)[path])["source"]
+        self.assertEqual(
+            ["repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission", "allowed"],
+            list(row),
+        )
+        self.assertEqual(("auto", "2026-11-12T00:00:00Z", ["someone", "other-one"]), (row["accept_mode"], row["accept_mode_auto_row"], row["allowed"]))  # fmt: skip
+        # A manifest without the sourced asset renders no file, like the router profile.
+        manifest = copy.deepcopy(self.manifest)
+        del manifest["assets"]["dsh-superagent"]["sources"]
+        self.assertEqual({}, generator.render_router_source(manifest))
+
+    def test_the_one_yaml_reader_refuses_a_manifest_naming_a_key_twice_in_quoted_and_unquoted_forms(self) -> None:
+        """U465c (verdict U465-db9a5e94 P1 `:407`): `yaml.safe_load` resolves a repeated key to its last value, so a
+        manifest holding `"allowed": [unauthorized]` and `allowed: []` read as the empty list to the validators while a
+        text reader saw the first. The kit's one YAML reader, the generator's `parse_yaml` (PyYAML's SafeLoader with a
+        mapping constructor that refuses a key named twice, the two forms compared after the scalar is built, so a
+        quoted and an unquoted spelling are one key), refuses the manifest naming the key and both lines; the
+        validator's `load_yaml` reads through it, so the asset validation refuses the same file. A raw-text check
+        would be one more hand-written reader of YAML, the premise this round drops. Without PyYAML both refuse to run
+        (`make unit-test` installs none; the asset validation and render-check run with it)."""
+        generator = load_generator()
+        spec = importlib.util.spec_from_file_location(
+            "validate_agent_assets", ROOT / "scripts/validate-agent-assets.py"
+        )
+        assert spec and spec.loader
+        validator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(validator)
+        text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        first = '        accept_mode_row: "2026-11-06T23:24:00Z"\n'
+        self.assertEqual(1, text.count(first), "the manifest's Source row as this test knows it")
+        cases = {
+            "quoted-then-plain": text.replace(first, first + '        "allowed": [unauthorized]\n'),
+            "plain-then-plain": text.replace(first, first + "        allowed: [unauthorized]\n"),
+            "single-quoted": text.replace(first, first + "        'allowed': [unauthorized]\n"),
+        }
+        duplicate = self.temp_dir / "duplicate.yaml"
+        for case, altered in cases.items():
+            with self.subTest(case=case):
+                self.assertNotEqual(altered, text)
+                duplicate.write_text(altered)
+                lines = altered.splitlines()
+                here = lines.index(first.rstrip("\n")) + 2
+                later = lines.index("        allowed: []") + 1
+                expected = f"names the key 'allowed' twice (lines {here} and {later})"
+                if generator.yaml is None:
+                    expected = "PyYAML is required"
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    generator.parse_manifest(altered)
+                self.assertIn(expected, stderr.getvalue())
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    validator.load_yaml(duplicate)
+                self.assertIn(expected, stderr.getvalue())
+        if generator.yaml is not None:
+            # The same text with the key once parses, and yaml.safe_load alone (the reader dropped) saw the last.
+            self.assertEqual([], generator.parse_manifest(text)["assets"]["dsh-superagent"]["sources"]["github"]["allowed"])  # fmt: skip
+            seen = generator.yaml.safe_load(cases["quoted-then-plain"])
+            self.assertEqual([], seen["assets"]["dsh-superagent"]["sources"]["github"]["allowed"], "the last wins")
+
+    def test_c_the_generator_renders_every_field_with_its_default_and_refuses_what_the_validator_refuses_by_one_function(
+        self,
+    ) -> None:
+        """U465d test (c) (verdicts/U465-e6a9a84f.md P2 [f2 s5] `generate-agent-configs.py:2524`): a manifest row without
+        `observe_admission` passed generation and validation while the lever refused the rendering, and an auto row
+        beside observe passed generation while the validator refused it. One function in the generator,
+        `dsh_source_row`, applies the defaults and the refusals: the rendering carries every field (`accept_mode_auto_row`
+        as null when the manifest omits it, `observe_admission` as upstream's own default `ignore`, src/policy.ts, so an
+        omitted cell changes nothing upstream decides; the committed manifest names `inferred`), and the validator's
+        `validate_asset_sources` reads the row through that function, so the same bad row is refused with the same
+        words by both and the validator's text holds no row rule of its own."""
+        generator = load_generator()
+        spec = importlib.util.spec_from_file_location(
+            "validate_agent_assets", ROOT / "scripts/validate-agent-assets.py"
+        )
+        assert spec and spec.loader
+        validator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(validator)
+        path = generator.ROOT / "home/dot_agents/router-source.json"
+        keys = ["repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission", "allowed"]
+        self.assertEqual("ignore", generator.DSH_OBSERVE_ADMISSION_DEFAULT)
+        manifest = copy.deepcopy(self.manifest)
+        del manifest["assets"]["dsh-superagent"]["sources"]["github"]["observe_admission"]
+        row = json.loads(generator.render_router_source(manifest)[path])["source"]
+        self.assertEqual(keys, list(row), "every field is present, in the fixed order")
+        self.assertEqual(("ignore", None), (row["observe_admission"], row["accept_mode_auto_row"]))
+        validator.validate_asset_sources("dsh-superagent", copy.deepcopy(manifest["assets"]["dsh-superagent"]))
+        committed = json.loads((ROOT / "home/dot_agents/router-source.json").read_text())["source"]
+        self.assertEqual(keys, list(committed), "the committed rendering carries every field")
+        self.assertEqual(("inferred", None), (committed["observe_admission"], committed["accept_mode_auto_row"]))
+        label = "assets.dsh-superagent.sources.github"
+        bad = {
+            "an auto row beside observe": (
+                lambda row: row.update(accept_mode_auto_row="2026-11-08T00:00:00Z"),
+                f"{label}.accept_mode_auto_row belongs to accept_mode auto alone, not 'observe'",
+            ),
+            "a third word for the cell": (
+                lambda row: row.update(observe_admission="explicit"),
+                f"{label}.observe_admission 'explicit' is not one of ['inferred', 'ignore']",
+            ),
+            "a cell of the wrong type": (
+                lambda row: row.update(observe_admission=1),
+                f"{label}.observe_admission must be a string, not int: 1",
+            ),
+            "auto without its row": (
+                lambda row: row.update(accept_mode="auto"),
+                f"{label}.accept_mode auto needs accept_mode_auto_row beside accept_mode_row",
+            ),
+            "a missing first row": (
+                lambda row: row.pop("accept_mode_row"),
+                f"{label}.accept_mode_row must be a non-empty string",
+            ),
+            "an unknown key": (lambda row: row.update(bots=["x"]), f"{label} has unknown key(s) ['bots']"),
+            "a listed login beside observe": (
+                lambda row: row.update(allowed=["someone"]),
+                f"{label}.allowed names ['someone'] while accept_mode is 'observe'",
+            ),
+        }
+        for case, (mutate, expected) in bad.items():
+            with self.subTest(case=case):
+                manifest = copy.deepcopy(self.manifest)
+                mutate(manifest["assets"]["dsh-superagent"]["sources"]["github"])
+                with contextlib.redirect_stderr(io.StringIO()) as rendered, self.assertRaises(SystemExit):
+                    generator.render_router_source(manifest)
+                with contextlib.redirect_stderr(io.StringIO()) as validated, self.assertRaises(SystemExit):
+                    validator.validate_asset_sources(
+                        "dsh-superagent", copy.deepcopy(manifest["assets"]["dsh-superagent"])
+                    )
+                self.assertIn(expected, rendered.getvalue())
+                self.assertEqual(rendered.getvalue(), validated.getvalue(), "one function, one refusal")
+        text = (ROOT / "scripts/validate-agent-assets.py").read_text()
+        self.assertIn("dsh_source_row", text, "the validator reads the row through the generator's function")
+        for own in ("OBSERVE_ADMISSIONS = ", "ACCEPT_MODES = ", "LADDER_ROW_TIMESTAMP = ", "def validate_sender_ids"):
+            self.assertNotIn(own, text, f"the validator keeps no row rule of its own ({own.strip()})")
 
     def test_the_installer_pins_are_rendered_from_the_asset(self) -> None:
         # scripts/lib/installer-pins.sh is generated: the two constants the updater reads are the asset's pin and

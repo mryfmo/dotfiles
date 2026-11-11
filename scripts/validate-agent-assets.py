@@ -361,9 +361,12 @@ def fail(message: str) -> None:
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
+    """One YAML file as a mapping, read through the generator's parse_yaml (U465c): the kit's one YAML reader, which
+    refuses a key named twice in any spelling, so a manifest the validators and a text reader would read differently
+    is refused rather than read; a raw-text check here would be one more hand-written reader of YAML."""
     if yaml is None:
         fail("PyYAML is required")
-    data = yaml.safe_load(path.read_text()) or {}
+    data = generator().parse_yaml(path.read_text(), str(path)) or {}
     if not isinstance(data, dict):
         fail(f"{path} must be a mapping")
     return data
@@ -1364,23 +1367,22 @@ INSTALLING_ASSET_SOURCES = {
 }
 # The one asset whose Source rows the kit renders (regime-cutover U317): the superagent intake's GitHub Source. `sources`
 # is admitted under this asset alone, each Source is one of the kinds below, and each row is a fixed key set compared
-# with fixed values: the repository against `owner/name`, the accept mode against the three the upstream Policy knows
-# (dsh-superagent src/policy.ts:84), `auto` only with the two row timestamps the M-18 ladder defines.
+# with fixed values by the generator's one function, dsh_source_row (U465d, verdict U465-e6a9a84f P2 `:2524`: the
+# generator, this validator and the lever each read the row by a rule of their own and disagreed on an omitted
+# observe_admission and on an auto row beside observe). This file keeps the asset-level rules alone: which asset
+# carries Source rows and which kinds exist; every rule of a row (the repository, the mode, the two row timestamps,
+# the cell and its default, the allowed list) is the generator's, so the rendering the lever reads and this
+# validation refuse the same row in the same words.
 SOURCED_ASSET = "dsh-superagent"
-ASSET_SOURCE_KEYS = {
-    "github": ("repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission")
-}
-ASSET_SOURCE_REQUIRED = ("repository", "accept_mode", "accept_mode_row")
-ACCEPT_MODES = ("off", "observe", "auto")
-# The two words of the policy cell router-settings-apply writes (U416): the pulls row's unlistedUnaddressed cell.
-OBSERVE_ADMISSIONS = ("inferred", "ignore")
-SOURCE_REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
-LADDER_ROW_TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+ASSET_SOURCE_KINDS = ("github",)
 
 
 def validate_asset_sources(name: str, asset: dict[str, Any]) -> None:
-    """Refuse a `sources` block outside the sourced asset, an unknown Source or key, a repository outside `owner/name`,
-    a mode outside the three, and `auto` without `accept_mode_auto_row`; each refusal names the key."""
+    """Refuse a `sources` block outside the sourced asset, an unknown Source kind, and whatever the generator's
+    dsh_source_row refuses of the row (an unknown key, a repository outside `owner/name`, a mode outside the three,
+    `auto` without `accept_mode_auto_row` or with one equal to the first row, that row beside another mode, a cell
+    outside its two words, an `allowed` that is absent or no list of sender ids, a listed sender beside a mode other
+    than `auto`); each refusal names the key."""
     sources = asset.get("sources")
     if sources is None:
         return
@@ -1390,37 +1392,9 @@ def validate_asset_sources(name: str, asset: dict[str, Any]) -> None:
         fail(f"assets.{name}.sources must be a non-empty mapping of Source kind to row")
     for kind, row in sources.items():
         label = f"assets.{name}.sources.{kind}"
-        keys = ASSET_SOURCE_KEYS.get(kind)
-        if keys is None:
-            fail(f"{label} is not a Source the kit renders; the kinds are {sorted(ASSET_SOURCE_KEYS)}")
-        if not isinstance(row, dict):
-            fail(f"{label} must be a mapping")
-        unknown = sorted(set(row) - set(keys))
-        if unknown:
-            fail(f"{label} has unknown key(s) {unknown}; the row admits {list(keys)}")
-        missing = [key for key in ASSET_SOURCE_REQUIRED if not row.get(key)]
-        if missing:
-            fail(f"{label} is missing {missing}")
-        for key, value in row.items():
-            if not isinstance(value, str):
-                fail(f"{label}.{key} must be a string, not {type(value).__name__}: {value!r}")
-        if not SOURCE_REPOSITORY.fullmatch(row["repository"]):
-            fail(f"{label}.repository {row['repository']!r} is not owner/name")
-        mode = row["accept_mode"]
-        if mode not in ACCEPT_MODES:
-            fail(f"{label}.accept_mode {mode!r} is not one of {list(ACCEPT_MODES)}")
-        for key in ("accept_mode_row", "accept_mode_auto_row"):
-            if key in row and not LADDER_ROW_TIMESTAMP.fullmatch(row[key]):
-                fail(f"{label}.{key} {row[key]!r} is not a decisions.tsv timestamp (YYYY-MM-DDTHH:MM:SSZ)")
-        if mode == "auto" and "accept_mode_auto_row" not in row:
-            fail(
-                f"{label}.accept_mode auto needs accept_mode_auto_row beside accept_mode_row (the two row timestamps "
-                "the M-18 ladder defines); the mode stays observe until that row is written"
-            )
-        if mode != "auto" and "accept_mode_auto_row" in row:
-            fail(f"{label}.accept_mode_auto_row belongs only to accept_mode auto, not {mode!r}")
-        if "observe_admission" in row and row["observe_admission"] not in OBSERVE_ADMISSIONS:
-            fail(f"{label}.observe_admission {row['observe_admission']!r} is not one of {list(OBSERVE_ADMISSIONS)}")
+        if kind not in ASSET_SOURCE_KINDS:
+            fail(f"{label} is not a Source the kit renders; the kinds are {sorted(ASSET_SOURCE_KINDS)}")
+        generator().dsh_source_row(row, label)
 
 
 # A literal value is double-quoted without $, single-quoted, or an unquoted

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import collections.abc
 import copy
 import glob
 import hashlib
@@ -44,10 +45,47 @@ def load_manifest(text: str | None = None) -> dict[str, Any]:
     return parse_manifest(read_exact(MANIFEST_PATH) if text is None else text)
 
 
-def parse_manifest(text: str) -> dict[str, Any]:
+class DuplicateKey(ValueError):
+    """A YAML mapping names one key twice (regime-cutover U465c, verdict U465-db9a5e94 P1 `:407`)."""
+
+
+def strict_loader() -> type:
+    """PyYAML's SafeLoader with one more rule: a mapping that names a key twice is refused. `yaml.safe_load` keeps the
+    last value silently, so `allowed: [x]` above `allowed: []` read as the empty list to every PyYAML reader while a
+    text reader saw the first (U465b), and a quoted spelling of the same key evaded a text-level repeat check (U465c).
+    The two spellings are compared after the key scalar is constructed, so `"allowed"`, `'allowed'` and `allowed` are
+    one key here, which no raw-text check can decide. Built on first use: PyYAML is absent under make unit-test."""
+
+    class UniqueKeyLoader(yaml.SafeLoader):
+        def construct_mapping(self, node: Any, deep: bool = False) -> dict[Any, Any]:
+            seen: dict[Any, Any] = {}
+            for key_node, _value_node in node.value:
+                key = self.construct_object(key_node, deep=deep)
+                if not isinstance(key, collections.abc.Hashable):
+                    continue  # PyYAML's own refusal of an unhashable key follows below
+                if key in seen:
+                    raise DuplicateKey(
+                        f"names the key {key!r} twice (lines {seen[key].line + 1} and {key_node.start_mark.line + 1})"
+                    )
+                seen[key] = key_node.start_mark
+            return super().construct_mapping(node, deep=deep)
+
+    return UniqueKeyLoader
+
+
+def parse_yaml(text: str, where: str) -> Any:
+    """The kit's one YAML reader (U465c): `text` loaded with strict_loader, a key named twice a refusal naming `where`,
+    the key and both lines. Every other YAML error propagates as PyYAML raises it."""
     if yaml is None:
         fail("PyYAML is required: uv run --with pyyaml scripts/generate-agent-configs.py")
-    data = yaml.safe_load(text)
+    try:
+        return yaml.load(text, Loader=strict_loader())
+    except DuplicateKey as error:
+        fail(f"{where} {error}; the kit reads a mapping whose keys are unique, so neither value is taken")
+
+
+def parse_manifest(text: str) -> dict[str, Any]:
+    data = parse_yaml(text, str(MANIFEST_PATH))
     if not isinstance(data, dict):
         fail(f"{MANIFEST_PATH} must contain a YAML mapping")
     if data.get("schema_version") != 1:
@@ -251,8 +289,16 @@ DSH_ACCEPT_MODES = ("off", "observe", "auto")
 # The two words of the policy cell router-settings-apply writes (U416): the pulls row's unlistedUnaddressed cell of the
 # github Source's admission table; `explicit` is not admitted (it would accept an unlisted sender in observe mode).
 DSH_OBSERVE_ADMISSIONS = ("inferred", "ignore")
+# The cell's default when the manifest row omits it (U465d, verdict U465-e6a9a84f P2 `:2524`): upstream's own default
+# (dsh-superagent src/policy.ts, the admission table's `ignore`), so an omitted cell changes nothing upstream decides;
+# the observe rung names `inferred` in the manifest, since `ignore` sends every unlisted human's pull request to
+# `not_a_member` before any assessment. Applied once, here, so the rendering carries every field and the lever reads a
+# complete row.
+DSH_OBSERVE_ADMISSION_DEFAULT = "ignore"
 DSH_SOURCE_REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 DSH_LADDER_ROW_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+# A sender id of the Source's allowed list (U465), a GitHub login (dsh-superagent src/sources/github.ts:72).
+DSH_SENDER_ID_RE = re.compile(r"^[A-Za-z0-9-]+$")
 # The plan's base profile: the shipped bundle whose patch already turns the HMR, credentials and account rows off.
 DSH_BASE_PROFILE = "headless"
 OMP_RETIRED_ROUTES = ("openai-codex",)
@@ -2464,38 +2510,121 @@ def dsh_gateway_insert(dsh: dict[str, dict[str, Any]]) -> list[str]:
     ]
 
 
-def dsh_github_source(asset: dict[str, Any]) -> dict[str, str]:
-    """The superagent asset's GitHub Source row, each value compared with its fixed set: the repository against
-    `owner/name`, the accept mode against the three the upstream Policy knows (src/policy.ts:84), `auto` only with the
-    second M-18 row timestamp beside the first, `observe_admission` against the two words router-settings-apply writes
-    into the pulls row's unlistedUnaddressed cell (U416). An unknown key is refused by name."""
-    sources = asset.get("sources")
-    if not isinstance(sources, dict) or not isinstance(sources.get("github"), dict):
-        fail(
-            f"assets.{DSH_SUPERAGENT_ASSET}.sources.github must be a mapping (repository, accept_mode, accept_mode_row)"
-        )
-    row = sources["github"]
-    label = f"assets.{DSH_SUPERAGENT_ASSET}.sources.github"
-    unknown = sorted(
-        set(row) - {"repository", "accept_mode", "accept_mode_row", "accept_mode_auto_row", "observe_admission"}
-    )
+def dsh_source_row(row: Any, label: str) -> dict[str, Any]:
+    """The kit's one reading of the GitHub Source row (U465d, verdict U465-e6a9a84f P2 `:2524`: the generator, the
+    validator and the lever each read the row by a rule of their own and disagreed on a missing cell and on an auto
+    row beside observe): `row` as the manifest holds it under `label`, each value compared with its fixed set and the
+    defaults applied, returned complete, with every key of DSH_SOURCE_ROW_KEYS. The validator's validate_asset_sources
+    reads the row through this function and render_router_source writes what it returns, so what one refuses the
+    other refuses, in the same words. The rules: a mapping; no unknown key; `repository`, `accept_mode` and
+    `accept_mode_row` non-empty strings, the repository `owner/name`, the mode one of the three the upstream Policy
+    knows (src/policy.ts:84), the rows decisions.tsv timestamps; `auto` only with `accept_mode_auto_row` beside the
+    first row and distinct from it (U465c: the auto row is a row of its own grammar in the store, never the first),
+    and that key beside `auto` alone (null in the rendering otherwise); `observe_admission` one of the two words
+    router-settings-apply writes into the pulls row's unlistedUnaddressed cell (U416), DSH_OBSERVE_ADMISSION_DEFAULT
+    when omitted; `allowed` (U465) present always, a list of GitHub logins (`[A-Za-z0-9-]+`), none repeated by case,
+    and empty unless the mode is `auto` (U465b: the lever writes the list in auto alone, and a listed login beside
+    another mode is a dormant grant). Each refusal names the key."""
+    if not isinstance(row, dict):
+        fail(f"{label} must be a mapping (repository, accept_mode, accept_mode_row)")
+    unknown = sorted(set(row) - set(DSH_SOURCE_ROW_KEYS))
     if unknown:
-        fail(f"{label} has unknown key(s) {unknown}")
+        fail(f"{label} has unknown key(s) {unknown}; the row admits {list(DSH_SOURCE_ROW_KEYS)}")
     for key in ("repository", "accept_mode", "accept_mode_row"):
         if not isinstance(row.get(key), str) or not row[key]:
             fail(f"{label}.{key} must be a non-empty string")
+    for key in ("accept_mode_auto_row", "observe_admission"):
+        if key in row and not isinstance(row[key], str):
+            fail(f"{label}.{key} must be a string, not {type(row[key]).__name__}: {row[key]!r}")
     if not DSH_SOURCE_REPOSITORY_RE.fullmatch(row["repository"]):
         fail(f"{label}.repository {row['repository']!r} is not owner/name")
-    if row["accept_mode"] not in DSH_ACCEPT_MODES:
-        fail(f"{label}.accept_mode {row['accept_mode']!r} is not one of {list(DSH_ACCEPT_MODES)}")
+    mode = row["accept_mode"]
+    if mode not in DSH_ACCEPT_MODES:
+        fail(f"{label}.accept_mode {mode!r} is not one of {list(DSH_ACCEPT_MODES)}")
     for key in ("accept_mode_row", "accept_mode_auto_row"):
-        if key in row and (not isinstance(row[key], str) or not DSH_LADDER_ROW_RE.fullmatch(row[key])):
-            fail(f"{label}.{key} {row[key]!r} is not a decisions.tsv timestamp")
-    if row["accept_mode"] == "auto" and "accept_mode_auto_row" not in row:
-        fail(f"{label}.accept_mode auto needs accept_mode_auto_row beside accept_mode_row (the M-18 ladder's two rows)")
-    if "observe_admission" in row and row["observe_admission"] not in DSH_OBSERVE_ADMISSIONS:
-        fail(f"{label}.observe_admission {row['observe_admission']!r} is not one of {list(DSH_OBSERVE_ADMISSIONS)}")
-    return {key: str(value) for key, value in row.items()}
+        if key in row and not DSH_LADDER_ROW_RE.fullmatch(row[key]):
+            fail(f"{label}.{key} {row[key]!r} is not a decisions.tsv timestamp (YYYY-MM-DDTHH:MM:SSZ)")
+    if mode == "auto" and "accept_mode_auto_row" not in row:
+        fail(
+            f"{label}.accept_mode auto needs accept_mode_auto_row beside accept_mode_row (the two row timestamps the "
+            "M-18 ladder defines); the mode stays observe until that row is written"
+        )
+    if mode != "auto" and "accept_mode_auto_row" in row:
+        fail(f"{label}.accept_mode_auto_row belongs to accept_mode auto alone, not {mode!r}")
+    if row.get("accept_mode_auto_row") == row["accept_mode_row"]:
+        # U465c (verdict U465-db9a5e94 P1 `:517`): the auto row is a row of its own grammar in the store, never the first.
+        fail(
+            f"{label}.accept_mode_auto_row {row['accept_mode_row']!r} is the accept_mode_row itself; the ladder's second "
+            "row is not its first"
+        )
+    admission = row.get("observe_admission", DSH_OBSERVE_ADMISSION_DEFAULT)
+    if admission not in DSH_OBSERVE_ADMISSIONS:
+        fail(f"{label}.observe_admission {admission!r} is not one of {list(DSH_OBSERVE_ADMISSIONS)}")
+    if "allowed" not in row:
+        fail(f"{label}.allowed is missing (the Source's identity set; [] when no sender is listed)")
+    allowed = row["allowed"]
+    if not isinstance(allowed, list):
+        fail(f"{label}.allowed must be a list of sender ids, not {type(allowed).__name__}: {allowed!r}")
+    seen: set[str] = set()
+    for item in allowed:
+        if not isinstance(item, str):
+            fail(f"{label}.allowed must be a list of sender ids, not {type(item).__name__}: {item!r}")
+        if not DSH_SENDER_ID_RE.fullmatch(item):
+            fail(f"{label}.allowed names {item!r}, which is not a sender id of the form [A-Za-z0-9-]+")
+        if item.lower() in seen:
+            fail(f"{label}.allowed repeats {item!r} (GitHub logins that differ by case alone are one login)")
+        seen.add(item.lower())
+    if mode != "auto" and allowed:
+        fail(
+            f"{label}.allowed names {allowed} while accept_mode is {mode!r}; the identity set is written in auto "
+            "alone, so the list is [] in off and observe"
+        )
+    return {
+        "repository": row["repository"],
+        "accept_mode": mode,
+        "accept_mode_row": row["accept_mode_row"],
+        "accept_mode_auto_row": row.get("accept_mode_auto_row"),
+        "observe_admission": admission,
+        "allowed": list(allowed),
+    }
+
+
+def dsh_github_source(asset: dict[str, Any]) -> dict[str, Any]:
+    """The superagent asset's GitHub Source row, complete, by dsh_source_row (the kit's one reading of the row)."""
+    sources = asset.get("sources")
+    label = f"assets.{DSH_SUPERAGENT_ASSET}.sources.github"
+    if not isinstance(sources, dict) or "github" not in sources:
+        fail(f"{label} must be a mapping (repository, accept_mode, accept_mode_row)")
+    return dsh_source_row(sources["github"], label)
+
+
+# The Source row as router-settings-apply reads it (U465c, verdict U465-db9a5e94 P1 `:407`): a JSON rendering beside
+# the manifest, deployed by chezmoi as ~/.agents/router-source.json, so the lever parses no YAML and this generator is
+# the kit's one reader of the row; render-check holds the file to the manifest, and the output index carries its
+# sha256 so the doctor holds the deployed copy as it holds a lever copy. The row's keys in this fixed order, every one
+# present in the rendering (U465d: the defaults are applied once, in dsh_source_row; `accept_mode_auto_row` is null
+# when the manifest omits it, and the lever refuses a rendering missing a key as malformed).
+ROUTER_SOURCE_PATH = "home/dot_agents/router-source.json"
+DSH_SOURCE_ROW_KEYS = (
+    "repository",
+    "accept_mode",
+    "accept_mode_row",
+    "accept_mode_auto_row",
+    "observe_admission",
+    "allowed",
+)
+
+
+def render_router_source(manifest: dict[str, Any]) -> dict[Path, str]:
+    """The rendering of `assets.dsh-superagent.sources.github` for router-settings-apply: an object of `generated_by`
+    and `source`, the complete row dsh_source_row returns with its keys in DSH_SOURCE_ROW_KEYS order; nothing when
+    the asset carries no Source rows."""
+    asset = manifest.get("assets", {}).get(DSH_SUPERAGENT_ASSET)
+    if not isinstance(asset, dict) or "sources" not in asset:
+        return {}
+    github = dsh_github_source(asset)
+    row = {key: github[key] for key in DSH_SOURCE_ROW_KEYS}
+    return {ROOT / ROUTER_SOURCE_PATH: json_dumps({"generated_by": GENERATED_HEADER, "source": row})}
 
 
 def dsh_subagent_tool_config(indent: int) -> list[str]:
@@ -2636,12 +2765,16 @@ def render_dsh_router_profile(manifest: dict[str, Any]) -> dict[Path, str]:
             DSH_SUBAGENT_ACP_PLUGIN: DSH_SUBAGENT_ACP_LINK,
         },
     }
-    auto_row = f", accept_mode_auto_row {github['accept_mode_auto_row']}" if "accept_mode_auto_row" in github else ""
+    auto_row = (
+        "" if github["accept_mode_auto_row"] is None else f", accept_mode_auto_row {github['accept_mode_auto_row']}"
+    )
+    senders = ", ".join(github["allowed"])
+    allowed_text = f"the allowed list: {senders}." if senders else "the allowed list is empty."
     lines = [
         f"# {GENERATED_HEADER}",
         f"# dsh-superagent pin {asset['pin']}; the Router runs under srt through `hcom-seat router -- --no-open`.",
         f"# GitHub Source (assets.{DSH_SUPERAGENT_ASSET}.sources.github): repository {github['repository']}, accept_mode",
-        f"# {github['accept_mode']} (M-18 ladder row {github['accept_mode_row']}{auto_row}); the allowed list is empty.",
+        f"# {github['accept_mode']} (M-18 ladder row {github['accept_mode_row']}{auto_row}); {allowed_text}",
         "# These two values live in the Router's settings store (upstream docs/006-deployment.md, Settings), where the",
         "# lever `router-settings-apply` writes them through the Management API after the launch's ready line, with the",
         "# Source's `cli` set to `router-gh`, the gh wrapper whose GH_CONFIG_DIR is $DSH_HOME/router-credentials/gh (the",
@@ -2915,6 +3048,8 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs.update(render_standing_rule_outputs(manifest, outputs))
     outputs.update(render_dsh_profile_patch(manifest))
     outputs.update(render_dsh_router_profile(manifest))
+    router_source = render_router_source(manifest)
+    outputs.update(router_source)
     remove_path = ROOT / CHEZMOIREMOVE
     current = outputs.get(remove_path)
     if current is None:
@@ -2922,7 +3057,9 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs[remove_path] = render_chezmoiremove(
         current, skill_removals(manifest, current), SKILL_REMOVALS_BEGIN, SKILL_REMOVALS_END
     )
-    outputs[ROOT / OUTPUT_INDEX_PATH] = render_output_index(outputs, lever_pins(manifest), skill_index(manifest))
+    pins = dict(lever_pins(manifest))
+    pins.update((path, hashlib.sha256(text.encode()).hexdigest()) for path, text in router_source.items())
+    outputs[ROOT / OUTPUT_INDEX_PATH] = render_output_index(outputs, pins, skill_index(manifest))
     return outputs
 
 
@@ -3049,6 +3186,8 @@ GENERATED_SCOPES = (
     ("home/dot_agents/codex-audit", "*"),
     ("home/dot_agents/omp/profiles", "*"),
     ("home/dot_agents/plugins", "**/*"),
+    # The lever's rendering of the Source row (U465c): one explicit name, so the manifest beside it stays hand-edited.
+    ("home/dot_agents", "router-source.json"),
     ("home/dot_claude/agents", "*"),
     ("home/dot_claude/skills", "**/*"),
     ("home/dot_codex", "*.config.toml"),

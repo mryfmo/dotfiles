@@ -148,12 +148,32 @@ panel to `127.0.0.1:3082`, puts `stateDir` at `$DSH_HOME/router-state` (inside
 the role's write root; the listener itself waits for a `router` role with the
 loopback grant, U321), and restates the bundle's two agent presets with their
 sandbox rows disabled. The GitHub Source row
-(`assets.dsh-superagent.sources.github`: the repository and
-`accept_mode: observe`, the M-18 ladder row) is data for the Management API
-save; in observe mode the allowed list is empty, so a positive assessment is an
-ignore Decision marked would-accept and nothing is accepted.
+(`assets.dsh-superagent.sources.github`: the repository,
+`accept_mode: observe`, the M-18 ladder row, and `allowed`, the Source's
+identity set, empty today) is data for the Management API save, and it reaches
+`router-settings-apply` as the generator's rendering `router-source.json`
+beside the manifest (deployed as `~/.agents/router-source.json`; U465c: the
+lever parses no YAML, the generator's PyYAML is the kit's one reader of the
+manifest and refuses a key named twice in any spelling, `make render-check`
+holds the rendering to the manifest, every field is rendered with its default
+applied once in the generator (U465d), and the lever's JSON reader refuses a
+key named twice, a missing key or a file outside the generator's form by
+name); `auto` is
+admitted only beside an `accept_mode_auto_row` distinct from the first row that
+the program store's `decisions.tsv` holds as a phase M-18 row whose decision
+begins with `accept rung auto for <repository>` (U465, U465b, U465c), the store
+resolved by the lever's bash entry through the shell levers' one rule
+(`regime-env` and `store_resolve`: the main checkout, a linked worktree and a
+same-slug checkout refused, U465d) and held by its Python body component by
+component (a link refused by name), the list is written in `auto` alone
+(`[]` in `off` and `observe`, and the asset validator refuses a listed login
+beside those modes), and in observe mode with an empty list a positive
+assessment is an ignore Decision marked would-accept and nothing is accepted.
 `hcom-seat router -- --no-open` starts the Router under srt, and
-`intake-observe.py <orchestrator.sqlite> <decisions.tsv>` appends the
-would-accept Decisions as rows, reading the store read-only, creating the table
-with the `decisions.tsv` header when it is absent, and refusing to run when its
-own sha256 differs from its manifest pin.
+`intake-observe.py [--kind would-accept|accept|refusal|all] <orchestrator.sqlite> <decisions.tsv>`
+appends the ladder's Decisions as rows (would-accept, accept, and the refusals
+`not_a_member` and `not_human` naming the sender's login, each row under the
+Source word of its Decision's thread key, U465d; the count printed is
+the would-accept count unless the flag names another kind), reading the store
+read-only, creating the table with the `decisions.tsv` header when it is
+absent, and refusing to run when its own sha256 differs from its manifest pin.

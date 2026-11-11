@@ -266,17 +266,50 @@ class DshRouterProfileTest(unittest.TestCase):
         apply inside srt on macOS anyway (measured 2026-11-09), so the seat's one boundary is srt (U406, U406b). The
         thak profile's own row (its turn needs no shell) is unchanged."""
         self.assertNotIn("id: bash-sandbox", self.rows, sorted(self.rows))
-        self.assertNotIn("bash-sandbox", self.patch)
-        self.assertNotIn("dsh-bash-sandbox", self.patch)
+        # U466: the one `bash-sandbox` the patch names is the worker preset's nested row, as upstream ships it (the
+        # win32 gate, never `disabled: true`); no top-level row and no disabled sandbox row of any kind (U406).
+        self.assertNotRegex(self.patch, r"bash-sandbox[^\n]*\n *disabled: true")
+        self.assertEqual(
+            [
+                "          - id: bash-sandbox\n            name: '@deepseek-ai/dsh-bash-sandbox'\n            disabled: !!js"
+            ],
+            [
+                match[0]
+                for match in re.finditer(
+                    r"^ *- id: bash-sandbox\n *name: [^\n]*\n *disabled: !!js", self.patch, re.MULTILINE
+                )
+            ],
+        )
+        self.assertEqual(1, self.patch.count("bash-sandbox\n"), self.patch)
         self.assertIn("- id: bash-sandbox\n  disabled: true\n", self.thak, "d15's thak row stands")
 
-    def test_no_preset_row_is_restated(self) -> None:
-        # Upstream's bundle layer (~/.dsh/plugins/dsh-superagent/cordis.patch.yml) inserts the two agent presets with
-        # their bash-sandbox rows disabled on win32 alone; the kit restated them (U317) only to turn those rows off,
-        # so once the sandbox stays on no preset row of any kind remains and the composed tree carries upstream's.
-        for preset in ("dsh-superagent-worker-preset", "dsh-superagent-router-preset"):
-            self.assertNotIn(f"id: {preset}", self.rows, sorted(self.rows))
-        self.assertNotIn("preset", self.patch)
+    def test_the_worker_preset_row_is_the_kits_own_row_set_on_the_acp_provider_and_the_router_preset_is_not_restated(
+        self,
+    ) -> None:
+        # Upstream's bundle layer (~/.dsh/plugins/dsh-superagent/cordis.patch.yml) inserts the two agent presets; the kit
+        # restated them (U317) only to turn their bash-sandbox rows off, and U406 removed both once the sandbox stayed
+        # on. U466 (U437's work, row i8) brings one back as the kit's own row set: the worker preset's nested
+        # `tool-subagent` keeps `provider: spawn` in upstream's layer, the patch algorithm reaches no nested row by id
+        # and replaces a row's config whole (measured, /tmp/u466/prototype.txt), so the kit addresses the preset row
+        # `dsh-superagent-worker-preset` with a config of its own whose delegation row is on the ACP provider with the
+        # base row's three keys. The router preset stays upstream's.
+        preset = self.rows["id: dsh-superagent-worker-preset"]
+        self.assertNotIn("id: dsh-superagent-router-preset", self.rows, sorted(self.rows))
+        self.assertTrue(preset.startswith("  config:\n    id: dsh-superagent-worker\n"), preset)
+        self.assertNotIn("name: '@deepseek-ai/dsh-agent-preset'", preset, "addressed by id, the bundle's name")
+        self.assertIn(
+            "          - id: tool-subagent\n"
+            "            name: '@deepseek-ai/dsh-tool-subagent'\n"
+            "            config:\n"
+            "              provider: acp\n"
+            "              toolName: subagent\n"
+            "              maxDepth: provider-managed\n",
+            preset,
+        )
+        self.assertNotIn("provider: spawn", self.patch)
+        self.assertNotIn("disabled: true", preset, "the preset's sandbox rows stay as upstream ships them")
+        self.assertIn("disabled: !!js process.platform === 'win32'", preset, "the win32 gates as upstream's")
+        self.assertNotIn("preset", self.thak)
 
     def test_the_rows_are_the_thak_form_rows_the_webserver_the_state_dir_the_subagent_tool_and_the_inserts_in_order(
         self,
@@ -292,6 +325,7 @@ class DshRouterProfileTest(unittest.TestCase):
                 "id: webserver",
                 "id: dsh-superagent",
                 "id: tool-subagent",
+                "id: dsh-superagent-worker-preset",
                 "insert:",
             ],
             list(self.rows),

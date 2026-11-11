@@ -932,7 +932,7 @@ claude:
       pr-merge.sh: 6c7f3ff20bbaad62855e177afe38499547aba5519d164f9a0a9faf579f3a3028
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: 7024bdaec07f2b545d511ad71ca5756f39123dff20776dbec12fea9c89c56786
-      brief-check.py: 4a596cbe2c5b629d7accd13f74af7e546772853f2a9d30d84e4940df27d9dac5
+      brief-check.py: 2e7381a738a59ff1075754221189704f48a39e3af5ded6d697acc895d6224948
       ledger-row.py: 8eb2d306b9b4b7708a5ee23d8a7fa00116787b1efebe1d5824357b005f182f2c
       ledger.py: 4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014

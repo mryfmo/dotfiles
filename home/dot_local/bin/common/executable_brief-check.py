@@ -51,6 +51,22 @@ thirteen treadmill rows of the program's `handoff/02-audit-treadmill-analysis.md
 CHANGE and CONTEXT before three or more rounds found the form. The forms are one tuple of four. A later unit adds a
 term by adding a row. Only SCOPE, FORBIDDEN and the other sections name paths and limits, so a term there fires
 nothing.
+
+A brief whose unit id another row of the store's `units.tsv` holds is refused too (regime-cutover U436: on 2026-11-11
+the coordinator numbered a new unit U345 while `units.tsv` held U345 as a done sweep unit of 2026-11-07; this check
+passed the brief, the unit ran for an hour, and pr-audit.sh refused at the pull request because two files matched
+`briefs/U345-*.md`). The brief's path as given is `<store>/briefs/<file>` and the store is the parent of `briefs/`; a
+path whose directory is not named `briefs`, or whose file name does not start with a unit id (`U`, digits, an optional
+lowercase letter run, then `-`), has no register and is judged without this check. The register `<store>/units.tsv`
+is read once by one grammar: the header line is exactly `id track state branch pr head_sha brief note`, tab-separated,
+and every row has eight cells; a missing file is no register (a scratch brief beside no store passes as before), and
+a file that cannot be read or decoded, a wrong header or a row of another width is exit 2 naming the file and the
+line, never a pass (standing order 21). The decision over every row whose id is this file's: no such row passes; a
+row whose brief cell equals `briefs/<file>` passes; a row whose brief cell is empty or another path is the exit-1 line
+`unit id U<n> is taken: line <k> of <store>/units.tsv holds it with brief cell "<cell>", not briefs/<file>` (`an empty
+brief cell` for an empty one), printed before the other reasons. Equality is the whole rule: a row written before the
+store move (`orchestrate/<program>/briefs/<file>`) refuses the brief it names, a finding for the coordinator's records,
+not a reason to widen the rule.
 """
 
 import argparse
@@ -298,6 +314,13 @@ DRESSED_WORD = word_pattern(DRESSED_PHRASES)
 TRUST_WORD = word_pattern(TRUST_WORDS)
 # One pattern per gate class over its rows' terms; a class whose pattern finds nothing in ACCEPTANCE is one reason.
 GATE_WORDS = {cls: word_pattern([term for row, _, term in GATES if row == cls]) for cls in GATE_CLASSES}
+# The store's id register (U436): the brief's path as given is `<store>/briefs/<file>` and `units.tsv` sits beside
+# `briefs/`, its header exactly these names, tab-separated, every row that many cells; the brief cell is the path
+# relative to the store. A unit id is `U`, digits, an optional lowercase letter run, then the `-` of the file name.
+BRIEFS_DIR = "briefs"
+UNITS_FILE = "units.tsv"
+UNITS_HEADER = ("id", "track", "state", "branch", "pr", "head_sha", "brief", "note")
+UNIT_ID = re.compile(r"(U[0-9]+[a-z]*)-")
 
 
 def matched_term(pattern, terms, text):
@@ -310,6 +333,14 @@ def matched_term(pattern, terms, text):
 
 class BriefError(Exception):
     """The text is not a brief in the grammar, so nothing is judged (exit 2)."""
+
+
+class StoreError(BriefError):
+    """The store's `units.tsv` cannot be read by the one grammar, so nothing is judged (exit 2); `file` names it."""
+
+    def __init__(self, file, message):
+        super().__init__(message)
+        self.file = file
 
 
 def heading(line):
@@ -467,6 +498,50 @@ def judge(found):
     return reasons
 
 
+def taken_unit_id(path):
+    """The refusal line when another row of the store's `units.tsv` holds this brief's unit id, else None (U436).
+
+    The path is read as given, unresolved: its directory must be named `briefs` and its file name must start with a
+    unit id, else there is no store and no id to look up. The register is `units.tsv` beside `briefs/`; a missing one
+    is no register (a scratch brief passes as before), and one that cannot be read or decoded, whose first line is
+    not the header, or holding a row of another width raises StoreError naming the file and the line, so a failed
+    store read is never a pass (standing order 21). Every row is read, not the first with the id: a duplicated id
+    whose second row names another file refuses too. The decision is equality of the row's brief cell with this
+    file's store-relative path, `briefs/<file>`, and nothing looser: a row written before the store move
+    (`orchestrate/<program>/briefs/<file>`) refuses the brief it names, a finding for the coordinator's records.
+    """
+    directory, name = os.path.split(path)
+    if os.path.basename(directory) != BRIEFS_DIR:  # lint-comparisons: allow the brief's spelled directory name
+        return None
+    match = UNIT_ID.match(name)
+    if match is None:
+        return None
+    unit_id = match.group(1)
+    units = os.path.join(os.path.dirname(directory), UNITS_FILE)
+    try:
+        with open(units, encoding="utf-8") as handle:
+            lines = handle.read().splitlines()
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeDecodeError) as error:
+        raise StoreError(units, str(error))
+    if not lines or lines[0] != "\t".join(UNITS_HEADER):
+        raise StoreError(units, f"line 1 is not the header ({', '.join(UNITS_HEADER)})")
+    rows = []
+    for number, line in enumerate(lines[1:], 2):
+        cells = line.split("\t")
+        if len(cells) != len(UNITS_HEADER):
+            raise StoreError(units, f"line {number} has {len(cells)} columns, not {len(UNITS_HEADER)}")
+        rows.append((number, cells[UNITS_HEADER.index("id")], cells[UNITS_HEADER.index("brief")]))
+    relative = f"{BRIEFS_DIR}/{name}"
+    for number, row_id, cell in rows:
+        if row_id != unit_id or cell == relative:  # lint-comparisons: allow the register's spelled brief cell
+            continue
+        held = f'brief cell "{cell}"' if cell else "an empty brief cell"
+        return f"unit id {unit_id} is taken: line {number} of {units} holds it with {held}, not {relative}"
+    return None
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("brief", help="the brief file, .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md")
@@ -482,7 +557,12 @@ def main(argv=None):
     except BriefError as error:
         print(f"brief-check: cannot read {args.brief}: {error}", file=sys.stderr)
         return 2
-    reasons = judge(found)
+    try:
+        taken = taken_unit_id(args.brief)
+    except StoreError as error:
+        print(f"brief-check: cannot read {error.file}: {error}", file=sys.stderr)
+        return 2
+    reasons = ([taken] if taken is not None else []) + judge(found)
     for reason in reasons:
         print(f"brief-check: {args.brief}: {reason}")
     return 1 if reasons else 0

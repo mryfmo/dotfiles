@@ -1022,5 +1022,189 @@ class InstalledBriefCheckTest(unittest.TestCase):
                 )
 
 
+# U436: the store's `units.tsv` as the id register, its header as the store writes it, and one row as the store writes
+# one (eight cells; the brief cell is `briefs/<file>`, relative to the store, empty for some rows).
+UNITS_HEADER = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote"
+
+
+def unit_row(unit_id, brief_cell, *, cells=8):
+    """One `units.tsv` row holding `unit_id` and `brief_cell`, padded or cut to `cells` columns (a malformed row)."""
+    row = [unit_id, "fix", "done", "fix/x", "1", "0" * 40, brief_cell, "a note"]
+    return "\t".join((row + ["extra"] * cells)[:cells])
+
+
+def units(*rows, header=UNITS_HEADER):
+    """A `units.tsv` text: the header, then each row, one per line."""
+    return "\n".join((header, *rows)) + "\n"
+
+
+class TakenUnitIdTest(unittest.TestCase):
+    """A brief whose unit id another row of the store's `units.tsv` holds is refused (regime-cutover U436).
+
+    2026-11-11: the coordinator numbered a new unit U345 while `units.tsv` held U345 as a done sweep unit; the check
+    passed the brief, the unit ran for an hour, and pr-audit.sh refused at the pull request because two briefs
+    matched `briefs/U345-*.md`. The fixture is a scratch store: `<store>/briefs/<file>` beside `<store>/units.tsv`.
+    """
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.dir = Path(temp.name)
+        self.store = self.dir / "store"
+        self.briefs = self.store / "briefs"
+        self.briefs.mkdir(parents=True)
+        self.units = self.store / "units.tsv"
+
+    def check(self, rows, name="U7-x.md", text=None):
+        """Run the checkout script on `<store>/briefs/<name>` beside a `units.tsv` of `rows` (None writes no file)."""
+        if rows is not None:
+            self.units.write_text(rows)
+        target = self.briefs / name
+        target.write_text(brief(GOAL=CLEAN_GOAL) if text is None else text)
+        cmd = [sys.executable, "-I", str(SCRIPT), str(target)]
+        return subprocess.run(cmd, cwd=self.dir, capture_output=True, text=True, timeout=120, check=False)
+
+    def taken(self, unit_id, line, cell, name="U7-x.md"):
+        """The one refusal line: the id, the row's line in the store's file and its brief cell, and this file's path."""
+        held = f'brief cell "{cell}"' if cell else "an empty brief cell"
+        return (
+            f"brief-check: {self.briefs / name}: unit id {unit_id} is taken: line {line} of {self.units} holds it "
+            f"with {held}, not briefs/{name}"
+        )
+
+    def assert_passes(self, result):
+        self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
+
+    def assert_refused_exactly(self, result, *lines):
+        self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
+        self.assertEqual(list(lines), result.stdout.splitlines())
+
+    def assert_cannot_read(self, result, message):
+        """Exit 2, nothing on stdout, the store file named on stderr: a store the check cannot read is never a pass."""
+        self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
+        self.assertEqual(f"brief-check: cannot read {self.units}: {message}\n", result.stderr)
+
+    def test_a_row_holding_the_id_with_another_file_refuses_naming_the_row_and_its_brief_cell(self):
+        rows = units(unit_row("U6", "briefs/U6-a.md"), unit_row("U7", "briefs/U7-other.md"))
+        self.assert_refused_exactly(self.check(rows), self.taken("U7", 3, "briefs/U7-other.md"))
+        # The rule is equality with this file's store-relative path: the pre-move spelling of the same file, the bare
+        # file name and a path differing in case are other paths, and a letter suffix is another id in both directions.
+        for cell in ("orchestrate/p/briefs/U7-x.md", "U7-x.md", "briefs/U7-X.md", "briefs/U7-x.md "):
+            with self.subTest(cell=cell):
+                self.assert_refused_exactly(self.check(units(unit_row("U7", cell))), self.taken("U7", 2, cell))
+        rows = units(unit_row("U7", "briefs/U7-x.md"), unit_row("U7b", "briefs/U7b-other.md"))
+        self.assert_refused_exactly(
+            self.check(rows, name="U7b-x.md"), self.taken("U7b", 3, "briefs/U7b-other.md", name="U7b-x.md")
+        )
+        # Every row is read, not the first with the id: a second row of a duplicated id naming another file refuses.
+        rows = units(
+            unit_row("U7", "briefs/U7-x.md"), unit_row("U8", "briefs/U8-a.md"), unit_row("U7", "briefs/U7-y.md")
+        )
+        self.assert_refused_exactly(self.check(rows), self.taken("U7", 4, "briefs/U7-y.md"))
+
+    def test_a_row_holding_the_id_with_this_file_passes(self):
+        rows = units(unit_row("U6", "briefs/U6-a.md"), unit_row("U7", "briefs/U7-x.md"), unit_row("U8", ""))
+        self.assert_passes(self.check(rows))
+        self.assert_passes(self.check(units(unit_row("U7b", "briefs/U7b-x.md")), name="U7b-x.md"))
+
+    def test_an_id_with_no_row_passes_and_a_file_without_an_id_is_not_looked_up(self):
+        rows = units(unit_row("U6", "briefs/U6-a.md"), unit_row("U70", "briefs/U70-a.md"), unit_row("U7b", ""))
+        self.assert_passes(self.check(rows))
+        self.assert_passes(self.check(units()))
+        # A file whose name starts with no `U<n>` or `U<n><letter>` id names no unit, so no row is looked up.
+        for name in ("F1-x.md", "O2-addendum.md", "README.md", "U7.md", "u7-x.md", "U7B-x.md"):
+            with self.subTest(name=name):
+                self.assert_passes(self.check(units(unit_row("U7", "briefs/U7-other.md")), name=name))
+
+    def test_a_row_holding_the_id_with_an_empty_brief_cell_refuses_the_id_as_taken(self):
+        self.assert_refused_exactly(self.check(units(unit_row("U7", ""))), self.taken("U7", 2, ""))
+        # The refusal stands beside the other reasons of the same run, first, so one run names every fault.
+        result = self.check(units(unit_row("U7", "")), text=brief(GOAL="A shell reader."))
+        self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
+        lines = result.stdout.splitlines()
+        self.assertEqual(3, len(lines), result.stdout)
+        self.assertEqual(self.taken("U7", 2, ""), lines[0])
+        self.assertIn('GOAL holds "shell" (', lines[1])
+        self.assertIn('GOAL holds "shell"; no TRUST section', lines[2])
+
+    def test_a_units_file_with_a_wrong_header_a_short_or_long_row_or_unreadable_refuses_naming_the_line(self):
+        # Standing order 21: a store read that fails is a refusal naming the file, never a pass; nothing is judged.
+        header = "id, track, state, branch, pr, head_sha, brief, note"
+        for text, message in (
+            (
+                units(unit_row("U6", "briefs/U6-a.md"), header="id\ttrack\tstate"),
+                f"line 1 is not the header ({header})",
+            ),
+            (
+                units(header="unit\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote"),
+                f"line 1 is not the header ({header})",
+            ),
+            ("", f"line 1 is not the header ({header})"),
+            (
+                units(unit_row("U6", "briefs/U6-a.md"), unit_row("U7", "briefs/U7-x.md", cells=5)),
+                "line 3 has 5 columns, not 8",
+            ),
+            (units(unit_row("U6", "briefs/U6-a.md", cells=9)), "line 2 has 9 columns, not 8"),
+            (
+                units(unit_row("U6", "briefs/U6-a.md"), "", unit_row("U7", "briefs/U7-x.md")),
+                "line 3 has 1 columns, not 8",
+            ),
+        ):
+            with self.subTest(text=text[:60]):
+                self.assert_cannot_read(self.check(text), message)
+        # A header-only file with no trailing newline is the header alone, a sound register with no row.
+        self.assert_passes(self.check(UNITS_HEADER))
+        self.units.unlink()
+        self.units.mkdir()
+        result = self.check(None)
+        self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
+        self.assertTrue(result.stderr.startswith(f"brief-check: cannot read {self.units}: "), result.stderr)
+        self.units.rmdir()
+        self.units.write_bytes(b"id\ttrack\xff\xfe\n")
+        result = self.check(None)
+        self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
+        self.assertTrue(result.stderr.startswith(f"brief-check: cannot read {self.units}: "), result.stderr)
+        if os.geteuid() == 0:
+            self.skipTest("mode 000 does not stop root, so the unreadable-register case is skipped")
+        self.units.write_text(units(unit_row("U7", "briefs/U7-x.md")))
+        self.units.chmod(0)
+        self.addCleanup(self.units.chmod, 0o644)
+        result = self.check(None)
+        self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
+        self.assertTrue(result.stderr.startswith(f"brief-check: cannot read {self.units}: "), result.stderr)
+
+    def test_a_store_without_a_units_file_and_a_brief_outside_a_store_pass_printing_nothing(self):
+        # The existing tests' form: a scratch brief outside any store passes with nothing on either stream, so a
+        # `briefs/` directory with no `units.tsv` beside it is no register and prints no note either.
+        self.assertFalse(self.units.exists())
+        self.assert_passes(self.check(None))
+        for target in (self.dir / "U7-x.md", self.dir / "other/U7-x.md", self.store / "U7-x.md"):
+            with self.subTest(target=str(target.relative_to(self.dir))):
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(brief(GOAL=CLEAN_GOAL))
+                cmd = [sys.executable, "-I", str(SCRIPT), str(target)]
+                self.assert_passes(
+                    subprocess.run(cmd, cwd=self.dir, capture_output=True, text=True, timeout=120, check=False)
+                )
+        # A `units.tsv` outside the `briefs/` directory's parent is not the store's: a brief whose directory is not
+        # named `briefs` has no store, even beside such a file.
+        (self.dir / "units.tsv").write_text(units(unit_row("U7", "briefs/U7-other.md")))
+        cmd = [sys.executable, "-I", str(SCRIPT), str(self.dir / "U7-x.md")]
+        self.assert_passes(subprocess.run(cmd, cwd=self.dir, capture_output=True, text=True, timeout=120, check=False))
+        # The relative spelling the SKILL command uses locates the same register.
+        self.units.write_text(units(unit_row("U7", "briefs/U7-other.md")))
+        (self.briefs / "U7-x.md").write_text(brief(GOAL=CLEAN_GOAL))
+        cmd = [sys.executable, "-I", str(SCRIPT), "store/briefs/U7-x.md"]
+        result = subprocess.run(cmd, cwd=self.dir, capture_output=True, text=True, timeout=120, check=False)
+        self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
+        self.assertEqual(
+            [
+                "brief-check: store/briefs/U7-x.md: unit id U7 is taken: line 2 of store/units.tsv holds it with "
+                'brief cell "briefs/U7-other.md", not briefs/U7-x.md'
+            ],
+            result.stdout.splitlines(),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

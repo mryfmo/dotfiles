@@ -341,24 +341,33 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             env.pop(key, None)
         return env
 
-    def start_broker(self, name, cwd, wrapper=(), broker=BROKER, **overrides):
+    def launch_broker(self, name, cwd, wrapper=(), broker=BROKER, **overrides):
         """Start the broker for the Router `name` (through the argv prefix `wrapper` when given; the lever at `broker`,
-        the checkout's unless a test runs a scratch copy) and return (process, socket path) once the socket exists."""
+        the checkout's unless a test runs a scratch copy) and return (process, socket path) at once, before it
+        listens; the caller waits for the state it needs (start_broker: the readiness line)."""
         proc = subprocess.Popen(
             [*wrapper, str(broker), self.seats, name, str(cwd)], cwd=self.repo, env=self.broker_env(**overrides),
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         )  # fmt: skip
+        proc.first_line = ""
         self.brokers.append(proc)
         self.router = name
-        sock = self.seats_path / ".state" / name / "broker/sock"
-        deadline = time.monotonic() + 60
-        while not sock.exists():
-            if proc.poll() is not None:
-                out, err = proc.communicate()
-                self.fail(f"the broker ended before it listened: {proc.returncode} {out!r} {err!r}")
-            if time.monotonic() > deadline:
-                self.fail("the broker did not listen within 60 s")
-            time.sleep(0.02)
+        return proc, self.seats_path / ".state" / name / "broker/sock"
+
+    def start_broker(self, name, cwd, wrapper=(), broker=BROKER, **overrides):
+        """launch_broker, then return once the broker's stdout carries the readiness line `acp-broker: listening on
+        <sock>` (U447: the lever's documented readiness, which hcom-seat reads through its FIFO; until this round the
+        fixture took the socket's existence, which precedes the relay's signal handlers, so a test's signal could land
+        in that window). The line is kept on the process, and stop_broker returns it at the head of `out`."""
+        proc, sock = self.launch_broker(name, cwd, wrapper=wrapper, broker=broker, **overrides)
+        ready, _, _ = select.select([proc.stdout], [], [], 60)
+        if not ready:
+            self.fail("the broker did not print its readiness line within 60 s")
+        line = proc.stdout.readline()
+        if line != f"acp-broker: listening on {sock}\n":
+            out, err = proc.communicate(timeout=60)
+            self.fail(f"the broker ended before it listened: {proc.returncode} {line + out!r} {err!r}")
+        proc.first_line = line
         return proc, sock
 
     def stop_broker(self, proc, sig=signal.SIGTERM):
@@ -369,7 +378,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         except subprocess.TimeoutExpired:
             proc.kill()
             out, err = proc.communicate()
-        return proc.returncode, out, err
+        return proc.returncode, getattr(proc, "first_line", "") + out, err
 
     def stop_all(self):
         for proc in self.brokers:
@@ -2000,6 +2009,55 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             with self.subTest(signal=sig.name):
                 proc, sock = self.start_broker(name, cwd)
                 self.assertEqual(self.stop_broker(proc, sig)[0], -sig)
+                self.assert_broker_dir_stands_empty(sock)
+
+    def relay_pid(self, proc):
+        """The relay's pid: the listening broker's one child (`pgrep` by parent), or None until it exists."""
+        run = subprocess.run(["pgrep", "-P", str(proc.pid)], capture_output=True, text=True, check=False)
+        pids = run.stdout.split()
+        return int(pids[0]) if len(pids) == 1 else None
+
+    def test_a_signal_between_the_socket_bind_and_the_readiness_line_ends_the_broker_by_the_signal_with_the_socket_gone(
+        self,
+    ):
+        """U447 (the ubuntu-24.04 leg at PR 757's head 1d447846: `AssertionError: 2 != -1` for HUP, then the socket
+        standing for INT): the relay installed its HUP, INT and TERM handlers after the bind, and the fixture took the
+        socket's existence for readiness, so a signal to the broker could land while the relay still held the default
+        dispositions; the broker's trap sent it TERM, it died with the socket bound, and broker_cleanup read the
+        standing socket as another broker's and exited 2. A scratch copy of the relay with one `/bin/sleep 1` right
+        after the bind and before the readiness line (the copy differs from the source by that line alone, asserted
+        with difflib, and is pinned in the scratch manifest so the broker runs it): a HUP, INT or TERM to the broker
+        once the socket exists and the sleep runs under the relay ends the broker by that signal, with nothing on
+        stderr, the socket gone and the directory standing empty. At 4fda927c the same copy of that head's relay ends
+        the broker with exit 2 and the socket standing."""
+        broker, _helper = self.scratch_checkout()
+        relay = broker.parent / "acp-relay.py"
+        source = relay.read_text()
+        after = ".bind(base)\n"
+        injected = '            subprocess.run(["/bin/sleep", "1"], check=False)\n'
+        self.assertEqual(source.count(after), 1, f"the one line the sleep follows: {after!r}")
+        relay.write_text(source.replace(after, after + injected))
+        changed = [
+            line
+            for line in difflib.unified_diff(source.splitlines(), relay.read_text().splitlines(), lineterm="", n=0)
+            if line[:1] in "+-" and line[:3] not in ("+++", "---")
+        ]
+        self.assertEqual(changed, ["+" + injected.rstrip("\n")], "the copy differs from the source by that one line")
+        self.pin_lever(broker, relay)
+        for n, sig in enumerate((signal.SIGHUP, signal.SIGINT, signal.SIGTERM), start=1):
+            with self.subTest(signal=sig.name):
+                name, cwd = self.make_router(f"router-20261111-00000{n}-1")
+                proc, sock = self.launch_broker(name, cwd, broker=broker)
+                self.wait_for(lambda: sock.exists() or proc.poll() is not None, "the socket's bind", seconds=60)
+                if proc.poll() is not None:
+                    out, err = proc.communicate()
+                    self.fail(f"the broker ended before the bind: {proc.returncode} {out!r} {err!r}")
+                pid = self.relay_pid(proc)
+                self.assertIsNotNone(pid, "the relay runs under the broker once the socket exists")
+                self.wait_for(lambda: self.sleeping_child(pid), "the injected sleep under the relay", seconds=30)
+                status, _out, err = self.stop_broker(proc, sig)
+                self.assertEqual(status, -sig, err)
+                self.assertEqual(err, "", "nothing refused and nothing remained")
                 self.assert_broker_dir_stands_empty(sock)
 
     def broker_refusal(self, name, cwd):

@@ -443,9 +443,9 @@ function check_seat_logins() {
 #       (revoked, expired or never valid), a required failure `GitHub answered <status line>` with
 #       the remedy (U490f; round 5 read every exit of gh's own as "unreadable", so a revoked token
 #       passed the gate as an optional warning, verdict U490-f6175c44 P1);
-#   (d) any other non-zero exit with no HTTP status line in front (the alarm included, curl's own
-#       text for a host never reached), or an exit 0 without a 2xx status line and a login: an
-#       optional warning `unreadable` (an offline or stalled host);
+#   (d) any other non-zero exit with no HTTP status line in front (the alarm included, the
+#       transport's own failure text for a host never reached), or an exit 0 without a 2xx status
+#       line and a login: an optional warning `unreadable` (an offline or stalled host);
 #   (e) a 2xx answer: no `X-Oauth-Scopes` header is a fine-grained token, whose permissions this
 #       check cannot read and which cannot write here (GitHub's fine-grained tokens cannot
 #       contribute to a repository where the account is a collaborator, and the Router's account

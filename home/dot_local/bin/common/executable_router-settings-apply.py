@@ -69,7 +69,7 @@ renders as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the
     `observe` whatever the row says (the asset validator refuses a listed login beside those modes, so the manifest
     cannot carry a dormant grant); the kit's row replaces the store's list, never merges with it, so no entry the
     panel made survives a run (R-45: the Router is granted nothing beyond the kit's rows). The committed list is
-    empty.
+    [mryfmo] since the decisions row of 2026-11-12T00:08:25Z (U469).
 - A block already equal to the kit's is not written: a second run PUTs nothing (`unchanged`). After a save the Router
   answers `restarting: true` while setup is pending or a setup field changed (`src/app/settings.ts:176`), and the API is
   unavailable for a moment; when another save follows the one that reported it, this lever polls `GET settings` until

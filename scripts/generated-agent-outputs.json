@@ -636,7 +636,7 @@
       "target": ".local/bin/common/router-settings-apply.py",
       "kind": "file",
       "executable": true,
-      "sha256": "f7a46f2362eca52e66bc9c4af0f12ec610771921a76410ecc720201335684220"
+      "sha256": "6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-login-preflight",

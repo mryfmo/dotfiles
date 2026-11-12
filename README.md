@@ -33,7 +33,7 @@ To set up the dotfiles run the appropriate snippet in the terminal.
 
 ### 💻 `MacOS`
 
-- Configuration snippet of the Apple Silicon MacOS environment for client macnine:
+- Configuration snippet of the Apple Silicon MacOS environment for client machine:
 
 ```console
 bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"

@@ -948,6 +948,51 @@ EOF
         self.assertIn("not applicable: Claude Code sandbox prerequisites", result.stdout)
         self.assertIn("warnings=0", result.stdout)
 
+    def test_doctor_reports_one_seat_login_line_per_login_group(self) -> None:
+        """U498: `check_seat_logins` runs the tree's seat-login-preflight `--check`, whose Claude lines name each login
+        group's directory from the one table: the orchestrator profile `.state/claude-orchestrator`, the worker
+        `.state/claude-worker`, the deployed dsh overlay the router group's `.state/claude-router`. A present login is
+        a `found` line, an absent one an optional warning naming the per-group step, never a failure; the legacy
+        shared `.state/claude` is read by no line."""
+        home = self.temp_dir / "home"
+        profiles = home / ".agents/omp/profiles"
+        profiles.mkdir(parents=True)
+        for profile in ("orchestrator", "worker", "dsh"):
+            (profiles / f"{profile}.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
+        seats = self.temp_dir / "seats"
+        (seats / ".state/claude-worker").mkdir(parents=True)
+        (seats / ".state/claude").mkdir()
+        bin_dir = self.temp_dir / "doctor-bin"
+        self.link_real_jq(bin_dir)
+        # `claude auth status` (U318): the documented record, a claude.ai login under whatever directory it is asked.
+        self.executable(
+            bin_dir / "claude",
+            'printf \'{"configDirectory": "%s", "authMethod": "claude.ai"}\\n\' "${CLAUDE_CONFIG_DIR-}"\n',
+        )
+        script = (
+            f"source {ROOT / 'scripts/check-tools.sh'}; check_seat_logins;"
+            " echo failures=$required_failures warnings=$optional_warnings"
+        )
+        env = {"HOME": str(home), "PATH": f"{bin_dir}:/usr/bin:/bin", "REGIME_SEATS_ROOT": str(seats)}
+        result = self.run_test_command(["/bin/bash", "-c", script], env=env)
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn(
+            f"optional warning: seat login dsh claude-bridge: absent (no {seats}/.state/claude-router) (log in on this"
+            " host, once per login group: seat-login-preflight <profile> prints the group's command,"
+            " docs/remote-host-logins.md)",
+            output,
+        )
+        self.assertIn(
+            f"optional warning: seat login orchestrator claude-bridge: absent (no {seats}/.state/claude-orchestrator)",
+            output,
+        )
+        self.assertIn(
+            f"found:   seat login worker claude-bridge: login present (claude.ai, {seats}/.state/claude-worker)", output
+        )
+        self.assertIn("failures=0 warnings=2", output)
+        self.assertNotIn(f"{seats}/.state/claude)", output, "the legacy shared directory is read by no line")
+
     def test_make_doctor_propagates_runtime_drift_after_tool_checks(self) -> None:
         repo = self.temp_dir / "doctor-repo"
         home = self.temp_dir / "doctor-runtime-home"

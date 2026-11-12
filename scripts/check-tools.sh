@@ -386,9 +386,12 @@ function check_claude_sandbox() {
 #
 # @description Report each omp seat profile's login on this host through
 #   `scripts/orchestrator/seat-login-preflight --check` (regime-cutover U37):
-#   presence and mtimes only, never a token. An absent login is an optional
-#   warning, since a login is per host and the operator's step; an unreadable
-#   login record is a required failure, never read as absent.
+#   presence and mtimes only, never a token. The Claude lines name each
+#   profile's login group directory `<seats-root>/.state/claude-<group>`
+#   (U498: one line per deployed profile, so one per running group). An
+#   absent login is an optional warning, since a login is per host and per
+#   group and the operator's step; an unreadable login record is a required
+#   failure, never read as absent.
 #
 function check_seat_logins() {
     local lever="${BASH_SOURCE[0]%/*}/orchestrator/seat-login-preflight"
@@ -407,7 +410,7 @@ function check_seat_logins() {
         'seat-login-preflight:'*) printf 'required failed: %s\n' "${line}" >&2 ;;
         *': unreadable'*) printf 'required failed: seat login %s\n' "${line}" >&2 ;;
         *': absent'* | *': no route'* | *': not a seat login route'*)
-            warn_optional "seat login ${line} (log in on this host: seat-login-preflight <profile>, docs/remote-host-logins.md)"
+            warn_optional "seat login ${line} (log in on this host, once per login group: seat-login-preflight <profile> prints the group's command, docs/remote-host-logins.md)"
             ;;
         *) printf 'found:   seat login %s\n' "${line}" ;;
         esac

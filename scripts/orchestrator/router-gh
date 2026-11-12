@@ -20,7 +20,13 @@
 #   refuses with exit 3 (U490e, below). No component's absence is claimed before its parent has passed in full: `-e` is
 #   false both for a missing entry and for an entry under a directory this user cannot search, so round 5 called an
 #   existing root under a `DSH_HOME` of mode 000 absent (verdict U490-f6175c44 P1). `DSH_HOME` itself has no "absent"
-#   form: the kit makes it (home/dot_dsh) and every launch holds it, so each failed test on it is exit 2.
+#   form: the kit makes it (home/dot_dsh) and every launch holds it, so each failed test on it is exit 2. The chain
+#   stands on one text rule, held before any file test (U490g): `DSH_HOME`'s spelling passes the levers' one clean-path
+#   grammar, `clean_path` below, the regular expression of `hcom-seat`'s `require_clean_path` (absolute; every
+#   component of `[A-Za-z0-9._@+-]`; none empty, `.` or `..`; so no repeated or trailing `/`), because the shell
+#   resolves a trailing `/` before `-L` tests the entry, so `/path/to/link/` passed round 6's link test and ran `gh`
+#   through the linked root (verdict U490-34bb6fe7 P1 `:135`); any other spelling is exit 2 naming `DSH_HOME` and the
+#   grammar, and the file tests run on the clean text alone.
 #   gh resolves a credential as `GH_TOKEN`, then the config directory's `hosts.yml`, then the host-wide Keychain on
 #   macOS (`gh help environment`; verdict U353-8791100f P1 `:97`): `GH_CONFIG_DIR` alone let an empty root authenticate
 #   as the operator's own Keychain login, since srt permits securityd. So this wrapper is the only credential source gh
@@ -38,11 +44,11 @@
 #   `hosts.yml` is absent (neither a link nor an entry), or `hosts.yml` names no `oauth_token:` row for github.com at
 #   the block's own depth; the agent account's login is the operator's pending step (docs/engagement-handout.md step 2)
 #   and nothing is broken. Exit 2 is every other refusal: a broken or unreadable root (a link anywhere in the chain, a
-#   wrong owner or mode, a root that cannot be resolved, two rows, a value outside the grammar), a `DSH_HOME` that is
-#   not an absolute path, is a link, is not a directory of this user, or cannot be searched or resolved (U490f), an
-#   absent `gh`, the self-check. One caller reads the two codes: `check_router_token` in scripts/check-tools.sh (the
-#   doctor), an optional warning for 3 and a required failure for 2, with no path test of its own; the Router reads
-#   `gh`'s status alone. Both codes print one line on stderr, the same form.
+#   wrong owner or mode, a root that cannot be resolved, two rows, a value outside the grammar), a `DSH_HOME` whose
+#   spelling is outside the clean-path grammar (U490g), is a link, is not a directory of this user, or cannot be
+#   searched or resolved (U490f), an absent `gh`, the self-check. One caller reads the two codes: `check_router_token`
+#   in scripts/check-tools.sh (the doctor), an optional warning for 3 and a required failure for 2, with no path test of
+#   its own; the Router reads `gh`'s status alone. Both codes print one line on stderr, the same form.
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
 #   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
 #   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
@@ -120,18 +126,35 @@ refuse_absent() {
     exit 3
 }
 
+# @description Succeed when `$1` is a clean absolute path, the one grammar every lever holds a path's text to before a
+#   file test (regime-cutover U490g; the regular expression of `hcom-seat`'s `clean_path`, copied, not imported, so no
+#   other lever is read): `/` followed by components of `[A-Za-z0-9._@+-]` only (no glob metacharacter `*?[]{}`, no
+#   whitespace, no quote or backslash), none of them empty, `.` or `..`, and no trailing `/`. The shell resolves a
+#   trailing `/` before `[[ -L ]]` tests the entry, so a link spelled `/path/to/link/` is no link to `-L`; on a clean
+#   spelling the file tests of the chain judge the entry the text names.
+# @arg $1 string The path.
+# @exitcode 0 The path is clean.
+# @exitcode 1 The path is not clean.
+clean_path() {
+    [[ $1 =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || return 1
+    [[ /$1/ != */./* && /$1/ != */../* ]] # lint-comparisons: allow a component test on one path, no path compare
+}
+
 dsh_home=${DSH_HOME:-${HOME}/.dsh}
 # The component chain, each held by its own test before anything is read (regime-cutover U353c, the shape of
 # seat-login-preflight's claude_config_validate): `<DSH_HOME>`, `<root>`, `<root>/gh`, `<root>/gh/hosts.yml`, in that
-# order, no link (`-L` first), the three directories this user's, `<DSH_HOME>` searchable and read physically, the root
-# read physically inside it and `gh/` resolving inside the physical root, the leaf a regular file of this user readable
-# by this user alone, as `gh auth login --insecure-storage` writes it. Round 2 held the root and the leaf alone, so
-# `<root>/gh` as a link to an outside gh directory of this user passed and its login reached gh (verdict
-# U353b-9c504ad9 P1 `:106`). Round 5 judged the root before `DSH_HOME`, so `-e` on a root under a `DSH_HOME` this user
-# cannot search was false and an existing root was called absent (verdict U490-f6175c44 P1): no component's absence
-# is claimed (exit 3) before its parent has passed in full, and `DSH_HOME` has no absent form (each else is exit 2).
-# Each producer's status is read (standing order 21).
-[[ ${dsh_home} == /* ]] || refuse "DSH_HOME '${dsh_home}' is not an absolute path" # lint-comparisons: allow an absolute-path shape test, not a comparison of two paths
+# order, `<DSH_HOME>`'s text first (clean_path, U490g), then no link (`-L` first), the three directories this user's,
+# `<DSH_HOME>` searchable and read physically, the root read physically inside it and `gh/` resolving inside the
+# physical root, the leaf a regular file of this user readable by this user alone, as `gh auth login --insecure-storage`
+# writes it. Round 2 held the root and the leaf alone, so `<root>/gh` as a link to an outside gh directory of this user
+# passed and its login reached gh (verdict U353b-9c504ad9 P1 `:106`). Round 5 judged the root before `DSH_HOME`, so `-e`
+# on a root under a `DSH_HOME` this user cannot search was false and an existing root was called absent (verdict
+# U490-f6175c44 P1): no component's absence is claimed (exit 3) before its parent has passed in full, and `DSH_HOME` has
+# no absent form (each else is exit 2). Round 6 tested `-L` on the spelling as given, and the shell resolves a trailing
+# `/` before the test, so `/path/to/link/` was no link to it and gh ran through the linked root (verdict U490-34bb6fe7
+# P1 `:135`): the text passes the clean-path grammar before any file test. Each producer's status is read (standing
+# order 21).
+clean_path "${dsh_home}" || refuse "DSH_HOME '${dsh_home}' is not a clean absolute path: every component must be [A-Za-z0-9._@+-] and neither '.' nor '..', with no trailing '/'"
 [[ ! -L ${dsh_home} ]] || refuse "DSH_HOME ${dsh_home} is a symbolic link; it must be a real directory of this user"
 [[ -d ${dsh_home} ]] || refuse "DSH_HOME ${dsh_home} is not a directory; it must be a real directory of this user"
 [[ -O ${dsh_home} ]] || refuse "DSH_HOME ${dsh_home} is not this user's directory"

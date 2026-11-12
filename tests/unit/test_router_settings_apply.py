@@ -1513,7 +1513,12 @@ class RouterSettingsApplyTest(unittest.TestCase):
         empty_home = self.dir / "empty-dsh-home"
         empty_home.mkdir()
         cases = (
-            ({"DSH_HOME": "relative/dsh"}, 2, "router-gh: DSH_HOME 'relative/dsh' is not an absolute path"),
+            (
+                {"DSH_HOME": "relative/dsh"},
+                2,
+                "router-gh: DSH_HOME 'relative/dsh' is not a clean absolute path: every component must be [A-Za-z0-9._@+-] "
+                "and neither '.' nor '..', with no trailing '/'",
+            ),
             (
                 {"DSH_HOME": str(empty_home)},
                 3,
@@ -1818,6 +1823,61 @@ class RouterSettingsApplyTest(unittest.TestCase):
             "account's login inside it is the operator's step\n",
         )
         self.assertFalse(record.exists(), "gh did not run")
+
+    def test_the_wrapper_holds_dsh_home_to_the_levers_clean_path_grammar_before_any_file_test(self):
+        """U490g (verdict U490-34bb6fe7 P1 `router-gh:135`): `[[ -L ${path}/ ]]` follows the link, since the shell
+        resolves a trailing slash, so a `DSH_HOME` spelled `/path/to/link/` passed round 6's link test and ran gh
+        through the linked root. `DSH_HOME`'s text now passes the levers' one clean-path grammar (hcom-seat's
+        `require_clean_path`: absolute, every component of `[A-Za-z0-9._@+-]`, none empty, `.` or `..`, so no repeated
+        or trailing `/`) before any file test: a link spelled with a trailing slash, a real directory spelled with one,
+        a repeated `//`, a `..` component and a space each refuse with exit 2 naming DSH_HOME and the grammar, no value
+        printed, gh never run. The clean spelling of the same real directory runs gh with its login, as before."""
+        fake, record = self.fake_gh()
+        env = {**self.env, "PATH": f"{fake}:{self.env['PATH']}"}
+        real = self.dir / "real-dsh-home"
+        self.place_login(real / "router-credentials")
+        link = self.dir / "linked-dsh-home"
+        link.symlink_to(real)
+        spaced = self.dir / "dsh home"
+        self.place_login(spaced / "router-credentials")
+        grammar = (
+            "is not a clean absolute path: every component must be [A-Za-z0-9._@+-] and neither '.' nor '..', "
+            "with no trailing '/'"
+        )
+        cases = (
+            ("a symbolic link spelled with a trailing slash", f"{link}/"),
+            ("a real directory spelled with a trailing slash", f"{real}/"),
+            ("a repeated separator", f"{self.dir}//real-dsh-home"),
+            ("a '..' component", f"{link}/../real-dsh-home"),
+            ("a space in a component", str(spaced)),
+        )
+        for case, dsh_home in cases:
+            with self.subTest(case=case):
+                run = subprocess.run(
+                    [str(WRAPPER), "api", "user"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    env={**env, "DSH_HOME": dsh_home},
+                    timeout=60,
+                )
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, f"router-gh: DSH_HOME '{dsh_home}' {grammar}\n")
+                self.assertNotIn(HOSTS_OAUTH_VALUE, run.stderr, "no refusal prints the value")
+                self.assertFalse(record.exists(), "gh did not run")
+        # The clean spelling of the same real directory: the chain is judged and its login reaches gh.
+        run = subprocess.run(
+            [str(WRAPPER), "api", "user"],
+            capture_output=True,
+            text=True,
+            check=False,
+            env={**env, "DSH_HOME": str(real)},
+            timeout=60,
+        )
+        self.assertEqual((run.returncode, run.stderr), (7, ""), run.stdout)
+        self.assertEqual(
+            record.read_text(), f"api user\n{real}/router-credentials/gh\n{HOSTS_OAUTH_VALUE}\nunset\nunset\n"
+        )
 
     def test_a_gh_directory_of_another_user_under_the_root_refuses(self):
         """U353c: `<root>/gh` held to a directory of this user (`-O`), as the root and the leaf are. Only root can place

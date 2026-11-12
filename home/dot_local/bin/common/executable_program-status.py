@@ -18,7 +18,8 @@ The report, line by line:
   the last row's `ts` of `decisions.tsv` (header `ts phase decision why evidence result`), in whole minutes, a ts
   after now reading 0. A decisions table with no row is a refusal: the last recorded step is read from it.
 - `elements`, then one line per `tests/<element>.tsv` in name order (header `id use_case source kind host command
-  expected observed verdict ts`; a file under `tests/` not ending in `.tsv` is ignored):
+  expected observed verdict ts`; a file under `tests/` not ending in `.tsv` is ignored; an element name outside
+  `[A-Za-z0-9._-]`, so one holding a tab, a newline, a control character or a space, is a refusal naming the file):
   `<element>: <signal> <ok>/<rows> OK, <ng> NG, <pending> pending`, the signal `green` when every verdict is `OK`,
   `red` when any is `NG`, `yellow` when none is `NG` and one is `pending`, else `grey` (no row, or every verdict
   another word).
@@ -32,21 +33,26 @@ The report, line by line:
 - `agent running`, then every `units.tsv` row (header `id track state branch pr head_sha brief note`) whose state is
   `in-flight`, in file order: `<id> <track> pr <pr or -> progress: <column>`. When `stall-check.py` (U496) is a
   regular file beside this lever it is run once as `python3 -I <dir>/stall-check.py <store> [--progress-root <dir>]
-  [--now <ts>]` with this lever's interpreter, and its rows, `unit<TAB>state<TAB>age_minutes<TAB>last_line` (an
-  optional first row of those names is skipped), fill the column as `<state>, <age_minutes> min, <last_line>`; an
-  in-flight unit it names no row for reads `progress: no row`; its exit 0 or 1 is a report, its exit 2 is a refusal
-  of this report quoting its first stderr line, any other exit, a row of another width, a unit named twice, a time
-  limit of 120 seconds or a start that fails is a refusal too. Without the file beside this one the column reads
-  `progress: unknown`. Rows of units not in flight print nothing.
+  [--now <ts>]` with this lever's interpreter, its stdout and stderr read as bytes and decoded as strict UTF-8, and
+  its rows, `unit<TAB>state<TAB>age_minutes<TAB>last_line` (an optional first row of those names is skipped), fill
+  the column as `<state>, <age_minutes> min, <last_line>`, the state one of moving, stalled, done, no-file,
+  unreadable and the age `-` or 1 to 10 decimal digits; an in-flight unit it names no row for reads `progress: no
+  row`; its exit 0 or 1 is a report, its exit 2 is a refusal of this report quoting its first stderr line, any other
+  exit, output that is not UTF-8, a row of another width, a carriage return, a state or an age of another shape, a
+  unit named twice, a time limit of 120 seconds or a start that fails is a refusal too, the row ones naming the line.
+  Without the file beside this one the column reads `progress: unknown`. Rows of units not in flight print nothing.
 A section with no item prints `none`. `--ja` prints the five headings and the state word in the operator's forms
 (状態 / 要素 / 操作者の作業 / 操作者の判断 / agent が動かしているもの; 進んでいる / 止まっている / 完了) and translates nothing else.
 
 Exit 0 when the report printed. Exit 2 with one stderr line, `program-status.py: refused: <reason>`, and nothing on
-stdout for every refusal: the self pin (below), a store that is no directory, `--now` not `<YYYY-MM-DD>T<HH:MM:SS>Z`,
-a file that is missing, unreadable or not UTF-8, a tests table, `units.tsv` or `decisions.tsv` whose first line is not
-its header or whose row has another number of cells or a carriage return, a `gates.md` without the header line or
-with a short row, a `decisions.tsv` with no row or whose last ts is not a timestamp, a `tests` directory that is
-missing, and the stall-check outcomes above. No file is written and no mode is changed.
+stdout for every refusal: the self pin (below), a store that is no directory, `--now` not exactly
+`<YYYY-MM-DD>T<HH:MM:SS>Z` (the shape is checked before strptime, which would take `2026-1-2T3:4:5Z`), a file that is
+missing, unreadable or not UTF-8, a tests table, `units.tsv` or `decisions.tsv` whose first line is not its header
+(named `<file>:1`) or whose row has another number of cells or a carriage return, a `gates.md` without the header line
+or with a short row, a `decisions.tsv` with no row or whose last ts is not a timestamp of that exact shape, a `tests`
+directory that is missing, and the stall-check outcomes above. The refusal is one line whatever it quotes: a newline,
+a carriage return or another line boundary inside a path or a value becomes a space. No file is written and no mode is
+changed.
 
 Installed as `~/.local/bin/common/program-status.py` in `brief-check.py`'s form: `scripts/generate-agent-configs.py`
 writes the same bytes to `home/dot_local/bin/common/executable_program-status.py` and pins their sha256 under
@@ -72,17 +78,27 @@ MAPPING_KEY = re.compile(r"^(\S+):$")
 LEVER_PIN = re.compile(r"^(\S+): ([0-9a-f]{64})$")
 LEVERS_KEYS = ("claude", "levers", "sha256")
 
+# A timestamp's exact shape, checked before strptime (which would take `2026-1-2T3:4:5Z`); ASCII digits only.
+TS_SHAPE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
 TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 TESTS_HEADER = ("id", "use_case", "source", "kind", "host", "command", "expected", "observed", "verdict", "ts")
 UNITS_HEADER = ("id", "track", "state", "branch", "pr", "head_sha", "brief", "note")
 DECISIONS_HEADER = ("ts", "phase", "decision", "why", "evidence", "result")
+# The element name a tests table's file name carries before `.tsv`: one report item is one line, so no tab, newline,
+# control character or space (U497b).
+ELEMENT_NAME = re.compile(r"[A-Za-z0-9._-]+")
 GATES_HEADER = "| id | gate | moment | options | default | result |"
 GATES_WIDTH = 6
 SEPARATOR_CELL = re.compile(r"^:?-+:?$")
 STALL_HEADER = ("unit", "state", "age_minutes", "last_line")
+# The stall check's row contract (U496, U496b): the five states, the age `-` or 1 to 10 decimal digits.
+STALL_STATES = ("moving", "stalled", "done", "no-file", "unreadable")
+STALL_AGE = re.compile(r"-|[0-9]{1,10}")
 STALL_TIMEOUT = 120
 # The stall check's states that mean the worker is silent (U496).
 SILENT = frozenset({"stalled", "no-file"})
+# The line boundaries `str.splitlines` knows; a refusal replaces each with a space so it stays one stderr line.
+LINE_BREAK = re.compile(r"[\n\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]")
 
 HEADINGS = {
     "en": ("state", "elements", "operator acts", "operator decisions", "agent running"),
@@ -95,8 +111,9 @@ WORDS = {
 
 
 def refuse(reason):
-    """One stderr line in the levers' words, exit 2; nothing was printed."""
-    print(f"{LEVER}: refused: {reason}", file=sys.stderr)
+    """One stderr line in the levers' words, exit 2; nothing was printed. A line boundary inside the reason (a newline
+    or a carriage return in a path or a quoted value) becomes a space, so every refusal is one line (U497b)."""
+    print(f"{LEVER}: refused: {LINE_BREAK.sub(' ', reason)}", file=sys.stderr)
     sys.exit(2)
 
 
@@ -189,12 +206,12 @@ def read_text(path):
 
 def read_tsv(path, header):
     """The rows of a tab-separated table whose first line is exactly `header`, each row with the header's number of
-    cells and no carriage return; any other shape is a refusal naming the file and the line."""
+    cells and no carriage return; any other shape is a refusal naming the file and the line (the header's, `:1`)."""
     lines = read_text(path).split("\n")
     if lines and lines[-1] == "":
         lines.pop()
     if not lines or lines[0] != "\t".join(header):
-        refuse(f"{path} does not start with the header `{' '.join(header)}`")
+        refuse(f"{path}:1 is not the header `{' '.join(header)}`")
     rows = []
     for number, line in enumerate(lines[1:], 2):
         if "\r" in line:
@@ -208,7 +225,8 @@ def read_tsv(path, header):
 
 def elements(store):
     """One (element, signal, ok, ng, pending, rows) per `tests/*.tsv` in name order, and the operator's pending acts
-    as (element, id, command) in table then file order."""
+    as (element, id, command) in table then file order; a table whose element name is outside `[A-Za-z0-9._-]` is a
+    refusal naming the file, so every element line is one line."""
     tests = os.path.join(store, "tests")
     try:
         names = sorted(os.listdir(tests))
@@ -222,6 +240,10 @@ def elements(store):
         if not name.endswith(".tsv"):
             continue
         element = name[: -len(".tsv")]
+        if ELEMENT_NAME.fullmatch(element) is None:
+            refuse(
+                f"the tests table {os.path.join(tests, name)} is not `<element>.tsv` with the element in [A-Za-z0-9._-]"
+            )
         rows = read_tsv(os.path.join(tests, name), TESTS_HEADER)
         verdicts = [row[8] for row in rows]
         ok = verdicts.count("OK")
@@ -273,6 +295,10 @@ def in_flight(store):
 
 
 def timestamp(text, what):
+    """`text` as an aware UTC datetime; a value that is not exactly `<YYYY-MM-DD>T<HH:MM:SS>Z` (checked as a shape
+    before strptime, which would take `2026-1-2T3:4:5Z`) or that names no calendar moment is a refusal naming `what`."""
+    if TS_SHAPE.fullmatch(text) is None:
+        refuse(f"{what} {text!r} is not <YYYY-MM-DD>T<HH:MM:SS>Z")
     try:
         return datetime.strptime(text, TS_FORMAT).replace(tzinfo=timezone.utc)
     except ValueError:
@@ -289,9 +315,18 @@ def last_record_age(store, now):
     return max(0, int((now - last).total_seconds() // 60))
 
 
+def decoded(data, what):
+    """`data` as strict UTF-8; anything else is a refusal naming the stream."""
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        refuse(f"{what} is not UTF-8: {error.reason} at byte {error.start}")
+
+
 def stall_rows(here, store, args):
     """The stall check's rows by unit as (state, age_minutes, last_line), or None when no `stall-check.py` is beside
-    this lever; its exit 2 and every other failure of the run or of a row's shape is a refusal."""
+    this lever; its exit 2 and every other failure of the run, of its encoding or of a row's shape (width, carriage
+    return, state, age) is a refusal, the row ones naming the line."""
     path = os.path.join(here, STALL_CHECK)
     try:
         status = os.lstat(path)
@@ -307,25 +342,37 @@ def stall_rows(here, store, args):
     if args.now is not None:
         command += ["--now", args.now]
     try:
-        run = subprocess.run(command, capture_output=True, text=True, timeout=STALL_TIMEOUT, check=False)
+        run = subprocess.run(command, capture_output=True, timeout=STALL_TIMEOUT, check=False)
     except subprocess.TimeoutExpired:
         refuse(f"{STALL_CHECK} gave no answer within {STALL_TIMEOUT} seconds")
     except OSError as error:
         refuse(f"cannot run {path}: {error.strerror}")
-    first = run.stderr.strip().split("\n", 1)[0] if run.stderr.strip() else "no reason given"
+    stdout = decoded(run.stdout, f"{STALL_CHECK}'s stdout")
+    stderr = decoded(run.stderr, f"{STALL_CHECK}'s stderr")
+    first = stderr.strip().split("\n", 1)[0] if stderr.strip() else "no reason given"
     if run.returncode == 2:
         refuse(f"{STALL_CHECK} refused this report: {first}")
     if run.returncode not in (0, 1):
         refuse(f"{STALL_CHECK} exited {run.returncode}: {first}")
     rows = {}
-    for number, line in enumerate(run.stdout.split("\n"), 1):
+    for number, line in enumerate(stdout.split("\n"), 1):
         if not line:
             continue
+        if "\r" in line:
+            refuse(f"line {number} of {STALL_CHECK}'s output holds a carriage return")
         cells = line.split("\t")
         if tuple(cells) == STALL_HEADER:
             continue
         if len(cells) != len(STALL_HEADER):
             refuse(f"line {number} of {STALL_CHECK}'s output has {len(cells)} cells, not {' '.join(STALL_HEADER)}")
+        if cells[1] not in STALL_STATES:
+            refuse(
+                f"line {number} of {STALL_CHECK}'s output has the state {cells[1]!r}, not one of {' '.join(STALL_STATES)}"
+            )
+        if STALL_AGE.fullmatch(cells[2]) is None:
+            refuse(
+                f"line {number} of {STALL_CHECK}'s output has the age_minutes {cells[2]!r}, not `-` or 1 to 10 digits"
+            )
         if cells[0] in rows:
             refuse(f"{STALL_CHECK} names the unit {cells[0]} twice")
         rows[cells[0]] = (cells[1], cells[2], cells[3])

@@ -1,7 +1,8 @@
 """Exercise scripts/orchestrator/program-status.py (regime-cutover U497), the lever that prints the operator's state
 report of a program store in standing order 56's shape, as a subprocess under `python3 -I` over a scratch store: the
 report byte for byte in English and with `--ja`, the three state words each from a fixture, a fake `stall-check.py`
-beside a copy of the lever, the absent-lever column, every header refusal and the self pin refusal of an altered copy."""
+beside a copy of the lever, the absent-lever column, every header refusal and the self pin refusal of an altered copy;
+and (U497b) every refusal as one stderr line, every stall-check cell checked, and every report item one line."""
 
 import os
 import shutil
@@ -89,7 +90,7 @@ FAKE_ROWS = (
     "pathlib.Path(sys.argv[0] + '.argv').write_text('\\n'.join(sys.argv[1:]) + '\\n')\n"
     "sys.stdout.write('unit\\tstate\\tage_minutes\\tlast_line\\n')\n"
     "sys.stdout.write('U2\\tstalled\\t47\\tread the brief\\n')\n"
-    "sys.stdout.write('U9\\tfresh\\t1\\tnot in flight\\n')\n"
+    "sys.stdout.write('U9\\tmoving\\t1\\tnot in flight\\n')\n"
 )
 FAKE_REFUSES = (
     "#!/usr/bin/env -S python3 -I\n"
@@ -139,8 +140,12 @@ class ProgramStatusTest(unittest.TestCase):
         return fake
 
     def run_lever(self, *args):
+        return self.run_raw(str(self.store), "--now", NOW, *args)
+
+    def run_raw(self, *argv):
+        """The lever under `python3 -I` with exactly `argv` after it."""
         return subprocess.run(
-            [sys.executable, "-I", str(self.lever), str(self.store), "--now", NOW, *args],
+            [sys.executable, "-I", str(self.lever), *argv],
             capture_output=True,
             text=True,
             env=self.env,
@@ -285,9 +290,9 @@ class ProgramStatusTest(unittest.TestCase):
         self.copy_lever()
         self.assert_report(REPORT_EN)
 
-    def test_a_fresh_worker_beside_a_stalled_one_keeps_the_state_moving(self):
+    def test_a_moving_worker_beside_a_stalled_one_keeps_the_state_moving(self):
         levers = self.copy_lever()
-        self.write_fake(levers, FAKE_ROWS.replace("U9\\tfresh", "U3\\tfresh"))
+        self.write_fake(levers, FAKE_ROWS.replace("U9\\tmoving", "U3\\tmoving"))
         self.write_store(units=UNITS + unit_row("U3", "feat", "in-flight", "12"))
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
@@ -297,7 +302,7 @@ class ProgramStatusTest(unittest.TestCase):
             lines[-2:],
             [
                 "U2 feat pr - progress: stalled, 47 min, read the brief",
-                "U3 feat pr 12 progress: fresh, 1 min, not in flight",
+                "U3 feat pr 12 progress: moving, 1 min, not in flight",
             ],
         )
 
@@ -363,6 +368,104 @@ class ProgramStatusTest(unittest.TestCase):
     def test_the_checkout_lever_is_executable_and_runs_python3_isolated(self):
         self.assertEqual(LEVER.stat().st_mode & 0o777, 0o755)
         self.assertEqual(LEVER.read_text().splitlines()[0], "#!/usr/bin/env -S python3 -I")
+
+    # (e) round 2 (U497b): every refusal one stderr line, every stall-check cell checked, every item one line.
+
+    def test_a_stall_check_whose_output_is_not_utf_8_refuses_in_one_line_and_never_tracebacks(self):
+        levers = self.copy_lever()
+        self.write_fake(
+            levers,
+            "#!/usr/bin/env -S python3 -I\nimport sys\n"
+            "sys.stdout.buffer.write(b'U2\\tstalled\\t47\\tread \\xff the brief\\n')\n",
+        )
+        self.assert_refused("stall-check.py", "UTF-8")
+        self.write_fake(
+            levers,
+            "#!/usr/bin/env -S python3 -I\nimport sys\n"
+            "sys.stderr.buffer.write(b'stall-check.py: refused: \\xff\\n')\nsys.exit(2)\n",
+        )
+        self.assert_refused("stall-check.py", "UTF-8")
+
+    def test_a_stall_check_row_with_a_nonnumeric_age_or_an_unknown_state_refuses_naming_the_line(self):
+        levers = self.copy_lever()
+        self.write_fake(levers, FAKE_ROWS.replace("U2\\tstalled\\t47", "U2\\tstalled\\tabc"))
+        self.assert_refused("stall-check.py", "line 2", "age_minutes", "abc")
+        self.write_fake(levers, FAKE_ROWS.replace("U2\\tstalled\\t47", "U2\\tstalled\\t12345678901"))
+        self.assert_refused("stall-check.py", "line 2", "age_minutes", "12345678901")
+        self.write_fake(levers, FAKE_ROWS.replace("U2\\tstalled\\t47", "U2\\tstalled\\t"))
+        self.assert_refused("stall-check.py", "line 2", "age_minutes")
+        self.write_fake(levers, FAKE_ROWS.replace("U2\\tstalled\\t47", "U2\\tasleep\\t47"))
+        self.assert_refused("stall-check.py", "line 2", "state", "asleep")
+        self.write_fake(levers, FAKE_ROWS.replace("U2\\tstalled\\t47", "U2\\tstalled\\t47\\r"))
+        self.assert_refused("stall-check.py", "line 2", "carriage return")
+        # `-` and every one of the five states pass.
+        self.write_fake(levers, FAKE_ROWS.replace("U2\\tstalled\\t47", "U2\\tunreadable\\t-"))
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+        self.assertEqual(run.stdout.splitlines()[-1], "U2 feat pr - progress: unreadable, - min, read the brief")
+
+    def test_a_tests_table_named_with_a_newline_or_outside_the_name_class_refuses_naming_the_file(self):
+        (self.store / "tests/ga\nmma.tsv").write_text(ALPHA)
+        self.assert_refused("tests/ga mma.tsv", "[A-Za-z0-9._-]")
+        (self.store / "tests/ga\nmma.tsv").unlink()
+        for name in ("ga\tmma.tsv", "ga mma.tsv", "gam\x1bma.tsv", "ガンマ.tsv", ".tsv"):
+            with self.subTest(name=name):
+                (self.store / "tests" / name).write_text(ALPHA)
+                stderr = self.assert_refused("[A-Za-z0-9._-]")
+                self.assertIn(str(self.store / "tests"), stderr)
+                (self.store / "tests" / name).unlink()
+        (self.store / "tests/Ga.m_m-a9.tsv").write_text(ALPHA)
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+        self.assertIn("\nGa.m_m-a9: green 2/2 OK, 0 NG, 0 pending\n", run.stdout)
+
+    def test_now_and_a_decisions_ts_are_held_to_the_exact_shape_before_strptime(self):
+        for value in (
+            "2026-1-2T3:4:5Z",
+            "2026-11-12T07:00:00+00:00",
+            "2026-11-12T07:00:00Z\n",
+            "２０２６-11-12T07:00:00Z",
+        ):
+            with self.subTest(now=value):
+                run = self.run_raw(str(self.store), "--now", value)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                self.assertIn("program-status.py: refused: --now", run.stderr)
+                self.assertIn("<YYYY-MM-DD>T<HH:MM:SS>Z", run.stderr)
+        self.write_store(decisions=DECISIONS_HEADER + decision_row("2026-11-12T6:48:00Z"))
+        self.assert_refused(str(self.store / "decisions.tsv"), "2026-11-12T6:48:00Z", "<YYYY-MM-DD>T<HH:MM:SS>Z")
+
+    def test_a_header_refusal_names_the_file_and_line_1(self):
+        cases = (
+            ("tests/beta.tsv", BETA.replace("\tverdict\t", "\tresult\t", 1)),
+            ("units.tsv", UNITS.replace("\tpr\t", "\tpull\t", 1)),
+            ("decisions.tsv", DECISIONS.replace("ts\tphase", "when\tphase", 1)),
+            ("decisions.tsv", ""),
+        )
+        for relative, text in cases:
+            with self.subTest(file=relative, text=text[:12]):
+                self.write_store()
+                (self.store / relative).write_text(text)
+                self.assert_refused(f"{self.store / relative}:1", "header")
+
+    def test_a_store_path_or_a_value_holding_a_newline_refuses_in_one_stderr_line(self):
+        run = self.run_raw(str(self.store) + "\nmissing", "--now", NOW)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertTrue(run.stderr.startswith("program-status.py: refused: the store "), run.stderr)
+        self.assertIn(" missing cannot be read", run.stderr)
+        run = self.run_raw(str(self.store) + "\r\nmissing", "--now", NOW)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertNotIn("\r", run.stderr)
+        levers = self.copy_lever()
+        self.write_fake(
+            levers,
+            "#!/usr/bin/env -S python3 -I\nimport sys\n"
+            "sys.stderr.write('stall-check.py: refused: a\\rb\\n')\nsys.exit(2)\n",
+        )
+        stderr = self.assert_refused("stall-check.py", "a b")
+        self.assertNotIn("\r", stderr)
 
 
 if __name__ == "__main__":

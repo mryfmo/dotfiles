@@ -1,5 +1,6 @@
 #!/usr/bin/env -S python3 -I
-"""Name every in-flight worker of a program store that is silent past its deadline (regime-cutover U496, round 2 U496b).
+"""Name every in-flight worker of a program store that is silent past its deadline (regime-cutover U496, round 2 U496b,
+round 3 U496c).
 
 Measured 2026-11-06 to 2026-11-12: eleven worker stalls, each a Task subagent silent after a tool call for 30 to 45
 minutes, each found because the coordinator remembered to read the progress files by hand (standing order 57). This
@@ -31,8 +32,11 @@ timestamp `YYYY-MM-DDTHH:MM:SSZ`, a space and free text; the last line decides. 
 `age_minutes` is the integer floor of the age in minutes, the number the state is judged by, so a printed `10` is
 moving under the default and `11` is stalled; a tab or a carriage return inside the worker's free text is one space in
 the cell, so the row keeps its four cells. `--now <ts>` injects the clock in the lines' own form (tests; the default is
-the UTC wall clock). The progress root defaults to `/tmp/<slug>-wt`, `<slug>` the store path's parent directory name
-(`dotfiles` for `.../regime-store/dotfiles/regime-cutover`, the worktree root `worker-worktree.sh` uses).
+the UTC wall clock). The progress root defaults to the temporary directory (`$TMPDIR` when it is set and not empty,
+else the system default) plus `<slug>-wt`, `<slug>` the store path's parent directory name (`dotfiles` for
+`.../regime-store/dotfiles/regime-cutover`), the worktree root `worker-worktree.sh` uses, read in one statement by
+the spelling `tests/unit/test_sandbox_portability.py` sanctions (round 3, U496c: CI's portability guard refuses a
+spelled temporary path, and the sandbox's writable temporary directory is `$TMPDIR`).
 
 Exit 0 when every row is `moving` or `done` (an empty in-flight set prints nothing and is 0); exit 1 when any row is
 `stalled` or `no-file`; exit 2 when any row is `unreadable` (the rows printed, the code the maximum over the rows), and
@@ -197,7 +201,10 @@ def parser():
     top.add_argument("store", help="the program store directory holding units.tsv")
     top.add_argument(
         "--progress-root",
-        help="the directory of the <unit>-progress.txt files (default /tmp/<slug>-wt, the slug the store's parent name)",
+        help=(
+            "the directory of the <unit>-progress.txt files (default: the temporary directory, $TMPDIR else the system"
+            " default, plus <slug>-wt, the slug the store's parent name)"
+        ),
     )
     top.add_argument(
         "--deadline-minutes",
@@ -269,12 +276,15 @@ def clean_directory(given, label):
 
 
 def default_root(store):
-    """`/tmp/<slug>-wt`, the slug the resolved store path's parent directory name (`dotfiles` for
-    `.../regime-store/dotfiles/regime-cutover`), held like a given root."""
+    """The temporary directory (`$TMPDIR` when set and not empty, else the system default, the `${TMPDIR:-...}` rule
+    `worker-worktree.sh` applies) plus `<slug>-wt`, the slug the resolved store path's parent directory name
+    (`dotfiles` for `.../regime-store/dotfiles/regime-cutover`), held like a given root: absolute and clean as given,
+    resolved physically, a directory there, else a refusal naming it."""
     slug = os.path.basename(os.path.dirname(store))
     if not slug:
         refuse(f"the store {store} has no parent directory name to derive the progress root from")
-    return clean_directory(f"/tmp/{slug}-wt", "progress root")
+    root = os.path.join(os.environ.get("TMPDIR") or "/tmp", f"{slug}-wt")
+    return clean_directory(root, "progress root")
 
 
 def held_file(root, name):

@@ -1,6 +1,6 @@
-"""Exercise scripts/orchestrator/stall-check.py (regime-cutover U496, round 2 U496b), the coordinator's one reader of
-the in-flight workers' progress files: one row per `units.tsv` row whose state is `in-flight` and whose track is not
-`sweep`, in the register's order, `unit<TAB>state<TAB>age_minutes<TAB>last_line`, the state one of `moving`, `stalled`,
+"""Exercise scripts/orchestrator/stall-check.py (regime-cutover U496, round 2 U496b, round 3 U496c), the coordinator's
+one reader of the in-flight workers' progress files: one row per `units.tsv` row whose state is `in-flight` and whose
+track is not `sweep`, in the register's order, `unit<TAB>state<TAB>age_minutes<TAB>last_line`, the state one of `moving`, `stalled`,
 `done`, `no-file` and `unreadable` (a file that yields no text or a last line outside the grammar is that one unit's
 row, exit 2, never a refusal that hides the other units), the one run-level refusal a register that cannot be read,
 the register's header and the paths held before anything is read, every progress file opened without following a
@@ -102,6 +102,16 @@ class StallCheckTest(unittest.TestCase):
             argv, capture_output=True, text=True, check=False, timeout=60, env=env or self.env, cwd=self.dir
         )
 
+    def lever_bytecode(self) -> list[str]:
+        """The names under `scripts/orchestrator/__pycache__` that are this lever's bytecode (`stall-check*`), the
+        proof the run and the in-process import compiled nothing to disk. The directory itself is no evidence: CI's
+        earlier test modules import `ledger.py` from `scripts/orchestrator` and leave their bytecode there, so an
+        assertion on the directory held on a fresh tree and failed on every CI leg (round 3, U496c)."""
+        cache = LEVER.parent / "__pycache__"
+        if not cache.is_dir():
+            return []
+        return sorted(name for name in os.listdir(cache) if name.startswith("stall-check"))
+
     def listing(self) -> list[tuple[str, int, int]]:
         """Every entry under the scratch directory with its size and mtime, the proof that nothing was written."""
         entries = []
@@ -130,11 +140,12 @@ class StallCheckTest(unittest.TestCase):
         row and the in-flight sweep row (a sweep seat reports on the bus, not in a file) are no rows; the rows in the
         register's order, tab-separated, `age_minutes` an integer, `last_line` the whole last line; exit 1 for the
         stalled one; nothing on stderr."""
+        self.assertEqual(self.lever_bytecode(), [], "no bytecode of the lever before the run")
         before = self.listing()
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stdout, run.stderr), (1, self.expected, ""))
         self.assertEqual(self.listing(), before, "no file was written, none was touched")
-        self.assertEqual(sorted(os.listdir(LEVER.parent)).count("__pycache__"), 0, "no bytecode beside the lever")
+        self.assertEqual(self.lever_bytecode(), [], "no bytecode of the lever after the run")
 
     def test_exit_0_when_every_row_is_moving_or_done(self) -> None:
         self.write_progress("U3", "2026-11-12T06:16:00Z U3 start: brief read", "2026-11-12T06:29:30Z U3: committing")
@@ -250,16 +261,35 @@ class StallCheckTest(unittest.TestCase):
             f"U2\tmoving\t0\t{ts} U2: now\nU3\tmoving\t0\t{ts} U3: now\nU4\tdone\t0\t{ts} done, head={HEAD}\n",
         )
 
-    def test_the_default_progress_root_is_tmp_slug_wt_from_the_store_s_parent_name(self) -> None:
-        """Without `--progress-root` the root is `/tmp/<slug>-wt`, the slug the store path's parent directory name
-        (`dotfiles` for `.../regime-store/dotfiles/regime-cutover`); a root that is no directory is a refusal naming
-        it (standing order 21: a missing root is a wrong root, never an empty set of workers), proved here with a slug
-        no host has."""
+    def test_the_default_progress_root_is_slug_wt_under_tmpdir_from_the_store_s_parent_name(self) -> None:
+        """Without `--progress-root` the root is the temporary directory (`$TMPDIR` when set and not empty, else the
+        system default) plus `<slug>-wt`, the slug the store path's parent directory name (`dotfiles` for
+        `.../regime-store/dotfiles/regime-cutover`), the root `worker-worktree.sh` uses: with `TMPDIR` the scratch
+        directory (given through macOS's `/var` link, with and without the trailing separator this host's `TMPDIR`
+        carries) the rows come from `<scratch>/dotfiles-wt`; with a slug no host has, the root is no directory and
+        the run is a refusal naming the path as composed and as resolved physically (`/private/var` for `/var`;
+        standing order 21: a missing root is a wrong root, never an empty set of workers); an empty `TMPDIR` is no
+        root of `''` but the system default, the `${TMPDIR:-...}` rule (round 3, U496c: CI's portability guard
+        refuses a spelled temporary path)."""
+        for tmpdir in (str(self.dir), str(self.dir) + "/"):
+            with self.subTest(tmpdir=tmpdir):
+                run = self.run_lever(root="", env={**self.env, "TMPDIR": tmpdir})
+                self.assertEqual((run.returncode, run.stdout, run.stderr), (1, self.expected, ""))
         slug = f"u496-no-such-slug-{os.getpid()}"
         store = self.dir / "regime-store" / slug / "regime-cutover"
         store.mkdir(parents=True)
         shutil.copy2(self.store / "units.tsv", store / "units.tsv")
-        self.assert_refused(self.run_lever(store=str(store), root=""), "progress root", f"/tmp/{slug}-wt")
+        composed, resolved = self.dir / f"{slug}-wt", self.dir.resolve() / f"{slug}-wt"
+        self.assert_refused(
+            self.run_lever(store=str(store), root="", env={**self.env, "TMPDIR": str(self.dir)}),
+            "progress root",
+            f"'{composed}' ({resolved}) cannot be read",
+        )
+        self.assert_refused(
+            self.run_lever(store=str(store), root="", env={**self.env, "TMPDIR": ""}),
+            "progress root",
+            f"'/tmp/{slug}-wt'",
+        )
 
     # CHANGE 1 (round 2, U496b): a bad progress file is one unit's row; then the refusals, each exit 2 with one stderr
     # line and nothing on stdout.

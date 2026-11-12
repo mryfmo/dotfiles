@@ -2522,9 +2522,10 @@ def dsh_source_row(row: Any, label: str) -> dict[str, Any]:
     first row and distinct from it (U465c: the auto row is a row of its own grammar in the store, never the first),
     and that key beside `auto` alone (null in the rendering otherwise); `observe_admission` one of the two words
     router-settings-apply writes into the pulls row's unlistedUnaddressed cell (U416), DSH_OBSERVE_ADMISSION_DEFAULT
-    when omitted; `allowed` (U465) present always, a list of GitHub logins (`[A-Za-z0-9-]+`), none repeated by case,
-    and empty unless the mode is `auto` (U465b: the lever writes the list in auto alone, and a listed login beside
-    another mode is a dormant grant). Each refusal names the key."""
+    when omitted, and not `inferred` beside `auto` (U469b: there the cell is `ignore`, so an unlisted sender falls to
+    not_a_member before any assessment); `allowed` (U465) present always, a list of GitHub logins (`[A-Za-z0-9-]+`),
+    none repeated by case, and empty unless the mode is `auto` (U465b: the lever writes the list in auto alone, and a
+    listed login beside another mode is a dormant grant). Each refusal names the key."""
     if not isinstance(row, dict):
         fail(f"{label} must be a mapping (repository, accept_mode, accept_mode_row)")
     unknown = sorted(set(row) - set(DSH_SOURCE_ROW_KEYS))
@@ -2560,6 +2561,13 @@ def dsh_source_row(row: Any, label: str) -> dict[str, Any]:
     admission = row.get("observe_admission", DSH_OBSERVE_ADMISSION_DEFAULT)
     if admission not in DSH_OBSERVE_ADMISSIONS:
         fail(f"{label}.observe_admission {admission!r} is not one of {list(DSH_OBSERVE_ADMISSIONS)}")
+    if mode == "auto" and admission == "inferred":
+        # U469b (verdict U469-02ea959b P1): inferred lets an unlisted sender's pull request reach assessment, where a
+        # rule match is an accept under auto; the same words as router-settings-apply's source_row.
+        fail(
+            f"{label}.observe_admission 'inferred' belongs to accept_mode observe alone; under auto the cell is "
+            "'ignore' so an unlisted sender falls to not_a_member"
+        )
     if "allowed" not in row:
         fail(f"{label}.allowed is missing (the Source's identity set; [] when no sender is listed)")
     allowed = row["allowed"]

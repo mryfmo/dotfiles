@@ -88,7 +88,7 @@
       "target": ".agents/router-source.json",
       "kind": "file",
       "executable": false,
-      "sha256": "76487b147ab44f396df837e31d597e9da8dc51430482c9c83bfc93026c97e14a"
+      "sha256": "42a8130c9c7a34fa9769be61ecd753aad35ba68ad466081071e11850cc967048"
     },
     {
       "source": "home/dot_claude/agents/express-explorer.md",
@@ -636,7 +636,7 @@
       "target": ".local/bin/common/router-settings-apply.py",
       "kind": "file",
       "executable": true,
-      "sha256": "d50b0510454b5102654606ee8efdb866263da6c965e3b88135058dd052a9b1b0"
+      "sha256": "f7a46f2362eca52e66bc9c4af0f12ec610771921a76410ecc720201335684220"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-login-preflight",

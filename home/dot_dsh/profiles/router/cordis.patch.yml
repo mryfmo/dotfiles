@@ -1,7 +1,7 @@
 # Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.
 # dsh-superagent pin 8c32a9dc5d72c033816c6a8110b37f40cf94fba4; the Router runs under srt through `hcom-seat router -- --no-open`.
 # GitHub Source (assets.dsh-superagent.sources.github): repository mryfmo/dotfiles, accept_mode
-# observe (M-18 ladder row 2026-11-06T23:24:00Z); the allowed list is empty.
+# auto (M-18 ladder row 2026-11-06T23:24:00Z, accept_mode_auto_row 2026-11-12T00:08:25Z); the allowed list: mryfmo.
 # These two values live in the Router's settings store (upstream docs/006-deployment.md, Settings), where the
 # lever `router-settings-apply` writes them through the Management API after the launch's ready line, with the
 # Source's `cli` set to `router-gh`, the gh wrapper whose GH_CONFIG_DIR is $DSH_HOME/router-credentials/gh (the

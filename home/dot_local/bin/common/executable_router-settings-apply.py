@@ -36,7 +36,8 @@ renders as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the
   (upstream `src/app/http.ts:75-78`: the host `127.0.0.1:<port>` and that header, else 403) gives each block's current
   `value` and `revision`. For a block whose value differs from the kit's, `PUT settings/<block>` carries
   `{"value": <the whole block>, "revision": <the revision read>}` (upstream `src/app/http.ts:196-202`, `src/app/settings.ts:148-151`:
-  a stale revision is 409). The three blocks, written in the order `eval`, `policy`, `source:github`:
+  a stale revision is 409). The three blocks, `source:github` saved last and `eval` and `policy` in the order the
+  direction of the mode change fixes (below):
   - `source:github`: `{"enabled": true, "config": {<the current config>, "repository": <repository>, "cli": <router-gh>,
     "observePulls": true}}` (`src/sources/github.ts:25-28`, the Source's config keys). `observePulls` is the observe
     path: the notifications poll (`src/sources/github.ts:304`, `notifications?all=true`) needs a classic token with the
@@ -71,17 +72,25 @@ renders as comments in `home/dot_dsh/profiles/router/cordis.patch.yml` reach the
     empty.
 - A block already equal to the kit's is not written: a second run PUTs nothing (`unchanged`). After a save the Router
   answers `restarting: true` while setup is pending or a setup field changed (`src/app/settings.ts:176`), and the API is
-  unavailable for a moment; before the next PUT this lever polls `GET settings` until it answers again, for at most
-  `--wait` seconds (default 60).
-- `eval` is saved before `source:github` (regime-cutover U353b, verdict U353-8791100f P2 `:401`): a store whose mode is
-  `auto` would otherwise poll under `auto` from the Source's restart until the mode is written, so the safe mode is in
-  place before the Source is enabled or its setup fields change. `policy` goes between them: its save changes
-  `policyVersion` and restarts nothing (measured 2026-11-10T03:03Z, `restarting: false`), so no wait precedes the Source.
+  unavailable for a moment; when another save follows the one that reported it, this lever polls `GET settings` until
+  the Router answers again, for at most `--wait` seconds (default 60), and reads every block's revision afresh.
+- The order of the `eval` and `policy` saves follows the direction of the mode change (regime-cutover U469c, verdict
+  U469-25a395ab P1 `:1492`), so at every point between PUTs the store is at least as restrictive as it was before the
+  run or will be after it. Toward `auto` (the row's mode is `auto` and the store's is not) `policy` is saved first and
+  `eval` after it: a failed policy PUT (a 409, a 403, an unreachable port) leaves the store at its safe mode beside the
+  policy it had, never at `auto` beside a policy whose admission cell or empty list sends an unlisted sender's pull
+  request to assessment, where a rule match is an accept. Away from `auto`, and whenever the store already holds the
+  row's mode, `eval` is saved first, so the store never polls under `auto` beside a widened policy. `save_order` holds
+  the rule once and main() iterates the order it returns. A policy save changes `policyVersion` and restarts nothing
+  (measured 2026-11-10T03:03Z, `restarting: false`), so no wait precedes the save after it.
+- `source:github` is saved last in both directions (regime-cutover U353b, verdict U353-8791100f P2 `:401`): a store
+  whose mode is `auto` would otherwise poll under `auto` from the Source's restart until the mode and the policy are
+  written, so both are in place before the Source is enabled or its setup fields change.
 - Saving `source:github` runs the Router's account probe first (`src/app/settings.ts:167`, `src/app/setup.ts:61-66`,
   `src/deployment.ts:87-105`: `<cli> api user`, then `repos/<name>` for push); without the agent account's login in the
   credential root the Router answers 400 with `setup.code` `agentCliSignedOut` and saves nothing. This lever names that
-  refusal, with `eval` already saved, and exits 2: the token is the operator's step (docs/engagement-handout.md), after
-  which the coordinator runs the entry again.
+  refusal, with `eval` and `policy` already saved, and exits 2: the token is the operator's step
+  (docs/engagement-handout.md), after which the coordinator runs the entry again.
 
 Output: one line per block on stdout, `<block> saved (revision <n>[, restarting])` or `<block> unchanged (revision <n>)`.
 Exit 0 when the three blocks hold the kit's values. With `--dry-run` the two given paths, the rendering, the profile
@@ -329,9 +338,10 @@ def source_row(path: str, store: str) -> tuple[str, str, str, list[str]]:
     (the generator applies the defaults, U465d), every cell but `allowed` and `accept_mode_auto_row` is a non-empty
     string; `auto` needs `accept_mode_auto_row` (a decisions.tsv timestamp, the M-18 ladder's second row, distinct
     from `accept_mode_row`), that row belongs to `auto` alone (null otherwise) and must exist in the given store's
-    decisions.tsv in the auto row's grammar (ladder_row); a third word for the cell is refused; the allowed list must
-    be a list of GitHub logins, none repeated (by case: GitHub logins differing by case alone are one login). The
-    list returned is the row's; policy_allowed decides what the mode lets the policy carry."""
+    decisions.tsv in the auto row's grammar (ladder_row); a third word for the cell is refused, and `inferred` beside
+    `auto` (U469b: the cell is `ignore` there, so an unlisted sender falls to not_a_member before any assessment); the
+    allowed list must be a list of GitHub logins, none repeated (by case: GitHub logins differing by case alone are
+    one login). The list returned is the row's; policy_allowed decides what the mode lets the policy carry."""
     what = f"the rendered Source row {path}"
     label = SOURCE_LABEL
     text = "\n".join(read_lines(path, "the rendered Source row"))
@@ -396,6 +406,13 @@ def source_row(path: str, store: str) -> tuple[str, str, str, list[str]]:
             f"{label}.observe_admission {row['observe_admission']!r} in {path} is not "
             f"{' or '.join(OBSERVE_ADMISSIONS_APPLIED)}; the {ADMISSION_ROW} row's {ADMISSION_CELL} cell takes those two "
             "words alone (explicit would accept an unlisted sender's pull request in observe mode)"
+        )
+    if mode == "auto" and row["observe_admission"] == "inferred":
+        # U469b (verdict U469-02ea959b P1): the generator's rule in its words; inferred lets an unlisted sender's pull
+        # request reach assessment, where a rule match is an accept under auto.
+        raise Refusal(
+            f"{label}.observe_admission 'inferred' in {path} belongs to accept_mode observe alone; under auto the cell "
+            "is 'ignore' so an unlisted sender falls to not_a_member"
         )
     allowed = row["allowed"]
     if not isinstance(allowed, list) or not all(isinstance(sender, str) for sender in allowed):
@@ -603,9 +620,9 @@ class Api:
                 time.sleep(1)
 
 
-def block_views(settings: dict, where: str) -> tuple[tuple[dict, int], tuple[dict, int], tuple[dict, int]]:
-    """The github Source's, the eval block's and the policy block's (value, revision) from a settings view, each
-    refused when absent."""
+def block_views(settings: dict, where: str) -> dict[str, tuple[dict, int]]:
+    """The github Source's, the eval block's and the policy block's (value, revision) from a settings view, keyed by
+    block name, each refused when absent."""
     sources = settings.get("sources")
     github = (
         next((s for s in sources if isinstance(s, dict) and s.get("id") == "github"), None)
@@ -615,7 +632,7 @@ def block_views(settings: dict, where: str) -> tuple[tuple[dict, int], tuple[dic
     if github is None or not isinstance(github.get("value"), dict) or not isinstance(github.get("revision"), int):
         raise Refusal(f"{where} answered GET settings without the Source github (its value and revision)")
     blocks = settings.get("blocks")
-    views: list[tuple[dict, int]] = []
+    views: dict[str, tuple[dict, int]] = {SOURCE_BLOCK: (github["value"], github["revision"])}
     for name in (EVAL_BLOCK, POLICY_BLOCK):
         block = blocks.get(name) if isinstance(blocks, dict) else None
         if (
@@ -624,8 +641,20 @@ def block_views(settings: dict, where: str) -> tuple[tuple[dict, int], tuple[dic
             or not isinstance(block.get("revision"), int)
         ):
             raise Refusal(f"{where} answered GET settings without the {name} block (its value and revision)")
-        views.append((block["value"], block["revision"]))
-    return (github["value"], github["revision"]), views[0], views[1]
+        views[name] = (block["value"], block["revision"])
+    return views
+
+
+def save_order(current_mode: object, requested_mode: str) -> tuple[str, str, str]:
+    """The order of the three saves, from the direction of the mode change (U469c, verdict U469-25a395ab P1): toward
+    `auto` (the row asks `auto` and the store holds another mode) the policy block (the admission cell and the allowed
+    list) is saved before the eval block, so a failed policy PUT leaves the store at its safe mode; away from `auto`,
+    and when the store already holds the row's mode, the eval block is saved first (U353b), so the store never polls
+    under `auto` beside a widened policy. The Source is last in both: at every point between PUTs the store is at least
+    as restrictive as one of the run's two ends."""
+    if requested_mode == "auto" and current_mode != "auto":
+        return (POLICY_BLOCK, EVAL_BLOCK, SOURCE_BLOCK)
+    return (EVAL_BLOCK, POLICY_BLOCK, SOURCE_BLOCK)
 
 
 def desired_source(current: dict, repository: str, cli: str) -> dict:
@@ -739,24 +768,31 @@ def main(argv: list[str]) -> int:
             print(f"cli {cli}")
             return 0
         api = Api(port, args.wait)
-        (source_view, source_revision), (evaluation, eval_revision), (policy, policy_revision) = block_views(
-            api.settings(), api.where()
-        )
-        # The mode first (U353b): the Source restarts into polling under whatever mode the store holds.
-        restarting = apply_block(api, EVAL_BLOCK, evaluation, desired_eval(evaluation, mode), eval_revision)
-        if restarting:
-            api.settings_after_restart()
-            (source_view, source_revision), (_, _), (policy, policy_revision) = block_views(api.settings(), api.where())
-        # The admission cell and the allowed list next (U416, U465; the list as the mode admits it, U465b): a policy save
-        # changes policyVersion and restarts nothing, so no wait here.
-        apply_block(api, POLICY_BLOCK, policy, desired_policy(policy, cell, senders), policy_revision)
+        views = block_views(api.settings(), api.where())
+        order = save_order(views[EVAL_BLOCK][0].get("mode"), mode)
         refusals: list[str] = []
-        try:
-            apply_block(api, SOURCE_BLOCK, source_view, desired_source(source_view, repository, cli), source_revision)
-        except Refusal as refusal:
-            if " answered 400 " not in str(refusal):
-                raise
-            refusals.append(str(refusal))
+        for position, block in enumerate(order):
+            current, revision = views[block]
+            if block == EVAL_BLOCK:
+                desired = desired_eval(current, mode)
+            elif block == POLICY_BLOCK:
+                desired = desired_policy(current, cell, senders)
+            else:
+                desired = desired_source(current, repository, cli)
+            try:
+                restarting = apply_block(api, block, current, desired, revision)
+            except Refusal as refusal:
+                # The Source's 400 before the token (setup agentCliSignedOut) is named after the saves before it; every
+                # other refusal, on any block, ends the run here with nothing written after it.
+                if block != SOURCE_BLOCK or " answered 400 " not in str(refusal):
+                    raise
+                refusals.append(str(refusal))
+                break
+            # A save that restarts the Router (setup pending, or a setup field changed) is followed by the wait and a
+            # fresh read of every revision when another save follows it; after the last save nothing waits.
+            if restarting and position + 1 < len(order):
+                api.settings_after_restart()
+                views = block_views(api.settings(), api.where())
     except Refusal as refusal:
         print(f"{LEVER}: {refusal}", file=sys.stderr)
         return 2

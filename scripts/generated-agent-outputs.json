@@ -569,6 +569,13 @@
       "sha256": "5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014"
     },
     {
+      "source": "home/dot_local/bin/common/executable_program-status.py",
+      "target": ".local/bin/common/program-status.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "64f693008bde677d6faedddb7d83eee855cc5892d198a561b011bc0b370a9341"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_read-lib.sh",
       "target": ".local/bin/common/read-lib.sh",
       "kind": "file",
@@ -890,6 +897,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "profile-config-place.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "program-status.py"
     },
     {
       "source": "home/dot_local/bin/common",

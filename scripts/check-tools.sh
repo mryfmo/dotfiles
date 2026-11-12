@@ -420,25 +420,36 @@ function check_seat_logins() {
 
 #
 # @description Report the class of the Router's GitHub token through the checkout's
-#   `scripts/orchestrator/router-gh api -i user` (regime-cutover U490), one call bounded to
-#   30 s by perl's alarm (`timeout` is not on every host), with the response headers read for
-#   `X-Oauth-Scopes` alone. No header: a fine-grained token, whose permissions this check
-#   cannot read and which cannot write here (GitHub's fine-grained tokens cannot contribute to
-#   a repository where the account is a collaborator, and the Router's account is one by the
-#   kit's design, M-25), a required failure (U490c). A header: a classic token, found when its
-#   list holds `repo` or `public_repo`, else a required failure. Both failures ask for the
-#   classic token of the handout's step 2 (`repo` for the writes, `read:org` and `gist` for
-#   `gh auth login --with-token`, `notifications` for the poll; U490b), since no other token
-#   lets the Router write (measured 2026-11-12: a `notifications` token read the stream and
-#   every write failed `HTTP 403`). router-gh's refusal (exit 2, no login under the root, the
-#   operator's step) and a failed or unreadable response are optional warnings, never found.
-#   The login is read from the body's `login` key; no token is printed.
+#   `scripts/orchestrator/router-gh api -i user` (regime-cutover U490), one call bounded by
+#   perl's alarm (`timeout` is not on every host) to `DOCTOR_ROUTER_TIMEOUT` seconds (an
+#   integer of 1 to 600; else 30), with the response headers read for `X-Oauth-Scopes` alone.
+#   Four cases, in order (U490d):
+#   (a) the login directory `<DSH_HOME>/router-credentials/gh` does not exist (the doctor's own
+#       `[ ! -e ]` test): the one "not yet" state, the operator's step (docs/engagement-handout.md
+#       step 2), an optional warning; router-gh is not run;
+#   (b) it exists and router-gh exits 2: a required failure quoting router-gh's one stderr line
+#       (a linked hosts.yml, a wrong owner or mode, no or several oauth_token rows, a token outside
+#       the grammar: a broken root the operator must repair, never "pending"; rounds 1 to 3 read
+#       every refusal as the pending step and exited 0, verdict U490-f441420d P1);
+#   (c) any other non-zero exit (the alarm included), or an answer without a 2xx status line and a
+#       login: an optional warning `unreadable` (an offline or stalled host);
+#   (d) a 2xx answer: no `X-Oauth-Scopes` header is a fine-grained token, whose permissions this
+#       check cannot read and which cannot write here (GitHub's fine-grained tokens cannot
+#       contribute to a repository where the account is a collaborator, and the Router's account
+#       is one by the kit's design, M-25), a required failure (U490c); a header is a classic token,
+#       found when its list holds `repo` or `public_repo`, else a required failure. Both failures
+#       ask for the classic token of the handout's step 2 (`repo` for the writes, `read:org` and
+#       `gist` for `gh auth login --with-token`, `notifications` for the poll; U490b), since no
+#       other token lets the Router write (measured 2026-11-12: a `notifications` token read the
+#       stream and every write failed `HTTP 403`).
+#   The decision reads router-gh's exit status and the file system, never router-gh's text; the
+#   login is read from the body's `login` key; no token is printed.
 #
 function check_router_token() {
     local lever="${BASH_SOURCE[0]%/*}/orchestrator/router-gh"
     local root="${DSH_HOME:-${HOME%/}/.dsh}/router-credentials/gh"
     local output line status=0 in_headers=1 first_line='' body='' login='' scopes='' scopes_seen=0
-    local scope writes=0 remedy
+    local scope writes=0 remedy bound=30
     local -a scope_list=()
     remedy="place the classic token of docs/engagement-handout.md step 2 (scopes repo, read:org, gist, notifications; a fine-grained token cannot write to a repository where the account is a collaborator) under ${root}"
 
@@ -446,9 +457,18 @@ function check_router_token() {
         warn_optional "router token check skipped: ${lever} is missing"
         return 0
     fi
-    output="$(perl -e 'alarm 30; exec @ARGV or die "exec router-gh: $!\n"' "${lever}" api -i user 2>&1)" || status=$?
-    if [ "${status}" -eq 2 ] && [[ "${output}" == 'router-gh: '* ]]; then
-        warn_optional "router token: ${output} (the agent account's login is the operator's step, docs/engagement-handout.md step 2)"
+    if [ ! -e "${root}" ]; then
+        warn_optional "router token: no login under ${root} yet (the agent account's login is the operator's step, docs/engagement-handout.md step 2; router-gh not run)"
+        return 0
+    fi
+    if [[ "${DOCTOR_ROUTER_TIMEOUT:-}" =~ ^[0-9]{1,3}$ ]] && [ "${DOCTOR_ROUTER_TIMEOUT}" -ge 1 ] && [ "${DOCTOR_ROUTER_TIMEOUT}" -le 600 ]; then
+        bound="${DOCTOR_ROUTER_TIMEOUT}"
+    fi
+    output="$(perl -e 'my $bound = shift; alarm $bound; exec @ARGV or die "exec router-gh: $!\n"' "${bound}" "${lever}" api -i user 2>&1)" || status=$?
+    if [ "${status}" -eq 2 ]; then
+        IFS= read -r first_line <<< "${output}"
+        printf 'required failed: router token: %s\n' "${first_line}" >&2
+        ((required_failures += 1))
         return 0
     fi
     if [ "${status}" -ne 0 ]; then

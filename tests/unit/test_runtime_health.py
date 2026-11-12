@@ -12,6 +12,7 @@ import stat
 import subprocess
 import tempfile
 import textwrap
+import time
 import unittest
 from pathlib import Path
 
@@ -875,6 +876,7 @@ EOF
         os_name: str = "Linux",
         router_scopes: str | None = "gist, read:org, repo",
         router_login: bool = True,
+        router_stall: int | None = None,
     ) -> dict[str, str]:
         fixture_name = (fail or "healthy").replace(":", "-").replace(" ", "-")
         bin_dir = self.temp_dir / f"doctor-bin-{fixture_name}-{os_name}"
@@ -883,7 +885,9 @@ EOF
         # What the Router's gh answers `api -i user` with, headers then body as `gh api -i` prints them (CRLF after
         # each header, a blank line, the raw JSON): `router_scopes` None is a fine-grained token, which GitHub answers
         # with no X-Oauth-Scopes header and the doctor refuses (U490c); a string is a classic token's header value,
-        # the default the healthy fixture's shape with `repo` (check_router_token, U490).
+        # the default the healthy fixture's shape with `repo` (check_router_token, U490). `router_stall` is a host that
+        # never answers: the fake gh becomes `sleep <s>` in place (exec, one process, as the real gh would hang), so
+        # the doctor's alarm, not the fixture, ends the call (U490d).
         dsh_home = self.temp_dir / f"doctor-dsh-{fixture_name}-{os_name}"
         self.router_credential_root(dsh_home, login=router_login)
         headers = ["HTTP/2.0 200 OK", "Content-Type: application/json; charset=utf-8"]
@@ -903,7 +907,10 @@ EOF
                 printf '%s %s\\n' "$(basename "$0")" "$*" >> "$TEST_LOG"
                 if [[ "$(basename "$0"):$*" == "$FAIL_COMMAND" ]]; then exit 9; fi
                 if [[ "$(basename "$0"):$1" == mise:which ]]; then command -v "$2"; exit $?; fi
-                if [[ "$(basename "$0"):$1 $2 $3" == "gh:api -i user" ]]; then cat "$ROUTER_RESPONSE"; exit 0; fi
+                if [[ "$(basename "$0"):$1 $2 $3" == "gh:api -i user" ]]; then
+                    [[ -z "$ROUTER_STALL" ]] || exec sleep "$ROUTER_STALL"
+                    cat "$ROUTER_RESPONSE"; exit 0
+                fi
                 printf '%s healthy\\n' "$(basename "$0")"
                 """,
             )
@@ -927,6 +934,7 @@ EOF
             "TEST_LOG": str(log),
             "DSH_HOME": str(dsh_home),
             "ROUTER_RESPONSE": str(response),
+            "ROUTER_STALL": "" if router_stall is None else str(router_stall),
             # Keep the host's AppArmor userns restriction out of these fixtures.
             "APPARMOR_USERNS_SYSCTL": str(self.temp_dir / "no-userns-restriction"),
         }
@@ -1031,12 +1039,61 @@ EOF
         self.assertIn("required failures: 0", result.stdout)
 
     def test_doctor_router_token_absent_login_is_an_optional_warning(self) -> None:
-        # (d) router-gh refuses (exit 2, no login under the root): the operator's step, an optional warning, never found.
-        result = self.run_doctor(self.doctor_environment(router_login=False))
+        # (d) The login directory `<DSH_HOME>/router-credentials/gh` is absent: the one "not yet" state, the operator's
+        #     step (docs/engagement-handout.md step 2), an optional warning from the doctor's own existence test;
+        #     router-gh is not run (no router-gh text is relayed, the fake gh records no `api -i user` call), never
+        #     found (U490d; rounds 1 to 3 relayed router-gh's refusal instead).
+        env = self.doctor_environment(router_login=False)
+        result = self.run_doctor(env)
         output = result.stdout + result.stderr
         self.assertEqual(0, result.returncode, output)
-        self.assertIn("optional warning: router token: router-gh: no gh login under the credential root", result.stderr)
-        self.assertIn("docs/engagement-handout.md", result.stderr)
+        self.assertIn("optional warning: router token: no login under ", result.stderr)
+        self.assertIn("/router-credentials/gh yet", result.stderr)
+        self.assertIn("the operator's step, docs/engagement-handout.md step 2", result.stderr)
+        self.assertNotIn("router-gh:", result.stderr)
+        self.assertNotIn("router token", result.stdout)
+        self.assertIn("required failures: 0", result.stdout)
+        calls = Path(env["TEST_LOG"]).read_text().splitlines()
+        self.assertIn("gh --version", calls)
+        self.assertFalse(any(call.startswith("gh api -i user") for call in calls), calls)
+
+    def test_doctor_router_token_broken_credential_root_is_a_required_failure(self) -> None:
+        # (e) The login directory exists and router-gh refuses (exit 2): a broken root the operator must repair, here
+        #     hosts.yml a symbolic link; a required failure quoting router-gh's one stderr line, exit 1, never the
+        #     pending warning (U490d: the round-3 doctor read every refusal as "no login yet" and exited 0, verdict
+        #     U490-f441420d P1).
+        env = self.doctor_environment()
+        hosts = Path(env["DSH_HOME"]) / "router-credentials/gh/hosts.yml"
+        elsewhere = Path(env["DSH_HOME"]) / "hosts-elsewhere.yml"
+        hosts.rename(elsewhere)
+        hosts.symlink_to(elsewhere)
+        result = self.run_doctor(env)
+        output = result.stdout + result.stderr
+        self.assertEqual(1, result.returncode, output)
+        self.assertIn("required failed: router token: router-gh: ", result.stderr)
+        self.assertIn("hosts.yml is a symbolic link", result.stderr)
+        self.assertNotIn("optional warning: router token", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 1", result.stdout)
+
+    def test_doctor_router_token_stalled_call_is_an_optional_warning(self) -> None:
+        # (f) A host that never answers: the fake gh sleeps 5 s, the doctor's alarm is set to 1 s through
+        #     DOCTOR_ROUTER_TIMEOUT, so the call dies of SIGALRM (status 128 + 14 = 142 as bash reports a signalled
+        #     command substitution), an optional warning `unreadable (... exited <status> ...)`, exit 0, and the
+        #     doctor is back within the bound, well under the 5 s the fixture would sleep (U490d; the round-3 body
+        #     claimed the 30 s bound closed with no test that stalls the call).
+        env = {**self.doctor_environment(router_stall=5), "DOCTOR_ROUTER_TIMEOUT": "1"}
+        started = time.monotonic()
+        result = self.run_doctor(env)
+        elapsed = time.monotonic() - started
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertLess(elapsed, 5.0, f"the doctor took {elapsed:.1f} s; the alarm did not end the stalled call")
+        exited = re.search(
+            r"optional warning: router token: unreadable \(router-gh api -i user exited (\d+)", result.stderr
+        )
+        self.assertIsNotNone(exited, result.stderr)
+        self.assertIn(int(exited.group(1)), range(129, 160), result.stderr)
         self.assertNotIn("router token", result.stdout)
         self.assertIn("required failures: 0", result.stdout)
 

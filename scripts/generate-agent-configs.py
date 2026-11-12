@@ -2362,6 +2362,45 @@ def omp_startup_yaml(manifest: dict[str, Any], *extra: str) -> str:
     return f"startup:\n{lines}"
 
 
+# The omp TUI settings the kit may carry (`omp.tui`, U495): the id without its `tui.` prefix -> the value's type. One
+# table, so the next setting is a row here, not a branch; an id outside it or a value of another type is refused.
+OMP_TUI_SETTINGS: dict[str, type] = {
+    # 18.12.6 src/modes/settings.ts:391-402 (default false): transcript rows a growing HUD or dialog pushes off screen
+    # go to the terminal's scrollback instead of being dropped; applied live (src/modes/interactive-mode.ts:3661-3677).
+    "completeScrollback": bool,
+}
+
+
+def omp_tui_settings(manifest: dict[str, Any]) -> dict[str, Any]:
+    """`omp.tui` validated against OMP_TUI_SETTINGS, in the manifest's key order; empty when the key is absent."""
+    tui = manifest.get("omp", {}).get("tui")
+    if tui is None:
+        return {}
+    if not isinstance(tui, dict):
+        fail("omp.tui must be a mapping of omp tui setting ids to values")
+    for key, value in tui.items():
+        expected = OMP_TUI_SETTINGS.get(key)
+        if expected is None:
+            fail(
+                f"omp.tui.{key} is not a setting the kit carries (OMP_TUI_SETTINGS in scripts/generate-agent-configs.py)"
+            )
+        # `type is`, not isinstance: a bool is an int in Python and a future int row must not take one.
+        if type(value) is not expected:
+            fail(f"omp.tui.{key} must be a {expected.__name__}")
+    return tui
+
+
+def omp_tui_yaml(manifest: dict[str, Any]) -> str:
+    """The `tui:` block of the plain-launch config and each seat overlay; empty when the manifest sets no `omp.tui`.
+
+    An empty block renders nothing (unlike `omp_list_yaml`), so the merge script leaves the live `tui` mapping alone.
+    """
+    settings = omp_tui_settings(manifest)
+    if not settings:
+        return ""
+    return "tui:\n" + "".join(f"  {key}: {json.dumps(value)}\n" for key, value in settings.items())
+
+
 def render_omp_config(manifest: dict[str, Any]) -> str:
     skills = omp_skills_yaml(omp_skill_settings(manifest, "omp"), "~/")
     config = omp_config_yaml(interactive_profile(manifest)["omp"]["model"], skills)
@@ -2370,6 +2409,7 @@ def render_omp_config(manifest: dict[str, Any]) -> str:
         + omp_list_yaml("extensions", omp_extensions(manifest))
         + omp_list_yaml("disabledProviders", omp_disabled_providers(manifest))
         + omp_startup_yaml(manifest)
+        + omp_tui_yaml(manifest)
         + omp_interactive_policy(manifest)
     )
 
@@ -2398,7 +2438,7 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
     # A seat profile has no setup record, so omp's cold-launch gate (src/main.ts:671-680) would open the
     # first-run wizard over the pane: startup.setupWizard=false empties the scene list (pi-tui
     # src/setup/wizard.ts:52) and setupVersion=2 (CURRENT_SETUP_VERSION) skips the gate's wizard import.
-    return overlay + "setupVersion: 2\n" + omp_startup_yaml(manifest, "setupWizard: false")
+    return overlay + "setupVersion: 2\n" + omp_startup_yaml(manifest, "setupWizard: false") + omp_tui_yaml(manifest)
 
 
 def render_omp_gateway_overlay(manifest: dict[str, Any], role: str) -> str:

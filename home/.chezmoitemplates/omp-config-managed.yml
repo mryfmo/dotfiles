@@ -19,6 +19,8 @@ disabledProviders:
   - openai-codex
 startup:
   checkUpdate: false
+tui:
+  completeScrollback: true
 tools:
   approval:
     debug: deny

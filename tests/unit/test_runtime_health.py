@@ -869,7 +869,12 @@ EOF
         hosts.chmod(0o600)
 
     def doctor_environment(
-        self, *, fail: str = "", os_name: str = "Linux", router_scopes: str | None = None, router_login: bool = True
+        self,
+        *,
+        fail: str = "",
+        os_name: str = "Linux",
+        router_scopes: str | None = "gist, read:org, repo",
+        router_login: bool = True,
     ) -> dict[str, str]:
         fixture_name = (fail or "healthy").replace(":", "-").replace(" ", "-")
         bin_dir = self.temp_dir / f"doctor-bin-{fixture_name}-{os_name}"
@@ -877,7 +882,8 @@ EOF
         bin_dir.mkdir()
         # What the Router's gh answers `api -i user` with, headers then body as `gh api -i` prints them (CRLF after
         # each header, a blank line, the raw JSON): `router_scopes` None is a fine-grained token, which GitHub answers
-        # with no X-Oauth-Scopes header; a string is a classic token's header value (check_router_token, U490).
+        # with no X-Oauth-Scopes header and the doctor refuses (U490c); a string is a classic token's header value,
+        # the default the healthy fixture's shape with `repo` (check_router_token, U490).
         dsh_home = self.temp_dir / f"doctor-dsh-{fixture_name}-{os_name}"
         self.router_credential_root(dsh_home, login=router_login)
         headers = ["HTTP/2.0 200 OK", "Content-Type: application/json; charset=utf-8"]
@@ -980,19 +986,24 @@ EOF
     def run_doctor(self, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
         return self.run_test_command(["bash", str(ROOT / "scripts/check-tools.sh")], env=env)
 
-    def test_doctor_router_token_fine_grained_is_found(self) -> None:
+    def test_doctor_router_token_fine_grained_is_a_required_failure(self) -> None:
         # (a) No X-Oauth-Scopes header: a fine-grained token, whose permissions the doctor cannot read and which cannot
-        #     write to a collaborator repository; found with that caveat, exit 0.
-        result = self.run_doctor(self.doctor_environment())
+        #     write to a repository where the account is a collaborator, as the Router's account is by the kit's design
+        #     (M-25); a required failure with the classic-token remedy, exit 1, never found (U490c).
+        result = self.run_doctor(self.doctor_environment(router_scopes=None))
         output = result.stdout + result.stderr
-        self.assertEqual(0, result.returncode, output)
+        self.assertEqual(1, result.returncode, output)
         self.assertIn(
-            "found:   router token fixture-router: fine-grained (no X-Oauth-Scopes header; writes to a collaborator"
-            " repository need a classic token with repo)",
-            result.stdout,
+            "required failed: router token fixture-router: fine-grained (no X-Oauth-Scopes header), which cannot write"
+            " here (GitHub's fine-grained tokens cannot contribute to a repository where the account is a collaborator,"
+            " and the Router's account is one by design); place the classic token of docs/engagement-handout.md step 2"
+            " (scopes repo, read:org, gist, notifications; a fine-grained token cannot write to a repository where the"
+            " account is a collaborator) under",
+            result.stderr,
         )
-        self.assertNotIn("router token", result.stderr)
-        self.assertIn("required failures: 0", result.stdout)
+        self.assertIn("/router-credentials/gh", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 1", result.stdout)
 
     def test_doctor_router_token_notifications_only_is_a_required_failure(self) -> None:
         # (b) The deployed shape of 2026-11-12: a classic token whose one scope reads the stream and writes nothing.

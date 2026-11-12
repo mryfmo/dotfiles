@@ -5917,11 +5917,14 @@ panel to <code>127.0.0.1:3082</code>, puts <code>stateDir</code> at <code>$DSH_H
 the role's write root; the listener itself waits for a <code>router</code> role with the
 loopback grant, U321), and restates the bundle's two agent presets with their
 sandbox rows disabled. The GitHub Source row
-(<code>assets.dsh-superagent.sources.github</code>: the repository,
-<code>accept_mode: observe</code>, the M-18 ladder row, and <code>allowed</code>, the Source's
-identity set, empty today) is data for the Management API save, and it reaches
-<code>router-settings-apply</code> as the generator's rendering <code>router-source.json</code>
-beside the manifest (deployed as <code>~/.agents/router-source.json</code>; U465c: the
+(<code>assets.dsh-superagent.sources.github</code>: the repository, <code>accept_mode: auto</code>
+with its two M-18 ladder rows, <code>accept_mode_row</code> for the observe rung and
+<code>accept_mode_auto_row</code> 2026-11-12T00:08:25Z for the auto rung (U469),
+<code>observe_admission: ignore</code> (U469b), and <code>allowed</code>, the Source's identity set,
+<code>[mryfmo]</code> by the same decisions row) is data for the Management API save, and
+it reaches <code>router-settings-apply</code> as the generator's rendering
+<code>router-source.json</code> beside the manifest (deployed as
+<code>~/.agents/router-source.json</code>; U465c: the
 lever parses no YAML, the generator's PyYAML is the kit's one reader of the
 manifest and refuses a key named twice in any spelling, <code>make render-check</code>
 holds the rendering to the manifest, every field is rendered with its default
@@ -5936,8 +5939,14 @@ resolved by the lever's bash entry through the shell levers' one rule
 same-slug checkout refused, U465d) and held by its Python body component by
 component (a link refused by name), the list is written in <code>auto</code> alone
 (<code>[]</code> in <code>off</code> and <code>observe</code>, and the asset validator refuses a listed login
-beside those modes), and in observe mode with an empty list a positive
-assessment is an ignore Decision marked would-accept and nothing is accepted.
+beside those modes), and the <code>eval</code> and <code>policy</code> saves run in the order the
+direction of the mode change fixes (toward <code>auto</code> the policy first, otherwise
+the mode first; <code>source:github</code> last in both, U469c). On the first rung,
+observe with an empty list, a positive assessment was an ignore Decision marked
+would-accept and nothing was accepted; that rung needed the admission cell
+<code>inferred</code>. Under <code>auto</code> the cell is <code>ignore</code>, so an unlisted login's pull
+request is refused <code>not_a_member</code> before any assessment and only a listed
+login's reaches it (U469b).
 <code>hcom-seat router -- --no-open</code> starts the Router under srt, and
 <code>intake-observe.py [--kind would-accept|accept|refusal|all] &lt;orchestrator.sqlite&gt; &lt;decisions.tsv&gt;</code>
 appends the ladder's Decisions as rows (would-accept, accept, and the refusals

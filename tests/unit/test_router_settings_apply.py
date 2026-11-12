@@ -417,7 +417,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
             with self.subTest(request=(entry["method"], entry["path"])):
                 self.assertEqual(entry["headers"]["x-orchestrator-request"], "1")
                 self.assertEqual(entry["headers"]["host"], f"127.0.0.1:{self.api.port}")
-        evaluation, policy, source = self.puts()
+        policy, evaluation, source = self.puts()
         self.assertEqual(source["path"], API + "settings/source:github")
         self.assertEqual(source["headers"]["content-type"], "application/json")
         self.assertEqual(
@@ -433,24 +433,25 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(evaluation["path"], API + "settings/eval")
         self.assertEqual(evaluation["body"], {"value": {**EVAL_DEFAULT, "mode": "auto"}, "revision": 0})
         # The Router restarts after a save while setup is pending: the lever reads the settings again before the next PUT.
-        # The mode is saved first (U353b): a store at `auto` must hold the requested mode before the Source restarts.
-        # The policy block goes between them (U416): it restarts nothing, so no re-read before the Source.
+        # The fake's store is off and the kit asks auto, so the apply is toward auto (U469c): the policy block (the list
+        # and the cell) is saved first, restarting nothing, then the mode (U353b: a store at `auto` must hold the
+        # requested mode before the Source restarts), then the Source after the re-read.
         methods = [(entry["method"], entry["path"].removeprefix(API)) for entry in self.api.requests]
         self.assertEqual(
             methods,
             [
                 ("GET", "settings"),
+                ("PUT", "settings/policy"),
                 ("PUT", "settings/eval"),
                 ("GET", "settings"),
                 ("GET", "settings"),
-                ("PUT", "settings/policy"),
                 ("PUT", "settings/source:github"),
             ],
         )
         self.assertEqual(policy["path"], API + "settings/policy")
         self.assertEqual(
             run.stdout,
-            "eval saved (revision 1, restarting)\npolicy saved (revision 1)\nsource:github saved (revision 1, restarting)\n",
+            "policy saved (revision 1)\neval saved (revision 1, restarting)\nsource:github saved (revision 1, restarting)\n",
         )
         self.assertEqual(
             self.api.source["config"], {"repository": "mryfmo/dotfiles", "cli": str(WRAPPER), "observePulls": True}
@@ -485,21 +486,21 @@ class RouterSettingsApplyTest(unittest.TestCase):
     def test_the_policy_put_writes_the_pulls_admission_cell_between_eval_and_source_and_a_second_run_puts_nothing(self):
         """U416 test (a): with the manifest scalar `observe_admission: ignore` (the auto row's cell, U469b), the lever PUTs
         `settings/policy` with the rules as served and the github Source's `pulls.unlistedUnaddressed` cell `ignore` (the
-        allowed list the committed one, U469), after the eval PUT and before the source PUT; the store then holds the
-        kit's policy, so a second run PUTs no policy."""
+        allowed list the committed one, U469), before the eval PUT toward auto (U469c) and before the source PUT; the
+        store then holds the kit's policy, so a second run PUTs no policy."""
         self.api.signed_out = False
         self.assertEqual("ignore", json.loads(SOURCE.read_text())["source"]["observe_admission"])
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
         paths = [entry["path"].removeprefix(API) for entry in self.puts()]
-        self.assertEqual(paths, ["settings/eval", "settings/policy", "settings/source:github"])
-        policy = self.puts()[1]
+        self.assertEqual(paths, ["settings/policy", "settings/eval", "settings/source:github"])
+        policy = self.puts()[0]
         self.assertEqual(policy["headers"]["content-type"], "application/json")
         self.assertEqual(policy["body"], AUTO_POLICY_PUT)
         self.assertEqual(self.api.policy, AUTO_POLICY_PUT["value"])
         self.assertEqual(
             run.stdout,
-            "eval saved (revision 1, restarting)\npolicy saved (revision 1)\nsource:github saved (revision 1, restarting)\n",
+            "policy saved (revision 1)\neval saved (revision 1, restarting)\nsource:github saved (revision 1, restarting)\n",
         )
         # The second run: the view holds the cell, so no policy PUT and its revision is named as read.
         self.api.requests.clear()
@@ -573,11 +574,11 @@ class RouterSettingsApplyTest(unittest.TestCase):
         auto = self.auto_source("auto", AUTO_ROW)
         run = self.run_lever("--source", str(auto))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
-        evaluation = self.puts()[0]
+        evaluation = self.puts()[1]
         self.assertEqual(evaluation["path"], API + "settings/eval")
         self.assertEqual(evaluation["body"], {"value": {**EVAL_DEFAULT, "mode": "auto"}, "revision": 0})
         self.assertEqual(self.api.eval["mode"], "auto")
-        self.assertEqual(run.stdout.splitlines()[0], "eval saved (revision 1, restarting)")
+        self.assertEqual(run.stdout.splitlines()[1], "eval saved (revision 1, restarting)")
         cases = {
             "no-auto-row": (
                 self.observe_source("no-auto-row", accept_mode="auto"),
@@ -1162,23 +1163,129 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(self.api.policy, POLICY_DEFAULT, "nothing was written")
 
     def test_a_stale_revision_on_the_policy_put_is_the_refusal_naming_the_block_and_the_source_is_not_written(self):
-        """U416 test (d): a 409 on the policy PUT is the existing stale-revision refusal, naming `PUT settings/policy`;
-        eval is saved before it, nothing after it, exit 2."""
+        """U416 test (d), its pin rewritten by U469c (verdict U469-25a395ab P1): a 409 on the policy PUT is the existing
+        stale-revision refusal, naming `PUT settings/policy`, exit 2, nothing written after it. The committed rendering
+        is auto and the fake's store is off, so the apply is toward auto and the policy is the first PUT: the failed PUT
+        leaves the store at off beside the policy it had, and stdout holds no `saved` line (at 25a395ab eval was saved
+        first and this test pinned the store at auto beside the old policy)."""
         self.api.signed_out = False
         self.api.stale_policy = True
         run = self.run_lever()
-        self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
-        self.assertEqual(run.stdout, "eval saved (revision 1, restarting)\n")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertEqual(
             run.stderr,
             f"router-settings-apply: the Management API at 127.0.0.1:{self.api.port} answered 409 to PUT settings/policy: "
             "the revision read was stale (Settings changed. Reload before saving.)\n",
         )
         paths = [(entry["method"], entry["path"].removeprefix(API)) for entry in self.api.requests]
-        self.assertEqual(paths[-1], ("PUT", "settings/policy"), "nothing was written after the refusal")
+        self.assertEqual(paths, [("GET", "settings"), ("PUT", "settings/policy")], "the policy first, nothing after")
         self.assertEqual(self.api.source, {"enabled": True, "config": {}}, "the Source was not written")
         self.assertEqual(self.api.policy, POLICY_DEFAULT)
+        self.assertEqual(self.api.eval["mode"], "off", "the mode is not widened before the policy is in place")
+
+    def test_a_toward_auto_a_failed_policy_put_leaves_the_store_at_observe_beside_its_policy(self):
+        """U469c test (a) (verdict U469-25a395ab P1 [f3 s8]): a store at observe holding the observe rung's policy (the
+        cell `inferred`, the list empty) and the committed auto rendering, against a fake whose policy PUT answers 409:
+        the lever exits 2 naming the revision, and the store's eval mode is still observe beside the unchanged policy.
+        At 25a395ab eval was saved first, so the store was left at auto beside a policy that sent every unlisted
+        sender's pull request to assessment, where a rule match is an accept."""
+        self.api.signed_out = False
+        self.api.eval = {**EVAL_DEFAULT, "mode": "observe"}
+        self.api.policy = copy.deepcopy(POLICY_PUT["value"])
+        self.api.stale_policy = True
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-settings-apply: the Management API at 127.0.0.1:{self.api.port} answered 409 to PUT settings/policy: "
+            "the revision read was stale (Settings changed. Reload before saving.)\n",
+        )
+        paths = [(entry["method"], entry["path"].removeprefix(API)) for entry in self.api.requests]
+        self.assertEqual(paths, [("GET", "settings"), ("PUT", "settings/policy")], "the policy first, nothing after")
+        self.assertEqual(self.api.eval["mode"], "observe", "the store is at its safe mode")
+        self.assertEqual(self.api.policy, POLICY_PUT["value"], "the policy is as it was")
+        self.assertEqual(self.api.source, {"enabled": True, "config": {}}, "the Source was not written")
+
+    def test_b_toward_auto_the_order_is_policy_eval_source_with_the_wait_after_the_save_that_restarts(self):
+        """U469c test (b): the observe-to-auto apply (a store at observe with the observe rung's policy, the committed
+        auto rendering) PUTs policy, then eval, then source:github; the policy save restarts nothing, the eval save
+        restarts (setup pending), so the settings are read again after it and before the Source; the store ends at auto
+        with the login's list and the cell `ignore`."""
+        self.api.signed_out = False
+        self.api.eval = {**EVAL_DEFAULT, "mode": "observe"}
+        self.api.policy = copy.deepcopy(POLICY_PUT["value"])
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        methods = [(entry["method"], entry["path"].removeprefix(API)) for entry in self.api.requests]
+        self.assertEqual(
+            methods,
+            [
+                ("GET", "settings"),
+                ("PUT", "settings/policy"),
+                ("PUT", "settings/eval"),
+                ("GET", "settings"),
+                ("GET", "settings"),
+                ("PUT", "settings/source:github"),
+            ],
+        )
+        policy, evaluation, source = self.puts()
+        self.assertEqual(policy["body"], AUTO_POLICY_PUT)
+        self.assertEqual(evaluation["body"], {"value": {**EVAL_DEFAULT, "mode": "auto"}, "revision": 0})
+        self.assertEqual(source["body"]["revision"], 0)
+        self.assertEqual(
+            run.stdout,
+            "policy saved (revision 1)\neval saved (revision 1, restarting)\nsource:github saved (revision 1, restarting)\n",
+        )
         self.assertEqual(self.api.eval["mode"], "auto")
+        self.assertEqual(self.api.policy, AUTO_POLICY_PUT["value"])
+        self.assertEqual(self.api.source["config"]["repository"], REPOSITORY)
+
+    def test_c_away_from_auto_the_order_is_eval_policy_source_so_a_failed_policy_put_finds_the_mode_narrowed(self):
+        """U469c test (c): the auto-to-observe apply (the observe form of the rendering against a store at auto holding
+        the login's list and the cell `ignore`) PUTs eval first, then policy, then source:github (the U353b order kept
+        for the narrowing direction); with the policy PUT answering 409 the mode is already observe and the list, still
+        the login's, is narrower than the mode admits. This case holds at 25a395ab: the direction rule keeps it."""
+        self.api.signed_out = False
+        self.api.eval = {**EVAL_DEFAULT, "mode": "auto"}
+        self.api.policy = copy.deepcopy(AUTO_POLICY_PUT["value"])
+        observe = self.observe_source("observe")
+        run = self.run_lever("--source", str(observe))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        methods = [(entry["method"], entry["path"].removeprefix(API)) for entry in self.api.requests]
+        self.assertEqual(
+            methods,
+            [
+                ("GET", "settings"),
+                ("PUT", "settings/eval"),
+                ("GET", "settings"),
+                ("GET", "settings"),
+                ("PUT", "settings/policy"),
+                ("PUT", "settings/source:github"),
+            ],
+        )
+        evaluation, policy, source = self.puts()
+        self.assertEqual(evaluation["body"], {"value": {**EVAL_DEFAULT, "mode": "observe"}, "revision": 0})
+        self.assertEqual(policy["body"], POLICY_PUT)
+        self.assertEqual(
+            run.stdout,
+            "eval saved (revision 1, restarting)\npolicy saved (revision 1)\nsource:github saved (revision 1, restarting)\n",
+        )
+        self.assertEqual(self.api.eval["mode"], "observe")
+        self.assertEqual(self.api.policy, POLICY_PUT["value"])
+        # The same return with the policy PUT refused: the narrowing save came first, so the store is at observe beside
+        # the list it had, never at auto beside a widened policy.
+        self.api.eval = {**EVAL_DEFAULT, "mode": "auto"}
+        self.api.policy = copy.deepcopy(AUTO_POLICY_PUT["value"])
+        self.api.stale_policy = True
+        self.api.requests.clear()
+        run = self.run_lever("--source", str(observe))
+        self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+        self.assertEqual(run.stdout, "eval saved (revision 2, restarting)\n")
+        self.assertIn("answered 409 to PUT settings/policy: the revision read was stale", run.stderr)
+        paths = [(entry["method"], entry["path"].removeprefix(API)) for entry in self.api.requests]
+        self.assertEqual(paths[-1], ("PUT", "settings/policy"), "nothing was written after the refusal")
+        self.assertEqual(self.api.eval["mode"], "observe", "the mode is narrowed before the policy is touched")
+        self.assertEqual(self.api.policy, AUTO_POLICY_PUT["value"], "the list is as it was")
 
     def test_a_stale_revision_a_rejected_header_and_an_unreachable_port_are_each_a_refusal_naming_it(self):
         self.api.signed_out = False
@@ -1187,7 +1294,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
         self.assertIn(
-            f"router-settings-apply: the Management API at 127.0.0.1:{self.api.port} answered 409 to PUT settings/eval: "
+            f"router-settings-apply: the Management API at 127.0.0.1:{self.api.port} answered 409 to PUT settings/policy: "
             "the revision read was stale (Settings changed. Reload before saving.)",
             run.stderr,
         )
@@ -1223,10 +1330,10 @@ class RouterSettingsApplyTest(unittest.TestCase):
 
     def test_a_source_save_before_the_token_names_the_setup_code_saves_the_mode_and_exits_2(self):
         # Upstream probes `<cli> api user` before saving source:github; without the agent account's login the answer is
-        # 400 with setup agentCliSignedOut and nothing is saved. The lever names it, still saves eval, and exits 2.
+        # 400 with setup agentCliSignedOut and nothing is saved. The lever names it, with policy and eval saved, exits 2.
         run = self.run_lever()
         self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
-        self.assertEqual(run.stdout, "eval saved (revision 1, restarting)\npolicy saved (revision 1)\n")
+        self.assertEqual(run.stdout, "policy saved (revision 1)\neval saved (revision 1, restarting)\n")
         self.assertIn(
             f"router-settings-apply: the Management API at 127.0.0.1:{self.api.port} answered 400 to PUT settings/source:github: "
             "setup agentCliSignedOut: The agent GitHub CLI cannot read its account.; the agent account's gh login under the "
@@ -1315,13 +1422,13 @@ class RouterSettingsApplyTest(unittest.TestCase):
                 )
                 self.assertEqual(self.puts(), [])
 
-    def test_the_writer_reaches_the_loopback_port_past_a_proxy_refuses_a_redirect_and_saves_the_mode_first(self):
+    def test_the_writer_reaches_the_loopback_port_past_a_proxy_refuses_a_redirect_and_saves_the_source_last(self):
         """U353b (verdict U353-8791100f P2 `:268` and `:401`): the only peer is `127.0.0.1:<port>`. A proxy named in the
         environment (`HTTP_PROXY` and its forms, which urllib's default opener honours for a loopback host too) is not
         consulted: every request reaches the fake directly and a recorder on the proxy's port sees no connection. A
         `302` from the fake is a refusal naming the status and its Location, never followed, with nothing PUT after
         it. The `PUT` of `eval` precedes the `PUT` of `source:github`, so a store at `auto` holds the requested mode
-        before the Source restarts into polling."""
+        before the Source restarts into polling; toward auto the policy precedes both (U469c)."""
         self.api.signed_out = False
         proxy = ProxyRecorder()
         threading.Thread(target=proxy.serve_forever, daemon=True).start()
@@ -1334,12 +1441,12 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(proxy.connections, [], "the proxy the environment names saw no connection")
         self.assertEqual(
             [entry["path"] for entry in self.puts()],
-            [API + "settings/eval", API + "settings/policy", API + "settings/source:github"],
-            "the mode is saved before the policy and the Source",
+            [API + "settings/policy", API + "settings/eval", API + "settings/source:github"],
+            "the policy, then the mode, each before the Source",
         )
         self.assertEqual(
             run.stdout,
-            "eval saved (revision 1, restarting)\npolicy saved (revision 1)\nsource:github saved (revision 1, restarting)\n",
+            "policy saved (revision 1)\neval saved (revision 1, restarting)\nsource:github saved (revision 1, restarting)\n",
         )
         self.assertEqual(self.api.eval["mode"], "auto")
         # The redirect: named with its Location, not followed, nothing written.

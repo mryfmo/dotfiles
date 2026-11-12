@@ -11,11 +11,16 @@
 #   other role denies it for read, and no role writes it (the login is the operator's step, docs/engagement-handout.md:
 #   `gh auth login --insecure-storage` under that `GH_CONFIG_DIR`; the Keychain stays reachable under srt, and the file-only
 #   token source below keeps gh off it). `DSH_HOME` is the one `hcom-seat` exports into the Router (its held physical form); unset,
-#   `~/.dsh` as the kit's default. The root, its `gh/` and the `hosts.yml` inside are held as one chain, each component
-#   by its own test before anything is read (U353c, the shape of seat-login-preflight's claude_config_validate): no
-#   link, the two directories this user's, the root read physically (`pwd -P`) and `gh/` resolving inside it, the leaf
-#   a regular file of this user; a link, a file in a directory's place or a directory in the file's place refuses (exit
-#   2) before `gh` runs, and an absent component refuses with exit 3 (U490e, below).
+#   `~/.dsh` as the kit's default. `DSH_HOME`, the root, its `gh/` and the `hosts.yml` inside are held as one chain, top-down,
+#   each component by its own test before anything is read (U353c, the shape of seat-login-preflight's
+#   claude_config_validate; U490f makes `DSH_HOME` the first component): no link, the three directories this user's,
+#   `DSH_HOME` searchable and read physically (`pwd -P`), the root read physically inside it and `gh/` resolving inside
+#   the root, the leaf a regular file of this user; a link, a file in a directory's place, a directory in the file's
+#   place, or a directory this user cannot search or resolve refuses (exit 2) before `gh` runs, and an absent component
+#   refuses with exit 3 (U490e, below). No component's absence is claimed before its parent has passed in full: `-e` is
+#   false both for a missing entry and for an entry under a directory this user cannot search, so round 5 called an
+#   existing root under a `DSH_HOME` of mode 000 absent (verdict U490-f6175c44 P1). `DSH_HOME` itself has no "absent"
+#   form: the kit makes it (home/dot_dsh) and every launch holds it, so each failed test on it is exit 2.
 #   gh resolves a credential as `GH_TOKEN`, then the config directory's `hosts.yml`, then the host-wide Keychain on
 #   macOS (`gh help environment`; verdict U353-8791100f P1 `:97`): `GH_CONFIG_DIR` alone let an empty root authenticate
 #   as the operator's own Keychain login, since srt permits securityd. So this wrapper is the only credential source gh
@@ -33,8 +38,9 @@
 #   `hosts.yml` is absent (neither a link nor an entry), or `hosts.yml` names no `oauth_token:` row for github.com at
 #   the block's own depth; the agent account's login is the operator's pending step (docs/engagement-handout.md step 2)
 #   and nothing is broken. Exit 2 is every other refusal: a broken or unreadable root (a link anywhere in the chain, a
-#   wrong owner or mode, a root that cannot be resolved, two rows, a value outside the grammar), a relative `DSH_HOME`,
-#   an absent `gh`, the self-check. One caller reads the two codes: `check_router_token` in scripts/check-tools.sh (the
+#   wrong owner or mode, a root that cannot be resolved, two rows, a value outside the grammar), a `DSH_HOME` that is
+#   not an absolute path, is a link, is not a directory of this user, or cannot be searched or resolved (U490f), an
+#   absent `gh`, the self-check. One caller reads the two codes: `check_router_token` in scripts/check-tools.sh (the
 #   doctor), an optional warning for 3 and a required failure for 2, with no path test of its own; the Router reads
 #   `gh`'s status alone. Both codes print one line on stderr, the same form.
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
@@ -115,14 +121,23 @@ refuse_absent() {
 }
 
 dsh_home=${DSH_HOME:-${HOME}/.dsh}
-[[ ${dsh_home} == /* ]] || refuse "DSH_HOME '${dsh_home}' is not an absolute path" # lint-comparisons: allow an absolute-path shape test, not a comparison of two paths
-root=${dsh_home}/router-credentials
 # The component chain, each held by its own test before anything is read (regime-cutover U353c, the shape of
-# seat-login-preflight's claude_config_validate): `<root>`, `<root>/gh`, `<root>/gh/hosts.yml`, in that order, no link
-# (`-L` first), the two directories this user's and `gh/` resolving inside the physical root, the leaf a regular file
-# of this user readable by this user alone, as `gh auth login --insecure-storage` writes it. Round 2 held the root and
-# the leaf alone, so `<root>/gh` as a link to an outside gh directory of this user passed and its login reached gh
-# (verdict U353b-9c504ad9 P1 `:106`). Each producer's status is read (standing order 21).
+# seat-login-preflight's claude_config_validate): `<DSH_HOME>`, `<root>`, `<root>/gh`, `<root>/gh/hosts.yml`, in that
+# order, no link (`-L` first), the three directories this user's, `<DSH_HOME>` searchable and read physically, the root
+# read physically inside it and `gh/` resolving inside the physical root, the leaf a regular file of this user readable
+# by this user alone, as `gh auth login --insecure-storage` writes it. Round 2 held the root and the leaf alone, so
+# `<root>/gh` as a link to an outside gh directory of this user passed and its login reached gh (verdict
+# U353b-9c504ad9 P1 `:106`). Round 5 judged the root before `DSH_HOME`, so `-e` on a root under a `DSH_HOME` this user
+# cannot search was false and an existing root was called absent (verdict U490-f6175c44 P1): no component's absence
+# is claimed (exit 3) before its parent has passed in full, and `DSH_HOME` has no absent form (each else is exit 2).
+# Each producer's status is read (standing order 21).
+[[ ${dsh_home} == /* ]] || refuse "DSH_HOME '${dsh_home}' is not an absolute path" # lint-comparisons: allow an absolute-path shape test, not a comparison of two paths
+[[ ! -L ${dsh_home} ]] || refuse "DSH_HOME ${dsh_home} is a symbolic link; it must be a real directory of this user"
+[[ -d ${dsh_home} ]] || refuse "DSH_HOME ${dsh_home} is not a directory; it must be a real directory of this user"
+[[ -O ${dsh_home} ]] || refuse "DSH_HOME ${dsh_home} is not this user's directory"
+[[ -x ${dsh_home} ]] || refuse "DSH_HOME ${dsh_home} is not searchable by this user; nothing under it can be judged"
+dsh_phys=$(cd "${dsh_home}" 2> /dev/null && pwd -P) || refuse "cannot resolve DSH_HOME ${dsh_home}" # cd's own message is dropped: the refusal is the one stderr line (U490e)
+root=${dsh_phys}/router-credentials
 [[ ! -L ${root} ]] || refuse "the credential root ${root} is a symbolic link; it must be a real directory inside DSH_HOME"
 [[ -e ${root} ]] || refuse_absent "the credential root ${root} is absent; hcom-seat router makes it, and the agent account's login inside it is the operator's step"
 [[ -d ${root} ]] || refuse "the credential root ${root} is not a directory; it must be a real directory inside DSH_HOME"

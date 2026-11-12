@@ -1465,8 +1465,9 @@ class RouterSettingsApplyTest(unittest.TestCase):
     def test_the_wrapper_runs_gh_under_the_credential_roots_config_dir_with_no_caller_token(self):
         # router-gh: GH_CONFIG_DIR is <DSH_HOME>/router-credentials/gh (physical), GH_TOKEN is the login's token (U353b),
         # the caller's token names and GH_HOST are gone, every argument reaches gh; a relative DSH_HOME, a root that is
-        # a file, a link there and an absent gh each refuse with exit 2; an absent root is the state before the
-        # operator's step and refuses with exit 3 (U490e: the doctor reads the two codes, never a path).
+        # a file, a link there and an absent gh each refuse with exit 2; an absent root under a DSH_HOME that passed in
+        # full is the state before the operator's step and refuses with exit 3 (U490e: the doctor reads the two codes,
+        # never a path; U490f: DSH_HOME itself is the chain's first component, the test below).
         fake, record = self.fake_gh()
         dsh_home = self.dir / "dsh-home"
         root = dsh_home / "router-credentials"
@@ -1509,12 +1510,14 @@ class RouterSettingsApplyTest(unittest.TestCase):
         file_root = self.dir / "file-root"
         file_root.mkdir()
         (file_root / "router-credentials").write_text("")
+        empty_home = self.dir / "empty-dsh-home"
+        empty_home.mkdir()
         cases = (
             ({"DSH_HOME": "relative/dsh"}, 2, "router-gh: DSH_HOME 'relative/dsh' is not an absolute path"),
             (
-                {"DSH_HOME": str(self.dir / "absent")},
+                {"DSH_HOME": str(empty_home)},
                 3,
-                f"router-gh: the credential root {self.dir / 'absent'}/router-credentials is absent; hcom-seat router makes it, "
+                f"router-gh: the credential root {empty_home}/router-credentials is absent; hcom-seat router makes it, "
                 "and the agent account's login inside it is the operator's step",
             ),
             (
@@ -1740,6 +1743,81 @@ class RouterSettingsApplyTest(unittest.TestCase):
         run = wrapper()
         self.assertEqual((run.returncode, run.stderr), (7, ""), run.stdout)
         self.assertEqual(record.read_text(), f"api user\n{gh_phys}\n{HOSTS_OAUTH_VALUE}\nunset\nunset\n")
+
+    def test_the_wrapper_holds_dsh_home_as_the_chains_first_component_before_any_absence_is_claimed(self):
+        """U490f (verdict U490-f6175c44 P1 `router-gh:127`): `-e` is false both for a missing entry and for an entry
+        under a directory this user cannot search, so with a `DSH_HOME` of mode 000 round 5 called an existing
+        credential root absent and exited 3, the doctor's pending warning. `DSH_HOME` is now the chain's first
+        component, held top-down before `<DSH_HOME>/router-credentials` is judged: no symbolic link, a directory of this
+        user, searchable, resolvable; each else refuses with exit 2 naming DSH_HOME and gh never runs. The root's
+        absence is claimed (exit 3) only under a DSH_HOME that passed in full, and the same root under that DSH_HOME
+        with its mode restored runs gh."""
+        fake, record = self.fake_gh()
+        env = {**self.env, "PATH": f"{fake}:{self.env['PATH']}"}
+        real = self.dir / "real-dsh-home"
+        self.place_login(real / "router-credentials")
+        link = self.dir / "linked-dsh-home"
+        link.symlink_to(real)
+        file = self.dir / "file-dsh-home"
+        file.write_text("")
+        closed = self.dir / "closed-dsh-home"
+        self.place_login(closed / "router-credentials")
+        self.addCleanup(lambda: closed.chmod(0o700) if closed.exists() else None)
+        closed.chmod(0)
+        absent = self.dir / "absent-dsh-home"
+        cases = (
+            ("a symbolic link to a real directory", link, f"router-gh: DSH_HOME {link} is a symbolic link; it must be a real directory of this user"),
+            ("a regular file", file, f"router-gh: DSH_HOME {file} is not a directory; it must be a real directory of this user"),
+            ("mode 000 holding an existing root", closed, f"router-gh: DSH_HOME {closed} is not searchable by this user; nothing under it can be judged"),
+            ("absent", absent, f"router-gh: DSH_HOME {absent} is not a directory; it must be a real directory of this user"),
+        )  # fmt: skip
+        for case, dsh_home, message in cases:
+            with self.subTest(case=case):
+                run = subprocess.run(
+                    [str(WRAPPER), "api", "user"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    env={**env, "DSH_HOME": str(dsh_home)},
+                    timeout=60,
+                )
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, message + "\n")
+                self.assertNotIn(HOSTS_OAUTH_VALUE, run.stderr, "no refusal prints the value")
+                self.assertFalse(record.exists(), "gh did not run")
+        # The same DSH_HOME searchable again: the root inside it is judged and its login reaches gh.
+        closed.chmod(0o700)
+        run = subprocess.run(
+            [str(WRAPPER), "api", "user"],
+            capture_output=True,
+            text=True,
+            check=False,
+            env={**env, "DSH_HOME": str(closed)},
+            timeout=60,
+        )
+        self.assertEqual((run.returncode, run.stderr), (7, ""), run.stdout)
+        self.assertEqual(
+            record.read_text(), f"api user\n{closed}/router-credentials/gh\n{HOSTS_OAUTH_VALUE}\nunset\nunset\n"
+        )
+        record.unlink()
+        # An absent root under a DSH_HOME that passed in full: the pending step, exit 3, claimed because the parent held.
+        empty = self.dir / "empty-dsh-home"
+        empty.mkdir()
+        run = subprocess.run(
+            [str(WRAPPER), "api", "user"],
+            capture_output=True,
+            text=True,
+            check=False,
+            env={**env, "DSH_HOME": str(empty)},
+            timeout=60,
+        )
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-gh: the credential root {empty}/router-credentials is absent; hcom-seat router makes it, and the agent "
+            "account's login inside it is the operator's step\n",
+        )
+        self.assertFalse(record.exists(), "gh did not run")
 
     def test_a_gh_directory_of_another_user_under_the_root_refuses(self):
         """U353c: `<root>/gh` held to a directory of this user (`-O`), as the root and the leaf are. Only root can place

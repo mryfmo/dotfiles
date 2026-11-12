@@ -423,21 +423,30 @@ function check_seat_logins() {
 #   `scripts/orchestrator/router-gh api -i user` (regime-cutover U490), one call bounded by
 #   perl's alarm (`timeout` is not on every host) to `DOCTOR_ROUTER_TIMEOUT` seconds (an
 #   integer of 1 to 600; else 30), with the response headers read for `X-Oauth-Scopes` alone.
-#   Four cases, decided by router-gh's exit status alone (U490e; the doctor holds no path test of
-#   its own: round 4's `[ ! -e ]` read a login directory under an unreadable parent as absent
-#   where router-gh refuses `cannot resolve the credential root`, verdict U490-e90feefa P1):
+#   Five cases, decided by router-gh's exit status and, once gh has answered, by the HTTP status
+#   line alone (U490e, U490f; the doctor holds no path test of its own: round 4's `[ ! -e ]` read
+#   a login directory under an unreadable parent as absent where router-gh refuses `cannot resolve
+#   the credential root`, verdict U490-e90feefa P1):
 #   (a) router-gh exits 3, its "not yet" code (the credential root, its gh directory or its
 #       hosts.yml absent, or hosts.yml naming no active login for github.com): the operator's
 #       step (docs/engagement-handout.md step 2), an optional warning quoting router-gh's one
 #       stderr line; gh itself is not run;
-#   (b) router-gh exits 2, every other refusal (a link in the chain, a wrong owner or mode, a
-#       root that cannot be resolved, several oauth_token rows, a token outside the grammar):
-#       a required failure quoting router-gh's one stderr line (a broken root the operator must
-#       repair, never "pending"; rounds 1 to 3 read every refusal as the pending step and exited
-#       0, verdict U490-f441420d P1);
-#   (c) any other non-zero exit (the alarm included), or an answer without a 2xx status line and a
-#       login: an optional warning `unreadable` (an offline or stalled host);
-#   (d) a 2xx answer: no `X-Oauth-Scopes` header is a fine-grained token, whose permissions this
+#   (b) router-gh exits 2, every other refusal (a DSH_HOME that is not a real, searchable
+#       directory of this user, a link in the chain, a wrong owner or mode, a root that cannot be
+#       resolved, several oauth_token rows, a token outside the grammar): a required failure
+#       quoting router-gh's one stderr line (a broken root the operator must repair, never
+#       "pending"; rounds 1 to 3 read every refusal as the pending step and exited 0, verdict
+#       U490-f441420d P1);
+#   (c) any other non-zero exit whose output's first line is an HTTP status line of class 4xx or
+#       5xx (`^HTTP/[0-9.]+ [45][0-9][0-9]`; `gh api -i` prints the status line before the body
+#       whatever the class and exits 1 on an error answer): GitHub answered and rejected the token
+#       (revoked, expired or never valid), a required failure `GitHub answered <status line>` with
+#       the remedy (U490f; round 5 read every exit of gh's own as "unreadable", so a revoked token
+#       passed the gate as an optional warning, verdict U490-f6175c44 P1);
+#   (d) any other non-zero exit with no HTTP status line in front (the alarm included, curl's own
+#       text for a host never reached), or an exit 0 without a 2xx status line and a login: an
+#       optional warning `unreadable` (an offline or stalled host);
+#   (e) a 2xx answer: no `X-Oauth-Scopes` header is a fine-grained token, whose permissions this
 #       check cannot read and which cannot write here (GitHub's fine-grained tokens cannot
 #       contribute to a repository where the account is a collaborator, and the Router's account
 #       is one by the kit's design, M-25), a required failure (U490c); a header is a classic token,
@@ -446,8 +455,8 @@ function check_seat_logins() {
 #       `gist` for `gh auth login --with-token`, `notifications` for the poll; U490b), since no
 #       other token lets the Router write (measured 2026-11-12: a `notifications` token read the
 #       stream and every write failed `HTTP 403`).
-#   The decision reads router-gh's exit status, never its text and no path; the login is read
-#   from the body's `login` key; no token is printed.
+#   The decision reads router-gh's exit status and gh's HTTP status line, never router-gh's text
+#   and no path; the login is read from the body's `login` key; no token is printed.
 #
 function check_router_token() {
     local lever="${BASH_SOURCE[0]%/*}/orchestrator/router-gh"
@@ -478,6 +487,13 @@ function check_router_token() {
     fi
     if [ "${status}" -ne 0 ]; then
         IFS= read -r first_line <<< "${output}"
+        first_line="${first_line%$'\r'}"
+        if [[ "${first_line}" =~ ^HTTP/[0-9.]+\ [45][0-9][0-9] ]]; then
+            printf 'required failed: router token: GitHub answered %s (the token is rejected or expired; %s)\n' \
+                "${first_line}" "${remedy}" >&2
+            ((required_failures += 1))
+            return 0
+        fi
         warn_optional "router token: unreadable (router-gh api -i user exited ${status}: ${first_line})"
         return 0
     fi

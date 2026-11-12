@@ -877,6 +877,8 @@ EOF
         router_scopes: str | None = "gist, read:org, repo",
         router_login: bool = True,
         router_stall: int | None = None,
+        router_response: str | None = None,
+        router_exit: int = 0,
     ) -> dict[str, str]:
         fixture_name = (fail or "healthy").replace(":", "-").replace(" ", "-")
         bin_dir = self.temp_dir / f"doctor-bin-{fixture_name}-{os_name}"
@@ -887,14 +889,20 @@ EOF
         # with no X-Oauth-Scopes header and the doctor refuses (U490c); a string is a classic token's header value,
         # the default the healthy fixture's shape with `repo` (check_router_token, U490). `router_stall` is a host that
         # never answers: the fake gh becomes `sleep <s>` in place (exec, one process, as the real gh would hang), so
-        # the doctor's alarm, not the fixture, ends the call (U490d).
+        # the doctor's alarm, not the fixture, ends the call (U490d). `router_response` replaces the whole answer and
+        # `router_exit` is the fake gh's status after printing it: a 401 answer with exit 1 is a rejected token, curl's
+        # own text with exit 1 an unreached host (U490f).
         dsh_home = self.temp_dir / f"doctor-dsh-{fixture_name}-{os_name}"
         self.router_credential_root(dsh_home, login=router_login)
         headers = ["HTTP/2.0 200 OK", "Content-Type: application/json; charset=utf-8"]
         if router_scopes is not None:
             headers.append(f"X-Oauth-Scopes: {router_scopes}")
         response = dsh_home / "api-user-response.txt"
-        response.write_text("\r\n".join(headers) + "\r\n\r\n" + '{"login":"fixture-router","id":1}\n')
+        response.write_text(
+            router_response
+            if router_response is not None
+            else "\r\n".join(headers) + "\r\n\r\n" + '{"login":"fixture-router","id":1}\n'
+        )
         missing = fail.removeprefix("missing:") if fail.startswith("missing:") else ""
         for command in ("git", "chezmoi", "mise", "uv", "gh", "brew", "bwrap", "socat"):
             if command == missing:
@@ -909,7 +917,7 @@ EOF
                 if [[ "$(basename "$0"):$1" == mise:which ]]; then command -v "$2"; exit $?; fi
                 if [[ "$(basename "$0"):$1 $2 $3" == "gh:api -i user" ]]; then
                     [[ -z "$ROUTER_STALL" ]] || exec sleep "$ROUTER_STALL"
-                    cat "$ROUTER_RESPONSE"; exit 0
+                    cat "$ROUTER_RESPONSE"; exit "$ROUTER_EXIT"
                 fi
                 printf '%s healthy\\n' "$(basename "$0")"
                 """,
@@ -935,6 +943,7 @@ EOF
             "DSH_HOME": str(dsh_home),
             "ROUTER_RESPONSE": str(response),
             "ROUTER_STALL": "" if router_stall is None else str(router_stall),
+            "ROUTER_EXIT": str(router_exit),
             # Keep the host's AppArmor userns restriction out of these fixtures.
             "APPARMOR_USERNS_SYSCTL": str(self.temp_dir / "no-userns-restriction"),
         }
@@ -1100,6 +1109,48 @@ EOF
         self.assertNotIn("optional warning: router token", result.stderr)
         self.assertNotIn("found:   router token", result.stdout)
         self.assertIn("required failures: 1", result.stdout)
+
+    def test_doctor_router_token_rejected_token_is_a_required_failure(self) -> None:
+        # (c) The login is in place and GitHub rejects its token: `gh api -i` prints the status line and headers before
+        #     the body whatever the class, so the answer is `HTTP/2.0 401 Unauthorized` with `{"message":"Bad
+        #     credentials"}` and gh exits 1. Round 5 read every status of gh's own as "unreadable", an offline host, so
+        #     a revoked token passed the gate as an optional warning (verdict U490-f6175c44 P1); a 4xx or 5xx status
+        #     line is the token's verdict, a required failure quoting it with the remedy, exit 1 (U490f). The same exit
+        #     1 with no status line (curl's own text, the host never reached) stays the optional `unreadable` warning,
+        #     asserted beside it.
+        rejected = (
+            "HTTP/2.0 401 Unauthorized\r\nContent-Type: application/json; charset=utf-8\r\n"
+            "X-Github-Request-Id: F00D:1234\r\n\r\n"
+            '{"message":"Bad credentials","documentation_url":"https://docs.github.com/rest"}\n'
+        )
+        env = self.doctor_environment(router_response=rejected, router_exit=1)
+        result = self.run_doctor(env)
+        output = result.stdout + result.stderr
+        self.assertEqual(1, result.returncode, output)
+        self.assertIn(
+            "required failed: router token: GitHub answered HTTP/2.0 401 Unauthorized (the token is rejected or expired;"
+            " place the classic token of docs/engagement-handout.md step 2",
+            result.stderr,
+        )
+        self.assertNotIn("Unauthorized\r", result.stderr)
+        self.assertNotIn("optional warning: router token", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 1", result.stdout)
+        calls = Path(env["TEST_LOG"]).read_text().splitlines()
+        self.assertTrue(any(call.startswith("gh api -i user") for call in calls), calls)
+        # No status line: the host was never reached and gh exits 1 with curl's text; an optional warning, exit 0.
+        Path(env["ROUTER_RESPONSE"]).write_text("curl: (6) Could not resolve host: api.github.com\n")
+        result = self.run_doctor(env)
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn(
+            "optional warning: router token: unreadable (router-gh api -i user exited 1: curl: (6) Could not resolve"
+            " host: api.github.com)",
+            result.stderr,
+        )
+        self.assertNotIn("required failed: router token", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 0", result.stdout)
 
     def test_doctor_router_token_stalled_call_is_an_optional_warning(self) -> None:
         # (f) A host that never answers: the fake gh sleeps 5 s, the doctor's alarm is set to 1 s through

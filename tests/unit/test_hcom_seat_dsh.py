@@ -512,6 +512,45 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual(rendered["router"]["denyRead"], rendered["dsh"]["denyRead"][:-1], "the router row's, a prefix")
         self.assertEqual(self.slots(), ([], []))
 
+    def test_the_dsh_and_router_launches_make_every_login_groups_directory_too(self):
+        """U498d (verdict U498-8f2cca8c P1 `hcom-seat:2713`): the foreground rows make every group's directory of the
+        table's range (LOGIN_GROUPS) before their settings file is written, as the omp rows do, 0700, empty, this
+        user's, so their denyRead rows of the other groups' directories bind on Linux too; the directories outlive the
+        launch and are no slot; a link planted at another group's directory refuses the launch by name before anything
+        is made, with no slot and no dsh."""
+        seats = Path(self.seats).resolve()
+        groups = [seats / f".state/claude-{group}" for group in test_hcom_seat.LOGIN_GROUPS]
+        legacy = seats / ".state/claude"
+        for role in ("dsh", "router"):
+            with self.subTest(role=role):
+                procs = self.held_launch("--", "--version", role=role)
+                (name,) = self.slots()[0]
+                settings_file = Path(self.seats, ".sandbox", name, "srt-settings.json")
+                for path in groups:
+                    self.assertTrue(path.is_dir() and not path.is_symlink(), path)
+                    self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
+                    self.assertEqual(path.stat().st_uid, os.geteuid(), "a directory of this user")
+                    self.assertEqual(list(path.iterdir()), [], "made empty")
+                    self.assertLessEqual(
+                        path.stat().st_mtime_ns, settings_file.stat().st_mtime_ns, "before the settings file is written"
+                    )
+                ((status, out, err),) = self.release(procs)
+                self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+                self.assertEqual(self.slots(), ([], []), "the login directories are no slot")
+                for path in groups:
+                    self.assertTrue(path.is_dir() and not path.is_symlink(), f"{path} outlives the launch")
+        self.assertFalse(legacy.exists() or legacy.is_symlink(), "the legacy shared directory is made by nothing")
+        planted = seats / ".state/claude-worker"
+        shutil.rmtree(planted)
+        planted.symlink_to(self.home)
+        calls = len(self.dsh_calls())
+        run = self.launch("--", "--version")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"the login group directory {planted} is a symbolic link", run.stderr)
+        self.assertEqual(len(self.dsh_calls()), calls, "no dsh ran")
+        self.assertEqual(self.slots(), ([], []), "no slot was made")
+        self.assertTrue(planted.is_symlink(), "neither removed nor replaced")
+
     def test_the_dsh_read_grants_name_no_git_hcom_or_record_path(self):
         """PR 697 thread 4492139503 (U272c): an allowRead entry re-opens a path under the broad denyRead, so the dsh
         role's list names neither the checkout's git common directory, nor the hcom store, nor the coordinator's

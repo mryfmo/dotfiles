@@ -979,19 +979,93 @@ EOF
         self.assertEqual(0, result.returncode, output)
         self.assertIn(
             f"optional warning: seat login dsh claude-bridge: absent (no {seats}/.state/claude-router) (log in on this"
-            " host, once per login group: seat-login-preflight <profile> prints the group's command,"
+            " host, once per login group: the dsh profile is the router group, which has no seat-login-preflight"
+            " profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory this line names"
+            " (hcom-seat router --dry-run prints it; BROWSER=regime-open-url first on a remote host),"
             " docs/remote-host-logins.md)",
             output,
         )
         self.assertIn(
-            f"optional warning: seat login orchestrator claude-bridge: absent (no {seats}/.state/claude-orchestrator)",
+            f"optional warning: seat login orchestrator claude-bridge: absent (no {seats}/.state/claude-orchestrator)"
+            " (log in on this host, once per login group: seat-login-preflight orchestrator prints the orchestrator"
+            " group's command, docs/remote-host-logins.md)",
             output,
         )
+        self.assertNotIn("seat-login-preflight dsh", output, "a profile mode the pre-flight refuses as unknown (U498d)")
+        self.assertNotIn("seat-login-preflight <profile>", output, "every line names its own profile's step")
         self.assertIn(
             f"found:   seat login worker claude-bridge: login present (claude.ai, {seats}/.state/claude-worker)", output
         )
         self.assertIn("failures=0 warnings=2", output)
         self.assertNotIn(f"{seats}/.state/claude)", output, "the legacy shared directory is read by no line")
+
+    def test_the_doctors_login_group_table_is_the_levers_and_its_warning_names_each_groups_step(self) -> None:
+        """U498d (verdict U498-8f2cca8c P2 `check-tools.sh:413`): the doctor's absent-login warning named
+        `seat-login-preflight <profile>` for every line, and for the dsh profile that profile mode exits 2 as an unknown
+        seat profile (the pre-flight's `seat_profiles` are orchestrator, worker and audit; `router` is none either). The
+        doctor holds the login group table `login_group_of_role` as the same text as hcom-seat and the pre-flight, and
+        the pre-flight's profile list as the same text; `login_step_of` names, per line, the step of the profile's
+        group: the profile mode for a seat profile, the direct `claude auth login` under the line's directory for the
+        dsh profile (the router group, which `hcom-seat router --dry-run` prints), and the general sentence for a
+        profile outside the table. The pre-flight itself refuses `dsh` and `router` as profiles, so the doctor never
+        names them as one."""
+        doctor = ROOT / "scripts/check-tools.sh"
+        preflight = ROOT / "scripts/orchestrator/seat-login-preflight"
+        tables = {}
+        for lever in (ROOT / "scripts/orchestrator/hcom-seat", preflight, doctor):
+            text = lever.read_text()
+            start = text.index("login_group_of_role() {")
+            tables[lever.name] = text[start : text.index("\n}\n", start) + 3]
+        self.assertEqual(tables["check-tools.sh"], tables["hcom-seat"])
+        self.assertEqual(tables["check-tools.sh"], tables["seat-login-preflight"])
+        (profiles,) = [line for line in preflight.read_text().splitlines() if line.startswith("seat_profiles=(")]
+        self.assertIn(f"local -a {profiles}\n", doctor.read_text(), "the pre-flight's profile modes, the same text")
+        script = f'source {doctor}; login_step_of "$1"; printf \'%s\\n\' "${{login_step}}"'
+        general = (
+            "log in on this host, once per login group: seat-login-preflight <profile> prints the group's command,"
+            " docs/remote-host-logins.md"
+        )
+        cases = {
+            "dsh claude-bridge: absent (no /seats/.state/claude-router)": (
+                "log in on this host, once per login group: the dsh profile is the router group, which has no"
+                " seat-login-preflight profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory"
+                " this line names (hcom-seat router --dry-run prints it; BROWSER=regime-open-url first on a remote"
+                " host), docs/remote-host-logins.md"
+            ),
+            "worker claude-bridge: absent (not logged in under /seats/.state/claude-worker)": (
+                "log in on this host, once per login group: seat-login-preflight worker prints the worker group's"
+                " command, docs/remote-host-logins.md"
+            ),
+            "orchestrator claude-bridge: absent (authMethod oauth_token under /seats/.state/claude-orchestrator, not"
+            " claude.ai)": (
+                "log in on this host, once per login group: seat-login-preflight orchestrator prints the orchestrator"
+                " group's command, docs/remote-host-logins.md"
+            ),
+            "audit openai-siwc: absent (no /home/.omp/profiles/audit/agent/openai-siwc/registration.json)": (
+                "log in on this host, once per login group: seat-login-preflight audit prints the audit group's"
+                " command, docs/remote-host-logins.md"
+            ),
+            "review: no route": general,
+            "claude-router: not a seat login route (ollama)": general,
+        }
+        for line, step in cases.items():
+            with self.subTest(line=line):
+                result = self.run_test_command(["/bin/bash", "-c", script, "_", line])
+                self.assertEqual((result.returncode, result.stdout, result.stderr), (0, step + "\n", ""))
+        home = self.temp_dir / "preflight-home"
+        (home / ".agents/omp/profiles").mkdir(parents=True)
+        bin_dir = self.temp_dir / "preflight-bin"
+        self.executable(bin_dir / "uname", "printf 'Darwin\\n'\n")
+        for profile in ("dsh", "router"):
+            with self.subTest(profile=profile):
+                result = self.run_test_command(
+                    ["/bin/bash", str(preflight), profile],
+                    env={"HOME": str(home), "PATH": f"{bin_dir}:/usr/bin:/bin"},
+                )
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stderr)
+                self.assertIn(
+                    f"unknown seat profile '{profile}'; expected one of: orchestrator worker audit", result.stderr
+                )
 
     def test_make_doctor_propagates_runtime_drift_after_tool_checks(self) -> None:
         repo = self.temp_dir / "doctor-repo"

@@ -891,7 +891,7 @@ class HcomSeatTest(SeatFixture):
         launches = len(record.read_text().splitlines())
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn(f"the seat slot {group_dir} is a symbolic link", run.stderr)
+        self.assertIn(f"the login group directory {group_dir} is a symbolic link", run.stderr)
         for name in ("claude-worker", "claude-router", "claude-x", "claude"):
             with self.subTest(name=name):
                 run = self.seat("worker", "--name", name, "--seats-root", self.seats, "--dry-run")
@@ -989,6 +989,142 @@ class HcomSeatTest(SeatFixture):
                     line,
                 )
         self.assertFalse(Path(self.seats).exists(), "a dry run makes no seats root")
+
+    def test_every_launch_makes_every_login_groups_directory_before_its_settings_file_so_each_deny_binds(self):
+        """U498d (verdict U498-8f2cca8c P1 `hcom-seat:2713`; the mechanism-change row of 2026-11-12T15:05:20Z, form
+        allowlist: the table's range made real). srt 0.0.81's Linux backend mounts nothing for a denyRead entry that
+        is not there (`dist/sandbox/linux-sandbox-utils.js:1810-1812`), so until this head the orchestrator's U498c
+        deny of `.state/claude-worker` bound nothing before the worker group's first launch or the operator's login
+        made that directory, and its read grant of the seats root reached the credentials made later. Now every
+        launch of every role makes every group's directory of the table's range (LOGIN_GROUPS), 0700, empty, this
+        user's, before its settings file is written (login_dirs_make), so every login directory row of every role's
+        denyRead names a directory that exists when srt reads the file; the legacy `.state/claude` is in no range and
+        is made by nothing (standing order 54). A group directory planted as a symbolic link or a file, the own
+        group's or another's, refuses the launch naming it, with nothing made and nothing started; a dry run makes
+        nothing, as before."""
+        seats = Path(self.seats).resolve()
+        groups = [seats / f".state/claude-{group}" for group in LOGIN_GROUPS]
+        legacy = seats / ".state/claude"
+        run = self.seat("worker", "--name", "probe", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertFalse(seats.exists(), "a dry run makes no seats root and no login directory")
+        # The omp fake reads the settings srt was started with (the shim's HCOM_SEAT_SANDBOX names the sandbox) and
+        # records, for every denyRead row under the seats root, whether it is a real directory at that moment: on
+        # Linux the deny binds only then.
+        record = self.calls / "deny-rows-present"
+        (self.bindir / "omp").write_text(
+            "#!/usr/bin/env python3\n"
+            "import json, os\n"
+            "sandbox = os.environ['HCOM_SEAT_SANDBOX']\n"
+            "fs = json.load(open(os.path.join(sandbox, 'srt-settings.json')))['filesystem']\n"
+            f"seats = {str(seats)!r}\n"
+            "rows = {row: os.path.isdir(row) and not os.path.islink(row) for row in fs['denyRead']"
+            " if row.startswith(seats + '/')}\n"
+            f"open({str(record)!r}, 'a').write(json.dumps(rows) + chr(10))\n"
+        )
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                run = self.seat(role, "--seats-root", self.seats)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                settings_file = Path(self.seats, ".sandbox", role, "srt-settings.json")
+                for path in groups:
+                    self.assertTrue(path.is_dir() and not path.is_symlink(), path)
+                    self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
+                    self.assertEqual(path.stat().st_uid, os.geteuid(), "a directory of this user")
+                    self.assertEqual(list(path.iterdir()), [], "made empty: no login is made, read or copied")
+                    self.assertLessEqual(
+                        path.stat().st_mtime_ns, settings_file.stat().st_mtime_ns, "before the settings file is written"
+                    )
+                self.assertFalse(
+                    legacy.exists() or legacy.is_symlink(), "the legacy shared directory is made by nothing"
+                )
+                fs = self.settings_of(role)["filesystem"]
+                denied = login_read_denies(str(seats), role)
+                self.assertEqual([row for row in fs["denyRead"] if row.startswith(f"{seats}/.state/claude")], denied)
+                present = json.loads(record.read_text().splitlines()[-1])
+                for row in denied:
+                    self.assertEqual(present[row], row != str(legacy), (row, present))
+                # Every denyRead row under the seats root but the legacy directory is a directory when srt reads the file.
+                self.assertEqual([row for row, ok in present.items() if not ok], [str(legacy)], present)
+        # A link or a file at any group's directory, the own group's or another's, refuses before anything is made
+        # or started; the entry is neither followed, removed nor replaced.
+        launches = len(record.read_text().splitlines())
+        hcom_calls = len(self.calls_of("hcom"))
+        elsewhere = self.home / "elsewhere"
+        elsewhere.mkdir()
+        for group, plant in (("audit", "link"), ("router", "file"), ("worker", "link")):
+            with self.subTest(group=group, plant=plant):
+                path = seats / f".state/claude-{group}"
+                shutil.rmtree(path)
+                if plant == "link":
+                    path.symlink_to(elsewhere)
+                    message = f"the login group directory {path} is a symbolic link"
+                else:
+                    path.write_text("")
+                    message = f"the login group directory {path} is not a directory"
+                run = self.seat("worker", "--seats-root", self.seats)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertEqual(len(self.calls_of("hcom")), hcom_calls, "nothing started")
+                self.assertTrue(
+                    path.is_symlink() if plant == "link" else path.is_file(), "neither removed nor replaced"
+                )
+                self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), [])
+                path.unlink()
+                path.mkdir(0o700)
+        self.assertEqual(len(record.read_text().splitlines()), launches, "no omp ran")
+
+    def test_the_make_step_makes_the_tables_range_on_a_scratch_root_and_refuses_a_planted_entry_by_name(self):
+        """U498d: `login_dirs_make`, the make step, run from the lever's own text (with `refuse` and the `LOGIN_GROUPS`
+        line) on a scratch seats root whose `.state` exists: one 0700 directory per group of the range, empty, and
+        nothing else; a second run keeps them (present or made, each is a real directory of this user); a regular
+        file or a symbolic link planted at a group's path refuses (exit 2) naming the group and the path, the other
+        directories untouched; the legacy `.state/claude` is never made."""
+        text = SEAT.read_text()
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("refuse", "login_dirs_make")
+        )
+        (array,) = [line for line in text.splitlines() if line.startswith("LOGIN_GROUPS=(")]
+        root = Path(self.temp.name).resolve() / "scratch-seats"
+        (root / ".state").mkdir(parents=True)
+        script = f"set -euo pipefail\n{array}\n{functions}\nseats_root=$1\nlogin_dirs_make\n"
+
+        def make():
+            return subprocess.run(["bash", "-c", script, "_", str(root)], capture_output=True, text=True, check=False)
+
+        for attempt in ("made", "kept"):
+            with self.subTest(attempt):
+                run = make()
+                self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "", ""))
+                self.assertEqual(
+                    sorted(p.name for p in (root / ".state").iterdir()), sorted(f"claude-{g}" for g in LOGIN_GROUPS)
+                )
+                for group in LOGIN_GROUPS:
+                    path = root / f".state/claude-{group}"
+                    self.assertTrue(path.is_dir() and not path.is_symlink(), path)
+                    self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
+                    self.assertEqual(list(path.iterdir()), [], path)
+        for group, plant in (("worker", "file"), ("router", "link")):
+            with self.subTest(group=group, plant=plant):
+                path = root / f".state/claude-{group}"
+                path.rmdir()
+                if plant == "file":
+                    path.write_text("")
+                else:
+                    path.symlink_to(root)
+                run = make()
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(
+                    f"the {group} login group's Claude Code directory {path} is not a real directory of this user",
+                    run.stderr,
+                )
+                for other in LOGIN_GROUPS:
+                    if other != group:
+                        self.assertTrue((root / f".state/claude-{other}").is_dir(), other)
+                path.unlink()
+                path.mkdir(0o700)
+        self.assertFalse((root / ".state/claude").exists() or (root / ".state/claude").is_symlink())
 
     def test_the_canary_runs_under_a_posix_shell(self):
         """U85 round 2: under dash (Ubuntu's /bin/sh) the canary's denied write must not end the shell."""

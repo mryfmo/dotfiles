@@ -104,15 +104,19 @@
 #   seat-login-preflight: a role's seats share their group's login, and two groups rotate no refresh token together
 #   (U318's one directory per seats root let the Router's long-lived children and the sweep seat rotate one token,
 #   and the login was invalidated five times, handoff/40). The directory is the role table's `claude_config` row:
-#   this lever makes it 0700 when absent (a link refuses, own_slots_check), the shim exports it, seat-login-preflight
+#   this lever makes it 0700 when absent, the shim exports it, seat-login-preflight
 #   judges `claude auth status` under it, and the settings grant it for write and deny its `settings.json`,
 #   `settings.local.json`, `rules`, `hooks`, `plugins`, `skills`, `commands` and `agents` to every seat, so no seat
 #   changes what another seat's child, or the operator's login command, would load from it. Every other group's
 #   directory and the legacy shared `.state/claude` are denied for read, by name, to every seat (U498c: srt reopens
 #   a root's subtree under an allow but for a more specific deny, so the orchestrator's read grant of the seats root
 #   reached the worker group's login until then; the rows come from the table's range, `LOGIN_GROUPS`, minus the own
-#   group), and the own group's directory is the one login a seat reads or writes. The legacy shared directory
-#   `.state/claude` is read, granted, copied and removed by no launch (standing order 54). No token file
+#   group), and every group's directory of that range is made, 0700 and empty, by every launch before its settings
+#   file is written (U498d, login_dirs_make: srt 0.0.81's Linux backend mounts nothing for a denyRead entry that is
+#   not there, so a deny of another group's directory bound nothing until that group's first launch or login made it;
+#   a link, a file or another user's directory at any group's path refuses the launch by name, own_slots_check and
+#   login_dirs_make), and the own group's directory is the one login a seat reads or writes. The legacy shared
+#   directory `.state/claude` is read, granted, copied, made and removed by no launch (standing order 54). No token file
 #   and no CLAUDE_CODE_OAUTH_TOKEN: the shim clears the name, and no seat reads the operator's `~/.claude`.
 #   The dsh role (regime-cutover U272, after the four audits of the standalone launcher of PR 687): the DeepSeek
 #   harness control host is contained the same way, by this lever, as a role whose differences from the worker are
@@ -2397,29 +2401,36 @@ seat_write_roots() {
 }
 
 # @description Refuse (exit 2) unless a seat's own slots under the seats root are what the overlap check's exemption
-#   takes them for (regime-cutover U85): `<seats-root>/.state`, `<seats-root>/.state/<name>`, the login group's Claude
-#   Code directory `<seats-root>/.state/claude-<group>` (U318, U498) and, for a worker,
-#   `<seats-root>/<name>` are each no symbolic link, a directory when they exist, and, when they exist, their physical
-#   parent has the identity of the physical seats root (resp. `.state`) and their physical basename is the name they
-#   are spelled with. A `.state/<name> -> ..` or `<name> -> /` would otherwise resolve the slot to a wider root that
-#   the exemption skips. It runs before anything resolves those paths (lstat first, then physical_path), so a slot
-#   that is a link is refused before any link is followed. Missing slots are created later, one component at a time
-#   (seat_sandbox_write).
+#   takes them for (regime-cutover U85): `<seats-root>/.state`, `<seats-root>/.state/<name>` and, for a worker,
+#   `<seats-root>/<name>`, and every login group's Claude Code directory `<seats-root>/.state/claude-<group>` (U318;
+#   U498: the own group's, which the settings grant; U498d: every group of the table's range `LOGIN_GROUPS`, which
+#   the settings deny by name and login_dirs_make makes before the settings file is written), are each no symbolic
+#   link, a directory when they exist, and, when they exist, their physical parent has the identity of the physical
+#   seats root (resp. `.state`) and their physical basename is the name they are spelled with. A `.state/<name> -> ..`
+#   or `<name> -> /` would otherwise resolve the slot to a wider root that the exemption skips, and a
+#   `.state/claude-worker -> <elsewhere>` would make the deny or the grant name a directory outside the seats root.
+#   It runs before anything resolves those paths (lstat first, then physical_path), so a slot that is a link is
+#   refused before any link is followed. Missing slots are created later, one component at a time
+#   (seat_sandbox_write, login_dirs_make).
 # @arg $1 string The role.
 # @arg $2 string The seat name.
 own_slots_check() {
-    local slot parent real seats_phys slots=("${seats_root}/.state" "${seats_root}/.state/$2" "${claude_config}")
+    local slot parent real seats_phys group what own i slots=("${seats_root}/.state" "${seats_root}/.state/$2")
     [[ $1 == orchestrator ]] || slots+=("${seats_root}/$2")
+    own=${#slots[@]}
+    for group in "${LOGIN_GROUPS[@]}"; do slots+=("${seats_root}/.state/claude-${group}"); done
     seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
-    for slot in "${slots[@]}"; do
-        [[ ! -L ${slot} ]] || refuse "the seat slot ${slot} is a symbolic link; a seat's own slots must be real directories"
+    for i in "${!slots[@]}"; do
+        slot=${slots[i]}
+        if ((i < own)); then what='the seat slot'; else what='the login group directory'; fi
+        [[ ! -L ${slot} ]] || refuse "${what} ${slot} is a symbolic link; a seat's own slots and the login group directories must be real directories"
         [[ -e ${slot} ]] || continue
-        [[ -d ${slot} ]] || refuse "the seat slot ${slot} is not a directory"
-        real=$(physical_path "${slot}") || refuse "cannot resolve the seat slot ${slot}"
+        [[ -d ${slot} ]] || refuse "${what} ${slot} is not a directory"
+        real=$(physical_path "${slot}") || refuse "cannot resolve ${what} ${slot}"
         parent=${slot%/*}
         [[ ${real%/*} -ef ${parent} && ${parent} -ef ${seats_phys}${parent#"${seats_root}"} ]] ||
-            refuse "the seat slot ${slot} does not sit in ${parent}"
-        [[ ${real##*/} == "${slot##*/}" ]] || refuse "the seat slot ${slot} resolves to ${real}" # lint-comparisons: allow a basename test, the parent by identity
+            refuse "${what} ${slot} does not sit in ${parent}"
+        [[ ${real##*/} == "${slot##*/}" ]] || refuse "${what} ${slot} resolves to ${real}" # lint-comparisons: allow a basename test, the parent by identity
     done
 }
 own_slots_check "${role}" "${name}"
@@ -2703,11 +2714,16 @@ seat_settings_render() {
     # orchestrator's read grant of the seats root (its allowRead row 7) reached `.state/claude-worker`, the worker
     # group's login (`.credentials.json` there on Linux). Every role denies, by name, each directory of the table's
     # range (LOGIN_GROUPS) but its own group's, and `.state/claude` (U318's shared directory, which no launch makes,
-    # reads or grants, standing order 54), under the physical seats root, as the own directory is rendered. The rows
-    # stand here, before the role's own deny row, so the router row's denyRead stays a prefix of the dsh row's
-    # (acp-broker copies the Router's table to its workers and appends the credential root, U343l); they carry no
-    # tag, since no grant of any role lies at or under them. The own group's directory is the one login a seat reads
-    # or writes (allowRead and allowWrite row 2 of the foreground roles, the omp roles' `claude_config_real` rows).
+    # reads or grants, standing order 54), under the physical seats root, as the own directory is rendered. Each
+    # group's directory exists when srt reads the file (U498d, login_dirs_make, before the settings file is written;
+    # verdict U498-8f2cca8c P1 `:2713`: srt 0.0.81's Linux backend mounts nothing for a denyRead entry that is not
+    # there, so the orchestrator's deny of the worker group's directory bound nothing until the worker's first launch
+    # or login made it, and the seats-root grant reached the credentials made later); the legacy directory binds when
+    # it exists and is made by nothing. The rows stand here, before the role's own deny row, so the router row's
+    # denyRead stays a prefix of the dsh row's (acp-broker copies the Router's table to its workers and appends the
+    # credential root, U343l); they carry no tag, since no grant of any role lies at or under them. The own group's
+    # directory is the one login a seat reads or writes (allowRead and allowWrite row 2 of the foreground roles, the
+    # omp roles' `claude_config_real` rows).
     for group in "${LOGIN_GROUPS[@]}"; do
         [[ ${group} != "${login_group}" ]] || continue # lint-comparisons: allow two group words of the login table, not a path
         deny_read+=("${seats_real}/.state/claude-${group}")
@@ -3164,6 +3180,33 @@ Linux)
     ;;
 *) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
+# @description Make every login group's Claude Code directory `<seats-root>/.state/claude-<group>`, one per group of
+#   the table's range `LOGIN_GROUPS` (the own group's, which the settings grant, among them), 0700 and empty, when
+#   absent (regime-cutover U498d; verdict U498-8f2cca8c P1 `:2713`): srt 0.0.81's Linux backend mounts nothing for a
+#   denyRead entry that is not there (dist/sandbox/linux-sandbox-utils.js:1810-1812, the U353d class), so the
+#   orchestrator's deny of `.state/claude-worker` bound nothing until the worker group's first launch or the operator's
+#   login made that directory, and its read grant of the seats root reached the credentials made later. Called by
+#   seat_sandbox_write once `.state` exists and before the settings file is written, so every deny row of every role
+#   names a directory that exists when srt reads the file, on both backends. The shape of the own directory's make
+#   step (U318): own_slots_check proved each path no link and, when present, a directory sitting in `.state`; one
+#   `mkdir` under `umask 077` that takes no existing entry (two launches at once may both find a directory absent, and
+#   the loser of the race takes the directory the winner made); present or made, each is a real directory of this
+#   user, else the launch refuses naming the group and the path. No login is made, read or copied: the directory is
+#   empty until the operator's `claude auth login` under it (seat-login-preflight prints the command); the legacy
+#   `.state/claude` is not in the range and is made by nothing (standing order 54).
+# @noargs
+login_dirs_make() {
+    local group path
+    for group in "${LOGIN_GROUPS[@]}"; do
+        path=${seats_root}/.state/claude-${group}
+        if [[ ! -e ${path} && ! -L ${path} ]]; then
+            (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} ]] ||
+                refuse "cannot create the ${group} login group's Claude Code directory ${path}"
+        fi
+        [[ -d ${path} && ! -L ${path} && -O ${path} ]] ||
+            refuse "the ${group} login group's Claude Code directory ${path} is not a real directory of this user"
+    done
+}
 # @description Write the seat's srt settings (the lists seat_settings_render rendered) and its shim under
 #   `<seats-root>/.sandbox/<name>` (regime-cutover U85), afresh on every launch, after the seat directory exists.
 #   The shim runs a canary under those settings first, a write into the sandbox directory, reads of the settings
@@ -3175,7 +3218,8 @@ seat_sandbox_write() {
     local write_json deny_write_json deny_read_json allow_read_json unix_sockets_json
     # srt on Linux grants writes only to paths that exist, so omp's own state directories are made first. The seat's
     # slots under the seats root were proved free of links (own_slots_check); they are made one component at a time,
-    # and each is checked again to be a real directory.
+    # and each is checked again to be a real directory. The login group directories, the own group's grant and the
+    # other groups' denies, are made right after `.state` (login_dirs_make, U498d).
     (umask 077 && mkdir -p "${seats_root}" "${HOME}/.omp/profiles/${omp_profile}" "${HOME}/.omp/run") ||
         refuse "cannot create the seats root ${seats_root} or omp's state directories"
     # The row's state root (U321b, U321c, U321d): held by state_root_hold from the held physical DSH_HOME and made by
@@ -3190,11 +3234,17 @@ seat_sandbox_write() {
     # the deny or the grant that names it names a directory that exists when srt reads the settings.
     [[ -d ${cred_root_phys} && ! -L ${cred_root_phys} && -O ${cred_root_phys} ]] ||
         refuse "the ${role} role's credential root ${cred_root_phys} is not a real directory of this user"
-    for path in "${seats_root}/.state" "${claude_config}" "${seats_root}/.state/${name}" \
-        ${scratch_dir:+"${scratch_dir}"} "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do
+    # `.state` first, then every login group's directory under it (login_dirs_make), then the per-launch slots. Two
+    # launches at once (the dsh role's normal case) may both find a shared parent absent; the loser of the mkdir race
+    # takes the directory the winner made, held to a real directory by the check after it.
+    path=${seats_root}/.state
+    if [[ ! -e ${path} && ! -L ${path} ]]; then
+        (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} ]] || refuse "cannot create ${path}"
+    fi
+    [[ -d ${path} && ! -L ${path} ]] || refuse "${path} is not a real directory"
+    login_dirs_make
+    for path in "${seats_root}/.state/${name}" ${scratch_dir:+"${scratch_dir}"} "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do
         if [[ ! -e ${path} && ! -L ${path} ]]; then
-            # Two launches at once (the dsh role's normal case) may both find a shared parent absent; the loser of
-            # the mkdir race takes the directory the winner made, held to a real directory by the check below.
             (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} ]] || refuse "cannot create ${path}"
         fi
         [[ -d ${path} && ! -L ${path} ]] || refuse "${path} is not a real directory"

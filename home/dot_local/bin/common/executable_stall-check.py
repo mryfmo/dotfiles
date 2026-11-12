@@ -1,6 +1,6 @@
 #!/usr/bin/env -S python3 -I
 """Name every in-flight worker of a program store that is silent past its deadline (regime-cutover U496, round 2 U496b,
-round 3 U496c).
+round 3 U496c and U496d).
 
 Measured 2026-11-06 to 2026-11-12: eleven worker stalls, each a Task subagent silent after a tool call for 30 to 45
 minutes, each found because the coordinator remembered to read the progress files by hand (standing order 57). This
@@ -51,12 +51,18 @@ option of this lever shares; a store or progress root that is not an absolute pa
 component (a trailing or repeated separator included), or is not a directory once resolved (a missing progress root
 is a wrong root, never an empty set of workers); any argument that is not strict UTF-8 or holds a tab, a newline or a
 carriage return; and argparse's own usage errors, printed in the same one-line form. Every file under the store or
-the root is reached by one path rule (`ledger-row.py`'s) carried to the descriptor: the root is its own realpath, the
-component below it is `os.lstat`ed and is no symbolic link and a regular file, the file is then opened with
-`os.open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)` and judged by `os.fstat` on the descriptor (a regular file of the
-same device and inode the `lstat` saw), so a swap between the `lstat` and the `open` is caught (that unit's
-`unreadable` row, the register's refusal), and the text is read from that descriptor, never from the path again
-(verdict U496-d1256438 P1 :281). No file is written and no mode is changed.
+the root is reached by one path rule (`ledger-row.py`'s) carried to the descriptors: the directory is its own realpath,
+validated as a directory, then opened once with `os.open(root, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)` and
+judged by `os.fstat` on that descriptor against the `os.lstat` of the validated path (a directory, the same device
+and inode), so the descriptor is the directory whatever the path names afterwards (verdict U496-6f774696 P1 :290: the
+validated root replaced by a link to another directory before the lookup was followed through, since `O_NOFOLLOW`
+guards the last component alone); every file below it is its bare entry name (`units.tsv`, `<unit>-progress.txt`, no
+separator), `os.lstat`ed relative to the descriptor (`dir_fd`) and no symbolic link and a regular file, then opened
+with `os.open(name, O_RDONLY | O_NOFOLLOW | O_CLOEXEC, dir_fd=root_fd)` and judged by `os.fstat` on its descriptor
+(a regular file of the same device and inode the `lstat` saw), so a swap between the `lstat` and the `open` is caught
+(that unit's `unreadable` row, the register's refusal), and the text is read from that descriptor, never from a path
+again (verdict U496-d1256438 P1 :281). A platform whose `os.open` or `os.lstat` lacks `dir_fd` (judged once at import
+by `os.supports_dir_fd`; macOS and Linux have it) is a refusal naming it. No file is written and no mode is changed.
 
 Before anything else the file hashes itself against its `claude.levers.sha256.stall-check.py` pin in the manifest
 beside it (the deployed `~/.agents/agent-config.yaml` for the copy under the physical `~/.local/bin/common`, else the
@@ -88,6 +94,9 @@ IN_FLIGHT = "in-flight"
 SWEEP = "sweep"
 # A unit id, the body's `U<n>` or a fix unit `U<n><letter>` (standing order 24): the one shape that names a file.
 UNIT = re.compile(r"^U[0-9]+[a-z]?$")
+# A bare entry name under a held directory (`units.tsv`, `<unit>-progress.txt`): no separator, not `.` or `..`, so
+# every open through `dir_fd` names one entry of that directory and nothing above or beside it.
+ENTRY_NAME = re.compile(r"^(?!\.\.?$)[^/]+$")
 # `--deadline-minutes`: 1 to 10 decimal digits without a leading zero, judged as text before `int()` sees it, then the
 # bound every integer option of this lever shares, 1 to BOUNDED_MINUTES (24 hours).
 DEADLINE_SHAPE = re.compile(r"^(0|[1-9][0-9]{0,9})$")
@@ -105,6 +114,8 @@ CONTROL = (("\t", "a tab"), ("\n", "a newline"), ("\r", "a carriage return"))
 # exit 2 (round 2, U496b), while a refusal (exit 2 through `refuse`, nothing printed) is the store's alone.
 MOVING, STALLED, DONE, NO_FILE, UNREADABLE = "moving", "stalled", "done", "no-file", "unreadable"
 STATES = {MOVING: 0, DONE: 0, STALLED: 1, NO_FILE: 1, UNREADABLE: 2}
+# The relative opens need `dir_fd` on `os.open` and `os.lstat`, judged once at import (the run refuses without it).
+DIR_FD_SUPPORTED = {os.open, os.lstat} <= os.supports_dir_fd
 
 
 class Unreadable(Exception):
@@ -287,17 +298,55 @@ def default_root(store):
     return clean_directory(root, "progress root")
 
 
-def held_file(root, name):
-    """An open read-only descriptor on the regular file `<root>/<name>` by the levers' one path rule (ledger-row.py's
-    `store_file`) carried to the descriptor: `root` is its own realpath; the component is `os.lstat`ed and is no link
-    and a regular file; the file is then opened with `O_RDONLY | O_NOFOLLOW | O_CLOEXEC` and judged by `os.fstat` on
-    the descriptor, a regular file on the same device and inode the `lstat` saw, so a swap for a link or for another
-    file between the two calls (verdict U496-d1256438 P1 :281) is caught; the caller reads this descriptor and never
-    the path again. Returns None when there is no entry at the `lstat` (the caller's `no-file` or absence refusal);
-    every other outcome but the held regular file raises Unreadable with the reason, the descriptor closed."""
-    path = os.path.join(root, name)
+def held_root(real, label):
+    """An open descriptor on the validated directory `real` (`clean_directory`'s realpath, the store or the progress
+    root), opened once with `O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC` and judged by `os.fstat` on the
+    descriptor against the `os.lstat` of the validated path, a directory of the same device and inode, so every file
+    below it is opened relative to this descriptor and a swap of the path for a link after validation changes nothing
+    the lever reads (verdict U496-6f774696 P1 :290); a platform without `dir_fd`, a path that is no longer a directory
+    or cannot be opened as one, or a descriptor on another directory is a refusal naming the argument."""
+    if not DIR_FD_SUPPORTED:
+        refuse(
+            "this platform's os.open or os.lstat lacks dir_fd; the files cannot be opened relative to the held directory"
+        )
     try:
-        seen = os.lstat(path)
+        seen = os.lstat(real)
+    except OSError as error:
+        refuse(f"the {label} {real} cannot be read: {error.strerror or error}")
+    if not stat.S_ISDIR(seen.st_mode):
+        refuse(f"the {label} {real} is not a directory")
+    try:
+        descriptor = os.open(real, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    except OSError as error:
+        refuse(f"the {label} {real} cannot be opened as a directory: {error.strerror or error}")
+    try:
+        held = os.fstat(descriptor)
+    except OSError as error:
+        os.close(descriptor)
+        refuse(f"the {label} {real} cannot be read: {error.strerror or error}")
+    if not stat.S_ISDIR(held.st_mode) or (held.st_dev, held.st_ino) != (seen.st_dev, seen.st_ino):
+        os.close(descriptor)
+        refuse(
+            f"the {label} {real} changed between its validation and its open; the descriptor holds another directory"
+        )
+    return descriptor
+
+
+def held_file(root_fd, name):
+    """An open read-only descriptor on the regular file `name` under the held directory `root_fd` (`held_root`'s) by
+    the levers' one path rule (ledger-row.py's `store_file`) carried to the descriptors: `name` is a bare entry name
+    (no separator); it is `os.lstat`ed relative to the directory descriptor and is no link and a regular file; the
+    file is then opened with `O_RDONLY | O_NOFOLLOW | O_CLOEXEC` relative to the same descriptor (`dir_fd`, so no path
+    is looked up again and a root swapped for a link after validation is never followed, verdict U496-6f774696 P1
+    :290) and judged by `os.fstat` on its descriptor, a regular file on the same device and inode the `lstat` saw, so
+    a swap for a link or for another file between the two calls (verdict U496-d1256438 P1 :281) is caught; the caller
+    reads this descriptor and never a path. Returns None when there is no entry at the `lstat` (the caller's `no-file`
+    or absence refusal); every other outcome but the held regular file raises Unreadable with the reason, the
+    descriptor closed."""
+    if not ENTRY_NAME.match(name):
+        raise Unreadable("is not a bare entry name under the held directory")
+    try:
+        seen = os.lstat(name, dir_fd=root_fd)
     except FileNotFoundError:
         return None
     except OSError as error:
@@ -307,7 +356,7 @@ def held_file(root, name):
     if not stat.S_ISREG(seen.st_mode):
         raise Unreadable("is not a regular file")
     try:
-        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=root_fd)
     except OSError as error:
         raise Unreadable(f"cannot be opened: {error.strerror or error}") from None
     try:
@@ -340,12 +389,13 @@ def cell(text):
     return text.replace("\t", " ").replace("\r", " ")
 
 
-def in_flight_units(store):
+def in_flight_units(store, store_fd):
     """The ids of the register's in-flight rows that are not sweep seats, in file order, after the whole register
-    passes its grammar: the header, eight cells per row, no carriage return, every id a unit id."""
+    passes its grammar: the header, eight cells per row, no carriage return, every id a unit id. The register is read
+    relative to the held store descriptor; `store` names it in the refusals."""
     path = os.path.join(store, "units.tsv")
     try:
-        descriptor = held_file(store, "units.tsv")
+        descriptor = held_file(store_fd, "units.tsv")
     except Unreadable as error:
         refuse(f"the register {path} {error}")
     if descriptor is None:
@@ -375,14 +425,14 @@ def in_flight_units(store):
     return units
 
 
-def judge(root, unit, now, limit):
-    """The unit's row as (state, age text, last line text) from its progress file under the root, never a refusal
-    (round 2, U496b; the one run-level refusal left is a store that cannot be read): `no-file` for no entry;
-    `unreadable` with `-` for the age when the file yields no text (the line `-` too) or when its last line is outside
-    the grammar (no timestamp of the form, no space after it, no such date, a time after the clock: the line itself,
-    so the coordinator sees what the worker wrote); else the age and the `done,` forms decide."""
+def judge(root_fd, unit, now, limit):
+    """The unit's row as (state, age text, last line text) from its progress file under the held root descriptor,
+    never a refusal (round 2, U496b; the one run-level refusal left is a store that cannot be read): `no-file` for no
+    entry; `unreadable` with `-` for the age when the file yields no text (the line `-` too) or when its last line is
+    outside the grammar (no timestamp of the form, no space after it, no such date, a time after the clock: the line
+    itself, so the coordinator sees what the worker wrote); else the age and the `done,` forms decide."""
     try:
-        descriptor = held_file(root, f"{unit}-progress.txt")
+        descriptor = held_file(root_fd, f"{unit}-progress.txt")
         if descriptor is None:
             return NO_FILE, "-", "-"
         text = file_text(descriptor)
@@ -422,13 +472,19 @@ def main(argv=None):
     now = clock(args.now)
     limit = deadline(args.deadline_minutes)
     store = clean_directory(args.store, "store")
+    store_fd = held_root(store, "store")
     root = default_root(store) if args.progress_root is None else clean_directory(args.progress_root, "progress root")
+    root_fd = held_root(root, "progress root")
     rows = []
     code = 0
-    for unit in in_flight_units(store):
-        state, age, last = judge(root, unit, now, limit)
-        rows.append(f"{unit}\t{state}\t{age}\t{last}\n")
-        code = max(code, STATES[state])
+    try:
+        for unit in in_flight_units(store, store_fd):
+            state, age, last = judge(root_fd, unit, now, limit)
+            rows.append(f"{unit}\t{state}\t{age}\t{last}\n")
+            code = max(code, STATES[state])
+    finally:
+        os.close(root_fd)
+        os.close(store_fd)
     sys.stdout.write("".join(rows))
     sys.stdout.flush()
     return code

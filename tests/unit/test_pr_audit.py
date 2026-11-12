@@ -2610,6 +2610,67 @@ class PrAuditTest(unittest.TestCase):
         self.assertNotIn("cannot create temp file", run.stderr, "the scrub still reads a here-string")
         self.assertEqual((run.returncode, run.stdout, run.stderr), (2, "", clean.stderr))
 
+    def test_every_line_read_after_the_scrub_runs_when_bash_can_make_no_temporary_file(self):
+        """Regime-cutover U478 (U474's residual row: the here-strings after the scrub). The AGENTS.md section cut,
+        the template's counts and settings, the `gh pr view` fields, the body's Program-Unit lines and the allowlist
+        rendering each read a here-string, which bash backs with a temporary file; when none can be made the
+        redirection fails, a `while read` loop runs no iteration, and a `grep -c` substitution returns 1 with no
+        output, which its `[[ $? == 1 ]]` guard read as a count of 0: at a82bd40c the first such count refused the
+        template as not selecting the audit profile, a false refusal of a correct run with bash's diagnostic on
+        stderr. Every line is now cut in the shell by parameter expansions (`lines_of`): no command, no file. The run
+        is the happy path with every here-document file denied by name: /bin/bash 3.2.57 names them `sh-thd-<number>`
+        (redir.c, `sh_mktmpfd ("sh-thd", ...)`) and ignores TMPDIR, so on macOS sandbox-exec denies `file-write*` of
+        that name under any directory and nothing else (the run directory, the clones and the fakes write as before).
+        One exemption: `/bin/ps`, which the supervisor's snapshot, survivor report and EPERM check run, is exec'd
+        outside the sandbox (`with no-sandbox`), since macOS 27 refuses its exec from any sandboxed process (EPERM
+        even under `(allow default)`; it carries task-port entitlements) and it writes no file; the control proves
+        the denial is live beside the exemption. Elsewhere the run is the plain happy path and holds the fixed form
+        only."""
+        wrapper = []
+        if sys.platform == "darwin" and Path("/usr/bin/sandbox-exec").exists():
+            profile = (
+                '(version 1)(allow default)(deny file-write* (regex #"/sh-thd-[0-9]+$"))'
+                '(allow process-exec (with no-sandbox) (literal "/bin/ps"))'
+            )
+            wrapper = ["/usr/bin/sandbox-exec", "-p", profile]
+            control = subprocess.run(
+                [*wrapper, "/bin/bash", "-c", "cat <<< control"],
+                cwd=self.repo,
+                env=self.env,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+            self.assertIn("cannot create temp file", control.stderr, "the denial is not live")
+            self.assertEqual(control.stdout, "")
+        run = subprocess.run(
+            [*wrapper, str(LEVER), "7"],
+            cwd=self.repo,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        self.assertNotIn("cannot create temp file", run.stderr, "a line read still goes through a here-string")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        rundirs = list(self.tmp.iterdir())
+        self.assertEqual(len(rundirs), 1)
+        self.assertEqual(run.stdout, f"{rundirs[0] / 'verdict.md'}\nVerdict: correct\n")
+        calls = self.codex_calls()
+        self.assertEqual([c["argv"][0] for c in calls], ["sandbox", "sandbox", "exec"])
+        prompt = calls[2]["prompt"]
+        self.assertIn("The standing audit rules.", prompt, "the section cut read no line")
+        self.assertNotIn("Not audit rules.", prompt)
+        self.assertIn("It guarantees one thing.", prompt)
+        config = calls[2]["config"]
+        for setting in DISCOVERY_OFF:
+            self.assertIn(f"{setting}\n", config)
+        self.assertIn('":root" = "deny"\n', config)
+        self.assertIn(f'"{self.auth.parent}" = "deny"\n', config, "the allowlist rendering read no entry")
+        self.assertNotIn('"~/', config, "a template key reached the rendered config unresolved")
+
     def test_no_python3_on_path_refuses(self):
         bindir = Path(tempfile.mkdtemp(dir=self.root, prefix="nopython-"))
         for tool in (
@@ -2662,19 +2723,14 @@ class PrAuditTest(unittest.TestCase):
                 self.assertEqual(self.codex_calls(), [])
 
     def test_every_other_safety_read_that_fails_stops_before_the_audit(self):
-        """Each producer a safety decision reads (preferences 21): its failure is a stop, never an empty answer."""
+        """Each producer a safety decision reads (preferences 21): its failure is a stop, never an empty answer. The
+        template's counts, the rendered config's and the resolved paths' are no producers since U478 (lines cut by
+        parameter expansions, no grep), so no case injects a failing grep there."""
         grep = lambda pattern: {"PATH": self.failing_tool("grep", pattern)}
         git = lambda pattern: {"PATH": self.failing_tool("git", pattern, "exit 128")}
         perl = lambda pattern: {"PATH": self.failing_tool("perl", pattern, "exit 1")}
         cases = (
-            ("profile default", grep("*default_permissions*"), 1, "cannot search"),
-            ("sandbox_mode", grep("*sandbox_mode*"), 1, "cannot search"),
-            ("profile table", grep("*permissions.audit*"), 1, "cannot search"),
-            ("filesystem lines", grep("*'\"(read|write|deny)\"'*"), 1, "cannot search"),
-            ("root deny", grep('*\':root" = "deny"\'*'), 1, "cannot search"),
             ("contract", grep("*Contract*"), 1, "cannot read"),
-            ("rendered paths", grep("*'^\"/'*"), 1, "cannot search the rendered config"),
-            ("resolved paths", grep("-c\\ ."), 1, "cannot count the resolved paths"),
             ("repository root", git("*--show-toplevel*"), 2, "run from the repository checkout"),
             ("common directory", git("*--git-common-dir*"), 1, "cannot read the git common directory"),
             ("origin url", git("*remote\\ get-url*"), 1, "has no origin remote"),

@@ -742,10 +742,37 @@ ACCEPTED_ARITHMETIC = (
     (
         ("pr-audit.sh",),
         r"""[[ ${template_entries} -gt 0 ]]""",
-        "an arithmetic test of a grep count; the `fail` after the count takes every status but 0 and 1, so the value is "
-        "a decimal",
+        "an arithmetic test of a line count of the template, a decimal the counting loop assigned (U478: the counts "
+        "were grep's)",
     ),
-    (("pr-audit.sh",), r"""((root_denies == 1))""", "a grep count of the sandbox profile's root denial"),
+    (("pr-audit.sh",), r"""((root_denies == 1))""", "the count of the sandbox profile's root denial lines"),
+    (
+        ("pr-audit.sh",),
+        r"""selected=$((selected + 1))""",
+        "a counter of the template's `default_permissions` lines (U478)",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""sandbox_keys=$((sandbox_keys + 1))""",
+        "a counter of the template's `sandbox_mode` lines (U478)",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""profiles=$((profiles + 1))""",
+        "a counter of the template's `[permissions.audit]` lines (U478)",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""template_entries=$((template_entries + 1))""",
+        "a counter of the template's filesystem lines (U478)",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""root_denies=$((root_denies + 1))""",
+        "a counter of the template's `:root` denial lines (U478)",
+    ),
+    (("pr-audit.sh",), r"""rendered=$((rendered + 1))""", "a counter of the rendered config's path lines (U478)"),
+    (("pr-audit.sh",), r"""resolved=$((resolved + 1))""", "a counter of the resolved paths (U478)"),
     (("pr-audit.sh",), r"""count=$((count + 1))""", "a counter of the settings lines"),
     (("pr-audit.sh",), r"""((count == 1))""", "the same counter"),
     (
@@ -774,7 +801,7 @@ ACCEPTED_ARITHMETIC = (
     ),
     (("pr-audit.sh",), r"""((try == wait_tries))""", "the last try of that loop"),
     (("pr-audit.sh",), r"""entries=$((entries + 1))""", "a counter of the template's filesystem entries"),
-    (("pr-audit.sh",), r"""((entries == template_entries))""", "that counter against the grep count"),
+    (("pr-audit.sh",), r"""((entries == template_entries))""", "that counter against the template's line count"),
     (("pr-audit.sh",), r"""((rendered == resolved))""", "two counts of the rendered config's paths"),
     (
         ("pr-audit.sh",),

@@ -27,9 +27,12 @@ The report, line by line:
   order and rows in file order: `<element> <id>: <command>` (the command cell holds the step as the handouts write
   it).
 - `operator decisions`, then every `gates.md` row whose `result` cell is empty: `<id>: <gate> (<moment>; default
-  <default>)`. The table is the one under the header line `| id | gate | moment | options | default | result |`; the
-  separator row and lines that are no table row are skipped; the result is the text after the fifth cell, so a
-  `||` typed into a row lands there; a row with fewer than six cells is a refusal naming the line.
+  <default>)`. The table is the one whose header is the file's first table row (a line starting with `|`), read as a
+  row: split on `|`, each cell stripped, the six names `id gate moment options default result` in that order, any
+  padding (the kit's template `home/dot_agents/regime/gates.md` pads them, the live store does not; U497c); the next
+  table row is the separator, six cells of dashes judged the same way; lines that are no table row are skipped; the
+  result is the text after the fifth cell, so a `||` typed into a row lands there; a header of other names or another
+  count, a missing separator and a row with fewer than six cells are refusals naming `<file>:<line>`.
 - `agent running`, then every `units.tsv` row (header `id track state branch pr head_sha brief note`) whose state is
   `in-flight`, in file order: `<id> <track> pr <pr or -> progress: <column>`. When `stall-check.py` (U496) is a
   regular file beside this lever it is run once as `python3 -I <dir>/stall-check.py <store> [--progress-root <dir>]
@@ -48,11 +51,14 @@ Exit 0 when the report printed. Exit 2 with one stderr line, `program-status.py:
 stdout for every refusal: the self pin (below), a store that is no directory, `--now` not exactly
 `<YYYY-MM-DD>T<HH:MM:SS>Z` (the shape is checked before strptime, which would take `2026-1-2T3:4:5Z`), a file that is
 missing, unreadable or not UTF-8, a tests table, `units.tsv` or `decisions.tsv` whose first line is not its header
-(named `<file>:1`) or whose row has another number of cells or a carriage return, a `gates.md` without the header line
-or with a short row, a `decisions.tsv` with no row or whose last ts is not a timestamp of that exact shape, a `tests`
-directory that is missing, and the stall-check outcomes above. The refusal is one line whatever it quotes: a newline,
-a carriage return or another line boundary inside a path or a value becomes a space. No file is written and no mode is
-changed.
+(named `<file>:1`) or whose row has another number of cells or a carriage return, a `gates.md` whose first table row
+is not the six header names or whose next is not the separator, with a short row or with a carriage return, a
+`decisions.tsv` with no row or whose last ts is not a timestamp of that exact shape, a `tests` directory that is
+missing, and the stall-check outcomes above. Every file is read byte-exact (`newline=""`, split on `\n` alone), so a
+CRLF row reaches the carriage-return refusal instead of being normalised into a report (U497c). One sanitiser serves
+the refusal and every printed line: each line boundary `str.splitlines` knows (newline, carriage return, VT, FF, FS,
+GS, RS, NEL, U+2028, U+2029) inside a path, a quoted value or a printed cell becomes a space, so one refusal is one
+stderr line and one report item is one line whatever the store holds. No file is written and no mode is changed.
 
 Installed as `~/.local/bin/common/program-status.py` in `brief-check.py`'s form: `scripts/generate-agent-configs.py`
 writes the same bytes to `home/dot_local/bin/common/executable_program-status.py` and pins their sha256 under
@@ -87,9 +93,10 @@ DECISIONS_HEADER = ("ts", "phase", "decision", "why", "evidence", "result")
 # The element name a tests table's file name carries before `.tsv`: one report item is one line, so no tab, newline,
 # control character or space (U497b).
 ELEMENT_NAME = re.compile(r"[A-Za-z0-9._-]+")
-GATES_HEADER = "| id | gate | moment | options | default | result |"
-GATES_WIDTH = 6
-SEPARATOR_CELL = re.compile(r"^:?-+:?$")
+# The gates header's six cell names, read as a table row with any padding (U497c); the separator row's cells.
+GATES_HEADER = ("id", "gate", "moment", "options", "default", "result")
+GATES_WIDTH = len(GATES_HEADER)
+SEPARATOR_CELL = re.compile(r":?-+:?")
 STALL_HEADER = ("unit", "state", "age_minutes", "last_line")
 # The stall check's row contract (U496, U496b): the five states, the age `-` or 1 to 10 decimal digits.
 STALL_STATES = ("moving", "stalled", "done", "no-file", "unreadable")
@@ -97,7 +104,8 @@ STALL_AGE = re.compile(r"-|[0-9]{1,10}")
 STALL_TIMEOUT = 120
 # The stall check's states that mean the worker is silent (U496).
 SILENT = frozenset({"stalled", "no-file"})
-# The line boundaries `str.splitlines` knows; a refusal replaces each with a space so it stays one stderr line.
+# The line boundaries `str.splitlines` knows; `one_line` replaces each with a space in every refusal and every printed
+# line.
 LINE_BREAK = re.compile(r"[\n\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]")
 
 HEADINGS = {
@@ -110,10 +118,17 @@ WORDS = {
 }
 
 
+def one_line(text):
+    """`text` with every line boundary `str.splitlines` knows (newline, carriage return, VT, FF, FS, GS, RS, NEL,
+    U+2028, U+2029) a space: the one sanitiser of every refusal and every printed report line, so an id, a gate text, a
+    command or a stall-check cell that holds one cannot add a line (U497b, U497c)."""
+    return LINE_BREAK.sub(" ", text)
+
+
 def refuse(reason):
     """One stderr line in the levers' words, exit 2; nothing was printed. A line boundary inside the reason (a newline
     or a carriage return in a path or a quoted value) becomes a space, so every refusal is one line (U497b)."""
-    print(f"{LEVER}: refused: {LINE_BREAK.sub(' ', reason)}", file=sys.stderr)
+    print(f"{LEVER}: refused: {one_line(reason)}", file=sys.stderr)
     sys.exit(2)
 
 
@@ -192,9 +207,10 @@ lever_self_check()
 
 
 def read_text(path):
-    """The whole file as strict UTF-8; a file that is missing, unreadable or not UTF-8 is a refusal naming it."""
+    """The whole file as strict UTF-8, byte-exact (`newline=""`: no CRLF or CR is turned into a newline, so a carriage
+    return reaches the row checks; U497c); a file that is missing, unreadable or not UTF-8 is a refusal naming it."""
     try:
-        with open(path, encoding="utf-8") as handle:
+        with open(path, encoding="utf-8", newline="") as handle:
             return handle.read()
     except FileNotFoundError:
         refuse(f"{path} is missing; the report is read from the store's tables")
@@ -205,11 +221,14 @@ def read_text(path):
 
 
 def read_tsv(path, header):
-    """The rows of a tab-separated table whose first line is exactly `header`, each row with the header's number of
-    cells and no carriage return; any other shape is a refusal naming the file and the line (the header's, `:1`)."""
+    """The rows of a tab-separated table whose first line is exactly `header`, each line without a carriage return and
+    each row with the header's number of cells; any other shape is a refusal naming the file and the line (the
+    header's, `:1`). The text is split on `\\n` alone, so a CRLF table is refused at its first line."""
     lines = read_text(path).split("\n")
     if lines and lines[-1] == "":
         lines.pop()
+    if lines and "\r" in lines[0]:
+        refuse(f"line 1 of {path} holds a carriage return")
     if not lines or lines[0] != "\t".join(header):
         refuse(f"{path}:1 is not the header `{' '.join(header)}`")
     rows = []
@@ -262,24 +281,43 @@ def elements(store):
     return signals, acts
 
 
-def open_gates(store):
-    """The (id, gate, moment, default) of every row under the gates header whose result cell is empty."""
-    path = os.path.join(store, "gates.md")
-    lines = read_text(path).split("\n")
-    try:
-        start = next(index for index, line in enumerate(lines) if line.strip() == GATES_HEADER)
-    except StopIteration:
-        refuse(f"{path} holds no header line `{GATES_HEADER}`")
-    opened = []
-    for number, line in enumerate(lines[start + 1 :], start + 2):
+def table_rows(path):
+    """The `(line number, stripped cells)` of every table row of a markdown file, in file order: a table row is a line
+    that starts with `|` once stripped and ends with one, its cells the text between the bars, each stripped; a line
+    holding a carriage return or a row that starts and does not end is a refusal naming the line; every other line is
+    skipped."""
+    rows = []
+    for number, line in enumerate(read_text(path).split("\n"), 1):
+        if "\r" in line:
+            refuse(f"line {number} of {path} holds a carriage return")
         text = line.strip()
         if not text.startswith("|"):
             continue
         if not text.endswith("|"):
             refuse(f"line {number} of {path} starts a table row and does not end one")
-        cells = [cell.strip() for cell in text[1:-1].split("|")]
-        if all(SEPARATOR_CELL.match(cell) for cell in cells):
-            continue
+        rows.append((number, [cell.strip() for cell in text[1:-1].split("|")]))
+    return rows
+
+
+def open_gates(store):
+    """The (id, gate, moment, default) of every gates row whose result cell is empty. The header is the file's first
+    table row read by cell names (`id gate moment options default result`, any padding: the kit's template pads them,
+    the live store does not), the separator the next table row (six cells of `:?-+:?`); other names, another count, a
+    missing separator and a short row are refusals naming `<file>:<line>` (U497c)."""
+    path = os.path.join(store, "gates.md")
+    rows = table_rows(path)
+    if not rows:
+        refuse(f"{path} holds no table row; the header `{' '.join(GATES_HEADER)}` is read as its first")
+    number, cells = rows[0]
+    if tuple(cells) != GATES_HEADER:
+        refuse(f"{path}:{number} is not the header `{' '.join(GATES_HEADER)}` read as cells")
+    if len(rows) < 2:
+        refuse(f"{path}:{number} is the header and no separator row follows it")
+    number, cells = rows[1]
+    if len(cells) != GATES_WIDTH or not all(SEPARATOR_CELL.fullmatch(cell) for cell in cells):
+        refuse(f"{path}:{number} is not the separator row of {GATES_WIDTH} dash cells under the header")
+    opened = []
+    for number, cells in rows[2:]:
         if len(cells) < GATES_WIDTH:
             refuse(f"line {number} of {path} has {len(cells)} cells, fewer than the header's {GATES_WIDTH}")
         result = "|".join(cells[GATES_WIDTH - 1 :]).strip("| ")
@@ -401,6 +439,7 @@ def state_word(signals, acts, opened, running, rows):
 
 
 def section(lines, heading, items):
+    """The heading, then the items or `none`."""
     lines.append(heading)
     lines.extend(items or ["none"])
 
@@ -435,7 +474,7 @@ def report(store, here, args):
         headings[4],
         [f"{unit} {track} pr {pr} progress: {progress_column(unit, rows)}" for unit, track, pr in running],
     )
-    return "\n".join(lines) + "\n"
+    return "\n".join(one_line(line) for line in lines) + "\n"
 
 
 def parser():

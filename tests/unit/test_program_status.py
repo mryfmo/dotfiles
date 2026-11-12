@@ -2,7 +2,8 @@
 report of a program store in standing order 56's shape, as a subprocess under `python3 -I` over a scratch store: the
 report byte for byte in English and with `--ja`, the three state words each from a fixture, a fake `stall-check.py`
 beside a copy of the lever, the absent-lever column, every header refusal and the self pin refusal of an altered copy;
-and (U497b) every refusal as one stderr line, every stall-check cell checked, and every report item one line."""
+and (U497b) every refusal as one stderr line, every stall-check cell checked, and every report item one line; and
+(U497c) the gates header read by cell names, every printed cell one line, the tables read byte-exact."""
 
 import os
 import shutil
@@ -16,6 +17,8 @@ ROOT = Path(__file__).resolve().parents[2]
 LEVER = ROOT / "scripts/orchestrator/program-status.py"
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 NOW = "2026-11-12T07:00:00Z"
+# The kit's own gates template, copied into every new store by regime-init: its header cells are padded.
+TEMPLATE_GATES = (ROOT / "home/dot_agents/regime/gates.md").read_text(encoding="utf-8")
 
 TESTS_HEADER = "id\tuse_case\tsource\tkind\thost\tcommand\texpected\tobserved\tverdict\tts\n"
 UNITS_HEADER = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote\n"
@@ -466,6 +469,56 @@ class ProgramStatusTest(unittest.TestCase):
         )
         stderr = self.assert_refused("stall-check.py", "a b")
         self.assertNotIn("\r", stderr)
+
+    # (f) round 3 (U497c): the gates header by cell names, every printed cell one line, tables byte-exact.
+
+    def test_the_kits_template_header_and_the_live_header_are_both_accepted_and_a_misspelled_name_refuses(self):
+        open_gate = gate_row("G2", "Confirm the second layer", "any time", "leave", "")
+        self.assertIn("| id  | gate | moment | options | default | result |\n", TEMPLATE_GATES, "the padded template")
+        self.write_store(gates=TEMPLATE_GATES + open_gate)
+        self.assert_report(REPORT_EN)
+        self.write_store(gates=GATES)
+        self.assert_report(REPORT_EN)
+        path = str(self.store / "gates.md")
+        self.write_store(gates=GATES.replace(GATES_HEADER, "| id | gate | moment | options | default | results |\n"))
+        self.assert_refused(f"{path}:3", "header")
+        self.write_store(gates=GATES.replace(GATES_HEADER, "| id | gate | moment | options | default |\n"))
+        self.assert_refused(f"{path}:3", "header")
+        self.write_store(gates=GATES.replace("| --- | --- | --- | --- | --- | --- |\n", ""))
+        self.assert_refused(f"{path}:4", "separator")
+        self.write_store(gates=GATES.replace("| --- | --- | --- | --- | --- | --- |\n", "| --- | --- | --- |\n"))
+        self.assert_refused(f"{path}:4", "separator")
+        self.write_store(gates="# Human gates\n\nno table here\n")
+        self.assert_refused(path, "header")
+
+    def test_a_cell_holding_a_line_separator_prints_on_one_line(self):
+        levers = self.copy_lever()
+        self.write_fake(levers, FAKE_ROWS.replace("read the brief", "read the\\u2029brief\\x85now"))
+        self.write_store(
+            beta=BETA.replace("b3\t", "b3\u2028x\t"),
+            gates=GATES.replace("Confirm the second layer", "Confirm the\u2028second\x0clayer"),
+        )
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+        self.assertEqual(len(run.stdout.splitlines()), 10, run.stdout)
+        self.assertEqual(
+            run.stdout,
+            REPORT_EN.replace("beta b3:", "beta b3 x:")
+            .replace("state: moving: 1 units in flight", "state: stopped: every in-flight worker silent")
+            .replace("progress: unknown", "progress: stalled, 47 min, read the brief now"),
+        )
+
+    def test_a_crlf_tests_table_refuses_naming_the_row(self):
+        path = str(self.store / "tests/beta.tsv")
+        (self.store / "tests/beta.tsv").write_bytes(BETA.replace("\n", "\r\n").encode("utf-8"))
+        self.assert_refused(path, "line 1", "carriage return")
+        (self.store / "tests/beta.tsv").write_bytes(
+            BETA.replace(test_row("b2", "auto", "NG"), test_row("b2", "auto", "NG").replace("\n", "\r\n")).encode()
+        )
+        self.assert_refused(path, "line 3", "carriage return")
+        self.write_store()
+        (self.store / "gates.md").write_bytes(GATES.replace("\n", "\r\n").encode("utf-8"))
+        self.assert_refused(str(self.store / "gates.md"), "line 1", "carriage return")
 
 
 if __name__ == "__main__":

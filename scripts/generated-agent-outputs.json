@@ -653,6 +653,13 @@
       "sha256": "9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50"
     },
     {
+      "source": "home/dot_local/bin/common/executable_stall-check.py",
+      "target": ".local/bin/common/stall-check.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "a1e2ee72f81b7e35d16fd4f47717379dd18a120db0aaacb994f955503a895bce"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",
       "target": ".local/bin/common/worker-worktree.sh",
       "kind": "file",
@@ -960,6 +967,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "seat-settings-render.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "stall-check.py"
     },
     {
       "source": "home/dot_local/bin/common",

@@ -70,13 +70,15 @@ ORCHESTRATOR_LEVERS = [
     f"{LEVER}pr-threads-check.sh 480 --head abc --records .orchestration/orchestrate/regime-cutover",
     # U104: the brief gate, read-only, before a unit's first TASK.
     f"{LEVER}brief-check.py .orchestration/orchestrate/regime-cutover/briefs/U1-x.md",
+    # U496: the stall check, read-only, on every wake.
+    f"{LEVER}stall-check.py ~/.local/state/regime-store/dotfiles/regime-cutover --progress-root /tmp/dotfiles-wt",
     f"{LEVER}records-sync.sh --program regime-cutover --unit U20",
     # U71: the merge lever (a `correct` ledger row for the head and green CI).
     f"{LEVER}pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover",
 ]
 BODY_EDIT = f"{LEVER}pr-body-edit.sh --body-file /tmp/body.md"
 # The orchestrator's read-only checks: the worker policy names neither, so the worker table holds no row for them.
-READ_ONLY_CHECKS = ("pr-threads-check", "brief-check")
+READ_ONLY_CHECKS = ("pr-threads-check", "brief-check", "stall-check")
 # A verdict line, the text the audit seat once sent on the bus; the audit run now has no bus reply in any form (U58).
 VERDICT = "VERDICT v1 task_id=U11-pilot verdict=correct head=c67d4d0b63b62cf7b38ef7eff1c516b1d052abd6"
 EVERY_SEAT = [
@@ -493,6 +495,7 @@ class OmpSeatPolicyTest(unittest.TestCase):
                 "~/.local/bin/common/pr-close.sh --from-table *",
                 "~/.local/bin/common/pr-threads-check.sh *",
                 "~/.local/bin/common/brief-check.py *",
+                "~/.local/bin/common/stall-check.py *",
                 "~/.local/bin/common/records-sync.sh *",
                 "~/.local/bin/common/records-sync.sh",
             ],

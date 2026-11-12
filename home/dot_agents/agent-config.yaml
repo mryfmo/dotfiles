@@ -913,6 +913,13 @@ claude:
   # it moves nothing. Run by the coordinator or the operator outside every
   # seat; installed and pinned the same way, with no allow rule and no seat
   # policy row.
+  # stall-check.py (U496, standing order 57) reads a program store's in-flight
+  # units.tsv rows and each unit's progress file under /tmp/<slug>-wt and prints
+  # one row per unit with its state (moving, stalled, done, no-file), so a worker
+  # silent past its deadline is named by a command the coordinator runs on every
+  # wake, not noticed by a habit; read-only, it writes nothing. Installed and
+  # pinned the same way, run as `python3 -I`, allowed by the orchestrator policy
+  # at its installed path like brief-check.py.
   levers:
     sha256:
       hcom-seat: e83343bd148c3e4a3a418aa8287e93cb977143b874457f3e53357a1635640294
@@ -952,6 +959,7 @@ claude:
       router-settings-apply: 46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
+      stall-check.py: a1e2ee72f81b7e35d16fd4f47717379dd18a120db0aaacb994f955503a895bce
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

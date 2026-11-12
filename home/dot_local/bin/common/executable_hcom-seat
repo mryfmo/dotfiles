@@ -107,8 +107,12 @@
 #   this lever makes it 0700 when absent (a link refuses, own_slots_check), the shim exports it, seat-login-preflight
 #   judges `claude auth status` under it, and the settings grant it for write and deny its `settings.json`,
 #   `settings.local.json`, `rules`, `hooks`, `plugins`, `skills`, `commands` and `agents` to every seat, so no seat
-#   changes what another seat's child, or the operator's login command, would load from it. The legacy shared
-#   directory `.state/claude` is read, granted, copied and removed by no launch (standing order 54). No token file
+#   changes what another seat's child, or the operator's login command, would load from it. Every other group's
+#   directory and the legacy shared `.state/claude` are denied for read, by name, to every seat (U498c: srt reopens
+#   a root's subtree under an allow but for a more specific deny, so the orchestrator's read grant of the seats root
+#   reached the worker group's login until then; the rows come from the table's range, `LOGIN_GROUPS`, minus the own
+#   group), and the own group's directory is the one login a seat reads or writes. The legacy shared directory
+#   `.state/claude` is read, granted, copied and removed by no launch (standing order 54). No token file
 #   and no CLAUDE_CODE_OAUTH_TOKEN: the shim clears the name, and no seat reads the operator's `~/.claude`.
 #   The dsh role (regime-cutover U272, after the four audits of the standalone launcher of PR 687): the DeepSeek
 #   harness control host is contained the same way, by this lever, as a role whose differences from the worker are
@@ -518,6 +522,11 @@ login_group_of_role() {
     *) return 1 ;;
     esac
 }
+# The table's range (regime-cutover U498c), in the table's order: the login directories `<seats-root>/.state/claude-<group>`
+# a seats root can hold. seat_settings_render denies every one but the seat's own group's for read, so this array and
+# login_group_of_role are one table in two statements; the table test holds them equal (every role's group is here,
+# every group here is a role's, each once, in order). A group added to the table is added here, nowhere else.
+LOGIN_GROUPS=(worker orchestrator audit router)
 # The role table (regime-cutover U272, U321): every difference between the roles is a row read here or in the places
 # keyed on the role below (the directory row, seat_write_roots, the deny row before the overlap check and the judge
 # after it, the read grants in seat_settings_render, the binding value in seat_sandbox_write, the command the shim
@@ -2614,7 +2623,7 @@ renderer_source
 #   grant tags are the dsh role's and the orchestrator's store row, read by their judges; the deny tags are rendered
 #   for every role and change no list.
 seat_settings_render() {
-    local root path kind i project_files=() spelled=()
+    local root path kind i group project_files=() spelled=()
     h=$(physical_path "${HOME}") || refuse "cannot resolve HOME ${HOME}"
     dir_real=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"
     common_real=$(physical_path "${common}") || refuse "cannot resolve the git common directory ${common}"
@@ -2689,6 +2698,21 @@ seat_settings_render() {
         tag_row slot denyRead ${#deny_read[@]} "${root}"
         deny_read+=("${root}")
     fi
+    # The other login groups' Claude Code directories and the legacy shared one (regime-cutover U498c; verdict
+    # U498-4d18d6dd P1 `:2062`): srt reopens a root's subtree under an allow but for a more specific deny, so the
+    # orchestrator's read grant of the seats root (its allowRead row 7) reached `.state/claude-worker`, the worker
+    # group's login (`.credentials.json` there on Linux). Every role denies, by name, each directory of the table's
+    # range (LOGIN_GROUPS) but its own group's, and `.state/claude` (U318's shared directory, which no launch makes,
+    # reads or grants, standing order 54), under the physical seats root, as the own directory is rendered. The rows
+    # stand here, before the role's own deny row, so the router row's denyRead stays a prefix of the dsh row's
+    # (acp-broker copies the Router's table to its workers and appends the credential root, U343l); they carry no
+    # tag, since no grant of any role lies at or under them. The own group's directory is the one login a seat reads
+    # or writes (allowRead and allowWrite row 2 of the foreground roles, the omp roles' `claude_config_real` rows).
+    for group in "${LOGIN_GROUPS[@]}"; do
+        [[ ${group} != "${login_group}" ]] || continue # lint-comparisons: allow two group words of the login table, not a path
+        deny_read+=("${seats_real}/.state/claude-${group}")
+    done
+    deny_read+=("${seats_real}/.state/claude")
     operator_claude_paths
     deny_write+=("${operator_claude[@]}")
     deny_read+=("${operator_claude[@]}")

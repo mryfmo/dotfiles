@@ -42,6 +42,16 @@ SHARED_CLAUDE_DENIES = (
     "commands",
     "agents",
 )
+# The login group table's range (U498, `login_group_of_role`; `LOGIN_GROUPS` beside it in hcom-seat since U498c): the
+# login directories `<seats-root>/.state/claude-<group>` a seats root can hold, in the table's order. Every seat's
+# settings deny each but its own group's, and the legacy `.state/claude`, for read (U498c).
+LOGIN_GROUPS = ("worker", "orchestrator", "audit", "router")
+
+
+def login_read_denies(seats, group):
+    """The denyRead rows a seat of login `group` carries for the login directories under the physical seats root
+    `seats` (U498c): every other group's `.state/claude-<group>` in the table's order, then the legacy `.state/claude`."""
+    return [f"{seats}/.state/claude-{other}" for other in LOGIN_GROUPS if other != group] + [f"{seats}/.state/claude"]
 
 
 # U100: an env built from scratch carries scratch_git's settings too, so no commit starts background maintenance.
@@ -836,8 +846,9 @@ class HcomSeatTest(SeatFixture):
         orchestrator to `orchestrator`, from the one table), a real 0700 directory the launch makes; it is write row 2
         and a read root of the role's settings, and its settings, rules, hooks, plugins, skills, commands and agents are
         write-denied, so no seat changes what another seat's child loads from it. The legacy shared directory
-        `.state/claude` is made, granted and denied by no launch (the kit does not read or copy a login, order 54). A
-        linked group directory refuses before anything is made, and no seat may take a `claude-*` name or `claude`."""
+        `.state/claude` is made and granted by no launch (the kit does not read or copy a login, order 54) and, since
+        U498c, denied for read by every one, like every other group's directory. A linked group directory refuses
+        before anything is made, and no seat may take a `claude-*` name or `claude`."""
         record = self.plant_claude_env_recorder()
         legacy = Path(self.seats, ".state/claude")
         for role in ("worker", "orchestrator"):
@@ -854,10 +865,14 @@ class HcomSeatTest(SeatFixture):
                 denied = [f"{group_dir}/{name}" for name in SHARED_CLAUDE_DENIES]
                 self.assertEqual([row for row in fs["denyWrite"] if row.startswith(f"{group_dir}/")], denied)
                 self.assertEqual([row for row in fs["denyRead"] if row.startswith(str(group_dir))], [])
-                for key in ("allowWrite", "allowRead", "denyWrite", "denyRead"):
+                for key in ("allowWrite", "allowRead", "denyWrite"):
                     self.assertEqual(
                         [row for row in fs[key] if row == str(legacy) or row.startswith(f"{legacy}/")], [], key
                     )
+                # U498c: the legacy directory is denied for read by name, once, and granted by nothing.
+                self.assertEqual(
+                    [row for row in fs["denyRead"] if row == str(legacy) or row.startswith(f"{legacy}/")], [str(legacy)]
+                )
                 env = self.claude_env_of(record)
                 self.assertEqual(env, {"CLAUDE_CONFIG_DIR": str(group_dir), "CLAUDE_CODE_OAUTH_TOKEN": "unset"})
                 self.assertFalse(Path(self.seats, ".state", role, "claude").exists(), "no per-seat directory")
@@ -899,9 +914,10 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual(tables["hcom-seat"], tables["seat-login-preflight"])
         table = tables["hcom-seat"]
         script = f'set -euo pipefail\n{table}\nlogin_group_of_role "$1"\n'
-        for role, group in (
+        roles = (
             ("worker", "worker"), ("orchestrator", "orchestrator"), ("audit", "audit"), ("dsh", "router"), ("router", "router"),
-        ):  # fmt: skip
+        )  # fmt: skip
+        for role, group in roles:
             with self.subTest(role=role):
                 run = subprocess.run(["bash", "-c", script, "_", role], capture_output=True, text=True, check=False)
                 self.assertEqual((run.returncode, run.stdout, run.stderr), (0, f"{group}\n", ""))
@@ -909,6 +925,52 @@ class HcomSeatTest(SeatFixture):
             with self.subTest(role=role):
                 run = subprocess.run(["bash", "-c", script, "_", role], capture_output=True, text=True, check=False)
                 self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        # U498c: the table's range, the array `LOGIN_GROUPS` beside the table in hcom-seat (the login directories every
+        # seat denies for read but its own group's), is the set of groups the table gives its roles, each once, in the
+        # table's order, so a group the table gains is denied without a second list diverging from it.
+        (array,) = [line for line in SEAT.read_text().splitlines() if line.startswith("LOGIN_GROUPS=(")]
+        run = subprocess.run(
+            ["bash", "-c", f'set -euo pipefail\n{array}\nprintf "%s\\n" "${{LOGIN_GROUPS[@]}}"\n'],
+            capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        table_range = list(dict.fromkeys(group for _, group in roles))
+        self.assertEqual(run.stdout.split("\n")[:-1], table_range)
+        self.assertEqual(run.stdout.split("\n")[:-1], list(LOGIN_GROUPS))
+
+    def test_every_seat_is_denied_the_other_login_groups_directories_and_the_legacy_one(self):
+        """U498c (verdict U498-4d18d6dd P1 `hcom-seat:2062`; the finding's site is the orchestrator's allowRead of the
+        whole seats root): srt reopens a root's subtree under an allow but for a more specific deny, so until this head
+        a seat whose settings allowed the seats root for read, the orchestrator, could read another group's login
+        directory (`.state/claude-worker`, with its `.credentials.json` on Linux). Every role's settings carry one
+        denyRead row per login directory that is not its own group's: the other groups' `.state/claude-<group>` in the
+        table's order (LOGIN_GROUPS, the range of `login_group_of_role`) and the legacy `.state/claude`, each once,
+        under the physical seats root, with no grant and no other deny at or under any of them; the own group's
+        directory stays allowed for read and write and stands in no deny list. The orchestrator keeps its read grant
+        of the seats root, and the worker group's login is denied under it."""
+        seats = str(Path(self.seats).resolve())
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                run = self.seat(role, "--seats-root", self.seats)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                fs = self.settings_of(role)["filesystem"]
+                own = f"{seats}/.state/claude-{role}"
+                denied = login_read_denies(seats, role)
+                self.assertEqual([row for row in fs["denyRead"] if row.startswith(f"{seats}/.state/claude")], denied)
+                for row in denied:
+                    self.assertEqual(fs["denyRead"].count(row), 1, (row, fs["denyRead"]))
+                    for key in ("allowRead", "allowWrite", "denyWrite"):
+                        self.assertEqual([r for r in fs[key] if r == row or r.startswith(f"{row}/")], [], (key, row))
+                self.assertNotIn(own, denied)
+                self.assertEqual((fs["allowRead"].count(own), fs["allowWrite"].count(own)), (1, 1))
+                self.assertEqual([r for r in fs["denyRead"] if r == own or r.startswith(f"{own}/")], [])
+                self.assertNotIn(own, fs["denyWrite"])
+        orchestrator = self.settings_of("orchestrator")["filesystem"]
+        self.assertIn(seats, orchestrator["allowRead"], "the verdict's grant: the orchestrator reads the seats root")
+        self.assertIn(
+            f"{seats}/.state/claude-worker", orchestrator["denyRead"], "the worker group's login, denied under it"
+        )
+        self.assertNotIn(f"{seats}/.state/claude-orchestrator", orchestrator["denyRead"], "its own group's login, kept")
 
     def test_a_dry_run_names_the_login_groups_directory_in_its_environment_line(self):
         """U498 ACCEPTANCE 1: `hcom-seat <role> --name probe --dry-run` prints on stderr the environment a launch

@@ -292,6 +292,18 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             return settings.replace(name.encode(), b"<launch>")
         return json.loads(json.dumps(settings).replace(name, "<launch>"))
 
+    def without_login_deny_rows(self, settings, group):
+        """This head's rendered settings (bytes) of a seat of login `group` with exactly the U498c rows removed: the
+        other login groups' directories `.state/claude-<group>` and the legacy `.state/claude`, each once in denyRead
+        and each followed by another row (test_hcom_seat.login_read_denies); nothing else names any of them."""
+        text = settings
+        for row in test_hcom_seat.login_read_denies(Path(self.seats).resolve(), group):
+            needle = json.dumps(row).encode() + b","
+            self.assertEqual(text.count(needle), 1, (row, text))
+            text = text.replace(needle, b"", 1)
+            self.assertNotIn(json.dumps(row).encode(), text, row)
+        return text
+
     def without_credential_rows(self, settings):
         """This head's rendered dsh settings (bytes) with exactly the U353 rows removed: the Router's credential root
         `<DSH_HOME>/router-credentials`, once in denyRead and once in denyWrite, each after another row; nothing else
@@ -444,13 +456,61 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             ],
             list(SHARED_CLAUDE_DENIES),
         )
-        worker_deny_read = [e for e in worker["filesystem"]["denyRead"] if e != self.omp_credential_root()]
-        self.assertEqual(dsh["filesystem"]["denyRead"], worker_deny_read + row + [cred])
+        # denyRead (U498c): each role denies the other login groups' directories and the legacy one by its own group
+        # (the worker's rows name `claude-router`, the dsh row's `claude-worker`); those rows aside, the dsh row's list
+        # is the worker's, the deny row and the credential root after it.
+        seats_real = Path(self.seats).resolve()
+        login_w = test_hcom_seat.login_read_denies(seats_real, "worker")
+        login_d = test_hcom_seat.login_read_denies(seats_real, "router")
+        prefix = f"{seats_real}/.state/claude"
+        self.assertEqual([e for e in worker["filesystem"]["denyRead"] if e.startswith(prefix)], login_w)
+        self.assertEqual([e for e in dsh["filesystem"]["denyRead"] if e.startswith(prefix)], login_d)
+        worker_deny_read = [
+            e for e in worker["filesystem"]["denyRead"] if e != self.omp_credential_root() and e not in login_w
+        ]
+        self.assertEqual(
+            [e for e in dsh["filesystem"]["denyRead"] if e not in login_d], worker_deny_read + row + [cred]
+        )
         self.assertEqual(dsh["network"], worker["network"])
         self.assertEqual({k: v for k, v in dsh.items() if k not in ("filesystem", "network")},
                          {k: v for k, v in worker.items() if k not in ("filesystem", "network")})  # fmt: skip
         # The slots are per launch: both are gone once dsh exited; the worker's stay.
         self.assertEqual(self.slots(), (["worker"], ["worker"]))
+
+    def test_the_dsh_and_router_rows_deny_the_other_login_groups_directories_and_the_legacy_one(self):
+        """U498c (verdict U498-4d18d6dd P1 `hcom-seat:2062`): the dsh and router rows, the router login group, carry
+        one denyRead row for each other group's `.state/claude-<group>` (worker, orchestrator, audit, the table's
+        order) and for the legacy `.state/claude`, each once, with no grant and no other deny at or under any; their
+        own group's `.state/claude-router` stays allowRead and allowWrite row 2 and stands in no deny list. The rows
+        stand before the role's own deny row, so the router row's denyRead stays a prefix of the dsh row's (U343l:
+        acp-broker copies the Router's table to its workers and appends the credential root where the dsh row has it)."""
+        rendered = {}
+        for role in ("dsh", "router"):
+            procs = self.held_launch("--", "--version", role=role)
+            (name,) = self.slots()[0]
+            rendered[role] = self.without_launch_name(self.settings_of(name)["filesystem"], name)
+            ((status, out, err),) = self.release(procs)
+            self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        seats = str(Path(self.seats).resolve())
+        own = f"{seats}/.state/claude-router"
+        denied = test_hcom_seat.login_read_denies(seats, "router")
+        checkout = str(self.repo.resolve())
+        for role, fs in rendered.items():
+            with self.subTest(role=role):
+                self.assertEqual([row for row in fs["denyRead"] if row.startswith(f"{seats}/.state/claude")], denied)
+                for row in denied:
+                    self.assertEqual(fs["denyRead"].count(row), 1, (row, fs["denyRead"]))
+                    for key in ("allowRead", "allowWrite", "denyWrite"):
+                        self.assertEqual([r for r in fs[key] if r == row or r.startswith(f"{row}/")], [], (key, row))
+                self.assertEqual((fs["allowRead"][2], fs["allowWrite"][2]), (own, own))
+                self.assertEqual([r for r in fs["denyRead"] if r == own or r.startswith(f"{own}/")], [])
+                self.assertLess(
+                    fs["denyRead"].index(f"{seats}/.state/claude"),
+                    fs["denyRead"].index(checkout),
+                    "before the deny row",
+                )
+        self.assertEqual(rendered["router"]["denyRead"], rendered["dsh"]["denyRead"][:-1], "the router row's, a prefix")
+        self.assertEqual(self.slots(), ([], []))
 
     def test_the_dsh_read_grants_name_no_git_hcom_or_record_path(self):
         """PR 697 thread 4492139503 (U272c): an allowRead entry re-opens a path under the broad denyRead, so the dsh
@@ -483,9 +543,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def without_shared_claude_rows(self, settings, role):
         """This head's rendered settings of an omp `role` with exactly the U318 rows removed (U498: under the role's
         login group directory `.state/claude-<role>`): the directory, once in allowRead and once in allowWrite, and
-        its eight configuration denies in denyWrite; each is present once."""
+        its eight configuration denies in denyWrite; each is present once. The U498c rows, the other groups' directories
+        and the legacy one in denyRead, are taken out first (without_login_deny_rows)."""
         shared = str(Path(self.seats, f".state/claude-{role}"))
-        text = settings
+        text = self.without_login_deny_rows(settings, role)
         for row in (shared, shared, *(f"{shared}/{name}" for name in SHARED_CLAUDE_DENIES)):
             needle = json.dumps(row).encode() + b","
             self.assertIn(needle, text, row)
@@ -495,10 +556,12 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         return text
 
     def with_the_legacy_login_path(self, settings):
-        """This head's rendered dsh or router settings (bytes) with the router group's login directory
+        """This head's rendered dsh or router settings (bytes) with the U498c rows taken out (without_login_deny_rows:
+        the other groups' directories and the legacy one in denyRead) and the router group's login directory
         `<seats-root>/.state/claude-router` (U498) respelled as the U318 head's shared `<seats-root>/.state/claude`,
         so the two heads' bytes compare; the directory stands in exactly ten rows (allowRead, allowWrite and the eight
         configuration denies) and the legacy spelling in none."""
+        settings = self.without_login_deny_rows(settings, "router")
         group = str(Path(self.seats, ".state/claude-router")).encode()
         legacy = str(Path(self.seats, ".state/claude")).encode()
         self.assertEqual(settings.count(group), 2 + len(SHARED_CLAUDE_DENIES), settings)

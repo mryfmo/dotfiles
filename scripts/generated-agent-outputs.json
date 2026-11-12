@@ -419,7 +419,7 @@
       "target": ".local/bin/common/acp-broker",
       "kind": "file",
       "executable": true,
-      "sha256": "6aea266419c3a4830b7c6a49fb7e4b84bee467525aef930ccb23716850884fa7"
+      "sha256": "3816f4a1e14799325855bc8702d84416a271ad8b56c937eccdcf17c87ace4343"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-record-place.py",
@@ -643,7 +643,7 @@
       "target": ".local/bin/common/seat-login-preflight",
       "kind": "file",
       "executable": true,
-      "sha256": "c29a3165488740ea670c9d52e32c76fb0285fc8343d047eae33d76ae94ad87dd"
+      "sha256": "79355bd8f42c0ee21466f6c2d5eb1a3030f8c490dfa619962be99900bd6abffb"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-settings-render.sh",

@@ -17,9 +17,10 @@
 #   seat's bridge child and the dsh gateway child run under their group's directory as `CLAUDE_CONFIG_DIR`), read by
 #   one call, `CLAUDE_CONFIG_DIR=<dir> claude auth status`, whose exit status and JSON `authMethod` decide (`login
 #   present (claude.ai, <dir>)`, else absent naming the method or the missing directory); the line prints the directory
-#   and the method, never a credential. A profile outside the table is unreadable. A record that exists but cannot be
-#   read or breaks its schema, and a producer (`uname`, `stat`, `date`, `claude`, `jq`) that fails, are reported as
-#   unreadable, never as absent, and make the exit status 1.
+#   and the method, never a credential. A profile with a seat login route (SIWC included) outside the table refuses
+#   the lever (exit 2) naming the profile, the route and the table, never a line (regime-cutover U498b). A record that
+#   exists but cannot be read or breaks its schema, and a producer (`uname`, `stat`, `date`, `claude`, `jq`) that
+#   fails, are reported as unreadable, never as absent, and make the exit status 1.
 #
 #   `<profile>` (a seat profile of the manifest's `omp.roles`: orchestrator, worker or audit; `hcom-seat`
 #   calls it with the seat's role before it creates or starts anything) checks that a seat can use the login,
@@ -61,10 +62,11 @@
 # @stderr The profile mode's report and refusals.
 # @exitcode 0 Checked, or the profile's route is usable (or the host is local and the route is openai-siwc).
 # @exitcode 1 A record or producer is unreadable, or a login ran and the route is still not usable.
-# @exitcode 2 A usage error, a component of the login group's Claude Code directory path that is a link, a file or
-#   another user's directory or that cannot be judged (a parent this user cannot search), a failed read of the
-#   operator's login command, or a seat without a login outside the operator's terminal (a remote host, or any host on
-#   the claude-bridge route, whose login is the operator's printed command).
+# @exitcode 2 A usage error, a deployed profile with a seat login route outside the login group table (U498b), a
+#   component of the login group's Claude Code directory path that is a link, a file or another user's directory or
+#   that cannot be judged (a parent this user cannot search), a failed read of the operator's login command, or a seat
+#   without a login outside the operator's terminal (a remote host, or any host on the claude-bridge route, whose login
+#   is the operator's printed command).
 # @example
 #   seat-login-preflight --check
 #   seat-login-preflight audit
@@ -515,6 +517,16 @@ profile_line() {
     *)
         printf '%s: no route (overlay %s absent or without modelRoles.default)\n' "$1" "${profiles_dir}/$1.yml"
         return 3
+        ;;
+    esac
+    # The login group table covers every seat login route (regime-cutover U498b; verdict U498-e08ce84c P2 `:525`: until
+    # this head the table ran for the Claude route alone, so an SIWC overlay outside it read as `absent` with exit 0).
+    # A profile with a route and no group refuses the lever naming the profile, the route and the table; no line is
+    # printed for it and nothing is read or made (standing order 21: the status of the one table decides).
+    case ${route} in
+    openai-siwc | claude-bridge)
+        login_group_of_role "$1" > /dev/null ||
+            die "refused: the profile $1 (${route}) is outside the login group table login_group_of_role, which names orchestrator, worker, audit, dsh and router; it has no login group, so no line is printed for it"
         ;;
     esac
     case ${route} in

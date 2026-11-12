@@ -540,23 +540,39 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         """U498: `--check` derives the directory per login group from the one table (`login_group_of_role`): the
         orchestrator and worker profiles name `.state/claude-orchestrator` and `.state/claude-worker`, a deployed dsh
         overlay on the claude-bridge route names the router group's `.state/claude-router` (the gateway child is the
-        Router's), and a profile outside the table is unreadable (exit 1), never absent, with no call. Each line reads
-        its own group's directory: a worker login present leaves the orchestrator's absent."""
+        Router's). U498b (verdict U498-e08ce84c P2 `:525`): the table is run for every profile with a seat login route,
+        the SIWC route included, so a profile outside the table refuses the lever (exit 2) naming the profile, its
+        route and the table, never `absent` (the SIWC overlay read as absent with exit 0 until this head) and never
+        `unreadable`; the lines before it print, no call runs and nothing is made. Each line reads its own group's
+        directory: a worker login present leaves the orchestrator's absent."""
         profiles = self.home / ".agents/omp/profiles"
-        for profile in ("dsh", "other"):
-            (profiles / f"{profile}.yml").write_text("modelRoles:\n  default: claude-bridge/claude-haiku-5-5\n")
+        (profiles / "dsh.yml").write_text("modelRoles:\n  default: claude-bridge/claude-haiku-5-5\n")
+        before = [
+            f"audit openai-siwc: absent (no {self.home}/.omp/profiles/audit/agent/openai-siwc/registration.json)",
+            f"dsh claude-bridge: absent (no {self.seats}/.state/claude-router)",
+            f"orchestrator claude-bridge: absent (no {self.shared})",
+        ]
+        for route in ("openai-siwc/gpt-6-astra", "claude-bridge/claude-haiku-5-5"):
+            with self.subTest(route=route):
+                (profiles / "other.yml").write_text(f"modelRoles:\n  default: {route}\n")
+                result = self.run_lever("--check")
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual(result.stdout.splitlines(), before, "the lines before the refusal print")
+                self.assertEqual(
+                    result.stderr,
+                    f"seat-login-preflight: refused: the profile other ({route.split('/')[0]}) is outside the login group"
+                    " table login_group_of_role, which names orchestrator, worker, audit, dsh and router; it has no login"
+                    " group, so no line is printed for it\n",
+                )
+                self.assertEqual(
+                    self.calls_text() + self.bun_calls_text(), "", "no call for a profile outside the table"
+                )
+                self.assertFalse((self.seats / ".state").exists(), "nothing made")
+        (profiles / "other.yml").unlink()
         result = self.run_lever("--check")
-        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
-            result.stdout.splitlines(),
-            [
-                f"audit openai-siwc: absent (no {self.home}/.omp/profiles/audit/agent/openai-siwc/registration.json)",
-                f"dsh claude-bridge: absent (no {self.seats}/.state/claude-router)",
-                f"orchestrator claude-bridge: absent (no {self.shared})",
-                "other claude-bridge: unreadable (no login group for the profile other; the table names orchestrator,"
-                " worker, audit, dsh and router)",
-                f"worker claude-bridge: absent (no {self.shared_worker})",
-            ],
+            result.stdout.splitlines(), [*before, f"worker claude-bridge: absent (no {self.shared_worker})"]
         )
         self.assertEqual(self.calls_text(), "", "no call without a directory")
         self.shared_worker.mkdir(parents=True)

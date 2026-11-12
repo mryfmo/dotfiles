@@ -1039,18 +1039,24 @@ EOF
         self.assertIn("required failures: 0", result.stdout)
 
     def test_doctor_router_token_absent_login_is_an_optional_warning(self) -> None:
-        # (d) The login directory `<DSH_HOME>/router-credentials/gh` is absent: the one "not yet" state, the operator's
-        #     step (docs/engagement-handout.md step 2), an optional warning from the doctor's own existence test;
-        #     router-gh is not run (no router-gh text is relayed, the fake gh records no `api -i user` call), never
-        #     found (U490d; rounds 1 to 3 relayed router-gh's refusal instead).
+        # (d) The login directory `<DSH_HOME>/router-credentials/gh` is absent: router-gh runs and refuses with exit 3
+        #     (its "not yet" code, U490e), and the doctor relays its one line as an optional warning naming the
+        #     operator's step (docs/engagement-handout.md); gh itself never runs (the fake gh records no `api -i user`
+        #     call), never found, exit 0. The doctor holds no path test of its own (round 4's `[ ! -e ]` read a
+        #     directory under an unreadable parent as absent, verdict U490-e90feefa P1).
         env = self.doctor_environment(router_login=False)
         result = self.run_doctor(env)
         output = result.stdout + result.stderr
         self.assertEqual(0, result.returncode, output)
-        self.assertIn("optional warning: router token: no login under ", result.stderr)
-        self.assertIn("/router-credentials/gh yet", result.stderr)
-        self.assertIn("the operator's step, docs/engagement-handout.md step 2", result.stderr)
-        self.assertNotIn("router-gh:", result.stderr)
+        self.assertIn(
+            "optional warning: router token: router-gh: no gh login under the credential root: ", result.stderr
+        )
+        self.assertIn(
+            "/router-credentials/gh is absent; the agent account's login inside the root is the operator's step"
+            " (docs/engagement-handout.md), and gh runs with no other credential",
+            result.stderr,
+        )
+        self.assertNotIn("required failed: router token", result.stderr)
         self.assertNotIn("router token", result.stdout)
         self.assertIn("required failures: 0", result.stdout)
         calls = Path(env["TEST_LOG"]).read_text().splitlines()
@@ -1072,6 +1078,25 @@ EOF
         self.assertEqual(1, result.returncode, output)
         self.assertIn("required failed: router token: router-gh: ", result.stderr)
         self.assertIn("hosts.yml is a symbolic link", result.stderr)
+        self.assertNotIn("optional warning: router token", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 1", result.stdout)
+
+    def test_doctor_router_token_unreadable_parent_is_a_required_failure(self) -> None:
+        # (e') The login directory exists under a credential root of mode 000: a path test in the doctor cannot see it
+        #     (`[ ! -e <root>/gh ]` is false through an unreadable parent, so round 4 said "not yet" and exited 0,
+        #     verdict U490-e90feefa P1), while router-gh cannot resolve the root and refuses with exit 2; a required
+        #     failure quoting that line, exit 1, never the pending warning (U490e).
+        env = self.doctor_environment()
+        root = Path(env["DSH_HOME"]) / "router-credentials"
+        self.addCleanup(lambda: root.chmod(0o700) if root.exists() else None)
+        root.chmod(0)
+        result = self.run_doctor(env)
+        root.chmod(0o700)
+        output = result.stdout + result.stderr
+        self.assertEqual(1, result.returncode, output)
+        self.assertIn("required failed: router token: router-gh: cannot resolve the credential root ", result.stderr)
+        self.assertIn("/router-credentials\n", result.stderr)
         self.assertNotIn("optional warning: router token", result.stderr)
         self.assertNotIn("found:   router token", result.stdout)
         self.assertIn("required failures: 1", result.stdout)

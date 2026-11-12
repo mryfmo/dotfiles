@@ -1464,8 +1464,9 @@ class RouterSettingsApplyTest(unittest.TestCase):
 
     def test_the_wrapper_runs_gh_under_the_credential_roots_config_dir_with_no_caller_token(self):
         # router-gh: GH_CONFIG_DIR is <DSH_HOME>/router-credentials/gh (physical), GH_TOKEN is the login's token (U353b),
-        # the caller's token names and GH_HOST are gone, every argument reaches gh; an absent root, a link there, a
-        # relative DSH_HOME and an absent gh each refuse.
+        # the caller's token names and GH_HOST are gone, every argument reaches gh; a relative DSH_HOME, a root that is
+        # a file, a link there and an absent gh each refuse with exit 2; an absent root is the state before the
+        # operator's step and refuses with exit 3 (U490e: the doctor reads the two codes, never a path).
         fake, record = self.fake_gh()
         dsh_home = self.dir / "dsh-home"
         root = dsh_home / "router-credentials"
@@ -1505,15 +1506,26 @@ class RouterSettingsApplyTest(unittest.TestCase):
         tools.mkdir()
         for tool in ("sed", shutil.which("sha256sum") and "sha256sum" or "shasum"):
             (tools / tool).symlink_to(Path(shutil.which(tool)).resolve())
+        file_root = self.dir / "file-root"
+        file_root.mkdir()
+        (file_root / "router-credentials").write_text("")
         cases = (
-            ({"DSH_HOME": "relative/dsh"}, "router-gh: DSH_HOME 'relative/dsh' is not an absolute path"),
+            ({"DSH_HOME": "relative/dsh"}, 2, "router-gh: DSH_HOME 'relative/dsh' is not an absolute path"),
             (
                 {"DSH_HOME": str(self.dir / "absent")},
-                f"router-gh: the credential root {self.dir / 'absent'}/router-credentials is not a directory;",
+                3,
+                f"router-gh: the credential root {self.dir / 'absent'}/router-credentials is absent; hcom-seat router makes it, "
+                "and the agent account's login inside it is the operator's step",
             ),
-            ({"PATH": str(tools)}, "router-gh: gh not found on PATH"),
+            (
+                {"DSH_HOME": str(file_root)},
+                2,
+                f"router-gh: the credential root {file_root}/router-credentials is not a directory; it must be a real directory "
+                "inside DSH_HOME",
+            ),
+            ({"PATH": str(tools)}, 2, "router-gh: gh not found on PATH"),
         )
-        for overrides, message in cases:
+        for overrides, code, message in cases:
             with self.subTest(message=message):
                 run = subprocess.run(
                     [str(WRAPPER), "api", "user"],
@@ -1523,7 +1535,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
                     env={**env, **overrides},
                     timeout=60,
                 )
-                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual((run.returncode, run.stdout), (code, ""), run.stderr)
                 self.assertIn(message, run.stderr)
                 self.assertFalse(record.exists(), "gh did not run")
         shutil.rmtree(root)
@@ -1543,9 +1555,10 @@ class RouterSettingsApplyTest(unittest.TestCase):
         `hosts.yml`, then the host-wide Keychain on macOS (`gh help environment`), so `GH_CONFIG_DIR` alone let an empty
         root authenticate as the operator's Keychain login. The wrapper reads the `oauth_token` of `github.com` from
         `<root>/gh/hosts.yml` itself and hands it to gh as `GH_TOKEN`, `GH_CONFIG_DIR` still the root's `gh/`, so the
-        Keychain is never consulted; a root without the login refuses by name (exit 2, no gh run), as do a link at
-        `hosts.yml`, a file readable by the group or others, a file without the github.com row and a value outside the
-        token grammar; no refusal prints the value."""
+        Keychain is never consulted; a root without the login refuses by name with exit 3 (the state before the
+        operator's step, U490e; no gh run), as do a block without the github.com row's `oauth_token`; a link at
+        `hosts.yml`, a directory there, a file readable by the group or others and a value outside the token grammar
+        refuse with exit 2 (a broken root); no refusal prints the value."""
         fake, record = self.fake_gh()
         dsh_home = self.dir / "dsh-home"
         root = dsh_home / "router-credentials"
@@ -1565,15 +1578,25 @@ class RouterSettingsApplyTest(unittest.TestCase):
 
         # The wrapper names the file under the physical root (`pwd -P`), as it renders GH_CONFIG_DIR.
         hosts_phys = root.resolve() / "gh/hosts.yml"
-        # The root before the operator's step: a refusal naming the file, never the caller's token or the Keychain.
+        # The root before the operator's step: exit 3 naming the file, never the caller's token or the Keychain.
+        run = wrapper()
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"router-gh: no gh login under the credential root: {hosts_phys} is absent; the agent account's login inside the "
+            "root is the operator's step (docs/engagement-handout.md), and gh runs with no other credential\n",
+        )
+        self.assertFalse(record.exists(), "gh did not run")
+        # A directory at hosts.yml is present and not a login: a broken root, exit 2.
+        hosts.mkdir()
         run = wrapper()
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertEqual(
             run.stderr,
-            f"router-gh: no gh login under the credential root: {hosts_phys} is not a regular file; the agent account's login "
-            "inside the root is the operator's step (docs/engagement-handout.md), and gh runs with no other credential\n",
+            f"router-gh: {hosts_phys} is not a regular file; the login must be a regular file inside the credential root\n",
         )
         self.assertFalse(record.exists(), "gh did not run")
+        hosts.rmdir()
         # The login in place: gh runs with GH_TOKEN the file's value and GH_CONFIG_DIR the root's gh directory.
         self.place_login(root)
         run = wrapper()
@@ -1585,13 +1608,13 @@ class RouterSettingsApplyTest(unittest.TestCase):
         shared.chmod(0o600)
         no_row = f"router-gh: {hosts_phys} names no active login for github.com: no oauth_token row at the host block's own depth (the rows under users: are not read); the agent account's login inside the root is the operator's step (docs/engagement-handout.md)"
         cases = (
-            ("a link", None, 0o600, f"router-gh: {hosts_phys} is a symbolic link; the login must be a regular file inside the credential root"),
-            ("a group-readable file", hosts_yml(HOSTS_OAUTH_VALUE), 0o640, f"router-gh: {hosts_phys} has mode 640; the login must be readable by this user alone (0600)"),
-            ("no oauth_token row", "github.com:\n    user: agent-account\n", 0o600, no_row),
-            ("another host's row alone", hosts_yml(HOSTS_OAUTH_VALUE).replace("github.com:", "ghe.example.invalid:", 1), 0o600, no_row),
-            ("a value outside the grammar", hosts_yml("'has a space'"), 0o600, f"router-gh: the oauth_token of github.com in {hosts_phys} is empty or outside [A-Za-z0-9_]"),
+            ("a link", None, 0o600, 2, f"router-gh: {hosts_phys} is a symbolic link; the login must be a regular file inside the credential root"),
+            ("a group-readable file", hosts_yml(HOSTS_OAUTH_VALUE), 0o640, 2, f"router-gh: {hosts_phys} has mode 640; the login must be readable by this user alone (0600)"),
+            ("no oauth_token row", "github.com:\n    user: agent-account\n", 0o600, 3, no_row),
+            ("another host's row alone", hosts_yml(HOSTS_OAUTH_VALUE).replace("github.com:", "ghe.example.invalid:", 1), 0o600, 3, no_row),
+            ("a value outside the grammar", hosts_yml("'has a space'"), 0o600, 2, f"router-gh: the oauth_token of github.com in {hosts_phys} is empty or outside [A-Za-z0-9_]"),
         )  # fmt: skip
-        for case, text, mode, message in cases:
+        for case, text, mode, code, message in cases:
             with self.subTest(case=case):
                 if text is None:
                     hosts.unlink()
@@ -1599,7 +1622,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
                 else:
                     self.place_login(root, text, mode)
                 run = wrapper()
-                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual((run.returncode, run.stdout), (code, ""), run.stderr)
                 self.assertEqual(run.stderr, message + "\n")
                 self.assertNotIn(HOSTS_OAUTH_VALUE, run.stderr, "no refusal prints the value")
                 self.assertFalse(record.exists(), "gh did not run")
@@ -1610,8 +1633,8 @@ class RouterSettingsApplyTest(unittest.TestCase):
         round-2 reader counted both and refused the documented setup. The wrapper measures the block's depth from its
         first row and reads the `oauth_token:` rows at that depth alone: today's file runs gh once with `GH_TOKEN` the
         host-level value (the deeper row's value never reaches gh), at four spaces as gh writes it and at two; a block
-        holding `users:` rows alone is refused naming no active login, and two host-level rows are refused as before;
-        on a refusal gh never runs and neither value is printed."""
+        holding `users:` rows alone is refused naming no active login with exit 3 (no login yet, U490e), and two
+        host-level rows are refused with exit 2 as before; on a refusal gh never runs and neither value is printed."""
         fake, record = self.fake_gh()
         dsh_home = self.dir / "dsh-home"
         root = dsh_home / "router-credentials"
@@ -1638,19 +1661,21 @@ class RouterSettingsApplyTest(unittest.TestCase):
             (
                 "users rows alone",
                 hosts_yml_users_only(HOSTS_USERS_VALUE),
+                3,
                 f"router-gh: {hosts_phys} names no active login for github.com: no oauth_token row at the host block's own depth (the rows under users: are not read); the agent account's login inside the root is the operator's step (docs/engagement-handout.md)",
             ),
             (
                 "two host-level rows",
                 hosts_yml_today(HOSTS_OAUTH_VALUE, HOSTS_USERS_VALUE) + hosts_yml(HOSTS_USERS_VALUE).splitlines()[-1] + "\n",
+                2,
                 f"router-gh: {hosts_phys} names 2 oauth_token rows for github.com at the host block's own depth; exactly one is read",
             ),
         )  # fmt: skip
-        for case, text, message in cases:
+        for case, text, code, message in cases:
             with self.subTest(case=case):
                 self.place_login(root, text)
                 run = wrapper()
-                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual((run.returncode, run.stdout), (code, ""), run.stderr)
                 self.assertEqual(run.stderr, message + "\n")
                 self.assertNotIn(HOSTS_OAUTH_VALUE, run.stderr, "no refusal prints a value")
                 self.assertNotIn(HOSTS_USERS_VALUE, run.stderr, "no refusal prints a value")
@@ -1661,8 +1686,9 @@ class RouterSettingsApplyTest(unittest.TestCase):
         `<root>/gh` as a symbolic link to an outside directory of this user (`~/.config/gh`, say) passed and its login
         reached gh as `GH_TOKEN`, a credential outside the promised root. The wrapper now walks `<root>`, `<root>/gh`,
         `<root>/gh/hosts.yml` in order, each held by its own test before anything is read: a linked `<root>/gh` is
-        refused naming it and gh never runs, a regular file there is refused, an absent one is the state before the
-        operator's step and is refused naming that step; the leaf's refusals of round 2 stand (the test above)."""
+        refused naming it and gh never runs, a regular file there is refused (both exit 2, a broken root), an absent
+        one is the state before the operator's step and is refused naming that step with exit 3 (U490e); the leaf's
+        refusals of round 2 stand (the test above)."""
         fake, record = self.fake_gh()
         dsh_home = self.dir / "dsh-home"
         root = dsh_home / "router-credentials"
@@ -1700,7 +1726,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertFalse(record.exists(), "gh did not run on the file")
         gh_dir.unlink()
         run = wrapper()
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
         self.assertEqual(
             run.stderr,
             f"router-gh: no gh login under the credential root: {gh_phys} is absent; the agent account's login inside the "

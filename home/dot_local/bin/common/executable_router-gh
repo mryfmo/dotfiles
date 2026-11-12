@@ -14,26 +14,36 @@
 #   `~/.dsh` as the kit's default. The root, its `gh/` and the `hosts.yml` inside are held as one chain, each component
 #   by its own test before anything is read (U353c, the shape of seat-login-preflight's claude_config_validate): no
 #   link, the two directories this user's, the root read physically (`pwd -P`) and `gh/` resolving inside it, the leaf
-#   a regular file of this user; a link, a file or an absent component refuses (exit 2) before `gh` runs.
+#   a regular file of this user; a link, a file in a directory's place or a directory in the file's place refuses (exit
+#   2) before `gh` runs, and an absent component refuses with exit 3 (U490e, below).
 #   gh resolves a credential as `GH_TOKEN`, then the config directory's `hosts.yml`, then the host-wide Keychain on
 #   macOS (`gh help environment`; verdict U353-8791100f P1 `:97`): `GH_CONFIG_DIR` alone let an empty root authenticate
 #   as the operator's own Keychain login, since srt permits securityd. So this wrapper is the only credential source gh
 #   sees: it reads the `oauth_token:` of `github.com` from `<root>/gh/hosts.yml` itself (a regular file of this user, no
 #   link, readable by this user alone as `gh auth login` writes it; the row at the `github.com:` block's own depth,
 #   exactly one, since gh 2.40 and later repeats each account's row deeper under `users:`, which is never read (U353c);
-#   its value inside [A-Za-z0-9_]; each else refused by name with exit 2 and no `gh` run, the value never printed) and runs `gh` with
+#   its value inside [A-Za-z0-9_]; each else refused by name and no `gh` run, the value never printed) and runs `gh` with
 #   `GH_TOKEN` set to it and `GH_CONFIG_DIR` the root's `gh/`, so the Keychain is never consulted and an absent or
 #   empty login is a refusal, never a fallback. The caller's `GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN` and
 #   `GITHUB_ENTERPRISE_TOKEN` are replaced or removed first, so the account is the credential root's login and never a
 #   value of the caller's environment (the Router's setup removes them too, docs/006-deployment.md "Setup checks");
 #   `GH_HOST` is removed so the host is github.com. `gh` is resolved from the caller's PATH (`type -P`, inside the
 #   sandbox the seat's PATH), and an absent `gh` refuses by name. Every other argument reaches `gh` verbatim.
+# @description Two refusal codes (regime-cutover U490e). Exit 3 is "not yet": the credential root, its `gh/` or its
+#   `hosts.yml` is absent (neither a link nor an entry), or `hosts.yml` names no `oauth_token:` row for github.com at
+#   the block's own depth; the agent account's login is the operator's pending step (docs/engagement-handout.md step 2)
+#   and nothing is broken. Exit 2 is every other refusal: a broken or unreadable root (a link anywhere in the chain, a
+#   wrong owner or mode, a root that cannot be resolved, two rows, a value outside the grammar), a relative `DSH_HOME`,
+#   an absent `gh`, the self-check. One caller reads the two codes: `check_router_token` in scripts/check-tools.sh (the
+#   doctor), an optional warning for 3 and a required failure for 2, with no path test of its own; the Router reads
+#   `gh`'s status alone. Both codes print one line on stderr, the same form.
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
 #   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
 #   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
 #   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
 # @arg $@ string gh's arguments, verbatim.
-# @exitcode 2 The self-check, `DSH_HOME`, the credential root, its gh directory, the login file or `gh` refused.
+# @exitcode 2 The self-check, `DSH_HOME`, the credential root, its gh directory, the login file or `gh` refused: broken, not pending.
+# @exitcode 3 No login yet: the credential root, its gh directory or the login file is absent, or the login file names no active github.com login; the operator's step.
 # @exitcode * gh's own status.
 # @example
 #   DSH_HOME=~/.dsh router-gh api user --jq .login
@@ -89,11 +99,19 @@ lever_self_check() {
 }
 lever_self_check
 
-# @description Print the refusal on stderr and exit 2.
+# @description Print the refusal on stderr and exit 2: a broken or unreadable root, never the pending step.
 # @arg $1 string The reason.
 refuse() {
     echo "router-gh: $1" >&2
     exit 2
+}
+
+# @description Print the refusal on stderr, the same form, and exit 3: the login is not yet in place, the operator's
+#   step (U490e); read by the doctor as an optional warning where exit 2 is a required failure.
+# @arg $1 string The reason.
+refuse_absent() {
+    echo "router-gh: $1" >&2
+    exit 3
 }
 
 dsh_home=${DSH_HOME:-${HOME}/.dsh}
@@ -106,20 +124,22 @@ root=${dsh_home}/router-credentials
 # the leaf alone, so `<root>/gh` as a link to an outside gh directory of this user passed and its login reached gh
 # (verdict U353b-9c504ad9 P1 `:106`). Each producer's status is read (standing order 21).
 [[ ! -L ${root} ]] || refuse "the credential root ${root} is a symbolic link; it must be a real directory inside DSH_HOME"
-[[ -d ${root} ]] || refuse "the credential root ${root} is not a directory; hcom-seat router makes it, and the agent account's login inside it is the operator's step"
+[[ -e ${root} ]] || refuse_absent "the credential root ${root} is absent; hcom-seat router makes it, and the agent account's login inside it is the operator's step"
+[[ -d ${root} ]] || refuse "the credential root ${root} is not a directory; it must be a real directory inside DSH_HOME"
 [[ -O ${root} ]] || refuse "the credential root ${root} is not this user's directory"
-root_phys=$(cd "${root}" && pwd -P) || refuse "cannot resolve the credential root ${root}"
+root_phys=$(cd "${root}" 2> /dev/null && pwd -P) || refuse "cannot resolve the credential root ${root}" # cd's own message is dropped: the refusal is the one stderr line (U490e)
 gh_real=$(type -P gh) || refuse "gh not found on PATH"
 gh_dir=${root_phys}/gh
 [[ ! -L ${gh_dir} ]] || refuse "${gh_dir} is a symbolic link; the login directory must be a real directory inside the credential root"
-[[ -e ${gh_dir} ]] || refuse "no gh login under the credential root: ${gh_dir} is absent; the agent account's login inside the root is the operator's step (docs/engagement-handout.md), and gh runs with no other credential"
+[[ -e ${gh_dir} ]] || refuse_absent "no gh login under the credential root: ${gh_dir} is absent; the agent account's login inside the root is the operator's step (docs/engagement-handout.md), and gh runs with no other credential"
 [[ -d ${gh_dir} ]] || refuse "${gh_dir} is not a directory; the login directory must be a real directory inside the credential root"
 [[ -O ${gh_dir} ]] || refuse "${gh_dir} is not this user's directory"
-gh_phys=$(cd "${gh_dir}" && pwd -P) || refuse "cannot resolve the login directory ${gh_dir}"
+gh_phys=$(cd "${gh_dir}" 2> /dev/null && pwd -P) || refuse "cannot resolve the login directory ${gh_dir}"
 [[ ${gh_phys} == "${root_phys}/gh" ]] || refuse "the login directory ${gh_dir} resolves to ${gh_phys}, outside the credential root" # lint-comparisons: allow both sides are pwd -P forms, the hold of the chain
 hosts=${gh_dir}/hosts.yml
 [[ ! -L ${hosts} ]] || refuse "${hosts} is a symbolic link; the login must be a regular file inside the credential root"
-[[ -f ${hosts} ]] || refuse "no gh login under the credential root: ${hosts} is not a regular file; the agent account's login inside the root is the operator's step (docs/engagement-handout.md), and gh runs with no other credential"
+[[ -e ${hosts} ]] || refuse_absent "no gh login under the credential root: ${hosts} is absent; the agent account's login inside the root is the operator's step (docs/engagement-handout.md), and gh runs with no other credential"
+[[ -f ${hosts} ]] || refuse "${hosts} is not a regular file; the login must be a regular file inside the credential root"
 [[ -O ${hosts} ]] || refuse "${hosts} is not this user's file"
 os=$(/usr/bin/uname -s) || refuse 'cannot read the operating system name (uname -s)'
 case ${os} in
@@ -157,7 +177,7 @@ while [[ -n ${rest} ]]; do
     esac
 done
 if ((oauth_rows == 0)); then
-    refuse "${hosts} names no active login for github.com: no oauth_token row at the host block's own depth (the rows under users: are not read); the agent account's login inside the root is the operator's step (docs/engagement-handout.md)"
+    refuse_absent "${hosts} names no active login for github.com: no oauth_token row at the host block's own depth (the rows under users: are not read); the agent account's login inside the root is the operator's step (docs/engagement-handout.md)"
 elif ((oauth_rows != 1)); then
     refuse "${hosts} names ${oauth_rows} oauth_token rows for github.com at the host block's own depth; exactly one is read"
 fi

@@ -104,6 +104,11 @@ EVAL_DEFAULT = {"mode": "off", "timeoutSeconds": 120, "model": None}
 POLICY_DEFAULT = {"rules": [], "sources": {}}
 ADMISSION_CELL = {"github": {"allowed": [], "admission": {"pulls": {"unlistedUnaddressed": "inferred"}}}}
 POLICY_PUT = {"value": {"rules": [], "sources": ADMISSION_CELL}, "revision": 0}
+# The committed row's identity set (U469: the operator's login) as the policy's `{id}` rows, and the policy PUT it makes.
+ALLOWED = ["mryfmo"]
+ALLOWED_ROWS = [{"id": login} for login in ALLOWED]
+AUTO_CELL = {"github": {"allowed": ALLOWED_ROWS, "admission": {"pulls": {"unlistedUnaddressed": "inferred"}}}}
+AUTO_POLICY_PUT = {"value": {"rules": [], "sources": AUTO_CELL}, "revision": 0}
 SIGNED_OUT = {
     "place": "github",
     "code": "agentCliSignedOut",
@@ -112,10 +117,12 @@ SIGNED_OUT = {
 }
 # The program store's decisions.tsv as the lever reads it for the auto admission (U465b, U465c): the header, the
 # ladder's first row (the committed manifest's accept_mode_row, whose decision mentions auto and is no auto row) and its
-# second row, the one `accept_mode_auto_row` may name: phase M-18, its decision beginning with the fixed marker
-# `accept rung auto for <repository>`, at a ts of its own.
+# second row, the one `accept_mode_auto_row` names: phase M-18, its decision beginning with the fixed marker
+# `accept rung auto for <repository>`, at a ts of its own. Since U469 the committed rendering names the second row (the
+# operator's row of 2026-11-12T00:08:25Z), so the scratch store holds that ts and the committed rendering is admitted
+# as auto; the observe form is proven on mutated copies (observe_source).
 LADDER_ROW = "2026-11-06T23:24:00Z"
-AUTO_ROW = "2026-11-12T00:00:00Z"
+AUTO_ROW = "2026-11-12T00:08:25Z"
 AUTO_MARKER = f"accept rung auto for {REPOSITORY}"
 FIRST_RUNG = (
     f"{LADDER_ROW}\tM-18\tgithub-source: off -> observe: the first rung of the accept ladder; the next rung (auto) needs "
@@ -348,6 +355,11 @@ class RouterSettingsApplyTest(unittest.TestCase):
         path.write_text(json.dumps(data, indent=2) + "\n")
         return path
 
+    def observe_source(self, name: str, **row) -> Path:
+        """The committed rendering in the observe form (the row before U469: `observe`, the auto row null, the list
+        empty) with the cells of `row` replaced: the observe-form proofs run against this mutated copy."""
+        return self.source_json(name, **{"accept_mode": "observe", "accept_mode_auto_row": None, "allowed": [], **row})
+
     def auto_source(self, name: str, ts: str, allowed: object = (), **row) -> Path:
         """The rendering with its Source row at `auto` beside `accept_mode_auto_row` `ts` and `allowed` as given (a
         sequence of ids becomes the list; anything else, REMOVE included, is passed through for the refusal cases)."""
@@ -383,7 +395,8 @@ class RouterSettingsApplyTest(unittest.TestCase):
         return hosts
 
     def test_the_two_put_bodies_follow_upstreams_grammar_after_the_revision_is_read_and_a_second_run_puts_nothing(self):
-        # The manifest row: repository mryfmo/dotfiles, accept_mode observe (M-18 row 2026-11-06T23:24:00Z).
+        # The manifest row: repository mryfmo/dotfiles, accept_mode auto (M-18 rows 2026-11-06T23:24:00Z and
+        # 2026-11-12T00:08:25Z; U469), allowed mryfmo.
         self.api.signed_out = False
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
@@ -407,7 +420,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
             },
         )
         self.assertEqual(evaluation["path"], API + "settings/eval")
-        self.assertEqual(evaluation["body"], {"value": {**EVAL_DEFAULT, "mode": "observe"}, "revision": 0})
+        self.assertEqual(evaluation["body"], {"value": {**EVAL_DEFAULT, "mode": "auto"}, "revision": 0})
         # The Router restarts after a save while setup is pending: the lever reads the settings again before the next PUT.
         # The mode is saved first (U353b): a store at `auto` must hold the requested mode before the Source restarts.
         # The policy block goes between them (U416): it restarts nothing, so no re-read before the Source.
@@ -431,8 +444,10 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(
             self.api.source["config"], {"repository": "mryfmo/dotfiles", "cli": str(WRAPPER), "observePulls": True}
         )
-        self.assertEqual(self.api.eval["mode"], "observe")
-        self.assertNotIn("auto", json.dumps(self.api.requests))
+        self.assertEqual(self.api.eval["mode"], "auto")
+        self.assertEqual(
+            self.api.policy["sources"]["github"]["allowed"], ALLOWED_ROWS, "the committed login, auto alone"
+        )
         # The second run: the store already holds the values, so no PUT and the revisions are named as read.
         self.api.requests.clear()
         run = self.run_lever()
@@ -458,8 +473,9 @@ class RouterSettingsApplyTest(unittest.TestCase):
 
     def test_the_policy_put_writes_the_pulls_admission_cell_between_eval_and_source_and_a_second_run_puts_nothing(self):
         """U416 test (a): with the manifest scalar `observe_admission: inferred`, the lever PUTs `settings/policy` with the
-        rules as served and the github Source's `pulls.unlistedUnaddressed` cell `inferred` (the allowed list empty), after
-        the eval PUT and before the source PUT; the store then holds the kit's policy, so a second run PUTs no policy."""
+        rules as served and the github Source's `pulls.unlistedUnaddressed` cell `inferred` (the allowed list the
+        committed one, U469), after the eval PUT and before the source PUT; the store then holds the kit's policy, so a
+        second run PUTs no policy."""
         self.api.signed_out = False
         self.assertEqual("inferred", json.loads(SOURCE.read_text())["source"]["observe_admission"])
         run = self.run_lever()
@@ -468,8 +484,8 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(paths, ["settings/eval", "settings/policy", "settings/source:github"])
         policy = self.puts()[1]
         self.assertEqual(policy["headers"]["content-type"], "application/json")
-        self.assertEqual(policy["body"], POLICY_PUT)
-        self.assertEqual(self.api.policy, POLICY_PUT["value"])
+        self.assertEqual(policy["body"], AUTO_POLICY_PUT)
+        self.assertEqual(self.api.policy, AUTO_POLICY_PUT["value"])
         self.assertEqual(
             run.stdout,
             "eval saved (revision 1, restarting)\npolicy saved (revision 1)\nsource:github saved (revision 1, restarting)\n",
@@ -488,7 +504,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         (policy,) = self.puts()
         self.assertEqual(
             policy["body"],
-            {"value": {"rules": [], "sources": {"github": {"allowed": [], "admission": {"pulls": {"unlistedUnaddressed": "ignore"}}}}}, "revision": 1},
+            {"value": {"rules": [], "sources": {"github": {"allowed": ALLOWED_ROWS, "admission": {"pulls": {"unlistedUnaddressed": "ignore"}}}}}, "revision": 1},
         )  # fmt: skip
         self.assertEqual(
             run.stdout, "eval unchanged (revision 1)\npolicy saved (revision 2)\nsource:github unchanged (revision 1)\n"
@@ -496,12 +512,12 @@ class RouterSettingsApplyTest(unittest.TestCase):
 
     def test_a_policy_holding_the_cell_other_rows_and_another_source_is_unchanged_and_a_put_changes_the_one_cell(self):
         """U416 test (b): a view whose policy already holds `inferred` beside other admission rows, other cells of the
-        pulls row, the manifest's allowed list (empty), rules and another Source's entry is not written; when the cell
-        differs, the PUT keeps every one of them and changes the one cell."""
+        pulls row, the manifest's allowed list (the committed login, U469), rules and another Source's entry is not
+        written; when the cell differs, the PUT keeps every one of them and changes the one cell."""
         self.api.signed_out = False
         rules = [{"id": "copy", "text": "Explicit requests to correct a typo."}]
         github = {
-            "allowed": [],
+            "allowed": copy.deepcopy(ALLOWED_ROWS),
             "bots": ["dependabot[bot]"],
             "admission": {
                 "pulls": {"unlistedUnaddressed": "inferred", "listedAddressed": "explicit"},
@@ -538,15 +554,15 @@ class RouterSettingsApplyTest(unittest.TestCase):
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
         (policy,) = self.puts()
-        self.assertEqual(policy["body"]["value"], {"rules": rules, "sources": {"slack": slack, **ADMISSION_CELL}})
+        self.assertEqual(policy["body"]["value"], {"rules": rules, "sources": {"slack": slack, **AUTO_CELL}})
 
     def test_auto_is_rendered_with_its_dated_manifest_row_and_refused_without_it_naming_the_row(self):
         """U465 test (a), the accept rung: `accept_mode: auto` beside `accept_mode_auto_row` (a decisions.tsv timestamp,
         the M-18 ladder's second row) renders `eval.mode` auto; `auto` without that row, with a value that is no
         timestamp, or the row beside `observe`, is one refusal naming the row before any request. The committed
-        rendering stays observe: the flip is one manifest row after U466."""
+        rendering is auto since U469 (its row 2026-11-12T00:08:25Z); the cases below are mutated copies."""
         self.api.signed_out = False
-        self.assertEqual("observe", json.loads(SOURCE.read_text())["source"]["accept_mode"], "the kit holds observe")
+        self.assertEqual("auto", json.loads(SOURCE.read_text())["source"]["accept_mode"], "the kit holds auto (U469)")
         auto = self.auto_source("auto", AUTO_ROW)
         run = self.run_lever("--source", str(auto))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
@@ -557,7 +573,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(run.stdout.splitlines()[0], "eval saved (revision 1, restarting)")
         cases = {
             "no-auto-row": (
-                self.source_json("no-auto-row", accept_mode="auto"),
+                self.observe_source("no-auto-row", accept_mode="auto"),
                 (
                     f"{LABEL}.accept_mode 'auto' in {{path}} needs accept_mode_auto_row (the M-18 ladder's second row "
                     "timestamp) beside accept_mode_row; the mode stays observe until that row is written"
@@ -568,7 +584,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
                 f"{LABEL}.accept_mode_auto_row 'tomorrow' in {{path}} is not a decisions.tsv timestamp (YYYY-MM-DDTHH:MM:SSZ)",
             ),
             "auto-row-beside-observe": (
-                self.source_json("auto-row-beside-observe", accept_mode_auto_row=AUTO_ROW),
+                self.observe_source("auto-row-beside-observe", accept_mode_auto_row=AUTO_ROW),
                 f"{LABEL}.accept_mode_auto_row in {{path}} belongs to accept_mode auto alone, not 'observe'",
             ),
         }
@@ -584,21 +600,19 @@ class RouterSettingsApplyTest(unittest.TestCase):
     def test_the_allowed_list_is_rendered_from_the_manifest_and_an_absent_list_or_a_bad_id_refuses(self):
         """U465 test (a), the identity set: `policy.sources.github.allowed` is the Source row's `allowed` list as
         `{"id": <id>}` rows in the row's order (src/sources/github.ts:72: an id is `[A-Za-z0-9-]+`), written over
-        whatever the store holds (R-45: the kit's row is the Source's one identity set); the committed list is empty.
+        whatever the store holds (R-45: the kit's row is the Source's one identity set); the committed list is mryfmo (U469).
         A rendering without the list, a value that is no list of strings, an id outside the grammar and a repeated id
         are each one refusal naming it before any request."""
         self.api.signed_out = False
-        self.assertEqual([], json.loads(SOURCE.read_text())["source"]["allowed"], "the committed list is empty")
+        self.assertEqual(ALLOWED, json.loads(SOURCE.read_text())["source"]["allowed"], "the committed list, the login")
         panel = {"allowed": [{"id": "someone"}], "admission": {"pulls": {"unlistedUnaddressed": "inferred"}}}
         self.api.policy = {"rules": [], "sources": {"github": copy.deepcopy(panel)}}
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
         policy = [entry for entry in self.puts() if entry["path"] == API + "settings/policy"]
-        self.assertEqual(
-            len(policy), 1, "the panel's entry differs from the kit's empty list, so the policy is written"
-        )
-        self.assertEqual(policy[0]["body"], {"value": {"rules": [], "sources": ADMISSION_CELL}, "revision": 0})
-        self.assertEqual(self.api.policy["sources"]["github"]["allowed"], [])
+        self.assertEqual(len(policy), 1, "the panel's entry differs from the kit's list, so the policy is written")
+        self.assertEqual(policy[0]["body"], AUTO_POLICY_PUT)
+        self.assertEqual(self.api.policy["sources"]["github"]["allowed"], ALLOWED_ROWS)
         # The list is written in auto alone (U465b), so the listed rendering carries the mode and its row from the store.
         listed = self.auto_source("listed", AUTO_ROW, ["someone", "other-one"])
         self.api.requests.clear()
@@ -609,7 +623,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(policy["body"], {"value": {"rules": [], "sources": {"github": entry}}, "revision": 1})
         self.assertEqual(
             run.stdout,
-            "eval saved (revision 2, restarting)\npolicy saved (revision 2)\nsource:github unchanged (revision 1)\n",
+            "eval unchanged (revision 1)\npolicy saved (revision 2)\nsource:github unchanged (revision 1)\n",
         )
         self.assertEqual(self.api.policy["sources"]["github"], entry)
         # The same list again: nothing to write.
@@ -671,13 +685,19 @@ class RouterSettingsApplyTest(unittest.TestCase):
             f"dry run: nothing is read from or written to the Management API at 127.0.0.1:{self.api.port}\n"
             f"store {self.store}\n"
             f"source {SOURCE}\n"
-            "eval.mode observe\n"
-            "allowed []\n"
+            "eval.mode auto\n"
+            f"allowed {json.dumps(ALLOWED)}\n"
             "admission.pulls.unlistedUnaddressed inferred\n"
             "repository mryfmo/dotfiles\n"
             f"cli {WRAPPER}\n",
         )
         self.assertEqual((self.api.eval, self.api.policy), (EVAL_DEFAULT, POLICY_DEFAULT), "nothing changed")
+        # The observe form, a mutated copy (the committed row before U469): the mode and the empty list printed.
+        observe = self.observe_source("observe")
+        run = self.run_lever("--dry-run", "--source", str(observe))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertIn("eval.mode observe\nallowed []\nadmission.pulls", run.stdout)
+        self.assertEqual(self.api.requests, [])
         listed = self.auto_source("listed", AUTO_ROW, ["someone", "other-one"])
         run = self.run_lever("--dry-run", "--source", str(listed))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
@@ -1012,16 +1032,18 @@ class RouterSettingsApplyTest(unittest.TestCase):
         data = json.loads(text)
         self.assertEqual({"generated_by", "source"}, set(data))
         self.assertEqual(
-            {"repository": REPOSITORY, "accept_mode": "observe", "accept_mode_row": LADDER_ROW, "accept_mode_auto_row": None, "observe_admission": "inferred", "allowed": []},
+            {"repository": REPOSITORY, "accept_mode": "auto", "accept_mode_row": LADDER_ROW, "accept_mode_auto_row": AUTO_ROW, "observe_admission": "inferred", "allowed": ALLOWED},
             data["source"],
-            "the committed rendering is the manifest's observe row (the generator writes it; make render-check holds it)",
+            "the committed rendering is the manifest's auto row (U469; the generator writes it; make render-check holds it)",
         )  # fmt: skip
         run = self.run_lever("--dry-run", "--source", str(SOURCE))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
-        self.assertIn("eval.mode observe\nallowed []\n", run.stdout)
+        self.assertIn(f"eval.mode auto\nallowed {json.dumps(ALLOWED)}\n", run.stdout)
         what = "the rendered Source row {path}"
-        allowed = '"allowed": []'
+        allowed = '"allowed": ['
         self.assertEqual(1, text.count(allowed), "the committed list, once")
+        admission = '"observe_admission": "inferred",'
+        self.assertEqual(1, text.count(admission), "the committed cell, once")
         repository = f'"repository": "{REPOSITORY}"'
         cases = {
             "allowed-twice": (text.replace(allowed, '"allowed": ["unauthorized"], ' + allowed), f"{what} names the key 'allowed' twice; the generator writes each key once, so this file is not its rendering and is not read"),
@@ -1032,8 +1054,8 @@ class RouterSettingsApplyTest(unittest.TestCase):
             "an-extra-key": (text.rstrip("\n")[:-1] + ', "allowed": ["someone"]}\n', f"{what} is not the generator's rendering (an object holding generated_by and source alone)"),
             "no-source": ('{"generated_by": "x"}\n', f"{what} is not the generator's rendering (an object holding generated_by and source alone)"),
             "row-a-list": ('{"generated_by": "x", "source": []}\n', f"{what} holds no {LABEL} object"),
-            "unknown-key": (text.replace(allowed, allowed + ', "bots": []'), f"{LABEL} in {{path}} has unknown key(s) ['bots']; the row admits ['repository', 'accept_mode', 'accept_mode_row', 'accept_mode_auto_row', 'observe_admission', 'allowed']"),
-            "mode-a-number": (text.replace('"accept_mode": "observe"', '"accept_mode": 1'), f"{LABEL}.accept_mode in {{path}} is not a non-empty string: 1"),
+            "unknown-key": (text.replace(admission, admission + ' "bots": [],'), f"{LABEL} in {{path}} has unknown key(s) ['bots']; the row admits ['repository', 'accept_mode', 'accept_mode_row', 'accept_mode_auto_row', 'observe_admission', 'allowed']"),
+            "mode-a-number": (text.replace('"accept_mode": "auto"', '"accept_mode": 1'), f"{LABEL}.accept_mode in {{path}} is not a non-empty string: 1"),
             "repository-empty": (text.replace(f'"repository": "{REPOSITORY}"', '"repository": ""'), f"{LABEL}.repository in {{path}} is not a non-empty string: ''"),
         }  # fmt: skip
         for case, (altered, expected) in cases.items():
@@ -1067,11 +1089,11 @@ class RouterSettingsApplyTest(unittest.TestCase):
         the store), `[]` in `off` and `observe` whatever the manifest says; the validator refuses such a manifest, and
         this lever renders the empty list, prints it in a dry run and writes it over the store's entry."""
         self.api.signed_out = False
-        observe = self.source_json("observe-listed", allowed=["someone"])
+        observe = self.observe_source("observe-listed", allowed=["someone"])
         run = self.run_lever("--dry-run", "--source", str(observe))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
         self.assertIn("eval.mode observe\nallowed []\n", run.stdout)
-        off = self.source_json("off-listed", accept_mode="off", allowed=["someone"])
+        off = self.observe_source("off-listed", accept_mode="off", allowed=["someone"])
         run = self.run_lever("--dry-run", "--source", str(off))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
         self.assertIn("eval.mode off\nallowed []\n", run.stdout)
@@ -1143,7 +1165,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(paths[-1], ("PUT", "settings/policy"), "nothing was written after the refusal")
         self.assertEqual(self.api.source, {"enabled": True, "config": {}}, "the Source was not written")
         self.assertEqual(self.api.policy, POLICY_DEFAULT)
-        self.assertEqual(self.api.eval["mode"], "observe")
+        self.assertEqual(self.api.eval["mode"], "auto")
 
     def test_a_stale_revision_a_rejected_header_and_an_unreachable_port_are_each_a_refusal_naming_it(self):
         self.api.signed_out = False
@@ -1199,7 +1221,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
             run.stderr,
         )
         self.assertEqual(self.api.source, {"enabled": True, "config": {}}, "the Router saved no Source row")
-        self.assertEqual(self.api.eval["mode"], "observe")
+        self.assertEqual(self.api.eval["mode"], "auto")
         # After the operator's step the same run saves the Source and finds the mode in place.
         self.api.signed_out = False
         self.api.requests.clear()
@@ -1214,7 +1236,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
     def test_auto_without_its_row_an_absent_row_a_missing_port_a_foreign_host_and_a_missing_block_each_refuse(self):
         self.api.signed_out = False
         renderings = {
-            "auto-no-row": self.source_json("auto-no-row", accept_mode="auto"),
+            "auto-no-row": self.observe_source("auto-no-row", accept_mode="auto"),
             "no-mode": self.source_json("no-mode", accept_mode=REMOVE),
             "no-first-row": self.source_json("no-first-row", accept_mode_row=REMOVE),
             "no-auto-row-key": self.source_json("no-auto-row-key", accept_mode_auto_row=REMOVE),
@@ -1306,7 +1328,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
             run.stdout,
             "eval saved (revision 1, restarting)\npolicy saved (revision 1)\nsource:github saved (revision 1, restarting)\n",
         )
-        self.assertEqual(self.api.eval["mode"], "observe")
+        self.assertEqual(self.api.eval["mode"], "auto")
         # The redirect: named with its Location, not followed, nothing written.
         self.api.requests.clear()
         self.api.redirect = "http://external.invalid/orchestrator/api/settings"
@@ -1811,7 +1833,7 @@ class RouterSettingsApplyEntryTest(unittest.TestCase):
         )
         self.assertEqual(
             run.stdout.splitlines()[1:5],
-            [f"store {self.store}", f"source {rendering}", "eval.mode observe", "allowed []"],
+            [f"store {self.store}", f"source {rendering}", "eval.mode auto", f"allowed {json.dumps(ALLOWED)}"],
         )
         # The derived store, when it exists, is the one named (store_resolve's first form), the checkout's not looked at.
         derived = self.home / ".local/state/regime-store/checkout/regime-cutover"

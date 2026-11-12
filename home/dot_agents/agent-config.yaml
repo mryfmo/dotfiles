@@ -1489,8 +1489,9 @@ assets:
     sources:
       github:
         repository: mryfmo/dotfiles
-        accept_mode: observe
+        accept_mode: auto
         accept_mode_row: "2026-11-06T23:24:00Z"
+        accept_mode_auto_row: "2026-11-12T00:08:25Z"
         # observe_admission is the one policy cell router-settings-apply writes (sources.github.admission.pulls
         # .unlistedUnaddressed, U416): the M-18 observe rung records a would-accept Decision only through this cell
         # (inferred; upstream's default ignore sends every unlisted human's pull request to not_a_member before any
@@ -1500,9 +1501,10 @@ assets:
         # into policy.sources.github.allowed as {id} rows (src/sources/github.ts:72, ids [A-Za-z0-9-]+), replacing
         # the store's list, in auto alone (U465b: a listed login's mention is explicit, accepted in every mode, so
         # the validators refuse a listed login beside observe or off and the lever writes [] there). An unlisted
-        # login's message is refused not_a_member, which intake-observe.py records naming the login. Empty today: the
-        # operator names the ids by a decisions row before the flip to auto (one manifest row, after U466).
-        allowed: []
+        # login's message is refused not_a_member, which intake-observe.py records naming the login. Set by the decisions
+        # row of 2026-11-12T00:08:25Z (U469): allowed is mryfmo, the operator's login, for the trial repository above;
+        # the return to observe is a later row.
+        allowed: [mryfmo]
   graphifyy:
     source: github-release
     upstream: Graphify-Labs/graphify

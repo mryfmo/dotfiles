@@ -617,7 +617,7 @@ directory as `<dir>/**`, and `~/.local/state/hcom-regime/.tmp/**` whole, the
 pin of the directory above `.tmp/launch`; the per-slug stores under
 `~/.local/state/hcom` and the seat sandboxes stay writable to a sandboxed
 command there, because the Linux sandbox discards every `denyWrite` entry
-holding an interior `*` (the interior-glob limit), the same same-user residual
+holding an interior `*` (the interior-glob limit), the same-user residual
 gate G17 owns. The source list is
 `claude.sandbox.filesystem.deny_write_under_hcom_stores`, the twin of the list
 `hcom-seat` denies its seats, and the per-OS set is one derivation in the

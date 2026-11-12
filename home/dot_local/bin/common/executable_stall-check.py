@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-"""Name every in-flight worker of a program store that is silent past its deadline (regime-cutover U496).
+"""Name every in-flight worker of a program store that is silent past its deadline (regime-cutover U496, round 2 U496b).
 
 Measured 2026-11-06 to 2026-11-12: eleven worker stalls, each a Task subagent silent after a tool call for 30 to 45
 minutes, each found because the coordinator remembered to read the progress files by hand (standing order 57). This
@@ -20,9 +20,13 @@ timestamp `YYYY-MM-DDTHH:MM:SSZ`, a space and free text; the last line decides. 
   `done,` (the form the workers write, `U495 done, head=<sha>`, measured 2026-11-12); the age is printed as well;
 - `no-file`: no progress file at the path, the worker never wrote its first line; `age_minutes` and `last_line` are
   `-`, and the row counts as a stall;
-- `unreadable`: a file that exists but cannot be read (a directory, a link, a mode that denies the read, bytes that
-  are not UTF-8), or whose last line carries no timestamp of the form, no space after it, a date that is none, or a
-  time after the clock: a refusal of the run naming the file and the unit, never a row and never a guess.
+- `unreadable`: that one unit's row, `age_minutes` `-`, never a refusal that hides every other unit (verdict
+  U496-d1256438 P1; the one run-level refusal a file earns is a store that cannot be read). Either the file yields no
+  text (a directory, a link, a mode that denies the read, bytes that are not UTF-8, an entry swapped between the
+  `lstat` and the `open`, an empty file or a blank last line) and `last_line` is `-`; or its last line carries no
+  timestamp of the form (the bare `done, head=<sha>` some workers write, or any other text), no space after it, a
+  date that is none, or a time after the clock, and `last_line` is that line, so the coordinator sees what the
+  worker wrote. The reason is not a cell of the row; the row's exit code is 2.
 
 `age_minutes` is the integer floor of the age in minutes, the number the state is judged by, so a printed `10` is
 moving under the default and `11` is stalled; a tab or a carriage return inside the worker's free text is one space in
@@ -31,18 +35,24 @@ the UTC wall clock). The progress root defaults to `/tmp/<slug>-wt`, `<slug>` th
 (`dotfiles` for `.../regime-store/dotfiles/regime-cutover`, the worktree root `worker-worktree.sh` uses).
 
 Exit 0 when every row is `moving` or `done` (an empty in-flight set prints nothing and is 0); exit 1 when any row is
-`stalled` or `no-file`; exit 2 with one stderr line, `stall-check.py: refused: <reason>`, and nothing on stdout for every
-refusal (standing order 21, fail closed on every producer): a `units.tsv` that is absent, cannot be read, is not UTF-8,
-has not the header `id track state branch pr head_sha brief note` tab-separated, has a row of other than eight cells,
-a row holding a carriage return, or a row whose id is not `U<n>` or `U<n><letter>` (the id names the file read, so no
-other shape reaches a path); an unreadable progress file as above; a bad `--now` or `--deadline-minutes` (a decimal
-count of minutes, `0` or without a leading zero); a store or progress root that is not an absolute path, holds an
-empty, `.` or `..` component (a trailing or repeated separator included), or is not a directory once resolved (a
-missing progress root is a wrong root, never an empty set of workers); any argument that is not strict UTF-8 or holds
-a tab, a newline or a carriage return; and argparse's own usage errors, printed in the same one-line form. Every file
-under the store or the root is reached by one path rule (`ledger-row.py`'s): the root is its own realpath, each
-component below it is `os.lstat`ed and none is a symbolic link, and the end is a regular file. No file is written and
-no mode is changed.
+`stalled` or `no-file`; exit 2 when any row is `unreadable` (the rows printed, the code the maximum over the rows), and
+exit 2 with one stderr line, `stall-check.py: refused: <reason>`, and nothing on stdout for every refusal (standing
+order 21, fail closed on every producer): a `units.tsv` that is absent, cannot be read or opened, is a link or no
+regular file, is not UTF-8, has not the header `id track state branch pr head_sha brief note` tab-separated, has a row
+of other than eight cells, a row holding a carriage return, or a row whose id is not `U<n>` or `U<n><letter>` (the id
+names the file read, so no other shape reaches a path); a bad `--now`; a `--deadline-minutes` that is not 1 to 10
+decimal digits without a leading zero (judged as text before `int()` sees it: a 4301-digit value raised `int()`'s
+digit limit as a traceback, verdict U496-d1256438 P2) or is outside 1 to 1440 (24 hours), the bound every integer
+option of this lever shares; a store or progress root that is not an absolute path, holds an empty, `.` or `..`
+component (a trailing or repeated separator included), or is not a directory once resolved (a missing progress root
+is a wrong root, never an empty set of workers); any argument that is not strict UTF-8 or holds a tab, a newline or a
+carriage return; and argparse's own usage errors, printed in the same one-line form. Every file under the store or
+the root is reached by one path rule (`ledger-row.py`'s) carried to the descriptor: the root is its own realpath, the
+component below it is `os.lstat`ed and is no symbolic link and a regular file, the file is then opened with
+`os.open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)` and judged by `os.fstat` on the descriptor (a regular file of the
+same device and inode the `lstat` saw), so a swap between the `lstat` and the `open` is caught (that unit's
+`unreadable` row, the register's refusal), and the text is read from that descriptor, never from the path again
+(verdict U496-d1256438 P1 :281). No file is written and no mode is changed.
 
 Before anything else the file hashes itself against its `claude.levers.sha256.stall-check.py` pin in the manifest
 beside it (the deployed `~/.agents/agent-config.yaml` for the copy under the physical `~/.local/bin/common`, else the
@@ -74,7 +84,10 @@ IN_FLIGHT = "in-flight"
 SWEEP = "sweep"
 # A unit id, the body's `U<n>` or a fix unit `U<n><letter>` (standing order 24): the one shape that names a file.
 UNIT = re.compile(r"^U[0-9]+[a-z]?$")
-DIGITS = re.compile(r"^(0|[1-9][0-9]*)$")
+# `--deadline-minutes`: 1 to 10 decimal digits without a leading zero, judged as text before `int()` sees it, then the
+# bound every integer option of this lever shares, 1 to BOUNDED_MINUTES (24 hours).
+DEADLINE_SHAPE = re.compile(r"^(0|[1-9][0-9]{0,9})$")
+BOUNDED_MINUTES = 1440
 # The progress lines' clock: an ISO-8601 UTC timestamp, then one space, then the worker's free text.
 TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 TS_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
@@ -84,14 +97,15 @@ DONE_PREFIX = "done,"
 # The three characters no argument holds: the output is tab-separated lines.
 CONTROL = (("\t", "a tab"), ("\n", "a newline"), ("\r", "a carriage return"))
 
-# The states, one table: the state word and the exit code a row of it contributes; `unreadable` is a refusal of the
-# run (exit 2 through `refuse`, nothing printed), so it never reaches a row.
+# The states, one table: the state word and the exit code a row of it contributes; `unreadable` is one unit's row of
+# exit 2 (round 2, U496b), while a refusal (exit 2 through `refuse`, nothing printed) is the store's alone.
 MOVING, STALLED, DONE, NO_FILE, UNREADABLE = "moving", "stalled", "done", "no-file", "unreadable"
 STATES = {MOVING: 0, DONE: 0, STALLED: 1, NO_FILE: 1, UNREADABLE: 2}
 
 
 class Unreadable(Exception):
-    """A file that exists but yields no text: the reason, for the caller to name with the file and the unit."""
+    """A file that exists but yields no held text: the reason as a verb phrase (`is a symbolic link`, `cannot be
+    read: ...`), for the caller to name after the file, or to fold into the unit's `unreadable` row."""
 
 
 def refuse(reason):
@@ -221,9 +235,16 @@ def clock(value):
 
 
 def deadline(value):
-    if not DIGITS.match(value):
-        refuse(f"--deadline-minutes {value!r} is not a decimal count of minutes")
-    return int(value)
+    """`--deadline-minutes` as an int: DEADLINE_SHAPE on the text first, so `int()` never sees a value of more digits
+    than it converts (the 4301-digit traceback of verdict U496-d1256438 P2), then 1 to BOUNDED_MINUTES. A long value is
+    named by its first characters and its length, so the refusal stays one line."""
+    shown = repr(value) if len(value) <= 20 else f"{value[:20]!r}... ({len(value)} characters)"
+    if not DEADLINE_SHAPE.match(value):
+        refuse(f"--deadline-minutes {shown} is not a decimal count of minutes of 1 to 10 digits without a leading zero")
+    minutes = int(value)
+    if not 1 <= minutes <= BOUNDED_MINUTES:
+        refuse(f"--deadline-minutes {shown} is outside 1 to {BOUNDED_MINUTES} (24 hours)")
+    return minutes
 
 
 def clean_directory(given, label):
@@ -256,47 +277,73 @@ def default_root(store):
     return clean_directory(f"/tmp/{slug}-wt", "progress root")
 
 
-def held_file(root, name, label):
-    """The regular file `<root>/<name>` by the levers' one path rule (ledger-row.py's `store_file`): `root` is its own
-    realpath, the component is `os.lstat`ed and no link, the end a regular file. Returns None when there is no entry
-    (the caller's `no-file` or absence refusal); every other outcome but a regular file is a refusal naming the path."""
+def held_file(root, name):
+    """An open read-only descriptor on the regular file `<root>/<name>` by the levers' one path rule (ledger-row.py's
+    `store_file`) carried to the descriptor: `root` is its own realpath; the component is `os.lstat`ed and is no link
+    and a regular file; the file is then opened with `O_RDONLY | O_NOFOLLOW | O_CLOEXEC` and judged by `os.fstat` on
+    the descriptor, a regular file on the same device and inode the `lstat` saw, so a swap for a link or for another
+    file between the two calls (verdict U496-d1256438 P1 :281) is caught; the caller reads this descriptor and never
+    the path again. Returns None when there is no entry at the `lstat` (the caller's `no-file` or absence refusal);
+    every other outcome but the held regular file raises Unreadable with the reason, the descriptor closed."""
     path = os.path.join(root, name)
     try:
-        status = os.lstat(path)
+        seen = os.lstat(path)
     except FileNotFoundError:
         return None
     except OSError as error:
-        refuse(f"the {label} {path} cannot be read: {error.strerror}")
-    if stat.S_ISLNK(status.st_mode):
-        refuse(f"the {label} {path} is a symbolic link; a file under the root is read through real entries alone")
-    if not stat.S_ISREG(status.st_mode):
-        refuse(f"the {label} {path} is not a regular file")
-    return path
-
-
-def file_text(path):
-    """The file's whole text, strict UTF-8; a read or a decode that fails raises Unreadable with the reason."""
+        raise Unreadable(f"cannot be read: {error.strerror or error}") from None
+    if stat.S_ISLNK(seen.st_mode):
+        raise Unreadable("is a symbolic link; a file under the root is read through real entries alone")
+    if not stat.S_ISREG(seen.st_mode):
+        raise Unreadable("is not a regular file")
     try:
-        with open(path, "rb") as handle:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    except OSError as error:
+        raise Unreadable(f"cannot be opened: {error.strerror or error}") from None
+    try:
+        held = os.fstat(descriptor)
+    except OSError as error:
+        os.close(descriptor)
+        raise Unreadable(f"cannot be read: {error.strerror or error}") from None
+    if not stat.S_ISREG(held.st_mode) or (held.st_dev, held.st_ino) != (seen.st_dev, seen.st_ino):
+        os.close(descriptor)
+        raise Unreadable("changed between the lstat and the open; the descriptor holds another file")
+    return descriptor
+
+
+def file_text(descriptor):
+    """The whole text behind the held descriptor, strict UTF-8, the descriptor closed either way; a read or a decode
+    that fails raises Unreadable with the reason."""
+    try:
+        with os.fdopen(descriptor, "rb") as handle:
             data = handle.read()
     except OSError as error:
-        raise Unreadable(error.strerror or str(error)) from None
+        raise Unreadable(f"cannot be read: {error.strerror or error}") from None
     try:
         return data.decode("utf-8")
     except UnicodeDecodeError as error:
-        raise Unreadable(f"not UTF-8: {error.reason}") from None
+        raise Unreadable(f"is not UTF-8: {error.reason}") from None
+
+
+def cell(text):
+    """The worker's free text as one cell of a tab-separated row: a tab or a carriage return is one space."""
+    return text.replace("\t", " ").replace("\r", " ")
 
 
 def in_flight_units(store):
     """The ids of the register's in-flight rows that are not sweep seats, in file order, after the whole register
     passes its grammar: the header, eight cells per row, no carriage return, every id a unit id."""
-    path = held_file(store, "units.tsv", "register")
-    if path is None:
-        refuse(f"the register {os.path.join(store, 'units.tsv')} is absent")
+    path = os.path.join(store, "units.tsv")
     try:
-        text = file_text(path)
+        descriptor = held_file(store, "units.tsv")
     except Unreadable as error:
-        refuse(f"the register {path} cannot be read: {error}")
+        refuse(f"the register {path} {error}")
+    if descriptor is None:
+        refuse(f"the register {path} is absent")
+    try:
+        text = file_text(descriptor)
+    except Unreadable as error:
+        refuse(f"the register {path} {error}")
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()  # the trailing newline of the last row
@@ -319,39 +366,34 @@ def in_flight_units(store):
 
 
 def judge(root, unit, now, limit):
-    """The unit's row as (state, age text, last line text) from its progress file under the root: `no-file` for no
-    entry; an unreadable file, or a last line outside the grammar, a refusal naming the file and the unit."""
-    name = f"{unit}-progress.txt"
-    path = held_file(root, name, f"progress file of {unit}")
-    if path is None:
-        return NO_FILE, "-", "-"
+    """The unit's row as (state, age text, last line text) from its progress file under the root, never a refusal
+    (round 2, U496b; the one run-level refusal left is a store that cannot be read): `no-file` for no entry;
+    `unreadable` with `-` for the age when the file yields no text (the line `-` too) or when its last line is outside
+    the grammar (no timestamp of the form, no space after it, no such date, a time after the clock: the line itself,
+    so the coordinator sees what the worker wrote); else the age and the `done,` forms decide."""
     try:
-        text = file_text(path)
-    except Unreadable as error:
-        refuse(f"the progress file {path} of {unit} is {UNREADABLE}: {error}")
+        descriptor = held_file(root, f"{unit}-progress.txt")
+        if descriptor is None:
+            return NO_FILE, "-", "-"
+        text = file_text(descriptor)
+    except Unreadable:
+        return UNREADABLE, "-", "-"
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
-    if not lines:
-        refuse(f"the progress file {path} of {unit} is {UNREADABLE}: it is empty")
-    last = lines[-1]
-    match = PROGRESS_LINE.match(last)
+    if not lines or lines[-1] == "":
+        return UNREADABLE, "-", "-"
+    last = cell(lines[-1])
+    match = PROGRESS_LINE.match(lines[-1])
     if match is None:
-        refuse(
-            f"the progress file {path} of {unit} is {UNREADABLE}: its last line carries no `YYYY-MM-DDTHH:MM:SSZ ` prefix"
-        )
+        return UNREADABLE, "-", last
     try:
         written = datetime.strptime(match.group(1), TS_FORMAT).replace(tzinfo=timezone.utc)
     except ValueError:
-        refuse(
-            f"the progress file {path} of {unit} is {UNREADABLE}: its last line's timestamp {match.group(1)} is no date"
-        )
+        return UNREADABLE, "-", last
     seconds = (now - written).total_seconds()
     if seconds < 0:
-        refuse(
-            f"the progress file {path} of {unit} is {UNREADABLE}: its last line's timestamp {match.group(1)} is after the "
-            f"clock {now.strftime(TS_FORMAT)}"
-        )
+        return UNREADABLE, "-", last
     age = int(seconds // 60)
     body = match.group(2)
     if body.startswith(DONE_PREFIX) or body.startswith(f"{unit} {DONE_PREFIX}"):
@@ -360,7 +402,7 @@ def judge(root, unit, now, limit):
         state = MOVING
     else:
         state = STALLED
-    return state, str(age), last.replace("\t", " ").replace("\r", " ")
+    return state, str(age), last
 
 
 def main(argv=None):

@@ -959,7 +959,7 @@ claude:
       router-settings-apply: 46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
-      stall-check.py: a1e2ee72f81b7e35d16fd4f47717379dd18a120db0aaacb994f955503a895bce
+      stall-check.py: e3b39aa1a521cf28f08d8cd4fa8ad88ac6c768f2013289c2165efdd9823c58bf
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

@@ -1,15 +1,19 @@
-"""Exercise scripts/orchestrator/stall-check.py (regime-cutover U496), the coordinator's one reader of the in-flight
-workers' progress files: one row per `units.tsv` row whose state is `in-flight` and whose track is not `sweep`, in the
-register's order, `unit<TAB>state<TAB>age_minutes<TAB>last_line`, the state one of `moving`, `stalled`, `done` and
-`no-file`, an unreadable file a refusal of the whole run and never a row, the register's header and the paths held
-before anything is read. Every test runs the lever as a subprocess under `python3 -I` over a scratch store and a
-scratch progress root with the clock injected by `--now`; nothing reads the live store, `/tmp/dotfiles-wt` or the real
+"""Exercise scripts/orchestrator/stall-check.py (regime-cutover U496, round 2 U496b), the coordinator's one reader of
+the in-flight workers' progress files: one row per `units.tsv` row whose state is `in-flight` and whose track is not
+`sweep`, in the register's order, `unit<TAB>state<TAB>age_minutes<TAB>last_line`, the state one of `moving`, `stalled`,
+`done`, `no-file` and `unreadable` (a file that yields no text or a last line outside the grammar is that one unit's
+row, exit 2, never a refusal that hides the other units), the one run-level refusal a register that cannot be read,
+the register's header and the paths held before anything is read, every progress file opened without following a
+link and judged on its descriptor. Every test but the swap test runs the lever as a subprocess under `python3 -I`
+over a scratch store and a scratch progress root with the clock injected by `--now`; the swap test imports the lever
+and times a swap between its `lstat` and its `open`; nothing reads the live store, `/tmp/dotfiles-wt` or the real
 `~/.agents`, and the lever is proved to write nothing.
 """
 
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import os
 import re
 import shutil
@@ -17,7 +21,9 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 LEVER = ROOT / "scripts/orchestrator/stall-check.py"
@@ -186,7 +192,9 @@ class StallCheckTest(unittest.TestCase):
 
     def test_the_deadline_option_moves_the_boundary_and_a_bad_value_is_refused(self) -> None:
         """`--deadline-minutes` defaults to 10: an age equal to it is moving, one more minute is stalled; the 14-minute
-        unit is moving under 14 and stalled under 13; a value that is not a decimal count of minutes is a refusal."""
+        unit is moving under 14 and stalled under 13; a value that is not 1 to 10 decimal digits without a leading
+        zero, or is outside 1 to 1440 (24 hours), is a one-line exit-2 refusal, a 4301-digit value included (it raised
+        `int()`'s digit limit as a traceback at d1256438, verdict U496-d1256438 P2); 1 and 1440 are accepted."""
         self.write_progress("U3", "2026-11-12T06:20:00Z U3 start: brief read")
         run = self.run_lever()
         self.assertIn("U3\tmoving\t10\t", run.stdout)
@@ -202,9 +210,15 @@ class StallCheckTest(unittest.TestCase):
         run = self.run_lever("--deadline-minutes", "13")
         self.assertEqual(run.returncode, 1)
         self.assertIn("U3\tstalled\t14\t", run.stdout)
-        for value in ("-1", "x", "1.5", "", "010", "10 "):
+        for value in ("-1", "x", "1.5", "", "010", "10 ", "0", "1441", "9" * 4301, "1" * 11):
             with self.subTest(value=value):
                 self.assert_refused(self.run_lever("--deadline-minutes", value), "--deadline-minutes")
+        for value in ("1", "1440"):
+            with self.subTest(value=value):
+                run = self.run_lever("--deadline-minutes", value)
+                self.assertEqual(run.stderr, "", run.stdout)
+                self.assertIn(run.returncode, (0, 1))
+                self.assertEqual(run.stdout.count("\n"), 3)
 
     def test_the_now_option_is_the_clock_and_a_bad_one_is_refused(self) -> None:
         """`--now` injects the clock in the progress lines' own form; twenty minutes later every line is stalled; a
@@ -247,31 +261,60 @@ class StallCheckTest(unittest.TestCase):
         shutil.copy2(self.store / "units.tsv", store / "units.tsv")
         self.assert_refused(self.run_lever(store=str(store), root=""), "progress root", f"/tmp/{slug}-wt")
 
-    # CHANGE 1: the refusals, each exit 2 with one stderr line and nothing on stdout.
+    # CHANGE 1 (round 2, U496b): a bad progress file is one unit's row; then the refusals, each exit 2 with one stderr
+    # line and nothing on stdout.
 
-    def test_an_unreadable_progress_file_is_a_refusal_of_the_run_never_a_row(self) -> None:
-        """A file that exists but cannot be read, or whose last line carries no timestamp of the form, is `unreadable`:
-        the run is refused naming the file and the unit, nothing is printed, and no other row is guessed."""
+    def test_an_unreadable_progress_file_is_that_unit_s_row_and_the_other_rows_still_print(self) -> None:
+        """A file that exists but yields no text, or whose last line carries no timestamp of the form, is that one
+        unit's `unreadable` row: `-` for the age, the last line in the fourth cell when there is one (`-` when the
+        file gave no text); the other units' rows print as before, nothing goes to stderr, and the run exits 2, the
+        maximum over the rows, never a refusal that hides every other unit (verdict U496-d1256438 P1 :338)."""
         path = self.progress / "U3-progress.txt"
         cases = [
-            ("empty", lambda: path.write_bytes(b"")),
-            ("blank last line", lambda: path.write_text("2026-11-12T06:16:00Z U3 start\n\n")),
-            ("no timestamp", lambda: path.write_text("2026-11-12T06:16:00Z U3 start\nU3: committing\n")),
-            ("no space after the timestamp", lambda: path.write_text("2026-11-12T06:16:00Z\n")),
-            ("a local time", lambda: path.write_text("2026-11-12T15:16:00+09:00 U3 start\n")),
-            ("no such date", lambda: path.write_text("2026-13-40T06:16:00Z U3 start\n")),
-            ("after --now", lambda: path.write_text("2026-11-12T06:30:01Z U3 start\n")),
-            ("not UTF-8", lambda: path.write_bytes(b"2026-11-12T06:16:00Z U3 \xff\n")),
-            ("a directory", lambda: path.mkdir()),
-            ("a symbolic link", lambda: path.symlink_to(self.progress / "U2-progress.txt")),
+            ("empty", lambda: path.write_bytes(b""), "-"),
+            ("blank last line", lambda: path.write_text("2026-11-12T06:16:00Z U3 start\n\n"), "-"),
+            (
+                "no timestamp",
+                lambda: path.write_text("2026-11-12T06:16:00Z U3 start\nU3: committing\n"),
+                "U3: committing",
+            ),
+            ("no space after the timestamp", lambda: path.write_text("2026-11-12T06:16:00Z\n"), "2026-11-12T06:16:00Z"),
+            (
+                "a local time",
+                lambda: path.write_text("2026-11-12T15:16:00+09:00 U3 start\n"),
+                "2026-11-12T15:16:00+09:00 U3 start",
+            ),
+            (
+                "no such date",
+                lambda: path.write_text("2026-13-40T06:16:00Z U3 start\n"),
+                "2026-13-40T06:16:00Z U3 start",
+            ),
+            (
+                "after --now",
+                lambda: path.write_text("2026-11-12T06:30:01Z U3 start\n"),
+                "2026-11-12T06:30:01Z U3 start",
+            ),
+            ("a tab in a bad line", lambda: path.write_text("U3:\tstep one\rdone\n"), "U3: step one done"),
+            ("not UTF-8", lambda: path.write_bytes(b"2026-11-12T06:16:00Z U3 \xff\n"), "-"),
+            ("a directory", lambda: path.mkdir(), "-"),
+            ("a symbolic link", lambda: path.symlink_to(self.progress / "U2-progress.txt"), "-"),
         ]
         if os.geteuid() != 0:
-            cases.insert(0, ("mode 000", lambda: (path.write_text("2026-11-12T06:16:00Z U3 start\n"), path.chmod(0))))
-        for label, plant in cases:
+            cases.insert(
+                0, ("mode 000", lambda: (path.write_text("2026-11-12T06:16:00Z U3 start\n"), path.chmod(0)), "-")
+            )
+        for label, plant, last in cases:
             with self.subTest(case=label):
                 plant()
                 try:
-                    self.assert_refused(self.run_lever(), "U3", str(path.resolve().parent / "U3-progress.txt"))
+                    run = self.run_lever()
+                    self.assertEqual((run.returncode, run.stderr), (2, ""), run.stdout)
+                    self.assertEqual(
+                        run.stdout,
+                        "U2\tmoving\t3\t2026-11-12T06:27:00Z U2: red tests pasted\n"
+                        f"U3\tunreadable\t-\t{last}\n"
+                        f"U4\tdone\t10\t2026-11-12T06:20:00Z done, head={HEAD}\n",
+                    )
                 finally:
                     # The planted entry goes after each case, whatever it was, so the next case starts from no entry.
                     if path.is_symlink():
@@ -281,6 +324,89 @@ class StallCheckTest(unittest.TestCase):
                     elif path.exists():
                         path.chmod(0o644)
                         path.unlink()
+
+    def test_a_bare_done_line_without_a_timestamp_is_that_unit_s_unreadable_row_not_a_refusal(self) -> None:
+        """The brief's literal `done, head=<40 hex>` as the last line with no timestamp (U497's worker, measured
+        2026-11-12T06:48Z) refused the whole run at d1256438 and hid every other unit; it is now U4's row
+        `unreadable<TAB>-<TAB>done, head=<sha>`, the other two rows print, exit 2, nothing on stderr; the same for the
+        bare `<unit> done, head=<sha>` and for any other text without the timestamp."""
+        for last in (f"done, head={HEAD}", f"U4 done, head={HEAD}", "all tests green, committing"):
+            with self.subTest(last=last):
+                self.write_progress("U4", "2026-11-12T06:05:00Z U4 start: brief read", last)
+                run = self.run_lever()
+                self.assertEqual((run.returncode, run.stderr), (2, ""), run.stdout)
+                self.assertEqual(
+                    run.stdout,
+                    "U2\tmoving\t3\t2026-11-12T06:27:00Z U2: red tests pasted\n"
+                    "U3\tstalled\t14\t2026-11-12T06:16:00Z U3 start: brief read\n"
+                    f"U4\tunreadable\t-\t{last}\n",
+                )
+
+    def test_a_progress_path_that_is_a_link_outside_the_root_is_unreadable_and_the_target_s_text_never_printed(
+        self,
+    ) -> None:
+        """A progress path that is a symbolic link to a file outside the progress root (the swap the verdict's P1 :281
+        reproduced) is that unit's `unreadable` row with `-` for the line: the target's text reaches neither stdout
+        nor stderr; a link to a directory and a dangling link are the same row."""
+        outside = self.dir / "outside" / "secret.txt"
+        outside.parent.mkdir()
+        outside.write_text("2026-11-12T06:29:00Z OUTSIDE-SECRET-LINE\n")
+        path = self.progress / "U3-progress.txt"
+        for target in (outside, self.dir, self.dir / "no-such-file"):
+            with self.subTest(target=str(target)):
+                path.unlink()
+                path.symlink_to(target)
+                run = self.run_lever()
+                self.assertEqual((run.returncode, run.stderr), (2, ""), run.stdout)
+                self.assertIn("U3\tunreadable\t-\t-\n", run.stdout)
+                self.assertNotIn("OUTSIDE-SECRET-LINE", run.stdout + run.stderr)
+                self.assertEqual(run.stdout.count("\n"), 3, run.stdout)
+
+    def load_lever(self):
+        """The lever as a module of this process (its top level defines; the self check and `main` run under
+        `__main__` alone), for the one check a subprocess cannot time: a swap between its `lstat` and its `open`."""
+        spec = importlib.util.spec_from_file_location("stall_check_under_test", LEVER)
+        module = importlib.util.module_from_spec(spec)
+        # No bytecode beside the lever: the import writes no `__pycache__` the subprocess tests would then see.
+        with mock.patch.object(sys, "dont_write_bytecode", True):
+            spec.loader.exec_module(module)
+        return module
+
+    def test_a_file_swapped_between_the_lstat_and_the_open_is_unreadable_and_no_outside_text_is_read(self) -> None:
+        """The lever `lstat`s the path, opens it with `O_NOFOLLOW | O_CLOEXEC` and `fstat`s the descriptor (a regular
+        file on the device and inode the `lstat` saw) before it reads from that descriptor. Swapping the file for a
+        link to an outside file right after the `lstat` (the verdict's deterministic swap) gives `unreadable`, `-`,
+        `-`; swapping it for the outside file itself (another inode) gives the same row, never the outside line, which
+        `judge` returned at d1256438."""
+        module = self.load_lever()
+        now = datetime.strptime(NOW, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        root = str(self.progress.resolve())
+        path = self.progress / "U3-progress.txt"
+        outside = self.dir / "outside.txt"
+        outside.write_text("2026-11-12T06:29:00Z OUTSIDE-SECRET-LINE\n")
+        real_open = os.open
+
+        def swap_for_a_link(*args, **kwargs):
+            path.unlink()
+            path.symlink_to(outside)
+            return real_open(*args, **kwargs)
+
+        def swap_for_the_outside_file(*args, **kwargs):
+            os.replace(outside, path)
+            return real_open(*args, **kwargs)
+
+        self.assertEqual(
+            module.judge(root, "U3", now, 10), ("stalled", "14", "2026-11-12T06:16:00Z U3 start: brief read")
+        )
+        with mock.patch.object(module.os, "open", swap_for_a_link):
+            self.assertEqual(module.judge(root, "U3", now, 10), ("unreadable", "-", "-"))
+        path.unlink()
+        self.write_progress("U3", "2026-11-12T06:16:00Z U3 start: brief read")
+        with mock.patch.object(module.os, "open", swap_for_the_outside_file):
+            row = module.judge(root, "U3", now, 10)
+        self.assertEqual(row, ("unreadable", "-", "-"))
+        self.assertNotIn("OUTSIDE-SECRET-LINE", "".join(row))
+        self.assertEqual(path.read_text(), "2026-11-12T06:29:00Z OUTSIDE-SECRET-LINE\n", "the swap took place")
 
     def test_the_register_is_held_to_its_header_and_its_shape_before_any_file_is_read(self) -> None:
         """`units.tsv` absent, with another header, with a row of another width, with an id that is no unit, with a

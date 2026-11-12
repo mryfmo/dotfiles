@@ -657,7 +657,7 @@
       "target": ".local/bin/common/stall-check.py",
       "kind": "file",
       "executable": true,
-      "sha256": "a1e2ee72f81b7e35d16fd4f47717379dd18a120db0aaacb994f955503a895bce"
+      "sha256": "e3b39aa1a521cf28f08d8cd4fa8ad88ac6c768f2013289c2165efdd9823c58bf"
     },
     {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",

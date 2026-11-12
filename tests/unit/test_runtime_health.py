@@ -854,11 +854,37 @@ EOF
         self.assertIn("index has unmerged files", result.stdout)
         self.assertNotIn("current branch is", result.stdout)
 
-    def doctor_environment(self, *, fail: str = "", os_name: str = "Linux") -> dict[str, str]:
+    def router_credential_root(self, dsh_home: Path, *, login: bool) -> None:
+        """The Router's credential root under a scratch DSH_HOME as the operator's step leaves it: the chain router-gh
+        holds (real directories of this user, the leaf readable by this user alone) with a fixture token the fake gh
+        never reads; without the login, the root alone, so the wrapper refuses as it does before the handout's step."""
+        root = dsh_home / "router-credentials"
+        root.mkdir(parents=True)
+        root.chmod(0o700)
+        if not login:
+            return
+        (root / "gh").mkdir()
+        hosts = root / "gh/hosts.yml"
+        hosts.write_text("github.com:\n    oauth_token: gho_fixture_router\n    user: fixture-router\n")
+        hosts.chmod(0o600)
+
+    def doctor_environment(
+        self, *, fail: str = "", os_name: str = "Linux", router_scopes: str | None = None, router_login: bool = True
+    ) -> dict[str, str]:
         fixture_name = (fail or "healthy").replace(":", "-").replace(" ", "-")
         bin_dir = self.temp_dir / f"doctor-bin-{fixture_name}-{os_name}"
         log = self.temp_dir / "doctor.log"
         bin_dir.mkdir()
+        # What the Router's gh answers `api -i user` with, headers then body as `gh api -i` prints them (CRLF after
+        # each header, a blank line, the raw JSON): `router_scopes` None is a fine-grained token, which GitHub answers
+        # with no X-Oauth-Scopes header; a string is a classic token's header value (check_router_token, U490).
+        dsh_home = self.temp_dir / f"doctor-dsh-{fixture_name}-{os_name}"
+        self.router_credential_root(dsh_home, login=router_login)
+        headers = ["HTTP/2.0 200 OK", "Content-Type: application/json; charset=utf-8"]
+        if router_scopes is not None:
+            headers.append(f"X-Oauth-Scopes: {router_scopes}")
+        response = dsh_home / "api-user-response.txt"
+        response.write_text("\r\n".join(headers) + "\r\n\r\n" + '{"login":"fixture-router","id":1}\n')
         missing = fail.removeprefix("missing:") if fail.startswith("missing:") else ""
         for command in ("git", "chezmoi", "mise", "uv", "gh", "brew", "bwrap", "socat"):
             if command == missing:
@@ -871,6 +897,7 @@ EOF
                 printf '%s %s\\n' "$(basename "$0")" "$*" >> "$TEST_LOG"
                 if [[ "$(basename "$0"):$*" == "$FAIL_COMMAND" ]]; then exit 9; fi
                 if [[ "$(basename "$0"):$1" == mise:which ]]; then command -v "$2"; exit $?; fi
+                if [[ "$(basename "$0"):$1 $2 $3" == "gh:api -i user" ]]; then cat "$ROUTER_RESPONSE"; exit 0; fi
                 printf '%s healthy\\n' "$(basename "$0")"
                 """,
             )
@@ -892,6 +919,8 @@ EOF
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "FAIL_COMMAND": fail,
             "TEST_LOG": str(log),
+            "DSH_HOME": str(dsh_home),
+            "ROUTER_RESPONSE": str(response),
             # Keep the host's AppArmor userns restriction out of these fixtures.
             "APPARMOR_USERNS_SYSCTL": str(self.temp_dir / "no-userns-restriction"),
         }
@@ -947,6 +976,52 @@ EOF
         result = self.run_test_command(["/bin/bash", "-c", script], env={"PATH": str(bin_dir)})
         self.assertIn("not applicable: Claude Code sandbox prerequisites", result.stdout)
         self.assertIn("warnings=0", result.stdout)
+
+    def run_doctor(self, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+        return self.run_test_command(["bash", str(ROOT / "scripts/check-tools.sh")], env=env)
+
+    def test_doctor_router_token_fine_grained_is_found(self) -> None:
+        # (a) No X-Oauth-Scopes header: a fine-grained token, whose permissions the doctor cannot read; found, exit 0.
+        result = self.run_doctor(self.doctor_environment())
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn("found:   router token fixture-router: fine-grained (no X-Oauth-Scopes header)", result.stdout)
+        self.assertNotIn("router token", result.stderr)
+        self.assertIn("required failures: 0", result.stdout)
+
+    def test_doctor_router_token_notifications_only_is_a_required_failure(self) -> None:
+        # (b) The deployed shape of 2026-11-12: a classic token whose one scope reads the stream and writes nothing.
+        result = self.run_doctor(self.doctor_environment(router_scopes="notifications"))
+        output = result.stdout + result.stderr
+        self.assertEqual(1, result.returncode, output)
+        self.assertIn(
+            "required failed: router token fixture-router: classic token with scopes notifications, none of which lets"
+            " the Router write (the acknowledgement, a pushed ref, a pull request); place the fine-grained token of"
+            " docs/engagement-handout.md step 2 (Contents rw, Pull requests rw, Metadata read) under",
+            result.stderr,
+        )
+        self.assertIn("/router-credentials/gh", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 1", result.stdout)
+
+    def test_doctor_router_token_classic_with_repo_scope_is_found(self) -> None:
+        # (c) A classic token whose list holds a writing scope: found with the list, exit 0.
+        result = self.run_doctor(self.doctor_environment(router_scopes="repo, notifications"))
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn("found:   router token fixture-router: classic, scopes repo, notifications", result.stdout)
+        self.assertNotIn("router token", result.stderr)
+        self.assertIn("required failures: 0", result.stdout)
+
+    def test_doctor_router_token_absent_login_is_an_optional_warning(self) -> None:
+        # (d) router-gh refuses (exit 2, no login under the root): the operator's step, an optional warning, never found.
+        result = self.run_doctor(self.doctor_environment(router_login=False))
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn("optional warning: router token: router-gh: no gh login under the credential root", result.stderr)
+        self.assertIn("docs/engagement-handout.md", result.stderr)
+        self.assertNotIn("router token", result.stdout)
+        self.assertIn("required failures: 0", result.stdout)
 
     def test_make_doctor_propagates_runtime_drift_after_tool_checks(self) -> None:
         repo = self.temp_dir / "doctor-repo"

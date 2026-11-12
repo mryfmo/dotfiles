@@ -419,6 +419,77 @@ function check_seat_logins() {
 }
 
 #
+# @description Report the class of the Router's GitHub token through the checkout's
+#   `scripts/orchestrator/router-gh api -i user` (regime-cutover U490), one call bounded to
+#   30 s by perl's alarm (`timeout` is not on every host), with the response headers read for
+#   `X-Oauth-Scopes` alone. No header: a fine-grained token, whose permissions this check
+#   cannot read, a found line. A header: a classic token, found when its list holds `repo` or
+#   `public_repo`, else a required failure naming the handout's step 2, since no other classic
+#   scope lets the Router write (measured 2026-11-12: a `notifications` token read the stream
+#   and every write failed `HTTP 403`). router-gh's refusal (exit 2, no login under the root,
+#   the operator's step) and a failed or unreadable response are optional warnings, never
+#   found. The login is read from the body's `login` key; no token is printed.
+#
+function check_router_token() {
+    local lever="${BASH_SOURCE[0]%/*}/orchestrator/router-gh"
+    local root="${DSH_HOME:-${HOME%/}/.dsh}/router-credentials/gh"
+    local output line status=0 in_headers=1 first_line='' body='' login='' scopes='' scopes_seen=0
+    local scope writes=0
+    local -a scope_list=()
+
+    if [ ! -x "${lever}" ]; then
+        warn_optional "router token check skipped: ${lever} is missing"
+        return 0
+    fi
+    output="$(perl -e 'alarm 30; exec @ARGV or die "exec router-gh: $!\n"' "${lever}" api -i user 2>&1)" || status=$?
+    if [ "${status}" -eq 2 ] && [[ "${output}" == 'router-gh: '* ]]; then
+        warn_optional "router token: ${output} (the agent account's login is the operator's step, docs/engagement-handout.md step 2)"
+        return 0
+    fi
+    if [ "${status}" -ne 0 ]; then
+        IFS= read -r first_line <<< "${output}"
+        warn_optional "router token: unreadable (router-gh api -i user exited ${status}: ${first_line})"
+        return 0
+    fi
+    # `gh api -i` prints the status line, each header with CRLF, a blank line, then the raw body.
+    while IFS= read -r line; do
+        line="${line%$'\r'}"
+        if [ "${in_headers}" -eq 0 ]; then
+            body="${body}${line}"
+        elif [ -z "${first_line}" ]; then
+            first_line="${line}"
+        elif [ -z "${line}" ]; then
+            in_headers=0
+        elif [[ "${line}" =~ ^[Xx]-[Oo][Aa][Uu][Tt][Hh]-[Ss][Cc][Oo][Pp][Ee][Ss]:[[:space:]]*(.*)$ ]]; then
+            scopes="${BASH_REMATCH[1]}"
+            scopes_seen=1
+        fi
+    done <<< "${output}"
+    if [[ ! "${first_line}" =~ ^HTTP/[0-9.]+\ 2[0-9][0-9] ]] || [[ ! "${body}" =~ \"login\":[[:space:]]*\"([A-Za-z0-9-]+)\" ]]; then
+        warn_optional "router token: unreadable (router-gh api -i user answered without a 2xx status line and a login)"
+        return 0
+    fi
+    login="${BASH_REMATCH[1]}"
+    if [ "${scopes_seen}" -eq 0 ]; then
+        printf 'found:   router token %s: fine-grained (no X-Oauth-Scopes header)\n' "${login}"
+        return 0
+    fi
+    IFS=', ' read -r -a scope_list <<< "${scopes}"
+    for scope in ${scope_list[@]+"${scope_list[@]}"}; do
+        case "${scope}" in
+        repo | public_repo) writes=1 ;;
+        esac
+    done
+    if [ "${writes}" -eq 1 ]; then
+        printf 'found:   router token %s: classic, scopes %s\n' "${login}" "${scopes}"
+        return 0
+    fi
+    printf 'required failed: router token %s: classic token with scopes %s, none of which lets the Router write (the acknowledgement, a pushed ref, a pull request); place the fine-grained token of docs/engagement-handout.md step 2 (Contents rw, Pull requests rw, Metadata read) under %s\n' \
+        "${login}" "${scopes:-<none>}" "${root}" >&2
+    ((required_failures += 1))
+}
+
+#
 # @description Run the read-only dotfiles health checks.
 #
 function main() {
@@ -450,6 +521,7 @@ function main() {
 
     section "Seat logins"
     check_seat_logins
+    check_router_token
 
     section "Zed"
     check_zed

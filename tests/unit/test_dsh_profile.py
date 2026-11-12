@@ -221,12 +221,13 @@ class DshRouterProfileTest(unittest.TestCase):
         shutil.rmtree(cls.temp_dir)
 
     def observe_manifest(self) -> dict:
-        """The manifest with its Source row in the observe form (accept_mode observe, no accept_mode_auto_row, allowed
-        []): the committed row is auto since U469 (the decisions row 2026-11-12T00:08:25Z), so the observe-form proofs
-        and the refusals that presume observe run against this mutated copy."""
+        """The manifest with its Source row in the observe form (accept_mode observe, no accept_mode_auto_row, the cell
+        inferred, allowed []): the committed row is auto since U469 (the decisions row 2026-11-12T00:08:25Z) and its
+        cell ignore since U469b, so the observe-form proofs and the refusals that presume observe run against this
+        mutated copy."""
         manifest = copy.deepcopy(self.manifest)
         row = manifest["assets"]["dsh-superagent"]["sources"]["github"]
-        row.update(accept_mode="observe", allowed=[])
+        row.update(accept_mode="observe", observe_admission="inferred", allowed=[])
         row.pop("accept_mode_auto_row", None)
         return manifest
 
@@ -475,9 +476,13 @@ class DshRouterProfileTest(unittest.TestCase):
             "accept_mode_auto_row '2026-11-06T23:24:00Z' is the accept_mode_row itself; the ladder's second row is "
             "not its first",
         )
+        # The auto form from the observe copy: its row, its list and its cell (U469b: inferred is refused beside auto).
         manifest = copy.deepcopy(base)
         manifest["assets"]["dsh-superagent"]["sources"]["github"].update(
-            accept_mode="auto", accept_mode_auto_row="2026-11-08T00:00:00Z", allowed=["someone", "other-one"]
+            accept_mode="auto",
+            accept_mode_auto_row="2026-11-08T00:00:00Z",
+            observe_admission="ignore",
+            allowed=["someone", "other-one"],
         )
         outputs = generator.render_dsh_router_profile(manifest)
         patch = outputs[generator.ROOT / "home/dot_dsh/profiles/router/cordis.patch.yml"]
@@ -620,7 +625,7 @@ class DshRouterProfileTest(unittest.TestCase):
                     "accept_mode": "auto",
                     "accept_mode_row": github["accept_mode_row"],
                     "accept_mode_auto_row": github["accept_mode_auto_row"],
-                    "observe_admission": "inferred",
+                    "observe_admission": "ignore",
                     "allowed": github["allowed"],
                 },
             },
@@ -729,9 +734,10 @@ class DshRouterProfileTest(unittest.TestCase):
         beside observe passed generation while the validator refused it. One function in the generator,
         `dsh_source_row`, applies the defaults and the refusals: the rendering carries every field (`accept_mode_auto_row`
         as null when the manifest omits it, `observe_admission` as upstream's own default `ignore`, src/policy.ts, so an
-        omitted cell changes nothing upstream decides; the committed manifest names `inferred`), and the validator's
-        `validate_asset_sources` reads the row through that function, so the same bad row is refused with the same
-        words by both and the validator's text holds no row rule of its own."""
+        omitted cell changes nothing upstream decides; the committed manifest names `ignore` under auto since U469b:
+        `inferred` belongs to the observe rung alone, and the generator refuses it beside `auto` in the words the lever
+        uses), and the validator's `validate_asset_sources` reads the row through that function, so the same bad row is
+        refused with the same words by both and the validator's text holds no row rule of its own."""
         generator = load_generator()
         spec = importlib.util.spec_from_file_location(
             "validate_agent_assets", ROOT / "scripts/validate-agent-assets.py"
@@ -752,8 +758,9 @@ class DshRouterProfileTest(unittest.TestCase):
         committed = json.loads((ROOT / "home/dot_agents/router-source.json").read_text())["source"]
         self.assertEqual(keys, list(committed), "the committed rendering carries every field")
         self.assertEqual(
-            ("inferred", self.asset["sources"]["github"]["accept_mode_auto_row"]),
+            ("ignore", self.asset["sources"]["github"]["accept_mode_auto_row"]),
             (committed["observe_admission"], committed["accept_mode_auto_row"]),
+            "the committed row is auto, so its cell is ignore (U469b)",
         )
         label = "assets.dsh-superagent.sources.github"
         bad = {
@@ -768,6 +775,13 @@ class DshRouterProfileTest(unittest.TestCase):
             "a cell of the wrong type": (
                 lambda row: row.update(observe_admission=1),
                 f"{label}.observe_admission must be a string, not int: 1",
+            ),
+            "inferred beside auto": (
+                lambda row: row.update(
+                    accept_mode="auto", accept_mode_auto_row="2026-11-12T00:08:25Z", observe_admission="inferred"
+                ),
+                f"{label}.observe_admission 'inferred' belongs to accept_mode observe alone; under auto the cell is "
+                "'ignore' so an unlisted sender falls to not_a_member",
             ),
             "auto without its row": (
                 lambda row: row.update(accept_mode="auto"),

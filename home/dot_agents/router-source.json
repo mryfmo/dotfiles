@@ -5,7 +5,7 @@
     "accept_mode": "auto",
     "accept_mode_row": "2026-11-06T23:24:00Z",
     "accept_mode_auto_row": "2026-11-12T00:08:25Z",
-    "observe_admission": "inferred",
+    "observe_admission": "ignore",
     "allowed": [
       "mryfmo"
     ]

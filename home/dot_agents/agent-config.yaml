@@ -950,7 +950,7 @@ claude:
       seat-settings-render.sh: 9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50
       intake-observe.py: ccee31491b0ca621e93aeeb18df9a1da1178fe0c76b97a0f55f9d522fd9844ce
       router-settings-apply: 46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2
-      router-settings-apply.py: d50b0510454b5102654606ee8efdb866263da6c965e3b88135058dd052a9b1b0
+      router-settings-apply.py: cb8e00ce9389b99424a92ba473e86437e349b1607dd61ff6536ecb904ddf72e9
       router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
@@ -1493,10 +1493,11 @@ assets:
         accept_mode_row: "2026-11-06T23:24:00Z"
         accept_mode_auto_row: "2026-11-12T00:08:25Z"
         # observe_admission is the one policy cell router-settings-apply writes (sources.github.admission.pulls
-        # .unlistedUnaddressed, U416): the M-18 observe rung records a would-accept Decision only through this cell
-        # (inferred; upstream's default ignore sends every unlisted human's pull request to not_a_member before any
-        # assessment, measured 2026-11-10T04:08:19Z), while the allowed list below is the auto rung's lever.
-        observe_admission: inferred
+        # .unlistedUnaddressed, U416): inferred on the observe rung (the M-18 observe rung records a would-accept
+        # Decision only through this cell) and ignore on auto (U469b: upstream's default ignore sends every unlisted
+        # human's pull request to not_a_member before any assessment, measured 2026-11-10T04:08:19Z, so under auto
+        # only the allowed list below reaches assessment; the generator and the lever refuse inferred beside auto).
+        observe_admission: ignore
         # allowed is the Source's identity set (U465, rows i6 and i7): the GitHub logins router-settings-apply writes
         # into policy.sources.github.allowed as {id} rows (src/sources/github.ts:72, ids [A-Za-z0-9-]+), replacing
         # the store's list, in auto alone (U465b: a listed login's mention is explicit, accepted in every mode, so

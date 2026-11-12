@@ -100,14 +100,15 @@ API = "/orchestrator/api/"
 # The eval block as the archive defaults it (src/policy.ts:83-87) with the mode the kit must change.
 EVAL_DEFAULT = {"mode": "off", "timeoutSeconds": 120, "model": None}
 # The policy block as the archive defaults it (src/policy.ts:76-84) and the one cell the lever writes into it (U416): the
-# pulls row's unlistedUnaddressed cell of the github Source's admission table, from the manifest's observe_admission.
+# pulls row's unlistedUnaddressed cell of the github Source's admission table, from the manifest's observe_admission:
+# `inferred` on the observe rung (the list empty), `ignore` under auto (U469b: an unlisted sender falls to not_a_member).
 POLICY_DEFAULT = {"rules": [], "sources": {}}
 ADMISSION_CELL = {"github": {"allowed": [], "admission": {"pulls": {"unlistedUnaddressed": "inferred"}}}}
 POLICY_PUT = {"value": {"rules": [], "sources": ADMISSION_CELL}, "revision": 0}
 # The committed row's identity set (U469: the operator's login) as the policy's `{id}` rows, and the policy PUT it makes.
 ALLOWED = ["mryfmo"]
 ALLOWED_ROWS = [{"id": login} for login in ALLOWED]
-AUTO_CELL = {"github": {"allowed": ALLOWED_ROWS, "admission": {"pulls": {"unlistedUnaddressed": "inferred"}}}}
+AUTO_CELL = {"github": {"allowed": ALLOWED_ROWS, "admission": {"pulls": {"unlistedUnaddressed": "ignore"}}}}
 AUTO_POLICY_PUT = {"value": {"rules": [], "sources": AUTO_CELL}, "revision": 0}
 SIGNED_OUT = {
     "place": "github",
@@ -356,9 +357,19 @@ class RouterSettingsApplyTest(unittest.TestCase):
         return path
 
     def observe_source(self, name: str, **row) -> Path:
-        """The committed rendering in the observe form (the row before U469: `observe`, the auto row null, the list
-        empty) with the cells of `row` replaced: the observe-form proofs run against this mutated copy."""
-        return self.source_json(name, **{"accept_mode": "observe", "accept_mode_auto_row": None, "allowed": [], **row})
+        """The committed rendering in the observe form (the row before U469: `observe`, the auto row null, the cell
+        `inferred`, the list empty) with the cells of `row` replaced: the observe-form proofs run against this mutated
+        copy."""
+        return self.source_json(
+            name,
+            **{
+                "accept_mode": "observe",
+                "accept_mode_auto_row": None,
+                "observe_admission": "inferred",
+                "allowed": [],
+                **row,
+            },
+        )
 
     def auto_source(self, name: str, ts: str, allowed: object = (), **row) -> Path:
         """The rendering with its Source row at `auto` beside `accept_mode_auto_row` `ts` and `allowed` as given (a
@@ -472,12 +483,12 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual(source["body"]["revision"], 1)
 
     def test_the_policy_put_writes_the_pulls_admission_cell_between_eval_and_source_and_a_second_run_puts_nothing(self):
-        """U416 test (a): with the manifest scalar `observe_admission: inferred`, the lever PUTs `settings/policy` with the
-        rules as served and the github Source's `pulls.unlistedUnaddressed` cell `inferred` (the allowed list the
-        committed one, U469), after the eval PUT and before the source PUT; the store then holds the kit's policy, so a
-        second run PUTs no policy."""
+        """U416 test (a): with the manifest scalar `observe_admission: ignore` (the auto row's cell, U469b), the lever PUTs
+        `settings/policy` with the rules as served and the github Source's `pulls.unlistedUnaddressed` cell `ignore` (the
+        allowed list the committed one, U469), after the eval PUT and before the source PUT; the store then holds the
+        kit's policy, so a second run PUTs no policy."""
         self.api.signed_out = False
-        self.assertEqual("inferred", json.loads(SOURCE.read_text())["source"]["observe_admission"])
+        self.assertEqual("ignore", json.loads(SOURCE.read_text())["source"]["observe_admission"])
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
         paths = [entry["path"].removeprefix(API) for entry in self.puts()]
@@ -496,22 +507,18 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
         self.assertEqual(self.puts(), [])
         self.assertIn("policy unchanged (revision 1)\n", run.stdout)
-        # The other word, `ignore`: upstream's default made explicit, written the same way.
-        ignore = self.source_json("ignore", observe_admission="ignore")
+        # The other word, `inferred`: the observe rung's cell, written the same way (the list empty there, U465b).
+        inferred = self.observe_source("inferred")
         self.api.requests.clear()
-        run = self.run_lever("--source", str(ignore))
+        run = self.run_lever("--source", str(inferred))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
-        (policy,) = self.puts()
-        self.assertEqual(
-            policy["body"],
-            {"value": {"rules": [], "sources": {"github": {"allowed": ALLOWED_ROWS, "admission": {"pulls": {"unlistedUnaddressed": "ignore"}}}}}, "revision": 1},
-        )  # fmt: skip
-        self.assertEqual(
-            run.stdout, "eval unchanged (revision 1)\npolicy saved (revision 2)\nsource:github unchanged (revision 1)\n"
-        )
+        policy = [entry for entry in self.puts() if entry["path"] == API + "settings/policy"]
+        self.assertEqual(len(policy), 1)
+        self.assertEqual(policy[0]["body"], {"value": {"rules": [], "sources": ADMISSION_CELL}, "revision": 1})
+        self.assertIn("policy saved (revision 2)\nsource:github unchanged (revision 1)\n", run.stdout)
 
     def test_a_policy_holding_the_cell_other_rows_and_another_source_is_unchanged_and_a_put_changes_the_one_cell(self):
-        """U416 test (b): a view whose policy already holds `inferred` beside other admission rows, other cells of the
+        """U416 test (b): a view whose policy already holds `ignore` beside other admission rows, other cells of the
         pulls row, the manifest's allowed list (the committed login, U469), rules and another Source's entry is not
         written; when the cell differs, the PUT keeps every one of them and changes the one cell."""
         self.api.signed_out = False
@@ -520,7 +527,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
             "allowed": copy.deepcopy(ALLOWED_ROWS),
             "bots": ["dependabot[bot]"],
             "admission": {
-                "pulls": {"unlistedUnaddressed": "inferred", "listedAddressed": "explicit"},
+                "pulls": {"unlistedUnaddressed": "ignore", "listedAddressed": "explicit"},
                 "comments": {"unlistedUnaddressed": "ignore"},
             },
         }
@@ -534,7 +541,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         )
         self.assertIn("policy unchanged (revision 4)\n", run.stdout)
         # The one cell differs: the PUT carries everything else as read and changes that cell alone.
-        self.api.policy["sources"]["github"]["admission"]["pulls"]["unlistedUnaddressed"] = "ignore"
+        self.api.policy["sources"]["github"]["admission"]["pulls"]["unlistedUnaddressed"] = "inferred"
         self.api.requests.clear()
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
@@ -605,7 +612,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         are each one refusal naming it before any request."""
         self.api.signed_out = False
         self.assertEqual(ALLOWED, json.loads(SOURCE.read_text())["source"]["allowed"], "the committed list, the login")
-        panel = {"allowed": [{"id": "someone"}], "admission": {"pulls": {"unlistedUnaddressed": "inferred"}}}
+        panel = {"allowed": [{"id": "someone"}], "admission": {"pulls": {"unlistedUnaddressed": "ignore"}}}
         self.api.policy = {"rules": [], "sources": {"github": copy.deepcopy(panel)}}
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
@@ -687,7 +694,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
             f"source {SOURCE}\n"
             "eval.mode auto\n"
             f"allowed {json.dumps(ALLOWED)}\n"
-            "admission.pulls.unlistedUnaddressed inferred\n"
+            "admission.pulls.unlistedUnaddressed ignore\n"
             "repository mryfmo/dotfiles\n"
             f"cli {WRAPPER}\n",
         )
@@ -883,7 +890,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
             f"source {auto}\n"
             "eval.mode auto\n"
             'allowed ["someone", "other-one"]\n'
-            "admission.pulls.unlistedUnaddressed inferred\n"
+            "admission.pulls.unlistedUnaddressed ignore\n"
             f"repository {REPOSITORY}\n"
             f"cli {WRAPPER}\n",
         )
@@ -1032,17 +1039,19 @@ class RouterSettingsApplyTest(unittest.TestCase):
         data = json.loads(text)
         self.assertEqual({"generated_by", "source"}, set(data))
         self.assertEqual(
-            {"repository": REPOSITORY, "accept_mode": "auto", "accept_mode_row": LADDER_ROW, "accept_mode_auto_row": AUTO_ROW, "observe_admission": "inferred", "allowed": ALLOWED},
+            {"repository": REPOSITORY, "accept_mode": "auto", "accept_mode_row": LADDER_ROW, "accept_mode_auto_row": AUTO_ROW, "observe_admission": "ignore", "allowed": ALLOWED},
             data["source"],
             "the committed rendering is the manifest's auto row (U469; the generator writes it; make render-check holds it)",
         )  # fmt: skip
         run = self.run_lever("--dry-run", "--source", str(SOURCE))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
-        self.assertIn(f"eval.mode auto\nallowed {json.dumps(ALLOWED)}\n", run.stdout)
+        self.assertIn(
+            f"eval.mode auto\nallowed {json.dumps(ALLOWED)}\nadmission.pulls.unlistedUnaddressed ignore\n", run.stdout
+        )
         what = "the rendered Source row {path}"
         allowed = '"allowed": ['
         self.assertEqual(1, text.count(allowed), "the committed list, once")
-        admission = '"observe_admission": "inferred",'
+        admission = '"observe_admission": "ignore",'
         self.assertEqual(1, text.count(admission), "the committed cell, once")
         repository = f'"repository": "{REPOSITORY}"'
         cases = {
@@ -1098,7 +1107,7 @@ class RouterSettingsApplyTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
         self.assertIn("eval.mode off\nallowed []\n", run.stdout)
         self.assertEqual(self.api.requests, [], "a dry run makes no request")
-        panel = {"allowed": [{"id": "someone"}], "admission": {"pulls": {"unlistedUnaddressed": "inferred"}}}
+        panel = {"allowed": [{"id": "someone"}], "admission": {"pulls": {"unlistedUnaddressed": "ignore"}}}
         self.api.policy = {"rules": [], "sources": {"github": copy.deepcopy(panel)}}
         run = self.run_lever("--source", str(observe))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
@@ -1126,12 +1135,14 @@ class RouterSettingsApplyTest(unittest.TestCase):
     def test_a_rendering_without_the_observe_admission_cell_or_with_a_third_word_refuses_before_any_request(self):
         """U416 test (c): the cell takes `inferred` or `ignore`; absent or any other word (`explicit`: an unlisted
         sender's pull request accepted in observe mode) is one refusal naming the key, exit 2, and the FakeApi records
-        no request."""
+        no request. U469b: `inferred` beside `auto` is refused the same way, in the generator's words (an unlisted
+        sender's matching pull request would reach assessment while the allowed list is the identity set)."""
         self.api.signed_out = False
         renderings = {
             "no-cell": self.source_json("no-cell", observe_admission=REMOVE),
             "explicit": self.source_json("explicit", observe_admission="explicit"),
             "auto-word": self.source_json("auto-word", observe_admission="auto"),
+            "inferred-beside-auto": self.source_json("inferred-beside-auto", observe_admission="inferred"),
         }
         expected = {
             "no-cell": f"the rendered Source row {{path}} names no {LABEL}.observe_admission{MISSING_KEY}",
@@ -1139,6 +1150,8 @@ class RouterSettingsApplyTest(unittest.TestCase):
             "the pulls row's unlistedUnaddressed cell takes those two words alone (explicit would accept an unlisted sender's pull request in observe mode)",
             "auto-word": f"{LABEL}.observe_admission 'auto' in {{path}} is not inferred or ignore; "
             "the pulls row's unlistedUnaddressed cell takes those two words alone (explicit would accept an unlisted sender's pull request in observe mode)",
+            "inferred-beside-auto": f"{LABEL}.observe_admission 'inferred' in {{path}} belongs to accept_mode observe alone; "
+            "under auto the cell is 'ignore' so an unlisted sender falls to not_a_member",
         }
         for case, path in renderings.items():
             with self.subTest(case=case):

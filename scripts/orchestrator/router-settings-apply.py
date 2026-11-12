@@ -329,9 +329,10 @@ def source_row(path: str, store: str) -> tuple[str, str, str, list[str]]:
     (the generator applies the defaults, U465d), every cell but `allowed` and `accept_mode_auto_row` is a non-empty
     string; `auto` needs `accept_mode_auto_row` (a decisions.tsv timestamp, the M-18 ladder's second row, distinct
     from `accept_mode_row`), that row belongs to `auto` alone (null otherwise) and must exist in the given store's
-    decisions.tsv in the auto row's grammar (ladder_row); a third word for the cell is refused; the allowed list must
-    be a list of GitHub logins, none repeated (by case: GitHub logins differing by case alone are one login). The
-    list returned is the row's; policy_allowed decides what the mode lets the policy carry."""
+    decisions.tsv in the auto row's grammar (ladder_row); a third word for the cell is refused, and `inferred` beside
+    `auto` (U469b: the cell is `ignore` there, so an unlisted sender falls to not_a_member before any assessment); the
+    allowed list must be a list of GitHub logins, none repeated (by case: GitHub logins differing by case alone are
+    one login). The list returned is the row's; policy_allowed decides what the mode lets the policy carry."""
     what = f"the rendered Source row {path}"
     label = SOURCE_LABEL
     text = "\n".join(read_lines(path, "the rendered Source row"))
@@ -396,6 +397,13 @@ def source_row(path: str, store: str) -> tuple[str, str, str, list[str]]:
             f"{label}.observe_admission {row['observe_admission']!r} in {path} is not "
             f"{' or '.join(OBSERVE_ADMISSIONS_APPLIED)}; the {ADMISSION_ROW} row's {ADMISSION_CELL} cell takes those two "
             "words alone (explicit would accept an unlisted sender's pull request in observe mode)"
+        )
+    if mode == "auto" and row["observe_admission"] == "inferred":
+        # U469b (verdict U469-02ea959b P1): the generator's rule in its words; inferred lets an unlisted sender's pull
+        # request reach assessment, where a rule match is an accept under auto.
+        raise Refusal(
+            f"{label}.observe_admission 'inferred' in {path} belongs to accept_mode observe alone; under auto the cell "
+            "is 'ignore' so an unlisted sender falls to not_a_member"
         )
     allowed = row["allowed"]
     if not isinstance(allowed, list) or not all(isinstance(sender, str) for sender in allowed):

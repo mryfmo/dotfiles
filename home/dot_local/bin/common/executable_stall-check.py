@@ -1,6 +1,6 @@
 #!/usr/bin/env -S python3 -I
 """Name every in-flight worker of a program store that is silent past its deadline (regime-cutover U496, round 2 U496b,
-round 3 U496c and U496d).
+round 3 U496c and U496d, round 4 U496e).
 
 Measured 2026-11-06 to 2026-11-12: eleven worker stalls, each a Task subagent silent after a tool call for 30 to 45
 minutes, each found because the coordinator remembered to read the progress files by hand (standing order 57). This
@@ -23,20 +23,21 @@ timestamp `YYYY-MM-DDTHH:MM:SSZ`, a space and free text; the last line decides. 
   `-`, and the row counts as a stall;
 - `unreadable`: that one unit's row, `age_minutes` `-`, never a refusal that hides every other unit (verdict
   U496-d1256438 P1; the one run-level refusal a file earns is a store that cannot be read). Either the file yields no
-  text (a directory, a link, a mode that denies the read, bytes that are not UTF-8, an entry swapped between the
-  `lstat` and the `open`, an empty file or a blank last line) and `last_line` is `-`; or its last line carries no
-  timestamp of the form (the bare `done, head=<sha>` some workers write, or any other text), no space after it, a
-  date that is none, or a time after the clock, and `last_line` is that line, so the coordinator sees what the
-  worker wrote. The reason is not a cell of the row; the row's exit code is 2.
+  text (a directory, a link, a FIFO, a device or a socket at the name, a mode that denies the read, bytes that are not
+  UTF-8, an empty file or a blank last line) and `last_line` is `-`; or its last line carries no timestamp of the form
+  (the bare `done, head=<sha>` some workers write, or any other text), no space after it, a date that is none, or a
+  time after the clock, and `last_line` is that line, so the coordinator sees what the worker wrote. The reason is not
+  a cell of the row; the row's exit code is 2.
 
 `age_minutes` is the integer floor of the age in minutes, the number the state is judged by, so a printed `10` is
 moving under the default and `11` is stalled; a tab or a carriage return inside the worker's free text is one space in
 the cell, so the row keeps its four cells. `--now <ts>` injects the clock in the lines' own form (tests; the default is
 the UTC wall clock). The progress root defaults to the temporary directory (`$TMPDIR` when it is set and not empty,
-else the system default) plus `<slug>-wt`, `<slug>` the store path's parent directory name (`dotfiles` for
-`.../regime-store/dotfiles/regime-cutover`), the worktree root `worker-worktree.sh` uses, read in one statement by
-the spelling `tests/unit/test_sandbox_portability.py` sanctions (round 3, U496c: CI's portability guard refuses a
-spelled temporary path, and the sandbox's writable temporary directory is `$TMPDIR`).
+else the system default) plus `<slug>-wt`, `<slug>` the parent directory name of the store path as given, cleaned and
+not resolved (`dotfiles` for `.../regime-store/dotfiles/regime-cutover`, whatever that `dotfiles` is a link to: the
+root the operator sees, verdict U496-8cdd9a40 P2 :476), the worktree root `worker-worktree.sh` uses, read in one
+statement by the spelling `tests/unit/test_sandbox_portability.py` sanctions (round 3, U496c: CI's portability guard
+refuses a spelled temporary path, and the sandbox's writable temporary directory is `$TMPDIR`).
 
 Exit 0 when every row is `moving` or `done` (an empty in-flight set prints nothing and is 0); exit 1 when any row is
 `stalled` or `no-file`; exit 2 when any row is `unreadable` (the rows printed, the code the maximum over the rows), and
@@ -48,21 +49,32 @@ names the file read, so no other shape reaches a path); a bad `--now`; a `--dead
 decimal digits without a leading zero (judged as text before `int()` sees it: a 4301-digit value raised `int()`'s
 digit limit as a traceback, verdict U496-d1256438 P2) or is outside 1 to 1440 (24 hours), the bound every integer
 option of this lever shares; a store or progress root that is not an absolute path, holds an empty, `.` or `..`
-component (a trailing or repeated separator included), or is not a directory once resolved (a missing progress root
-is a wrong root, never an empty set of workers); any argument that is not strict UTF-8 or holds a tab, a newline or a
-carriage return; and argparse's own usage errors, printed in the same one-line form. Every file under the store or
-the root is reached by one path rule (`ledger-row.py`'s) carried to the descriptors: the directory is its own realpath,
-validated as a directory, then opened once with `os.open(root, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)` and
-judged by `os.fstat` on that descriptor against the `os.lstat` of the validated path (a directory, the same device
-and inode), so the descriptor is the directory whatever the path names afterwards (verdict U496-6f774696 P1 :290: the
-validated root replaced by a link to another directory before the lookup was followed through, since `O_NOFOLLOW`
-guards the last component alone); every file below it is its bare entry name (`units.tsv`, `<unit>-progress.txt`, no
-separator), `os.lstat`ed relative to the descriptor (`dir_fd`) and no symbolic link and a regular file, then opened
-with `os.open(name, O_RDONLY | O_NOFOLLOW | O_CLOEXEC, dir_fd=root_fd)` and judged by `os.fstat` on its descriptor
-(a regular file of the same device and inode the `lstat` saw), so a swap between the `lstat` and the `open` is caught
-(that unit's `unreadable` row, the register's refusal), and the text is read from that descriptor, never from a path
-again (verdict U496-d1256438 P1 :281). A platform whose `os.open` or `os.lstat` lacks `dir_fd` (judged once at import
-by `os.supports_dir_fd`; macOS and Linux have it) is a refusal naming it. No file is written and no mode is changed.
+component (a trailing or repeated separator included), or is not a real directory entry at the end of its walk (a
+missing progress root is a wrong root, never an empty set of workers); any argument that is not strict UTF-8 or holds
+a tab, a newline or a carriage return; and argparse's own usage errors, printed in the same one-line form.
+
+Every path is walked by descriptors from `/` (round 4, U496e; verdict U496-8cdd9a40 P1 :319: every earlier round
+validated the root by path and then opened it by path, so an ancestor replaced by a symbolic link between the two was
+followed through, `O_NOFOLLOW` guarding the last component alone). `held_path` opens `/` once and then each component
+of the cleaned path on the previous directory's descriptor, `os.open(name, flags, dir_fd=fd)` with
+`O_RDONLY | O_NOFOLLOW | O_CLOEXEC` and `O_DIRECTORY` for every step but a file leaf, each judged by `os.fstat` on its
+own descriptor, the previous descriptor closed once the next is held. A component the kernel refuses as a link (ELOOP;
+ENOTDIR under `O_DIRECTORY` on macOS) is read with `os.readlink(name, dir_fd=fd)` and its target's components are
+walked the same way, from `/` when the target is absolute, else on the held directory (`.` skipped, `..` opened as the
+held directory's own parent), at most LINK_HOPS links on one walk; so the temporary directory's links on macOS (`tmp`
+and `var` under `/` point into `private`) and an aliased store parent are followed as the kernel would follow them, on
+descriptors the lever holds and never through a path string. The leaf, the store or the progress root, is a real
+directory entry: a link there is a refusal, as it is for every file below it. The leaf's descriptor is the held
+directory, and once the walk has begun no path string, `realpath` or `lstat` reaches the kernel. Every file below it
+is its bare entry name (`units.tsv`, `<unit>-progress.txt`, no separator) opened on that descriptor by the same step
+with `O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK` and judged by `os.fstat` on its descriptor a regular file (a link
+is ELOOP; a FIFO, a device or a socket at the name cannot hold the open under `O_NONBLOCK`, verdict U496-8cdd9a40 P1
+:359: a regular file swapped for a FIFO held the blocking `os.open` until an alarm; either is that unit's `unreadable`
+row or the register's refusal), `O_NONBLOCK` cleared with `fcntl` before the text is read from that descriptor, never
+from a path (verdict U496-d1256438 P1 :281). The lever judges the entry it holds: a regular file at the unit's name is
+that unit's progress file whatever path it had before. A platform whose `os.open` or `os.readlink` lacks `dir_fd`
+(judged once at import by `os.supports_dir_fd`; macOS and Linux have it) is a refusal naming it. No file is written
+and no mode is changed.
 
 Before anything else the file hashes itself against its `claude.levers.sha256.stall-check.py` pin in the manifest
 beside it (the deployed `~/.agents/agent-config.yaml` for the copy under the physical `~/.local/bin/common`, else the
@@ -75,6 +87,8 @@ orchestrator policy at that path; `tests/unit/test_stall_check.py` runs it as a 
 from __future__ import annotations
 
 import argparse
+import errno
+import fcntl
 import hashlib
 import os
 import re
@@ -114,8 +128,23 @@ CONTROL = (("\t", "a tab"), ("\n", "a newline"), ("\r", "a carriage return"))
 # exit 2 (round 2, U496b), while a refusal (exit 2 through `refuse`, nothing printed) is the store's alone.
 MOVING, STALLED, DONE, NO_FILE, UNREADABLE = "moving", "stalled", "done", "no-file", "unreadable"
 STATES = {MOVING: 0, DONE: 0, STALLED: 1, NO_FILE: 1, UNREADABLE: 2}
-# The relative opens need `dir_fd` on `os.open` and `os.lstat`, judged once at import (the run refuses without it).
-DIR_FD_SUPPORTED = {os.open, os.lstat} <= os.supports_dir_fd
+# The two kinds of leaf a walk ends at: the held directory (the store, the progress root) or a regular file.
+DIRECTORY, REGULAR = "directory", "regular file"
+# Symbolic links followed on one walk before it refuses: macOS's MAXSYMLINKS; Linux allows 40.
+LINK_HOPS = 32
+# The kind of entry a mode describes, for the reasons; the first test that holds names it.
+KINDS = (
+    (stat.S_ISDIR, "a directory"),
+    (stat.S_ISLNK, "a symbolic link"),
+    (stat.S_ISFIFO, "a FIFO"),
+    (stat.S_ISSOCK, "a socket"),
+    (stat.S_ISCHR, "a device"),
+    (stat.S_ISBLK, "a device"),
+    (stat.S_ISREG, "a regular file"),
+)
+# The relative opens and the link reads need `dir_fd` on `os.open` and `os.readlink`, judged once at import (the run
+# refuses without it).
+DIR_FD_SUPPORTED = {os.open, os.readlink} <= os.supports_dir_fd
 
 
 class Unreadable(Exception):
@@ -266,8 +295,9 @@ def deadline(value):
 
 
 def clean_directory(given, label):
-    """A clean absolute path (no empty, `.` or `..` component, so no trailing or repeated separator), resolved to its
-    realpath by this lever alone, and a directory there; any other outcome is a refusal naming the argument."""
+    """A clean absolute path as text (no empty, `.` or `..` component, so no trailing or repeated separator), the text
+    grammar alone: no `realpath`, no `lstat`, nothing of the path reaches the kernel here, since `held_root` walks it by
+    descriptors (round 4, U496e); any other shape is a refusal naming the argument."""
     parts = given.split("/")
     if parts[0] != "" or len(parts) < 2:
         refuse(f"the {label} {given!r} is not an absolute path")
@@ -276,21 +306,15 @@ def clean_directory(given, label):
             refuse(
                 f"the {label} {given!r} is not a clean path: an empty, `.` or `..` component (a trailing separator included)"
             )
-    real = os.path.realpath(given)
-    try:
-        status = os.lstat(real)
-    except OSError as error:
-        refuse(f"the {label} {given!r} ({real}) cannot be read: {error.strerror}")
-    if not stat.S_ISDIR(status.st_mode):
-        refuse(f"the {label} {given!r} ({real}) is not a directory")
-    return real
+    return given
 
 
 def default_root(store):
     """The temporary directory (`$TMPDIR` when set and not empty, else the system default, the `${TMPDIR:-...}` rule
-    `worker-worktree.sh` applies) plus `<slug>-wt`, the slug the resolved store path's parent directory name
-    (`dotfiles` for `.../regime-store/dotfiles/regime-cutover`), held like a given root: absolute and clean as given,
-    resolved physically, a directory there, else a refusal naming it."""
+    `worker-worktree.sh` applies) plus `<slug>-wt`, the slug the parent directory name of the store path as given,
+    cleaned and not resolved (`dotfiles` for `.../regime-store/dotfiles/regime-cutover`, whatever that `dotfiles` is a
+    link to: the root the operator sees and the workers write, verdict U496-8cdd9a40 P2 :476), cleaned like a given
+    root; the walk and the refusal naming it are `held_root`'s."""
     slug = os.path.basename(os.path.dirname(store))
     if not slug:
         refuse(f"the store {store} has no parent directory name to derive the progress root from")
@@ -298,76 +322,162 @@ def default_root(store):
     return clean_directory(root, "progress root")
 
 
-def held_root(real, label):
-    """An open descriptor on the validated directory `real` (`clean_directory`'s realpath, the store or the progress
-    root), opened once with `O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC` and judged by `os.fstat` on the
-    descriptor against the `os.lstat` of the validated path, a directory of the same device and inode, so every file
-    below it is opened relative to this descriptor and a swap of the path for a link after validation changes nothing
-    the lever reads (verdict U496-6f774696 P1 :290); a platform without `dir_fd`, a path that is no longer a directory
-    or cannot be opened as one, or a descriptor on another directory is a refusal naming the argument."""
-    if not DIR_FD_SUPPORTED:
-        refuse(
-            "this platform's os.open or os.lstat lacks dir_fd; the files cannot be opened relative to the held directory"
-        )
-    try:
-        seen = os.lstat(real)
-    except OSError as error:
-        refuse(f"the {label} {real} cannot be read: {error.strerror or error}")
-    if not stat.S_ISDIR(seen.st_mode):
-        refuse(f"the {label} {real} is not a directory")
-    try:
-        descriptor = os.open(real, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
-    except OSError as error:
-        refuse(f"the {label} {real} cannot be opened as a directory: {error.strerror or error}")
+def kind_of(mode):
+    """The kind of entry `mode` describes, in the reasons' words (KINDS), `no regular file` for any other."""
+    for test, kind in KINDS:
+        if test(mode):
+            return kind
+    return "no regular file"
+
+
+def held_step(dir_fd, name, kind):
+    """One entry `name` of the held directory `dir_fd` (None for `/` itself) opened on that descriptor and judged by
+    `os.fstat` on its own: a DIRECTORY step opens with `O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC`; the REGULAR
+    leaf with `O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK`, so a FIFO or a device at the name cannot hold the open
+    (verdict U496-8cdd9a40 P1 :359), and `O_NONBLOCK` is cleared with `fcntl` once `fstat` has shown a regular file.
+    Returns the descriptor. An `os.open` that fails raises its OSError unchanged (the walker reads a link on ELOOP or
+    ENOTDIR, the callers name ENOENT and ELOOP); a descriptor of another kind, or an `fstat` or `fcntl` that fails,
+    raises Unreadable with the reason, the descriptor closed."""
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC
+    flags |= os.O_DIRECTORY if kind == DIRECTORY else os.O_NONBLOCK
+    descriptor = os.open(name, flags, dir_fd=dir_fd)
     try:
         held = os.fstat(descriptor)
+        if kind == DIRECTORY:
+            if not stat.S_ISDIR(held.st_mode):
+                raise Unreadable("is not a directory")
+        else:
+            if not stat.S_ISREG(held.st_mode):
+                raise Unreadable(f"is {kind_of(held.st_mode)}, not a regular file")
+            fcntl.fcntl(descriptor, fcntl.F_SETFL, fcntl.fcntl(descriptor, fcntl.F_GETFL) & ~os.O_NONBLOCK)
     except OSError as error:
         os.close(descriptor)
-        refuse(f"the {label} {real} cannot be read: {error.strerror or error}")
-    if not stat.S_ISDIR(held.st_mode) or (held.st_dev, held.st_ino) != (seen.st_dev, seen.st_ino):
+        raise Unreadable(f"cannot be read: {error.strerror or error}") from None
+    except Unreadable:
         os.close(descriptor)
-        refuse(
-            f"the {label} {real} changed between its validation and its open; the descriptor holds another directory"
-        )
+        raise
     return descriptor
+
+
+def held_slash():
+    """The descriptor on `/`, the one step every walk starts from; a `/` that cannot be held is Unreadable naming it."""
+    try:
+        return held_step(None, "/", DIRECTORY)
+    except OSError as error:
+        raise Unreadable(f"(/) cannot be read: {error.strerror or error}") from None
+
+
+def link_target(dir_fd, name, error):
+    """The target text of the link `name` under `dir_fd` when `error`, the OSError of its open, is the kernel's
+    refusal of a link (ELOOP; ENOTDIR under `O_DIRECTORY` on macOS) and `os.readlink` on the held directory reads it;
+    None when the entry is no link (the open's error stands) or has gone."""
+    if error.errno not in (errno.ELOOP, errno.ENOTDIR):
+        return None
+    try:
+        return os.readlink(name, dir_fd=dir_fd)
+    except OSError:
+        return None
+
+
+def open_reason(error):
+    """The reason an open's OSError gives a step that is no link: `is not a directory` for ENOTDIR, else the kernel's."""
+    if error.errno == errno.ENOTDIR:
+        return "is not a directory"
+    return f"cannot be read: {error.strerror or error}"
+
+
+def held_path(given, leaf_kind):
+    """The walk (round 4, U496e): `given` is a clean absolute path (`clean_directory`'s text) and `leaf_kind` DIRECTORY
+    or REGULAR. `/` is opened once, then each component on the previous directory's descriptor by `held_step` (every
+    step but the leaf a directory), the previous descriptor closed once the next is held, so a change to the path above
+    a held component reaches nothing the lever reads (verdict U496-8cdd9a40 P1 :319). A component the kernel refuses as
+    a link is read with `os.readlink` on the held directory and its target's components are walked the same way: from
+    `/` when the target is absolute, else on the held directory, `.` skipped and `..` opened as the held directory's
+    own parent, at most LINK_HOPS links on one walk; the leaf is a real entry, a link there a refusal. Returns
+    `(descriptor, walked)`, `walked` the text of the path the descriptors walked (the given path with every link
+    replaced by what it held, named in the refusals beside the given text); raises Unreadable `(<walked>) <reason>` with
+    every descriptor closed."""
+    pending = given.split("/")[1:]
+    walked = ""
+    hops = 0
+    descriptor = held_slash()
+    try:
+        while pending:
+            name = pending.pop(0)
+            if name in ("", "."):
+                continue  # a link target's empty or `.` component
+            leaf = all(part in ("", ".") for part in pending)
+            try:
+                held = held_step(descriptor, name, leaf_kind if leaf else DIRECTORY)
+            except Unreadable as error:
+                raise Unreadable(f"({walked}/{name}) {error}") from None
+            except OSError as error:
+                target = link_target(descriptor, name, error)
+                if target is None:
+                    raise Unreadable(f"({walked}/{name}) {open_reason(error)}") from None
+                if leaf:
+                    raise Unreadable(
+                        f"({walked}/{name}) is a symbolic link; the held {leaf_kind} is a real entry (its ancestors the"
+                        " walk follows)"
+                    ) from None
+                hops += 1
+                if hops > LINK_HOPS:
+                    raise Unreadable(
+                        f"({walked}/{name}) is the link past LINK_HOPS ({LINK_HOPS}) on one walk; too many levels of"
+                        " symbolic links"
+                    ) from None
+                parts = target.split("/")
+                if parts[0] == "":
+                    os.close(descriptor)
+                    descriptor = None
+                    descriptor = held_slash()
+                    walked = ""
+                    pending = parts[1:] + pending
+                else:
+                    pending = parts + pending
+                continue
+            os.close(descriptor)
+            descriptor = held
+            walked = walked.rpartition("/")[0] if name == ".." else f"{walked}/{name}"
+    except BaseException:
+        if descriptor is not None:
+            os.close(descriptor)
+        raise
+    return descriptor, walked
+
+
+def held_root(given, label):
+    """`(descriptor, walked)` of the directory `given` (the store or the progress root, `clean_directory`'s text) by
+    `held_path`; a platform without `dir_fd` on `os.open` or `os.readlink`, or a walk that ends anywhere but at a real
+    directory entry, is a refusal naming the argument as given and as walked."""
+    if not DIR_FD_SUPPORTED:
+        refuse("this platform's os.open or os.readlink lacks dir_fd; the paths cannot be walked by descriptors")
+    try:
+        return held_path(given, DIRECTORY)
+    except Unreadable as error:
+        refuse(f"the {label} {given!r} {error}")
 
 
 def held_file(root_fd, name):
-    """An open read-only descriptor on the regular file `name` under the held directory `root_fd` (`held_root`'s) by
-    the levers' one path rule (ledger-row.py's `store_file`) carried to the descriptors: `name` is a bare entry name
-    (no separator); it is `os.lstat`ed relative to the directory descriptor and is no link and a regular file; the
-    file is then opened with `O_RDONLY | O_NOFOLLOW | O_CLOEXEC` relative to the same descriptor (`dir_fd`, so no path
-    is looked up again and a root swapped for a link after validation is never followed, verdict U496-6f774696 P1
-    :290) and judged by `os.fstat` on its descriptor, a regular file on the same device and inode the `lstat` saw, so
-    a swap for a link or for another file between the two calls (verdict U496-d1256438 P1 :281) is caught; the caller
-    reads this descriptor and never a path. Returns None when there is no entry at the `lstat` (the caller's `no-file`
-    or absence refusal); every other outcome but the held regular file raises Unreadable with the reason, the
-    descriptor closed."""
+    """An open read-only descriptor on the regular file `name` under the held directory `root_fd` by the walk's own
+    step: `name` is a bare entry name (no separator), opened on the descriptor with
+    `O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK` (no path is looked up; a link at the name is ELOOP; a FIFO or a
+    device cannot hold the open, verdict U496-8cdd9a40 P1 :359) and judged by `os.fstat` on its descriptor a regular
+    file, `O_NONBLOCK` then cleared; the caller reads this descriptor and never a path (verdict U496-d1256438 P1 :281).
+    The lever judges the entry it holds: a regular file at the name is the file, whatever path it had before (round 2's
+    `lstat` before the open and its inode match are gone with the walk; they saw no swap made before the `lstat`
+    either). Returns None when there is no entry (the caller's `no-file` or absence refusal); every other outcome but
+    the held regular file raises Unreadable with the reason, the descriptor closed."""
     if not ENTRY_NAME.match(name):
         raise Unreadable("is not a bare entry name under the held directory")
     try:
-        seen = os.lstat(name, dir_fd=root_fd)
+        return held_step(root_fd, name, REGULAR)
     except FileNotFoundError:
         return None
     except OSError as error:
-        raise Unreadable(f"cannot be read: {error.strerror or error}") from None
-    if stat.S_ISLNK(seen.st_mode):
-        raise Unreadable("is a symbolic link; a file under the root is read through real entries alone")
-    if not stat.S_ISREG(seen.st_mode):
-        raise Unreadable("is not a regular file")
-    try:
-        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=root_fd)
-    except OSError as error:
+        if error.errno == errno.ELOOP:
+            raise Unreadable("is a symbolic link; a file under the root is read through real entries alone") from None
         raise Unreadable(f"cannot be opened: {error.strerror or error}") from None
-    try:
-        held = os.fstat(descriptor)
-    except OSError as error:
-        os.close(descriptor)
-        raise Unreadable(f"cannot be read: {error.strerror or error}") from None
-    if not stat.S_ISREG(held.st_mode) or (held.st_dev, held.st_ino) != (seen.st_dev, seen.st_ino):
-        os.close(descriptor)
-        raise Unreadable("changed between the lstat and the open; the descriptor holds another file")
-    return descriptor
 
 
 def file_text(descriptor):
@@ -472,19 +582,21 @@ def main(argv=None):
     now = clock(args.now)
     limit = deadline(args.deadline_minutes)
     store = clean_directory(args.store, "store")
-    store_fd = held_root(store, "store")
     root = default_root(store) if args.progress_root is None else clean_directory(args.progress_root, "progress root")
-    root_fd = held_root(root, "progress root")
+    store_fd = root_fd = None
     rows = []
     code = 0
     try:
-        for unit in in_flight_units(store, store_fd):
+        store_fd, store_walked = held_root(store, "store")
+        root_fd, _ = held_root(root, "progress root")
+        for unit in in_flight_units(store_walked, store_fd):
             state, age, last = judge(root_fd, unit, now, limit)
             rows.append(f"{unit}\t{state}\t{age}\t{last}\n")
             code = max(code, STATES[state])
     finally:
-        os.close(root_fd)
-        os.close(store_fd)
+        for descriptor in (root_fd, store_fd):
+            if descriptor is not None:
+                os.close(descriptor)
     sys.stdout.write("".join(rows))
     sys.stdout.flush()
     return code

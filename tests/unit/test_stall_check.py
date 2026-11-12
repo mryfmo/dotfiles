@@ -1,14 +1,15 @@
-"""Exercise scripts/orchestrator/stall-check.py (regime-cutover U496, round 2 U496b, round 3 U496c and U496d), the
-coordinator's one reader of the in-flight workers' progress files: one row per `units.tsv` row whose state is
-`in-flight` and whose track is not `sweep`, in the register's order, `unit<TAB>state<TAB>age_minutes<TAB>last_line`,
+"""Exercise scripts/orchestrator/stall-check.py (regime-cutover U496, round 2 U496b, round 3 U496c and U496d, round 4
+U496e), the coordinator's one reader of the in-flight workers' progress files: one row per `units.tsv` row whose state
+is `in-flight` and whose track is not `sweep`, in the register's order, `unit<TAB>state<TAB>age_minutes<TAB>last_line`,
 the state one of `moving`, `stalled`, `done`, `no-file` and `unreadable` (a file that yields no text or a last line
 outside the grammar is that one unit's row, exit 2, never a refusal that hides the other units), the one run-level
 refusal a register that cannot be read, the register's header and the paths held before anything is read, the store
-and the progress root each held as a directory descriptor, every file opened relative to that descriptor without
-following a link and judged on its own descriptor. Every test but the swap tests runs the lever as a subprocess under
-`python3 -I` over a scratch store and a scratch progress root with the clock injected by `--now`; the swap tests
-import the lever and time a swap between its `lstat` and its `open`, of one file and of the validated root; nothing
-reads the live store, `/tmp/dotfiles-wt` or the real `~/.agents`, and the lever is proved to write nothing.
+and the progress root each walked from `/` by descriptors and held as a directory descriptor, every file opened on that
+descriptor non-blocking, without following a link, and judged on its own descriptor. Every test but the swap tests runs
+the lever as a subprocess under `python3 -I` over a scratch store and a scratch progress root with the clock injected
+by `--now`; the swap tests import the lever and time a swap at an `open`, of one file (for a link, a regular file, a
+FIFO), of the root and of an ancestor of the root; nothing reads the live store, `/tmp/dotfiles-wt` or the real
+`~/.agents`, and the lever is proved to write nothing.
 """
 
 from __future__ import annotations
@@ -20,9 +21,12 @@ import io
 import os
 import re
 import shutil
+import signal
+import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -397,7 +401,7 @@ class StallCheckTest(unittest.TestCase):
 
     def load_lever(self):
         """The lever as a module of this process (its top level defines; the self check and `main` run under
-        `__main__` alone), for the one check a subprocess cannot time: a swap between its `lstat` and its `open`."""
+        `__main__` alone), for the one check a subprocess cannot time: a swap at one of its `open`s."""
         spec = importlib.util.spec_from_file_location("stall_check_under_test", LEVER)
         module = importlib.util.module_from_spec(spec)
         # No bytecode beside the lever: the import writes no `__pycache__` the subprocess tests would then see.
@@ -405,19 +409,26 @@ class StallCheckTest(unittest.TestCase):
             spec.loader.exec_module(module)
         return module
 
-    def test_a_file_swapped_between_the_lstat_and_the_open_is_unreadable_and_no_outside_text_is_read(self) -> None:
-        """The lever `lstat`s the name under the held root, opens it with `O_NOFOLLOW | O_CLOEXEC` relative to the
-        root's descriptor and `fstat`s the file's descriptor (a regular file on the device and inode the `lstat` saw)
-        before it reads from that descriptor. Swapping the file for a link to an outside file right after the `lstat`
-        (the verdict's deterministic swap) gives `unreadable`, `-`, `-`; swapping it for the outside file itself
-        (another inode) gives the same row, never the outside line, which `judge` returned at d1256438."""
+    def test_a_file_swapped_for_a_link_at_the_open_is_unreadable_and_a_regular_file_swapped_in_is_the_file(
+        self,
+    ) -> None:
+        """The lever opens the name on the held root's descriptor with `O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK` and
+        `fstat`s that descriptor (a regular file) before it reads from it, and nothing else: no `lstat` first (round 4,
+        U496e, with the walk). Swapping the file for a link to an outside file right at the open (verdict U496-d1256438
+        P1 :281's deterministic swap) is ELOOP, `unreadable`, `-`, `-`, the outside line never read; swapping in a
+        regular file (another inode) right at the open is that file, `moving` with its line, since a regular file at
+        the unit's name on the held root is the progress file whatever path it had before (round 2's inode match saw
+        no swap made before its `lstat` either), and `judge` reads the descriptor it holds, never the path again."""
         module = self.load_lever()
         now = datetime.strptime(NOW, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-        root = module.held_root(str(self.progress.resolve()), "progress root")
-        self.addCleanup(os.close, root)
+        root_fd, walked = module.held_root(str(self.progress), "progress root")
+        self.addCleanup(os.close, root_fd)
+        self.assertEqual(walked, str(self.progress.resolve()), "the walk's text is the physical path")
         path = self.progress / "U3-progress.txt"
         outside = self.dir / "outside.txt"
         outside.write_text("2026-11-12T06:29:00Z OUTSIDE-SECRET-LINE\n")
+        moved = self.dir / "moved-in.txt"
+        moved.write_text("2026-11-12T06:29:00Z MOVED-IN-LINE\n")
         real_open = os.open
 
         def swap_for_a_link(*args, **kwargs):
@@ -425,27 +436,75 @@ class StallCheckTest(unittest.TestCase):
             path.symlink_to(outside)
             return real_open(*args, **kwargs)
 
-        def swap_for_the_outside_file(*args, **kwargs):
-            os.replace(outside, path)
+        def swap_for_the_moved_in_file(*args, **kwargs):
+            os.replace(moved, path)
             return real_open(*args, **kwargs)
 
         self.assertEqual(
-            module.judge(root, "U3", now, 10), ("stalled", "14", "2026-11-12T06:16:00Z U3 start: brief read")
+            module.judge(root_fd, "U3", now, 10), ("stalled", "14", "2026-11-12T06:16:00Z U3 start: brief read")
         )
         with mock.patch.object(module.os, "open", swap_for_a_link):
-            self.assertEqual(module.judge(root, "U3", now, 10), ("unreadable", "-", "-"))
-        path.unlink()
-        self.write_progress("U3", "2026-11-12T06:16:00Z U3 start: brief read")
-        with mock.patch.object(module.os, "open", swap_for_the_outside_file):
-            row = module.judge(root, "U3", now, 10)
+            row = module.judge(root_fd, "U3", now, 10)
         self.assertEqual(row, ("unreadable", "-", "-"))
         self.assertNotIn("OUTSIDE-SECRET-LINE", "".join(row))
-        self.assertEqual(path.read_text(), "2026-11-12T06:29:00Z OUTSIDE-SECRET-LINE\n", "the swap took place")
+        self.assertTrue(path.is_symlink(), "the swap took place")
+        path.unlink()
+        self.write_progress("U3", "2026-11-12T06:16:00Z U3 start: brief read")
+        with mock.patch.object(module.os, "open", swap_for_the_moved_in_file):
+            row = module.judge(root_fd, "U3", now, 10)
+        self.assertEqual(row, ("moving", "1", "2026-11-12T06:29:00Z MOVED-IN-LINE"))
+        self.assertEqual(path.read_text(), "2026-11-12T06:29:00Z MOVED-IN-LINE\n", "the swap took place")
+        self.assertFalse(moved.exists(), "the file was moved, not copied")
 
-    def run_main_in_process(self, module, swapping_open) -> tuple[int, str, str]:
-        """`main` over the scratch store and root with `os.open` patched by `swapping_open`, as the swap test runs
-        `judge`: the exit code (a refusal's SystemExit folded in), stdout and stderr."""
-        argv = [str(self.store), "--progress-root", str(self.progress), "--now", NOW]
+    def test_a_progress_file_swapped_for_a_fifo_at_the_open_is_unreadable_at_once_and_holds_nothing(self) -> None:
+        """Verdict U496-8cdd9a40 P1 :359: at 8cdd9a40 the file was `lstat`ed (a regular file) and then opened blocking,
+        so a FIFO swapped in between the two held `os.open` with no writer until the auditor's alarm, and every
+        worker's status with it. The open now carries `O_NONBLOCK`, so a FIFO (or a device) opens at once and `fstat`
+        names it no regular file: that unit's `unreadable` row within the second, the test's own bound a 5 s alarm
+        that fails the test from inside a blocked open; a FIFO already at the name before the run is the same row from
+        the subprocess, exit 2, the other rows printed."""
+        module = self.load_lever()
+        now = datetime.strptime(NOW, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        root_fd = os.open(self.progress, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+        self.addCleanup(os.close, root_fd)
+        path = self.progress / "U3-progress.txt"
+        real_open = os.open
+
+        def swap_for_a_fifo(*args, **kwargs):
+            if os.fspath(args[0]).endswith("U3-progress.txt") and not stat.S_ISFIFO(path.lstat().st_mode):
+                path.unlink()
+                os.mkfifo(path)
+            return real_open(*args, **kwargs)
+
+        def alarm(signum, frame):
+            raise AssertionError("the open of the FIFO blocked past the 5 s alarm")
+
+        previous = signal.signal(signal.SIGALRM, alarm)
+        self.addCleanup(signal.signal, signal.SIGALRM, previous)
+        self.addCleanup(signal.setitimer, signal.ITIMER_REAL, 0)
+        signal.setitimer(signal.ITIMER_REAL, 5)
+        started = time.monotonic()
+        with mock.patch.object(module.os, "open", swap_for_a_fifo):
+            row = module.judge(root_fd, "U3", now, 10)
+        elapsed = time.monotonic() - started
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        self.assertEqual(row, ("unreadable", "-", "-"))
+        self.assertLess(elapsed, 1.0, "the FIFO held the open")
+        self.assertTrue(stat.S_ISFIFO(path.lstat().st_mode), "the swap took place")
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (2, ""), run.stdout)
+        self.assertEqual(
+            run.stdout,
+            "U2\tmoving\t3\t2026-11-12T06:27:00Z U2: red tests pasted\n"
+            "U3\tunreadable\t-\t-\n"
+            f"U4\tdone\t10\t2026-11-12T06:20:00Z done, head={HEAD}\n",
+        )
+
+    def run_main_in_process(self, module, swapping_open, root: Path | None = None) -> tuple[int, str, str]:
+        """`main` over the scratch store and root (`root` another progress root) with `os.open` patched by
+        `swapping_open`, as the swap test runs `judge`: the exit code (a refusal's SystemExit folded in), stdout and
+        stderr."""
+        argv = [str(self.store), "--progress-root", str(self.progress if root is None else root), "--now", NOW]
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             with mock.patch.object(module.os, "open", swapping_open):
@@ -459,13 +518,14 @@ class StallCheckTest(unittest.TestCase):
         """Verdict U496-6f774696 P1 :290: at 6f774696 the auditor replaced the validated progress root with a symbolic
         link to another directory before the lookup, `os.lstat(<root>/<name>)` and `os.open(<path>, O_NOFOLLOW)`
         followed the root link (O_NOFOLLOW guards the last component alone) and the other directory's file was
-        printed as a moving worker line. The root is now opened once as a directory descriptor
-        (`O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC`, `fstat` matched against the validated root's `lstat`) and
-        every progress file is opened by its bare name relative to it, so the same swap, timed at the first progress
-        file's `os.open` as the file swap test times its own, reads the validated directory still (the rows unchanged
-        when the directory was renamed aside; `unreadable` for the file whose open the swap preceded and `no-file` for
-        the rest when it was removed) and never the other directory's text; the swap timed at the root's own open is
-        a refusal naming the root, nothing on stdout."""
+        printed as a moving worker line. The root is held as a directory descriptor at the end of its walk (round 3
+        opened the validated path once and matched `fstat` against its `lstat`; round 4, U496e, walks it from `/` by
+        descriptors) and every progress file is opened by its bare name relative to it, so the same swap, timed at the
+        first progress file's `os.open` as the file swap test times its own, reads the held directory still (the rows
+        unchanged when the directory was renamed aside; `no-file` for every unit when it was removed, the one open
+        finding no entry on the deleted directory, where round 3's `lstat` before the open made the first `unreadable`)
+        and never the other directory's text; the swap timed at the root's own open, the walk's last step, is a
+        refusal naming the root as given and as walked and the link, nothing on stdout."""
         module = self.load_lever()
         real_open = os.open
         outside = self.dir / "outside-wt"
@@ -503,28 +563,104 @@ class StallCheckTest(unittest.TestCase):
                 module, swap_at_the_first_progress_file(lambda: shutil.rmtree(root))
             )
             self.assertTrue(os.path.islink(root), "the swap took place")
-            self.assertEqual((code, err), (2, ""), out)
-            self.assertEqual(out, "U2\tunreadable\t-\t-\nU3\tno-file\t-\t-\nU4\tno-file\t-\t-\n")
+            self.assertEqual((code, err), (1, ""), out)
+            self.assertEqual(out, "U2\tno-file\t-\t-\nU3\tno-file\t-\t-\nU4\tno-file\t-\t-\n")
             os.unlink(root)
             root.mkdir()
             self.write_progress("U2", "2026-11-12T06:27:00Z U2: red tests pasted")
             self.write_progress("U3", "2026-11-12T06:16:00Z U3 start: brief read")
             self.write_progress("U4", f"2026-11-12T06:20:00Z done, head={HEAD}")
-        with self.subTest(swap="between the root's validation and its open"):
+        with self.subTest(swap="at the root's own open, the walk's last step"):
             code, out, err = self.run_main_in_process(module, swap_at_the_root_open)
             self.assertTrue(os.path.islink(root), "the swap took place")
             self.assertEqual((code, out), (2, ""), err)
             self.assertEqual(err.count("\n"), 1, err)
             self.assertTrue(err.startswith(REFUSED), err)
-            self.assertIn(f"progress root {root}", err)
+            self.assertIn(f"progress root '{self.progress}' ({root})", err)
+            self.assertIn("symbolic link", err)
             self.assertNotIn("Traceback", err)
             os.unlink(root)
             os.rename(aside, root)
         self.assertNotIn("OUTSIDE-SECRET-LINE", out + err)
 
+    def test_an_ancestor_of_the_progress_root_swapped_for_a_link_during_the_walk_is_never_read_through(self) -> None:
+        """Verdict U496-8cdd9a40 P1 :319: at 8cdd9a40 the root was validated by path (`realpath`, `lstat`) and opened
+        by path, so an ancestor replaced by a symbolic link between the two was followed through (`O_NOFOLLOW` guards
+        the last component alone) and an outside file printed as a moving worker line. Every path is now walked from
+        `/` by descriptors, each component opened on the previous directory's descriptor, so once a component is held
+        nothing above it is looked up again: the ancestor `roots` of the progress root `<scratch>/roots/dotfiles-wt`,
+        swapped for a link to another tree at the root's own open (the walker's open of `dotfiles-wt` on the held
+        `roots`), leaves the rows unchanged when the tree was renamed aside (the held `roots` is the renamed
+        directory) and is a refusal naming the root when the tree was removed (no `dotfiles-wt` on the deleted
+        directory), never the other tree's text; at 8cdd9a40 both were the mismatch refusal of a root opened by
+        path."""
+        module = self.load_lever()
+        real_open = os.open
+        parent = self.dir / "roots"
+        root = parent / "dotfiles-wt"
+        shutil.copytree(self.progress, root)
+        outside = self.dir / "outside"
+        (outside / "dotfiles-wt").mkdir(parents=True)
+        for unit in ("U2", "U3", "U4"):
+            (outside / "dotfiles-wt" / f"{unit}-progress.txt").write_text(
+                f"2026-11-12T06:29:00Z OUTSIDE-SECRET-LINE {unit}\n"
+            )
+        aside = self.dir / "aside"
+
+        def swap_the_ancestor_at_the_root_open(how):
+            def swapping_open(path, flags, *args, **kwargs):
+                if flags & os.O_DIRECTORY and os.fspath(path).endswith("dotfiles-wt") and not os.path.islink(parent):
+                    how()
+                    os.symlink(outside, parent)
+                return real_open(path, flags, *args, **kwargs)
+
+            return swapping_open
+
+        with self.subTest(swap="the ancestor renamed aside, a link in its place"):
+            code, out, err = self.run_main_in_process(
+                module, swap_the_ancestor_at_the_root_open(lambda: os.rename(parent, aside)), root=root
+            )
+            self.assertTrue(os.path.islink(parent), "the swap took place")
+            self.assertEqual((code, out, err), (1, self.expected, ""))
+            os.unlink(parent)
+            os.rename(aside, parent)
+        with self.subTest(swap="the ancestor removed, a link in its place"):
+            code, out, err = self.run_main_in_process(
+                module, swap_the_ancestor_at_the_root_open(lambda: shutil.rmtree(parent)), root=root
+            )
+            self.assertTrue(os.path.islink(parent), "the swap took place")
+            self.assertEqual((code, out), (2, ""), err)
+            self.assertEqual(err.count("\n"), 1, err)
+            self.assertTrue(err.startswith(REFUSED), err)
+            self.assertIn(f"progress root '{root}'", err)
+            self.assertIn("cannot be read", err)
+            self.assertNotIn("Traceback", err)
+            os.unlink(parent)
+        self.assertNotIn("OUTSIDE-SECRET-LINE", out + err)
+
+    def test_the_default_root_s_slug_is_the_store_s_parent_name_as_given_not_resolved(self) -> None:
+        """Verdict U496-8cdd9a40 P2 :476: at 8cdd9a40 `default_root` read the resolved store path, so a store reached
+        through an aliased parent (`regime-store/dotfiles -> realproject`) derived `realproject-wt`, a root no worker
+        writes, and refused while `dotfiles-wt` held every progress file. The slug is the parent directory name of the
+        store path as given, cleaned and not resolved, the root the operator sees: through the alias the rows come
+        from `<TMPDIR>/dotfiles-wt`; given the real name, the root is `realproject-wt`, absent here, a refusal naming
+        it as composed."""
+        real = self.dir / "regime-store/realproject"
+        self.store.parent.rename(real)
+        self.store.parent.symlink_to("realproject")
+        env = {**self.env, "TMPDIR": str(self.dir)}
+        run = self.run_lever(root="", env=env)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (1, self.expected, ""))
+        self.assert_refused(
+            self.run_lever(store=str(real / "regime-cutover"), root="", env=env),
+            "progress root",
+            f"'{self.dir}/realproject-wt'",
+        )
+
     def test_a_platform_whose_os_open_lacks_dir_fd_is_a_refusal_naming_it(self) -> None:
-        """The relative opens need `dir_fd` (`os.open` and `os.lstat` in `os.supports_dir_fd`, true on macOS and
-        Linux, judged once at import); a platform without it is one refusal naming `dir_fd`, nothing on stdout."""
+        """The relative opens and the link reads need `dir_fd` (`os.open` and `os.readlink` in `os.supports_dir_fd`,
+        true on macOS and Linux, judged once at import); a platform without it is one refusal naming `dir_fd`, nothing
+        on stdout."""
         module = self.load_lever()
         self.assertTrue(module.DIR_FD_SUPPORTED, "this host opens relative to a directory descriptor")
         with mock.patch.object(module, "DIR_FD_SUPPORTED", False):

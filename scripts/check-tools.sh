@@ -423,12 +423,16 @@ function check_seat_logins() {
 #   `scripts/orchestrator/router-gh api -i user` (regime-cutover U490), one call bounded to
 #   30 s by perl's alarm (`timeout` is not on every host), with the response headers read for
 #   `X-Oauth-Scopes` alone. No header: a fine-grained token, whose permissions this check
-#   cannot read, a found line. A header: a classic token, found when its list holds `repo` or
-#   `public_repo`, else a required failure naming the handout's step 2, since no other classic
-#   scope lets the Router write (measured 2026-11-12: a `notifications` token read the stream
-#   and every write failed `HTTP 403`). router-gh's refusal (exit 2, no login under the root,
-#   the operator's step) and a failed or unreadable response are optional warnings, never
-#   found. The login is read from the body's `login` key; no token is printed.
+#   cannot read and which cannot write here (GitHub's fine-grained tokens cannot contribute to
+#   a repository where the account is a collaborator, and the Router's account is one), a
+#   found line carrying that caveat. A header: a classic token, found when its list holds
+#   `repo` or `public_repo`, else a required failure asking for the classic token of the
+#   handout's step 2 (`repo` for the writes, `read:org` and `gist` for `gh auth login
+#   --with-token`, `notifications` for the poll; U490b), since no other classic scope lets the
+#   Router write (measured 2026-11-12: a `notifications` token read the stream and every write
+#   failed `HTTP 403`). router-gh's refusal (exit 2, no login under the root, the operator's
+#   step) and a failed or unreadable response are optional warnings, never found. The login is
+#   read from the body's `login` key; no token is printed.
 #
 function check_router_token() {
     local lever="${BASH_SOURCE[0]%/*}/orchestrator/router-gh"
@@ -471,7 +475,7 @@ function check_router_token() {
     fi
     login="${BASH_REMATCH[1]}"
     if [ "${scopes_seen}" -eq 0 ]; then
-        printf 'found:   router token %s: fine-grained (no X-Oauth-Scopes header)\n' "${login}"
+        printf 'found:   router token %s: fine-grained (no X-Oauth-Scopes header; writes to a collaborator repository need a classic token with repo)\n' "${login}"
         return 0
     fi
     IFS=', ' read -r -a scope_list <<< "${scopes}"
@@ -484,7 +488,7 @@ function check_router_token() {
         printf 'found:   router token %s: classic, scopes %s\n' "${login}" "${scopes}"
         return 0
     fi
-    printf 'required failed: router token %s: classic token with scopes %s, none of which lets the Router write (the acknowledgement, a pushed ref, a pull request); place the fine-grained token of docs/engagement-handout.md step 2 (Contents rw, Pull requests rw, Metadata read) under %s\n' \
+    printf 'required failed: router token %s: classic token with scopes %s, none of which lets the Router write (the acknowledgement, a pushed ref, a pull request); place the classic token of docs/engagement-handout.md step 2 (scopes repo, read:org, gist, notifications; a fine-grained token cannot write to a repository where the account is a collaborator) under %s\n' \
         "${login}" "${scopes:-<none>}" "${root}" >&2
     ((required_failures += 1))
 }

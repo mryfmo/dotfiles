@@ -981,11 +981,16 @@ EOF
         return self.run_test_command(["bash", str(ROOT / "scripts/check-tools.sh")], env=env)
 
     def test_doctor_router_token_fine_grained_is_found(self) -> None:
-        # (a) No X-Oauth-Scopes header: a fine-grained token, whose permissions the doctor cannot read; found, exit 0.
+        # (a) No X-Oauth-Scopes header: a fine-grained token, whose permissions the doctor cannot read and which cannot
+        #     write to a collaborator repository; found with that caveat, exit 0.
         result = self.run_doctor(self.doctor_environment())
         output = result.stdout + result.stderr
         self.assertEqual(0, result.returncode, output)
-        self.assertIn("found:   router token fixture-router: fine-grained (no X-Oauth-Scopes header)", result.stdout)
+        self.assertIn(
+            "found:   router token fixture-router: fine-grained (no X-Oauth-Scopes header; writes to a collaborator"
+            " repository need a classic token with repo)",
+            result.stdout,
+        )
         self.assertNotIn("router token", result.stderr)
         self.assertIn("required failures: 0", result.stdout)
 
@@ -996,8 +1001,9 @@ EOF
         self.assertEqual(1, result.returncode, output)
         self.assertIn(
             "required failed: router token fixture-router: classic token with scopes notifications, none of which lets"
-            " the Router write (the acknowledgement, a pushed ref, a pull request); place the fine-grained token of"
-            " docs/engagement-handout.md step 2 (Contents rw, Pull requests rw, Metadata read) under",
+            " the Router write (the acknowledgement, a pushed ref, a pull request); place the classic token of"
+            " docs/engagement-handout.md step 2 (scopes repo, read:org, gist, notifications; a fine-grained token cannot"
+            " write to a repository where the account is a collaborator) under",
             result.stderr,
         )
         self.assertIn("/router-credentials/gh", result.stderr)

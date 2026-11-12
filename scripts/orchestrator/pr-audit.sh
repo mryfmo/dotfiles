@@ -775,6 +775,24 @@ spellings() {
     [[ ${real} == "${path}" ]] || printf '%s\n' "${real}" # lint-comparisons: allow both spellings are denied on purpose
 }
 
+# @description Set `lines` to the lines of the text `$1` as `read` saw them through a here-string, by parameter
+#   expansions alone (regime-cutover U478, U474's residual row). bash backs a here-string with a temporary file
+#   (/bin/bash 3.2.57: `sh-thd-<n>` under /tmp, else the working directory, never TMPDIR); when none can be made the
+#   redirection fails, a `while read` loop runs no iteration and a `grep -c` substitution returns 1 with no output,
+#   which its count-of-0 guard accepted, so the template was refused as not selecting the audit profile, a false
+#   refusal of a correct run. Nothing is opened here. A newline is appended as the here-string did, so a text ending
+#   in one yields a last empty line and an empty text yields one empty line.
+# @arg $1 string The text.
+# @set lines array The lines, in order, one at least.
+lines_of() {
+    local text=$1$'\n'
+    lines=()
+    while [[ -n ${text} ]]; do
+        lines+=("${text%%$'\n'*}")
+        text=${text#*$'\n'}
+    done
+}
+
 # @description Read `<commit>:AGENTS.md` of the audited repository once, check that every byte of the blob arrived,
 #   and cut out its `## Audit` section (the heading line to the next `## ` heading) in this shell. Refuses (exit 2)
 #   when the size or the blob cannot be read, fewer or more bytes arrive than the blob holds, the heading is missing
@@ -792,7 +810,8 @@ audit_rules() {
     text=${text%.}
     ((${#text} == size)) || refuse "read ${#text} of the ${size} bytes of AGENTS.md of main ${commit}"
     rules=''
-    while IFS= read -r line; do
+    lines_of "${text}"
+    for line in "${lines[@]}"; do
         if [[ ${line} == '## Audit' ]]; then
             headings=$((headings + 1))
             inside=1
@@ -802,7 +821,7 @@ audit_rules() {
         if ((inside)); then
             rules+=${line}$'\n'
         fi
-    done <<< "${text}"
+    done
     ((headings == 1)) || refuse "main ${commit:0:12}:AGENTS.md has ${headings} '## Audit' headings, not one"
     body=${rules#*$'\n'}
     [[ ${body} == *[![:space:]]* ]] || refuse "main ${commit:0:12}:AGENTS.md has an empty '## Audit' section"
@@ -896,28 +915,38 @@ case ${template_status} in
 esac
 # read_file keeps the final newline the command substitution dropped; the line loop below sees the same lines as before.
 template_text=${template_text%$'\n'}
-selected=$(grep -c -x 'default_permissions = "audit"' <<< "${template_text}") || [[ $? == 1 ]] || # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
-    fail "cannot search ${template}"
+# The counts, in one pass over the lines (bash's `=~` is the same POSIX ERE grep -E read; the regexes stand in
+# variables, the form bash 3.2 reads as a regex), then each refusal in the order it stood.
+sandbox_key_re='^[[:space:]]*"?sandbox_mode"?[[:space:]]*='
+entry_re='"(read|write|deny)"[[:space:]]*$'
+selected=0
+sandbox_keys=0
+profiles=0
+template_entries=0
+root_denies=0
+lines_of "${template_text}"
+for line in "${lines[@]}"; do
+    [[ ${line} != 'default_permissions = "audit"' ]] || selected=$((selected + 1))
+    [[ ! ${line} =~ ${sandbox_key_re} ]] || sandbox_keys=$((sandbox_keys + 1))
+    [[ ${line} != '[permissions.audit]' ]] || profiles=$((profiles + 1))
+    [[ ! ${line} =~ ${entry_re} ]] || template_entries=$((template_entries + 1))
+    [[ ${line} != '":root" = "deny"' ]] || root_denies=$((root_denies + 1))
+done
 [[ ${selected} == 1 ]] || refuse "${template} does not make the permission profile audit the default"
-sandbox_keys=$(grep -c -E '^[[:space:]]*"?sandbox_mode"?[[:space:]]*=' <<< "${template_text}") || [[ $? == 1 ]] || # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
-    fail "cannot search ${template}"
 [[ ${sandbox_keys} == 0 ]] || refuse "${template} names sandbox_mode, which replaces the permission profile"
-profiles=$(grep -c -x '\[permissions.audit\]' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}" # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
 [[ ${profiles} == 1 ]] || refuse "${template} defines no single [permissions.audit] profile"
-template_entries=$(grep -c -E '"(read|write|deny)"[[:space:]]*$' <<< "${template_text}") || [[ $? == 1 ]] || # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
-    fail "cannot search ${template}"
 [[ ${template_entries} -gt 0 ]] || refuse "${template} has no filesystem entries"
 # The allowlist (U71b audit round 4): nothing is readable unless an entry opens it.
-root_denies=$(grep -c -x '":root" = "deny"' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}" # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
 ((root_denies == 1)) || refuse "${template} does not deny :root once; the audit profile must be an allowlist"
 # No project instructions (U71b audit round 21): the rules arrive in the prompt, so codex loads no AGENTS.md from its
 # cwd or an ancestor. Each setting must stand once before the first table, where it is a top-level key.
 preamble=${template_text%%$'\n['*}
+lines_of "${preamble}"
 for setting in 'project_doc_max_bytes = 0' 'project_doc_fallback_filenames = []' 'project_root_markers = []'; do
     count=0
-    while IFS= read -r line; do
+    for line in "${lines[@]}"; do
         [[ ${line} != "${setting}" ]] || count=$((count + 1))
-    done <<< "${preamble}"
+    done
     ((count == 1)) ||
         refuse "${template} does not set ${setting} once before its first table; codex would load AGENTS.md instructions"
 done
@@ -931,7 +960,18 @@ slug=$(gh_bounded repo view --json nameWithOwner --jq .nameWithOwner) || fail 'c
 [[ ${slug} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || fail "gh named no repository: ${slug}"
 view=$(gh_bounded pr view "${pr}" --repo "${slug}" --json state,baseRefName,headRefOid,url \
     --jq '[.state, .baseRefName, .headRefOid, .url] | @tsv') || fail "cannot read pull request ${pr}"
-IFS=$'\t' read -r state base want pr_url <<< "${view}"
+# The four tab-separated fields of the view's first line, as `read -r state base want pr_url` with IFS=tab cut them:
+# a missing field is empty, the last takes the rest of the line.
+line=${view%%$'\n'*}
+state=${line%%$'\t'*}
+line=${line#"${state}"}
+line=${line#$'\t'}
+base=${line%%$'\t'*}
+line=${line#"${base}"}
+line=${line#$'\t'}
+want=${line%%$'\t'*}
+pr_url=${line#"${want}"}
+pr_url=${pr_url#$'\t'}
 [[ ${want} =~ ^[0-9a-f]{40}$ ]] || fail "pull request ${pr} has no readable head: ${want}"
 [[ ${base} == main ]] || refuse "pull request ${pr} targets ${base:-nothing}, not main"
 
@@ -976,7 +1016,8 @@ body_text=$(cat -- "${run}/body.md") || fail "cannot read ${run}/body.md"
 unit=''
 program=''
 unit_lines=0
-while IFS= read -r line; do
+lines_of "${body_text}"
+for line in "${lines[@]}"; do
     line=${line%$'\r'}
     [[ ${line} == 'Program-Unit:'* ]] || continue
     [[ ${line} =~ ^Program-Unit:\ ([a-z0-9][a-z0-9_-]{0,63})/(U[0-9]+)$ ]] ||
@@ -984,7 +1025,7 @@ while IFS= read -r line; do
     program=${BASH_REMATCH[1]}
     unit=${BASH_REMATCH[2]}
     unit_lines=$((unit_lines + 1))
-done <<< "${body_text}"
+done
 ((unit_lines <= 1)) || refuse "the body of pull request ${pr} carries ${unit_lines} Program-Unit lines, not one"
 if ((unit_lines == 1)); then
     [[ -n ${records} ]] ||
@@ -1089,7 +1130,8 @@ probes=("${login}" "${login_real}" "${codex_home}/auth.json")
 writes=("${run}")
 config=''
 entries=0
-while IFS= read -r line; do
+lines_of "${template_text}"
+for line in "${lines[@]}"; do
     if [[ ${line} =~ ^\"([^\"]+)\"\ =\ \"(read|write|deny)\"$ ]]; then
         key=${BASH_REMATCH[1]}
         access=${BASH_REMATCH[2]}
@@ -1112,7 +1154,9 @@ while IFS= read -r line; do
         /*) paths=$(spellings "${key}") || exit 2 ;;
         *) refuse "${template} names ${key}, which is not ~/<path>, /<path>, a \$ token of the lever or a Codex :name" ;;
         esac
-        while IFS= read -r path; do
+        # The outer loop's list was expanded when it began, so `lines` is free for the paths.
+        lines_of "${paths}"
+        for path in "${lines[@]}"; do
             [[ ${seen} != *$'\n'"${access} ${path}"$'\n'* ]] || continue # lint-comparisons: allow set membership of spellings
             for other in read write deny; do
                 [[ ${other} == "${access}" || ${seen} != *$'\n'"${other} ${path}"$'\n'* ]] || # lint-comparisons: allow set membership of spellings
@@ -1125,16 +1169,25 @@ while IFS= read -r line; do
                 [[ ! -e ${path} && ! -L ${path} ]] || probes+=("${path}")
                 [[ ${key} != /* || ! -d ${path} ]] || writes+=("${path}") # lint-comparisons: allow a shape check
             fi
-        done <<< "${paths}"
+        done
     else
         config+=${line}$'\n'
     fi
-done <<< "${template_text}"
+done
 # Every entry line of the template was parsed (none skipped), and every path resolved is in the config.
 ((entries == template_entries)) ||
     refuse "${template} has ${template_entries} filesystem lines, but ${entries} are of the form \"<key>\" = \"<access>\""
-rendered=$(grep -c -E '^"/[^"]*" = "(read|write|deny)"$' <<< "${config}") || fail 'cannot search the rendered config'
-resolved=$(grep -c . <<< "${seen}") || fail 'cannot count the resolved paths'
+rendered_re='^"/[^"]*" = "(read|write|deny)"$'
+rendered=0
+lines_of "${config}"
+for line in "${lines[@]}"; do
+    [[ ! ${line} =~ ${rendered_re} ]] || rendered=$((rendered + 1))
+done
+resolved=0
+lines_of "${seen}"
+for line in "${lines[@]}"; do
+    [[ -z ${line} ]] || resolved=$((resolved + 1))
+done
 ((rendered == resolved)) || fail "the rendered config names ${rendered} paths, but ${resolved} were resolved"
 for path in "${codex_home}" "${login_home}" "${login_real}"; do
     [[ ${denied} == *$'\n'"${path}"$'\n'* ]] || refuse "${template} does not deny ${path}" # lint-comparisons: allow set membership of spellings
@@ -1156,12 +1209,16 @@ printf 'pr-audit canary\n' > "${run}/canary" || fail "cannot write the canary ${
 probes+=("${run}/canary" "${home_dir}")
 # The allowed roots by physical path: every read or write entry of the written config that exists.
 read_roots=()
-while IFS=' ' read -r access path; do
+lines_of "${seen}"
+for line in "${lines[@]}"; do
+    access=${line%% *}
+    path=${line#"${access}"}
+    path=${path# }
     [[ ${access} == read || ${access} == write ]] || continue
     [[ -e ${path} ]] || continue
     real=$(physical "${path}") || refuse "cannot resolve the allowed path ${path}"
     read_roots+=("${real}")
-done <<< "${seen}"
+done
 # Each store the caller's environment names (U71b audit round 8: a relative GH_CONFIG_DIR was skipped): `~` and `~/`
 # resolve under the real HOME, a relative path against the caller's cwd, then the physical path. A store inside an
 # allowed root would be readable through the allowlist, so the run is refused; any other existing store is probed in

@@ -98,9 +98,10 @@
 #   (the worker's bridge child keeps the seats root's one login there, U318), `~/.omp/profiles/dsh` (the worker's
 #   omp profile, `OMP_PROFILE=dsh`), `~/.omp/run`, and srt 0.0.81's own writable paths (`/tmp/claude`,
 #   `/private/tmp/claude` on macOS, `~/.npm/_logs`), every one physical; `allowRead` the slot's task, the shared
-#   Claude Code directory, that profile, `~/.agents/skills` and the private tool directory
-#   `~/.local/state/hcom-seat/tools`. No row names the Router's scratch cwd, its state slot or the repository. No
-#   DSH_HOME grant and no state slot: the worker is omp, not dsh, and the launch log is this lever's to write.
+#   Claude Code directory, that profile, `~/.agents/skills`, the private tool directory
+#   `~/.local/state/hcom-seat/tools` and the seats' API key file `REGIME_ANTHROPIC_KEY_FILE` names (U516, the @env
+#   row). No row names the Router's scratch cwd, its state slot or the repository. No DSH_HOME grant and no state
+#   slot: the worker is omp, not dsh, and the launch log is this lever's to write.
 #   `allowLocalBinding` false, `allowUnixSockets` empty, the domain list
 #   `hcom-seat`'s. The settings text is the one writer's: both levers source `seat-settings-render.sh`
 #   (regime-cutover U344: the path rule every row obeys, the domain list and the JSON text; the rows are each
@@ -134,9 +135,10 @@
 #   exit line the reaper appends one `session cwd <original> mapped to <task>` line per mapped request (the
 #   paragraph below).
 #   The launch. `/usr/bin/env -i HOME PATH OMP_PROFILE=dsh CLAUDE_CONFIG_DIR AWS_SHARED_CREDENTIALS_FILE=/dev/null
-#   AWS_CONFIG_FILE=/dev/null HCOM_SEAT_SANDBOX=<slot> [USER LANG when this process has them] <srt> --settings
-#   <slot>/settings.json -- /usr/bin/env PATH=<seat path> <python3> -I -S <acp-relay.py> --map-session-cwd <task> --
-#   <omp> acp --profile dsh`, in the slot's task, its stdin and stdout the connection, its stderr the file
+#   AWS_CONFIG_FILE=/dev/null HCOM_SEAT_SANDBOX=<slot> REGIME_ANTHROPIC_KEY_FILE [USER LANG when this process has
+#   them] <srt> --settings <slot>/settings.json -- /usr/bin/env PATH=<seat path> <python3> -I -S <acp-relay.py>
+#   --map-session-cwd <task> -- <omp> acp --profile dsh`, in the slot's task, its stdin and stdout the connection,
+#   its stderr the file
 #   `<slot>/stderr`, in a process group of its own (job control on for the one start), so the reaper ends the mapper,
 #   omp and every descendant in that group with one signal; nothing else of this process's environment reaches srt,
 #   the mapper or omp, and `CLAUDE_CODE_OAUTH_TOKEN` is unset before the first child (U312). `HCOM_SEAT_SANDBOX`
@@ -281,6 +283,11 @@
 # @env HOME The user's home; the private tool directory, the omp profile and the credential denies derive from it.
 # @env DSH_HOME The Router's home (hcom-seat's seat_env); its credential root `<DSH_HOME>/router-credentials` is the
 #   one deny of the worker beyond the Router's table (U343l). Nothing else of the home reaches the worker.
+# @env REGIME_ANTHROPIC_KEY_FILE The seats' API key file `<seats-root>/.state/anthropic/api-key` (hcom-seat's router
+#   row, U512; the operator places it by handouts/anthropic-api-key-u510.md): held as data and never read, named in
+#   every worker's environment beside CLAUDE_CONFIG_DIR, where `claude-keyed` reads the key for the bridge's Claude
+#   Code child, and its physical path one worker read grant (regime-cutover U516; handoff/47). Unset, empty, not a
+#   clean absolute path, a symbolic link, or not a regular file of this user refuses by name before any worker starts.
 # @stdout `acp-broker: listening on <sock>` once the socket accepts, the last start-up step and the one readiness sign
 #   (hcom-seat reads it through its FIFO and the test fixture from this stdout, neither the socket's existence; U447;
 #   a signal that arrived before it leaves no line); in a connection, the one line `acp-broker: record
@@ -872,7 +879,9 @@ physical_each() {
 #   (`allow_read_tags`, `allow_write_tags`); a denyRead row carries `slot` when it has the identity of the seats root
 #   or of `~/.local/state/omp-seats` and `profile` when it has the identity of `~/.omp/profiles` (the three
 #   references resolved and tabled with the rows); a denyWrite row carries `slot` when it lies strictly inside a
-#   slot-tagged grant (the project-file rows under the task cwd, the configuration rows under the shared directory).
+#   slot-tagged grant (the project-file rows under the task cwd, the configuration rows under the shared directory)
+#   or when it has the identity of a slot-tagged read grant that is no write grant (the seats' API key file, which
+#   hcom-seat grants for read and denies for write under one tag, U512; U516).
 #   A profile that is a link elsewhere is spelled `~/.omp/profiles/dsh` and resolves elsewhere, so its tag exempts
 #   nothing and it is judged like any row. The read grants go first, so the first hit names the row as the role
 #   spells it.
@@ -917,6 +926,13 @@ settings_judge() {
             for ((i = 0; i < n; i++)); do
                 [[ ${tags[i]} == slot ]] || continue # lint-comparisons: allow a tag word, no path compare
                 if within_ix "${i}" "${j}" && ! within_ix "${j}" "${i}"; then tags[j]=slot; fi
+                # The seats' API key file (U516): hcom-seat grants it for read and denies it for write under one tag
+                # (U512), so a deny row with the identity of a slot-tagged read grant is that row; the identity of a
+                # write grant stays a hit (a write granted and denied is a contradiction, not a pair), the write
+                # grants coming after the read grants in the table.
+                if within_ix "${i}" "${j}" && within_ix "${j}" "${i}"; then
+                    if [[ ${kinds[i]} == allowRead ]]; then tags[j]=slot; else tags[j]=''; fi # lint-comparisons: allow a kind word, no path compare
+                fi
             done
             ;;
         esac
@@ -975,6 +991,20 @@ cred_root_real=$(physical_clean "${cred_home_real}/router-credentials") || unres
 require_clean_path "the Router's credential root" "${cred_root_real}"
 [[ -d ${cred_root_real} && ! -L ${cred_root_real} && -O ${cred_root_real} ]] ||
     refuse "the Router's credential root ${cred_root_real} is not a real directory of this user"
+# The seats' API key file (regime-cutover U516; handoff/47, U510, U512): REGIME_ANTHROPIC_KEY_FILE as hcom-seat's
+# router row set it in the sandbox environment this process runs in (the listener, and every connection through the
+# relay), held as data: this lever reads no key, names the path in every worker's environment beside CLAUDE_CONFIG_DIR
+# (where `claude-keyed`, the bridge's Claude Code executable, reads it) and grants its physical path for read. Fail
+# closed, as `claude-keyed` refuses: unset or empty, not a clean absolute path, a symbolic link, or not a regular file
+# of this user is one line naming the variable and the handout, exit 2, before any worker starts.
+key_handout="place the seats' API key file by the U510 handout (handouts/anthropic-api-key-u510.md)"
+[[ -n ${REGIME_ANTHROPIC_KEY_FILE:-} ]] ||
+    refuse "REGIME_ANTHROPIC_KEY_FILE did not reach this connection; the broker runs inside the Router's sandbox, whose environment hcom-seat sets, and no worker starts without the seats' API key; ${key_handout}"
+key_file=${REGIME_ANTHROPIC_KEY_FILE}
+clean_path "${key_file}" || refuse "REGIME_ANTHROPIC_KEY_FILE '${key_file}' is not a clean absolute path; no worker starts without the seats' API key; ${key_handout}"
+[[ ! -L ${key_file} ]] || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} is a symbolic link; the seats' API key file is a regular file of this user; ${key_handout}"
+[[ -f ${key_file} && -O ${key_file} ]] || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} is not a regular file of this user; ${key_handout}"
+key_real=$(physical_clean "${key_file}") || unresolved "the seats' API key file REGIME_ANTHROPIC_KEY_FILE" "${key_file}"
 seats_real=$(physical_clean "${seats_root}") || unresolved 'the seats root' "${seats_root}"
 require_own_dir 'the seats root' "${seats_real}"
 state_dir=${seats_real}/.state/${router}
@@ -1447,9 +1477,9 @@ profile_real=$(physical_clean "${profile_spelled}") || unresolved "the worker's 
 run_real=$(physical_clean "${h}/.omp/run") || unresolved "omp's run directory" "${h}/.omp/run"
 skills_real=$(physical_clean "${h}/.agents/skills") || unresolved 'the skills directory' "${h}/.agents/skills"
 tools_row=$(physical_clean "${tools_dir}") || unresolved 'the private tool directory' "${tools_dir}"
-allow_read=("${task}" "${claude_real}" "${profile_real}" "${skills_real}" "${tools_row}")
-allow_read_spelled=("${task}" "${claude_real}" "${profile_spelled}" "${h}/.agents/skills" "${tools_dir}")
-allow_read_tags=(slot slot profile '' '')
+allow_read=("${task}" "${claude_real}" "${profile_real}" "${skills_real}" "${tools_row}" "${key_real}")
+allow_read_spelled=("${task}" "${claude_real}" "${profile_spelled}" "${h}/.agents/skills" "${tools_dir}" "${key_real}")
+allow_read_tags=(slot slot profile '' '' slot)
 allow_write=("${task}" "${claude_real}" "${profile_real}" "${run_real}")
 allow_write_spelled=("${task}" "${claude_real}" "${profile_spelled}" "${h}/.omp/run")
 allow_write_tags=(slot slot profile '')
@@ -1483,7 +1513,7 @@ json=${settings_json}
 # seat marker, and USER and LANG when this process's caller exported them. The Router-side git runs get HOME and the
 # outer PATH alone.
 worker_env=("HOME=${HOME}" "PATH=${outer_path}" OMP_PROFILE=dsh "CLAUDE_CONFIG_DIR=${claude_real}"
-    AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null "HCOM_SEAT_SANDBOX=${slot}")
+    AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null "HCOM_SEAT_SANDBOX=${slot}" "REGIME_ANTHROPIC_KEY_FILE=${key_file}")
 router_env=("HOME=${HOME}" "PATH=${outer_path}")
 inherited=$(compgen -e) || refuse 'cannot list the environment'
 for var in USER LANG; do

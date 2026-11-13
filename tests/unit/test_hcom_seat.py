@@ -370,6 +370,37 @@ class HcomSeatTest(SeatFixture):
         self.assertIn(f"key_file={key}", shim)
         self.assertIn("\nexport REGIME_ANTHROPIC_KEY_FILE=${key_file}\n", shim)
 
+    def test_a_link_at_the_key_path_refuses_before_anything_resolves_or_exports_it(self):
+        """U512b (verdict U512-2a49d363, P2 at hcom-seat:2416): `physical_path` resolved the key path before the form
+        check, so a checker that refuses links never saw the link, and the dry run exported the link's target. The
+        lever now judges the contract path's form first (its own link refusal, before `claude-keyed --check` and
+        before any resolve): a link at `<seats-root>/.state/anthropic/api-key` refuses (exit 2) the dry run and the
+        launch, prints no environment line, calls no checker, follows the link to nothing and leaves it in place."""
+        key = self.key_file
+        elsewhere = self.home / "elsewhere-key"
+        elsewhere.write_text(FAKE_KEY + "\n")
+        elsewhere.chmod(0o600)
+        key.parent.mkdir(parents=True)
+        for directory in (Path(self.seats), Path(self.seats, ".state"), key.parent):
+            directory.chmod(0o700)
+        key.symlink_to(elsewhere)
+        refusal = (
+            f"hcom-seat: the API key file {key} is a symbolic link; the seats' key file must be a regular file of this"
+            " user, placed by the U510 handout (handouts/anthropic-api-key-u510.md, steps 2 and 3)\n"
+        )
+        for extra in (["--dry-run"], []):
+            with self.subTest(extra=extra):
+                run = self.seat("worker", "--seats-root", self.seats, *extra, SSH_CONNECTION="100.64.0.2 50000 100.64.0.3 22")  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertTrue(run.stderr.endswith(refusal), run.stderr)
+                self.assertNotIn("REGIME_ANTHROPIC_KEY_FILE=", run.stderr, "the dry run exports nothing")
+                self.assertNotIn(str(elsewhere), run.stderr, "the target is never named: the link was not followed")
+        self.assertFalse(self.claude_keyed_calls.exists(), "no checker ran on the link or its target")
+        self.assertEqual(self.calls_of("omp"), [])
+        self.assertTrue(key.is_symlink(), "the launch neither removed nor replaced the link")
+        self.assertEqual(elsewhere.read_text(), FAKE_KEY + "\n")
+        self.assertNotIn(FAKE_KEY, run.stdout + run.stderr)
+
     def test_a_preflight_component_refusal_stops_the_launch_with_exit_2(self):
         """U318c: hcom-seat runs seat-login-preflight with `|| exit $?`, so a component refusal of the shared Claude
         Code directory chain (exit 2, the component named) is the launch's refusal, status and text unchanged, before

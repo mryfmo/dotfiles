@@ -165,12 +165,27 @@ end'
 # held to a loopback http URL, the tests' fake endpoint, so the key never leaves this host for another name. The call
 # runs under `perl -e 'alarm 20; exec @ARGV'` (the lever's own bound: an allow rule cannot carry a wrapper, README
 # "Pre-authorized levers") through `python3 -I`, which reads the key from the file path given as its one argument and
-# prints the three-digit status code alone; the key reaches no argument, no environment and no line. Exit 3: the API
-# could not be reached (URLError, a network denied); 4: the key file could not be read; 142: the alarm ended it.
+# prints the three-digit status code alone; the key reaches no argument, no environment and no line. The opener
+# follows no redirect (regime-cutover U512b, verdict U512-2a49d363 P1: urllib's default opener re-sent the header to
+# the redirect's target): its redirect handler raises on every 3xx a redirect would follow, and any other 3xx is
+# refused after the fact, so the key is sent to the one address alone. Exit 3: the API could not be reached
+# (URLError, a network denied); 4: the key file could not be read; 5: the API answered a redirect, refused (the code
+# printed); 142: the alarm ended it.
 models_api_default='https://api.anthropic.com/v1/models?limit=1'
 models_api_loopback_re='^http://127\.0\.0\.1:[0-9]{1,5}/'
 models_api_probe='
 import os, sys, urllib.error, urllib.request
+
+
+class RedirectRefused(Exception):
+    pass
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise RedirectRefused(code)
+
+
 try:
     with open(sys.argv[1], "rb") as handle:
         key = handle.read().rstrip(b"\n").decode()
@@ -180,10 +195,15 @@ request = urllib.request.Request(
     os.environ["REGIME_ANTHROPIC_MODELS_URL"], headers={"x-api-key": key, "anthropic-version": "2023-06-01"}, method="GET"
 )
 try:
-    with urllib.request.urlopen(request) as response:
+    with urllib.request.build_opener(NoRedirect).open(request) as response:
         print(response.status)
+except RedirectRefused as refused:
+    print(refused.args[0])
+    sys.exit(5)
 except urllib.error.HTTPError as error:
     print(error.code)
+    if 300 <= error.code < 400:
+        sys.exit(5)
 except urllib.error.URLError:
     sys.exit(3)
 '
@@ -355,15 +375,25 @@ claude_config_dir() {
 }
 
 # @description Print the operator's Claude step (regime-cutover U512): the U510 handout's steps 2 and 3 as one line,
-#   `(umask 077; mkdir -p <dir>; printf 'key: '; IFS= read -rs k; printf '%s\n' "$k" > <file>; unset k; echo) &&
-#   REGIME_ANTHROPIC_KEY_FILE=<file> claude-keyed --check`: the key typed once, unechoed, into the 0600 file of the 0700
-#   directory, then judged by the lever. Every path is shell-quoted (`%q`), so a seats root holding a space, a quote
-#   or a `$` pastes as the same file (regime-cutover U318b's rule for the command this replaces).
+#   one subshell under `umask 077` then `REGIME_ANTHROPIC_KEY_FILE=<file> claude-keyed --check`. The subshell
+#   (regime-cutover U512b, verdict U512-2a49d363 P1 and P2 at this row: the earlier form wrote through the existing
+#   file, so a 0644 file or a link's target received the key, and read `read`'s status from nowhere, so an EOF wrote a
+#   newline over the previous key and a failed write truncated it) holds the chain (the seats root, `.state`,
+#   `.state/anthropic`) to no symbolic link before `mkdir -p` makes what is absent (0700 under the umask), holds each
+#   to a directory of this user, tightens the key directory to 0700 (a 0755 directory is tightened, not refused),
+#   holds the destination to no link and, when present, a regular file of this user, then reads the key once,
+#   unechoed, refusing on EOF or an empty value, writes it to an exclusive 0600 temporary `mktemp` makes in the key
+#   directory and renames that over the destination (an existing 0644 file is replaced by the 0600 one), so the
+#   previous file survives every failure byte for byte and the key never lies in a file another user can read. Every
+#   path is shell-quoted (`%q`) into the subshell's own variables, so a seats root holding a space, a quote or a `$`
+#   pastes as the same file (regime-cutover U318b's rule for the command this replaces); the variables die with the
+#   subshell. Tested by `test_the_placement_command_makes_the_chain_0700_and_replaces_the_file_through_a_0600_temporary`
+#   and `test_the_placement_command_keeps_the_previous_file_on_eof_an_empty_key_or_a_failed_write`.
 # @stdout The steps, one line.
 claude_login_command() {
-    # shellcheck disable=SC2016 # the printed command holds `"$k"` for the operator's shell, not this one
-    printf '(umask 077; mkdir -p %q; printf '\''key: '\''; IFS= read -rs k; printf '\''%%s\\n'\'' "$k" > %q; unset k; echo) && REGIME_ANTHROPIC_KEY_FILE=%q claude-keyed --check\n' \
-        "${claude_key_dir}" "${claude_key_file}" "${claude_key_file}"
+    # shellcheck disable=SC2016 # the printed command holds `$p`, `$d`, `$f`, `$t` and `"$k"` for the operator's shell, not this one
+    printf '(umask 077; r=%q; s=%q; d=%q; f=%q; for p in "$r" "$s" "$d"; do [[ ! -L $p ]] || { echo "refused: $p is a symbolic link" >&2; exit 1; }; done; mkdir -p "$d" || exit 1; for p in "$r" "$s" "$d"; do [[ -d $p && -O $p ]] || { echo "refused: $p is not a directory of this user" >&2; exit 1; }; done; chmod 700 "$d" || exit 1; [[ ! -L $f ]] || { echo "refused: $f is a symbolic link" >&2; exit 1; }; [[ ! -e $f ]] || [[ -f $f && -O $f ]] || { echo "refused: $f is not a regular file of this user" >&2; exit 1; }; t=$(mktemp "$d/.api-key.XXXXXX") || exit 1; printf '\''key: '\''; if ! IFS= read -rs k || [[ -z $k ]]; then echo; echo "refused: no key was read" >&2; rm -f "$t"; exit 1; fi; echo; printf '\''%%s\\n'\'' "$k" > "$t" && mv -f "$t" "$f" || { rm -f "$t"; echo "refused: cannot write $f" >&2; exit 1; }) && REGIME_ANTHROPIC_KEY_FILE=%q claude-keyed --check\n' \
+        "${claude_seats_root}" "${claude_seats_root%/}/.state" "${claude_key_dir}" "${claude_key_file}" "${claude_key_file}"
 }
 
 # @description Refuse the Claude route's absent or rejected key after its state line, naming the operator's steps: the
@@ -480,6 +510,10 @@ claude_state() {
         ;;
     3)
         printf 'unreadable (the Models API could not be reached for the API key file %s; the network may be denied where this runs)\n' "${claude_key_file}"
+        return 2
+        ;;
+    5)
+        printf 'unreadable (redirect refused: the Models API answered HTTP %s, a redirect, for the API key file %s; the key is sent to no other address)\n' "${code:-3xx}" "${claude_key_file}"
         return 2
         ;;
     4)

@@ -45,11 +45,14 @@ FAKE_OAUTH_VALUE = "fake-" + "oauth-value"
 FAKE_KEY = "sk-" + "ant-api03-" + "FAKEKEYFORTEST" + "0" * 12
 
 
-def fake_models_api(case: unittest.TestCase, answer: int | str) -> tuple[str, list[dict[str, str]]]:
+def fake_models_api(
+    case: unittest.TestCase, answer: int | str, location: str | None = None
+) -> tuple[str, list[dict[str, str]]]:
     """Start a fake Models API on the loopback for the lifetime of `case`: every GET is recorded (path, `x-api-key`,
-    `anthropic-version`) in the returned list, and answered with the HTTP status `answer`, or left hanging past the
-    lever's 20 s alarm when `answer` is "hang". Returns the URL the lever is pointed at (REGIME_ANTHROPIC_MODELS_URL)
-    and the record list."""
+    `anthropic-version`) in the returned list, and answered with the HTTP status `answer` (with a `Location` header
+    when `location` is given: a redirect the lever must refuse, U512b), or left hanging past the lever's 20 s alarm
+    when `answer` is "hang". Returns the URL the lever is pointed at (REGIME_ANTHROPIC_MODELS_URL) and the record
+    list."""
     requests: list[dict[str, str]] = []
     release = threading.Event()
 
@@ -68,6 +71,8 @@ def fake_models_api(case: unittest.TestCase, answer: int | str) -> tuple[str, li
             body = b'{"data": []}' if answer == 200 else b'{"type": "error"}'
             self.send_response(int(answer))
             self.send_header("Content-Type", "application/json")
+            if location is not None:
+                self.send_header("Location", location)
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -528,12 +533,27 @@ esac
 
     def key_step(self, root: Path | None = None) -> str:
         """The operator's two steps the lever prints for an absent or rejected key (the U510 handout's steps 2 and 3),
-        for a root whose paths need no quoting."""
-        key_dir = (root or self.seats) / ".state/anthropic"
+        for a root whose paths need no quoting: under umask 077 the chain is held to no link, made 0700, held to this
+        user's directories, the key directory tightened to 0700, the destination held to no link and a regular file of
+        this user, the key read once (EOF or an empty value refuses) into an exclusive 0600 temporary renamed over the
+        destination, then `claude-keyed --check` on the file (U512b)."""
+        seats_root = root or self.seats
+        key_dir = seats_root / ".state/anthropic"
         key = key_dir / "api-key"
         return (
-            f"(umask 077; mkdir -p {key_dir}; printf 'key: '; IFS= read -rs k; printf '%s\\n' \"$k\" > {key}; unset k;"
-            f" echo) && REGIME_ANTHROPIC_KEY_FILE={key} claude-keyed --check"
+            f"(umask 077; r={seats_root}; s={seats_root}/.state; d={key_dir}; f={key};"
+            ' for p in "$r" "$s" "$d"; do [[ ! -L $p ]] || { echo "refused: $p is a symbolic link" >&2; exit 1; }; done;'
+            ' mkdir -p "$d" || exit 1;'
+            ' for p in "$r" "$s" "$d"; do [[ -d $p && -O $p ]] || { echo "refused: $p is not a directory of this user" >&2; exit 1; }; done;'
+            ' chmod 700 "$d" || exit 1;'
+            ' [[ ! -L $f ]] || { echo "refused: $f is a symbolic link" >&2; exit 1; };'
+            ' [[ ! -e $f ]] || [[ -f $f && -O $f ]] || { echo "refused: $f is not a regular file of this user" >&2; exit 1; };'
+            ' t=$(mktemp "$d/.api-key.XXXXXX") || exit 1;'
+            " printf 'key: ';"
+            ' if ! IFS= read -rs k || [[ -z $k ]]; then echo; echo "refused: no key was read" >&2; rm -f "$t"; exit 1; fi;'
+            " echo;"
+            ' printf \'%s\\n\' "$k" > "$t" && mv -f "$t" "$f" || { rm -f "$t"; echo "refused: cannot write $f" >&2; exit 1; })'
+            f" && REGIME_ANTHROPIC_KEY_FILE={key} claude-keyed --check"
         )
 
     def refusal(self, line: str, root: Path | None = None) -> str:
@@ -554,9 +574,10 @@ esac
         key.chmod(0o600)
         return key
 
-    def models_api(self, answer: int | str) -> str:
-        """A fake Models API answering `answer`; its request record is `self.models_requests`."""
-        url, self.models_requests = fake_models_api(self, answer)
+    def models_api(self, answer: int | str, location: str | None = None) -> str:
+        """A fake Models API answering `answer` (with a `Location` header when given); its request record is
+        `self.models_requests`."""
+        url, self.models_requests = fake_models_api(self, answer, location)
         return url
 
     def register(self, profile: str = "audit", record: str | None = None) -> Path:
@@ -658,6 +679,38 @@ esac
         self.assertNotIn("claude auth", self.calls_text())
         self.assertNotIn(FAKE_KEY, self.calls_text())
         self.assertFalse(self.shared.exists(), "--check makes nothing")
+
+    def test_the_models_api_call_follows_no_redirect_and_the_key_reaches_no_other_address(self) -> None:
+        """U512b (verdict U512-2a49d363, P1 at seat-login-preflight:183): `urlopen` followed a redirect from the
+        allowed endpoint and sent `x-api-key` again to the redirect's target, whose 200 passed the preflight. The
+        probe's opener now refuses every 3xx: the key file is judged `unreadable (redirect refused: ...)`, the lever
+        exits 1, and the second address (here a second loopback server standing for the other host) sees no request
+        and no header."""
+        key = str(self.key_file)
+        self.place_key()
+        for code in (301, 302, 303, 307, 308):
+            with self.subTest(code=code):
+                collector, collected = fake_models_api(self, 200)
+                other = collector.replace("/v1/models?limit=1", "/collect")
+                url = self.models_api(code, location=other)
+                result = self.run_lever("--check", "orchestrator", REGIME_ANTHROPIC_MODELS_URL=url)
+                self.assertEqual(
+                    (result.returncode, result.stdout),
+                    (1, f"orchestrator claude-bridge: unreadable (redirect refused: the Models API answered HTTP {code}, a redirect, for the API key file {key}; the key is sent to no other address)\n"),
+                    result.stderr,
+                )  # fmt: skip
+                self.assertEqual(self.models_requests, [{"path": "/v1/models?limit=1", "x-api-key": FAKE_KEY, "anthropic-version": "2023-06-01"}])  # fmt: skip
+                self.assertEqual(collected, [], "the redirect's target saw no request")
+                self.assertNotIn(FAKE_KEY, result.stdout + result.stderr)
+        # A 3xx without a Location is no redirect to follow either; it is refused the same way, never a pass.
+        url = self.models_api(304)
+        result = self.run_lever("--check", "orchestrator", REGIME_ANTHROPIC_MODELS_URL=url)
+        self.assertEqual(
+            (result.returncode, result.stdout),
+            (1, f"orchestrator claude-bridge: unreadable (redirect refused: the Models API answered HTTP 304, a redirect, for the API key file {key}; the key is sent to no other address)\n"),
+            result.stderr,
+        )  # fmt: skip
+        self.assertIn("class NoRedirect(urllib.request.HTTPRedirectHandler)", PREFLIGHT.read_text())
 
     def test_the_seats_root_derives_from_the_checkout_when_none_is_passed(self) -> None:
         """U318: without REGIME_SEATS_ROOT the shared directory is `~/.local/state/omp-seats/<slug>/.state/claude` of
@@ -977,6 +1030,119 @@ esac
         check = self.run_lever("--check", "orchestrator", REGIME_SEATS_ROOT=str(seats))
         self.assertEqual((check.returncode, check.stdout), (0, f"{self.absent_line('orchestrator', seats)}\n"))
 
+    def placement_command(self, **extra: str) -> str:
+        """The placement command the profile mode prints for the fixture's seats root (no key file there yet)."""
+        refused = self.run_lever("orchestrator", DISPLAY=":0", **extra)
+        self.assertEqual(refused.returncode, 2, refused.stderr)
+        match = re.search(r"; place the key once: (.*); the key is the operator's step", refused.stderr)
+        self.assertIsNotNone(match, refused.stderr)
+        command = match.group(1)
+        self.assertEqual(command, self.key_step())
+        return command
+
+    def paste(self, command: str, key_input: str | None, **extra: str) -> subprocess.CompletedProcess[str]:
+        """Run the printed command as the operator pastes it, with `key_input` on stdin (None: stdin closed, EOF)."""
+        return subprocess.run(
+            ["bash", "-c", 'eval "$1"', "_", command], env=self.env(**extra),
+            input=key_input, stdin=None if key_input is not None else subprocess.DEVNULL,
+            check=False, capture_output=True, text=True,
+        )  # fmt: skip
+
+    def test_the_placement_command_makes_the_chain_0700_and_replaces_the_file_through_a_0600_temporary(self) -> None:
+        """U512b (verdict U512-2a49d363, P1 at seat-login-preflight:365): the printed command wrote through the
+        existing file, so a 0644 key file in a 0755 chain received the key world-readable, and a linked destination
+        received it at the link's target. The command now runs whole under umask 077: it refuses a link anywhere in
+        the chain or at the destination (nothing written), makes the chain 0700, tightens the key directory to 0700
+        (a 0755 directory is tightened, not refused), holds the destination to a regular file of this user, writes
+        the key to an exclusive 0600 temporary in the key directory and renames it over the destination, so an
+        existing 0644 file ends 0600 (replaced, not refused)."""
+        key = self.key_file
+        command = self.placement_command()
+        self.assertEqual(command.count("\n"), 0, command)
+        self.calls.unlink()
+        # An existing 0644 file in a 0755 chain: replaced by the 0600 file, the key directory tightened to 0700.
+        self.key_dir.mkdir(parents=True)
+        for path in (self.seats, self.seats / ".state", self.key_dir):
+            path.chmod(0o755)
+        key.write_text("old\n")
+        key.chmod(0o644)
+        pasted = self.paste(command, FAKE_KEY + "\n")
+        self.assertEqual((pasted.returncode, pasted.stderr), (0, ""))
+        self.assertEqual(pasted.stdout, f"key: \nkey file ok: {key}; executable: /fake/sdk/claude\n")
+        self.assertEqual(key.read_text(), FAKE_KEY + "\n")
+        self.assertTrue(key.is_file() and not key.is_symlink())
+        self.assertEqual(stat.S_IMODE(os.lstat(key).st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(os.lstat(self.key_dir).st_mode), 0o700)
+        self.assertEqual(sorted(p.name for p in self.key_dir.iterdir()), ["api-key"], "no temporary left behind")
+        self.assertEqual(self.calls_text(), f"claude-keyed --check REGIME_ANTHROPIC_KEY_FILE={key}\n")
+        # A fresh chain is made 0700 throughout.
+        shutil.rmtree(self.seats)
+        self.calls.unlink()
+        pasted = self.paste(command, FAKE_KEY + "\n")
+        self.assertEqual((pasted.returncode, pasted.stderr), (0, ""))
+        for path in (self.seats, self.seats / ".state", self.key_dir):
+            self.assertTrue(path.is_dir() and not path.is_symlink(), path)
+            self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
+        self.assertEqual((key.read_text(), stat.S_IMODE(os.lstat(key).st_mode)), (FAKE_KEY + "\n", 0o600))
+        # A linked destination is refused and its target untouched; so is a link anywhere in the chain.
+        elsewhere = self.temp / "elsewhere"
+        elsewhere.mkdir()
+        target = elsewhere / "target"
+        target.write_text("target\n")
+        key.unlink()
+        key.symlink_to(target)
+        self.calls.unlink()
+        pasted = self.paste(command, FAKE_KEY + "\n")
+        self.assertNotEqual(pasted.returncode, 0)
+        self.assertEqual(pasted.stderr, f"refused: {key} is a symbolic link\n")
+        self.assertEqual(target.read_text(), "target\n")
+        self.assertTrue(key.is_symlink(), "the link is neither removed nor replaced")
+        self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), ["target"])
+        self.assertEqual(sorted(p.name for p in self.key_dir.iterdir()), ["api-key"], "no temporary was made")
+        key.unlink()
+        for linked in (self.key_dir, self.seats / ".state", self.seats):
+            with self.subTest(linked=linked):
+                shutil.rmtree(linked)
+                linked.symlink_to(elsewhere)
+                pasted = self.paste(command, FAKE_KEY + "\n")
+                self.assertNotEqual(pasted.returncode, 0)
+                self.assertEqual(pasted.stderr, f"refused: {linked} is a symbolic link\n")
+                self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), ["target"], "nothing written through the link")  # fmt: skip
+                linked.unlink()
+        self.assertFalse(self.calls.exists(), "no refusal reached claude-keyed")
+        self.assertNotIn(FAKE_KEY, pasted.stdout + pasted.stderr)
+
+    def test_the_placement_command_keeps_the_previous_file_on_eof_an_empty_key_or_a_failed_write(self) -> None:
+        """U512b (verdict U512-2a49d363, P2 at seat-login-preflight:365): the printed command ignored `read`'s status,
+        so an EOF wrote a newline over the previous key and a failed write truncated it. The command now reads the
+        status: EOF or an empty value refuses (exit 1, `claude-keyed --check` not run); the write goes to an exclusive
+        temporary first, so a failed temporary (an injected `mktemp` that fails or names an unwritable path) leaves
+        the previous file byte for byte and exits non-zero."""
+        key = self.place_key()
+        before = key.read_bytes()
+        command = self.placement_command(FAKE_CLAUDE_KEYED_STATUS="2")
+        self.calls.unlink()
+        for label, key_input in (("EOF", None), ("empty line", "\n"), ("partial line then EOF", "sk-ant-partial")):
+            with self.subTest(label=label):
+                pasted = self.paste(command, key_input)
+                self.assertEqual((pasted.returncode, pasted.stdout, pasted.stderr), (1, "key: \n", "refused: no key was read\n"))  # fmt: skip
+                self.assertEqual(key.read_bytes(), before)
+        fakes = self.temp / "fakes"
+        for label, body in (
+            ("mktemp fails", "#!/bin/sh\nexit 1\n"),
+            ("the temporary cannot be written", f"#!/bin/sh\nprintf '%s\\n' {self.temp}/nowhere/api-key.tmp\n"),
+        ):
+            with self.subTest(label=label):
+                write_exec(fakes / "mktemp", body)
+                pasted = self.paste(command, FAKE_KEY + "\n", PATH=f"{fakes}:{self.bin}:{os.environ['PATH']}")
+                self.assertEqual(pasted.returncode, 1, pasted.stderr)
+                self.assertEqual(pasted.stdout, "key: \n" if "written" in label else "")
+                self.assertEqual(key.read_bytes(), before)
+                self.assertNotIn(FAKE_KEY, pasted.stdout + pasted.stderr)
+        self.assertEqual(sorted(p.name for p in self.key_dir.iterdir()), ["api-key"], "no temporary left behind")
+        self.assertEqual(stat.S_IMODE(os.lstat(key).st_mode), 0o600)
+        self.assertFalse(self.calls.exists(), "no refusal reached claude-keyed")
+
     def lever_functions(self, *names: str) -> str:
         """Functions of the lever, extracted by name as `test_hcom_seat`'s `identity_functions` does, so a test can
         overlay one producer and run the rest as written."""
@@ -999,7 +1165,7 @@ esac
         )
         prefix = (
             f"set -euo pipefail\n{functions}\n"
-            "claude_key_dir=/x/.state/anthropic claude_key_file=/x/.state/anthropic/api-key\n"
+            "claude_seats_root=/x claude_key_dir=/x/.state/anthropic claude_key_file=/x/.state/anthropic/api-key\n"
         )
 
         def run(overlay: str) -> subprocess.CompletedProcess[str]:

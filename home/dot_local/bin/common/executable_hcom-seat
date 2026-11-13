@@ -2412,7 +2412,13 @@ own_slots_check orchestrator orchestrator
 claude_config_real=$(physical_path "${claude_config}") || refuse "cannot resolve the shared Claude Code directory ${claude_config}"
 # The key file in physical form (regime-cutover U512), for the shim's export, the foreground rows' environment list,
 # the read grant and the write deny of every role, and the judge's REGIME_ANTHROPIC_KEY_FILE (own_slots_check has
-# just proved its directory no link and sitting in `.state`; a link at the file itself is claude-keyed's to refuse).
+# just proved its directory no link and sitting in `.state`). The contract path's form is judged before anything
+# resolves it (regime-cutover U512b, verdict U512-2a49d363 P2 at this row: physical_path followed a link at the file,
+# so the judge saw the link's target and the dry run exported it): a link at the file is this lever's refusal, by
+# lstat on the spelled path, before `claude-keyed --check` runs and before the path is resolved; what remains for the
+# judge is a regular file, an absent file or something else at a real path, the lever's to refuse.
+[[ ! -L ${key_file} ]] ||
+    refuse "the API key file ${key_file} is a symbolic link; the seats' key file must be a regular file of this user, placed by the U510 handout (handouts/anthropic-api-key-u510.md, steps 2 and 3)"
 key_file_real=$(physical_path "${key_file}") || refuse "cannot resolve the API key file ${key_file}"
 # The physical seats root goes to the preflight, so the login it judges and the directory the shim exports are one
 # spelling (the macOS Keychain item is keyed to the directory's path).

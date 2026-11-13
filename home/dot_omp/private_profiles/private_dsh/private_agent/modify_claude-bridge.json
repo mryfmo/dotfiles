@@ -9,15 +9,17 @@
 #   ~/.local/bin/common/claude-keyed (the Agent SDK spawns it in place of Claude Code; it runs the bridge
 #   package's Claude Code binary on an API key read from the file REGIME_ANTHROPIC_KEY_FILE names, never on
 #   the seats' login) and keeps every other key in its order, written as the bridge writes the file
-#   (JSON.stringify(next, null, 2) and a newline), so a second apply changes nothing. It runs under
-#   `uv run --no-project` with the standard library alone. Without uv it prints its input unchanged with one
-#   warning; on an empty, unparseable or non-object input it prints the managed object alone with one warning
-#   and exits 0, so chezmoi apply never clobbers and never fails on this file.
+#   (JSON.stringify(next, null, 2) and a newline), so a second apply changes nothing. It runs under the
+#   system `python3 -I` with the standard library alone, the kit's baseline, which the apply container has,
+#   and no other tool (U510b). Without python3 it prints one line on stderr and nothing on stdout and exits
+#   1, so chezmoi apply fails naming this file: fail closed, never the login route left in place by silence.
+#   On an empty, unparseable or non-object input it prints the managed object alone with one warning and
+#   exits 0, so chezmoi apply never clobbers the bridge's file.
 set -eu
 
-if ! command -v uv > /dev/null 2>&1; then
-    echo "claude-bridge.json: uv is not installed; left the profile's claude-bridge.json unchanged" >&2
-    exec cat
+if ! command -v python3 > /dev/null 2>&1; then
+    echo "claude-bridge.json: python3 is not on PATH; the apply of this profile's claude-bridge.json fails rather than leave the login route in place" >&2
+    exit 1
 fi
 
 merge=$(
@@ -64,4 +66,4 @@ sys.exit(main())
 PY
 )
 
-exec uv run --quiet --no-project python -c "$merge"
+exec python3 -I -c "$merge"

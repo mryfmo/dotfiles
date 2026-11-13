@@ -1144,16 +1144,32 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         script.chmod(0o755)
         return script
 
-    def run_modify(self, script: Path, current: str, home: Path) -> subprocess.CompletedProcess[str]:
+    def run_modify(
+        self, script: Path, current: str, home: Path, path: str | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        """Run the modify script as chezmoi does, the live file on stdin; `path` replaces PATH for the fixture runs."""
+        env = os.environ | {"HOME": str(home)}
+        if path is not None:
+            env["PATH"] = path
         return subprocess.run(
             [str(script)],
             input=current,
             text=True,
             capture_output=True,
-            env=os.environ | {"HOME": str(home)},
+            env=env,
             timeout=180,
             check=False,
         )
+
+    def write_fixture_path(self, name: str, *tools: str) -> str:
+        """A PATH of one directory holding symlinks to the named tools alone, so a run sees nothing else."""
+        bin_dir = self.temp_dir / name
+        bin_dir.mkdir()
+        for tool in tools:
+            source = shutil.which(tool) if tool != "python3" else (shutil.which("python3") or sys.executable)
+            self.assertIsNotNone(source, f"{tool} is needed on PATH to build the fixture")
+            (bin_dir / tool).symlink_to(source)
+        return str(bin_dir)
 
     def test_the_claude_bridge_modify_scripts_render_for_the_bridge_routed_roles_only(self) -> None:
         """regime-cutover U510: `provider.pathToClaudeCodeExecutable` of every role on the claude-bridge route (a seat
@@ -1200,11 +1216,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             [self.module.CLAUDE_BRIDGE_MODIFY_PATH.format(role=role) for role in ("audit", "dsh", "orchestrator")],
         )
 
-    @unittest.skipUnless(shutil.which("uv"), "uv is not installed")
     def test_the_claude_bridge_modify_script_keeps_the_bridges_own_keys_and_is_idempotent(self) -> None:
         """The merge sets the one managed key and keeps every other key the bridge wrote (config.ts:29 records
         `startupNoticeShown` with `{...existing}`), in the bridge's own `JSON.stringify(next, null, 2)` form, so a
-        second run returns the same bytes and chezmoi apply and the doctor see no change."""
+        second run returns the same bytes and chezmoi apply and the doctor see no change. It runs on the system
+        python3 alone (U510b): a PATH holding python3 and cat and nothing else, no uv, is enough."""
         script = self.write_claude_bridge_modify_script()
         home = self.temp_dir / "target-home"
         home.mkdir()
@@ -1219,7 +1235,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             )
             + "\n"
         )
-        run = self.run_modify(script, current, home)
+        run = self.run_modify(script, current, home, path=self.write_fixture_path("python3-only", "python3", "cat"))
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
         merged = json.loads(run.stdout)
         self.assertEqual(
@@ -1232,7 +1248,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         again = self.run_modify(script, run.stdout, home)
         self.assertEqual((again.returncode, again.stderr, again.stdout), (0, "", run.stdout))
 
-    @unittest.skipUnless(shutil.which("uv"), "uv is not installed")
     def test_the_claude_bridge_modify_script_prints_the_managed_object_with_a_warning_on_empty_or_invalid_input(
         self,
     ) -> None:
@@ -1258,6 +1273,32 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(run.stdout, managed)
                 self.assertEqual(len(run.stderr.splitlines()), 1, run.stderr)
                 self.assertIn("claude-bridge.json", run.stderr)
+
+    def test_the_claude_bridge_modify_script_needs_no_uv_and_fails_the_apply_without_python3(self) -> None:
+        """regime-cutover U510b: the apply container (Dockerfile) has python3 and no uv, and the first form's
+        `exec cat` without uv echoed the empty stdin, so chezmoi apply wrote nothing, exit 0, and the doctor found
+        the three bridge files missing: the login route left in place by silence. The script holds no `uv`, runs the
+        merge under `python3 -I -c` (the kit's baseline), and without python3 exits 1 with one stderr line naming
+        claude-bridge.json and python3 and nothing on stdout, so chezmoi fails the apply naming the file."""
+        script = self.write_claude_bridge_modify_script()
+        text = script.read_text()
+        self.assertTrue(text.startswith("#!/bin/sh\n"), text.splitlines()[0])
+        self.assertNotIn("uv", text)
+        self.assertIn("if ! command -v python3 > /dev/null 2>&1; then\n", text)
+        self.assertIn('exec python3 -I -c "$merge"\n', text)
+        self.assertIn("fail", text.split("set -eu", 1)[0].lower(), "the header states the fail-closed rule")
+        home = self.temp_dir / "target-home"
+        home.mkdir()
+        no_python3 = self.write_fixture_path("no-python3", "cat")
+        live = json.dumps({"startupNoticeShown": "2026-10-23"}, indent=2) + "\n"
+        for label, current in (("an absent file", ""), ("the bridge's live file", live)):
+            with self.subTest(input=label):
+                run = self.run_modify(script, current, home, path=no_python3)
+                self.assertEqual(run.returncode, 1, (run.stdout, run.stderr))
+                self.assertEqual(run.stdout, "", "nothing on stdout: chezmoi gets no content to write")
+                self.assertEqual(len(run.stderr.splitlines()), 1, run.stderr)
+                self.assertIn("claude-bridge.json", run.stderr)
+                self.assertIn("python3", run.stderr)
 
     def test_check_reports_a_stale_lever_pin_and_a_run_refreshes_it(self) -> None:
         (self.temp_dir / "scripts/orchestrator").mkdir(parents=True)

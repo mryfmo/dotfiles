@@ -227,9 +227,11 @@ DSH_GATEWAY_LINK = "link:../../plugins/omp-gateway"
 # The bridge reads that key from `~/.omp/profiles/<role>/agent/claude-bridge.json` alone (patch 06; config.ts:61,
 # :110) and rewrites the file with every key kept when it records startupNoticeShown (config.ts:29), so the kit places
 # the row by a chezmoi modify script per role, in modify_private_config.yml's form (the managed key set, every other
-# key kept, input unchanged when the merge cannot run). The directories carry chezmoi's private_ attribute so an apply
-# keeps the 0700 modes hcom-seat gives the profile directories it makes. No GENERATED_SCOPES row: the deployed glob
-# would read the bridge's own claude-bridge.json of a role on another route as an orphan.
+# key kept) on the system python3 alone (U510b: the apply container has python3 and no uv, and a silent passthrough
+# without the tool left the login route in place; without python3 the script exits 1 and the apply fails naming the
+# file). The directories carry chezmoi's private_ attribute so an apply keeps the 0700 modes hcom-seat gives the
+# profile directories it makes. No GENERATED_SCOPES row: the deployed glob would read the bridge's own
+# claude-bridge.json of a role on another route as an orphan.
 CLAUDE_KEYED_INSTALL_PATH = "~/.local/bin/common/claude-keyed"
 CLAUDE_BRIDGE_MODIFY_PATH = "home/dot_omp/private_profiles/private_{role}/private_agent/modify_claude-bridge.json"
 # The Router's subagent provider (regime-cutover U434, M-22 Part B, table row s21): the pinned tree's out-of-process
@@ -2452,10 +2454,13 @@ def render_claude_bridge_modify_script() -> str:
     """The chezmoi modify script that places `claude-keyed` as the bridge's executable in a role's claude-bridge.json.
 
     One text for every role: the installed path is spelled through the applying user's home at run time, so the file
-    is no template. `#!/bin/sh`, `set -eu`, uv with no project and the standard library alone (json), as
-    home/dot_omp/private_agent/modify_private_config.yml runs; without uv it passes its input through with one
-    warning; an empty, unparseable or non-object input yields the managed object alone with one warning, exit 0, so
-    chezmoi apply never clobbers and never fails on this file. The output is the bridge's own form,
+    is no template. `#!/bin/sh`, `set -eu`, the system `python3 -I` and the standard library alone (json), the kit's
+    baseline, which the apply container has (Dockerfile; check-agent-runtime.py runs there): no uv, which that
+    container lacks (U510b). Without python3 it prints one stderr line naming the file and python3, nothing on stdout,
+    and exits 1, so chezmoi fails the apply naming the file: fail closed, never the login route by silence (the first
+    form's `exec cat` without uv echoed the empty stdin, chezmoi wrote nothing, exit 0, and the doctor found the
+    three bridge files missing). An empty, unparseable or non-object input yields the managed object alone with one
+    warning, exit 0, so chezmoi apply never clobbers the bridge's file. The output is the bridge's own form,
     `JSON.stringify(next, null, 2)` and a newline, with the key order kept, so a second apply changes nothing.
     """
     return (
@@ -2470,15 +2475,17 @@ def render_claude_bridge_modify_script() -> str:
         f"#   {CLAUDE_KEYED_INSTALL_PATH} (the Agent SDK spawns it in place of Claude Code; it runs the bridge\n"
         "#   package's Claude Code binary on an API key read from the file REGIME_ANTHROPIC_KEY_FILE names, never on\n"
         "#   the seats' login) and keeps every other key in its order, written as the bridge writes the file\n"
-        "#   (JSON.stringify(next, null, 2) and a newline), so a second apply changes nothing. It runs under\n"
-        "#   `uv run --no-project` with the standard library alone. Without uv it prints its input unchanged with one\n"
-        "#   warning; on an empty, unparseable or non-object input it prints the managed object alone with one warning\n"
-        "#   and exits 0, so chezmoi apply never clobbers and never fails on this file.\n"
+        "#   (JSON.stringify(next, null, 2) and a newline), so a second apply changes nothing. It runs under the\n"
+        "#   system `python3 -I` with the standard library alone, the kit's baseline, which the apply container has,\n"
+        "#   and no other tool (U510b). Without python3 it prints one line on stderr and nothing on stdout and exits\n"
+        "#   1, so chezmoi apply fails naming this file: fail closed, never the login route left in place by silence.\n"
+        "#   On an empty, unparseable or non-object input it prints the managed object alone with one warning and\n"
+        "#   exits 0, so chezmoi apply never clobbers the bridge's file.\n"
         "set -eu\n"
         "\n"
-        "if ! command -v uv > /dev/null 2>&1; then\n"
-        '    echo "claude-bridge.json: uv is not installed; left the profile\'s claude-bridge.json unchanged" >&2\n'
-        "    exec cat\n"
+        "if ! command -v python3 > /dev/null 2>&1; then\n"
+        '    echo "claude-bridge.json: python3 is not on PATH; the apply of this profile\'s claude-bridge.json fails rather than leave the login route in place" >&2\n'
+        "    exit 1\n"
         "fi\n"
         "\n"
         "merge=$(\n"
@@ -2525,7 +2532,7 @@ def render_claude_bridge_modify_script() -> str:
         "PY\n"
         ")\n"
         "\n"
-        'exec uv run --quiet --no-project python -c "$merge"\n'
+        'exec python3 -I -c "$merge"\n'
     )
 
 

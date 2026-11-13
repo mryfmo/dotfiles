@@ -14,6 +14,7 @@ import glob
 import hashlib
 import os
 import platform
+import re
 import shutil
 import stat
 import subprocess
@@ -48,6 +49,36 @@ MUSL_MARKER_GLOB = "/lib/ld-musl-*.so*"
 # The lever's PATH pin (hcom-seat's form, U85) and the one line the injectable test variant changes.
 SYSTEM_PATH_LINE = "\nPATH=${system_path}\n"
 CALLER_PATH_LINE = "\nPATH=${caller_path}\n"
+# Names assigned on the exec line or as a prefix to one builtin: exported by design, or no value survives the command.
+EXEC_LINE_NAMES = {"PATH", "ANTHROPIC_API_KEY", "LC_ALL", "IFS"}
+
+
+def assigned_names(text: str) -> set[str]:
+    """Every variable name the lever's text assigns: `name=`, `local` declarations, `for` and `read -r` targets, off
+    comment lines; the exec-line and prefix names excepted."""
+    names: set[str] = set()
+    for line in text.splitlines():
+        stripped = line.lstrip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        names.update(re.findall(r"(?:^|(?<=[\s(]))([A-Za-z_]\w*)=(?!=)", line))
+        local = re.match(r"\s*local\s+(.*)$", line)
+        if local:
+            names.update(word.split("=", 1)[0] for word in local.group(1).split())
+        names.update(re.findall(r"\bfor\s+(\w+)\s+in\b", line))
+        names.update(re.findall(r"\bread\s+-r\s+(\w+)", line))
+    return names - EXEC_LINE_NAMES
+
+
+def unset_names(text: str) -> set[str]:
+    """The names of the lever's one `unset` statement, its continuation lines joined."""
+    statement = text.split("\nunset ", 1)[1]
+    joined = ""
+    for line in statement.splitlines():
+        joined += " " + line.rstrip("\\")
+        if not line.endswith("\\"):
+            break
+    return set(joined.split())
 
 
 def host_platform() -> str | None:
@@ -76,6 +107,7 @@ class ClaudeKeyedTest(unittest.TestCase):
         self.sdk_dir = self.sdk_package(HOST_PLATFORM)
         self.exe = self.sdk_dir / "claude"
         self.record = self.temp / "fake-claude-ran"
+        self.names = self.temp / "child-env-names"
         self.expected_key = self.temp / "expected-key"
         self.expected_key.write_text(FIXTURE_KEY + "\n")
         self.write_fake_claude(self.exe)
@@ -99,11 +131,13 @@ class ClaudeKeyedTest(unittest.TestCase):
 
     def write_fake_claude(self, path: Path) -> None:
         """The fixture SDK binary: argv one per line, the names of the ANTHROPIC_* and login variables it received,
-        whether ANTHROPIC_API_KEY equals the fixture key, the PATH it got, and a record file that proves it ran."""
+        whether ANTHROPIC_API_KEY equals the fixture key, the PATH it got, a record file that proves it ran, and every
+        name of its environment in a names file (the values never leave the child)."""
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             "#!/bin/sh\n"
             f": > '{self.record}'\n"
+            f"env | sed -n 's/^\\([A-Za-z_][A-Za-z0-9_]*\\)=.*/\\1/p' | sort > '{self.names}'\n"
             'for a in "$@"; do printf \'arg: %s\\n\' "$a"; done\n'
             f"env | sed -n -e 's/^\\(ANTHROPIC_[A-Z_]*\\)=.*/name: \\1/p' -e 's/^\\({OAUTH_NAME}\\)=.*/name: \\1/p' | sort\n"
             f"IFS= read -r expected < '{self.expected_key}'\n"
@@ -153,13 +187,15 @@ class ClaudeKeyedTest(unittest.TestCase):
                 env[name] = value
         return env
 
-    def use_injectable_lever(self) -> None:
+    def use_injectable_lever(self, shim: str = "") -> None:
         """Rewrite the installed copy into the variant whose producers run on the caller's PATH (the one line
         `PATH=${system_path}` becomes `PATH=${caller_path}`, hcom-seat's test form) and re-pin it, so a fixture tool
-        can stand in for uname, stat, cat, wc or awk; the pristine copy never consults one."""
-        text = self.lever.read_text()
-        variant = text.replace(SYSTEM_PATH_LINE, CALLER_PATH_LINE)
-        if variant != text:
+        can stand in for uname, stat, cat, wc or awk; the pristine copy never consults one. `shim` is a function
+        definition placed on the line after it, the test_hcom_seat form for a builtin (cd, pwd) no PATH entry
+        replaces; the variant is built from the checkout's bytes, so a second call with another shim replaces it."""
+        text = LEVER.read_text()
+        variant = text.replace(SYSTEM_PATH_LINE, CALLER_PATH_LINE + (f"{shim}\n" if shim else ""))
+        if self.lever.read_text() != variant:
             self.lever.write_text(variant)
             self.write_manifest()
 
@@ -467,8 +503,13 @@ class ClaudeKeyedTest(unittest.TestCase):
     def test_a_failing_producer_refuses_instead_of_passing(self) -> None:
         """Standing order 21: every read the decision rests on fails closed, by name; each fixture prints a diagnostic
         on stderr before failing, and the refusal is still the one stderr line (U510c: every producer's stderr is
-        dropped). The self-check's own readers, sed and both hash backends, are among them."""
+        dropped). The self-check's own readers, sed and both hash backends, are among them. U510e (verdict
+        U510-88ae09c6 P2 :479): the file's own stat (the directory's passing), the second manifest read (the
+        `claude.levers.extensions` rows, the first passing) and the `cd` and `pwd -P` of the key directory hold each
+        carry an injection too; the two builtins are shimmed by a function in the test variant, test_hcom_seat's form,
+        since no PATH entry replaces them."""
         noisy = "echo 'fixture: a diagnostic the producer printed' >&2; exit 3"
+        real_awk = shutil.which("awk", path="/usr/bin:/bin")
         cases = [
             (("uname",), noisy, "cannot read the operating system name (uname -s)"),
             (
@@ -489,12 +530,26 @@ class ClaudeKeyedTest(unittest.TestCase):
             ),
             (
                 ("stat",),
+                f"case \"$3\" in '{self.key_file}') {noisy} ;; *) echo '700 {os.geteuid()}' ;; esac",
+                f"cannot read the mode and owner of the key file {self.key_file} (stat failed)",
+            ),
+            (
+                ("stat",),
                 self.stat_body("garbage"),
                 f"cannot read the mode and owner of the key file {self.key_file} (stat printed 'garbage')",
             ),
             (("cat",), noisy, f"cannot read the key file {self.key_file}"),
             (("wc",), noisy, f"cannot count the bytes of the key file {self.key_file} (wc -c failed)"),
-            (("awk",), noisy, f"cannot read the manifest {self.manifest} (awk failed)"),
+            (
+                ("awk",),
+                noisy,
+                f"cannot read the omp.extension_providers rows of the manifest {self.manifest} (awk failed)",
+            ),
+            (
+                ("awk",),
+                f'case "$1" in *extensions:*) {noisy} ;; *) exec {real_awk} "$@" ;; esac',
+                f"cannot read the claude.levers.extensions rows of the manifest {self.manifest} (awk failed)",
+            ),
             (("sed",), noisy, f"cannot read {self.manifest}"),
             (("sha256sum", "shasum"), noisy, f"cannot hash {self.lever}"),
             (("sha256sum", "shasum"), "echo 'not a digest'", f"cannot hash {self.lever}"),
@@ -508,6 +563,90 @@ class ClaudeKeyedTest(unittest.TestCase):
                 self.assert_refused(self.run_lever("--check", env=env), reason)
                 for tool in tools:
                     (self.temp / "tools" / tool).unlink()
+        hold = f"cannot resolve the directory of the key file {self.key_file}"
+        shims = {
+            "cd": f'cd() {{ if [[ $1 == "{self.keys}" ]]; then {noisy}; fi; builtin cd "$@"; }}',
+            "pwd": f'pwd() {{ if [[ $PWD == "{self.keys}" ]]; then {noisy}; fi; builtin pwd "$@"; }}',
+        }
+        for builtin, shim in shims.items():
+            with self.subTest(builtin=builtin):
+                self.use_injectable_lever(shim)
+                self.assert_refused(self.run_lever(*SDK_ARGS), hold)
+                self.assert_refused(self.run_lever("--check"), hold)
+        self.use_injectable_lever()
+        run = self.run_lever("--check")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+
+    def test_every_refusal_is_one_stderr_line_whatever_the_path_holds_or_bash_prints(self) -> None:
+        """U510e (verdict U510-88ae09c6 P3 :150 and :231): a key path holding a line feed (or a carriage return) is
+        refused on one line with the boundary folded to a space, and the key file gone between the cat and the wc
+        read (a fixture cat that removes it after reading) yields the one wc refusal, bash's own note about the failed
+        redirection dropped with the block's stderr."""
+        for label, path in (("a line feed", f"{self.keys}/api\nkey"), ("a carriage return", f"{self.keys}/api\rkey")):
+            with self.subTest(path=label):
+                env = self.env_with(**{KEY_FILE_VARIABLE: path})
+                reason = f"the key file {self.keys}/api key is absent; place the API key there (the U510 handout)"
+                for mode in ((), ("--check",), ("--dry-run",)):
+                    run = self.run_lever(*mode, *SDK_ARGS, env=env) if not mode else self.run_lever(*mode, env=env)
+                    self.assert_refused(run, reason)
+                    self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        env = self.fake_tool("cat", '/bin/cat "$@" && rm -f -- "$2"')
+        reason = f"cannot count the bytes of the key file {self.key_file} (wc -c failed)"
+        for mode in ((), ("--check",)):
+            with self.subTest(mode=mode or ("exec",)):
+                self.write_key(self.key_file, FIXTURE_KEY + "\n")
+                run = self.run_lever(*mode, *SDK_ARGS, env=env) if not mode else self.run_lever(*mode, env=env)
+                self.assert_refused(run, reason)
+                self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                self.assertFalse(self.key_file.exists(), "the fixture cat removed the file after reading it")
+
+    def test_an_exported_name_the_lever_assigns_carries_nothing_into_a_producer_or_the_child(self) -> None:
+        """U510e (verdict U510-88ae09c6 P2 :228): a variable exported into the lever's environment keeps its export
+        attribute through an assignment, so `key=inherited` in the environment would hand the key itself to awk (which
+        runs after the key is read) and to the child under the name `key`, and `mode` would reach the child as `exec`.
+        The lever unsets every name it assigns first: the fixture producers' environments and the child's hold none
+        of those names, every other variable stays, and the unset list equals the names the text assigns."""
+        text = LEVER.read_text()
+        self.assertEqual(unset_names(text), assigned_names(text), "the unset list is the names the text assigns")
+        self.assertLess(text.index("\nunset "), text.index("\nlever_self_check() {"), "before anything is assigned")
+        planted = {
+            "key": "inherited",
+            "key_text": "x",
+            "mode": "sentinel",
+            "LEVER_MANIFEST": f"{self.temp}/decoy-manifest",
+            "exe": f"{self.temp}/decoy-exe",
+            "UNRELATED_SETTING": "stays",
+        }
+        producer_names = self.temp / "producer-env-names"
+        env = self.env_with(**planted)
+        for tool in ("uname", "stat", "cat", "wc", "awk"):
+            real = shutil.which(tool, path="/usr/bin:/bin")
+            env = self.fake_tool(
+                tool,
+                f"env | sed -n 's/^\\([A-Za-z_][A-Za-z0-9_]*\\)=.*/\\1/p' >> '{producer_names}'; exec {real} \"$@\"",
+                env,
+            )
+        run = self.run_lever(*SDK_ARGS, env=env)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        self.assertTrue(self.record.exists(), "the SDK binary ran")
+        self.assertIn("key matches: yes\n", run.stdout)
+        child = set(self.names.read_text().split())
+        producers = set(producer_names.read_text().split())
+        self.assertTrue(producers, "the fixture producers ran")
+        for name in assigned_names(text):
+            self.assertNotIn(name, child, f"the child's environment holds no {name}")
+            self.assertNotIn(name, producers, f"no producer's environment holds {name}")
+        self.assertIn("UNRELATED_SETTING", child)
+        self.assertIn("UNRELATED_SETTING", producers)
+        self.assertIn(API_KEY_NAME, child)
+        self.assertNotIn(FIXTURE_KEY, run.stdout + run.stderr + producer_names.read_text())
+        # The pristine copy under the same environment: the decoy manifest and executable steer nothing.
+        self.record.unlink()
+        shutil.copy2(LEVER, self.lever)
+        self.write_manifest()
+        run = self.run_lever("--check", env=self.env_with(**planted))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        self.assertEqual(run.stdout, f"key file ok: {self.key_file}; executable: {self.exe}\n")
 
     def test_the_self_pin_refuses_an_altered_copy(self) -> None:
         with self.lever.open("a") as lever:

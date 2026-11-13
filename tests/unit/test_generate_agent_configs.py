@@ -1221,9 +1221,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_the_claude_bridge_modify_script_keeps_the_bridges_own_keys_and_is_idempotent(self) -> None:
         """The merge sets the one managed key and keeps every other key the bridge wrote (config.ts:29 records
-        `startupNoticeShown` with `{...existing}`), in the bridge's own `JSON.stringify(next, null, 2)` form, so a
-        second run returns the same bytes and chezmoi apply and the doctor see no change. It runs on the system
-        python3 alone (U510b): a PATH holding python3 and cat and nothing else, no uv, is enough."""
+        `startupNoticeShown` with `{...existing}`) in its order, as `json.dumps(indent=2)` and a newline, so a second
+        run on its own output returns the same bytes and chezmoi apply and the output index's modify comparison see no
+        change. It runs on the system python3 alone (U510b): a PATH holding python3 and cat and nothing else, no uv,
+        is enough."""
         script = self.write_claude_bridge_modify_script()
         home = self.temp_dir / "target-home"
         home.mkdir()
@@ -1316,6 +1317,50 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         text = script.read_text()
         self.assertIn("parse_constant", text, "a NaN or an Infinity is refused at the parse")
         self.assertIn("allow_nan=False", text, "and never written")
+
+    def test_the_claude_bridge_modify_script_claims_idempotence_of_its_own_output_not_the_bridges_bytes(self) -> None:
+        """U510e (verdict U510-88ae09c6 P2 :2546): json.dumps writes a float as 1e-07 where the bridge's
+        JSON.stringify writes 1e-7, so the script cannot promise byte equality with the bridge's rewrite and claims
+        none: its contract is idempotence of its own output and the provider row's presence. A float the bridge
+        wrote survives two runs unchanged in value, the second run's bytes equal the first's, and the header states
+        the contract and the float form it does not match."""
+        script = self.write_claude_bridge_modify_script()
+        home = self.temp_dir / "target-home"
+        home.mkdir()
+        bridge_form = '{\n  "startupNoticeShown": "2026-11-13",\n  "provider": {\n    "plan": "max",\n    "timeout": 1e-7,\n    "ratio": 0.1,\n    "big": 1e+21\n  }\n}\n'
+        first = self.run_modify(script, bridge_form, home)
+        self.assertEqual((first.returncode, first.stderr), (0, ""), first.stderr)
+        merged = json.loads(first.stdout)
+        self.assertEqual(merged["provider"]["timeout"], 1e-7)
+        self.assertEqual(merged["provider"]["ratio"], 0.1)
+        self.assertEqual(merged["provider"]["big"], 1e21)
+        self.assertEqual(merged["provider"]["pathToClaudeCodeExecutable"], f"{home}/.local/bin/common/claude-keyed")
+        self.assertIn('"timeout": 1e-07,', first.stdout, "json.dumps's float form, not the bridge's 1e-7")
+        second = self.run_modify(script, first.stdout, home)
+        self.assertEqual((second.returncode, second.stderr, second.stdout), (0, "", first.stdout))
+        self.assertEqual(json.loads(second.stdout), merged)
+        header = script.read_text().split("set -eu", 1)[0]
+        self.assertIn("idempotence of its own output", header)
+        self.assertIn("1e-07", header)
+        self.assertNotIn("so a second apply changes nothing", header, "no byte-stability claim against the bridge")
+
+    def test_the_claude_bridge_modify_script_warns_once_when_two_conditions_apply(self) -> None:
+        """U510e (verdict U510-88ae09c6 P3 :2565): a live file whose provider is no object and which also holds a
+        lone surrogate met two warn branches and printed two lines; the script prints one warning per run, the first
+        condition met naming the reason, with the managed object alone on stdout and exit 0."""
+        script = self.write_claude_bridge_modify_script()
+        home = self.temp_dir / "target-home"
+        home.mkdir()
+        managed = (
+            json.dumps({"provider": {"pathToClaudeCodeExecutable": f"{home}/.local/bin/common/claude-keyed"}}, indent=2)
+            + "\n"
+        )
+        run = self.run_modify(script, '{"startupNoticeShown": "\\ud800", "provider": 3}\n', home)
+        self.assertEqual(run.returncode, 0, (run.stdout, run.stderr))
+        self.assertEqual(run.stdout, managed)
+        self.assertEqual(len(run.stderr.splitlines()), 1, run.stderr)
+        self.assertIn("claude-bridge.json: provider is not a JSON object", run.stderr)
+        self.assertNotIn("surrogate", run.stderr, "the first condition met names the reason")
 
     def test_the_claude_bridge_modify_script_needs_no_uv_and_fails_the_apply_without_python3(self) -> None:
         """regime-cutover U510b: the apply container (Dockerfile) has python3 and no uv, and the first form's

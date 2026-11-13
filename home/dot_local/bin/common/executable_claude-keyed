@@ -40,8 +40,12 @@
 #   (a glibc host has none; `CLAUDE_KEYED_MUSL_MARKER_GLOB` renames the glob for the tests). The path must be an
 #   executable regular file and no link, else one refusal naming it. The manifest is read as text by indentation
 #   (awk, status read), as seat-login-preflight reads its overlays. Every refusal is one stderr line
-#   `claude-keyed: refused: <reason>` and exit 2 with nothing started; a refusal never falls back to the login (fail
-#   closed).
+#   `claude-keyed: refused: <reason>` and exit 2 with nothing started (a line boundary in a path the environment named
+#   is folded to a space first, U510e); a refusal never falls back to the login (fail closed). Every name the lever
+#   assigns is unset before anything is assigned, so a variable of one of those names exported into its environment
+#   carries neither the key nor another value into a producer's or the child's environment under a second name
+#   (U510e; an export attribute survives an assignment); those names leave the child's environment, nothing else of
+#   it changes.
 #   `--check` runs every check and prints one stdout line `key file ok: <path>; executable: <path>` (exit 0) or
 #   refuses; the seat-login preflight and the doctor call it (U512, U513). `--dry-run [<argument>...]` prints the
 #   command it would exec with the key replaced by `<redacted>` and the names it unsets, and runs nothing.
@@ -67,6 +71,26 @@
 #   REGIME_ANTHROPIC_KEY_FILE=~/.local/state/omp-seats/dotfiles/.state/anthropic/api-key claude-keyed --check
 set -euo pipefail
 
+# Every name this lever assigns is unset before anything is assigned (U510e, verdict U510-88ae09c6 P2 :228): a variable
+# of one of these names exported into this environment keeps its export attribute through the assignment (and a
+# `local` of the same name inherits it), so the key, the mode or a path would otherwise reach the producers' and the
+# child's environment under a second name. The names leave the child's environment; nothing else of it changes, and
+# PATH stays (the caller's is saved below and handed back on the exec line). `tests/unit/test_claude_keyed.py` holds
+# this list equal to the names the text assigns.
+unset LEVER_MANIFEST LEVER_ROOT src dir self name pin digest caller_path caller_path_set system_path usage mode \
+    key_file key_parent parent_rule key_dir key_phys os arch platform owner_mode_re parent_what parent_owner_mode \
+    parent_mode parent_owner owner_mode key_mode key_owner read_status key_text key_bytes key_chars key key_class \
+    bridge allowed listed row tilde_slash tilde_root musl_glob musl marker exe arg
+
+# @description Print the refusal on stderr and exit 2; nothing has started when it runs. The reason is folded onto one
+#   line first: a line feed, a carriage return, a vertical tab or a form feed in a path the environment named (U510e,
+#   P3 :150) becomes a space, pr-audit.sh's one_line form, so every refusal is one stderr line whatever the path holds.
+# @arg $1 string The reason, which never holds the key.
+refuse() {
+    echo "claude-keyed: refused: ${1//[$'\n\r\v\f']/ }" >&2
+    exit 2
+}
+
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31),
 #   chosen by this file's own physical directory and nothing else (U510d: a HOME of the caller's choosing steered the
 #   old form to the checkout layout's path): `<root>/.agents/agent-config.yaml` for the installed copy under
@@ -85,10 +109,7 @@ lever_self_check() {
     *) dir=. ;;
     esac
     [[ -n ${dir} ]] || dir=/
-    dir=$(cd "${dir}" 2> /dev/null && pwd -P 2> /dev/null) || {
-        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
-        exit 2
-    }
+    dir=$(cd "${dir}" 2> /dev/null && pwd -P 2> /dev/null) || refuse "cannot resolve the script directory of ${src}"
     self=${dir}/${BASH_SOURCE[0]##*/}
     name=${self##*/}
     case ${dir} in # lint-comparisons: allow the layout is read from the pwd -P form's last components, no path compared with another
@@ -101,36 +122,21 @@ lever_self_check() {
         LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
         ;;
     *)
-        echo "${name}: refused: ${self} is neither an installed copy under <home>/.local/bin/common nor a checkout copy under scripts/orchestrator, so no manifest holds its pin" >&2
-        exit 2
+        refuse "${self} is neither an installed copy under <home>/.local/bin/common nor a checkout copy under scripts/orchestrator, so no manifest holds its pin"
         ;;
     esac
-    [[ -r ${LEVER_MANIFEST} ]] || {
-        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
-        exit 2
-    }
-    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}" 2> /dev/null) || {
-        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
-        exit 2
-    }
-    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
-        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
-        exit 2
-    }
+    [[ -r ${LEVER_MANIFEST} ]] || refuse "manifest unreadable: ${LEVER_MANIFEST}"
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}" 2> /dev/null) ||
+        refuse "cannot read ${LEVER_MANIFEST}"
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || refuse "no single sha256 pin for ${name} in ${LEVER_MANIFEST}"
     if command -v sha256sum > /dev/null; then
         digest=$(sha256sum < "${self}" 2> /dev/null) || digest='' # producer-status: allow the regex test below refuses an empty digest
     else
         digest=$(shasum -a 256 < "${self}" 2> /dev/null) || digest='' # producer-status: allow the regex test below refuses an empty digest
     fi
     digest=${digest%% *}
-    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
-        echo "${name}: refused: cannot hash ${self}" >&2
-        exit 2
-    }
-    [[ ${digest} == "${pin}" ]] || {
-        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
-        exit 2
-    }
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash ${self}"
+    [[ ${digest} == "${pin}" ]] || refuse "sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}"
 }
 lever_self_check
 
@@ -144,12 +150,8 @@ caller_path_set=${PATH+1}
 system_path=/usr/bin:/bin:/usr/sbin:/sbin
 PATH=${system_path}
 
-# @description Print the refusal on stderr and exit 2; nothing has started when it runs.
-# @arg $1 string The reason, which never holds the key.
-refuse() {
-    echo "claude-keyed: refused: $1" >&2
-    exit 2
-}
+# The producers' stderr below is dropped per call (`2> /dev/null`), and where bash itself opens the file (a redirection
+# inside a command substitution) the whole block's is, so a diagnostic of either never joins the refusal line.
 
 usage='usage: claude-keyed --check | claude-keyed --dry-run [<argument>...] | claude-keyed [<argument>...]'
 mode='exec'
@@ -228,7 +230,11 @@ read_status=0
 { key_text=$(cat -- "${key_file}" && printf x) || read_status=$?; } 2> /dev/null
 ((read_status == 0)) || refuse "cannot read the key file ${key_file}"
 key_text=${key_text%x}
-key_bytes=$(wc -c < "${key_file}" 2> /dev/null) || refuse "cannot count the bytes of the key file ${key_file} (wc -c failed)"
+# The wc read: the `<` redirection is bash's own open, so its failure note (the file gone between cat and wc) would
+# print before wc ran; the block's stderr is dropped before the redirection is opened (U510e, P3 :231).
+read_status=0
+{ key_bytes=$(wc -c < "${key_file}") || read_status=$?; } 2> /dev/null
+((read_status == 0)) || refuse "cannot count the bytes of the key file ${key_file} (wc -c failed)"
 key_bytes=${key_bytes//[[:space:]]/}
 [[ ${key_bytes} =~ ^[0-9]+$ ]] || refuse "cannot count the bytes of the key file ${key_file} (wc -c printed '${key_bytes}')"
 key_chars=$(LC_ALL=C && printf '%s' "${#key_text}") || refuse "cannot count the bytes of the key file ${key_file}"
@@ -250,7 +256,7 @@ bridge=$(awk '
 in_omp && /^  extension_providers:$/ { in_ext = 1; next }
 in_omp && /^  [^ ]/ { in_ext = 0 }
 in_omp && in_ext && $1 == "claude-bridge:" { print $2; exit }
-' "${LEVER_MANIFEST}" 2> /dev/null) || refuse "cannot read the manifest ${LEVER_MANIFEST} (awk failed)"
+' "${LEVER_MANIFEST}" 2> /dev/null) || refuse "cannot read the omp.extension_providers rows of the manifest ${LEVER_MANIFEST} (awk failed)"
 [[ -n ${bridge} ]] || refuse "the manifest ${LEVER_MANIFEST} names no omp.extension_providers.claude-bridge directory"
 allowed=$(awk '
 /^claude:$/ { in_claude = 1; next }
@@ -260,7 +266,7 @@ in_claude && /^  [^ ]/ { in_levers = 0; in_ext = 0 }
 in_levers && /^    extensions:$/ { in_ext = 1; next }
 in_levers && /^    [^ ]/ { in_ext = 0 }
 in_ext && $1 == "-" { print $2 }
-' "${LEVER_MANIFEST}" 2> /dev/null) || refuse "cannot read the manifest ${LEVER_MANIFEST} (awk failed)"
+' "${LEVER_MANIFEST}" 2> /dev/null) || refuse "cannot read the claude.levers.extensions rows of the manifest ${LEVER_MANIFEST} (awk failed)"
 listed=0
 while IFS= read -r row; do
     if [[ ${row} == "${bridge}" ]]; then listed=1; fi # lint-comparisons: allow two manifest spellings of the same row, compared as the manifest writes them

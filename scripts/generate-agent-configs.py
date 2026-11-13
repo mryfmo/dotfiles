@@ -2466,8 +2466,14 @@ def render_claude_bridge_modify_script() -> str:
     and the SDK fell back to its bundled binary on the login, silently), a lone surrogate escape (an encode error at
     the write) and nesting past the recursion limit each yield the managed object alone with one warning, exit 0, so
     chezmoi apply never clobbers the bridge's file, never writes one the bridge cannot parse and never fails on the
-    file's content. The output is the bridge's own form, `JSON.stringify(next, null, 2)` and a newline, with the key
-    order kept, so a second apply changes nothing.
+    file's content; the warning is one line per run, the first condition met naming the reason (U510e). The output
+    is `json.dumps(data, indent=2)` and a newline with the key order kept. The script's contract (U510e, verdict
+    U510-88ae09c6 P2 :2546) is idempotence of its own output, a second run on what it wrote changes nothing, which is
+    what the output index's modify comparison measures (check-agent-runtime.py runs the script on the live file and
+    compares the bytes), and the provider row's presence, which the doctor's claude-keyed row checks by key (U513).
+    It is not byte equality with the bridge's own `JSON.stringify(next, null, 2)` rewrite: a float's form differs
+    (json.dumps writes 1e-07 where JSON.stringify writes 1e-7), so a bridge rewrite that carries one reads as a change
+    once, until the next apply writes this form again.
     """
     return (
         "#!/bin/sh\n"
@@ -2480,17 +2486,23 @@ def render_claude_bridge_modify_script() -> str:
         "#   file with every key kept when it records startupNoticeShown (config.ts:29). The merge sets that one key to\n"
         f"#   {CLAUDE_KEYED_INSTALL_PATH} (the Agent SDK spawns it in place of Claude Code; it runs the bridge\n"
         "#   package's Claude Code binary on an API key read from the file REGIME_ANTHROPIC_KEY_FILE names, never on\n"
-        "#   the seats' login) and keeps every other key in its order, written as the bridge writes the file\n"
-        "#   (JSON.stringify(next, null, 2) and a newline), so a second apply changes nothing. It runs under the\n"
-        "#   system `python3 -I` with the standard library alone, the kit's baseline, which the apply container has,\n"
-        "#   and no other tool (U510b). Without python3 it prints one line on stderr and nothing on stdout and exits\n"
-        "#   1, so chezmoi apply fails naming this file: fail closed, never the login route left in place by silence.\n"
-        "#   The live file sits in the seat's own write root, so its content is the seat's (U510d): on an empty,\n"
-        "#   non-UTF-8, unparseable or non-object input, a NaN or an Infinity (refused at the parse and never\n"
-        "#   written: json.dumps would re-emit them and the bridge, reading `{}` from the non-JSON file, would fall\n"
-        "#   back to its bundled binary on the login), a lone surrogate or nesting past the recursion limit it prints\n"
-        "#   the managed object alone with one warning and exits 0, so chezmoi apply never clobbers the bridge's\n"
-        "#   file, never writes one the bridge cannot parse and never fails on the file's content.\n"
+        "#   the seats' login) and keeps every other key in its order, written by json.dumps(indent=2) and a newline.\n"
+        "#   Its contract (U510e) is idempotence of its own output, a second run on what it wrote changes nothing,\n"
+        "#   which is what the output index's modify comparison measures (check-agent-runtime.py runs the script on\n"
+        "#   the live file and compares the bytes), and the provider row's presence, which the doctor's claude-keyed\n"
+        "#   row checks by key (U513). It is not byte equality with the bridge's own JSON.stringify(next, null, 2)\n"
+        "#   rewrite: a float's form differs (json.dumps writes 1e-07 where JSON.stringify writes 1e-7), so a bridge\n"
+        "#   rewrite that carries one reads as a change once, until the next apply writes this form again. It runs\n"
+        "#   under the system `python3 -I` with the standard library alone, the kit's baseline, which the apply\n"
+        "#   container has, and no other tool (U510b). Without python3 it prints one line on stderr and nothing on\n"
+        "#   stdout and exits 1, so chezmoi apply fails naming this file: fail closed, never the login route left in\n"
+        "#   place by silence. The live file sits in the seat's own write root, so its content is the seat's (U510d):\n"
+        "#   on an empty, non-UTF-8, unparseable or non-object input, a NaN or an Infinity (refused at the parse and\n"
+        "#   never written: json.dumps would re-emit them and the bridge, reading `{}` from the non-JSON file, would\n"
+        "#   fall back to its bundled binary on the login), a lone surrogate or nesting past the recursion limit it\n"
+        "#   prints the managed object alone with one warning and exits 0, so chezmoi apply never clobbers the\n"
+        "#   bridge's file, never writes one the bridge cannot parse and never fails on the file's content. The\n"
+        "#   warning is one line per run: when more than one condition applies, the first met names the reason.\n"
         "set -eu\n"
         "\n"
         "if ! command -v python3 > /dev/null 2>&1; then\n"
@@ -2542,28 +2554,33 @@ def render_claude_bridge_modify_script() -> str:
         "\n"
         "\n"
         "def render(data):\n"
-        '    """The bridge\'s own form, JSON.stringify(next, null, 2) and a newline, as UTF-8 bytes."""\n'
+        '    """json.dumps(indent=2) and a newline, as UTF-8 bytes (not JSON.stringify\'s: a float\'s form differs)."""\n'
         '    return (json.dumps(data, indent=2, ensure_ascii=False, allow_nan=False) + "\\n").encode("utf-8")\n'
         "\n"
         "\n"
         "def main():\n"
+        '    """One warning at most per run: the first condition met names the reason, a later one adds no line."""\n'
+        "    reason = None\n"
         "    try:\n"
         "        data = read_object(sys.stdin.buffer.read())\n"
         "    except OddInput as odd:\n"
-        "        warn(str(odd))\n"
+        "        reason = str(odd)\n"
         "        data = {}\n"
         '    provider = data.get("provider")\n'
         "    if not isinstance(provider, dict):\n"
-        "        if provider is not None:\n"
-        '            warn("provider is not a JSON object")\n'
+        "        if provider is not None and reason is None:\n"
+        '            reason = "provider is not a JSON object"\n'
         "        provider = {}\n"
         "    provider[MANAGED_KEY] = EXECUTABLE\n"
         '    data["provider"] = provider\n'
         "    try:\n"
         "        out = render(data)\n"
         "    except (ValueError, RecursionError):\n"
-        '        warn("the live file holds a value JSON cannot carry (a lone surrogate)")\n'
+        "        if reason is None:\n"
+        '            reason = "the live file holds a value JSON cannot carry (a lone surrogate)"\n'
         '        out = render({"provider": {MANAGED_KEY: EXECUTABLE}})\n'
+        "    if reason is not None:\n"
+        "        warn(reason)\n"
         "    sys.stdout.buffer.write(out)\n"
         "    return 0\n"
         "\n"

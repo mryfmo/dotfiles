@@ -1018,13 +1018,16 @@ if ((connection)); then
     [[ ! -L ${key_file} ]] || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} is a symbolic link; the seats' API key file is a regular file of this user; ${key_handout}"
     [[ -f ${key_file} && -O ${key_file} ]] || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} is not a regular file of this user; ${key_handout}"
     # The mode, read with its status (standing order 21): the handout places the file 0600, and a key file its group
-    # or others may read or write is refused by its mode.
-    key_mode=$(/usr/bin/stat "${mode_args[@]}" -- "${key_file}") || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file}: cannot read its mode; ${key_handout}"
+    # or others may read or write is refused by its mode. The producer's own diagnostic is captured (regime-cutover
+    # U516d, verdict U516c-23f4f25b P3 :1022): a key removed, or its directory made unsearchable, between the test
+    # above and this read made stat's line precede the refusal, and the refusal is the one stderr line.
+    key_mode=$(/usr/bin/stat "${mode_args[@]}" -- "${key_file}" 2> /dev/null) || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file}: cannot read its mode; ${key_handout}"
     [[ ${key_mode} == 600 ]] || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} has mode ${key_mode}, not 0600 (the handout places the seats' API key file 0600); ${key_handout}" # lint-comparisons: allow a mode word from stat, no path compare
-    # The physical form, its producer's status read (standing order 21): a resolution that fails leaves no path, and
-    # no path is clean, so the one refusal names both (verdict U516-a5ea975b P3 :1007: the shared unresolved() named
-    # no handout).
-    key_real=$(physical_path "${key_file}") || key_real=''
+    # The physical form, its producer's status read (standing order 21) and its diagnostic captured (U516d: the `cd`
+    # inside physical_path names a directory it cannot enter): a resolution that fails leaves no path, and no path
+    # is clean, so the one refusal names both (verdict U516-a5ea975b P3 :1007: the shared unresolved() named no
+    # handout).
+    key_real=$(physical_path "${key_file}" 2> /dev/null) || key_real=''
     early_clean_path "${key_real}" ||
         refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} cannot be resolved to a clean physical path (a link that cannot be read, more than 40 links, or a component outside [A-Za-z0-9._@+-]); no worker starts without the seats' API key; ${key_handout}"
 fi

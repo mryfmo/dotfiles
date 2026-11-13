@@ -3629,6 +3629,116 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             aside.rename(state_dir)
         self.assertEqual(self.key_file.read_text(), FIXTURE_KEY, "the key file is never written")
 
+    def test_the_key_holds_failed_producers_refuse_with_exactly_one_line_and_nothing_made(self):
+        """U516d (verdict U516c-23f4f25b P2 :3614, P3 :1022; standing order 21): the key hold's two safety decisions
+        each read a producer, `/usr/bin/stat` for the mode and `physical_path` for the physical form, and a producer
+        that fails is exactly one refusal line on the stream and on stderr naming the read and the handout, exit 2,
+        nothing of the worker made; the producer's own diagnostic never reaches stderr as a second line. The failures
+        are injected between the hold's tests and the producer, where the file system can change under the hold, by
+        a DEBUG trap bash reads from `BASH_ENV` before the lever's first line (the lever runs `/usr/bin/stat` by its
+        absolute path, so no wrapper on PATH reaches it): the key removed right before `stat` (at 23f4f25b stat's
+        "No such file" line preceded the refusal), the key's directory made unsearchable right before `stat` (stat's
+        "Permission denied" line), the key replaced by a chain of 41 links right before the resolver (the resolver's
+        silent failure, one line at 23f4f25b too, pinned here to exactly one) and the key's directory made
+        unsearchable right before the resolver (`cd`'s "Permission denied" line inside `physical_path`)."""
+        name, cwd = self.make_router()
+        header = "ACP-SEAT v1 repo=/x ref=HEAD name=w3\n"
+        handout = "handouts/anthropic-api-key-u510.md"
+        key = str(self.key_file)
+        anthropic = self.key_file.parent
+        scratch = Path(self.temp.name).resolve() / "u516d"
+        scratch.mkdir()
+        # The fixture's state directory `~/.local/state/hcom-seat` (its tool links) is absent until a served
+        # connection's settings writer makes it, and the worker's judgement precedes the writer: it stays absent.
+        state_dir = self.home_real / ".local/state/hcom-seat"
+        self.assertFalse(state_dir.exists() or state_dir.is_symlink(), "no state directory before a connection")
+        stat_read = "key_mode=\\$(/usr/bin/stat"
+        resolver = "key_real=\\$(physical_path"
+
+        def trap_file(case, producer, action):
+            """A `BASH_ENV` file whose DEBUG trap runs `action` once, right before the lever's simple command that
+            begins with the text `producer` (the hold's assignment from the producer's command substitution)."""
+            path = scratch / f"{case}.bash"
+            path.write_text(
+                "u516d_fired=0\n"
+                f"u516d_inject() {{\n    {action}\n}}\n"
+                f'trap \'if ((u516d_fired == 0)) && [[ ${{BASH_COMMAND}} == "{producer}"* ]]; then'
+                " u516d_fired=1; u516d_inject; fi' DEBUG\n"
+            )
+            return str(path)
+
+        def refused(part, bash_env):
+            run = subprocess.run(
+                [str(BROKER), "--connection", self.seats, name, str(cwd)], cwd=self.repo, input=header,
+                env=self.broker_env(BASH_ENV=bash_env), capture_output=True, text=True, check=False, timeout=60,
+            )  # fmt: skip
+            self.assertEqual(run.returncode, 2, run.stderr)
+            self.assertEqual(run.stdout.count("\n"), 1, run.stdout)
+            self.assertEqual(
+                run.stderr.count("\n"), 1, f"exactly one stderr line, the producer's diagnostic captured:\n{run.stderr}"
+            )
+            self.assertEqual(run.stdout, run.stderr, "the one line on the stream and on stderr")
+            self.assertTrue(run.stdout.startswith("acp-broker: refused: REGIME_ANTHROPIC_KEY_FILE"), run.stdout)
+            self.assertIn(part, run.stdout)
+            self.assertIn(handout, run.stdout)
+            self.assertEqual(self.acp_slots(), [])
+            self.assertFalse(
+                state_dir.exists() or state_dir.is_symlink(), "nothing made: the worker is judged before any directory"
+            )
+            self.assertFalse((self.seats_path / ".state/broker-logs").exists(), "no log line")
+            self.assertEqual(self.calls_of("omp"), [], "no omp run")
+            self.assertEqual(self.calls_of("srt"), [], "no srt run")
+
+        def key_restored():
+            self.key_file.touch(mode=0o600)
+            self.key_file.write_text(FIXTURE_KEY)
+            self.assertEqual(stat.S_IMODE(self.key_file.stat().st_mode), 0o600)
+
+        mode_part = f"REGIME_ANTHROPIC_KEY_FILE {key}: cannot read its mode"
+        path_part = f"REGIME_ANTHROPIC_KEY_FILE {key} cannot be resolved to a clean physical path"
+        with self.subTest(case="the key removed right before stat"):
+            try:
+                refused(mode_part, trap_file("removed", stat_read, 'rm -f -- "${REGIME_ANTHROPIC_KEY_FILE}"'))
+                self.assertFalse(self.key_file.exists(), "the injection ran: the key is gone")
+            finally:
+                key_restored()
+        with self.subTest(case="the key's directory made unsearchable right before stat"):
+            try:
+                refused(mode_part, trap_file("stat-denied", stat_read, f'chmod 000 "{anthropic}"'))
+                self.assertEqual(stat.S_IMODE(anthropic.stat().st_mode), 0, "the injection ran")
+            finally:
+                anthropic.chmod(0o700)
+        with self.subTest(case="the key replaced by a chain of 41 links right before the resolver"):
+            # l2 -> l3 -> ... -> l41 -> target, and the key itself the first link: 41 links, one over the
+            # resolver's 40, so physical_path fails (every earlier test of the hold saw the regular file).
+            target = anthropic / "target"
+            target.touch(mode=0o600)
+            for i in range(2, 42):
+                (anthropic / f"l{i}").symlink_to(anthropic / (f"l{i + 1}" if i < 41 else "target"))
+            try:
+                refused(
+                    path_part,
+                    trap_file(
+                        "chain",
+                        resolver,
+                        f'rm -f -- "${{REGIME_ANTHROPIC_KEY_FILE}}" && ln -s "{anthropic}/l2" "${{REGIME_ANTHROPIC_KEY_FILE}}"',
+                    ),
+                )
+                self.assertTrue(self.key_file.is_symlink(), "the injection ran: the key is the chain's first link")
+            finally:
+                self.key_file.unlink()
+                for i in range(2, 42):
+                    (anthropic / f"l{i}").unlink()
+                target.unlink()
+                key_restored()
+        with self.subTest(case="the key's directory made unsearchable right before the resolver"):
+            try:
+                refused(path_part, trap_file("cd-denied", resolver, f'chmod 000 "{anthropic}"'))
+                self.assertEqual(stat.S_IMODE(anthropic.stat().st_mode), 0, "the injection ran")
+            finally:
+                anthropic.chmod(0o700)
+        self.assertEqual(self.key_file.read_text(), FIXTURE_KEY, "the key file is never written")
+
     def header_sent_by(self, argv, cwd):
         """The client run with `argv` after `--socket <scratch>` in `cwd` (the request's cwd `dsh-subagent-acp`
         spawns it in) against a scratch server in the broker's place that records the header line and answers a

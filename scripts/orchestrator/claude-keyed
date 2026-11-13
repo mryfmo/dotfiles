@@ -19,11 +19,18 @@
 #   in one line feed or none; a second line, a carriage return, a trailing space, a NUL or any other byte refuses
 #   naming the file, never the content. The mode and the owner come from one `stat` call whose status and shape are
 #   read (standing order 21), the owner compared with this shell's EUID; the bytes come from `cat` with its status
-#   read, counted by `wc -c` against what the shell holds, so a NUL the shell drops is seen. The executable is the one
-#   regular executable file matching `<bridge>/node_modules/@anthropic-ai/claude-agent-sdk-*/claude`, where `<bridge>`
-#   is the directory `omp.extension_providers.claude-bridge` names in the manifest the self-check read (a `~/` spelled
-#   through HOME), required to be a row of `claude.levers.extensions`, the seats' extension allow-list; zero or two
-#   matches refuse naming the glob. The manifest is read as text by indentation (awk, status read), as
+#   read, counted by `wc -c` against what the shell holds, so a NUL the shell drops is seen. Every producer this lever
+#   runs (`uname`, `stat`, `cat`, `wc`, `awk`, `cd` and `pwd`, the hash tool and `sed` of the self-check) runs with
+#   its stderr dropped, so a failure that prints a diagnostic still yields exactly one refusal line. The executable
+#   is the one path `<bridge>/node_modules/@anthropic-ai/claude-agent-sdk-<platform>/claude`, where `<bridge>` is the
+#   directory `omp.extension_providers.claude-bridge` names in the manifest the self-check read (a `~/` spelled
+#   through HOME), required to be a row of `claude.levers.extensions`, the seats' extension allow-list, and
+#   `<platform>` comes from a closed table over `uname -s` and `uname -m`: Darwin arm64 is darwin-arm64, Darwin x86_64
+#   darwin-x64, Linux x86_64 linux-x64, Linux aarch64 linux-arm64; any other pair refuses naming both words (U510c;
+#   a glob count chose wrong when the SDK installed both Linux packages of an architecture). On Linux the suffix
+#   `-musl` is appended when and only when a file matches the musl loader glob `/lib/ld-musl-*.so*` (a glibc host has
+#   none; `CLAUDE_KEYED_MUSL_MARKER_GLOB` renames the glob for the tests). The path must be an executable regular file
+#   and no link, else one refusal naming it. The manifest is read as text by indentation (awk, status read), as
 #   seat-login-preflight reads its overlays. Every refusal is one stderr line `claude-keyed: refused: <reason>` and
 #   exit 2 with nothing started; a refusal never falls back to the login (fail closed).
 #   `--check` runs every check and prints one stdout line `key file ok: <path>; executable: <path>` (exit 0) or
@@ -36,10 +43,12 @@
 # @arg $@ string Claude Code's arguments, verbatim.
 # @env REGIME_ANTHROPIC_KEY_FILE The key file, an absolute path.
 # @env HOME The manifest's `~/` spellings expand through it; the installed copy reads `~/.agents/agent-config.yaml`.
+# @env CLAUDE_KEYED_MUSL_MARKER_GLOB The musl loader glob, `/lib/ld-musl-*.so*` unless set; it chooses between the
+#   SDK's glibc and musl package of one Linux architecture and nothing outside the bridge's node_modules.
 # @stdout With `--check`, the one ok line; with `--dry-run`, the command and the unset names; else Claude Code's own.
 # @stderr The refusal line; else Claude Code's own.
 # @exitcode 0 `--check` passed, or `--dry-run` printed.
-# @exitcode 2 A refusal: the self-check, the usage, the key file, the manifest or the executable.
+# @exitcode 2 A refusal: the self-check, the usage, the key file, the manifest, the platform or the executable.
 # @exitcode * Claude Code's own status after the exec.
 # @example
 #   REGIME_ANTHROPIC_KEY_FILE=~/.local/state/omp-seats/dotfiles/.state/anthropic/api-key claude-keyed --check
@@ -59,7 +68,7 @@ lever_self_check() {
     *) dir=. ;;
     esac
     [[ -n ${dir} ]] || dir=/
-    dir=$(cd "${dir}" && pwd -P) || {
+    dir=$(cd "${dir}" 2> /dev/null && pwd -P 2> /dev/null) || {
         echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
         exit 2
     }
@@ -75,7 +84,7 @@ lever_self_check() {
         echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
         exit 2
     }
-    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}" 2> /dev/null) || {
         echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
         exit 2
     }
@@ -84,9 +93,9 @@ lever_self_check() {
         exit 2
     }
     if command -v sha256sum > /dev/null; then
-        digest=$(sha256sum < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
+        digest=$(sha256sum < "${self}" 2> /dev/null) || digest='' # producer-status: allow the regex test below refuses an empty digest
     else
-        digest=$(shasum -a 256 < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
+        digest=$(shasum -a 256 < "${self}" 2> /dev/null) || digest='' # producer-status: allow the regex test below refuses an empty digest
     fi
     digest=${digest%% *}
     [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
@@ -134,14 +143,24 @@ key_file=${REGIME_ANTHROPIC_KEY_FILE:-}
 # The physical directory's form of the same name: a link earlier in the path is allowed, the last component is not.
 key_parent=${key_file%/*}
 [[ -n ${key_parent} ]] || key_parent=/
-key_dir=$(cd "${key_parent}" && pwd -P) || refuse "cannot resolve the directory of the key file ${key_file}"
+key_dir=$(cd "${key_parent}" 2> /dev/null && pwd -P 2> /dev/null) || refuse "cannot resolve the directory of the key file ${key_file}"
 key_phys=${key_dir%/}/${key_file##*/}
 [[ ! -L ${key_phys} ]] || refuse "the key file ${key_file} is a symbolic link; the key file must be a regular file of this user"
-os=$(uname -s) || refuse 'cannot read the operating system name (uname -s)'
+# The platform, from a closed table over the two uname words (each producer's status read, its stderr dropped): it
+# chooses the stat dialect here and the SDK's platform package below; a pair outside the table refuses by name.
+os=$(uname -s 2> /dev/null) || refuse 'cannot read the operating system name (uname -s)'
+arch=$(uname -m 2> /dev/null) || refuse 'cannot read the machine name (uname -m)'
+case "${os} ${arch}" in
+'Darwin arm64') platform=darwin-arm64 ;;
+'Darwin x86_64') platform=darwin-x64 ;;
+'Linux x86_64') platform=linux-x64 ;;
+'Linux aarch64') platform=linux-arm64 ;;
+*) refuse "no Claude Code platform package for the pair '${os}' '${arch}' (uname -s, uname -m); the table is Darwin arm64, Darwin x86_64, Linux x86_64 and Linux aarch64" ;;
+esac
 # One stat call for the mode and the owner, its status and shape read; an injected or failing stat refuses.
 case ${os} in
-Darwin) owner_mode=$(stat -f '%Lp %u' "${key_file}") || refuse "cannot read the mode and owner of the key file ${key_file} (stat failed)" ;;
-*) owner_mode=$(stat -c '%a %u' "${key_file}") || refuse "cannot read the mode and owner of the key file ${key_file} (stat failed)" ;;
+Darwin) owner_mode=$(stat -f '%Lp %u' "${key_file}" 2> /dev/null) || refuse "cannot read the mode and owner of the key file ${key_file} (stat failed)" ;;
+*) owner_mode=$(stat -c '%a %u' "${key_file}" 2> /dev/null) || refuse "cannot read the mode and owner of the key file ${key_file} (stat failed)" ;;
 esac
 owner_mode_re='^([0-7]{3,4}) ([0-9]+)$'
 [[ ${owner_mode} =~ ${owner_mode_re} ]] ||
@@ -158,7 +177,7 @@ read_status=0
 { key_text=$(cat -- "${key_file}" && printf x) || read_status=$?; } 2> /dev/null
 ((read_status == 0)) || refuse "cannot read the key file ${key_file}"
 key_text=${key_text%x}
-key_bytes=$(wc -c < "${key_file}") || refuse "cannot count the bytes of the key file ${key_file} (wc -c failed)"
+key_bytes=$(wc -c < "${key_file}" 2> /dev/null) || refuse "cannot count the bytes of the key file ${key_file} (wc -c failed)"
 key_bytes=${key_bytes//[[:space:]]/}
 [[ ${key_bytes} =~ ^[0-9]+$ ]] || refuse "cannot count the bytes of the key file ${key_file} (wc -c printed '${key_bytes}')"
 key_chars=$(LC_ALL=C && printf '%s' "${#key_text}") || refuse "cannot count the bytes of the key file ${key_file}"
@@ -179,7 +198,7 @@ bridge=$(awk '
 in_omp && /^  extension_providers:$/ { in_ext = 1; next }
 in_omp && /^  [^ ]/ { in_ext = 0 }
 in_omp && in_ext && $1 == "claude-bridge:" { print $2; exit }
-' "${LEVER_MANIFEST}") || refuse "cannot read the manifest ${LEVER_MANIFEST} (awk failed)"
+' "${LEVER_MANIFEST}" 2> /dev/null) || refuse "cannot read the manifest ${LEVER_MANIFEST} (awk failed)"
 [[ -n ${bridge} ]] || refuse "the manifest ${LEVER_MANIFEST} names no omp.extension_providers.claude-bridge directory"
 allowed=$(awk '
 /^claude:$/ { in_claude = 1; next }
@@ -189,7 +208,7 @@ in_claude && /^  [^ ]/ { in_levers = 0; in_ext = 0 }
 in_levers && /^    extensions:$/ { in_ext = 1; next }
 in_levers && /^    [^ ]/ { in_ext = 0 }
 in_ext && $1 == "-" { print $2 }
-' "${LEVER_MANIFEST}") || refuse "cannot read the manifest ${LEVER_MANIFEST} (awk failed)"
+' "${LEVER_MANIFEST}" 2> /dev/null) || refuse "cannot read the manifest ${LEVER_MANIFEST} (awk failed)"
 listed=0
 while IFS= read -r row; do
     if [[ ${row} == "${bridge}" ]]; then listed=1; fi # lint-comparisons: allow two manifest spellings of the same row, compared as the manifest writes them
@@ -202,16 +221,20 @@ case ${bridge} in
 esac
 ((listed)) || refuse "the claude-bridge directory ${bridge} is not a row of claude.levers.extensions in ${LEVER_MANIFEST}"
 [[ -d ${bridge} ]] || refuse "the claude-bridge directory ${bridge} is not a directory"
-# The one Claude Code binary of the SDK's platform package (bun.lock names eight platforms, one is installed).
-glob="${bridge}/node_modules/@anthropic-ai/claude-agent-sdk-*/claude"
-matches=()
-for candidate in "${bridge}"/node_modules/@anthropic-ai/claude-agent-sdk-*/claude; do
-    [[ -e ${candidate} || -L ${candidate} ]] || continue
-    matches+=("${candidate}")
-done
-((${#matches[@]} > 0)) || refuse "no Claude Code executable: nothing matches ${glob}"
-((${#matches[@]} == 1)) || refuse "${#matches[@]} Claude Code executables match ${glob}; exactly one is run"
-exe=${matches[0]}
+# The SDK's platform package of the table above (bun.lock names eight; the SDK installs the glibc and the musl one
+# of a Linux architecture side by side, so a count over the glob cannot choose). On Linux the musl package is the
+# one when and only when the musl loader is present: a file matching the marker glob, read by the shell's own glob
+# (compgen, a builtin, no producer); a glibc host has no such file.
+if [[ ${platform} == linux-* ]]; then
+    musl_glob=${CLAUDE_KEYED_MUSL_MARKER_GLOB:-/lib/ld-musl-*.so*}
+    musl=0
+    while IFS= read -r marker; do
+        if [[ -n ${marker} && -f ${marker} ]]; then musl=1; fi
+    done < <(compgen -G "${musl_glob}" || true)
+    ((musl == 0)) || platform=${platform}-musl
+fi
+exe=${bridge}/node_modules/@anthropic-ai/claude-agent-sdk-${platform}/claude
+[[ -e ${exe} || -L ${exe} ]] || refuse "no Claude Code executable at ${exe}; the SDK's ${platform} package is not installed under ${bridge}"
 [[ ! -L ${exe} && -f ${exe} && -x ${exe} ]] || refuse "the Claude Code executable ${exe} is not an executable regular file"
 
 case ${mode} in

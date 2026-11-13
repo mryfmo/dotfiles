@@ -2,12 +2,16 @@
 bundled Claude Code binary with `ANTHROPIC_API_KEY` read from the one file `REGIME_ANTHROPIC_KEY_FILE` names and the
 login names unset, or refuses with one stderr line and exit 2 before anything starts. Every test runs the real bash
 (`#!/bin/bash -p`) against the installed layout under a scratch HOME: a fixture manifest naming a fixture bridge
-directory whose one `claude-agent-sdk-fake/claude` records its argv and the names (never the values) of the variables
-it received. No test reads the real `~/.agents`, `~/.local/bin` or a real key, and the fixture key is built at runtime
-so this file holds no literal a secret scan matches."""
+directory whose `claude-agent-sdk-<host platform>/claude` (the platform the lever's closed table gives this host, so
+the real `uname` is read) records its argv and the names (never the values) of the variables it received; the other
+rows of the table run under a fixture `uname` and a fixture `stat` (U510c). No test reads the real `~/.agents`,
+`~/.local/bin` or a real key, and the fixture key is built at runtime so this file holds no literal a secret scan
+matches."""
 
+import glob
 import hashlib
 import os
+import platform
 import shutil
 import stat
 import subprocess
@@ -30,10 +34,32 @@ BASE_URL_NAME = "ANTHROPIC_BASE_URL"
 FIXTURE_KEY = "sk-ant-" + "api03-" + "FAKEKEYFORTEST" + "0123456789"
 SDK_ARGS = ["--output-format", "stream-json", "--input-format", "stream-json", "--verbose", "-p", "hello world"]
 UNSET_LINE = f"unset: {OAUTH_NAME} {AUTH_TOKEN_NAME} {BASE_URL_NAME}\n"
+# The lever's closed platform table (uname -s, uname -m) and the musl loader marker it reads on Linux.
+PLATFORMS = {
+    ("Darwin", "arm64"): "darwin-arm64",
+    ("Darwin", "x86_64"): "darwin-x64",
+    ("Linux", "x86_64"): "linux-x64",
+    ("Linux", "aarch64"): "linux-arm64",
+}
+MUSL_MARKER_VARIABLE = "CLAUDE_KEYED_MUSL_MARKER_GLOB"
+MUSL_MARKER_GLOB = "/lib/ld-musl-*.so*"
+
+
+def host_platform() -> str | None:
+    """The table row of this host, as the lever would resolve it with the real uname: None off the table."""
+    name = PLATFORMS.get((platform.system(), platform.machine()))
+    if name is not None and name.startswith("linux-") and glob.glob(MUSL_MARKER_GLOB):
+        name += "-musl"
+    return name
+
+
+HOST_PLATFORM = host_platform()
 
 
 class ClaudeKeyedTest(unittest.TestCase):
     def setUp(self) -> None:
+        if HOST_PLATFORM is None:
+            self.skipTest(f"this host's uname pair {platform.system()} {platform.machine()} is off the lever's table")
         self.temp = Path(tempfile.mkdtemp(prefix="claude-keyed-")).resolve()
         self.addCleanup(shutil.rmtree, self.temp)
         self.home = self.temp / "home"
@@ -42,7 +68,7 @@ class ClaudeKeyedTest(unittest.TestCase):
         self.lever = self.bin / "claude-keyed"
         shutil.copy2(LEVER, self.lever)
         self.bridge = self.home / "bridge"
-        self.sdk_dir = self.bridge / "node_modules/@anthropic-ai/claude-agent-sdk-fake"
+        self.sdk_dir = self.sdk_package(HOST_PLATFORM)
         self.exe = self.sdk_dir / "claude"
         self.record = self.temp / "fake-claude-ran"
         self.expected_key = self.temp / "expected-key"
@@ -61,6 +87,10 @@ class ClaudeKeyedTest(unittest.TestCase):
             "LC_ALL": "C",
             KEY_FILE_VARIABLE: str(self.key_file),
         }
+
+    def sdk_package(self, name: str) -> Path:
+        """The directory of the SDK's platform package `name` under the fixture bridge."""
+        return self.bridge / f"node_modules/@anthropic-ai/claude-agent-sdk-{name}"
 
     def write_fake_claude(self, path: Path) -> None:
         """The fixture SDK binary: argv one per line, the names of the ANTHROPIC_* and login variables it received,
@@ -117,12 +147,23 @@ class ClaudeKeyedTest(unittest.TestCase):
                 env[name] = value
         return env
 
-    def fake_tool(self, name: str, body: str) -> dict[str, str]:
+    def fake_tool(self, name: str, body: str, env: dict[str, str] | None = None) -> dict[str, str]:
         tools = self.temp / "tools"
         tools.mkdir(exist_ok=True)
         (tools / name).write_text(f"#!/bin/sh\n{body}\n")
         (tools / name).chmod(0o755)
-        return self.env_with(PATH=f"{tools}:{self.env['PATH']}")
+        base = self.env if env is None else env
+        if base.get("PATH", "").startswith(f"{tools}:"):
+            return dict(base)
+        return {**base, "PATH": f"{tools}:{base['PATH']}"}
+
+    def uname_env(self, system: str, machine: str, env: dict[str, str] | None = None) -> dict[str, str]:
+        """A fixture `uname` answering the two words and a fixture `stat` printing a 0600 file of this user, so a table
+        row can be exercised on any host (the real stat's dialect follows the fixture's uname -s)."""
+        env = self.fake_tool(
+            "uname", f"case $1 in -s) echo '{system}' ;; -m) echo '{machine}' ;; *) exit 3 ;; esac", env
+        )
+        return self.fake_tool("stat", f"echo '600 {os.geteuid()}'", env)
 
     def assert_refused(self, run, reason: str) -> None:
         self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
@@ -273,20 +314,104 @@ class ClaudeKeyedTest(unittest.TestCase):
                     self.assert_refused(run, reason)
                     self.assertNotIn(FIXTURE_KEY, run.stdout + run.stderr)
 
-    def test_zero_or_two_executables_refuse_naming_the_glob(self) -> None:
-        glob = f"{self.bridge}/node_modules/@anthropic-ai/claude-agent-sdk-*/claude"
-        second = self.bridge / "node_modules/@anthropic-ai/claude-agent-sdk-other/claude"
-        self.write_fake_claude(second)
-        self.assert_refused(self.run_lever(*SDK_ARGS), f"2 Claude Code executables match {glob}; exactly one is run")
-        self.assert_refused(self.run_lever("--check"), f"2 Claude Code executables match {glob}; exactly one is run")
-        shutil.rmtree(second.parent)
+    def test_the_executable_is_the_host_platform_package_by_the_closed_table(self) -> None:
+        """U510c: the path is `<bridge>/node_modules/@anthropic-ai/claude-agent-sdk-<platform>/claude` for the one
+        platform the uname pair maps to; a second platform package beside it (the SDK installs the glibc and the musl
+        package of a Linux architecture side by side) changes nothing, and `--check` prints the chosen path."""
+        other = "darwin-x64" if HOST_PLATFORM != "darwin-x64" else "darwin-arm64"
+        self.write_fake_claude(self.sdk_package(other) / "claude")
+        self.write_fake_claude(self.sdk_package("linux-x64-musl") / "claude")
+        run = self.run_lever("--check")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        self.assertEqual(run.stdout, f"key file ok: {self.key_file}; executable: {self.exe}\n")
+        self.assertIn(f"claude-agent-sdk-{HOST_PLATFORM}/claude", run.stdout)
+        run = self.run_lever(*SDK_ARGS)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        self.assertTrue(self.record.exists(), "the host platform's binary ran")
+
+    def test_an_absent_or_unfit_platform_package_refuses_naming_the_path(self) -> None:
         self.exe.chmod(0o644)
         self.assert_refused(
             self.run_lever(*SDK_ARGS), f"the Claude Code executable {self.exe} is not an executable regular file"
         )
+        self.exe.unlink()
+        self.exe.symlink_to(self.sdk_package("other") / "claude")
+        self.write_fake_claude(self.sdk_package("other") / "claude")
+        self.assert_refused(
+            self.run_lever(*SDK_ARGS), f"the Claude Code executable {self.exe} is not an executable regular file"
+        )
         shutil.rmtree(self.sdk_dir)
-        self.assert_refused(self.run_lever(*SDK_ARGS), f"no Claude Code executable: nothing matches {glob}")
-        self.assert_refused(self.run_lever("--check"), f"no Claude Code executable: nothing matches {glob}")
+        reason = (
+            f"no Claude Code executable at {self.exe}; the SDK's {HOST_PLATFORM} package is not installed under "
+            f"{self.bridge}"
+        )
+        self.assert_refused(self.run_lever(*SDK_ARGS), reason)
+        self.assert_refused(self.run_lever("--check"), reason)
+
+    def test_linux_chooses_the_glibc_or_the_musl_package_by_the_loader_marker(self) -> None:
+        """U510c: with both linux-x64 and linux-x64-musl installed and a fixture uname of Linux x86_64, the glibc
+        package is run when no file matches the musl loader glob and the musl one when one does; the glob is the
+        lever's one documented variable, `/lib/ld-musl-*.so*` by default."""
+        glibc = self.sdk_package("linux-x64") / "claude"
+        musl = self.sdk_package("linux-x64-musl") / "claude"
+        self.write_fake_claude(glibc)
+        self.write_fake_claude(musl)
+        marker_dir = self.temp / "lib"
+        marker_dir.mkdir()
+        marker_glob = f"{marker_dir}/ld-musl-*.so*"
+        env = self.uname_env("Linux", "x86_64")
+        if not glob.glob(MUSL_MARKER_GLOB):
+            run = self.run_lever("--check", env=env)
+            self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+            self.assertEqual(run.stdout, f"key file ok: {self.key_file}; executable: {glibc}\n")
+        env[MUSL_MARKER_VARIABLE] = marker_glob
+        run = self.run_lever("--check", env=env)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        self.assertEqual(run.stdout, f"key file ok: {self.key_file}; executable: {glibc}\n")
+        (marker_dir / "ld-musl-x86_64.so.1").write_text("")
+        run = self.run_lever("--check", env=env)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        self.assertEqual(run.stdout, f"key file ok: {self.key_file}; executable: {musl}\n")
+        run = self.run_lever("--dry-run", env=env)
+        self.assertEqual(run.stdout, f"{API_KEY_NAME}=<redacted> {musl}\n" + UNSET_LINE)
+        # A directory of the marker's name is no loader: the glibc package stays.
+        (marker_dir / "ld-musl-x86_64.so.1").unlink()
+        (marker_dir / "ld-musl-x86_64.so.1").mkdir()
+        run = self.run_lever("--check", env=env)
+        self.assertEqual(run.stdout, f"key file ok: {self.key_file}; executable: {glibc}\n")
+        # With the musl package alone and no marker, the refusal names the glibc path it looked for.
+        (marker_dir / "ld-musl-x86_64.so.1").rmdir()
+        shutil.rmtree(glibc.parent)
+        self.assert_refused(
+            self.run_lever("--check", env=env),
+            f"no Claude Code executable at {glibc}; the SDK's linux-x64 package is not installed under {self.bridge}",
+        )
+
+    def test_the_platform_table_is_closed(self) -> None:
+        """Every row of the table under a fixture uname, and a pair off it refused naming both words."""
+        for (system, machine), name in PLATFORMS.items():
+            with self.subTest(platform=name):
+                exe = self.sdk_package(name) / "claude"
+                self.write_fake_claude(exe)
+                env = self.uname_env(system, machine)
+                env[MUSL_MARKER_VARIABLE] = f"{self.temp}/no-such-marker-*"
+                run = self.run_lever("--check", env=env)
+                self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+                self.assertEqual(run.stdout, f"key file ok: {self.key_file}; executable: {exe}\n")
+                if name != HOST_PLATFORM:
+                    shutil.rmtree(exe.parent)
+        for system, machine in (
+            ("FreeBSD", "amd64"),
+            ("Linux", "armv7l"),
+            ("Darwin", "i386"),
+            ("MINGW64_NT", "x86_64"),
+        ):
+            with self.subTest(pair=(system, machine)):
+                self.assert_refused(
+                    self.run_lever("--check", env=self.uname_env(system, machine)),
+                    f"no Claude Code platform package for the pair '{system}' '{machine}' (uname -s, uname -m); the "
+                    "table is Darwin arm64, Darwin x86_64, Linux x86_64 and Linux aarch64",
+                )
 
     def test_the_bridge_directory_comes_from_the_manifest_and_must_be_an_allowed_extension(self) -> None:
         self.write_manifest(bridge="~/elsewhere", extensions="~/bridge")
@@ -312,24 +437,39 @@ class ClaudeKeyedTest(unittest.TestCase):
         self.assert_refused(self.run_lever("--check"), f"manifest unreadable: {self.manifest}")
 
     def test_a_failing_producer_refuses_instead_of_passing(self) -> None:
-        """Standing order 21: every read the decision rests on fails closed, by name."""
+        """Standing order 21: every read the decision rests on fails closed, by name; each fixture prints a diagnostic
+        on stderr before failing, and the refusal is still the one stderr line (U510c: every producer's stderr is
+        dropped). The self-check's own readers, sed and both hash backends, are among them."""
+        noisy = "echo 'fixture: a diagnostic the producer printed' >&2; exit 3"
         cases = [
-            ("uname", "exit 3", "cannot read the operating system name (uname -s)"),
-            ("stat", "exit 3", f"cannot read the mode and owner of the key file {self.key_file} (stat failed)"),
+            (("uname",), noisy, "cannot read the operating system name (uname -s)"),
             (
-                "stat",
+                ("uname",),
+                f"case $1 in -s) echo '{platform.system()}' ;; *) {noisy} ;; esac",
+                "cannot read the machine name (uname -m)",
+            ),
+            (("stat",), noisy, f"cannot read the mode and owner of the key file {self.key_file} (stat failed)"),
+            (
+                ("stat",),
                 "echo garbage",
                 f"cannot read the mode and owner of the key file {self.key_file} (stat printed 'garbage')",
             ),
-            ("cat", "exit 3", f"cannot read the key file {self.key_file}"),
-            ("wc", "exit 3", f"cannot count the bytes of the key file {self.key_file} (wc -c failed)"),
-            ("awk", "exit 3", f"cannot read the manifest {self.manifest} (awk failed)"),
+            (("cat",), noisy, f"cannot read the key file {self.key_file}"),
+            (("wc",), noisy, f"cannot count the bytes of the key file {self.key_file} (wc -c failed)"),
+            (("awk",), noisy, f"cannot read the manifest {self.manifest} (awk failed)"),
+            (("sed",), noisy, f"cannot read {self.manifest}"),
+            (("sha256sum", "shasum"), noisy, f"cannot hash {self.lever}"),
+            (("sha256sum", "shasum"), "echo 'not a digest'", f"cannot hash {self.lever}"),
         ]
-        for tool, body, reason in cases:
-            with self.subTest(tool=tool, body=body):
-                env = self.fake_tool(tool, body)
+        for tools, body, reason in cases:
+            with self.subTest(tools=tools, body=body):
+                env = self.env
+                for tool in tools:
+                    env = self.fake_tool(tool, body, env)
                 self.assert_refused(self.run_lever(*SDK_ARGS, env=env), reason)
-                (self.temp / "tools" / tool).unlink()
+                self.assert_refused(self.run_lever("--check", env=env), reason)
+                for tool in tools:
+                    (self.temp / "tools" / tool).unlink()
 
     def test_the_self_pin_refuses_an_altered_copy(self) -> None:
         with self.lever.open("a") as lever:

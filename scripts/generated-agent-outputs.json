@@ -468,7 +468,7 @@
       "target": ".local/bin/common/claude-keyed",
       "kind": "file",
       "executable": true,
-      "sha256": "1b4cd0479035575f3df9f0bf4652cb533d1c45a88d6c4326ee5bcef65e07e3c2"
+      "sha256": "36b62c6d4a4ea49fa8ced88222f8bb2d03c20471709972f8d6a09dfa89a62279"
     },
     {
       "source": "home/dot_local/bin/common/executable_git-isolated.sh",

@@ -5943,10 +5943,11 @@
 <span class="c1">#   own roots and nothing more; the table below is the boundary, and everything else, the pinned asset refreshes</span>
 <span class="c1">#   included, is left to `make update` and the asset updater under their own contracts:</span>
 <span class="c1">#</span>
-<span class="c1">#     root            | reason   | source</span>
-<span class="c1">#     ~/.local/bin    | levers   | home/dot_local/bin (the orchestrator levers, the seat launcher)</span>
-<span class="c1">#     ~/.agents       | assets   | home/dot_agents (skills, rules, omp profiles and policies, regime files)</span>
-<span class="c1">#     ~/.dsh          | profiles | home/dot_dsh (the DSH profiles and plugins)</span>
+<span class="c1">#     root            | reason        | source</span>
+<span class="c1">#     ~/.local/bin    | levers        | home/dot_local/bin (the orchestrator levers, the seat launcher)</span>
+<span class="c1">#     ~/.agents       | assets        | home/dot_agents (skills, rules, omp profiles and policies, regime files)</span>
+<span class="c1">#     ~/.dsh          | profiles      | home/dot_dsh (the DSH profiles and plugins)</span>
+<span class="c1">#     ~/.omp/profiles | seat profiles | home/dot_omp/private_profiles (the seats' generated claude-bridge.json; U515)</span>
 <span class="c1">#</span>
 <span class="c1">#   Each root is read physically before anything else (`cd -P`, `pwd -P`): a root that is missing, is a symbolic</span>
 <span class="c1">#   link, or whose physical path is not the physical HOME joined with its name (a link on its path) refuses the run</span>
@@ -6004,7 +6005,7 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">KIT_ROOTS</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.dsh"</span><span class="o">)</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">KIT_ROOTS</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.dsh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.omp/profiles"</span><span class="o">)</span>
 
 <span class="nv">dry_run</span><span class="o">=</span><span class="nb">false</span>
 <span class="k">for</span><span class="w"> </span>argument<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>

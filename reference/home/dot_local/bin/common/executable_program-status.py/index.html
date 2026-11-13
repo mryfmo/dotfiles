@@ -1,0 +1,6478 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Generated reference for shell-based dotfiles automation.">
+      
+      
+      
+      
+        <link rel="prev" href="../executable_profile-config-place.py/">
+      
+      
+        <link rel="next" href="../executable_provision-machine-key/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>home/dot_local/bin/common/executable_program-status.py - Dotfiles Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#homedot_localbincommonexecutable_program-statuspy" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../../../.." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Dotfiles Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              home/dot_local/bin/common/executable_program-status.py
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../../../.." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Dotfiles Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../deepseek-harness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DeepSeek harness (dsh) under srt
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../engagement-handout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engagement handout: the prepared host, the client repository and the program store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../omp-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    omp skills: which skills each omp launch and seat loads
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../openai-siwc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    openai-siwc: omp provider for Sign in with ChatGPT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../operator-handout-g16/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G16 operator handout: host cleanup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../orchestrator-seat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The orchestrator seat: stop gate, skill and doctor wiring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../pi-claude-bridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    pi-claude-bridge as an omp extension
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../remote-host-logins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Seat logins on a remote host
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    History
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    History
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Historical documents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../history/nix-first-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nix first architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../history/nix-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nix migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../chezmoi-templates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/.chezmoiscripts Template Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12_2" id="__nav_12_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_12_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_1" id="__nav_12_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot claude
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot claude
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_1_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_1_1" id="__nav_12_2_1_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_2_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_2_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Hooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_enforce-uv.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_format-edited-files.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../dot_claude/hooks/executable_project-map-reload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_project-map-reload.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_2" id="__nav_12_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot config
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot config
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_2_1" id="__nav_12_2_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alias
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_2_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_2_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Alias
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../dot_config/alias/common/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_config/alias/common.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_3" id="__nav_12_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot local
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_2_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot local
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_3_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_3_1" id="__nav_12_2_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bin
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_2_3_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12_2_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bin
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_3_1_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_3_1_1" id="__nav_12_2_3_1_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_12_2_3_1_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12_2_3_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_acp-broker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_acp-broker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_acp-record-place.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_acp-record-place.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_acp-relay.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_acp-relay.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_acp-seat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_acp-seat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_agent-session-staleness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_agent-session-staleness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_brief-check.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_brief-check.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_bus-history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_bus-history.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_cdgwq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_cdgwq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_cdw/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_cdw
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_checkout-guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_checkout-guard.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_chezmoi-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_chezmoi-cd
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_compactiondb-install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_compactiondb-install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_contextdb-codex-notify/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_contextdb-codex-notify
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_dev/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_dev
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_disk-gc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_disk-gc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_fgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_fgc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_git-delete-merged-branches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-delete-merged-branches
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-isolated.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_hcom-dispatch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_hcom-dispatch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_hcom-seat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_hcom-seat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_intake-observe.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_intake-observe.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_ledger-row.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_ledger-row.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_omp-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_omp-run.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_permgate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_permgate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-audit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-body-edit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-body-edit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-close/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-close.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-merge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-merge.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-thread-reply/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-thread-reply.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-thread-resolve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-thread-resolve.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-threads-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-threads-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-update-branch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-update-branch.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_profile-config-place.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_profile-config-place.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_program-status.py
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_program-status.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_provision-machine-key/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_provision-machine-key
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_read-lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_read-lib.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_records-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_records-sync.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-env/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-env
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-init/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-init
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-open-url/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-open-url
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-stop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-stop
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-store-move/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-store-move
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-url-opener/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-url-opener
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_remove-agent-asset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_remove-agent-asset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_router-gh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_router-gh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_router-settings-apply/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_router-settings-apply
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_router-settings-apply.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_router-settings-apply.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_seat-login-preflight/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_seat-login-preflight
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_seat-settings-render/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_seat-settings-render.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_setup-gh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_setup-gh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_setup-gpg/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_setup-gpg
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_uv-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_uv-format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_worker-worktree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_worker-worktree.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_worktree-gc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_worktree-gc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ledger.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/ledger.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_3_1_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_3_1_2" id="__nav_12_2_3_1_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_12_2_3_1_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_2_3_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Server
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../server/cuda/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/server/cuda.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../server/ssh_agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/server/ssh_agent.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3" id="__nav_12_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_12_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Install
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_1" id="__nav_12_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/aws_cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/aws_cli.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/chezmoi_private/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/chezmoi_private.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/credential_dirs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/credential_dirs.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/gh_extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/gh_extensions.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/mise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/mise.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/sheldon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/sheldon.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_2" id="__nav_12_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Macos
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Macos
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_2_1" id="__nav_12_3_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arm64
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_3_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Arm64
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/arm64/prepare_arm64_system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/arm64/prepare_arm64_system.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_2_2" id="__nav_12_3_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_3_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/brew/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/brew.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/command_line_tool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/command_line_tool.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/defaults/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/defaults.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/dependencies.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/docker.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/ghostty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/ghostty.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_3" id="__nav_12_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ubuntu
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ubuntu
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_3_1" id="__nav_12_3_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Client
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_3_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Client
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/default_shell/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/default_shell.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/docker.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/ghostty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/ghostty.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/gnome_settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/gnome_settings.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/tailscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/tailscale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/zed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/zed.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_3_2" id="__nav_12_3_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_3_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/common/apparmor_userns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/apparmor_userns.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/common/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/dependencies.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/common/setup_locale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/setup_locale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/common/ssh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/ssh.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_3_3" id="__nav_12_3_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_3_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Server
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/server/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/server/setup_timezone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/setup_timezone.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/server/ssh_server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/ssh_server.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/server/starship/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/starship.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_4" id="__nav_12_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_12_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Scripts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/apply-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/apply-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/check-sleep/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-sleep.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/check-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/deploy-kit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/deploy-kit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/generate-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/generate-docs.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/gh-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/gh-auth.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/run_benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/run_benchmark.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/run_unit_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/run_unit_test.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/update-agent-assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/update-agent-assets.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/upgrade-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/upgrade-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/usage-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/usage-snapshot.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_4_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_4_12" id="__nav_12_4_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ci
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_4_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_4_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ci
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/git-invocation-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/git-invocation-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/install-pinned-lint-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/install-pinned-lint-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/masked-dirname-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/npm-cooldown-skew-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/npm-cooldown-skew-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/pinned-tool-version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/pinned-tool-version.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/producer-status-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/producer-status-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/run-on-lint-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/run-on-lint-files.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_4_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_4_13" id="__nav_12_4_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lib
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_4_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_4_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Lib
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/asset-manifest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/asset-manifest.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/chezmoi-externals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/chezmoi-externals.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/ci-runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/ci-runner.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/github-release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/github-release.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/installer-pins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/installer-pins.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/npm-release-age/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/npm-release-age.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_4_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_4_14" id="__nav_12_4_14_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Orchestrator
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_4_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_4_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Orchestrator
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/bus-history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/bus-history.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/checkout-guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/checkout-guard.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/ci-rerun/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/ci-rerun.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/git-isolated.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/omp-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/omp-run.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-audit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-body-edit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-body-edit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-close/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-close.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-merge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-merge.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-thread-reply/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-thread-reply.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-thread-resolve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-thread-resolve.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-threads-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-threads-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-update-branch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-update-branch.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/read-lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/read-lib.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/records-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/records-sync.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/seat-settings-render/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/seat-settings-render.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/worker-worktree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/worker-worktree.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/worktree-gc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/worktree-gc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Verification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_13_1" id="__nav_13_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acceptance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_13_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Acceptance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../verification/acceptance/005/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan 005 acceptance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="homedot_localbincommonexecutable_program-statuspy">home/dot_local/bin/common/executable_program-status.py<a class="headerlink" href="#homedot_localbincommonexecutable_program-statuspy" title="Permanent link">&para;</a></h1>
+<h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Source: <code>home/dot_local/bin/common/executable_program-status.py</code></li>
+<li>Category: shell executable</li>
+<li>Renderer: <code>shell-fallback</code></li>
+</ul>
+<h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env -S python3 -I</span>
+<span class="s2">"""Print the operator's state report of a program store in standing order 56's shape (regime-cutover U497).</span>
+
+<span class="s2">The operator asked (2026-11-12 JST, order 57) whether the program is moving or stopped and could not tell from the</span>
+<span class="s2">coordinator's prose. This lever answers from the store's tables alone: `program-status.py &lt;store&gt; [--ja]</span>
+<span class="s2">[--now &lt;ts&gt;] [--progress-root &lt;dir&gt;]` prints one word of state and its reason, one signal line per goal element, the</span>
+<span class="s2">operator's acts, the decisions only the operator can make, and what the agent runs; the coordinator's reply quotes</span>
+<span class="s2">this output instead of composing it. Plain text, five headings, at most one line per item, no table, no colour, no</span>
+<span class="s2">chronology, no commit hash, and no unit id outside the running-work section (order 56). Every input is a store file</span>
+<span class="s2">with a fixed header, read by one reader each and refused on any other shape (order 21); nothing is written.</span>
+
+<span class="s2">The report, line by line:</span>
+<span class="s2">- `state: &lt;word&gt;: &lt;reason&gt;, last record &lt;age&gt; min ago`. The word is `done` when every tests table is green;</span>
+<span class="s2">  `stopped` when no unit is in flight and an open decision or a pending operator act exists, or when a stall check</span>
+<span class="s2">  beside this lever reports every in-flight unit `stalled` or `no-file`; otherwise `moving`. The reason is the first</span>
+<span class="s2">  matching condition in words (`every table green`; `nothing in flight, waiting on &lt;n&gt; operator acts and &lt;m&gt;</span>
+<span class="s2">  decisions`; `every in-flight worker silent`; `&lt;n&gt; units in flight`); the age is `--now` (else the clock, UTC) minus</span>
+<span class="s2">  the last row's `ts` of `decisions.tsv` (header `ts phase decision why evidence result`), in whole minutes, a ts</span>
+<span class="s2">  after now reading 0. A decisions table with no row is a refusal: the last recorded step is read from it.</span>
+<span class="s2">- `elements`, then one line per `tests/&lt;element&gt;.tsv` in name order (header `id use_case source kind host command</span>
+<span class="s2">  expected observed verdict ts`; a file under `tests/` not ending in `.tsv` is ignored; an element name outside</span>
+<span class="s2">  `[A-Za-z0-9._-]`, so one holding a tab, a newline, a control character or a space, is a refusal naming the file):</span>
+<span class="s2">  `&lt;element&gt;: &lt;signal&gt; &lt;ok&gt;/&lt;rows&gt; OK, &lt;ng&gt; NG, &lt;pending&gt; pending`, the signal `green` when every verdict is `OK`,</span>
+<span class="s2">  `red` when any is `NG`, `yellow` when none is `NG` and one is `pending`, else `grey` (no row, or every verdict</span>
+<span class="s2">  another word).</span>
+<span class="s2">- `operator acts`, then every tests row whose `kind` is `operator` and whose verdict is `pending`, tables in name</span>
+<span class="s2">  order and rows in file order: `&lt;element&gt; &lt;id&gt;: &lt;command&gt;` (the command cell holds the step as the handouts write</span>
+<span class="s2">  it).</span>
+<span class="s2">- `operator decisions`, then every `gates.md` row whose `result` cell is empty: `&lt;id&gt;: &lt;gate&gt; (&lt;moment&gt;; default</span>
+<span class="s2">  &lt;default&gt;)`. The table is the one whose header is the file's first table row (a line starting with `|`), read as a</span>
+<span class="s2">  row: split on `|`, each cell stripped, the six names `id gate moment options default result` in that order, any</span>
+<span class="s2">  padding (the kit's template `home/dot_agents/regime/gates.md` pads them, the live store does not; U497c); the next</span>
+<span class="s2">  table row is the separator, six cells of dashes judged the same way; lines that are no table row are skipped; the</span>
+<span class="s2">  result is the text after the fifth cell, so a `||` typed into a row lands there; a header of other names or another</span>
+<span class="s2">  count, a missing separator and a row with fewer than six cells are refusals naming `&lt;file&gt;:&lt;line&gt;`.</span>
+<span class="s2">- `agent running`, then every `units.tsv` row (header `id track state branch pr head_sha brief note`) whose state is</span>
+<span class="s2">  `in-flight`, in file order: `&lt;id&gt; &lt;track&gt; pr &lt;pr or -&gt; progress: &lt;column&gt;`. When `stall-check.py` (U496) is a</span>
+<span class="s2">  regular file beside this lever it is run once as `python3 -I &lt;dir&gt;/stall-check.py &lt;store&gt; [--progress-root &lt;dir&gt;]</span>
+<span class="s2">  [--now &lt;ts&gt;]` with this lever's interpreter, its stdout and stderr read as bytes and decoded as strict UTF-8, and</span>
+<span class="s2">  its rows, `unit&lt;TAB&gt;state&lt;TAB&gt;age_minutes&lt;TAB&gt;last_line` (an optional first row of those names is skipped), fill</span>
+<span class="s2">  the column as `&lt;state&gt;, &lt;age_minutes&gt; min, &lt;last_line&gt;`, the state one of moving, stalled, done, no-file,</span>
+<span class="s2">  unreadable and the age `-` or 1 to 10 decimal digits; an in-flight unit it names no row for reads `progress: no</span>
+<span class="s2">  row`; its exit 0 or 1 is a report, its exit 2 is a refusal of this report quoting its first stderr line, any other</span>
+<span class="s2">  exit, output that is not UTF-8, a row of another width, a carriage return, a state or an age of another shape, a</span>
+<span class="s2">  unit named twice, a time limit of 120 seconds or a start that fails is a refusal too, the row ones naming the line.</span>
+<span class="s2">  Without the file beside this one the column reads `progress: unknown`. Rows of units not in flight print nothing.</span>
+<span class="s2">A section with no item prints `none`. `--ja` prints the five headings and the state word in the operator's forms</span>
+<span class="s2">(状態 / 要素 / 操作者の作業 / 操作者の判断 / agent が動かしているもの; 進んでいる / 止まっている / 完了) and translates nothing else.</span>
+
+<span class="s2">Exit 0 when the report printed. Exit 2 with one stderr line, `program-status.py: refused: &lt;reason&gt;`, and nothing on</span>
+<span class="s2">stdout for every refusal: the self pin (below), a store that is no directory, `--now` not exactly</span>
+<span class="s2">`&lt;YYYY-MM-DD&gt;T&lt;HH:MM:SS&gt;Z` (the shape is checked before strptime, which would take `2026-1-2T3:4:5Z`), a file that is</span>
+<span class="s2">missing, unreadable or not UTF-8, a tests table, `units.tsv` or `decisions.tsv` whose first line is not its header</span>
+<span class="s2">(named `&lt;file&gt;:1`) or whose row has another number of cells or a carriage return, a `gates.md` whose first table row</span>
+<span class="s2">is not the six header names or whose next is not the separator, with a short row or with a carriage return, a</span>
+<span class="s2">`decisions.tsv` with no row or whose last ts is not a timestamp of that exact shape, a `tests` directory that is</span>
+<span class="s2">missing, and the stall-check outcomes above. Every file is read byte-exact (`newline=""`, split on `\n` alone), so a</span>
+<span class="s2">CRLF row reaches the carriage-return refusal instead of being normalised into a report (U497c). One sanitiser serves</span>
+<span class="s2">the refusal and every printed line: each line boundary `str.splitlines` knows (newline, carriage return, VT, FF, FS,</span>
+<span class="s2">GS, RS, NEL, U+2028, U+2029) inside a path, a quoted value or a printed cell becomes a space, so one refusal is one</span>
+<span class="s2">stderr line and one report item is one line whatever the store holds. No file is written and no mode is changed.</span>
+
+<span class="s2">Installed as `~/.local/bin/common/program-status.py` in `brief-check.py`'s form: `scripts/generate-agent-configs.py`</span>
+<span class="s2">writes the same bytes to `home/dot_local/bin/common/executable_program-status.py` and pins their sha256 under</span>
+<span class="s2">`claude.levers.sha256`; before anything else the file hashes itself against that pin, the deployed manifest</span>
+<span class="s2">`~/.agents/agent-config.yaml` when its physical directory is the physical `~/.local/bin/common`, else the checkout's</span>
+<span class="s2">`home/dot_agents/agent-config.yaml` two levels up, and refuses to run on a difference, so a rewritten copy prints no</span>
+<span class="s2">report. The orchestrator seat's policy allows that installed path alone.</span>
+<span class="s2">"""</span>
+
+import<span class="w"> </span>argparse
+import<span class="w"> </span>hashlib
+import<span class="w"> </span>os
+import<span class="w"> </span>re
+import<span class="w"> </span>stat
+import<span class="w"> </span>subprocess
+import<span class="w"> </span>sys
+from<span class="w"> </span>datetime<span class="w"> </span>import<span class="w"> </span>datetime,<span class="w"> </span>timezone
+
+<span class="nv">LEVER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"program-status.py"</span>
+<span class="nv">STALL_CHECK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"stall-check.py"</span>
+<span class="c1"># The levers block of the manifest, read as text by indentation alone, never parsed as YAML (brief-check.py, U136).</span>
+<span class="nv">MAPPING_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(\S+):</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="nv">LEVER_PIN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(\S+): ([0-9a-f]{64})</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="nv">LEVERS_KEYS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"claude"</span>,<span class="w"> </span><span class="s2">"levers"</span>,<span class="w"> </span><span class="s2">"sha256"</span><span class="o">)</span>
+
+<span class="c1"># A timestamp's exact shape, checked before strptime (which would take `2026-1-2T3:4:5Z`); ASCII digits only.</span>
+<span class="nv">TS_SHAPE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z"</span><span class="o">)</span>
+<span class="nv">TS_FORMAT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"%Y-%m-%dT%H:%M:%SZ"</span>
+<span class="nv">TESTS_HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"id"</span>,<span class="w"> </span><span class="s2">"use_case"</span>,<span class="w"> </span><span class="s2">"source"</span>,<span class="w"> </span><span class="s2">"kind"</span>,<span class="w"> </span><span class="s2">"host"</span>,<span class="w"> </span><span class="s2">"command"</span>,<span class="w"> </span><span class="s2">"expected"</span>,<span class="w"> </span><span class="s2">"observed"</span>,<span class="w"> </span><span class="s2">"verdict"</span>,<span class="w"> </span><span class="s2">"ts"</span><span class="o">)</span>
+<span class="nv">UNITS_HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"id"</span>,<span class="w"> </span><span class="s2">"track"</span>,<span class="w"> </span><span class="s2">"state"</span>,<span class="w"> </span><span class="s2">"branch"</span>,<span class="w"> </span><span class="s2">"pr"</span>,<span class="w"> </span><span class="s2">"head_sha"</span>,<span class="w"> </span><span class="s2">"brief"</span>,<span class="w"> </span><span class="s2">"note"</span><span class="o">)</span>
+<span class="nv">DECISIONS_HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"ts"</span>,<span class="w"> </span><span class="s2">"phase"</span>,<span class="w"> </span><span class="s2">"decision"</span>,<span class="w"> </span><span class="s2">"why"</span>,<span class="w"> </span><span class="s2">"evidence"</span>,<span class="w"> </span><span class="s2">"result"</span><span class="o">)</span>
+<span class="c1"># The element name a tests table's file name carries before `.tsv`: one report item is one line, so no tab, newline,</span>
+<span class="c1"># control character or space (U497b).</span>
+<span class="nv">ELEMENT_NAME</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"[A-Za-z0-9._-]+"</span><span class="o">)</span>
+<span class="c1"># The gates header's six cell names, read as a table row with any padding (U497c); the separator row's cells.</span>
+<span class="nv">GATES_HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"id"</span>,<span class="w"> </span><span class="s2">"gate"</span>,<span class="w"> </span><span class="s2">"moment"</span>,<span class="w"> </span><span class="s2">"options"</span>,<span class="w"> </span><span class="s2">"default"</span>,<span class="w"> </span><span class="s2">"result"</span><span class="o">)</span>
+<span class="nv">GATES_WIDTH</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>len<span class="o">(</span>GATES_HEADER<span class="o">)</span>
+<span class="nv">SEPARATOR_CELL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">":?-+:?"</span><span class="o">)</span>
+<span class="nv">STALL_HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"unit"</span>,<span class="w"> </span><span class="s2">"state"</span>,<span class="w"> </span><span class="s2">"age_minutes"</span>,<span class="w"> </span><span class="s2">"last_line"</span><span class="o">)</span>
+<span class="c1"># The stall check's row contract (U496, U496b): the five states, the age `-` or 1 to 10 decimal digits.</span>
+<span class="nv">STALL_STATES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"moving"</span>,<span class="w"> </span><span class="s2">"stalled"</span>,<span class="w"> </span><span class="s2">"done"</span>,<span class="w"> </span><span class="s2">"no-file"</span>,<span class="w"> </span><span class="s2">"unreadable"</span><span class="o">)</span>
+<span class="nv">STALL_AGE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"-|[0-9]{1,10}"</span><span class="o">)</span>
+<span class="nv">STALL_TIMEOUT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">120</span>
+<span class="c1"># The stall check's states that mean the worker is silent (U496).</span>
+<span class="nv">SILENT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>frozenset<span class="o">({</span><span class="s2">"stalled"</span>,<span class="w"> </span><span class="s2">"no-file"</span><span class="o">})</span>
+<span class="c1"># The line boundaries `str.splitlines` knows; `one_line` replaces each with a space in every refusal and every printed</span>
+<span class="c1"># line.</span>
+<span class="nv">LINE_BREAK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"[\n\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]"</span><span class="o">)</span>
+
+<span class="nv">HEADINGS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="s2">"en"</span>:<span class="w"> </span><span class="o">(</span><span class="s2">"state"</span>,<span class="w"> </span><span class="s2">"elements"</span>,<span class="w"> </span><span class="s2">"operator acts"</span>,<span class="w"> </span><span class="s2">"operator decisions"</span>,<span class="w"> </span><span class="s2">"agent running"</span><span class="o">)</span>,
+<span class="w">    </span><span class="s2">"ja"</span>:<span class="w"> </span><span class="o">(</span><span class="s2">"状態"</span>,<span class="w"> </span><span class="s2">"要素"</span>,<span class="w"> </span><span class="s2">"操作者の作業"</span>,<span class="w"> </span><span class="s2">"操作者の判断"</span>,<span class="w"> </span><span class="s2">"agent が動かしているもの"</span><span class="o">)</span>,
+<span class="o">}</span>
+<span class="nv">WORDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="s2">"en"</span>:<span class="w"> </span><span class="o">{</span><span class="s2">"moving"</span>:<span class="w"> </span><span class="s2">"moving"</span>,<span class="w"> </span><span class="s2">"stopped"</span>:<span class="w"> </span><span class="s2">"stopped"</span>,<span class="w"> </span><span class="s2">"done"</span>:<span class="w"> </span><span class="s2">"done"</span><span class="o">}</span>,
+<span class="w">    </span><span class="s2">"ja"</span>:<span class="w"> </span><span class="o">{</span><span class="s2">"moving"</span>:<span class="w"> </span><span class="s2">"進んでいる"</span>,<span class="w"> </span><span class="s2">"stopped"</span>:<span class="w"> </span><span class="s2">"止まっている"</span>,<span class="w"> </span><span class="s2">"done"</span>:<span class="w"> </span><span class="s2">"完了"</span><span class="o">}</span>,
+<span class="o">}</span>
+
+
+def<span class="w"> </span>one_line<span class="o">(</span>text<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""`text` with every line boundary `str.splitlines` knows (newline, carriage return, VT, FF, FS, GS, RS, NEL,</span>
+<span class="s2">    U+2028, U+2029) a space: the one sanitiser of every refusal and every printed report line, so an id, a gate text, a</span>
+<span class="s2">    command or a stall-check cell that holds one cannot add a line (U497b, U497c)."""</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>LINE_BREAK.sub<span class="o">(</span><span class="s2">" "</span>,<span class="w"> </span>text<span class="o">)</span>
+
+
+def<span class="w"> </span>refuse<span class="o">(</span>reason<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""One stderr line in the levers' words, exit 2; nothing was printed. A line boundary inside the reason (a newline</span>
+<span class="s2">    or a carriage return in a path or a quoted value) becomes a space, so every refusal is one line (U497b)."""</span>
+<span class="w">    </span>print<span class="o">(</span>f<span class="s2">"{LEVER}: refused: {one_line(reason)}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
+<span class="w">    </span>sys.exit<span class="o">(</span><span class="m">2</span><span class="o">)</span>
+
+
+def<span class="w"> </span>lever_self_check<span class="o">()</span>:
+<span class="w">    </span><span class="s2">"""Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31).</span>
+
+<span class="s2">    The physical directory of this file decides the manifest: the deployed `~/.agents/agent-config.yaml` when the</span>
+<span class="s2">    directory is the physical `~/.local/bin/common`, else the checkout's `home/dot_agents/agent-config.yaml` two</span>
+<span class="s2">    levels up; an unset or unresolvable HOME means the checkout manifest. The pin is the block's `program-status.py`</span>
+<span class="s2">    entry: one entry is the pin, none or two is a refusal. Every read is checked and a failed one is a refusal, never</span>
+<span class="s2">    a pass (preferences.md standing order 21); the reader is brief-check.py's, spelled the same.</span>
+<span class="s2">    """</span>
+<span class="w">    </span><span class="nv">directory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.realpath<span class="o">(</span>os.path.dirname<span class="o">(</span>os.path.abspath<span class="o">(</span>__file__<span class="o">)))</span>
+<span class="w">    </span><span class="nv">self_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>directory,<span class="w"> </span>os.path.basename<span class="o">(</span>__file__<span class="o">))</span>
+<span class="w">    </span><span class="nv">home</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">"HOME"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>home<span class="w"> </span>and<span class="w"> </span>os.path.isdir<span class="o">(</span>home<span class="o">)</span><span class="w"> </span>and<span class="w"> </span><span class="nv">directory</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>os.path.realpath<span class="o">(</span>os.path.join<span class="o">(</span>home,<span class="w"> </span><span class="s2">".local/bin/common"</span><span class="o">))</span>:
+<span class="w">        </span><span class="nv">manifest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>home,<span class="w"> </span><span class="s2">".agents/agent-config.yaml"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">else</span>:
+<span class="w">        </span><span class="nv">manifest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>directory,<span class="w"> </span><span class="s2">"../../home/dot_agents/agent-config.yaml"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>os.access<span class="o">(</span>manifest,<span class="w"> </span>os.R_OK<span class="o">)</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"manifest unreadable: {manifest}"</span><span class="o">)</span>
+<span class="w">    </span>try:
+<span class="w">        </span>with<span class="w"> </span>open<span class="o">(</span>manifest,<span class="w"> </span><span class="s2">"rb"</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>handle:
+<span class="w">            </span><span class="nv">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>handle.read<span class="o">()</span>.decode<span class="o">(</span><span class="s2">"utf-8"</span>,<span class="w"> </span><span class="s2">"replace"</span><span class="o">)</span>.splitlines<span class="o">()</span>
+<span class="w">    </span>except<span class="w"> </span>OSError:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot read {manifest}"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">pins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>digest<span class="w"> </span><span class="k">for</span><span class="w"> </span>name,<span class="w"> </span>digest<span class="w"> </span><span class="k">in</span><span class="w"> </span>manifest_levers<span class="o">(</span>lines,<span class="w"> </span>manifest<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>LEVER<span class="o">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>pins<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">1</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"no single sha256 pin for {LEVER} in {manifest}"</span><span class="o">)</span>
+<span class="w">    </span>try:
+<span class="w">        </span>with<span class="w"> </span>open<span class="o">(</span>self_path,<span class="w"> </span><span class="s2">"rb"</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>handle:
+<span class="w">            </span><span class="nv">digest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hashlib.sha256<span class="o">(</span>handle.read<span class="o">())</span>.hexdigest<span class="o">()</span>
+<span class="w">    </span>except<span class="w"> </span>OSError:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot hash {self_path}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>digest<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>pins<span class="o">[</span><span class="m">0</span><span class="o">]</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"sha256 {digest} of {self_path} differs from the pin in {manifest}"</span><span class="o">)</span>
+
+
+def<span class="w"> </span>manifest_levers<span class="o">(</span>lines,<span class="w"> </span>manifest<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The `(name, sha256)` pins under the manifest's `claude.levers.sha256` mapping, in file order (brief-check.py,</span>
+<span class="s2">    U136): the mapping keys are walked by indentation, so `levers:` counts only under the top-level `claude:` and</span>
+<span class="s2">    `sha256:` only under that `levers:`; inside the block, blank and comment lines are skipped, the entries share the</span>
+<span class="s2">    indentation of the first pin, and the list ends at the first line indented less. An entry that is not</span>
+<span class="s2">    `&lt;name&gt;: &lt;64 hex&gt;` is a refusal naming the line; no entry at all is the missing-block refusal."""</span>
+<span class="w">    </span><span class="nv">pins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="nv">keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span><span class="w">  </span><span class="c1"># the open mapping keys as (indentation, key), outermost first</span>
+<span class="w">    </span><span class="nv">block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="w">  </span><span class="c1"># the indentation of the `sha256:` key once the path is open</span>
+<span class="w">    </span><span class="nv">entries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="w">  </span><span class="c1"># the indentation of the pin lines, fixed by the first</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>lines,<span class="w"> </span><span class="m">1</span><span class="o">)</span>:
+<span class="w">        </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.lstrip<span class="o">(</span><span class="s2">" "</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>text<span class="w"> </span>or<span class="w"> </span>text.startswith<span class="o">(</span><span class="s2">"#"</span><span class="o">)</span>:
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">indent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>len<span class="o">(</span>line<span class="o">)</span><span class="w"> </span>-<span class="w"> </span>len<span class="o">(</span>text<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>block<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>indent<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>block<span class="w"> </span>or<span class="w"> </span><span class="o">(</span>entries<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>&lt;<span class="w"> </span>entries<span class="o">)</span>:
+<span class="w">                </span><span class="k">break</span>
+<span class="w">            </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>LEVER_PIN.match<span class="o">(</span>text<span class="o">)</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span>or<span class="w"> </span><span class="o">(</span>entries<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>entries<span class="o">)</span>:
+<span class="w">                </span>refuse<span class="o">(</span>f<span class="s2">"line {number} of {manifest} is not a `&lt;name&gt;: &lt;sha256&gt;` pin under claude.levers.sha256"</span><span class="o">)</span>
+<span class="w">            </span><span class="nv">entries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>indent
+<span class="w">            </span>pins.append<span class="o">((</span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span>,<span class="w"> </span>match.group<span class="o">(</span><span class="m">2</span><span class="o">)))</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">while</span><span class="w"> </span>keys<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>keys<span class="o">[</span>-1<span class="o">][</span><span class="m">0</span><span class="o">]</span>:
+<span class="w">            </span>keys.pop<span class="o">()</span>
+<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>MAPPING_KEY.match<span class="o">(</span>text<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>and<span class="w"> </span><span class="o">(</span>keys<span class="w"> </span>or<span class="w"> </span><span class="nv">indent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">)</span>:
+<span class="w">            </span>keys.append<span class="o">((</span>indent,<span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)))</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>tuple<span class="o">(</span>key<span class="w"> </span><span class="k">for</span><span class="w"> </span>_,<span class="w"> </span>key<span class="w"> </span><span class="k">in</span><span class="w"> </span>keys<span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>LEVERS_KEYS:
+<span class="w">                </span><span class="nv">block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>indent
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>pins:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"no claude.levers.sha256 block in {manifest}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>tuple<span class="o">(</span>pins<span class="o">)</span>
+
+
+lever_self_check<span class="o">()</span>
+
+
+def<span class="w"> </span>read_text<span class="o">(</span>path<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The whole file as strict UTF-8, byte-exact (`newline=""`: no CRLF or CR is turned into a newline, so a carriage</span>
+<span class="s2">    return reaches the row checks; U497c); a file that is missing, unreadable or not UTF-8 is a refusal naming it."""</span>
+<span class="w">    </span>try:
+<span class="w">        </span>with<span class="w"> </span>open<span class="o">(</span>path,<span class="w"> </span><span class="nv">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span>,<span class="w"> </span><span class="nv">newline</span><span class="o">=</span><span class="s2">""</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>handle:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>handle.read<span class="o">()</span>
+<span class="w">    </span>except<span class="w"> </span>FileNotFoundError:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{path} is missing; the report is read from the store's tables"</span><span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot read {path}: {error.strerror}"</span><span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>UnicodeDecodeError<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{path} is not UTF-8: {error.reason}"</span><span class="o">)</span>
+
+
+def<span class="w"> </span>read_tsv<span class="o">(</span>path,<span class="w"> </span>header<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The rows of a tab-separated table whose first line is exactly `header`, each line without a carriage return and</span>
+<span class="s2">    each row with the header's number of cells; any other shape is a refusal naming the file and the line (the</span>
+<span class="s2">    header's, `:1`). The text is split on `\\n` alone, so a CRLF table is refused at its first line."""</span>
+<span class="w">    </span><span class="nv">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>read_text<span class="o">(</span>path<span class="o">)</span>.split<span class="o">(</span><span class="s2">"\n"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>lines<span class="w"> </span>and<span class="w"> </span>lines<span class="o">[</span>-1<span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">""</span>:
+<span class="w">        </span>lines.pop<span class="o">()</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>lines<span class="w"> </span>and<span class="w"> </span><span class="s2">"\r"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>lines<span class="o">[</span><span class="m">0</span><span class="o">]</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"line 1 of {path} holds a carriage return"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>lines<span class="w"> </span>or<span class="w"> </span>lines<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"\t"</span>.join<span class="o">(</span>header<span class="o">)</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{path}:1 is not the header `{' '.join(header)}`"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>lines<span class="o">[</span><span class="m">1</span>:<span class="o">]</span>,<span class="w"> </span><span class="m">2</span><span class="o">)</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="s2">"\r"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>line:
+<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"line {number} of {path} holds a carriage return"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">cells</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.split<span class="o">(</span><span class="s2">"\t"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>cells<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>len<span class="o">(</span>header<span class="o">)</span>:
+<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"line {number} of {path} has {len(cells)} cells, not the header's {len(header)}"</span><span class="o">)</span>
+<span class="w">        </span>rows.append<span class="o">(</span>cells<span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>rows
+
+
+def<span class="w"> </span>elements<span class="o">(</span>store<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""One (element, signal, ok, ng, pending, rows) per `tests/*.tsv` in name order, and the operator's pending acts</span>
+<span class="s2">    as (element, id, command) in table then file order; a table whose element name is outside `[A-Za-z0-9._-]` is a</span>
+<span class="s2">    refusal naming the file, so every element line is one line."""</span>
+<span class="w">    </span><span class="nv">tests</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>store,<span class="w"> </span><span class="s2">"tests"</span><span class="o">)</span>
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">names</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sorted<span class="o">(</span>os.listdir<span class="o">(</span>tests<span class="o">))</span>
+<span class="w">    </span>except<span class="w"> </span>FileNotFoundError:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{tests} is missing; one goal element per table is read from it"</span><span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot list {tests}: {error.strerror}"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">signals</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="nv">acts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>names:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>name.endswith<span class="o">(</span><span class="s2">".tsv"</span><span class="o">)</span>:
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">element</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>name<span class="o">[</span>:<span class="w"> </span>-len<span class="o">(</span><span class="s2">".tsv"</span><span class="o">)]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>ELEMENT_NAME.fullmatch<span class="o">(</span>element<span class="o">)</span><span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">            </span>refuse<span class="o">(</span>
+<span class="w">                </span>f<span class="s2">"the tests table {os.path.join(tests, name)} is not `&lt;element&gt;.tsv` with the element in [A-Za-z0-9._-]"</span>
+<span class="w">            </span><span class="o">)</span>
+<span class="w">        </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>read_tsv<span class="o">(</span>os.path.join<span class="o">(</span>tests,<span class="w"> </span>name<span class="o">)</span>,<span class="w"> </span>TESTS_HEADER<span class="o">)</span>
+<span class="w">        </span><span class="nv">verdicts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>row<span class="o">[</span><span class="m">8</span><span class="o">]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>rows<span class="o">]</span>
+<span class="w">        </span><span class="nv">ok</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>verdicts.count<span class="o">(</span><span class="s2">"OK"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">ng</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>verdicts.count<span class="o">(</span><span class="s2">"NG"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">pending</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>verdicts.count<span class="o">(</span><span class="s2">"pending"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>rows<span class="w"> </span>and<span class="w"> </span><span class="nv">ok</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>len<span class="o">(</span>rows<span class="o">)</span>:
+<span class="w">            </span><span class="nv">signal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"green"</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span>ng:
+<span class="w">            </span><span class="nv">signal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"red"</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span>pending:
+<span class="w">            </span><span class="nv">signal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"yellow"</span>
+<span class="w">        </span><span class="k">else</span>:
+<span class="w">            </span><span class="nv">signal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"grey"</span>
+<span class="w">        </span>signals.append<span class="o">((</span>element,<span class="w"> </span>signal,<span class="w"> </span>ok,<span class="w"> </span>ng,<span class="w"> </span>pending,<span class="w"> </span>len<span class="o">(</span>rows<span class="o">)))</span>
+<span class="w">        </span>acts.extend<span class="o">((</span>element,<span class="w"> </span>row<span class="o">[</span><span class="m">0</span><span class="o">]</span>,<span class="w"> </span>row<span class="o">[</span><span class="m">5</span><span class="o">])</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>rows<span class="w"> </span><span class="k">if</span><span class="w"> </span>row<span class="o">[</span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"operator"</span><span class="w"> </span>and<span class="w"> </span>row<span class="o">[</span><span class="m">8</span><span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"pending"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>signals,<span class="w"> </span>acts
+
+
+def<span class="w"> </span>table_rows<span class="o">(</span>path<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The `(line number, stripped cells)` of every table row of a markdown file, in file order: a table row is a line</span>
+<span class="s2">    that starts with `|` once stripped and ends with one, its cells the text between the bars, each stripped; a line</span>
+<span class="s2">    holding a carriage return or a row that starts and does not end is a refusal naming the line; every other line is</span>
+<span class="s2">    skipped."""</span>
+<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>read_text<span class="o">(</span>path<span class="o">)</span>.split<span class="o">(</span><span class="s2">"\n"</span><span class="o">)</span>,<span class="w"> </span><span class="m">1</span><span class="o">)</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="s2">"\r"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>line:
+<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"line {number} of {path} holds a carriage return"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.strip<span class="o">()</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>text.startswith<span class="o">(</span><span class="s2">"|"</span><span class="o">)</span>:
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>text.endswith<span class="o">(</span><span class="s2">"|"</span><span class="o">)</span>:
+<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"line {number} of {path} starts a table row and does not end one"</span><span class="o">)</span>
+<span class="w">        </span>rows.append<span class="o">((</span>number,<span class="w"> </span><span class="o">[</span>cell.strip<span class="o">()</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>cell<span class="w"> </span><span class="k">in</span><span class="w"> </span>text<span class="o">[</span><span class="m">1</span>:-1<span class="o">]</span>.split<span class="o">(</span><span class="s2">"|"</span><span class="o">)]))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>rows
+
+
+def<span class="w"> </span>open_gates<span class="o">(</span>store<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The (id, gate, moment, default) of every gates row whose result cell is empty. The header is the file's first</span>
+<span class="s2">    table row read by cell names (`id gate moment options default result`, any padding: the kit's template pads them,</span>
+<span class="s2">    the live store does not), the separator the next table row (six cells of `:?-+:?`); other names, another count, a</span>
+<span class="s2">    missing separator and a short row are refusals naming `&lt;file&gt;:&lt;line&gt;` (U497c)."""</span>
+<span class="w">    </span><span class="nv">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>store,<span class="w"> </span><span class="s2">"gates.md"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>table_rows<span class="o">(</span>path<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>rows:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{path} holds no table row; the header `{' '.join(GATES_HEADER)}` is read as its first"</span><span class="o">)</span>
+<span class="w">    </span>number,<span class="w"> </span><span class="nv">cells</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>rows<span class="o">[</span><span class="m">0</span><span class="o">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>tuple<span class="o">(</span>cells<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>GATES_HEADER:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{path}:{number} is not the header `{' '.join(GATES_HEADER)}` read as cells"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>rows<span class="o">)</span><span class="w"> </span>&lt;<span class="w"> </span><span class="m">2</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{path}:{number} is the header and no separator row follows it"</span><span class="o">)</span>
+<span class="w">    </span>number,<span class="w"> </span><span class="nv">cells</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>rows<span class="o">[</span><span class="m">1</span><span class="o">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>cells<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>GATES_WIDTH<span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>all<span class="o">(</span>SEPARATOR_CELL.fullmatch<span class="o">(</span>cell<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>cell<span class="w"> </span><span class="k">in</span><span class="w"> </span>cells<span class="o">)</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{path}:{number} is not the separator row of {GATES_WIDTH} dash cells under the header"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">opened</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>cells<span class="w"> </span><span class="k">in</span><span class="w"> </span>rows<span class="o">[</span><span class="m">2</span>:<span class="o">]</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>cells<span class="o">)</span><span class="w"> </span>&lt;<span class="w"> </span>GATES_WIDTH:
+<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"line {number} of {path} has {len(cells)} cells, fewer than the header's {GATES_WIDTH}"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"|"</span>.join<span class="o">(</span>cells<span class="o">[</span>GATES_WIDTH<span class="w"> </span>-<span class="w"> </span><span class="m">1</span><span class="w"> </span>:<span class="o">])</span>.strip<span class="o">(</span><span class="s2">"| "</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>result:
+<span class="w">            </span>opened.append<span class="o">((</span>cells<span class="o">[</span><span class="m">0</span><span class="o">]</span>,<span class="w"> </span>cells<span class="o">[</span><span class="m">1</span><span class="o">]</span>,<span class="w"> </span>cells<span class="o">[</span><span class="m">2</span><span class="o">]</span>,<span class="w"> </span>cells<span class="o">[</span><span class="m">4</span><span class="o">]))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>opened
+
+
+def<span class="w"> </span>in_flight<span class="o">(</span>store<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The (id, track, pr or -) of every `in-flight` row of units.tsv, in file order."""</span>
+<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>read_tsv<span class="o">(</span>os.path.join<span class="o">(</span>store,<span class="w"> </span><span class="s2">"units.tsv"</span><span class="o">)</span>,<span class="w"> </span>UNITS_HEADER<span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">[(</span>row<span class="o">[</span><span class="m">0</span><span class="o">]</span>,<span class="w"> </span>row<span class="o">[</span><span class="m">1</span><span class="o">]</span>,<span class="w"> </span>row<span class="o">[</span><span class="m">4</span><span class="o">]</span><span class="w"> </span>or<span class="w"> </span><span class="s2">"-"</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>rows<span class="w"> </span><span class="k">if</span><span class="w"> </span>row<span class="o">[</span><span class="m">2</span><span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"in-flight"</span><span class="o">]</span>
+
+
+def<span class="w"> </span>timestamp<span class="o">(</span>text,<span class="w"> </span>what<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""`text` as an aware UTC datetime; a value that is not exactly `&lt;YYYY-MM-DD&gt;T&lt;HH:MM:SS&gt;Z` (checked as a shape</span>
+<span class="s2">    before strptime, which would take `2026-1-2T3:4:5Z`) or that names no calendar moment is a refusal naming `what`."""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>TS_SHAPE.fullmatch<span class="o">(</span>text<span class="o">)</span><span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{what} {text!r} is not &lt;YYYY-MM-DD&gt;T&lt;HH:MM:SS&gt;Z"</span><span class="o">)</span>
+<span class="w">    </span>try:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>datetime.strptime<span class="o">(</span>text,<span class="w"> </span>TS_FORMAT<span class="o">)</span>.replace<span class="o">(</span><span class="nv">tzinfo</span><span class="o">=</span>timezone.utc<span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>ValueError:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{what} {text!r} is not &lt;YYYY-MM-DD&gt;T&lt;HH:MM:SS&gt;Z"</span><span class="o">)</span>
+
+
+def<span class="w"> </span>last_record_age<span class="o">(</span>store,<span class="w"> </span>now<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""Whole minutes from the last decisions row's ts to now; a table with no row is a refusal."""</span>
+<span class="w">    </span><span class="nv">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>store,<span class="w"> </span><span class="s2">"decisions.tsv"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>read_tsv<span class="o">(</span>path,<span class="w"> </span>DECISIONS_HEADER<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>rows:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{path} holds no row; the last recorded step is read from it"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">last</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>timestamp<span class="o">(</span>rows<span class="o">[</span>-1<span class="o">][</span><span class="m">0</span><span class="o">]</span>,<span class="w"> </span>f<span class="s2">"the last row's ts of {path}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>max<span class="o">(</span><span class="m">0</span>,<span class="w"> </span>int<span class="o">((</span>now<span class="w"> </span>-<span class="w"> </span>last<span class="o">)</span>.total_seconds<span class="o">()</span><span class="w"> </span>//<span class="w"> </span><span class="m">60</span><span class="o">))</span>
+
+
+def<span class="w"> </span>decoded<span class="o">(</span>data,<span class="w"> </span>what<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""`data` as strict UTF-8; anything else is a refusal naming the stream."""</span>
+<span class="w">    </span>try:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>data.decode<span class="o">(</span><span class="s2">"utf-8"</span><span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>UnicodeDecodeError<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{what} is not UTF-8: {error.reason} at byte {error.start}"</span><span class="o">)</span>
+
+
+def<span class="w"> </span>stall_rows<span class="o">(</span>here,<span class="w"> </span>store,<span class="w"> </span>args<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The stall check's rows by unit as (state, age_minutes, last_line), or None when no `stall-check.py` is beside</span>
+<span class="s2">    this lever; its exit 2 and every other failure of the run, of its encoding or of a row's shape (width, carriage</span>
+<span class="s2">    return, state, age) is a refusal, the row ones naming the line."""</span>
+<span class="w">    </span><span class="nv">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>here,<span class="w"> </span>STALL_CHECK<span class="o">)</span>
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.lstat<span class="o">(</span>path<span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>FileNotFoundError:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot stat {path}: {error.strerror}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>stat.S_ISREG<span class="o">(</span>status.st_mode<span class="o">)</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{path} is not a regular file"</span><span class="o">)</span>
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>sys.executable,<span class="w"> </span><span class="s2">"-I"</span>,<span class="w"> </span>path,<span class="w"> </span>store<span class="o">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>args.progress_root<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
+<span class="w">        </span><span class="nb">command</span><span class="w"> </span>+<span class="o">=</span><span class="w"> </span><span class="o">[</span><span class="s2">"--progress-root"</span>,<span class="w"> </span>args.progress_root<span class="o">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>args.now<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
+<span class="w">        </span><span class="nb">command</span><span class="w"> </span>+<span class="o">=</span><span class="w"> </span><span class="o">[</span><span class="s2">"--now"</span>,<span class="w"> </span>args.now<span class="o">]</span>
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">run</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>subprocess.run<span class="o">(</span>command,<span class="w"> </span><span class="nv">capture_output</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">timeout</span><span class="o">=</span>STALL_TIMEOUT,<span class="w"> </span><span class="nv">check</span><span class="o">=</span>False<span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>subprocess.TimeoutExpired:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{STALL_CHECK} gave no answer within {STALL_TIMEOUT} seconds"</span><span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot run {path}: {error.strerror}"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">stdout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decoded<span class="o">(</span>run.stdout,<span class="w"> </span>f<span class="s2">"{STALL_CHECK}'s stdout"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">stderr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decoded<span class="o">(</span>run.stderr,<span class="w"> </span>f<span class="s2">"{STALL_CHECK}'s stderr"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">first</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>stderr.strip<span class="o">()</span>.split<span class="o">(</span><span class="s2">"\n"</span>,<span class="w"> </span><span class="m">1</span><span class="o">)[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>stderr.strip<span class="o">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"no reason given"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>run.returncode<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">2</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{STALL_CHECK} refused this report: {first}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>run.returncode<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="m">0</span>,<span class="w"> </span><span class="m">1</span><span class="o">)</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{STALL_CHECK} exited {run.returncode}: {first}"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>stdout.split<span class="o">(</span><span class="s2">"\n"</span><span class="o">)</span>,<span class="w"> </span><span class="m">1</span><span class="o">)</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>line:
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="s2">"\r"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>line:
+<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"line {number} of {STALL_CHECK}'s output holds a carriage return"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">cells</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.split<span class="o">(</span><span class="s2">"\t"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>tuple<span class="o">(</span>cells<span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>STALL_HEADER:
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>cells<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>len<span class="o">(</span>STALL_HEADER<span class="o">)</span>:
+<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"line {number} of {STALL_CHECK}'s output has {len(cells)} cells, not {' '.join(STALL_HEADER)}"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>cells<span class="o">[</span><span class="m">1</span><span class="o">]</span><span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>STALL_STATES:
+<span class="w">            </span>refuse<span class="o">(</span>
+<span class="w">                </span>f<span class="s2">"line {number} of {STALL_CHECK}'s output has the state {cells[1]!r}, not one of {' '.join(STALL_STATES)}"</span>
+<span class="w">            </span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>STALL_AGE.fullmatch<span class="o">(</span>cells<span class="o">[</span><span class="m">2</span><span class="o">])</span><span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">            </span>refuse<span class="o">(</span>
+<span class="w">                </span>f<span class="s2">"line {number} of {STALL_CHECK}'s output has the age_minutes {cells[2]!r}, not `-` or 1 to 10 digits"</span>
+<span class="w">            </span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>cells<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>rows:
+<span class="w">            </span>refuse<span class="o">(</span>f<span class="s2">"{STALL_CHECK} names the unit {cells[0]} twice"</span><span class="o">)</span>
+<span class="w">        </span>rows<span class="o">[</span>cells<span class="o">[</span><span class="m">0</span><span class="o">]]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>cells<span class="o">[</span><span class="m">1</span><span class="o">]</span>,<span class="w"> </span>cells<span class="o">[</span><span class="m">2</span><span class="o">]</span>,<span class="w"> </span>cells<span class="o">[</span><span class="m">3</span><span class="o">])</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>rows
+
+
+def<span class="w"> </span>progress_column<span class="o">(</span>unit,<span class="w"> </span>rows<span class="o">)</span>:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>rows<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">"unknown"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>unit<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>rows:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">"no row"</span>
+<span class="w">    </span>state,<span class="w"> </span>age,<span class="w"> </span><span class="nv">last_line</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>rows<span class="o">[</span>unit<span class="o">]</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"{state}, {age} min, {last_line}"</span>
+
+
+def<span class="w"> </span>state_word<span class="o">(</span>signals,<span class="w"> </span>acts,<span class="w"> </span>opened,<span class="w"> </span>running,<span class="w"> </span>rows<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The word and its reason, the first matching condition in order: done, stopped (nothing in flight), stopped</span>
+<span class="s2">    (every worker silent), moving."""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>signals<span class="w"> </span>and<span class="w"> </span>all<span class="o">(</span><span class="nv">signal</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"green"</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>_,<span class="w"> </span>signal,<span class="w"> </span>*_<span class="w"> </span><span class="k">in</span><span class="w"> </span>signals<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">"done"</span>,<span class="w"> </span><span class="s2">"every table green"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>running<span class="w"> </span>and<span class="w"> </span><span class="o">(</span>acts<span class="w"> </span>or<span class="w"> </span>opened<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">"stopped"</span>,<span class="w"> </span>f<span class="s2">"nothing in flight, waiting on {len(acts)} operator acts and {len(opened)} decisions"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>running<span class="w"> </span>and<span class="w"> </span>rows<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>all<span class="o">(</span>unit<span class="w"> </span><span class="k">in</span><span class="w"> </span>rows<span class="w"> </span>and<span class="w"> </span>rows<span class="o">[</span>unit<span class="o">][</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>SILENT<span class="w"> </span><span class="k">for</span><span class="w"> </span>unit,<span class="w"> </span>_,<span class="w"> </span>_<span class="w"> </span><span class="k">in</span><span class="w"> </span>running<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">"stopped"</span>,<span class="w"> </span><span class="s2">"every in-flight worker silent"</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"moving"</span>,<span class="w"> </span>f<span class="s2">"{len(running)} units in flight"</span>
+
+
+def<span class="w"> </span>section<span class="o">(</span>lines,<span class="w"> </span>heading,<span class="w"> </span>items<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The heading, then the items or `none`."""</span>
+<span class="w">    </span>lines.append<span class="o">(</span>heading<span class="o">)</span>
+<span class="w">    </span>lines.extend<span class="o">(</span>items<span class="w"> </span>or<span class="w"> </span><span class="o">[</span><span class="s2">"none"</span><span class="o">])</span>
+
+
+def<span class="w"> </span>report<span class="o">(</span>store,<span class="w"> </span>here,<span class="w"> </span>args<span class="o">)</span>:
+<span class="w">    </span><span class="nv">language</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"ja"</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>args.ja<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"en"</span>
+<span class="w">    </span><span class="nv">now</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>timestamp<span class="o">(</span>args.now,<span class="w"> </span><span class="s2">"--now"</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>args.now<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>datetime.now<span class="o">(</span>timezone.utc<span class="o">)</span>
+<span class="w">    </span>signals,<span class="w"> </span><span class="nv">acts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>elements<span class="o">(</span>store<span class="o">)</span>
+<span class="w">    </span><span class="nv">opened</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>open_gates<span class="o">(</span>store<span class="o">)</span>
+<span class="w">    </span><span class="nv">running</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>in_flight<span class="o">(</span>store<span class="o">)</span>
+<span class="w">    </span><span class="nv">age</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>last_record_age<span class="o">(</span>store,<span class="w"> </span>now<span class="o">)</span>
+<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>stall_rows<span class="o">(</span>here,<span class="w"> </span>store,<span class="w"> </span>args<span class="o">)</span>
+<span class="w">    </span>word,<span class="w"> </span><span class="nv">reason</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>state_word<span class="o">(</span>signals,<span class="w"> </span>acts,<span class="w"> </span>opened,<span class="w"> </span>running,<span class="w"> </span>rows<span class="o">)</span>
+<span class="w">    </span><span class="nv">headings</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>HEADINGS<span class="o">[</span>language<span class="o">]</span>
+<span class="w">    </span><span class="nv">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>f<span class="s2">"{headings[0]}: {WORDS[language][word]}: {reason}, last record {age} min ago"</span><span class="o">]</span>
+<span class="w">    </span>section<span class="o">(</span>
+<span class="w">        </span>lines,
+<span class="w">        </span>headings<span class="o">[</span><span class="m">1</span><span class="o">]</span>,
+<span class="w">        </span><span class="o">[</span>
+<span class="w">            </span>f<span class="s2">"{element}: {signal} {ok}/{count} OK, {ng} NG, {pending} pending"</span>
+<span class="w">            </span><span class="k">for</span><span class="w"> </span>element,<span class="w"> </span>signal,<span class="w"> </span>ok,<span class="w"> </span>ng,<span class="w"> </span>pending,<span class="w"> </span>count<span class="w"> </span><span class="k">in</span><span class="w"> </span>signals
+<span class="w">        </span><span class="o">]</span>,
+<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span>section<span class="o">(</span>lines,<span class="w"> </span>headings<span class="o">[</span><span class="m">2</span><span class="o">]</span>,<span class="w"> </span><span class="o">[</span>f<span class="s2">"{element} {row_id}: {command}"</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>element,<span class="w"> </span>row_id,<span class="w"> </span><span class="nb">command</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>acts<span class="o">])</span>
+<span class="w">    </span>section<span class="o">(</span>
+<span class="w">        </span>lines,
+<span class="w">        </span>headings<span class="o">[</span><span class="m">3</span><span class="o">]</span>,
+<span class="w">        </span><span class="o">[</span>f<span class="s2">"{gate_id}: {gate} ({moment}; default {default})"</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>gate_id,<span class="w"> </span>gate,<span class="w"> </span>moment,<span class="w"> </span>default<span class="w"> </span><span class="k">in</span><span class="w"> </span>opened<span class="o">]</span>,
+<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span>section<span class="o">(</span>
+<span class="w">        </span>lines,
+<span class="w">        </span>headings<span class="o">[</span><span class="m">4</span><span class="o">]</span>,
+<span class="w">        </span><span class="o">[</span>f<span class="s2">"{unit} {track} pr {pr} progress: {progress_column(unit, rows)}"</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>unit,<span class="w"> </span>track,<span class="w"> </span>pr<span class="w"> </span><span class="k">in</span><span class="w"> </span>running<span class="o">]</span>,
+<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"\n"</span>.join<span class="o">(</span>one_line<span class="o">(</span>line<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>lines<span class="o">)</span><span class="w"> </span>+<span class="w"> </span><span class="s2">"\n"</span>
+
+
+def<span class="w"> </span>parser<span class="o">()</span>:
+<span class="w">    </span><span class="nv">top</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>argparse.ArgumentParser<span class="o">(</span><span class="nv">prog</span><span class="o">=</span>LEVER,<span class="w"> </span><span class="nv">description</span><span class="o">=</span>__doc__.splitlines<span class="o">()[</span><span class="m">0</span><span class="o">])</span>
+<span class="w">    </span>top.add_argument<span class="o">(</span><span class="s2">"store"</span>,<span class="w"> </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the program store directory (tests/, gates.md, units.tsv, decisions.tsv)"</span><span class="o">)</span>
+<span class="w">    </span>top.add_argument<span class="o">(</span><span class="s2">"--ja"</span>,<span class="w"> </span><span class="nv">action</span><span class="o">=</span><span class="s2">"store_true"</span>,<span class="w"> </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the five headings and the state word in the operator's forms"</span><span class="o">)</span>
+<span class="w">    </span>top.add_argument<span class="o">(</span><span class="s2">"--now"</span>,<span class="w"> </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the clock as &lt;YYYY-MM-DD&gt;T&lt;HH:MM:SS&gt;Z, for the ages and the stall check"</span><span class="o">)</span>
+<span class="w">    </span>top.add_argument<span class="o">(</span><span class="s2">"--progress-root"</span>,<span class="w"> </span><span class="nv">help</span><span class="o">=</span><span class="s2">"passed through to stall-check.py"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>top
+
+
+def<span class="w"> </span>main<span class="o">(</span><span class="nv">argv</span><span class="o">=</span>None<span class="o">)</span>:
+<span class="w">    </span><span class="nv">args</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>parser<span class="o">()</span>.parse_args<span class="o">(</span>sys.argv<span class="o">[</span><span class="m">1</span>:<span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>argv<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>list<span class="o">(</span>argv<span class="o">))</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>args.now<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
+<span class="w">        </span>timestamp<span class="o">(</span>args.now,<span class="w"> </span><span class="s2">"--now"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">store</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.realpath<span class="o">(</span>args.store<span class="o">)</span>
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.lstat<span class="o">(</span>store<span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"the store {store} cannot be read: {error.strerror}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>stat.S_ISDIR<span class="o">(</span>status.st_mode<span class="o">)</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"the store {store} is not a directory"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">here</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.dirname<span class="o">(</span>os.path.realpath<span class="o">(</span>os.path.abspath<span class="o">(</span>__file__<span class="o">)))</span>
+<span class="w">    </span>sys.stdout.write<span class="o">(</span>report<span class="o">(</span>store,<span class="w"> </span>here,<span class="w"> </span>args<span class="o">))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+
+
+<span class="k">if</span><span class="w"> </span><span class="nv">__name__</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"__main__"</span>:
+<span class="w">    </span>sys.exit<span class="o">(</span>main<span class="o">())</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -464,6 +464,13 @@
       "sha256": "4fd793eeefa7312b8f23c74a5b8f457eb915213b55f1020cc260932657674c45"
     },
     {
+      "source": "home/dot_local/bin/common/executable_claude-keyed",
+      "target": ".local/bin/common/claude-keyed",
+      "kind": "file",
+      "executable": true,
+      "sha256": "1b4cd0479035575f3df9f0bf4652cb533d1c45a88d6c4326ee5bcef65e07e3c2"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_git-isolated.sh",
       "target": ".local/bin/common/git-isolated.sh",
       "kind": "file",
@@ -674,6 +681,24 @@
       "sha256": "4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21"
     },
     {
+      "source": "home/dot_omp/private_profiles/private_dsh/private_agent/modify_claude-bridge.json",
+      "target": ".omp/profiles/dsh/agent/claude-bridge.json",
+      "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_omp/private_profiles/private_orchestrator/private_agent/modify_claude-bridge.json",
+      "target": ".omp/profiles/orchestrator/agent/claude-bridge.json",
+      "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_omp/private_profiles/private_worker/private_agent/modify_claude-bridge.json",
+      "target": ".omp/profiles/worker/agent/claude-bridge.json",
+      "kind": "modify",
+      "executable": false
+    },
+    {
       "source": "install/common/aws_cli.sh",
       "target": null
     },
@@ -805,6 +830,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "ci-rerun.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "claude-keyed"
     },
     {
       "source": "home/dot_local/bin/common",

@@ -1,0 +1,67 @@
+#!/bin/sh
+# Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.
+# @file home/dot_omp/private_profiles/private_<role>/private_agent/modify_claude-bridge.json
+# @brief Place the kit's Claude Code executable, the pinned lever claude-keyed, into ~/.omp/profiles/<role>/agent/claude-bridge.json and keep every other key.
+# @description
+#   regime-cutover U510. chezmoi passes the live file on stdin. The pi-claude-bridge extension reads
+#   provider.pathToClaudeCodeExecutable from this file alone (patch 06; config.ts:61, :110) and rewrites the
+#   file with every key kept when it records startupNoticeShown (config.ts:29). The merge sets that one key to
+#   ~/.local/bin/common/claude-keyed (the Agent SDK spawns it in place of Claude Code; it runs the bridge
+#   package's Claude Code binary on an API key read from the file REGIME_ANTHROPIC_KEY_FILE names, never on
+#   the seats' login) and keeps every other key in its order, written as the bridge writes the file
+#   (JSON.stringify(next, null, 2) and a newline), so a second apply changes nothing. It runs under
+#   `uv run --no-project` with the standard library alone. Without uv it prints its input unchanged with one
+#   warning; on an empty, unparseable or non-object input it prints the managed object alone with one warning
+#   and exits 0, so chezmoi apply never clobbers and never fails on this file.
+set -eu
+
+if ! command -v uv > /dev/null 2>&1; then
+    echo "claude-bridge.json: uv is not installed; left the profile's claude-bridge.json unchanged" >&2
+    exec cat
+fi
+
+merge=$(
+    cat << 'PY'
+import json
+import os
+import sys
+
+EXECUTABLE = os.path.expanduser("~/.local/bin/common/claude-keyed")
+
+
+def warn(reason):
+    print(f"claude-bridge.json: {reason}; wrote the managed provider row alone", file=sys.stderr)
+
+
+def main():
+    current = sys.stdin.read()
+    data = None
+    if not current.strip():
+        warn("the live file is empty or absent")
+    else:
+        try:
+            data = json.loads(current)
+        except ValueError:
+            warn("the live file is not valid JSON")
+        else:
+            if not isinstance(data, dict):
+                warn("the live file is not a JSON object")
+                data = None
+    if data is None:
+        data = {}
+    provider = data.get("provider")
+    if not isinstance(provider, dict):
+        if provider is not None:
+            warn("provider is not a JSON object")
+        provider = {}
+    provider["pathToClaudeCodeExecutable"] = EXECUTABLE
+    data["provider"] = provider
+    sys.stdout.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    return 0
+
+
+sys.exit(main())
+PY
+)
+
+exec uv run --quiet --no-project python -c "$merge"

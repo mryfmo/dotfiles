@@ -913,6 +913,16 @@ claude:
   # it moves nothing. Run by the coordinator or the operator outside every
   # seat; installed and pinned the same way, with no allow rule and no seat
   # policy row.
+  # claude-keyed (U510, handoff/47) is the pi-claude-bridge's
+  # `provider.pathToClaudeCodeExecutable` in every claude-bridge role's
+  # ~/.omp/profiles/<role>/agent/claude-bridge.json (placed by the generated
+  # modify_claude-bridge.json of home/dot_omp/private_profiles): the Agent SDK
+  # spawns it in place of Claude Code, and it execs the bridge package's one
+  # Claude Code binary with ANTHROPIC_API_KEY read from the file
+  # REGIME_ANTHROPIC_KEY_FILE names (0600, one line, this user's) and the login
+  # names unset, or refuses with nothing started; the seats' shared claude.ai
+  # login is no longer any seat's model credential. Installed and pinned the
+  # same way, run by the SDK child alone, so no allow rule and no seat policy row.
   levers:
     sha256:
       hcom-seat: e83343bd148c3e4a3a418aa8287e93cb977143b874457f3e53357a1635640294
@@ -952,6 +962,7 @@ claude:
       router-settings-apply: 46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
+      claude-keyed: 1b4cd0479035575f3df9f0bf4652cb533d1c45a88d6c4326ee5bcef65e07e3c2
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

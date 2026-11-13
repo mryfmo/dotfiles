@@ -248,6 +248,7 @@ LEVERS = (
     "brief-check.py",
     "bus-history.sh",
     "checkout-guard.sh",
+    "claude-keyed",
     "git-isolated.sh",
     "hcom-dispatch",
     "hcom-seat",
@@ -1132,6 +1133,131 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(manifest["claude"]["levers"]["sha256"].get("ledger.py"), pin)
         self.assertIn(f"\n      ledger.py: {pin}\n", (ROOT / "home/dot_agents/agent-config.yaml").read_text())
         self.assertEqual(installed, next(path for path in self.module.lever_pins(manifest) if path.name == "ledger.py"))
+
+    def write_claude_bridge_modify_script(self) -> Path:
+        """The worker role's rendered claude-bridge modify script, written executable under the scratch directory."""
+        self.module.ROOT = ROOT
+        manifest = load_manifest_fixture(self.temp_dir)
+        rendered = self.module.render_claude_bridge_modify(manifest)
+        script = self.temp_dir / "modify_claude-bridge.json"
+        script.write_text(rendered[ROOT / self.module.CLAUDE_BRIDGE_MODIFY_PATH.format(role="worker")])
+        script.chmod(0o755)
+        return script
+
+    def run_modify(self, script: Path, current: str, home: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [str(script)],
+            input=current,
+            text=True,
+            capture_output=True,
+            env=os.environ | {"HOME": str(home)},
+            timeout=180,
+            check=False,
+        )
+
+    def test_the_claude_bridge_modify_scripts_render_for_the_bridge_routed_roles_only(self) -> None:
+        """regime-cutover U510: `provider.pathToClaudeCodeExecutable` of every role on the claude-bridge route (a seat
+        role whose omp model route is claude-bridge, and every gateway role, whose child the bridge serves) is the
+        installed `claude-keyed`, placed by the chezmoi modify script `home/dot_omp/private_profiles/private_<role>/
+        private_agent/modify_claude-bridge.json` (the private_ attributes keep hcom-seat's 0700 profile directories);
+        a role on another route gets none. The committed files are the renderer's bytes, executable, and the output
+        index deploys each as a modify entry on `~/.omp/profiles/<role>/agent/claude-bridge.json`."""
+        self.module.ROOT = ROOT
+        manifest = load_manifest_fixture(self.temp_dir)
+        outputs = self.module.expected_outputs(manifest)
+        rendered = self.module.render_claude_bridge_modify(manifest)
+        self.assertEqual(
+            sorted(path.relative_to(ROOT).as_posix() for path in rendered),
+            [self.module.CLAUDE_BRIDGE_MODIFY_PATH.format(role=role) for role in ("dsh", "orchestrator", "worker")],
+        )
+        index = json.loads((ROOT / "scripts/generated-agent-outputs.json").read_text())
+        entries = {entry["source"]: entry for entry in index["outputs"]}
+        for path, text in rendered.items():
+            rel = path.relative_to(ROOT).as_posix()
+            with self.subTest(source=rel):
+                self.assertEqual(outputs[path], text)
+                self.assertEqual(path.read_bytes(), text.encode(), "the committed file is the renderer's bytes")
+                self.assertTrue(os.access(path, os.X_OK))
+                self.assertTrue(text.startswith("#!/bin/sh\n"))
+                self.assertIn(self.module.CLAUDE_KEYED_INSTALL_PATH, text)
+                role = rel.split("/")[3].removeprefix("private_")
+                self.assertEqual(
+                    entries[rel],
+                    {
+                        "source": rel,
+                        "target": f".omp/profiles/{role}/agent/claude-bridge.json",
+                        "kind": "modify",
+                        "executable": False,
+                    },
+                )
+        self.assertNotIn(ROOT / self.module.CLAUDE_BRIDGE_MODIFY_PATH.format(role="audit"), outputs)
+        # A seat role moved off the bridge route loses its script; one moved onto it gets one.
+        moved = json.loads(json.dumps(manifest))
+        moved["model_profiles"]["standard"]["omp"]["model"] = "openai-siwc/gpt-6-astra"
+        moved["model_profiles"]["audit"]["omp"]["model"] = "claude-bridge/claude-fable-5-1"
+        self.assertEqual(
+            sorted(path.relative_to(ROOT).as_posix() for path in self.module.render_claude_bridge_modify(moved)),
+            [self.module.CLAUDE_BRIDGE_MODIFY_PATH.format(role=role) for role in ("audit", "dsh", "orchestrator")],
+        )
+
+    @unittest.skipUnless(shutil.which("uv"), "uv is not installed")
+    def test_the_claude_bridge_modify_script_keeps_the_bridges_own_keys_and_is_idempotent(self) -> None:
+        """The merge sets the one managed key and keeps every other key the bridge wrote (config.ts:29 records
+        `startupNoticeShown` with `{...existing}`), in the bridge's own `JSON.stringify(next, null, 2)` form, so a
+        second run returns the same bytes and chezmoi apply and the doctor see no change."""
+        script = self.write_claude_bridge_modify_script()
+        home = self.temp_dir / "target-home"
+        home.mkdir()
+        current = (
+            json.dumps(
+                {
+                    "startupNoticeShown": "2026-11-13",
+                    "provider": {"plan": "max", "pathToClaudeCodeExecutable": "/old/claude"},
+                    "askClaude": {"enabled": True},
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+        run = self.run_modify(script, current, home)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        merged = json.loads(run.stdout)
+        self.assertEqual(
+            merged["provider"], {"plan": "max", "pathToClaudeCodeExecutable": f"{home}/.local/bin/common/claude-keyed"}
+        )
+        self.assertEqual(merged["startupNoticeShown"], "2026-11-13")
+        self.assertEqual(merged["askClaude"], {"enabled": True})
+        self.assertEqual(list(merged), ["startupNoticeShown", "provider", "askClaude"], "the key order stays")
+        self.assertEqual(run.stdout, json.dumps(merged, indent=2) + "\n")
+        again = self.run_modify(script, run.stdout, home)
+        self.assertEqual((again.returncode, again.stderr, again.stdout), (0, "", run.stdout))
+
+    @unittest.skipUnless(shutil.which("uv"), "uv is not installed")
+    def test_the_claude_bridge_modify_script_prints_the_managed_object_with_a_warning_on_empty_or_invalid_input(
+        self,
+    ) -> None:
+        """chezmoi apply never clobbers: an input the merge cannot read yields the managed object alone, one stderr
+        warning naming the file, exit 0 (the bridge rewrites the file whole on its next notice anyway)."""
+        script = self.write_claude_bridge_modify_script()
+        home = self.temp_dir / "target-home"
+        home.mkdir()
+        managed = (
+            json.dumps({"provider": {"pathToClaudeCodeExecutable": f"{home}/.local/bin/common/claude-keyed"}}, indent=2)
+            + "\n"
+        )
+        cases = (
+            ("empty", ""),
+            ("invalid JSON", "{not json\n"),
+            ("a JSON list", "[1, 2]\n"),
+            ("a provider that is no object", '{"provider": 3}\n'),
+        )
+        for label, current in cases:
+            with self.subTest(input=label):
+                run = self.run_modify(script, current, home)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(run.stdout, managed)
+                self.assertEqual(len(run.stderr.splitlines()), 1, run.stderr)
+                self.assertIn("claude-bridge.json", run.stderr)
 
     def test_check_reports_a_stale_lever_pin_and_a_run_refreshes_it(self) -> None:
         (self.temp_dir / "scripts/orchestrator").mkdir(parents=True)

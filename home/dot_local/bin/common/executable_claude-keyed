@@ -1,0 +1,233 @@
+#!/bin/bash -p
+# @file claude-keyed
+# @brief The bridge's Claude Code executable: run the Agent SDK's bundled Claude Code binary with `ANTHROPIC_API_KEY` read from one file, never on the seats' shared login.
+# @description
+#   Regime-cutover U510 (handoff/47-api-key-route-design.md). A seat's model turn ran on the seats' shared claude.ai
+#   login, whose refresh-token rotation revoked every seat five times since 2026-11-10 (handoff/43, handoff/46). This
+#   lever stands as the pi-claude-bridge's `provider.pathToClaudeCodeExecutable` (`~/.omp/profiles/<role>/agent/
+#   claude-bridge.json`, placed by the generated `modify_claude-bridge.json` of every role on the claude-bridge route),
+#   so the SDK spawns it where it spawned Claude Code: it `exec`s the one Claude Code binary of the bridge's SDK
+#   package with its own arguments unchanged (the SDK passes `--output-format stream-json --input-format stream-json
+#   ...`), stdin and stdout untouched, `ANTHROPIC_API_KEY` exported from the key file and the login names
+#   `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL` unset (the bridge README: an exported
+#   gateway variable redirects the child); nothing else of the environment changes, and the key reaches the child's
+#   environment alone, never an argument, a file, a log or a message.
+#   The key file is the one path `REGIME_ANTHROPIC_KEY_FILE` names (hcom-seat sets it to `<seats-root>/.state/
+#   anthropic/api-key`, regime-cutover U512; the operator places the key there by the U510 handout): an absolute path
+#   to a regular file of this user, mode 0600, no symbolic link in its last component (`-L` false on the spelled path
+#   and on its physical directory's form), holding one line in the closed class `^sk-ant-[A-Za-z0-9_-]{20,}$` ending
+#   in one line feed or none; a second line, a carriage return, a trailing space, a NUL or any other byte refuses
+#   naming the file, never the content. The mode and the owner come from one `stat` call whose status and shape are
+#   read (standing order 21), the owner compared with this shell's EUID; the bytes come from `cat` with its status
+#   read, counted by `wc -c` against what the shell holds, so a NUL the shell drops is seen. The executable is the one
+#   regular executable file matching `<bridge>/node_modules/@anthropic-ai/claude-agent-sdk-*/claude`, where `<bridge>`
+#   is the directory `omp.extension_providers.claude-bridge` names in the manifest the self-check read (a `~/` spelled
+#   through HOME), required to be a row of `claude.levers.extensions`, the seats' extension allow-list; zero or two
+#   matches refuse naming the glob. The manifest is read as text by indentation (awk, status read), as
+#   seat-login-preflight reads its overlays. Every refusal is one stderr line `claude-keyed: refused: <reason>` and
+#   exit 2 with nothing started; a refusal never falls back to the login (fail closed).
+#   `--check` runs every check and prints one stdout line `key file ok: <path>; executable: <path>` (exit 0) or
+#   refuses; the seat-login preflight and the doctor call it (U512, U513). `--dry-run [<argument>...]` prints the
+#   command it would exec with the key replaced by `<redacted>` and the names it unsets, and runs nothing.
+#   `#!/bin/bash -p` (pr-audit.sh and router-gh's form, U465f): bash ignores the functions, `BASH_ENV`, `ENV`,
+#   `SHELLOPTS` and `CDPATH` an environment could carry, so a poisoned environment replaces no builtin this lever
+#   runs; the self pin check runs before anything else is read.
+# @arg $1 string `--check`, `--dry-run`, or the first of Claude Code's own arguments.
+# @arg $@ string Claude Code's arguments, verbatim.
+# @env REGIME_ANTHROPIC_KEY_FILE The key file, an absolute path.
+# @env HOME The manifest's `~/` spellings expand through it; the installed copy reads `~/.agents/agent-config.yaml`.
+# @stdout With `--check`, the one ok line; with `--dry-run`, the command and the unset names; else Claude Code's own.
+# @stderr The refusal line; else Claude Code's own.
+# @exitcode 0 `--check` passed, or `--dry-run` printed.
+# @exitcode 2 A refusal: the self-check, the usage, the key file, the manifest or the executable.
+# @exitcode * Claude Code's own status after the exec.
+# @example
+#   REGIME_ANTHROPIC_KEY_FILE=~/.local/state/omp-seats/dotfiles/.state/anthropic/api-key claude-keyed --check
+set -euo pipefail
+
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''             # producer-status: allow the if below takes an empty home as the checkout layout
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
+    else
+        digest=$(shasum -a 256 < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
+
+# @description Print the refusal on stderr and exit 2; nothing has started when it runs.
+# @arg $1 string The reason, which never holds the key.
+refuse() {
+    echo "claude-keyed: refused: $1" >&2
+    exit 2
+}
+
+usage='usage: claude-keyed --check | claude-keyed --dry-run [<argument>...] | claude-keyed [<argument>...]'
+mode='exec'
+if (($# > 0)); then
+    case $1 in
+    --check)
+        (($# == 1)) || refuse "${usage}"
+        mode=check
+        shift
+        ;;
+    --dry-run)
+        mode=dry-run
+        shift
+        ;;
+    esac
+fi
+
+# The key file: the one path the environment names, held to the form described in the header before a byte is read.
+key_file=${REGIME_ANTHROPIC_KEY_FILE:-}
+[[ -n ${key_file} ]] ||
+    refuse 'REGIME_ANTHROPIC_KEY_FILE is not set; hcom-seat sets it to <seats-root>/.state/anthropic/api-key (regime-cutover U512) and the operator places the key there (the U510 handout)'
+[[ ${key_file} == /* ]] || refuse "REGIME_ANTHROPIC_KEY_FILE '${key_file}' is not an absolute path" # lint-comparisons: allow an absolute-path shape test on one path, no path compare
+[[ ! -L ${key_file} ]] || refuse "the key file ${key_file} is a symbolic link; the key file must be a regular file of this user"
+[[ -e ${key_file} ]] || refuse "the key file ${key_file} is absent; place the API key there (the U510 handout)"
+[[ -f ${key_file} ]] || refuse "the key file ${key_file} is not a regular file"
+# The physical directory's form of the same name: a link earlier in the path is allowed, the last component is not.
+key_parent=${key_file%/*}
+[[ -n ${key_parent} ]] || key_parent=/
+key_dir=$(cd "${key_parent}" && pwd -P) || refuse "cannot resolve the directory of the key file ${key_file}"
+key_phys=${key_dir%/}/${key_file##*/}
+[[ ! -L ${key_phys} ]] || refuse "the key file ${key_file} is a symbolic link; the key file must be a regular file of this user"
+os=$(uname -s) || refuse 'cannot read the operating system name (uname -s)'
+# One stat call for the mode and the owner, its status and shape read; an injected or failing stat refuses.
+case ${os} in
+Darwin) owner_mode=$(stat -f '%Lp %u' "${key_file}") || refuse "cannot read the mode and owner of the key file ${key_file} (stat failed)" ;;
+*) owner_mode=$(stat -c '%a %u' "${key_file}") || refuse "cannot read the mode and owner of the key file ${key_file} (stat failed)" ;;
+esac
+owner_mode_re='^([0-7]{3,4}) ([0-9]+)$'
+[[ ${owner_mode} =~ ${owner_mode_re} ]] ||
+    refuse "cannot read the mode and owner of the key file ${key_file} (stat printed '${owner_mode}')"
+key_mode=${BASH_REMATCH[1]} key_owner=${BASH_REMATCH[2]}
+[[ ${key_owner} == "${EUID}" ]] || refuse "the key file ${key_file} is owned by uid ${key_owner}, not this user (uid ${EUID})"
+[[ -O ${key_file} ]] || refuse "the key file ${key_file} is owned by uid ${key_owner}, not this user (uid ${EUID})"
+[[ ${key_mode} =~ ^0?600$ ]] || refuse "the key file ${key_file} has mode ${key_mode}; the key must be readable by this user alone (0600)"
+# The bytes, read by cat with its status read (bash 5.2 runs `$(< file)` without a fork, so a failed redirection there
+# would end the script under errexit before a handler ran, U310e), with a sentinel so a trailing line feed survives
+# the substitution; the block's stderr is dropped so bash's own note about a dropped NUL never joins a refusal line,
+# and the byte count, taken in a subshell under LC_ALL=C (the child's environment stays as it was), sees that NUL.
+read_status=0
+{ key_text=$(cat -- "${key_file}" && printf x) || read_status=$?; } 2> /dev/null
+((read_status == 0)) || refuse "cannot read the key file ${key_file}"
+key_text=${key_text%x}
+key_bytes=$(wc -c < "${key_file}") || refuse "cannot count the bytes of the key file ${key_file} (wc -c failed)"
+key_bytes=${key_bytes//[[:space:]]/}
+[[ ${key_bytes} =~ ^[0-9]+$ ]] || refuse "cannot count the bytes of the key file ${key_file} (wc -c printed '${key_bytes}')"
+key_chars=$(LC_ALL=C && printf '%s' "${#key_text}") || refuse "cannot count the bytes of the key file ${key_file}"
+((key_bytes > 0)) || refuse "the key file ${key_file} is empty; the key must be one line of the form sk-ant-... (the U510 handout)"
+((key_bytes == key_chars)) || refuse "the key file ${key_file} holds a byte the shell cannot read (a NUL); the key must be one line"
+[[ ${key_text} != *$'\r'* ]] || refuse "the key file ${key_file} holds a carriage return; the key must be one line ending in a line feed alone"
+key=${key_text%$'\n'}
+[[ ${key} != *$'\n'* ]] || refuse "the key file ${key_file} holds more than one line; the key must be one line"
+key_class='^sk-ant-[A-Za-z0-9_-]{20,}$'
+[[ ${key} =~ ${key_class} ]] ||
+    refuse "the key file ${key_file} does not hold a key of the form sk-ant-<20 or more of [A-Za-z0-9_-]> (the content is never printed)"
+
+# The bridge directory: `omp.extension_providers.claude-bridge` of the manifest the self-check read, by indentation,
+# required among the `claude.levers.extensions` rows (the seats' only -e directories); `~/` spelled through HOME.
+bridge=$(awk '
+/^omp:$/ { in_omp = 1; next }
+/^[^ #]/ { in_omp = 0; in_ext = 0 }
+in_omp && /^  extension_providers:$/ { in_ext = 1; next }
+in_omp && /^  [^ ]/ { in_ext = 0 }
+in_omp && in_ext && $1 == "claude-bridge:" { print $2; exit }
+' "${LEVER_MANIFEST}") || refuse "cannot read the manifest ${LEVER_MANIFEST} (awk failed)"
+[[ -n ${bridge} ]] || refuse "the manifest ${LEVER_MANIFEST} names no omp.extension_providers.claude-bridge directory"
+allowed=$(awk '
+/^claude:$/ { in_claude = 1; next }
+/^[^ #]/ { in_claude = 0; in_levers = 0; in_ext = 0 }
+in_claude && /^  levers:$/ { in_levers = 1; next }
+in_claude && /^  [^ ]/ { in_levers = 0; in_ext = 0 }
+in_levers && /^    extensions:$/ { in_ext = 1; next }
+in_levers && /^    [^ ]/ { in_ext = 0 }
+in_ext && $1 == "-" { print $2 }
+' "${LEVER_MANIFEST}") || refuse "cannot read the manifest ${LEVER_MANIFEST} (awk failed)"
+listed=0
+while IFS= read -r row; do
+    if [[ ${row} == "${bridge}" ]]; then listed=1; fi # lint-comparisons: allow two manifest spellings of the same row, compared as the manifest writes them
+done <<< "${allowed}"
+# The manifest spells the directory through `~/`; it is this user's home (hcom-seat holds the entry the same way).
+# shellcheck disable=SC2088 # the manifest's own spelling, matched as text; HOME replaces it on the line below
+tilde_slash='~/'
+case ${bridge} in
+"${tilde_slash}"*) bridge=${HOME}/${bridge#"${tilde_slash}"} ;;
+esac
+((listed)) || refuse "the claude-bridge directory ${bridge} is not a row of claude.levers.extensions in ${LEVER_MANIFEST}"
+[[ -d ${bridge} ]] || refuse "the claude-bridge directory ${bridge} is not a directory"
+# The one Claude Code binary of the SDK's platform package (bun.lock names eight platforms, one is installed).
+glob="${bridge}/node_modules/@anthropic-ai/claude-agent-sdk-*/claude"
+matches=()
+for candidate in "${bridge}"/node_modules/@anthropic-ai/claude-agent-sdk-*/claude; do
+    [[ -e ${candidate} || -L ${candidate} ]] || continue
+    matches+=("${candidate}")
+done
+((${#matches[@]} > 0)) || refuse "no Claude Code executable: nothing matches ${glob}"
+((${#matches[@]} == 1)) || refuse "${#matches[@]} Claude Code executables match ${glob}; exactly one is run"
+exe=${matches[0]}
+[[ ! -L ${exe} && -f ${exe} && -x ${exe} ]] || refuse "the Claude Code executable ${exe} is not an executable regular file"
+
+case ${mode} in
+check)
+    printf 'key file ok: %s; executable: %s\n' "${key_file}" "${exe}"
+    exit 0
+    ;;
+dry-run)
+    printf 'ANTHROPIC_API_KEY=<redacted> %s' "${exe}"
+    for arg in "$@"; do
+        printf ' %q' "${arg}"
+    done
+    printf '\nunset: CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL\n'
+    exit 0
+    ;;
+esac
+# The login names leave; the key rides as the exec'd process's environment alone, never an argument.
+unset CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL
+ANTHROPIC_API_KEY=${key} exec "${exe}" "$@"

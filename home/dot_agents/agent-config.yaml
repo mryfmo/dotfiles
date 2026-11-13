@@ -190,6 +190,16 @@ omp:
   # dist/cli.js is "a shebang script, not an OMP binary"); omp moves only through the reviewed pin
   # in assets.omp, installed by make update (scripts/update-agent-assets.sh update_omp).
   check_update: false
+  # omp's tui.completeScrollback (18.12.6 src/modes/settings.ts:391-402, default false; a change applies
+  # live through the settings reload, src/modes/interactive-mode.ts:3661-3677) in the plain-launch
+  # config and every seat overlay (the gateway overlay runs no TUI and gets nothing). Off, transcript
+  # rows a growing HUD (the todo list, a dialog) pushed off screen were dropped and the operator could
+  # not read the reply; on, they go to the terminal's scrollback. Set by hand on one host
+  # (`omp config set tui.completeScrollback true`, 2026-11-12T05:41Z) and made a kit row the same day
+  # (standing order 57). Each key is an omp TUI setting id without its `tui.` prefix and a row of
+  # OMP_TUI_SETTINGS in scripts/generate-agent-configs.py, which refuses any other id or type.
+  tui:
+    completeScrollback: true
   # Seat role -> model profile. One overlay per role renders to
   # ~/.agents/omp/profiles/<role>.yml with that profile's omp model as
   # modelRoles.default and skills_directories as skills.customDirectories; the
@@ -913,6 +923,12 @@ claude:
   # it moves nothing. Run by the coordinator or the operator outside every
   # seat; installed and pinned the same way, with no allow rule and no seat
   # policy row.
+  # program-status.py prints the operator's state report of a program store in
+  # standing order 56's shape (U497): one word of state and its reason, a signal
+  # per tests table, the operator's acts and decisions, the in-flight units with
+  # stall-check.py's progress column when that lever is beside it. Installed and
+  # pinned the same way, run as `python3 -I` by the coordinator and allowed by the
+  # orchestrator policy alone; it reads the store's tables and writes nothing.
   levers:
     sha256:
       hcom-seat: e83343bd148c3e4a3a418aa8287e93cb977143b874457f3e53357a1635640294
@@ -952,6 +968,7 @@ claude:
       router-settings-apply: 46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: bab47be7273025518efab995f6bd4f444d9f9f8a7447f8d315ef8a984b316b50
+      program-status.py: fdb8a940258f2c247e65f0bed45fd0e7ad42ab0e196d4cec9aa783862fd600a6
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

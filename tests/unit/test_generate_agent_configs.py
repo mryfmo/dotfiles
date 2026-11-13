@@ -264,6 +264,7 @@ LEVERS = (
     "pr-threads-check.sh",
     "pr-update-branch.sh",
     "profile-config-place.py",
+    "program-status.py",
     "read-lib.sh",
     "records-sync.sh",
     "regime-env",
@@ -2253,6 +2254,55 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         # The committed manifest decides the deployed config: the pin is omp's only update path (U94).
         manifest = load_manifest_fixture(self.temp_dir)
         self.assertIs(False, manifest["omp"]["check_update"])
+
+    def test_omp_tui_settings_reach_the_plain_config_and_every_seat_overlay(self) -> None:
+        """U495: omp's tui.completeScrollback (src/modes/settings.ts:391-402 of 18.12.6) sends transcript rows a
+        growing HUD pushes off screen to the terminal scrollback; the manifest's `omp.tui` mapping renders as one
+        `tui:` block in the plain-launch config and each seat role overlay, and the gateway overlay gets none."""
+        profiles = self.temp_dir / "home/dot_agents/omp/profiles"
+        plain = self.temp_dir / "home/.chezmoitemplates/omp-config-managed.yml"
+        manifest = sample_manifest()
+        manifest["omp"]["tui"] = {"completeScrollback": True}
+        outputs = self.module.expected_outputs(manifest)
+        block = "tui:\n  completeScrollback: true\n"
+        self.assertIn(f"startup:\n  checkUpdate: false\n{block}", outputs[plain])
+        for role in manifest["omp"]["roles"]:
+            with self.subTest(role=role):
+                self.assertIn(
+                    f"startup:\n  setupWizard: false\n  checkUpdate: false\n{block}",
+                    outputs[profiles / f"{role}.yml.tmpl"],
+                )
+        manifest["omp"]["gateway_roles"] = {"dsh": "standard"}
+        manifest["model_profiles"]["standard"]["dsh"] = {"model": "claude-opus-5-5", "route": "omp-gateway"}
+        manifest["omp"]["extension_providers"] = {"claude-bridge": "~/.local/lib/omp-extensions/pi-claude-bridge"}
+        # The gateway child runs no TUI (U310), so its overlay carries no tui block.
+        self.assertNotIn("tui:", self.module.render_omp_gateway_overlay(manifest, "dsh"))
+        # Without the key the block is absent: the merge script then leaves the live tui mapping alone.
+        manifest = sample_manifest()
+        self.assertNotIn("tui:", self.module.render_omp_config(manifest))
+        self.assertNotIn("tui:", self.module.render_omp_role_overlay(manifest, "worker"))
+
+    def test_omp_tui_refuses_an_unknown_id_and_a_value_of_the_wrong_type(self) -> None:
+        """One table (OMP_TUI_SETTINGS) names the ids the kit may carry and their types; anything else is one fail line."""
+        for value, message in (
+            ({"frobnicate": True}, "omp.tui.frobnicate is not a setting the kit carries"),
+            ({"completeScrollback": "true"}, "omp.tui.completeScrollback must be a bool"),
+            ({"completeScrollback": 1}, "omp.tui.completeScrollback must be a bool"),
+            ([True], "omp.tui must be a mapping of omp tui setting ids to values"),
+        ):
+            with self.subTest(value=value):
+                manifest = sample_manifest()
+                manifest["omp"]["tui"] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.render_omp_config(manifest)
+                self.assertIn(message, stderr.getvalue())
+        self.assertEqual(self.module.OMP_TUI_SETTINGS, {"completeScrollback": bool})
+
+    def test_the_repository_manifest_sends_pushed_off_transcript_rows_to_scrollback(self) -> None:
+        # The committed manifest decides the deployed config: the hand fix of 2026-11-12 is a kit row (standing order 57).
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.assertIs(True, manifest["omp"]["tui"]["completeScrollback"])
 
     def test_omp_extensions_must_be_a_list_of_home_or_absolute_paths(self) -> None:
         for value, message in (

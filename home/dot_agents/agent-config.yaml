@@ -190,6 +190,16 @@ omp:
   # dist/cli.js is "a shebang script, not an OMP binary"); omp moves only through the reviewed pin
   # in assets.omp, installed by make update (scripts/update-agent-assets.sh update_omp).
   check_update: false
+  # omp's tui.completeScrollback (18.12.6 src/modes/settings.ts:391-402, default false; a change applies
+  # live through the settings reload, src/modes/interactive-mode.ts:3661-3677) in the plain-launch
+  # config and every seat overlay (the gateway overlay runs no TUI and gets nothing). Off, transcript
+  # rows a growing HUD (the todo list, a dialog) pushed off screen were dropped and the operator could
+  # not read the reply; on, they go to the terminal's scrollback. Set by hand on one host
+  # (`omp config set tui.completeScrollback true`, 2026-11-12T05:41Z) and made a kit row the same day
+  # (standing order 57). Each key is an omp TUI setting id without its `tui.` prefix and a row of
+  # OMP_TUI_SETTINGS in scripts/generate-agent-configs.py, which refuses any other id or type.
+  tui:
+    completeScrollback: true
   # Seat role -> model profile. One overlay per role renders to
   # ~/.agents/omp/profiles/<role>.yml with that profile's omp model as
   # modelRoles.default and skills_directories as skills.customDirectories; the

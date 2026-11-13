@@ -419,7 +419,7 @@
       "target": ".local/bin/common/acp-broker",
       "kind": "file",
       "executable": true,
-      "sha256": "6aea266419c3a4830b7c6a49fb7e4b84bee467525aef930ccb23716850884fa7"
+      "sha256": "3816f4a1e14799325855bc8702d84416a271ad8b56c937eccdcf17c87ace4343"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-record-place.py",
@@ -489,7 +489,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "e83343bd148c3e4a3a418aa8287e93cb977143b874457f3e53357a1635640294"
+      "sha256": "f0f160f50aa5150e7e937574e8d5e61604e767570a4c3f6af598c07e446efbea"
     },
     {
       "source": "home/dot_local/bin/common/executable_intake-observe.py",
@@ -576,6 +576,13 @@
       "sha256": "5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014"
     },
     {
+      "source": "home/dot_local/bin/common/executable_program-status.py",
+      "target": ".local/bin/common/program-status.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "fdb8a940258f2c247e65f0bed45fd0e7ad42ab0e196d4cec9aa783862fd600a6"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_read-lib.sh",
       "target": ".local/bin/common/read-lib.sh",
       "kind": "file",
@@ -650,7 +657,7 @@
       "target": ".local/bin/common/seat-login-preflight",
       "kind": "file",
       "executable": true,
-      "sha256": "7d12ffb08da39735f6c368ddb9ab4ed10084d755a1f57470edc64d1d78e4ae61"
+      "sha256": "79355bd8f42c0ee21466f6c2d5eb1a3030f8c490dfa619962be99900bd6abffb"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-settings-render.sh",
@@ -920,6 +927,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "profile-config-place.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "program-status.py"
     },
     {
       "source": "home/dot_local/bin/common",

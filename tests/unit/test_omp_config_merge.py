@@ -242,6 +242,28 @@ class OmpConfigMergeTest(unittest.TestCase):
                 self.assertEqual(passed.stdout, current)
                 self.assertEqual(len(passed.stderr.splitlines()), 1)
 
+    def test_the_managed_tui_keys_are_set_and_every_other_tui_key_stays(self) -> None:
+        """U495: tui.completeScrollback sends transcript rows a growing HUD pushes off screen to the terminal scrollback;
+        the managed `tui` keys win, every tui key the operator set stays, and a non-mapping tui is left alone."""
+        managed_tui = "tui:\n  completeScrollback: true\n"
+        (self.source_dir / ".chezmoitemplates/omp-config-managed.yml").write_text(MANAGED + managed_tui)
+        gained = self.merge("theme:\n  dark: night\n")
+        self.assertEqual(gained.stderr, "")
+        self.assertTrue(gained.stdout.endswith(MANAGED_STARTUP + managed_tui), gained.stdout)
+        kept = self.merge("tui:\n  mouse: true\ntheme:\n  dark: night\n")
+        self.assertEqual(kept.stderr, "")
+        self.assertIn("tui:\n  mouse: true\n  completeScrollback: true\ntheme:\n  dark: night\n", kept.stdout)
+        self.assertEqual(self.merge(kept.stdout).stdout, kept.stdout, "a second apply changes nothing")
+        overridden = self.merge("tui:\n  completeScrollback: false\n  mouse: true\n")
+        self.assertIn("tui:\n  completeScrollback: true\n  mouse: true\n", overridden.stdout)
+        broken = self.merge("tui: 3\n")
+        self.assertEqual(broken.stdout, "tui: 3\n")
+        self.assertIn("tui is not a mapping", broken.stderr)
+        self.assertEqual(len(broken.stderr.splitlines()), 1)
+        # A managed file without the block (the fixture as the other tests write it) touches no tui key.
+        (self.source_dir / ".chezmoitemplates/omp-config-managed.yml").write_text(MANAGED)
+        self.assertNotIn("tui", self.merge("theme:\n  dark: night\n").stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

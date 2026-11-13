@@ -70,6 +70,8 @@ ORCHESTRATOR_LEVERS = [
     f"{LEVER}pr-threads-check.sh 480 --head abc --records .orchestration/orchestrate/regime-cutover",
     # U104: the brief gate, read-only, before a unit's first TASK.
     f"{LEVER}brief-check.py .orchestration/orchestrate/regime-cutover/briefs/U1-x.md",
+    # U505: the register writer, one units.tsv row by the readers' grammar (a store write, no gh).
+    f"{LEVER}units-row.py /Users/x/.local/state/regime-store/dotfiles/regime-cutover set --id U20 --state done",
     f"{LEVER}records-sync.sh --program regime-cutover --unit U20",
     # U71: the merge lever (a `correct` ledger row for the head and green CI).
     f"{LEVER}pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover",
@@ -493,6 +495,7 @@ class OmpSeatPolicyTest(unittest.TestCase):
                 "~/.local/bin/common/pr-close.sh --from-table *",
                 "~/.local/bin/common/pr-threads-check.sh *",
                 "~/.local/bin/common/brief-check.py *",
+                "~/.local/bin/common/units-row.py *",
                 "~/.local/bin/common/records-sync.sh *",
                 "~/.local/bin/common/records-sync.sh",
             ],

@@ -653,6 +653,13 @@
       "sha256": "9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50"
     },
     {
+      "source": "home/dot_local/bin/common/executable_units-row.py",
+      "target": ".local/bin/common/units-row.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",
       "target": ".local/bin/common/worker-worktree.sh",
       "kind": "file",
@@ -960,6 +967,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "seat-settings-render.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "units-row.py"
     },
     {
       "source": "home/dot_local/bin/common",

@@ -62,6 +62,12 @@ bash:
       approval: allow
     - match: "*brief-check.py *"
       approval: deny
+    # The register writer (U505): one units.tsv row added or changed by the readers' grammar, in place under the
+    # register's lock; it runs no gh, no git and no network.
+    - match: "~/.local/bin/common/units-row.py *"
+      approval: allow
+    - match: "*units-row.py *"
+      approval: deny
     # records-sync.sh acts with no arguments too (U28b F3): the exact bare form is allowed, every other bare
     # spelling and the bare form chained are denied as the argument forms are.
     - match: "~/.local/bin/common/records-sync.sh *"

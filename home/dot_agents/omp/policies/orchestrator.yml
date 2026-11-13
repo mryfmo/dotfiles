@@ -67,6 +67,12 @@ bash:
       approval: allow
     - match: "*stall-check.py *"
       approval: deny
+    # The program status report (U497): read-only, the store's tables to standing order 56's shape; the reply to the
+    # operator's status question quotes its output.
+    - match: "~/.local/bin/common/program-status.py *"
+      approval: allow
+    - match: "*program-status.py *"
+      approval: deny
     # records-sync.sh acts with no arguments too (U28b F3): the exact bare form is allowed, every other bare
     # spelling and the bare form chained are denied as the argument forms are.
     - match: "~/.local/bin/common/records-sync.sh *"

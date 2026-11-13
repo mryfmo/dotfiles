@@ -37,7 +37,7 @@
       "body": {
         "object": "list",
         "data": [
-          { "id": "claude-bridge/claude-fable-5-1", "object": "model", "owned_by": "claude-bridge", "api": "claude-bridge", "display_name": "Claude Fable 5.1 1M", "input_modalities": ["text", "image"], "context_length": 1000000, "max_output_tokens": 128000 },
+          { "id": "claude-bridge/claude-fable-5-2", "object": "model", "owned_by": "claude-bridge", "api": "claude-bridge", "display_name": "Claude Fable 5.2 1M", "input_modalities": ["text", "image"], "context_length": 1000000, "max_output_tokens": 128000 },
           { "id": "claude-bridge/claude-opus-5-5", "object": "model", "owned_by": "claude-bridge", "api": "claude-bridge", "display_name": "Claude Opus 5.5 1M", "input_modalities": ["text", "image"], "context_length": 1000000, "max_output_tokens": 128000 },
           { "id": "claude-bridge/claude-sonnet-5-5", "object": "model", "owned_by": "claude-bridge", "api": "claude-bridge", "display_name": "Claude Sonnet 5.5 1M", "input_modalities": ["text", "image"], "context_length": 1000000, "max_output_tokens": 128000 },
           { "id": "claude-bridge/claude-haiku-5-5", "object": "model", "owned_by": "claude-bridge", "api": "claude-bridge", "display_name": "Claude Haiku 5.5 1M", "input_modalities": ["text", "image"], "context_length": 1000000, "max_output_tokens": 128000 }

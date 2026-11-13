@@ -1343,7 +1343,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
         manifest = sample_manifest()
         manifest["model_profiles"]["audit"] = {
-            "claude": {"model": "claude-fable-5-1", "effort": "high"},
+            "claude": {"model": "claude-fable-5-2", "effort": "high"},
             "codex": {
                 "model": "gpt-6-astra",
                 "model_reasoning_effort": "high",

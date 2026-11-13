@@ -580,7 +580,7 @@
       "target": ".local/bin/common/records-sync.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "c832fe80d70a760370bac021691dc470d8d118dc596884f60c9f696984871a97"
+      "sha256": "c7e32bfdff7f50a6b9caa62aad7e5fafa607a63ebe8ea6b1bc112729744fbd24"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-env",

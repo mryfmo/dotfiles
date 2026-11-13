@@ -140,7 +140,7 @@ function seat_login_home() {
     local home="${BATS_TEST_TMPDIR}/seat"
     mkdir -p "${home}/.agents/omp/profiles" "${BATS_TEST_TMPDIR}/fakebin"
     printf 'modelRoles:\n  default: openai-siwc/gpt-6-astra\n' > "${home}/.agents/omp/profiles/audit.yml"
-    printf 'modelRoles:\n  default: claude-bridge/claude-fable-5-1\n' > "${home}/.agents/omp/profiles/orchestrator.yml"
+    printf 'modelRoles:\n  default: claude-bridge/claude-fable-5-2\n' > "${home}/.agents/omp/profiles/orchestrator.yml"
     printf '#!/bin/sh\nprintf '"'"'{"configDirectory": "%%s", "authMethod": "%%s"}\\n'"'"' "${CLAUDE_CONFIG_DIR-}" "${FAKE_CLAUDE_AUTH_METHOD:-claude.ai}"\nexit "${FAKE_CLAUDE_AUTH_STATUS:-0}"\n' \
         > "${BATS_TEST_TMPDIR}/fakebin/claude"
     chmod +x "${BATS_TEST_TMPDIR}/fakebin/claude"

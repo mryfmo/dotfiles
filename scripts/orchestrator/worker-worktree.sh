@@ -68,10 +68,36 @@
 #   Trusted: the worker is a non-adversarial actor whose reflex the refusals stop, not an attacker. A worker that
 #   rewrites the fresh repository's config or hooks directory can restore the push path; the tree is the worker's,
 #   and the refusal removes the path a push takes by habit, which is the failure that happened.
+#   The tree's owner record (regime-cutover U509; standing order 27, one writer per tree): twice on 2026-11-12 and
+#   twice on 2026-11-13 a worker that had been cancelled kept editing while its successor was dispatched into the
+#   same tree (decisions.tsv lessons 2026-11-12T11:31:15Z and 2026-11-13T01:39:15Z); the rule was prose and failed
+#   four times, so it is a refusal of this tool. `claim <unit> <owner> [--stale <minutes>]` writes
+#   `<root>/<unit>/.git/regime-owner`, the two lines `owner=<name>` (over `^[A-Za-z0-9._-]{1,64}$`) and
+#   `claimed=<YYYY-MM-DDTHH:MM:SSZ>`, mode 0600; its presence is the claim, and it lives under the tree's `.git`
+#   under a name git never writes, so no worker commit or `git status` sees it. Liveness is the record's age against
+#   `--stale` (default 20 minutes, the 10-minute progress rule doubled): a younger record refuses the claim with exit
+#   3, a code of its own, naming the owner, the claim time and the age; an older one is taken over with one stdout
+#   line naming the stale owner (a dead worker leaves a record; the coordinator's kill path runs `release`, and a
+#   crash is covered by the age). `release <unit> <owner>` removes the record when it names that owner, refuses
+#   with exit 3 when it names another, and prints `no claim <unit>` with exit 0 when there is none, so the
+#   coordinator's kill path can always run it. The coordinator claims right after the creation subcommand and
+#   before every dispatch, and releases after the worker's return or kill; the creation subcommand does not claim,
+#   so a tree made for one owner and dispatched to another still passes through `claim`. The tree is `<root>/<unit>`
+#   as the creation subcommand places it (the same root checks); it must exist, with a `.git` that is a directory
+#   this user owns and no symbolic link, the shape of a repository this lever made, else exit 2. The record
+#   operations run after a `cd` into that `.git` directory, every later name relative to it (the directory the shell
+#   holds open is the descriptor `profile-config-place.py` places a file under, so a path component a worker renames
+#   between the checks and the write changes nothing the lever does): a fresh claim is one `O_CREAT | O_EXCL` write
+#   (the shell's `noclobber` redirection, under `umask 077`), a takeover writes an exclusive temporary beside the
+#   record and renames it over the old one, and the record is read as its two exact lines or refused by shape; the
+#   age comes from one `date -u` read whose status and shape are checked, the stamp converted in the shell's own
+#   arithmetic. These subcommands run no git, and the record is the only file they write or remove.
 # @arg $1 string The unit, `U<n>` or `U<n><letter>` (`U7`, `U7b`); the repository is `<root>/<unit>`.
 # @arg $2 string The branch to create: a name `git check-ref-format --branch` accepts (its normalized output is the
 #   name made, so `@{-1}` names the checkout's previous branch), over `[A-Za-z0-9._/-]`.
 # @arg $3 string The base, a revision the checkout resolves to a commit (`origin/main`).
+# @arg $1 string `claim` or `release` selects the owner subcommands (U509): then the unit, the owner's name over
+#   `^[A-Za-z0-9._-]{1,64}$`, and for `claim` an optional `--stale <minutes>` (default 20).
 # @env DOTFILES_WT The directory the worker trees live in (default `${TMPDIR:-/tmp}/dotfiles-wt`): an absolute path
 #   without `.` or `..` components or a newline, outside the checkout and its git directory by device and inode (its
 #   longest existing directory and each directory above it); made when absent, and printed as `pwd -P` resolves it,
@@ -80,15 +106,25 @@
 #   git -C <checkout> push <origin url> FETCH_HEAD:refs/heads/<branch>`, the line the coordinator runs from the main
 #   checkout, one per line; the paths and the URL are quoted for the shell (`printf %q`), the branch's character set
 #   needs none.
+# @stdout For `claim`: `claimed <unit> owner=<name>`, or `taken over <unit> from=<old> age=<min>m owner=<name>`; for
+#   `release`: `released <unit> owner=<name>`, or `no claim <unit>` when there is no record.
 # @exitcode 0 The repository exists at the base on the branch with the refusals and the upstream set.
 # @exitcode 2 Refused: usage, a unit, branch or base outside the grammar, a working directory that is not the main
 #   checkout or has no `origin` or a relative origin URL, a root inside the checkout or its git directory by identity,
 #   or holding a `.`, `..` or a newline (its resolved form included), a checkout path holding a newline, the target
 #   path present (the reservation failed), a read (`git rev-parse`, `git config`, the resolver's `cd` and `pwd -P`,
 #   `uname -s`, `stat`) that failed, or the manifest pin differing from this file, each before anything is made; or a
-#   step after the reservation that failed, after which the directory this run made is removed again and nothing else.
+#   step after the reservation that failed, after which the directory this run made is removed again and nothing else;
+#   for the owner subcommands, an owner outside the grammar, a `--stale` that is no count of minutes, a tree that is
+#   absent or no repository this lever made (`.git` not a directory of this user, or a symbolic link), a clock read
+#   that failed, or a record outside its two exact lines (left for the operator), nothing written.
+# @exitcode 3 Refused by the owner record: a `claim` while a record younger than `--stale` holds the tree (`the tree
+#   <path> is owned by <old> (claimed <ts>, <age> min ago); release it or wait past --stale`), or a `release` by a
+#   name the record does not hold; the record is untouched.
 # @example
 #   ~/.local/bin/common/worker-worktree.sh U123 feat/refusals-not-sentences origin/main
+#   ~/.local/bin/common/worker-worktree.sh claim U123 U123Worker
+#   ~/.local/bin/common/worker-worktree.sh release U123 U123Worker
 set -euo pipefail
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
@@ -147,7 +183,7 @@ lever_self_check() {
 lever_self_check
 
 lever='worker-worktree.sh'
-usage='usage: worker-worktree.sh <unit> <branch> <base>'
+usage='usage: worker-worktree.sh <unit> <branch> <base> | claim <unit> <owner> [--stale <minutes>] | release <unit> <owner>'
 pushurl='refused://never-push-from-a-worker-worktree'
 hook_message='standing order 29: the coordinator pushes'
 path=''
@@ -251,6 +287,225 @@ identity_of() {
     printf '%s\n' "${id}"
 }
 
+# @description Place the root the worker trees live in: `$DOTFILES_WT` (default `${TMPDIR:-/tmp}/dotfiles-wt`),
+#   absolute, without a `.` or `..` component or a newline, resolved through its longest existing directory
+#   (`resolve_root`), the resolved form without a newline either. Shared by the creation subcommand and the owner
+#   subcommands (U509); every refusal is exit 2 before anything is made or written.
+# @set root The resolved root.
+# @set root_prefix The physical path of the root's longest existing directory, the first step of the identity walk.
+place_root() {
+    root=${DOTFILES_WT:-${TMPDIR:-/tmp}/dotfiles-wt}
+    [[ ${root} == /* ]] || refuse "DOTFILES_WT ${root} is not an absolute path" # lint-comparisons: allow a shape test (absolute or not), no path identity is compared
+    # A `.` or `..` component after the last existing directory would make `mkdir -p` land elsewhere than the resolved
+    # prefix says (`<tmp>/absent/../checkout`), so the root is taken without either.
+    [[ ${root} != */./* && ${root} != */../* && ${root} != */. && ${root} != */.. ]] || # lint-comparisons: allow a shape test (a . or .. component), no path identity is compared
+        refuse "DOTFILES_WT ${root} has a . or .. component; give the resolved path"
+    [[ ${root} != *$'\n'* ]] || refuse "DOTFILES_WT ${root//$'\n'/\\n} holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
+    resolve_root "${root}" || refuse "cannot resolve DOTFILES_WT ${root}; its longest existing directory cannot be entered"
+    root=${resolved_root}
+    # The resolved form is checked again: a symlink whose own name holds no newline may point at a directory whose name
+    # holds one, and the alternates file and the printed `worktree=` line are one path per line.
+    [[ ${root} != *$'\n'* ]] || refuse "DOTFILES_WT resolves to ${root//$'\n'/\\n}, which holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
+}
+
+# The tree's owner record (regime-cutover U509): `claim <unit> <owner> [--stale <minutes>]` and `release <unit> <owner>`.
+owner_file='regime-owner'
+stale_default=20
+
+# @description Print a refusal on stderr and exit 3: a live owner holds the tree, or the record names an owner other
+#   than the one releasing. A code of its own, so the coordinator's dispatch step tells it from a malformed call
+#   (exit 2). The record is untouched.
+# @arg $@ string The reason.
+refuse_owned() {
+    echo "${lever}: refused: $*" >&2
+    exit 3
+}
+
+# @description Set `epoch` to the seconds since 1970-01-01T00:00:00Z of $1, a `YYYY-MM-DDTHH:MM:SSZ` stamp, in the
+#   shell's own arithmetic (the days-from-civil formula of the proleptic Gregorian calendar), so the record's age
+#   needs no `date -d` or `date -j -f`, whose flags differ between Linux and macOS, and no producer stands between the
+#   record and the comparison. A stamp outside the shape, or with a field out of range, is a failure, never a time.
+# @arg $1 string The stamp.
+# @set epoch The seconds.
+# @exitcode 1 Not a stamp.
+epoch_of() {
+    local ts=$1 y m d hh mm ss era yoe doy doe days
+    [[ ${ts} =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})Z$ ]] || return 1
+    y=$((10#${BASH_REMATCH[1]})) m=$((10#${BASH_REMATCH[2]})) d=$((10#${BASH_REMATCH[3]}))
+    hh=$((10#${BASH_REMATCH[4]})) mm=$((10#${BASH_REMATCH[5]})) ss=$((10#${BASH_REMATCH[6]}))
+    ((m >= 1 && m <= 12 && d >= 1 && d <= 31 && hh <= 23 && mm <= 59 && ss <= 60)) || return 1
+    if ((m <= 2)); then
+        y=$((y - 1))
+    fi
+    era=$((y / 400))
+    yoe=$((y - era * 400))
+    doy=$(((153 * (m > 2 ? m - 3 : m + 9) + 2) / 5 + d - 1))
+    doe=$((yoe * 365 + yoe / 4 - yoe / 100 + doy))
+    days=$((era * 146097 + doe - 719468))
+    epoch=$((days * 86400 + hh * 3600 + mm * 60 + ss))
+}
+
+# @description Read the clock once: `now` (epoch seconds) and `now_stamp` (the `YYYY-MM-DDTHH:MM:SSZ` form of the same
+#   instant) from one `date -u`, its status and the shape of its line checked (standing order 21); a failed or
+#   misshapen read refuses, never an age or a claim time the lever made up.
+# @set now The epoch seconds.
+# @set now_stamp The stamp written into a record.
+read_clock() {
+    local line
+    line=$(date -u '+%s %Y-%m-%dT%H:%M:%SZ') || refuse 'cannot read the clock (date -u failed)'
+    [[ ${line} =~ ^([0-9]+)\ ([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$ ]] ||
+        refuse "cannot read the clock (date -u printed ${line}, not <epoch> <stamp>)"
+    now=${BASH_REMATCH[1]}
+    now_stamp=${BASH_REMATCH[2]}
+}
+
+# @description Enter the `.git` directory of the worker tree $1 for the owner subcommands. The tree must exist and
+#   be no symbolic link, and its `.git` must be a directory this user owns and no symbolic link (`-L` before `-d`, so
+#   a link planted at the name is refused, not followed): the shape of a repository this lever made (`git init` makes
+#   `.git` a directory; the lever writes no marker, and the tree is trusted as the lever's beyond this, U509 TRUST).
+#   The `cd` is the descriptor every record operation runs under: each later name is relative to the directory the
+#   shell holds open, so a rename of a path component by a worker between these checks and the write changes nothing
+#   the lever does (the form of `profile-config-place.py`'s dir_fd placement, in a shell). The lever's own directory
+#   changes here and the subcommand ends the run.
+# @arg $1 string The tree path.
+enter_git_dir() {
+    [[ -e $1 || -L $1 ]] || refuse "the tree $1 does not exist; make it with worker-worktree.sh <unit> <branch> <base> first"
+    [[ ! -L $1 ]] || refuse "the tree $1 is a symbolic link; a worker tree is the directory the lever made"
+    [[ ! -L $1/.git ]] || refuse "$1/.git is a symbolic link; a worker tree's .git is the directory the lever made"
+    [[ -d $1/.git ]] || refuse "$1 is no worker repository: $1/.git is not a directory"
+    [[ -O $1/.git ]] || refuse "$1 is no worker repository: $1/.git is not this user's"
+    cd -- "$1/.git" || refuse "cannot enter $1/.git"
+}
+
+# @description Read the owner record `regime-owner` of the entered `.git` directory: `rec_owner`, `rec_stamp` and
+#   `rec_epoch` set and status 0, or status 1 when there is none. The only shape read is the two newline-ended lines
+#   `owner=<name>` and `claimed=<stamp>`, matched whole (U509 TRUST): a symbolic link, a file of another kind, another
+#   line count, a line outside the grammar or a stamp that is no date refuses with exit 2 and leaves the file for the
+#   operator, and a file that is there but cannot be read (`cat`'s status) is a refusal, never an absence (standing
+#   order 21). The bytes are read through `cat` with a sentinel, as `exact_line` reads a path, so the final newline is
+#   part of what is matched (bash 3.2, the system shell, has no `mapfile`).
+# @set rec_owner The owner's name.
+# @set rec_stamp The claim time as written.
+# @set rec_epoch The claim time in epoch seconds.
+# @exitcode 0 Read.
+# @exitcode 1 No record.
+read_record() {
+    local content malformed pattern
+    malformed="the owner record ${record_path} is not the two lines owner=<name> and claimed=<YYYY-MM-DDTHH:MM:SSZ>; remove it by hand"
+    pattern="^owner=([A-Za-z0-9._-]{1,64})"$'\n'"claimed=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)"$'\n'"\$"
+    [[ ! -L ${owner_file} ]] || refuse "the owner record ${record_path} is a symbolic link; remove it by hand"
+    [[ -e ${owner_file} ]] || return 1
+    [[ -f ${owner_file} ]] || refuse "the owner record ${record_path} is not a regular file; remove it by hand"
+    content=$(cat -- "${owner_file}" 2> /dev/null && printf x) || refuse "cannot read the owner record ${record_path}"
+    content=${content%x}
+    [[ ${content} =~ ${pattern} ]] || refuse "${malformed}"
+    rec_owner=${BASH_REMATCH[1]}
+    rec_stamp=${BASH_REMATCH[2]}
+    epoch_of "${rec_stamp}" || refuse "${malformed}"
+    rec_epoch=${epoch}
+}
+
+# @description Write the record with owner $1 and stamp $2 as a fresh claim: one `O_CREAT | O_EXCL` open through the
+#   shell's `noclobber` redirection (bash opens a name nothing is at with `O_EXCL`, and refuses one a file is at),
+#   under `umask 077` in a subshell, so the file is made 0600 and this shell's umask is as it was. A name that appeared
+#   since the read is a claim that landed first: exit 3, never a rewrite.
+# @arg $1 string The owner.
+# @arg $2 string The stamp.
+write_fresh() {
+    if ! (umask 077 && set -o noclobber && printf 'owner=%s\nclaimed=%s\n' "$1" "$2" > "${owner_file}") 2> /dev/null; then
+        [[ -e ${owner_file} || -L ${owner_file} ]] || refuse "cannot write the owner record ${record_path}"
+        refuse_owned "the tree ${path} was claimed by another run while this claim was made; run claim again"
+    fi
+}
+
+# @description Replace the record with owner $1 and stamp $2 (a takeover): the new record is written 0600 under an
+#   exclusive temporary name beside it (`noclobber` again) and renamed over the old one in one step (`mv -f` within
+#   one directory is rename(2)), so no reader sees a partial record and the stale owner's file is never truncated in
+#   place. A failure removes the temporary and refuses.
+# @arg $1 string The owner.
+# @arg $2 string The stamp.
+write_takeover() {
+    local tmp=${owner_file}.$$.tmp
+    (umask 077 && set -o noclobber && printf 'owner=%s\nclaimed=%s\n' "$1" "$2" > "${tmp}") 2> /dev/null ||
+        refuse "cannot write ${record_path}.$$.tmp"
+    mv -f -- "${tmp}" "${owner_file}" || {
+        rm -f -- "${tmp}"
+        refuse "cannot replace the owner record ${record_path}"
+    }
+}
+
+# @description The owner subcommands: arguments checked (exit 2), the root placed as the creation subcommand places
+#   it, the tree's `.git` entered, then `claim` (the clock read, the record read, refused while live, taken over when
+#   stale, written when absent) or `release` (removed when the record names the owner, refused when it names another,
+#   `no claim` when absent). Ends the run.
+# @arg $1 string `claim` or `release`.
+# @arg $2 string The unit.
+# @arg $3 string The owner.
+# @arg $@ string For `claim`, `--stale <minutes>` at most.
+owner_subcommand() {
+    local verb=$1 unit owner stale=${stale_default} age
+    shift
+    (($# >= 2)) || refuse "${usage}"
+    unit=$1
+    owner=$2
+    shift 2
+    case ${verb} in
+    claim)
+        while (($# > 0)); do
+            case $1 in
+            --stale)
+                (($# >= 2)) || refuse '--stale needs a count of minutes'
+                [[ $2 =~ ^[0-9]+$ ]] || refuse "--stale $2 is not a count of minutes"
+                stale=$((10#$2))
+                shift 2
+                ;;
+            *) refuse "${usage}" ;;
+            esac
+        done
+        ;;
+    release) (($# == 0)) || refuse "${usage}" ;;
+    esac
+    [[ ${unit} =~ ^U[0-9]+[a-z]?$ ]] || refuse "the unit ${unit} is not U<n> or U<n><letter>"
+    [[ ${owner} =~ ^[A-Za-z0-9._-]{1,64}$ ]] || refuse "the owner ${owner} is not a name over [A-Za-z0-9._-]{1,64}"
+    place_root
+    path=${root%/}/${unit}
+    record_path=${path}/.git/${owner_file}
+    enter_git_dir "${path}"
+    case ${verb} in
+    claim)
+        read_clock
+        if read_record; then
+            age=$(((now - rec_epoch) / 60))
+            if ((age < 0)); then
+                age=0
+            fi
+            ((age >= stale)) ||
+                refuse_owned "the tree ${path} is owned by ${rec_owner} (claimed ${rec_stamp}, ${age} min ago); release it or wait past --stale"
+            write_takeover "${owner}" "${now_stamp}"
+            printf 'taken over %s from=%s age=%sm owner=%s\n' "${unit}" "${rec_owner}" "${age}" "${owner}"
+        else
+            write_fresh "${owner}" "${now_stamp}"
+            printf 'claimed %s owner=%s\n' "${unit}" "${owner}"
+        fi
+        ;;
+    release)
+        if read_record; then
+            [[ ${rec_owner} == "${owner}" ]] ||
+                refuse_owned "the tree ${path} is owned by ${rec_owner}, not ${owner}; only the owner releases it"
+            rm -f -- "${owner_file}" || refuse "cannot remove the owner record ${record_path}"
+            printf 'released %s owner=%s\n' "${unit}" "${owner}"
+        else
+            printf 'no claim %s\n' "${unit}"
+        fi
+        ;;
+    esac
+    exit 0
+}
+
+case ${1:-} in
+claim | release) owner_subcommand "$@" ;;
+esac
+
 [[ $# == 3 ]] || refuse "${usage}"
 unit=$1
 branch=$2
@@ -299,18 +554,7 @@ esac
 base_sha=$(git_run rev-parse --verify --quiet "${base}^{commit}" 2> /dev/null) || refuse "the base ${base} names no commit; run git fetch origin"
 [[ ${base_sha} =~ ^[0-9a-f]{40,64}$ ]] || refuse "the base ${base} resolved to ${base_sha}, not an object name"
 
-root=${DOTFILES_WT:-${TMPDIR:-/tmp}/dotfiles-wt}
-[[ ${root} == /* ]] || refuse "DOTFILES_WT ${root} is not an absolute path" # lint-comparisons: allow a shape test (absolute or not), no path identity is compared
-# A `.` or `..` component after the last existing directory would make `mkdir -p` land elsewhere than the resolved
-# prefix says (`<tmp>/absent/../checkout`), so the root is taken without either.
-[[ ${root} != */./* && ${root} != */../* && ${root} != */. && ${root} != */.. ]] || # lint-comparisons: allow a shape test (a . or .. component), no path identity is compared
-    refuse "DOTFILES_WT ${root} has a . or .. component; give the resolved path"
-[[ ${root} != *$'\n'* ]] || refuse "DOTFILES_WT ${root//$'\n'/\\n} holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
-resolve_root "${root}" || refuse "cannot resolve DOTFILES_WT ${root}; its longest existing directory cannot be entered"
-root=${resolved_root}
-# The resolved form is checked again: a symlink whose own name holds no newline may point at a directory whose name
-# holds one, and the alternates file and the printed `worktree=` line are one path per line.
-[[ ${root} != *$'\n'* ]] || refuse "DOTFILES_WT resolves to ${root//$'\n'/\\n}, which holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
+place_root
 # A root inside the checkout's working tree or git directory (`<checkout>/.git/hooks`) would have the tree made
 # write the checkout, which this lever never does. Containment is decided by identity, not by spelling: round 5
 # compared the resolved strings, and on a case-insensitive volume a case alias of the checkout path

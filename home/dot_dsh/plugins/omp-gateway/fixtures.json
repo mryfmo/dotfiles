@@ -2,7 +2,13 @@
   "measured": {
     "gateway": "omp 18.12.6 `omp auth-gateway stdio`, cwd $HOME",
     "text_tool_use_unknown": "2026-11-06 05:56Z to 05:58Z (U239)",
-    "models": "2026-11-06 06:2xZ (U240): two `/v1/models` lines, two 200 replies; list trimmed to the claude-bridge entries"
+    "models": "2026-11-06 06:2xZ (U240): two `/v1/models` lines, two 200 replies; list trimmed to the claude-bridge entries. Captured as they stand: the opus, sonnet and haiku rows. The first row was claude-bridge/claude-fable-5-1 (display name Claude Fable 5.1 1M) and is replaced by a row no gateway answered: see derived.models"
+  },
+  "derived": {
+    "models": {
+      "note": "The claude-bridge/claude-fable-5-2 row (id and display name) is the kit's expected id: the operator's instruction of 2026-11-13 JST moved the kit's Anthropic model to Claude Fable 5.2, whose Claude API id claude-fable-5-2 is on the official model list read 2026-11-13 (U506). Fable 5.2 was released 2026-11-09, after the capture, so the row was not captured from a running gateway; its other fields are the captured claude-fable-5-1 row's (U506b)",
+      "rows": ["claude-bridge/claude-fable-5-2"]
+    }
   },
   "ready": { "ready": true, "version": "18.12.6" },
   "knownModels": ["claude-bridge/claude-haiku-5-5"],

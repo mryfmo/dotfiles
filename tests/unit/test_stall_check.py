@@ -1,15 +1,17 @@
 """Exercise scripts/orchestrator/stall-check.py (regime-cutover U496, round 2 U496b, round 3 U496c and U496d, round 4
-U496e), the coordinator's one reader of the in-flight workers' progress files: one row per `units.tsv` row whose state
-is `in-flight` and whose track is not `sweep`, in the register's order, `unit<TAB>state<TAB>age_minutes<TAB>last_line`,
-the state one of `moving`, `stalled`, `done`, `no-file` and `unreadable` (a file that yields no text or a last line
-outside the grammar is that one unit's row, exit 2, never a refusal that hides the other units), the one run-level
-refusal a register that cannot be read, the register's header and the paths held before anything is read, the store
-and the progress root each walked from `/` by descriptors and held as a directory descriptor, every file opened on that
-descriptor non-blocking, without following a link, and judged on its own descriptor. Every test but the swap tests runs
-the lever as a subprocess under `python3 -I` over a scratch store and a scratch progress root with the clock injected
-by `--now`; the swap tests import the lever and time a swap at an `open`, of one file (for a link, a regular file, a
-FIFO), of the root and of an ancestor of the root; nothing reads the live store, `/tmp/dotfiles-wt` or the real
-`~/.agents`, and the lever is proved to write nothing.
+U496e, round 5 the bare done line and the `malformed` row), the coordinator's one reader of the in-flight workers'
+progress files: one row per `units.tsv` row whose state is `in-flight` and whose track is not `sweep`, in the
+register's order, `unit<TAB>state<TAB>age_minutes<TAB>last_line`, the state one of `moving`, `stalled`, `done` (the
+timestamped `done,` forms and the workers' bare `done, head=<40 hex>` last line, aged by the timestamped line before
+it), `no-file`, `unreadable` and `malformed` (a file that yields no text, or one whose text is outside the grammar, is
+that one unit's row, exit 2, the malformed row's line cell the reason, never a refusal that hides the other units), the
+one run-level refusal a register that cannot be read, the register's header and the paths held before anything is
+read, the store and the progress root each walked from `/` by descriptors and held as a directory descriptor, every
+file opened on that descriptor non-blocking, without following a link, and judged on its own descriptor. Every test but
+the swap tests runs the lever as a subprocess under `python3 -I` over a scratch store and a scratch progress root with
+the clock injected by `--now`; the swap tests import the lever and time a swap at an `open`, of one file (for a link, a
+regular file, a FIFO), of the root and of an ancestor of the root; nothing reads the live store, `/tmp/dotfiles-wt` or
+the real `~/.agents`, and the lever is proved to write nothing.
 """
 
 from __future__ import annotations
@@ -40,6 +42,8 @@ HEADER = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote\n"
 NOW = "2026-11-12T06:30:00Z"
 HEAD = "a" * 40
 REFUSED = "stall-check.py: refused: "
+# The `malformed` row's reason for a last line outside the grammar that is not the bare done line; the line follows.
+NO_TS = "the last line has no YYYY-MM-DDTHH:MM:SSZ timestamp and a space before its text"
 
 
 def unit_row(unit: str, track: str = "feat", state: str = "in-flight", **cells: str) -> str:
@@ -298,49 +302,76 @@ class StallCheckTest(unittest.TestCase):
             f"'/tmp/{slug}-wt'",
         )
 
-    # CHANGE 1 (round 2, U496b): a bad progress file is one unit's row; then the refusals, each exit 2 with one stderr
-    # line and nothing on stdout.
+    # CHANGE 1 (round 2, U496b; round 5): a bad progress file is one unit's row; then the refusals, each exit 2 with
+    # one stderr line and nothing on stdout.
 
-    def test_an_unreadable_progress_file_is_that_unit_s_row_and_the_other_rows_still_print(self) -> None:
-        """A file that exists but yields no text, or whose last line carries no timestamp of the form, is that one
-        unit's `unreadable` row: `-` for the age, the last line in the fourth cell when there is one (`-` when the
-        file gave no text); the other units' rows print as before, nothing goes to stderr, and the run exits 2, the
-        maximum over the rows, never a refusal that hides every other unit (verdict U496-d1256438 P1 :338)."""
+    def test_an_unreadable_or_malformed_progress_file_is_that_unit_s_row_and_the_other_rows_still_print(self) -> None:
+        """A file that exists but yields no text is that one unit's `unreadable` row, `-` for the age and the line; a
+        file whose text is outside the grammar is that unit's `malformed` row, `-` for the age and the reason in the
+        line cell, the worker's own line after a colon where there is one (round 5; rounds 2 to 4 printed the line
+        alone on an `unreadable` row); the other units' rows print as before, nothing goes to stderr, and the run exits
+        2, the maximum over the rows, never a refusal that hides every other unit (verdict U496-d1256438 P1 :338)."""
         path = self.progress / "U3-progress.txt"
+        start = "2026-11-12T06:16:00Z U3 start"
         cases = [
-            ("empty", lambda: path.write_bytes(b""), "-"),
-            ("blank last line", lambda: path.write_text("2026-11-12T06:16:00Z U3 start\n\n"), "-"),
+            ("empty", lambda: path.write_bytes(b""), "malformed", "the file is empty"),
+            ("blank last line", lambda: path.write_text(f"{start}\n\n"), "malformed", "the last line is blank"),
             (
                 "no timestamp",
-                lambda: path.write_text("2026-11-12T06:16:00Z U3 start\nU3: committing\n"),
-                "U3: committing",
+                lambda: path.write_text(f"{start}\nU3: committing\n"),
+                "malformed",
+                f"{NO_TS}: U3: committing",
             ),
-            ("no space after the timestamp", lambda: path.write_text("2026-11-12T06:16:00Z\n"), "2026-11-12T06:16:00Z"),
+            (
+                "no space after the timestamp",
+                lambda: path.write_text("2026-11-12T06:16:00Z\n"),
+                "malformed",
+                f"{NO_TS}: 2026-11-12T06:16:00Z",
+            ),
             (
                 "a local time",
                 lambda: path.write_text("2026-11-12T15:16:00+09:00 U3 start\n"),
-                "2026-11-12T15:16:00+09:00 U3 start",
+                "malformed",
+                f"{NO_TS}: 2026-11-12T15:16:00+09:00 U3 start",
             ),
             (
                 "no such date",
                 lambda: path.write_text("2026-13-40T06:16:00Z U3 start\n"),
-                "2026-13-40T06:16:00Z U3 start",
+                "malformed",
+                "the last line has no such date: 2026-13-40T06:16:00Z U3 start",
             ),
             (
                 "after --now",
                 lambda: path.write_text("2026-11-12T06:30:01Z U3 start\n"),
-                "2026-11-12T06:30:01Z U3 start",
+                "malformed",
+                f"the last line has a time after the clock {NOW}: 2026-11-12T06:30:01Z U3 start",
             ),
-            ("a tab in a bad line", lambda: path.write_text("U3:\tstep one\rdone\n"), "U3: step one done"),
-            ("not UTF-8", lambda: path.write_bytes(b"2026-11-12T06:16:00Z U3 \xff\n"), "-"),
-            ("a directory", lambda: path.mkdir(), "-"),
-            ("a symbolic link", lambda: path.symlink_to(self.progress / "U2-progress.txt"), "-"),
+            (
+                "a tab in a bad line",
+                lambda: path.write_text("U3:\tstep one\rdone\n"),
+                "malformed",
+                f"{NO_TS}: U3: step one done",
+            ),
+            (
+                "the bare done line after a line with no such date",
+                lambda: path.write_text(f"2026-13-40T06:16:00Z U3 start\ndone, head={HEAD}\n"),
+                "malformed",
+                "the timestamped line before the bare done line has no such date: 2026-13-40T06:16:00Z U3 start",
+            ),
+            (
+                "the bare done line after a line after --now",
+                lambda: path.write_text(f"2026-11-12T06:30:01Z U3 start\ndone, head={HEAD}\n"),
+                "malformed",
+                "the timestamped line before the bare done line has a time after the clock "
+                f"{NOW}: 2026-11-12T06:30:01Z U3 start",
+            ),
+            ("not UTF-8", lambda: path.write_bytes(b"2026-11-12T06:16:00Z U3 \xff\n"), "unreadable", "-"),
+            ("a directory", lambda: path.mkdir(), "unreadable", "-"),
+            ("a symbolic link", lambda: path.symlink_to(self.progress / "U2-progress.txt"), "unreadable", "-"),
         ]
         if os.geteuid() != 0:
-            cases.insert(
-                0, ("mode 000", lambda: (path.write_text("2026-11-12T06:16:00Z U3 start\n"), path.chmod(0)), "-")
-            )
-        for label, plant, last in cases:
+            cases.insert(0, ("mode 000", lambda: (path.write_text(f"{start}\n"), path.chmod(0)), "unreadable", "-"))
+        for label, plant, state, last in cases:
             with self.subTest(case=label):
                 plant()
                 try:
@@ -349,7 +380,7 @@ class StallCheckTest(unittest.TestCase):
                     self.assertEqual(
                         run.stdout,
                         "U2\tmoving\t3\t2026-11-12T06:27:00Z U2: red tests pasted\n"
-                        f"U3\tunreadable\t-\t{last}\n"
+                        f"U3\t{state}\t-\t{last}\n"
                         f"U4\tdone\t10\t2026-11-12T06:20:00Z done, head={HEAD}\n",
                     )
                 finally:
@@ -362,12 +393,59 @@ class StallCheckTest(unittest.TestCase):
                         path.chmod(0o644)
                         path.unlink()
 
-    def test_a_bare_done_line_without_a_timestamp_is_that_unit_s_unreadable_row_not_a_refusal(self) -> None:
-        """The brief's literal `done, head=<40 hex>` as the last line with no timestamp (U497's worker, measured
-        2026-11-12T06:48Z) refused the whole run at d1256438 and hid every other unit; it is now U4's row
-        `unreadable<TAB>-<TAB>done, head=<sha>`, the other two rows print, exit 2, nothing on stderr; the same for the
-        bare `<unit> done, head=<sha>` and for any other text without the timestamp."""
-        for last in (f"done, head={HEAD}", f"U4 done, head={HEAD}", "all tests green, committing"):
+    def test_the_bare_done_line_is_done_aged_by_the_timestamped_line_before_it_and_hides_no_stall(self) -> None:
+        """The coordinator's worker contract ends a progress file with the bare `done, head=<40 hex>` and no
+        timestamp, and the workers write exactly that (U516c and U512b, 2026-11-13); rounds 1 to 4 judged the line
+        bad (round 1 as a refusal of the whole run, rounds 2 to 4 as an `unreadable` row of exit 2), so one finished
+        worker hid or outranked every stalled one (Codex review P1 of round 1's `:342`). The line is `done`: U4's row
+        `done<TAB>10<TAB>done, head=<sha>`, the age that of the timestamped line before it (the last such line, a
+        line without the timestamp between the two skipped), U3's `stalled` row still printed and the run's exit code
+        1 for that stall alone, the stall's own meaning kept; with U3 moving the run exits 0; the file without the
+        trailing newline is the same row."""
+        self.write_progress(
+            "U4",
+            "2026-11-12T06:05:00Z U4 start: brief read",
+            "2026-11-12T06:20:00Z U4 full run end",
+            "(a line pasted without its clock)",
+            f"done, head={HEAD}",
+        )
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        self.assertEqual(
+            run.stdout,
+            "U2\tmoving\t3\t2026-11-12T06:27:00Z U2: red tests pasted\n"
+            "U3\tstalled\t14\t2026-11-12T06:16:00Z U3 start: brief read\n"
+            f"U4\tdone\t10\tdone, head={HEAD}\n",
+        )
+        self.write_progress("U3", "2026-11-12T06:16:00Z U3 start: brief read", "2026-11-12T06:29:30Z U3: committing")
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(
+            run.stdout,
+            "U2\tmoving\t3\t2026-11-12T06:27:00Z U2: red tests pasted\n"
+            "U3\tmoving\t0\t2026-11-12T06:29:30Z U3: committing\n"
+            f"U4\tdone\t10\tdone, head={HEAD}\n",
+        )
+        self.write_progress("U4", "2026-11-12T06:20:00Z U4 full run end", f"done, head={HEAD}", end="")
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertIn(f"U4\tdone\t10\tdone, head={HEAD}\n", run.stdout)
+
+    def test_a_file_of_garbage_beside_a_stalled_worker_is_a_malformed_row_and_the_stalled_row_still_prints(
+        self,
+    ) -> None:
+        """A progress file whose last line is garbage (no timestamp, not the bare done line) is that unit's
+        `malformed` row, `-` for the age and the reason with the worker's line in the line cell; the stalled worker's
+        row is printed with it, nothing goes to stderr, and the run exits 2 after printing (round 5: one worker's file
+        never hides another's stall). The bare `<unit> done, head=<sha>` without a timestamp, a sha of 39 or of
+        upper-case hex digits and a trailing space are not the bare done line and are the same row."""
+        for last in (
+            "all tests green, committing",
+            f"U4 done, head={HEAD}",
+            f"done, head={HEAD[:39]}",
+            f"done, head={HEAD.upper()}",
+            f"done, head={HEAD} ",
+        ):
             with self.subTest(last=last):
                 self.write_progress("U4", "2026-11-12T06:05:00Z U4 start: brief read", last)
                 run = self.run_lever()
@@ -376,8 +454,21 @@ class StallCheckTest(unittest.TestCase):
                     run.stdout,
                     "U2\tmoving\t3\t2026-11-12T06:27:00Z U2: red tests pasted\n"
                     "U3\tstalled\t14\t2026-11-12T06:16:00Z U3 start: brief read\n"
-                    f"U4\tunreadable\t-\t{last}\n",
+                    f"U4\tmalformed\t-\t{NO_TS}: {last}\n",
                 )
+
+    def test_a_bare_done_line_as_the_file_s_only_line_is_malformed(self) -> None:
+        """The bare done line has no clock of its own, so with no timestamped line before it the file is `malformed`
+        with that reason, the other rows printed, exit 2."""
+        self.write_progress("U4", f"done, head={HEAD}")
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (2, ""), run.stdout)
+        self.assertEqual(
+            run.stdout,
+            "U2\tmoving\t3\t2026-11-12T06:27:00Z U2: red tests pasted\n"
+            "U3\tstalled\t14\t2026-11-12T06:16:00Z U3 start: brief read\n"
+            f"U4\tmalformed\t-\tthe bare done line has no timestamped line before it: done, head={HEAD}\n",
+        )
 
     def test_a_progress_path_that_is_a_link_outside_the_root_is_unreadable_and_the_target_s_text_never_printed(
         self,
@@ -672,14 +763,22 @@ class StallCheckTest(unittest.TestCase):
 
     def test_the_readme_table_row_names_the_row_contract_for_an_unreadable_file(self) -> None:
         """Verdict U496-6f774696 P2 :328: the seat-lever table's `stall-check.py` row said an unreadable progress file
-        refuses the run, the round-1 contract round 2 replaced; the row names the five states, `unreadable` as that
-        one unit's row and never a refusal, and the root held as a directory descriptor."""
+        refuses the run, the round-1 contract round 2 replaced; the row names the six states, `unreadable` and
+        `malformed` (round 5) as that one unit's row and never a refusal, the bare done line, and the root held as a
+        directory descriptor."""
         readme = (ROOT / "scripts/orchestrator/README.md").read_text()
         rows = [line for line in readme.splitlines() if line.startswith("| `~/.local/bin/common/stall-check.py *`")]
         self.assertEqual(len(rows), 1, "one table row for the lever")
         row = rows[0]
         self.assertNotIn("an unreadable file a refusal", row)
-        for words in ("`unreadable`", "that unit's row", "never a refusal", "directory descriptor"):
+        for words in (
+            "`unreadable`",
+            "`malformed`",
+            "that unit's row",
+            "never a refusal",
+            "directory descriptor",
+            "`done, head=<40 hex>`",
+        ):
             self.assertIn(words, row)
 
     def test_the_register_is_held_to_its_header_and_its_shape_before_any_file_is_read(self) -> None:

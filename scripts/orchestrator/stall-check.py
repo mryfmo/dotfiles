@@ -1,6 +1,6 @@
 #!/usr/bin/env -S python3 -I
 """Name every in-flight worker of a program store that is silent past its deadline (regime-cutover U496, round 2 U496b,
-round 3 U496c and U496d, round 4 U496e).
+round 3 U496c and U496d, round 4 U496e, round 5 the bare done line and the `malformed` row).
 
 Measured 2026-11-06 to 2026-11-12: eleven worker stalls, each a Task subagent silent after a tool call for 30 to 45
 minutes, each found because the coordinator remembered to read the progress files by hand (standing order 57). This
@@ -13,21 +13,29 @@ lever is that reading as a command: `stall-check.py <store> [--progress-root <di
 
 the contract `program-status.py` (U497) reads; nothing else goes to stdout, and the rows go out together at the end,
 so a refusal leaves stdout empty. A progress file is an append-only text file whose lines start with an ISO-8601 UTC
-timestamp `YYYY-MM-DDTHH:MM:SSZ`, a space and free text; the last line decides. The states, one table (STATES):
+timestamp `YYYY-MM-DDTHH:MM:SSZ`, a space and free text, and may end with the bare completion line the coordinator's
+worker contract prescribes, `done, head=<40 hex>` with no timestamp (round 5, Codex review P1 of round 1's `:342`,
+still refused at ad3128dc: the workers write exactly that line, U516c and U512b measured 2026-11-13); the last line
+decides. The states, one table (STATES):
 
 - `moving`: the last line's age in whole minutes is at most `--deadline-minutes` (default 10);
 - `stalled`: older;
 - `done`: the last line's text after the timestamp starts with `done,`, or with the row's own unit id, a space and
-  `done,` (the form the workers write, `U495 done, head=<sha>`, measured 2026-11-12); the age is printed as well;
+  `done,` (the form the workers write, `U495 done, head=<sha>`, measured 2026-11-12); or the last line is the bare
+  `done, head=<40 hex>` (BARE_DONE, exactly that), whose age is the preceding timestamped line's, the last line before
+  it that has the timestamp and the space; the age is printed as well;
 - `no-file`: no progress file at the path, the worker never wrote its first line; `age_minutes` and `last_line` are
   `-`, and the row counts as a stall;
-- `unreadable`: that one unit's row, `age_minutes` `-`, never a refusal that hides every other unit (verdict
-  U496-d1256438 P1; the one run-level refusal a file earns is a store that cannot be read). Either the file yields no
-  text (a directory, a link, a FIFO, a device or a socket at the name, a mode that denies the read, bytes that are not
-  UTF-8, an empty file or a blank last line) and `last_line` is `-`; or its last line carries no timestamp of the form
-  (the bare `done, head=<sha>` some workers write, or any other text), no space after it, a date that is none, or a
-  time after the clock, and `last_line` is that line, so the coordinator sees what the worker wrote. The reason is not
-  a cell of the row; the row's exit code is 2.
+- `unreadable`: that one unit's row, `age_minutes` and `last_line` `-`, never a refusal that hides every other unit
+  (verdict U496-d1256438 P1; the one run-level refusal a file earns is a store that cannot be read): the file yields
+  no text (a directory, a link, a FIFO, a device or a socket at the name, a mode that denies the read, bytes that are
+  not UTF-8); the row's exit code is 2;
+- `malformed`: that one unit's row as well (round 5: one worker's file never hides another's stall), `age_minutes`
+  `-` and `last_line` the reason folded to one line, the worker's own line after a colon where there is one, so the
+  coordinator sees what the worker wrote: the file is empty, its last line is blank, carries no timestamp of the
+  form and a space (the bare `U<n> done, head=<sha>` without a timestamp, or any other text), a date that is none or
+  a time after the clock; or it is the bare done line with no timestamped line before it, or with one whose date is
+  none or whose time is after the clock. The row's exit code is 2.
 
 `age_minutes` is the integer floor of the age in minutes, the number the state is judged by, so a printed `10` is
 moving under the default and `11` is stalled; a tab or a carriage return inside the worker's free text is one space in
@@ -40,7 +48,8 @@ statement by the spelling `tests/unit/test_sandbox_portability.py` sanctions (ro
 refuses a spelled temporary path, and the sandbox's writable temporary directory is `$TMPDIR`).
 
 Exit 0 when every row is `moving` or `done` (an empty in-flight set prints nothing and is 0); exit 1 when any row is
-`stalled` or `no-file`; exit 2 when any row is `unreadable` (the rows printed, the code the maximum over the rows), and
+`stalled` or `no-file`; exit 2 when any row is `unreadable` or `malformed` (the rows printed first, the code the
+maximum over the rows), and
 exit 2 with one stderr line, `stall-check.py: refused: <reason>`, and nothing on stdout for every refusal (standing
 order 21, fail closed on every producer): a `units.tsv` that is absent, cannot be read or opened, is a link or no
 regular file, is not UTF-8, has not the header `id track state branch pr head_sha brief note` tab-separated, has a row
@@ -119,15 +128,26 @@ BOUNDED_MINUTES = 1440
 TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 TS_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 PROGRESS_LINE = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) (.*)$", re.DOTALL)
+TS_PREFIX = "YYYY-MM-DDTHH:MM:SSZ"
 DEADLINE_MINUTES = 10
 DONE_PREFIX = "done,"
+# The bare completion line the worker contract prescribes, exactly: no timestamp, `done, head=` and the 40-hex sha.
+BARE_DONE = re.compile(r"^done, head=[0-9a-f]{40}$")
 # The three characters no argument holds: the output is tab-separated lines.
 CONTROL = (("\t", "a tab"), ("\n", "a newline"), ("\r", "a carriage return"))
 
-# The states, one table: the state word and the exit code a row of it contributes; `unreadable` is one unit's row of
-# exit 2 (round 2, U496b), while a refusal (exit 2 through `refuse`, nothing printed) is the store's alone.
-MOVING, STALLED, DONE, NO_FILE, UNREADABLE = "moving", "stalled", "done", "no-file", "unreadable"
-STATES = {MOVING: 0, DONE: 0, STALLED: 1, NO_FILE: 1, UNREADABLE: 2}
+# The states, one table: the state word and the exit code a row of it contributes; `unreadable` (a file that yields no
+# text, round 2, U496b) and `malformed` (text outside the grammar, round 5) are one unit's row of exit 2, while a
+# refusal (exit 2 through `refuse`, nothing printed) is the store's alone.
+MOVING, STALLED, DONE, NO_FILE, UNREADABLE, MALFORMED = (
+    "moving",
+    "stalled",
+    "done",
+    "no-file",
+    "unreadable",
+    "malformed",
+)
+STATES = {MOVING: 0, DONE: 0, STALLED: 1, NO_FILE: 1, UNREADABLE: 2, MALFORMED: 2}
 # The two kinds of leaf a walk ends at: the held directory (the store, the progress root) or a regular file.
 DIRECTORY, REGULAR = "directory", "regular file"
 # Symbolic links followed on one walk before it refuses: macOS's MAXSYMLINKS; Linux allows 40.
@@ -150,6 +170,12 @@ DIR_FD_SUPPORTED = {os.open, os.readlink} <= os.supports_dir_fd
 class Unreadable(Exception):
     """A file that exists but yields no held text: the reason as a verb phrase (`is a symbolic link`, `cannot be
     read: ...`), for the caller to name after the file, or to fold into the unit's `unreadable` row."""
+
+
+class Malformed(Exception):
+    """A progress file whose text is outside the grammar: the reason as one line (`the file is empty`, `the last
+    line has no YYYY-MM-DDTHH:MM:SSZ timestamp and a space before its text: <line>`), the unit's `malformed` row's
+    line cell."""
 
 
 def refuse(reason):
@@ -535,12 +561,51 @@ def in_flight_units(store, store_fd):
     return units
 
 
+def line_clock(line, now, which):
+    """The aware UTC datetime and the text after it of the progress line `line`, `which` naming the line in the
+    reason (`the last line`, `the timestamped line before the bare done line`); a line without the timestamp and the
+    space, with a date that is none or with a time after the clock `now` is Malformed naming the line."""
+    match = PROGRESS_LINE.match(line)
+    if match is None:
+        raise Malformed(f"{which} has no {TS_PREFIX} timestamp and a space before its text: {cell(line)}")
+    try:
+        written = datetime.strptime(match.group(1), TS_FORMAT).replace(tzinfo=timezone.utc)
+    except ValueError:
+        raise Malformed(f"{which} has no such date: {cell(line)}") from None
+    if written > now:
+        raise Malformed(f"{which} has a time after the clock {now.strftime(TS_FORMAT)}: {cell(line)}")
+    return written, match.group(2)
+
+
+def last_clock(lines, now):
+    """`(written, body, bare)` of the file's last line, `lines` the file's lines without the trailing newline's empty
+    element: `written` the clock the age is measured from, `body` the text after the timestamp (the bare done line's
+    own text, since it has no timestamp) and `bare` whether the last line is the bare `done, head=<40 hex>`, whose
+    clock is the preceding timestamped line's, the last line before it with the timestamp and the space (round 5);
+    an empty file, a blank last line, a last line outside the grammar or a bare done line with no timestamped line
+    before it is Malformed with the reason."""
+    if not lines:
+        raise Malformed("the file is empty")
+    last = lines[-1]
+    if last == "":
+        raise Malformed("the last line is blank")
+    if BARE_DONE.match(last) is None:
+        written, body = line_clock(last, now, "the last line")
+        return written, body, False
+    for earlier in reversed(lines[:-1]):
+        if PROGRESS_LINE.match(earlier) is not None:
+            written, _ = line_clock(earlier, now, "the timestamped line before the bare done line")
+            return written, last, True
+    raise Malformed(f"the bare done line has no timestamped line before it: {cell(last)}")
+
+
 def judge(root_fd, unit, now, limit):
     """The unit's row as (state, age text, last line text) from its progress file under the held root descriptor,
     never a refusal (round 2, U496b; the one run-level refusal left is a store that cannot be read): `no-file` for no
-    entry; `unreadable` with `-` for the age when the file yields no text (the line `-` too) or when its last line is
-    outside the grammar (no timestamp of the form, no space after it, no such date, a time after the clock: the line
-    itself, so the coordinator sees what the worker wrote); else the age and the `done,` forms decide."""
+    entry; `unreadable` with `-` for the age and the line when the file yields no text; `malformed` with `-` for the
+    age and the reason for the line when the text is outside the grammar (round 5: the reason names the worker's
+    line, so the coordinator sees what the worker wrote, and every other unit's row still prints); else the age and
+    the `done,` forms decide, the bare `done, head=<40 hex>` aged by the timestamped line before it."""
     try:
         descriptor = held_file(root_fd, f"{unit}-progress.txt")
         if descriptor is None:
@@ -551,28 +616,18 @@ def judge(root_fd, unit, now, limit):
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
-    if not lines or lines[-1] == "":
-        return UNREADABLE, "-", "-"
-    last = cell(lines[-1])
-    match = PROGRESS_LINE.match(lines[-1])
-    if match is None:
-        return UNREADABLE, "-", last
     try:
-        written = datetime.strptime(match.group(1), TS_FORMAT).replace(tzinfo=timezone.utc)
-    except ValueError:
-        return UNREADABLE, "-", last
-    seconds = (now - written).total_seconds()
-    if seconds < 0:
-        return UNREADABLE, "-", last
-    age = int(seconds // 60)
-    body = match.group(2)
-    if body.startswith(DONE_PREFIX) or body.startswith(f"{unit} {DONE_PREFIX}"):
+        written, body, bare = last_clock(lines, now)
+    except Malformed as reason:
+        return MALFORMED, "-", str(reason)
+    age = int((now - written).total_seconds() // 60)
+    if bare or body.startswith(DONE_PREFIX) or body.startswith(f"{unit} {DONE_PREFIX}"):
         state = DONE
     elif age <= limit:
         state = MOVING
     else:
         state = STALLED
-    return state, str(age), last
+    return state, str(age), cell(lines[-1])
 
 
 def main(argv=None):

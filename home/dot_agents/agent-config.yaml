@@ -917,8 +917,9 @@ claude:
   # units.tsv rows and each unit's progress file under the temporary
   # directory's <slug>-wt ($TMPDIR when set and not empty, else the system
   # default; the slug the store path's parent name as given) and prints one
-  # row per unit with its state (moving, stalled, done, no-file, unreadable),
-  # so a worker silent past its deadline is named by a command the coordinator
+  # row per unit with its state (moving, stalled, done, no-file, unreadable,
+  # malformed; the workers' bare `done, head=<sha>` last line is done), so a
+  # worker silent past its deadline is named by a command the coordinator
   # runs on every wake, not noticed by a habit; every path walked by
   # descriptors from the root directory, read-only, it writes nothing.
   # Installed and pinned the same way, run as `python3 -I`, allowed by the
@@ -962,7 +963,7 @@ claude:
       router-settings-apply: 46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
-      stall-check.py: cc2ed43b25617998f0850c55713fbb40a69922e198182d68e9d6c5abaaa2a666
+      stall-check.py: 41add593c04989bd5849440c26f91a550ab91da1e54fead9382d0fc532ea261b
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

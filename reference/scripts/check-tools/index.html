@@ -5937,6 +5937,8 @@
 <li><code>check_seat_logins</code></li>
 <li><code>check_srt</code></li>
 <li><code>check_zed</code></li>
+<li><code>login_group_of_role</code></li>
+<li><code>login_step_of</code></li>
 <li><code>main</code></li>
 <li><code>private_layer_enabled</code></li>
 <li><code>run_required_doctor</code></li>
@@ -6330,15 +6332,77 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description The login group of a seat profile (regime-cutover U498, U498d):</span>
+<span class="c1">#   the one table `login_group_of_role` of `scripts/orchestrator/hcom-seat` and</span>
+<span class="c1">#   `scripts/orchestrator/seat-login-preflight`, copied here as the same text</span>
+<span class="c1">#   (`tests/unit/test_runtime_health.py` holds the copy equal to the lever's),</span>
+<span class="c1">#   so the doctor names a group's login step from the table and not from a</span>
+<span class="c1">#   guess: the worker, orchestrator and audit roles are each their own group,</span>
+<span class="c1">#   the dsh and router roles the `router` group (the dsh gateway child is the</span>
+<span class="c1">#   Router's). Any other name is no role of the table (status 1, nothing</span>
+<span class="c1">#   printed).</span>
+<span class="c1"># @arg $1 string The role (a seat profile's name).</span>
+<span class="c1"># @stdout The group.</span>
+<span class="c1"># @exitcode 1 The role is not in the table.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>login_group_of_role<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>worker<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'worker\n'</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>orchestrator<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'orchestrator\n'</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>audit<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'audit\n'</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>dsh<span class="w"> </span><span class="p">|</span><span class="w"> </span>router<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'router\n'</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Set `login_step` to the operator's step for an absent login</span>
+<span class="c1">#   line of `seat-login-preflight --check` (regime-cutover U498d; verdict</span>
+<span class="c1">#   U498-8f2cca8c P2 `:413`). The line is `&lt;profile&gt; &lt;route&gt;: &lt;state&gt;`</span>
+<span class="c1">#   (the pre-flight's `profile_line`), so the profile is its first word and</span>
+<span class="c1">#   the group the table's (login_group_of_role). The pre-flight's profile</span>
+<span class="c1">#   mode accepts the seat profiles alone (`seat_profiles` there, the values</span>
+<span class="c1">#   of `omp.roles`: orchestrator, worker, audit; copied here as the same</span>
+<span class="c1">#   text), so for those the step is `seat-login-preflight &lt;profile&gt;`, which</span>
+<span class="c1">#   prints the group's `CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth login` or runs</span>
+<span class="c1">#   the SIWC login. The dsh profile's group `router` has no profile mode</span>
+<span class="c1">#   (`seat-login-preflight dsh` and `seat-login-preflight router` exit 2 as</span>
+<span class="c1">#   unknown profiles), so its step is `claude auth login` under the group's</span>
+<span class="c1">#   directory, the one this line names and `hcom-seat router --dry-run`</span>
+<span class="c1">#   prints as CLAUDE_CONFIG_DIR (every group of the table is a role of</span>
+<span class="c1">#   hcom-seat). A profile outside the table (a `no route` overlay that is no</span>
+<span class="c1">#   seat) keeps the general sentence.</span>
+<span class="c1"># @arg $1 string The `--check` line.</span>
+<span class="c1"># @set login_step The sentence the warning carries in parentheses.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>login_step_of<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">profile</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="p">%% *</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>group<span class="w"> </span>mode
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">seat_profiles</span><span class="o">=(</span>orchestrator<span class="w"> </span>worker<span class="w"> </span>audit<span class="o">)</span>
+<span class="w">    </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"log in on this host, once per login group: seat-login-preflight &lt;profile&gt; prints the group's command, docs/remote-host-logins.md"</span>
+<span class="w">    </span><span class="nv">group</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>login_group_of_role<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>mode<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_profiles</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mode</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"log in on this host, once per login group: seat-login-preflight </span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2"> prints the </span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2"> group's command, docs/remote-host-logins.md"</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"log in on this host, once per login group: the </span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2"> profile is the </span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2"> group, which has no seat-login-preflight profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory this line names (hcom-seat </span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2"> --dry-run prints it; BROWSER=regime-open-url first on a remote host), docs/remote-host-logins.md"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Report each omp seat profile's login on this host through</span>
 <span class="c1">#   `scripts/orchestrator/seat-login-preflight --check` (regime-cutover U37):</span>
-<span class="c1">#   presence and mtimes only, never a token. An absent login is an optional</span>
-<span class="c1">#   warning, since a login is per host and the operator's step; an unreadable</span>
-<span class="c1">#   login record is a required failure, never read as absent.</span>
+<span class="c1">#   presence and mtimes only, never a token. The Claude lines name each</span>
+<span class="c1">#   profile's login group directory `&lt;seats-root&gt;/.state/claude-&lt;group&gt;`</span>
+<span class="c1">#   (U498: one line per deployed profile, so one per running group). An</span>
+<span class="c1">#   absent login is an optional warning naming the group's step</span>
+<span class="c1">#   (login_step_of, U498d), since a login is per host and per group and the</span>
+<span class="c1">#   operator's step; an unreadable login record is a required failure, never</span>
+<span class="c1">#   read as absent.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>check_seat_logins<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">lever</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]%/*</span><span class="si">}</span><span class="s2">/orchestrator/seat-login-preflight"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>output<span class="w"> </span>line<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>output<span class="w"> </span>line<span class="w"> </span>login_step<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>warn_optional<span class="w"> </span><span class="s2">"seat login check skipped: </span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2"> is missing"</span>
@@ -6353,7 +6417,8 @@
 <span class="w">        </span><span class="s1">'seat-login-preflight:'</span>*<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'required failed: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">        </span>*<span class="s1">': unreadable'</span>*<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'required failed: seat login %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">        </span>*<span class="s1">': absent'</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">': no route'</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">': not a seat login route'</span>*<span class="o">)</span>
-<span class="w">            </span>warn_optional<span class="w"> </span><span class="s2">"seat login </span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2"> (log in on this host: seat-login-preflight &lt;profile&gt;, docs/remote-host-logins.md)"</span>
+<span class="w">            </span>login_step_of<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span>warn_optional<span class="w"> </span><span class="s2">"seat login </span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2"> (</span><span class="si">${</span><span class="nv">login_step</span><span class="si">}</span><span class="s2">)"</span>
 <span class="w">            </span><span class="p">;;</span>
 <span class="w">        </span>*<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'found:   seat login %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">        </span><span class="k">esac</span>

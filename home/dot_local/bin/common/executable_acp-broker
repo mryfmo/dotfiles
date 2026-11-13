@@ -286,8 +286,12 @@
 # @env REGIME_ANTHROPIC_KEY_FILE The seats' API key file `<seats-root>/.state/anthropic/api-key` (hcom-seat's router
 #   row, U512; the operator places it by handouts/anthropic-api-key-u510.md): held as data and never read, named in
 #   every worker's environment beside CLAUDE_CONFIG_DIR, where `claude-keyed` reads the key for the bridge's Claude
-#   Code child, and its physical path one worker read grant (regime-cutover U516; handoff/47). Unset, empty, not a
-#   clean absolute path, a symbolic link, or not a regular file of this user refuses by name before any worker starts.
+#   Code child, and its physical path one worker read grant (regime-cutover U516; handoff/47). The key is a worker's
+#   precondition, not the broker's (U516c): the listener starts whatever the variable holds, and each worker
+#   connection is judged before anything of the worker is made. Unset, empty, not a clean absolute path, a symbolic
+#   link, not a regular file of this user, not mode 0600, or a spelling whose physical path is not clean refuses that
+#   connection by name, one line naming the handout on the stream and on stderr, exit 2 of that connection; the
+#   broker keeps listening.
 # @stdout `acp-broker: listening on <sock>` once the socket accepts, the last start-up step and the one readiness sign
 #   (hcom-seat reads it through its FIFO and the test fixture from this stdout, neither the socket's existence; U447;
 #   a signal that arrived before it leaves no line); in a connection, the one line `acp-broker: record
@@ -381,28 +385,40 @@ lever_self_check
 # shellcheck disable=SC2119 # no name is kept on purpose: the worker's and the Router-side git's environments are built below
 git_env_scrub
 
-# @description Refuse (exit 2) from renderer_source, before this lever's own `refuse` exists: one line on stderr, the
-#   copy directory `$1` removed when one was made (a removal that fails is named), nothing on the stream (no connection
-#   has read its header yet).
+# @description Refuse (exit 2) from renderer_source: the copy directory `$1` removed when one was made (a removal that
+#   fails is named), then `refuse`'s one line on stderr and, in a connection, on the stream (regime-cutover U516c: the
+#   writer is sourced after the connection's header shape and the key file's hold, so `refuse` exists and the client
+#   reads the line as it reads every refusal; no slot has been made).
 # @arg $1 string The copy directory made so far, or empty.
 # @arg $@ string The reason, after it.
 renderer_refuse() {
     local dir=$1
     shift
-    echo "acp-broker: refused: $*" >&2
     if [[ -n ${dir} ]]; then
         /bin/rm -rf -- "${dir}" || echo "acp-broker: the settings writer's copy directory ${dir} remains after its removal; remove it by hand" >&2
     fi
-    exit 2
+    refuse "$@"
+}
+
+# @description The settings writer's path rule (clean_path of seat-settings-render.sh), spelled here once more for
+#   what runs before the writer is sourced (renderer_source spells it for HOME): an absolute path whose every
+#   component is [A-Za-z0-9._@+-] and neither '.' nor '..', with no trailing '/'.
+# @arg $1 string The path.
+# @exitcode 1 The path is not clean.
+early_clean_path() {
+    [[ $1 =~ ^(/[A-Za-z0-9._@+-]+)+$ && /$1/ != */./* && /$1/ != */../* ]] # lint-comparisons: allow the clean-path rule on one path, no path compare
 }
 
 # @description Source the one settings writer `seat-settings-render.sh` from a private copy hashed against its pin
 #   (regime-cutover U344c; verdict U344-a8adad11 P1 `seat-settings-render.sh:76`, class pin-then-run: this lever
 #   sourced the file by path and the file checked its own pin at its line 76, so every line before it of a replaced
 #   file ran unpinned, and the auditor's altered copy printed before it refused). The form of record_helper_path_check,
-#   record_helper_copy_make and record_helper_pin_check (U343h; hcom-seat's helper_copy_make, U310f), run here before
-#   anything else of this lever (`refuse`, the OS table and the physical home are defined below, so each step names
-#   its own failure through renderer_refuse): the path beside this file is no link, a readable regular file of this
+#   record_helper_copy_make and record_helper_pin_check (U343h; hcom-seat's helper_copy_make, U310f), run before any
+#   row of the settings is read or written, after this lever's own argument check, the OS table and, in a connection,
+#   the header's shape and the key file's hold, which make nothing (regime-cutover U516c; verdict U516-a5ea975b P2
+#   :1001: the state directory and the copy were made before a worker without the key was refused; the physical home
+#   is resolved below, so each step names its own failure through renderer_refuse): the path beside this file is no
+#   link, a readable regular file of this
 #   user whose mode grants no group or other write (`stat`, read with its status, the flag chosen by `uname -s`);
 #   HOME is a clean absolute path (the writer's clean_path rule, spelled here once more because the writer is what is
 #   being sourced); the state directory `<HOME>/.local/state/hcom-seat` is made 0700 when absent and held to a real
@@ -457,10 +473,6 @@ renderer_source() {
     . "${copy}"
     /bin/rm -rf -- "${dir}" || echo "acp-broker: the settings writer's copy directory ${dir} remains after its removal; remove it by hand" >&2
 }
-# The one settings writer (regime-cutover U344; U344c), sourced before any row is checked or rendered, from the private
-# copy renderer_source makes, hashes and removes: what is hashed is what is sourced, and a rewritten writer stops the
-# broker before its first line.
-renderer_source
 
 usage='usage: acp-broker [--connection] <seats-root> <router-seat-name> <router-scratch-cwd>'
 connection=0
@@ -952,13 +964,6 @@ settings_judge() {
     done
 }
 
-# Every input path is clean before anything is resolved, created or run.
-require_clean_path HOME "${HOME}"
-require_clean_path 'the seats root' "${seats_root}"
-require_clean_path "the Router's scratch cwd" "${scratch}"
-[[ ${router} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "the Router seat name '${router}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
-[[ ${router} != claude ]] || refuse "the seat name 'claude' is the shared Claude Code directory <seats-root>/.state/claude, not a Router"
-
 os=$(/usr/bin/uname -s) || refuse 'cannot read the operating system name (uname -s)'
 case ${os} in
 Darwin) lstat_args=(-f '%d:%i') stat_args=(-L -f '%d:%i') mode_args=(-L -f '%Lp') ;;
@@ -968,6 +973,74 @@ Linux)
     ;;
 *) refuse "no worker sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
+
+# The seats' API key file (regime-cutover U516; handoff/47, U510, U512): REGIME_ANTHROPIC_KEY_FILE as hcom-seat's
+# router row set it in the sandbox environment this process runs in (the listener, and every connection through the
+# relay), held as data: this lever reads no key, names the path in every worker's environment beside CLAUDE_CONFIG_DIR
+# (where `claude-keyed`, the bridge's Claude Code executable, reads it) and grants its physical path for read. The key
+# is a worker's precondition, not the broker's (regime-cutover U516c): the listener starts and listens whatever the
+# variable holds, so a launcher that predates U512 (hcom-seat on main sets no such row) still runs the Router, and
+# each worker connection is judged here, after its header's shape (a header refusal names the header, as before) and
+# before the settings writer is sourced and anything of the worker is made (no state directory, no copy, no slot, no
+# task directory, no log line, no socket to omp; verdict U516-a5ea975b P2 :1001). Fail closed, as `claude-keyed`
+# refuses: unset or empty, not a clean absolute path, a symbolic link, not a regular file of this user, not mode 0600,
+# or a spelling whose physical path is not clean is one line naming the variable and the handout on the stream and on
+# stderr, exit 2 of that connection alone; the broker keeps listening. Nothing of the writer's is used before it is
+# sourced: early_clean_path spells the path rule, `stat` by the OS table's flag reads the mode, physical_path
+# (builtins and readlink) the physical form.
+if ((connection)); then
+    # One connection: the header line first, from the connection's bytes, at most 1024 characters with its newline (a
+    # clean header is shorter); bash reads a pipe one byte at a time, so omp inherits the stream right after the line.
+    # `read -n 1025` stops at the newline or after 1025 characters, so a line read whole is at most 1024 long and a
+    # longer one, or one whose newline did not arrive, is refused (verdict U343d-136fbe0a P2 :953: nothing after a
+    # padded prefix reaches omp).
+    # A file size limit must fail a write (EFBIG) and refuse by name, never end this process by SIGXFSZ with the slot
+    # behind; the relay restores the signal's default in every handler, so the disposition is set here.
+    trap '' XFSZ
+    header=''
+    IFS= read -r -n 1025 header || refuse 'no header line arrived before the connection closed'
+    ((${#header} <= 1024)) || refuse 'the header exceeds 1024 characters, or its newline did not arrive within them'
+    f1='' f2='' f3='' f4='' f5='' extra=''
+    read -r f1 f2 f3 f4 f5 extra <<< "${header}" || refuse 'cannot split the header line into its fields'
+    [[ ${f1} == ACP-SEAT && ${f2} == v1 ]] || refuse "the header '${header}' does not begin 'ACP-SEAT v1'"
+    [[ ${f3} == repo=?* ]] || refuse "the header '${header}' has no 'repo=<path>' third field"
+    [[ ${f4} == ref=?* ]] || refuse "the header '${header}' has no 'ref=<rev>' fourth field"
+    [[ ${f5} == name=?* ]] || refuse "the header '${header}' has no 'name=<name>' fifth field"
+    [[ -z ${extra} ]] || refuse "the header '${header}' has more than five fields"
+    key_handout="place the seats' API key file by the U510 handout (handouts/anthropic-api-key-u510.md)"
+    [[ -n ${REGIME_ANTHROPIC_KEY_FILE:-} ]] ||
+        refuse "REGIME_ANTHROPIC_KEY_FILE did not reach this connection; the broker runs inside the Router's sandbox, whose environment hcom-seat sets, and no worker starts without the seats' API key; ${key_handout}"
+    key_file=${REGIME_ANTHROPIC_KEY_FILE}
+    # The one refusal that may carry an unclean path shows it with every line boundary as a space, so the line stays
+    # one line whatever the variable holds (verdict U516-a5ea975b P3 :1004: a newline in it printed two lines).
+    key_shown=${key_file//[$'\r\n']/ }
+    early_clean_path "${key_file}" || refuse "REGIME_ANTHROPIC_KEY_FILE '${key_shown}' is not a clean absolute path; no worker starts without the seats' API key; ${key_handout}"
+    [[ ! -L ${key_file} ]] || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} is a symbolic link; the seats' API key file is a regular file of this user; ${key_handout}"
+    [[ -f ${key_file} && -O ${key_file} ]] || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} is not a regular file of this user; ${key_handout}"
+    # The mode, read with its status (standing order 21): the handout places the file 0600, and a key file its group
+    # or others may read or write is refused by its mode.
+    key_mode=$(/usr/bin/stat "${mode_args[@]}" -- "${key_file}") || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file}: cannot read its mode; ${key_handout}"
+    [[ ${key_mode} == 600 ]] || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} has mode ${key_mode}, not 0600 (the handout places the seats' API key file 0600); ${key_handout}" # lint-comparisons: allow a mode word from stat, no path compare
+    # The physical form, its producer's status read (standing order 21): a resolution that fails leaves no path, and
+    # no path is clean, so the one refusal names both (verdict U516-a5ea975b P3 :1007: the shared unresolved() named
+    # no handout).
+    key_real=$(physical_path "${key_file}") || key_real=''
+    early_clean_path "${key_real}" ||
+        refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} cannot be resolved to a clean physical path (a link that cannot be read, more than 40 links, or a component outside [A-Za-z0-9._@+-]); no worker starts without the seats' API key; ${key_handout}"
+fi
+
+# The one settings writer (regime-cutover U344; U344c), sourced before any row is checked or rendered, from the private
+# copy renderer_source makes, hashes and removes: what is hashed is what is sourced, and a rewritten writer stops the
+# broker before its first line.
+renderer_source
+
+# Every input path is clean before anything is resolved, created or run.
+require_clean_path HOME "${HOME}"
+require_clean_path 'the seats root' "${seats_root}"
+require_clean_path "the Router's scratch cwd" "${scratch}"
+[[ ${router} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "the Router seat name '${router}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
+[[ ${router} != claude ]] || refuse "the seat name 'claude' is the shared Claude Code directory <seats-root>/.state/claude, not a Router"
+
 # srt 0.0.81 keeps its own TMPDIR writable whatever the policy says (SANDBOX_OWN_WRITE_PATHS, sandbox-utils.js:499-508
 # lists both on every OS); /private exists on macOS alone, and on Linux srt binds only what exists (hcom-seat
 # srt_tmp_roots_for), so the second root stays there only when it exists. Each word is spelled once, as the
@@ -991,20 +1064,6 @@ cred_root_real=$(physical_clean "${cred_home_real}/router-credentials") || unres
 require_clean_path "the Router's credential root" "${cred_root_real}"
 [[ -d ${cred_root_real} && ! -L ${cred_root_real} && -O ${cred_root_real} ]] ||
     refuse "the Router's credential root ${cred_root_real} is not a real directory of this user"
-# The seats' API key file (regime-cutover U516; handoff/47, U510, U512): REGIME_ANTHROPIC_KEY_FILE as hcom-seat's
-# router row set it in the sandbox environment this process runs in (the listener, and every connection through the
-# relay), held as data: this lever reads no key, names the path in every worker's environment beside CLAUDE_CONFIG_DIR
-# (where `claude-keyed`, the bridge's Claude Code executable, reads it) and grants its physical path for read. Fail
-# closed, as `claude-keyed` refuses: unset or empty, not a clean absolute path, a symbolic link, or not a regular file
-# of this user is one line naming the variable and the handout, exit 2, before any worker starts.
-key_handout="place the seats' API key file by the U510 handout (handouts/anthropic-api-key-u510.md)"
-[[ -n ${REGIME_ANTHROPIC_KEY_FILE:-} ]] ||
-    refuse "REGIME_ANTHROPIC_KEY_FILE did not reach this connection; the broker runs inside the Router's sandbox, whose environment hcom-seat sets, and no worker starts without the seats' API key; ${key_handout}"
-key_file=${REGIME_ANTHROPIC_KEY_FILE}
-clean_path "${key_file}" || refuse "REGIME_ANTHROPIC_KEY_FILE '${key_file}' is not a clean absolute path; no worker starts without the seats' API key; ${key_handout}"
-[[ ! -L ${key_file} ]] || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} is a symbolic link; the seats' API key file is a regular file of this user; ${key_handout}"
-[[ -f ${key_file} && -O ${key_file} ]] || refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} is not a regular file of this user; ${key_handout}"
-key_real=$(physical_clean "${key_file}") || unresolved "the seats' API key file REGIME_ANTHROPIC_KEY_FILE" "${key_file}"
 seats_real=$(physical_clean "${seats_root}") || unresolved 'the seats root' "${seats_root}"
 require_own_dir 'the seats root' "${seats_real}"
 state_dir=${seats_real}/.state/${router}
@@ -1407,24 +1466,6 @@ if ((! connection)); then
     exit "${status}"
 fi
 
-# One connection: the header line first, from the connection's bytes, at most 1024 characters with its newline (a
-# clean header is shorter); bash reads a pipe one byte at a time, so omp inherits the stream right after the line.
-# `read -n 1025` stops at the newline or after 1025 characters, so a line read whole is at most 1024 long and a
-# longer one, or one whose newline did not arrive, is refused (verdict U343d-136fbe0a P2 :953: nothing after a
-# padded prefix reaches omp).
-# A file size limit must fail a write (EFBIG) and refuse by name, never end this process by SIGXFSZ with the slot
-# behind; the relay restores the signal's default in every handler, so the disposition is set here.
-trap '' XFSZ
-header=''
-IFS= read -r -n 1025 header || refuse 'no header line arrived before the connection closed'
-((${#header} <= 1024)) || refuse 'the header exceeds 1024 characters, or its newline did not arrive within them'
-f1='' f2='' f3='' f4='' f5='' extra=''
-read -r f1 f2 f3 f4 f5 extra <<< "${header}" || refuse 'cannot split the header line into its fields'
-[[ ${f1} == ACP-SEAT && ${f2} == v1 ]] || refuse "the header '${header}' does not begin 'ACP-SEAT v1'"
-[[ ${f3} == repo=?* ]] || refuse "the header '${header}' has no 'repo=<path>' third field"
-[[ ${f4} == ref=?* ]] || refuse "the header '${header}' has no 'ref=<rev>' fourth field"
-[[ ${f5} == name=?* ]] || refuse "the header '${header}' has no 'name=<name>' fifth field"
-[[ -z ${extra} ]] || refuse "the header '${header}' has more than five fields"
 repo=${f3#repo=}
 ref=${f4#ref=}
 name=${f5#name=}

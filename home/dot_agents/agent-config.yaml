@@ -943,7 +943,7 @@ claude:
       ledger.py: 4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
-      acp-broker: abb3f55375370323e53a581f4ffa5337272eda203bb623690961743ca8f754ad
+      acp-broker: 9dc5018bc9633683501f98ae7cfddcc593b1dbdb085c0b54e2a36866339efdeb
       acp-relay.py: 20f2aac43796339246df45b0e4a2e0eb42314802966ac7094cd3743f964fe269
       acp-seat: 7b8f5c930f0b5d16702cb8e3a392047c522a7aaaac12ee28b089be9a80c25fa9
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431

@@ -3488,10 +3488,17 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         turn, so the worker's environment carries `REGIME_ANTHROPIC_KEY_FILE` equal to the broker's own (hcom-seat's
         router row sets it) beside `CLAUDE_CONFIG_DIR`, and the worker's `allowRead` gains the file's physical path
         as its last row and no other list names it. The broker holds the path as data and reads no key: the key's
-        bytes appear in no stream, launch record or log line of the broker's. An unset or empty name, a relative path,
-        an absent file, a symbolic link and a directory each refuse before any worker starts (fail closed, as
-        `claude-keyed` refuses): the listener at its start and a connection run by hand on its stream, one stderr
-        line naming the variable and the handout, exit 2, no socket, no slot, no omp run."""
+        bytes appear in no stream, launch record or log line of the broker's. The key is a worker's precondition, not
+        the broker's (U516c): a broker started without the variable (a launcher that predates U512) listens, and each
+        worker request is refused on its stream with nothing of the worker made while the broker keeps listening. An
+        unset or empty name, a relative path, a path holding a newline, an absent file, a symbolic link, a directory,
+        another user's file, a mode other than 0600 and a clean spelling whose physical path is not clean (a parent
+        link into a directory outside the path rule, the resolver's failure) each refuse the worker's connection
+        before anything of it is made (fail closed, as `claude-keyed` refuses): one line whatever the path holds, on
+        the stream and on stderr, naming the variable and the handout, exit 2 of that connection, no slot, no omp run,
+        no log line (U516c, verdict U516-a5ea975b P2 :1001, P3 :1004, P3 :1007, and CI at a5ea975b: the listener's
+        own refusal stopped every Router launch of a launcher without the variable, test_hcom_seat_dsh's six; a
+        newline in the path printed two lines; the resolver's refusal named no handout)."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         key = str(self.key_file)
@@ -3520,18 +3527,32 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
 
         header = "ACP-SEAT v1 repo=/x ref=HEAD name=w2\n"
         handout = "handouts/anthropic-api-key-u510.md"
+        unset_line = (
+            "acp-broker: refused: REGIME_ANTHROPIC_KEY_FILE did not reach this connection; the broker runs inside the"
+            " Router's sandbox, whose environment hcom-seat sets, and no worker starts without the seats' API key;"
+            f" place the seats' API key file by the U510 handout ({handout})"
+        )
+        srt_calls = len(self.calls_of("srt"))
+        # A broker started without the variable listens; its worker requests are each refused on their stream with
+        # the one line, nothing of the worker made, and the broker keeps listening.
+        proc, sock = self.start_broker(name, cwd, REGIME_ANTHROPIC_KEY_FILE=None)
+        for attempt in ("first", "second"):
+            data = self.recv_all(self.connect(sock, repo, "w2")).decode()
+            self.assertEqual(data, unset_line + "\n", f"the {attempt} request")
+            self.assertIsNone(proc.poll(), "the broker keeps listening")
+        self.assertEqual(self.acp_slots(), [])
+        self.assertEqual(len(self.calls_of("omp")), 2, "no omp run beyond the served connection's two")
+        self.assertEqual(len(self.calls_of("srt")), srt_calls, "no srt run beyond the served connection's")
+        self.assertEqual(sorted(p.name for p in (self.seats_path / ".state/broker-logs").iterdir()), ["w1.log"])
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+        # Each other case by a connection run by hand on its stream (the relay's form), with the fixture's state
+        # directory `~/.local/state/hcom-seat` (its tool links) set aside: the settings writer's copy would make it
+        # when absent, and the worker's judgement precedes it.
+        state_dir = self.home_real / ".local/state/hcom-seat"
+        aside = self.home_real / ".local/state/hcom-seat.aside"
 
         def refused(part, **overrides):
-            run = subprocess.run(
-                [str(BROKER), self.seats, name, str(cwd)], cwd=self.repo, env=self.broker_env(**overrides),
-                capture_output=True, text=True, check=False, timeout=60,
-            )  # fmt: skip
-            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-            self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
-            self.assertTrue(run.stderr.startswith("acp-broker: refused: REGIME_ANTHROPIC_KEY_FILE"), run.stderr)
-            self.assertIn(part, run.stderr)
-            self.assertIn(handout, run.stderr)
-            self.assertFalse(sock.exists(), "no socket: the listener refused before it listened")
             run = subprocess.run(
                 [str(BROKER), "--connection", self.seats, name, str(cwd)], cwd=self.repo, input=header,
                 env=self.broker_env(**overrides), capture_output=True, text=True, check=False, timeout=60,
@@ -3539,29 +3560,73 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.assertEqual(run.returncode, 2, run.stderr)
             self.assertEqual(run.stdout.count("\n"), 1, run.stdout)
             self.assertEqual(run.stdout, run.stderr, "the one line on the stream and on stderr")
+            self.assertTrue(run.stdout.startswith("acp-broker: refused: REGIME_ANTHROPIC_KEY_FILE"), run.stdout)
             self.assertIn(part, run.stdout)
+            self.assertIn(handout, run.stdout)
             self.assertEqual(self.acp_slots(), [])
+            self.assertFalse(
+                state_dir.exists() or state_dir.is_symlink(), "nothing made: the worker is judged before any directory"
+            )
             self.assertEqual(len(self.calls_of("omp")), 2, "no omp run beyond the served connection's two")
             self.assertEqual(sorted(p.name for p in (self.seats_path / ".state/broker-logs").iterdir()), ["w1.log"])
 
         anthropic = self.key_file.parent
-        with self.subTest(case="unset"):
-            refused("did not reach this connection", REGIME_ANTHROPIC_KEY_FILE=None)
-        with self.subTest(case="empty"):
-            refused("did not reach this connection", REGIME_ANTHROPIC_KEY_FILE="")
-        with self.subTest(case="a relative path"):
-            refused("'relative/api-key' is not a clean absolute path", REGIME_ANTHROPIC_KEY_FILE="relative/api-key")
-        with self.subTest(case="an absent file"):
-            refused(f"{anthropic}/missing is not a regular file", REGIME_ANTHROPIC_KEY_FILE=f"{anthropic}/missing")
-        with self.subTest(case="a directory"):
-            refused(f"{anthropic} is not a regular file", REGIME_ANTHROPIC_KEY_FILE=str(anthropic))
-        with self.subTest(case="a symbolic link"):
-            link = anthropic / "api-key-link"
-            link.symlink_to(self.key_file)
-            try:
-                refused(f"{link} is a symbolic link", REGIME_ANTHROPIC_KEY_FILE=str(link))
-            finally:
-                link.unlink()
+        state_dir.rename(aside)
+        try:
+            with self.subTest(case="unset"):
+                refused("did not reach this connection", REGIME_ANTHROPIC_KEY_FILE=None)
+            with self.subTest(case="empty"):
+                refused("did not reach this connection", REGIME_ANTHROPIC_KEY_FILE="")
+            with self.subTest(case="a relative path"):
+                refused("'relative/api-key' is not a clean absolute path", REGIME_ANTHROPIC_KEY_FILE="relative/api-key")
+            with self.subTest(case="a newline in the path"):
+                # The refusal folds the line boundary to a space and stays one line (U516c, P3 :1004).
+                refused(
+                    f"'{anthropic}/api key' is not a clean absolute path",
+                    REGIME_ANTHROPIC_KEY_FILE=f"{anthropic}/api\nkey",
+                )
+            with self.subTest(case="an absent file"):
+                refused(f"{anthropic}/missing is not a regular file", REGIME_ANTHROPIC_KEY_FILE=f"{anthropic}/missing")
+            with self.subTest(case="a directory"):
+                refused(f"{anthropic} is not a regular file", REGIME_ANTHROPIC_KEY_FILE=str(anthropic))
+            with self.subTest(case="a symbolic link"):
+                link = anthropic / "api-key-link"
+                link.symlink_to(self.key_file)
+                try:
+                    refused(f"{link} is a symbolic link", REGIME_ANTHROPIC_KEY_FILE=str(link))
+                finally:
+                    link.unlink()
+            with self.subTest(case="a mode other than 0600"):
+                # The handout's file is 0600; a key file readable by its group or by others is refused by its mode.
+                self.key_file.chmod(0o644)
+                try:
+                    refused(f"{self.key_file} has mode 644, not 0600", REGIME_ANTHROPIC_KEY_FILE=key)
+                finally:
+                    self.key_file.chmod(0o600)
+            with self.subTest(case="another user's file"):
+                # The system's password file: a regular file of another user on macOS and Linux alike (root's), the
+                # fixture no test user can chown into being.
+                foreign = Path("/etc/passwd")
+                self.assertNotEqual(foreign.stat().st_uid, os.geteuid(), "the fixture needs a file of another user")
+                refused(f"{foreign} is not a regular file of this user", REGIME_ANTHROPIC_KEY_FILE=str(foreign))
+            with self.subTest(case="a parent link into a directory outside the path rule"):
+                # A clean spelling, a regular file of this user and no link itself, whose physical path holds a space:
+                # the resolver (physical_path, clean_path) fails and the refusal names the handout like every other.
+                unclean = anthropic / "un clean"
+                unclean.mkdir(mode=0o700)
+                (unclean / "api-key").touch(mode=0o600)
+                via = anthropic / "via"
+                via.symlink_to(unclean)
+                try:
+                    refused(
+                        f"REGIME_ANTHROPIC_KEY_FILE {via}/api-key cannot be resolved to a clean physical path",
+                        REGIME_ANTHROPIC_KEY_FILE=f"{via}/api-key",
+                    )
+                finally:
+                    via.unlink()
+                    shutil.rmtree(unclean)
+        finally:
+            aside.rename(state_dir)
         self.assertEqual(self.key_file.read_text(), FIXTURE_KEY, "the key file is never written")
 
     def header_sent_by(self, argv, cwd):

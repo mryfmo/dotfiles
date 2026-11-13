@@ -190,6 +190,16 @@ omp:
   # dist/cli.js is "a shebang script, not an OMP binary"); omp moves only through the reviewed pin
   # in assets.omp, installed by make update (scripts/update-agent-assets.sh update_omp).
   check_update: false
+  # omp's tui.completeScrollback (18.12.6 src/modes/settings.ts:391-402, default false; a change applies
+  # live through the settings reload, src/modes/interactive-mode.ts:3661-3677) in the plain-launch
+  # config and every seat overlay (the gateway overlay runs no TUI and gets nothing). Off, transcript
+  # rows a growing HUD (the todo list, a dialog) pushed off screen were dropped and the operator could
+  # not read the reply; on, they go to the terminal's scrollback. Set by hand on one host
+  # (`omp config set tui.completeScrollback true`, 2026-11-12T05:41Z) and made a kit row the same day
+  # (standing order 57). Each key is an omp TUI setting id without its `tui.` prefix and a row of
+  # OMP_TUI_SETTINGS in scripts/generate-agent-configs.py, which refuses any other id or type.
+  tui:
+    completeScrollback: true
   # Seat role -> model profile. One overlay per role renders to
   # ~/.agents/omp/profiles/<role>.yml with that profile's omp model as
   # modelRoles.default and skills_directories as skills.customDirectories; the
@@ -913,6 +923,12 @@ claude:
   # it moves nothing. Run by the coordinator or the operator outside every
   # seat; installed and pinned the same way, with no allow rule and no seat
   # policy row.
+  # program-status.py prints the operator's state report of a program store in
+  # standing order 56's shape (U497): one word of state and its reason, a signal
+  # per tests table, the operator's acts and decisions, the in-flight units with
+  # stall-check.py's progress column when that lever is beside it. Installed and
+  # pinned the same way, run as `python3 -I` by the coordinator and allowed by the
+  # orchestrator policy alone; it reads the store's tables and writes nothing.
   # ticket-unit.py binds the Router's pull request to one program unit from its
   # ticket (U493): it reads the ticket whose `follows` names the pull request from
   # the Router's sqlite read-only, renders the request text into a brief as data,
@@ -922,7 +938,7 @@ claude:
   # orchestrator policy alone; it runs no gh and no git.
   levers:
     sha256:
-      hcom-seat: e83343bd148c3e4a3a418aa8287e93cb977143b874457f3e53357a1635640294
+      hcom-seat: f0f160f50aa5150e7e937574e8d5e61604e767570a4c3f6af598c07e446efbea
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -931,7 +947,7 @@ claude:
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: 1c576fc79b9f21491fe3bbfcd221efa92af7e7aebbb7e479eaee3a94e91b758d
       checkout-guard.sh: 4fd793eeefa7312b8f23c74a5b8f457eb915213b55f1020cc260932657674c45
-      seat-login-preflight: 7d12ffb08da39735f6c368ddb9ab4ed10084d755a1f57470edc64d1d78e4ae61
+      seat-login-preflight: 79355bd8f42c0ee21466f6c2d5eb1a3030f8c490dfa619962be99900bd6abffb
       regime-start: 978087b6ac9cbe00a3cb4f45dd749a8634d960948b5e2df96a97bbafe9597d17
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       regime-store-move: 592ed0a7513a072446d1dee5a96b27b96b139eda33cfdc5ac95dd559aa66351a
@@ -950,7 +966,7 @@ claude:
       ledger.py: 4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
-      acp-broker: 6aea266419c3a4830b7c6a49fb7e4b84bee467525aef930ccb23716850884fa7
+      acp-broker: 3816f4a1e14799325855bc8702d84416a271ad8b56c937eccdcf17c87ace4343
       acp-relay.py: 20f2aac43796339246df45b0e4a2e0eb42314802966ac7094cd3743f964fe269
       acp-seat: 7b8f5c930f0b5d16702cb8e3a392047c522a7aaaac12ee28b089be9a80c25fa9
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431
@@ -959,6 +975,7 @@ claude:
       router-settings-apply: 46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
+      program-status.py: fdb8a940258f2c247e65f0bed45fd0e7ad42ab0e196d4cec9aa783862fd600a6
       ticket-unit.py: 38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the

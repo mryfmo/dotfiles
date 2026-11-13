@@ -13,8 +13,12 @@
 #   system `python3 -I` with the standard library alone, the kit's baseline, which the apply container has,
 #   and no other tool (U510b). Without python3 it prints one line on stderr and nothing on stdout and exits
 #   1, so chezmoi apply fails naming this file: fail closed, never the login route left in place by silence.
-#   On an empty, unparseable or non-object input it prints the managed object alone with one warning and
-#   exits 0, so chezmoi apply never clobbers the bridge's file.
+#   The live file sits in the seat's own write root, so its content is the seat's (U510d): on an empty,
+#   non-UTF-8, unparseable or non-object input, a NaN or an Infinity (refused at the parse and never
+#   written: json.dumps would re-emit them and the bridge, reading `{}` from the non-JSON file, would fall
+#   back to its bundled binary on the login), a lone surrogate or nesting past the recursion limit it prints
+#   the managed object alone with one warning and exits 0, so chezmoi apply never clobbers the bridge's
+#   file, never writes one the bridge cannot parse and never fails on the file's content.
 set -eu
 
 if ! command -v python3 > /dev/null 2>&1; then
@@ -29,36 +33,66 @@ import os
 import sys
 
 EXECUTABLE = os.path.expanduser("~/.local/bin/common/claude-keyed")
+MANAGED_KEY = "pathToClaudeCodeExecutable"
+
+
+class OddInput(ValueError):
+    """An input the merge does not carry forward; its text is the reason the one warning names."""
 
 
 def warn(reason):
     print(f"claude-bridge.json: {reason}; wrote the managed provider row alone", file=sys.stderr)
 
 
+def refuse_constant(token):
+    raise OddInput(f"the live file holds {token}, which JSON cannot carry")
+
+
+def read_object(raw):
+    """The live file's bytes as a JSON object, or OddInput naming what they are instead."""
+    if not raw.strip():
+        raise OddInput("the live file is empty or absent")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise OddInput("the live file is not UTF-8") from None
+    try:
+        data = json.loads(text, parse_constant=refuse_constant)
+    except OddInput:
+        raise
+    except RecursionError:
+        raise OddInput("the live file nests deeper than the merge reads") from None
+    except ValueError:
+        raise OddInput("the live file is not valid JSON") from None
+    if not isinstance(data, dict):
+        raise OddInput("the live file is not a JSON object")
+    return data
+
+
+def render(data):
+    """The bridge's own form, JSON.stringify(next, null, 2) and a newline, as UTF-8 bytes."""
+    return (json.dumps(data, indent=2, ensure_ascii=False, allow_nan=False) + "\n").encode("utf-8")
+
+
 def main():
-    current = sys.stdin.read()
-    data = None
-    if not current.strip():
-        warn("the live file is empty or absent")
-    else:
-        try:
-            data = json.loads(current)
-        except ValueError:
-            warn("the live file is not valid JSON")
-        else:
-            if not isinstance(data, dict):
-                warn("the live file is not a JSON object")
-                data = None
-    if data is None:
+    try:
+        data = read_object(sys.stdin.buffer.read())
+    except OddInput as odd:
+        warn(str(odd))
         data = {}
     provider = data.get("provider")
     if not isinstance(provider, dict):
         if provider is not None:
             warn("provider is not a JSON object")
         provider = {}
-    provider["pathToClaudeCodeExecutable"] = EXECUTABLE
+    provider[MANAGED_KEY] = EXECUTABLE
     data["provider"] = provider
-    sys.stdout.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    try:
+        out = render(data)
+    except (ValueError, RecursionError):
+        warn("the live file holds a value JSON cannot carry (a lone surrogate)")
+        out = render({"provider": {MANAGED_KEY: EXECUTABLE}})
+    sys.stdout.buffer.write(out)
     return 0
 
 

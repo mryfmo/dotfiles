@@ -1145,20 +1145,23 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         return script
 
     def run_modify(
-        self, script: Path, current: str, home: Path, path: str | None = None
+        self, script: Path, current: str | bytes, home: Path, path: str | None = None
     ) -> subprocess.CompletedProcess[str]:
-        """Run the modify script as chezmoi does, the live file on stdin; `path` replaces PATH for the fixture runs."""
+        """Run the modify script as chezmoi does, the live file on stdin (bytes when the case is about the bytes);
+        `path` replaces PATH for the fixture runs."""
         env = os.environ | {"HOME": str(home)}
         if path is not None:
             env["PATH"] = path
-        return subprocess.run(
+        run = subprocess.run(
             [str(script)],
-            input=current,
-            text=True,
+            input=current.encode() if isinstance(current, str) else current,
             capture_output=True,
             env=env,
             timeout=180,
             check=False,
+        )
+        return subprocess.CompletedProcess(
+            run.args, run.returncode, run.stdout.decode("utf-8", "replace"), run.stderr.decode("utf-8", "replace")
         )
 
     def write_fixture_path(self, name: str, *tools: str) -> str:
@@ -1273,6 +1276,46 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(run.stdout, managed)
                 self.assertEqual(len(run.stderr.splitlines()), 1, run.stderr)
                 self.assertIn("claude-bridge.json", run.stderr)
+
+    def test_the_claude_bridge_modify_script_routes_every_odd_input_into_its_warn_branch(self) -> None:
+        """U510d (the review of 5594f0e7, findings 1 and 8): the live file sits in the seat's own write root, so its
+        content is an input of the seat's choosing. A NaN or an Infinity (json.loads admits them and json.dumps
+        re-emits them, so the file became non-JSON, the bridge's tryParseJson read `{}` and the SDK fell back to its
+        bundled binary on the login, silently), a lone surrogate escape (an encode error at the write), nesting past
+        the recursion limit (a traceback and exit 1), a byte order mark and bytes that are not UTF-8 each yield the
+        managed object alone, strict JSON, one stderr warning naming the file, exit 0: the warn branch and nothing
+        else, never a traceback, never a file the bridge cannot parse."""
+        script = self.write_claude_bridge_modify_script()
+        home = self.temp_dir / "target-home"
+        home.mkdir()
+        managed = (
+            json.dumps({"provider": {"pathToClaudeCodeExecutable": f"{home}/.local/bin/common/claude-keyed"}}, indent=2)
+            + "\n"
+        )
+
+        def refuse_constant(token: str) -> None:
+            raise AssertionError(f"the output holds {token}, which is no JSON")
+
+        cases = (
+            ("a NaN", '{"startupNoticeShown": "2026-11-13", "provider": {"plan": NaN}}\n'),
+            ("an Infinity", '{"provider": {"plan": -Infinity}}\n'),
+            ("a lone surrogate escape", '{"startupNoticeShown": "\\ud800", "provider": {"plan": "max"}}\n'),
+            ("nesting past the recursion limit", '{"a":' * 100000 + "1" + "}" * 100000 + "\n"),
+            ("a byte order mark", "\ufeff" + json.dumps({"startupNoticeShown": "2026-11-13"}) + "\n"),
+            ("bytes that are not UTF-8", b'\xff\xfe{"startupNoticeShown": "2026-11-13"}\n'),
+        )
+        for label, current in cases:
+            with self.subTest(input=label):
+                run = self.run_modify(script, current, home)
+                self.assertEqual(run.returncode, 0, (run.stdout, run.stderr))
+                self.assertEqual(run.stdout, managed)
+                self.assertEqual(json.loads(run.stdout, parse_constant=refuse_constant), json.loads(managed))
+                self.assertEqual(len(run.stderr.splitlines()), 1, run.stderr)
+                self.assertIn("claude-bridge.json", run.stderr)
+                self.assertNotIn("Traceback", run.stderr)
+        text = script.read_text()
+        self.assertIn("parse_constant", text, "a NaN or an Infinity is refused at the parse")
+        self.assertIn("allow_nan=False", text, "and never written")
 
     def test_the_claude_bridge_modify_script_needs_no_uv_and_fails_the_apply_without_python3(self) -> None:
         """regime-cutover U510b: the apply container (Dockerfile) has python3 and no uv, and the first form's

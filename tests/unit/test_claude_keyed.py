@@ -1,12 +1,14 @@
 """The `claude-keyed` lever (regime-cutover U510): the bridge's `pathToClaudeCodeExecutable`, which runs the Agent SDK's
 bundled Claude Code binary with `ANTHROPIC_API_KEY` read from the one file `REGIME_ANTHROPIC_KEY_FILE` names and the
 login names unset, or refuses with one stderr line and exit 2 before anything starts. Every test runs the real bash
-(`#!/bin/bash -p`) against the installed layout under a scratch HOME: a fixture manifest naming a fixture bridge
+(`#!/bin/bash -p`) against the installed layout under a scratch root: a fixture manifest naming a fixture bridge
 directory whose `claude-agent-sdk-<host platform>/claude` (the platform the lever's closed table gives this host, so
-the real `uname` is read) records its argv and the names (never the values) of the variables it received; the other
-rows of the table run under a fixture `uname` and a fixture `stat` (U510c). No test reads the real `~/.agents`,
-`~/.local/bin` or a real key, and the fixture key is built at runtime so this file holds no literal a secret scan
-matches."""
+the real `uname` is read) records its argv, its PATH and the names (never the values) of the variables it received; the
+other rows of the table run under a fixture `uname` and a fixture `stat` (U510c). The lever runs its producers on the
+system directories alone (U510d), so a fixture tool reaches them only through a variant of the lever whose one change
+is that PATH line (hcom-seat's form in tests/unit/test_lever_self_check.py), re-pinned in the fixture manifest; the
+pristine copy is what the PATH test and every real-tool test run. No test reads the real `~/.agents`, `~/.local/bin`
+or a real key, and the fixture key is built at runtime so this file holds no literal a secret scan matches."""
 
 import glob
 import hashlib
@@ -43,6 +45,9 @@ PLATFORMS = {
 }
 MUSL_MARKER_VARIABLE = "CLAUDE_KEYED_MUSL_MARKER_GLOB"
 MUSL_MARKER_GLOB = "/lib/ld-musl-*.so*"
+# The lever's PATH pin (hcom-seat's form, U85) and the one line the injectable test variant changes.
+SYSTEM_PATH_LINE = "\nPATH=${system_path}\n"
+CALLER_PATH_LINE = "\nPATH=${caller_path}\n"
 
 
 def host_platform() -> str | None:
@@ -94,15 +99,16 @@ class ClaudeKeyedTest(unittest.TestCase):
 
     def write_fake_claude(self, path: Path) -> None:
         """The fixture SDK binary: argv one per line, the names of the ANTHROPIC_* and login variables it received,
-        whether ANTHROPIC_API_KEY equals the fixture key, and a record file that proves it ran."""
+        whether ANTHROPIC_API_KEY equals the fixture key, the PATH it got, and a record file that proves it ran."""
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             "#!/bin/sh\n"
             f": > '{self.record}'\n"
             'for a in "$@"; do printf \'arg: %s\\n\' "$a"; done\n'
             f"env | sed -n -e 's/^\\(ANTHROPIC_[A-Z_]*\\)=.*/name: \\1/p' -e 's/^\\({OAUTH_NAME}\\)=.*/name: \\1/p' | sort\n"
-            f"expected=$(cat '{self.expected_key}')\n"
+            f"IFS= read -r expected < '{self.expected_key}'\n"
             f'if [ "${{{API_KEY_NAME}:-}}" = "$expected" ]; then echo "key matches: yes"; else echo "key matches: no"; fi\n'
+            "printf 'path: %s\\n' \"${PATH-unset}\"\n"
         )
         path.chmod(0o755)
 
@@ -147,7 +153,21 @@ class ClaudeKeyedTest(unittest.TestCase):
                 env[name] = value
         return env
 
-    def fake_tool(self, name: str, body: str, env: dict[str, str] | None = None) -> dict[str, str]:
+    def use_injectable_lever(self) -> None:
+        """Rewrite the installed copy into the variant whose producers run on the caller's PATH (the one line
+        `PATH=${system_path}` becomes `PATH=${caller_path}`, hcom-seat's test form) and re-pin it, so a fixture tool
+        can stand in for uname, stat, cat, wc or awk; the pristine copy never consults one."""
+        text = self.lever.read_text()
+        variant = text.replace(SYSTEM_PATH_LINE, CALLER_PATH_LINE)
+        if variant != text:
+            self.lever.write_text(variant)
+            self.write_manifest()
+
+    def fake_tool(
+        self, name: str, body: str, env: dict[str, str] | None = None, injectable: bool = True
+    ) -> dict[str, str]:
+        if injectable:
+            self.use_injectable_lever()
         tools = self.temp / "tools"
         tools.mkdir(exist_ok=True)
         (tools / name).write_text(f"#!/bin/sh\n{body}\n")
@@ -157,13 +177,20 @@ class ClaudeKeyedTest(unittest.TestCase):
             return dict(base)
         return {**base, "PATH": f"{tools}:{base['PATH']}"}
 
+    def stat_body(self, file_line: str, dir_line: str = "") -> str:
+        """A fixture `stat` answering `file_line` for the key file and `dir_line` (a 0700 directory of this user
+        unless given) for every other path: the lever's one stat form puts the path third, after the format."""
+        dir_line = dir_line or f"700 {os.geteuid()}"
+        return f"case \"$3\" in '{self.key_file}') echo '{file_line}' ;; *) echo '{dir_line}' ;; esac"
+
     def uname_env(self, system: str, machine: str, env: dict[str, str] | None = None) -> dict[str, str]:
-        """A fixture `uname` answering the two words and a fixture `stat` printing a 0600 file of this user, so a table
-        row can be exercised on any host (the real stat's dialect follows the fixture's uname -s)."""
+        """A fixture `uname` answering the two words and a fixture `stat` printing a 0600 file of this user in a 0700
+        directory of this user, so a table row can be exercised on any host (the real stat's dialect follows the
+        fixture's uname -s)."""
         env = self.fake_tool(
             "uname", f"case $1 in -s) echo '{system}' ;; -m) echo '{machine}' ;; *) exit 3 ;; esac", env
         )
-        return self.fake_tool("stat", f"echo '600 {os.geteuid()}'", env)
+        return self.fake_tool("stat", self.stat_body(f"600 {os.geteuid()}"), env)
 
     def assert_refused(self, run, reason: str) -> None:
         self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
@@ -200,6 +227,7 @@ class ClaudeKeyedTest(unittest.TestCase):
         expected = "".join(f"arg: {arg}\n" for arg in SDK_ARGS)
         expected += f"name: {API_KEY_NAME}\nname: ANTHROPIC_MODEL\n"
         expected += "key matches: yes\n"
+        expected += f"path: {env['PATH']}\n"
         self.assertEqual(run.stdout, expected)
         self.assertNotIn(FIXTURE_KEY, run.stdout + run.stderr)
 
@@ -265,7 +293,7 @@ class ClaudeKeyedTest(unittest.TestCase):
             ),
             (
                 "another user's file (an injected stat)",
-                lambda: (self.key_file.chmod(0o600), self.fake_tool("stat", f"echo '600 {other_uid}'"))[1],
+                lambda: (self.key_file.chmod(0o600), self.fake_tool("stat", self.stat_body(f"600 {other_uid}")))[1],
                 f"the key file {self.key_file} is owned by uid {other_uid}, not this user (uid {os.geteuid()})",
             ),
             (
@@ -448,10 +476,20 @@ class ClaudeKeyedTest(unittest.TestCase):
                 f"case $1 in -s) echo '{platform.system()}' ;; *) {noisy} ;; esac",
                 "cannot read the machine name (uname -m)",
             ),
-            (("stat",), noisy, f"cannot read the mode and owner of the key file {self.key_file} (stat failed)"),
+            (
+                ("stat",),
+                noisy,
+                f"cannot read the mode and owner of the directory {self.keys} of the key file {self.key_file} (stat failed)",
+            ),
             (
                 ("stat",),
                 "echo garbage",
+                f"cannot read the mode and owner of the directory {self.keys} of the key file {self.key_file} "
+                "(stat printed 'garbage')",
+            ),
+            (
+                ("stat",),
+                self.stat_body("garbage"),
                 f"cannot read the mode and owner of the key file {self.key_file} (stat printed 'garbage')",
             ),
             (("cat",), noisy, f"cannot read the key file {self.key_file}"),
@@ -500,6 +538,132 @@ class ClaudeKeyedTest(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(self.key_file.stat().st_mode), 0o600)
         run = self.run_lever("--check")
         self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_the_installed_copy_reads_the_manifest_of_its_own_root_whatever_home_says(self) -> None:
+        """U510d (the review of 5594f0e7, finding 3): the installed copy under `<root>/.local/bin/common` reads
+        `<root>/.agents/agent-config.yaml` and expands the manifest's `~/` through that root, by its own directory
+        alone; a HOME that names another directory, no directory or nothing steers neither the pin nor the bridge
+        directory the key reaches. The old fallback path, `<root>/.local/home/dot_agents/agent-config.yaml`, holds a
+        decoy manifest pinning this copy and naming a decoy bridge under that HOME, and it is never read."""
+        decoy_home = self.temp / "decoy-home"
+        decoy_exe = decoy_home / f"decoy/node_modules/@anthropic-ai/claude-agent-sdk-{HOST_PLATFORM}/claude"
+        self.write_fake_claude(decoy_exe)
+        fallback = self.home / ".local/home/dot_agents/agent-config.yaml"
+        fallback.parent.mkdir(parents=True)
+        pin = hashlib.sha256(self.lever.read_bytes()).hexdigest()
+        fallback.write_text(
+            "schema_version: 1\nomp:\n  extension_providers:\n    claude-bridge: ~/decoy\nclaude:\n  levers:\n"
+            f"    sha256:\n      claude-keyed: {pin}\n    extensions:\n      - ~/decoy\n"
+        )
+        for label, home in (
+            ("another directory", str(decoy_home)),
+            ("no directory", f"{self.temp}/absent"),
+            ("unset", None),
+        ):
+            with self.subTest(home=label):
+                env = self.env_with(HOME=home)
+                run = self.run_lever("--check", env=env)
+                self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+                self.assertEqual(run.stdout, f"key file ok: {self.key_file}; executable: {self.exe}\n")
+                run = self.run_lever(*SDK_ARGS, env=env)
+                self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+                self.assertTrue(self.record.exists(), "this root's binary ran")
+                self.assertIn("key matches: yes\n", run.stdout)
+                self.record.unlink()
+        # The deployed manifest of that root is the one read: its pin judges the copy.
+        self.manifest.write_text(self.manifest.read_text().replace(pin, "0" * 64))
+        run = self.run_lever("--check", env=self.env_with(HOME=str(decoy_home)))
+        self.assert_refused(run, f"sha256 {pin} of {self.lever} differs from the pin in {self.manifest}")
+        # A copy in neither layout refuses by name instead of guessing a manifest.
+        elsewhere = self.temp / "elsewhere"
+        elsewhere.mkdir()
+        shutil.copy2(self.lever, elsewhere / "claude-keyed")
+        self.assert_refused(
+            self.run_lever("--check", lever=elsewhere / "claude-keyed"),
+            f"{elsewhere}/claude-keyed is neither an installed copy under <home>/.local/bin/common nor a checkout copy "
+            "under scripts/orchestrator, so no manifest holds its pin",
+        )
+
+    def test_the_producers_run_on_the_system_path_and_the_child_gets_the_callers(self) -> None:
+        """U510d (finding 4): `bash -p` keeps PATH, and inside a seat PATH holds the seat's tool directory and the
+        caller's, so uname, stat, cat, wc and awk run on the system directories alone (hcom-seat's form): a planted
+        uname, stat, awk, cat or wc on the caller's PATH changes nothing for the pristine copy, and the exec'd child
+        gets the caller's PATH back. The self-check's sed and hash tool stay the kit's shared form
+        (tests/unit/test_lever_self_check.py holds every shell lever but hcom-seat to it)."""
+        text = LEVER.read_text()
+        self.assertEqual(text.count("\nsystem_path=/usr/bin:/bin:/usr/sbin:/sbin\n"), 1)
+        self.assertEqual(text.count(SYSTEM_PATH_LINE), 1)
+        self.assertLess(text.index("\nlever_self_check\n"), text.index(SYSTEM_PATH_LINE), "pinned after the self-check")
+        other_uid = os.geteuid() + 1
+        env = self.fake_tool("uname", "echo FreeBSD", injectable=False)
+        env = self.fake_tool("stat", f"echo '644 {other_uid}'", env, injectable=False)
+        env = self.fake_tool("awk", f"echo '{self.home}/decoy'", env, injectable=False)
+        env = self.fake_tool("cat", "echo not-a-key", env, injectable=False)
+        env = self.fake_tool("wc", "echo 1", env, injectable=False)
+        self.assertEqual(self.lever.read_bytes(), LEVER.read_bytes(), "the pristine copy runs")
+        run = self.run_lever("--check", env=env)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        self.assertEqual(run.stdout, f"key file ok: {self.key_file}; executable: {self.exe}\n")
+        run = self.run_lever(*SDK_ARGS, env=env)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        self.assertTrue(self.record.exists(), "the SDK binary ran")
+        self.assertIn("key matches: yes\n", run.stdout)
+        self.assertIn(f"path: {env['PATH']}\n", run.stdout, "the child's PATH is the caller's, planted tools and all")
+        self.assertNotIn(FIXTURE_KEY, run.stdout + run.stderr)
+        self.record.unlink()
+        # The variant the injection tests run is the one line apart, and the planted uname then reaches it.
+        self.use_injectable_lever()
+        self.assertEqual(self.lever.read_text(), text.replace(SYSTEM_PATH_LINE, CALLER_PATH_LINE))
+        self.assert_refused(
+            self.run_lever(
+                "--check", env=self.fake_tool("uname", "case $1 in -s) echo FreeBSD ;; *) echo amd64 ;; esac")
+            ),
+            "no Claude Code platform package for the pair 'FreeBSD' 'amd64' (uname -s, uname -m); the "
+            "table is Darwin arm64, Darwin x86_64, Linux x86_64 and Linux aarch64",
+        )
+
+    def test_the_key_files_directory_is_held_to_this_user_alone(self) -> None:
+        """U510d (finding 7): the checks on the key file and its read each open the path anew, so the directory that
+        holds it is held too: its spelled last component no link, this user's, mode 0700, else one refusal naming the
+        directory and the file; a writer of a looser directory could swap a link in between the checks and the read."""
+        other_uid = os.geteuid() + 1
+        link = self.home / "keylink"
+        link.symlink_to(self.keys)
+        cases = [
+            (
+                "mode 0755",
+                lambda: (self.keys.chmod(0o755), self.env)[1],
+                f"the directory {self.keys} of the key file {self.key_file} has mode 755; the directory must be this "
+                "user's alone (0700)",
+            ),
+            (
+                "mode 0710",
+                lambda: (self.keys.chmod(0o710), self.env)[1],
+                f"the directory {self.keys} of the key file {self.key_file} has mode 710; the directory must be this "
+                "user's alone (0700)",
+            ),
+            (
+                "a symbolic link",
+                lambda: (self.keys.chmod(0o700), self.env_with(**{KEY_FILE_VARIABLE: str(link / "api-key")}))[1],
+                f"the directory {link} of the key file {link / 'api-key'} is a symbolic link; the directory must be "
+                "this user's alone (0700)",
+            ),
+            (
+                "another user's directory (an injected stat)",
+                lambda: self.fake_tool("stat", self.stat_body(f"600 {os.geteuid()}", f"700 {other_uid}")),
+                f"the directory {self.keys} of the key file {self.key_file} is owned by uid {other_uid}, not this user "
+                f"(uid {os.geteuid()})",
+            ),
+        ]
+        for label, arrange, reason in cases:
+            with self.subTest(case=label):
+                env = arrange()
+                for mode in ((), ("--check",), ("--dry-run",)):
+                    run = self.run_lever(*mode, *SDK_ARGS, env=env) if not mode else self.run_lever(*mode, env=env)
+                    self.assert_refused(run, reason)
+        self.keys.chmod(0o700)
+        run = self.run_lever("--check")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
 
 
 if __name__ == "__main__":

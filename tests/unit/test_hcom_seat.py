@@ -8,15 +8,18 @@ concurrent suites never share it. Nothing touches the real `~/.hcom`, `~/.agents
 """
 
 import collections
+import http.server
 import json
 import os
 import re
 import shlex
 import shutil
+import socket
 import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -42,6 +45,57 @@ SHARED_CLAUDE_DENIES = (
     "commands",
     "agents",
 )
+# The fake API key the tests place (regime-cutover U512), built at runtime so no file holds a literal the secret scan
+# matches; it rides to the fake Models API in the `x-api-key` header and must appear in no line of any lever.
+FAKE_KEY = "sk-" + "ant-api03-" + "FAKEKEYFORTEST" + "0" * 12
+
+
+def fake_models_api(case, answer):
+    """Start a fake Models API on the loopback for the lifetime of `case`: every GET is recorded (path, `x-api-key`,
+    `anthropic-version`) in the returned list, and answered with the HTTP status `answer`, or left hanging past the
+    lever's 20 s alarm when `answer` is "hang". Returns the URL the lever is pointed at (REGIME_ANTHROPIC_MODELS_URL)
+    and the record list."""
+    requests = []
+    release = threading.Event()
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            requests.append(
+                {
+                    "path": self.path,
+                    "x-api-key": self.headers.get("x-api-key", ""),
+                    "anthropic-version": self.headers.get("anthropic-version", ""),
+                }
+            )
+            if answer == "hang":
+                release.wait(120)
+                return
+            body = b'{"data": []}' if answer == 200 else b'{"type": "error"}'
+            self.send_response(answer)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    case.addCleanup(server.server_close)
+    case.addCleanup(server.shutdown)
+    case.addCleanup(release.set)
+    return f"http://127.0.0.1:{server.server_address[1]}/v1/models?limit=1", requests
+
+
+def closed_loopback_url():
+    """A loopback URL nothing listens on, the fixtures' default Models API: a lever that calls it gets a refused
+    connection (`unreadable`), never the real API, so no unit test reaches the network."""
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    return f"http://127.0.0.1:{port}/v1/models?limit=1"
 
 
 # U100: an env built from scratch carries scratch_git's settings too, so no commit starts background maintenance.
@@ -93,12 +147,9 @@ class SeatFixture(unittest.TestCase):
         # path): copies of the system's `true` binary, so the check runs as written on every host.
         for tool in ("bwrap", "socat", "rg"):
             shutil.copy(BINARY_STAND_IN, bindir / tool)
-        # A launch whose profile names the claude-bridge route (the fixture's overlays name none, so most launches have
-        # nothing to log in) needs the shared directory's claude.ai login (U318): seat-login-preflight reads it with
-        # `claude auth status` under `<seats-root>/.state/claude`, and `claude` is a tool hcom-seat resolves, so this
-        # fake answers for every launch and no test runs the host's Claude Code. It prints the documented record with
-        # the method FAKE_CLAUDE_AUTH_METHOD (`claude.ai` unless set), exits FAKE_CLAUDE_AUTH_STATUS (0 unless set) and
-        # records each call with its directory and whether a token name reached it.
+        # The preflight's one judge of the seats' Claude route was `claude auth status` under the shared directory
+        # (U318); since U512 it is `claude-keyed --check` and the Models API, so this fake exists to prove that no
+        # launch calls `claude` any more: every call is recorded with its directory and whether a token name reached it.
         self.claude_calls = root / "claude-auth-calls"
         (bindir / "claude").write_text(
             "#!/bin/sh\n"
@@ -109,6 +160,26 @@ class SeatFixture(unittest.TestCase):
             'exit "${FAKE_CLAUDE_AUTH_STATUS:-0}"\n'
         )
         (bindir / "claude").chmod(0o755)
+        # `claude-keyed --check` (regime-cutover U512): hcom-seat's gate on the seats' API key file and the preflight's
+        # judge of its form, a tool hcom-seat resolves like every other (the installed `~/.local/bin/common/claude-keyed`
+        # on a host). This fake records each call with the file the environment named and answers by
+        # FAKE_CLAUDE_KEYED_STATUS: 0 (unset) the ok line, 2 a refusal line with FAKE_CLAUDE_KEYED_REASON (the real
+        # lever's absent-file reason unless set), anything else that status with a line (unreadable to the callers).
+        self.claude_keyed_calls = root / "claude-keyed-calls"
+        (bindir / "claude-keyed").write_text(
+            "#!/bin/sh\n"
+            'printf \'%s REGIME_ANTHROPIC_KEY_FILE=%s\\n\' "$*" "${REGIME_ANTHROPIC_KEY_FILE-unset}"'
+            f" >> {shlex.quote(str(self.claude_keyed_calls))}\n"
+            '[ "$1" = --check ] && [ $# -eq 1 ] || exit 64\n'
+            'case "${FAKE_CLAUDE_KEYED_STATUS:-0}" in\n'
+            "0) printf 'key file ok: %s; executable: /fake/sdk/claude\\n' \"${REGIME_ANTHROPIC_KEY_FILE-}\"; exit 0 ;;\n"
+            "2) printf 'claude-keyed: refused: %s\\n' \"${FAKE_CLAUDE_KEYED_REASON:-the key file"
+            ' ${REGIME_ANTHROPIC_KEY_FILE-} is absent; place the API key there (the U510 handout)}" >&2; exit 2 ;;\n'
+            "*) printf 'claude-keyed: refused: cannot read the mode and owner of the key file (stat failed)\\n' >&2;"
+            ' exit "${FAKE_CLAUDE_KEYED_STATUS}" ;;\n'
+            "esac\n"
+        )
+        (bindir / "claude-keyed").chmod(0o755)
         # The preflight reads that record with jq; macOS 14 ships no /usr/bin/jq, so a host's jq joins the fixture's
         # PATH where the system has none (hcom-seat resolves it like every tool).
         if not Path("/usr/bin/jq").exists() and shutil.which("jq"):
@@ -135,6 +206,9 @@ class SeatFixture(unittest.TestCase):
             "TMPDIR": os.environ.get("TMPDIR", tempfile.gettempdir()),
             "HCOM_DIR": str(self.store),
             "FAKE_CALLS": str(self.calls),
+            # The preflight's Models API call (U512) goes to a loopback port nothing listens on unless a test starts
+            # a fake (models_api), so no launch here reaches the real API.
+            "REGIME_ANTHROPIC_MODELS_URL": closed_loopback_url(),
         }
         git_init(self.repo, env=self.env)
         self.git("commit", "-q", "--allow-empty", "-m", "init")
@@ -170,64 +244,131 @@ class SeatFixture(unittest.TestCase):
     def settings_of(self, name):
         return json.loads(Path(self.seats, ".sandbox", name, "srt-settings.json").read_text())
 
+    @property
+    def key_file(self):
+        """The seats' API key file hcom-seat names to every seat (U512): `<seats-root>/.state/anthropic/api-key`."""
+        return Path(self.seats, ".state/anthropic/api-key")
+
+    def place_key(self):
+        """Place the fake key as the U510 handout does: one line, 0600, in the 0700 `.state/anthropic` directory."""
+        self.key_file.parent.mkdir(parents=True, exist_ok=True)
+        for directory in (Path(self.seats), Path(self.seats, ".state"), self.key_file.parent):
+            directory.chmod(0o700)
+        self.key_file.write_text(FAKE_KEY + "\n")
+        self.key_file.chmod(0o600)
+        return self.key_file
+
+    def models_api(self, answer=200):
+        """A fake Models API answering `answer`; its request record is `self.models_requests`."""
+        url, self.models_requests = fake_models_api(self, answer)
+        return url
+
 
 class HcomSeatTest(SeatFixture):
-    def test_a_remote_seat_without_a_login_starts_nothing(self):
-        """U37: hcom-seat runs seat-login-preflight beside it before it creates or starts anything. U318: the Claude
-        login is the shared directory's claude.ai login, read through `claude`, a tool hcom-seat resolves, so this
-        fake answers and no test runs the host's Claude Code; U190b: the rule holds on a local host too."""
-        (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
-        shared = Path(self.seats, ".state/claude")
-        command = f"CLAUDE_CONFIG_DIR={shared} claude auth login"
+    def test_a_seat_without_an_api_key_file_starts_nothing(self):
+        """U512: hcom-seat names the seats' API key file `<seats-root>/.state/anthropic/api-key` to every seat as
+        REGIME_ANTHROPIC_KEY_FILE and runs `claude-keyed --check` on it (a tool it resolves like every other; the
+        tests' fixture lever answers) after the preflight and before the seat's settings are written, for every role
+        and in a dry run too (where it runs before the dry run prints): a refusal (exit 2) is the launch's refusal,
+        naming the lever's line and the handout's step; a status that is neither 0 nor 2 is unreadable, a refusal too
+        (standing order 21). On the claude-bridge route the preflight judges the same file first and the key's
+        validity by one Models API call (the fixture's fake endpoint), so the seat starts on a 200 alone, and
+        `claude auth status` is never called. U37: all of it before anything is created or started."""
+        key = self.key_file
+        handout = "handouts/anthropic-api-key-u510.md"
 
-        def launch(**extra):
+        def launch(*extra_args, **extra):
             overrides = {
                 "SSH_CONNECTION": "100.64.0.2 50000 100.64.0.3 22",
                 "CLAUDE_CODE_OAUTH_TOKEN": None,
                 "CLAUDE_CONFIG_DIR": None,
                 **extra,
             }
-            return self.seat("worker", "--seats-root", self.seats, **overrides)
+            return self.seat("worker", "--seats-root", self.seats, *extra_args, **overrides)
 
-        run = launch(FAKE_CLAUDE_AUTH_STATUS="1")
+        # The fixture's worker has no login route (`modelRoles: {}`), so the preflight has nothing to judge and the
+        # launcher's own gate is the refusal, the one every role gets.
+        absent = (
+            f"hcom-seat: claude-keyed: refused: the key file {key} is absent; place the API key there (the U510"
+            f" handout); place the API key at {key} by the U510 handout ({handout}, steps 2 and 3), then start the"
+            " seat again\n"
+        )
+        # A dry run runs the check too and makes nothing, not even the seats root.
+        run = launch("--dry-run", FAKE_CLAUDE_KEYED_STATUS="2")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(absent, run.stderr)
+        self.assertFalse(Path(self.seats).exists(), "the dry run makes no seats root")
+        # A launch makes the key directory (0700, inside `.state`) so the operator's file has a place, and no more; the
+        # preflight's "no route" line comes first (it runs before the gate), the gate's refusal is the last line.
+        run = launch(FAKE_CLAUDE_KEYED_STATUS="2")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertTrue(run.stderr.startswith("seat-login-preflight: worker: no route ("), run.stderr)
+        self.assertTrue(run.stderr.endswith("\n" + absent), run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertFalse(Path(self.seats, "worker").exists())
+        self.assertEqual(sorted(p.name for p in Path(self.seats).iterdir()), [".state"])
+        self.assertEqual(sorted(p.name for p in Path(self.seats, ".state").iterdir()), ["anthropic"])
+        self.assertTrue(key.parent.is_dir() and not key.parent.is_symlink(), key.parent)
+        self.assertEqual(stat.S_IMODE(os.lstat(key.parent).st_mode), 0o700)
+        self.assertEqual(sorted(p.name for p in key.parent.iterdir()), [])
+        # The lever's own reason rides whole, whatever it is; a local host (no SSH session) refuses the same.
+        run = launch(SSH_CONNECTION=None, FAKE_CLAUDE_KEYED_STATUS="2", FAKE_CLAUDE_KEYED_REASON=f"the key file {key} has mode 644; the key must be readable by this user alone (0600)")  # fmt: skip
         self.assertEqual(run.returncode, 2, run.stderr)
-        self.assertIn(
-            f"worker claude-bridge: absent (not logged in under {shared}); log in once: BROWSER=regime-open-url"
-            f" {command}; a login is the operator's step: run that command in your own terminal on this host",
+        self.assertTrue(
+            run.stderr.endswith(
+                f"\nhcom-seat: claude-keyed: refused: the key file {key} has mode 644; the key must be readable by this"
+                f" user alone (0600); place the API key at {key} by the U510 handout ({handout}, steps 2 and 3), then"
+                " start the seat again\n"
+            ),
+            run.stderr,
+        )
+        # A check that exits neither 0 nor 2 is unreadable, never a pass.
+        run = launch(FAKE_CLAUDE_KEYED_STATUS="5")
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertTrue(
+            run.stderr.endswith(
+                f"\nhcom-seat: cannot judge the API key file {key}: claude-keyed --check exited 5 (unreadable:"
+                " claude-keyed: refused: cannot read the mode and owner of the key file (stat failed)); the launch is"
+                " refused\n"
+            ),
             run.stderr,
         )
         self.assertEqual(self.calls_of("hcom"), [])
-        self.assertFalse(Path(self.seats, "worker").exists())
-        # The preflight made the shared directory (0700) for the operator's login; the launch made nothing else.
-        self.assertTrue(shared.is_dir() and not shared.is_symlink(), shared)
-        self.assertEqual(stat.S_IMODE(os.lstat(shared).st_mode), 0o700)
-        self.assertEqual(sorted(p.name for p in Path(self.seats).iterdir()), [".state"])
-        # A local host (no SSH session) refuses the same, and the command has no BROWSER prefix there (U190b: the
-        # child logs in by the shared directory's login wherever it runs).
-        run = launch(SSH_CONNECTION=None, FAKE_CLAUDE_AUTH_STATUS="1")
+        self.assertEqual((self.tools / "claude-keyed").resolve(), (self.bindir / "claude-keyed").resolve())
+        self.assertEqual(self.claude_keyed_calls.read_text(), f"--check REGIME_ANTHROPIC_KEY_FILE={key}\n" * 4)
+        self.assertFalse(self.claude_calls.exists(), "`claude auth status` is never called")
+        # On the claude-bridge route the preflight judges the file first, with the same lever, and names the
+        # handout's step; a placed key the Models API rejects (401) is its refusal too.
+        (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
+        run = launch(FAKE_CLAUDE_KEYED_STATUS="2")
         self.assertEqual(run.returncode, 2, run.stderr)
-        self.assertIn(
-            f"worker claude-bridge: absent (not logged in under {shared}); log in once: {command};", run.stderr
+        self.assertTrue(
+            run.stderr.startswith(
+                f"seat-login-preflight: worker claude-bridge: absent (the key file {key} is absent; place the API key"
+                " there (the U510 handout)); place the key once: "
+            ),
+            run.stderr,
         )
-        # A token or key login under the directory is not the seat's claude.ai login either.
-        for method in ("oauth_token", "api_key"):
-            with self.subTest(method=method):
-                run = launch(FAKE_CLAUDE_AUTH_METHOD=method)
-                self.assertEqual(run.returncode, 2, run.stderr)
-                self.assertIn(
-                    f"worker claude-bridge: absent (authMethod {method} under {shared}, not claude.ai); log in once:"
-                    f" BROWSER=regime-open-url {command}",
-                    run.stderr,
-                )
+        self.place_key()
+        run = launch(REGIME_ANTHROPIC_MODELS_URL=self.models_api(401))
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn(f"worker claude-bridge: key rejected ({key}; HTTP 401); place the key once: ", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
-        self.assertEqual((self.tools / "claude").resolve(), (self.bindir / "claude").resolve())
-        # Every call ran under the shared directory and without a token name: one per launch, through the fake alone.
-        self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n" * 4)
-        # The claude.ai login under the directory is the login the seat can use.
-        run = launch()
+        self.assertEqual(self.models_requests, [{"path": "/v1/models?limit=1", "x-api-key": FAKE_KEY, "anthropic-version": "2023-06-01"}])  # fmt: skip
+        # A key the Models API accepts is the key the seat can use; the key's bytes reach no line.
+        run = launch(REGIME_ANTHROPIC_MODELS_URL=self.models_api(200))
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn(f"seat-login-preflight: worker claude-bridge: login present (claude.ai, {shared})", run.stderr)
+        self.assertIn(f"seat-login-preflight: worker claude-bridge: key ok ({key})\n", run.stderr)
         self.assertEqual(len(self.calls_of("hcom")), 1)
+        self.assertNotIn(FAKE_KEY, run.stdout + run.stderr + self.claude_keyed_calls.read_text())
+        self.assertFalse(self.claude_calls.exists())
+        # The dry run's environment line and the shim carry the file; the launch's omp saw it exported.
+        run = launch("--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f" REGIME_STORE_ROOT={self.home.resolve()}/.local/state/regime-store/repo REGIME_ANTHROPIC_KEY_FILE={key}\n", run.stderr)  # fmt: skip
+        shim = Path(self.seats, ".sandbox/worker/bin/omp").read_text()
+        self.assertIn(f"key_file={key}", shim)
+        self.assertIn("\nexport REGIME_ANTHROPIC_KEY_FILE=${key_file}\n", shim)
 
     def test_a_preflight_component_refusal_stops_the_launch_with_exit_2(self):
         """U318c: hcom-seat runs seat-login-preflight with `|| exit $?`, so a component refusal of the shared Claude
@@ -594,7 +735,9 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("cannot inspect refs/remotes/origin/main", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
-        self.assertFalse(Path(self.seats).exists())
+        # U512: the launch made the seats' API key directory before the gate ran, and nothing else of the seat.
+        self.assertEqual(sorted(p.name for p in Path(self.seats).iterdir()), [".state"])
+        self.assertEqual(sorted(p.name for p in Path(self.seats, ".state").iterdir()), ["anthropic"])
 
     def test_a_derived_store_owned_by_another_checkout_is_refused(self):
         store = self.home / ".local/state/hcom/repo"
@@ -667,15 +810,16 @@ class HcomSeatTest(SeatFixture):
         record = self.calls / "omp-claude-env"
         (self.bindir / "omp").write_text(
             "#!/bin/sh\n"
-            "printf 'CLAUDE_CONFIG_DIR=%s\\nCLAUDE_CODE_OAUTH_TOKEN=%s\\n' \"${CLAUDE_CONFIG_DIR-unset}\""
-            f' "${{CLAUDE_CODE_OAUTH_TOKEN-unset}}" >> {shlex.quote(str(record))}\n'
+            "printf 'CLAUDE_CONFIG_DIR=%s\\nCLAUDE_CODE_OAUTH_TOKEN=%s\\nREGIME_ANTHROPIC_KEY_FILE=%s\\n'"
+            ' "${CLAUDE_CONFIG_DIR-unset}" "${CLAUDE_CODE_OAUTH_TOKEN-unset}" "${REGIME_ANTHROPIC_KEY_FILE-unset}"'
+            f" >> {shlex.quote(str(record))}\n"
         )
         return record
 
     def claude_env_of(self, record):
         """The last omp run's record as a dict."""
         lines = record.read_text().splitlines()
-        return dict(line.split("=", 1) for line in lines[-2:])
+        return dict(line.split("=", 1) for line in lines[-3:])
 
     def test_omp_runs_under_srt_behind_a_canary_with_the_seat_roots(self):
         """U85: hcom pins the per-seat shim, which proves the sandbox with a canary and then runs omp under srt."""
@@ -783,34 +927,40 @@ class HcomSeatTest(SeatFixture):
                 self.assertEqual(listed.count(path), 1, (key, path, listed))
             self.assertEqual([entry for entry in listed if entry.startswith(str(home / ".claude"))], expected[:2])
 
-    def test_the_shim_exports_the_shared_directory_and_clears_a_callers_token(self):
-        """U318: the bridge child logs in by the shared directory's claude.ai login, which Claude Code stores and
-        refreshes there; the shim exports that directory and no token. U312: a CLAUDE_CODE_OAUTH_TOKEN in the caller's
-        environment is no input, at a launch whose preflight found the login and when the shim runs directly."""
+    def test_the_shim_exports_the_shared_directory_and_the_key_file_and_clears_a_callers_token(self):
+        """U318: the bridge child's state lives in the shared directory, which the shim exports; U512: its key is the
+        one file `<seats-root>/.state/anthropic/api-key`, exported as REGIME_ANTHROPIC_KEY_FILE for `claude-keyed`
+        to read, and no token. U312: a CLAUDE_CODE_OAUTH_TOKEN in the caller's environment is no input, at a launch
+        whose preflight found the key and when the shim runs directly."""
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         record = self.plant_claude_env_recorder()
         caller = "fake-" + "caller-value-u190"
-        run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CODE_OAUTH_TOKEN=caller)
+        key = str(self.place_key())
+        url = self.models_api(200)
+        run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CODE_OAUTH_TOKEN=caller, REGIME_ANTHROPIC_MODELS_URL=url)  # fmt: skip
         self.assertEqual(run.returncode, 0, run.stderr)
         shared = str(Path(self.seats, ".state/claude"))
-        self.assertIn(f"worker claude-bridge: login present (claude.ai, {shared})", run.stderr)
-        self.assertEqual(self.claude_env_of(record), {"CLAUDE_CONFIG_DIR": shared, "CLAUDE_CODE_OAUTH_TOKEN": "unset"})
-        # The preflight's one call ran under the shared directory and without the caller's token name.
-        self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n")
+        self.assertIn(f"worker claude-bridge: key ok ({key})", run.stderr)
+        expected = {"CLAUDE_CONFIG_DIR": shared, "CLAUDE_CODE_OAUTH_TOKEN": "unset", "REGIME_ANTHROPIC_KEY_FILE": key}
+        self.assertEqual(self.claude_env_of(record), expected)
+        # The preflight's judge and the launcher's gate each ran the lever on the file; `claude` never ran.
+        self.assertEqual(self.claude_keyed_calls.read_text(), f"--check REGIME_ANTHROPIC_KEY_FILE={key}\n" * 2)
+        self.assertFalse(self.claude_calls.exists())
         shim = Path(self.seats, ".sandbox/worker/bin/omp")
         env = {**self.env, "CLAUDE_CODE_OAUTH_TOKEN": caller}
         direct = subprocess.run([str(shim), "--version"], env=env, capture_output=True, text=True, check=False)
         self.assertEqual(direct.returncode, 0, direct.stderr)
-        self.assertEqual(self.claude_env_of(record), {"CLAUDE_CONFIG_DIR": shared, "CLAUDE_CODE_OAUTH_TOKEN": "unset"})
+        self.assertEqual(self.claude_env_of(record), expected)
         for text in (run.stdout, run.stderr, direct.stdout, direct.stderr, shim.read_text()):
             self.assertNotIn(caller, text)
+            self.assertNotIn(FAKE_KEY, text)
         self.assertNotIn("oauth-token", shim.read_text(), "the shim reads no token file")
 
     def test_a_callers_token_reaches_no_child_of_the_launcher(self):
         """Codex P2 on PR 712 (review comment 4498955210, `hcom-seat:2210`, a residual on U318): the U312 head cleared
         CLAUDE_CODE_OAUTH_TOKEN inside the generated shim alone, so hcom, herdr and the shim's srt canary inherited a
         caller's variable before the shim's unset. The launcher clears the name before its first child process: an
-        hcom spawned by a launcher invoked with the variable set sees it unset, and so does the preflight's `claude`."""
+        hcom spawned by a launcher invoked with the variable set sees it unset, and so does the key judge."""
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         caller = "fake-" + "caller-value-u318"
         record = self.calls / "hcom-claude-env"
@@ -818,20 +968,25 @@ class HcomSeatTest(SeatFixture):
             "#!/bin/sh\n"
             f"printf 'CLAUDE_CODE_OAUTH_TOKEN=%s\\n' \"${{CLAUDE_CODE_OAUTH_TOKEN-unset}}\" >> {shlex.quote(str(record))}\n"
         )
-        run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CODE_OAUTH_TOKEN=caller)
+        key = str(self.place_key())
+        url = self.models_api(200)
+        run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CODE_OAUTH_TOKEN=caller, REGIME_ANTHROPIC_MODELS_URL=url)  # fmt: skip
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(record.read_text(), "CLAUDE_CODE_OAUTH_TOKEN=unset\n")
-        shared = str(Path(self.seats, ".state/claude"))
-        self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n")
+        self.assertEqual(self.claude_keyed_calls.read_text(), f"--check REGIME_ANTHROPIC_KEY_FILE={key}\n" * 2)
         self.assertNotIn(caller, run.stdout + run.stderr)
+        self.assertNotIn(FAKE_KEY, run.stdout + run.stderr)
 
     def test_every_role_shares_one_claude_code_directory_whose_configuration_no_seat_can_change(self):
         """U318 (U314 alternative A): the bridge child of every seat runs under one `CLAUDE_CONFIG_DIR`,
         `<seats-root>/.state/claude`, a real 0700 directory the launch makes; it is write row 2 and a read root of
         every role's settings, and its settings, rules, hooks, plugins, skills, commands and agents are write-denied
-        for every role, so no seat changes what another seat's child loads from it. A linked shared directory refuses
-        before anything is made, and no seat may take its name."""
+        for every role, so no seat changes what another seat's child loads from it. U512: the key file
+        `<seats-root>/.state/anthropic/api-key` is a read root of every role, beside the shared directory, and
+        write-denied to every role, so no seat rewrites the key; its directory is a 0700 slot the launch makes. A
+        linked shared directory refuses before anything is made, and no seat may take its name."""
         shared = Path(self.seats, ".state/claude")
+        key = self.key_file
         record = self.plant_claude_env_recorder()
         for role in ("worker", "orchestrator"):
             with self.subTest(role=role):
@@ -839,17 +994,24 @@ class HcomSeatTest(SeatFixture):
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertTrue(shared.is_dir() and not shared.is_symlink(), shared)
                 self.assertEqual(stat.S_IMODE(os.lstat(shared).st_mode), 0o700)
+                self.assertTrue(key.parent.is_dir() and not key.parent.is_symlink(), key.parent)
+                self.assertEqual(stat.S_IMODE(os.lstat(key.parent).st_mode), 0o700)
                 fs = self.settings_of(role)["filesystem"]
                 self.assertEqual(fs["allowWrite"][2], str(shared), "row 2 of every role's write roots")
-                for key in ("allowWrite", "allowRead"):
-                    self.assertEqual(fs[key].count(str(shared)), 1, (key, fs[key]))
+                for kind in ("allowWrite", "allowRead"):
+                    self.assertEqual(fs[kind].count(str(shared)), 1, (kind, fs[kind]))
+                self.assertEqual(fs["allowRead"][fs["allowRead"].index(str(shared)) + 1], str(key), "the key file beside the shared directory")  # fmt: skip
+                self.assertEqual((fs["allowRead"].count(str(key)), fs["denyWrite"].count(str(key))), (1, 1), fs)
+                self.assertNotIn(str(key), fs["allowWrite"] + fs["denyRead"])
+                self.assertEqual([row for row in fs["allowWrite"] + fs["allowRead"] if row == str(key.parent) or row.startswith(f"{key.parent}/") and row != str(key)], [], "nothing else under the key directory")  # fmt: skip
                 denied = [f"{shared}/{name}" for name in SHARED_CLAUDE_DENIES]
                 self.assertEqual([row for row in fs["denyWrite"] if row.startswith(f"{shared}/")], denied)
                 self.assertEqual([row for row in fs["denyRead"] if row.startswith(str(shared))], [])
                 env = self.claude_env_of(record)
-                self.assertEqual(env, {"CLAUDE_CONFIG_DIR": str(shared), "CLAUDE_CODE_OAUTH_TOKEN": "unset"})
+                self.assertEqual(env, {"CLAUDE_CONFIG_DIR": str(shared), "CLAUDE_CODE_OAUTH_TOKEN": "unset", "REGIME_ANTHROPIC_KEY_FILE": str(key)})  # fmt: skip
                 self.assertFalse(Path(self.seats, ".state", role, "claude").exists(), "no per-seat directory")
-        # A linked shared directory refuses (exit 2) before anything starts; so does the directory's name as a seat's.
+        # A linked shared directory, or a linked key directory, refuses (exit 2) before anything starts; so does the
+        # directory's name as a seat's.
         shutil.rmtree(shared)
         elsewhere = self.home / "elsewhere"
         elsewhere.mkdir()
@@ -861,9 +1023,22 @@ class HcomSeatTest(SeatFixture):
         run = self.seat("worker", "--name", "claude", "--seats-root", self.seats, "--dry-run")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("the seat name 'claude' is taken by the shared Claude Code directory", run.stderr)
+        run = self.seat("worker", "--name", "anthropic", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("the seat name 'anthropic' is taken by the seats' API key directory", run.stderr)
+        shared.unlink()
+        shared.mkdir()
+        key.parent.rmdir()
+        key.parent.symlink_to(elsewhere)
+        for extra in ([], ["--dry-run"]):
+            with self.subTest(extra=extra):
+                run = self.seat("worker", "--seats-root", self.seats, *extra)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"the seat slot {key.parent} is a symbolic link", run.stderr)
         self.assertEqual(len(record.read_text().splitlines()), launches, "no omp ran")
-        self.assertTrue(shared.is_symlink(), "the launch neither removed nor replaced the link")
+        self.assertTrue(key.parent.is_symlink(), "the launch neither removed nor replaced the link")
         self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), [])
+        self.assertFalse(self.claude_calls.exists(), "`claude auth status` is never called")
 
     def test_the_canary_runs_under_a_posix_shell(self):
         """U85 round 2: under dash (Ubuntu's /bin/sh) the canary's denied write must not end the shell."""

@@ -276,12 +276,13 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
 
     def slots(self):
         """The per-launch sandbox and state slots that exist now, as (sandbox names, state names); the shared Claude
-        Code directory `.state/claude` (U318) outlives every launch and is no slot."""
+        Code directory `.state/claude` (U318) and the seats' API key directory `.state/anthropic` (U512) outlive every
+        launch and are no slot."""
         sandbox = Path(self.seats, ".sandbox")
         state = Path(self.seats, ".state")
         return (
             sorted(p.name for p in sandbox.iterdir()) if sandbox.exists() else [],
-            sorted(p.name for p in state.iterdir() if p.name != "claude") if state.exists() else [],
+            sorted(p.name for p in state.iterdir() if p.name not in ("claude", "anthropic")) if state.exists() else [],
         )
 
     def without_launch_name(self, settings, name):
@@ -398,14 +399,14 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertNotIn(store, write_d)
         # allowRead (U272c): the role's own grants, in the row's order; none of the worker's rows but the substituted
         # cwd, state slot and profile and the shared directory (the git directory, the store and the checkout's
-        # records are the worker's alone).
+        # records are the worker's alone); the seats' API key file last (U512), the one file every role reads.
         read_w, read_d = worker["filesystem"]["allowRead"], dsh["filesystem"]["allowRead"]
         self.assertEqual(read_w[:3], [clone, common, store])
         self.assertIn(shared, read_w)
         self.assertEqual(
             read_d,
             [cwd, state_d, shared, str(self.dsh_home), str(home / ".omp/profiles/dsh"), str(home / ".agents/skills"),
-             str(self.tools)],
+             str(self.tools), str(Path(self.seats, ".state/anthropic/api-key"))],
         )  # fmt: skip
         # denyWrite: the project files under the seat directory move with it; the worker's `.git` file has no dsh
         # counterpart (no worktree); the credential root (U353; the worker's own row of it under `~/.dsh`, U353d, is
@@ -472,6 +473,16 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertNotIn(shared.encode(), text)
         return text
 
+    def without_key_file_rows(self, settings):
+        """This head's rendered settings (bytes) of any role with exactly the U512 rows removed: the seats' API key file
+        `<seats-root>/.state/anthropic/api-key`, once in allowRead and once in denyWrite, each after another row;
+        nothing else names it."""
+        needle = b"," + json.dumps(str(self.key_file)).encode()
+        self.assertEqual(settings.count(needle), 2, settings)
+        text = settings.replace(needle, b"")
+        self.assertNotIn(b"anthropic/api-key", text)
+        return text
+
     def test_the_omp_roles_settings_are_byte_identical_to_the_earlier_heads(self):
         """No round's row changes an omp role's settings: the worker's and the orchestrator's `srt-settings.json`
         rendered by this head equal, byte for byte, the ones each earlier head (EARLIER_HEADS) renders on the same
@@ -492,7 +503,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     rendered[label] = Path(self.seats, ".sandbox", role, "srt-settings.json").read_bytes()
                 with self.subTest(head=head[:8], role=role):
                     this_head = self.without_store_root_rows(
-                        self.without_omp_credential_rows(self.without_shared_claude_rows(rendered["this head"])), role
+                        self.without_omp_credential_rows(
+                            self.without_shared_claude_rows(self.without_key_file_rows(rendered["this head"]))
+                        ),
+                        role,
                     )
                     self.assertEqual(rendered["earlier head"], this_head)
                     self.assertIn(b'"allowRead":[', rendered["this head"])
@@ -541,7 +555,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         env = dsh["env"]
         expected = {
             "HOME", "PATH", "DSH_HOME", "OMP_PROFILE", "USER", "LANG", "TERM", "UV_CACHE_DIR", "CLAUDE_CONFIG_DIR",
-            "AWS_SHARED_CREDENTIALS_FILE", "AWS_CONFIG_FILE", "GIT_CONFIG_COUNT",
+            "REGIME_ANTHROPIC_KEY_FILE", "AWS_SHARED_CREDENTIALS_FILE", "AWS_CONFIG_FILE", "GIT_CONFIG_COUNT",
             "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0", "GIT_CONFIG_KEY_1", "GIT_CONFIG_VALUE_1", "HCOM_SEAT_SANDBOX",
         }  # fmt: skip
         self.assertEqual(set(env) - BASH_OWN_NAMES - interpreter_own_names(), expected)
@@ -551,6 +565,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         )
         self.assertTrue(env["PATH"].startswith(f"{self.tools}:/usr/bin:/bin:/usr/sbin:/sbin:"), env["PATH"])
         self.assertEqual(env["CLAUDE_CONFIG_DIR"], str(Path(self.seats, ".state/claude")))
+        # U512: the seats' API key file rides in the list and as the shim's export alike, as the shared directory does.
+        self.assertEqual(env["REGIME_ANTHROPIC_KEY_FILE"], str(self.key_file))
         self.assertRegex(dsh["cwd"], rf"^{re.escape(self.seats)}/\.state/dsh-\d{{8}}-\d{{6}}-\d+/cwd$")
         self.assertEqual((env["AWS_SHARED_CREDENTIALS_FILE"], env["AWS_CONFIG_FILE"]), ("/dev/null", "/dev/null"))
         self.assertEqual(dsh["argv"], ["--profile", "thak", "--version"])
@@ -668,12 +684,13 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         line = shlex.split(run.stdout)
         self.assertEqual(line[:2], ["/usr/bin/env", "-i"])
         self.assertEqual(
-            line[2:8],
+            line[2:9],
             [f"HOME={self.home}", f"PATH={self.tools}:/usr/bin:/bin:/usr/sbin:/sbin", f"DSH_HOME={self.dsh_home}",
-             "OMP_PROFILE=dsh", f"CLAUDE_CONFIG_DIR={Path(self.seats, '.state/claude')}", "USER=u272"],
+             "OMP_PROFILE=dsh", f"CLAUDE_CONFIG_DIR={Path(self.seats, '.state/claude')}",
+             f"REGIME_ANTHROPIC_KEY_FILE={self.key_file}", "USER=u272"],
         )  # fmt: skip
-        self.assertRegex(line[8], rf"^{re.escape(self.seats)}/\.sandbox/dsh-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
-        self.assertEqual(line[9:], ["--version"])
+        self.assertRegex(line[9], rf"^{re.escape(self.seats)}/\.sandbox/dsh-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
+        self.assertEqual(line[10:], ["--version"])
         self.assertNotIn(CALLER_OAUTH_VALUE, run.stdout + run.stderr)
         self.assertEqual(len(self.calls_of("srt")), before + 1, "the dry run reads the srt version and starts nothing")
         self.assertEqual(len(self.dsh_calls()), 1)
@@ -683,7 +700,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         """U321: the router role is one more row of the role table, the dsh row with the loopback grant and the Router's
         state root. Its rendered settings, the per-launch name aside, equal the dsh role's with exactly five changes:
         `allowLocalBinding` true and `<DSH_HOME>/router-state` as allowWrite row 6, after `~/.omp/run` (U321), the
-        credential root `<DSH_HOME>/router-credentials` as allowRead row 7 instead of the dsh row's denyRead row of it
+        credential root `<DSH_HOME>/router-credentials` as allowRead row 8 instead of the dsh row's denyRead row of it
         (U353; both rows deny writing it), and (U343i) the broker directory `<state slot>/broker` as one more
         `denyWrite` row, after every deny the dsh row renders and before the macOS patterns, in no grant list; every
         other row (the shared omp profile `~/.omp/profiles/dsh` among them, so the tagged positions hold), every other
@@ -728,7 +745,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         # value and the broker's socket directory (U344) and nothing else.
         trimmed = copy.deepcopy(router)
         del trimmed["filesystem"]["allowWrite"][6]
-        del trimmed["filesystem"]["allowRead"][7]
+        del trimmed["filesystem"]["allowRead"][8]
         trimmed["filesystem"]["denyRead"].insert(dsh["filesystem"]["denyRead"].index(cred), cred)
         del trimmed["filesystem"]["denyWrite"][broker_at]
         flat_dsh, flat_router = flatten(dsh), flatten(trimmed)
@@ -1040,17 +1057,18 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 line = shlex.split(run.stdout)
                 self.assertEqual(line[:2], ["/usr/bin/env", "-i"])
                 self.assertEqual(
-                    line[2:8],
+                    line[2:9],
                     [f"HOME={self.home}", f"PATH={self.tools}:/usr/bin:/bin:/usr/sbin:/sbin", f"DSH_HOME={self.dsh_home}",
-                     "OMP_PROFILE=dsh", f"CLAUDE_CONFIG_DIR={Path(self.seats, '.state/claude')}", "USER=u321"],
+                     "OMP_PROFILE=dsh", f"CLAUDE_CONFIG_DIR={Path(self.seats, '.state/claude')}",
+                     f"REGIME_ANTHROPIC_KEY_FILE={self.key_file}", "USER=u321"],
                 )  # fmt: skip
                 # U434: the broker socket rides after the inherited names, before the shim.
                 self.assertRegex(
-                    line[8],
+                    line[9],
                     rf"^ACP_BROKER_SOCK={re.escape(self.seats)}/\.state/router-\d{{8}}-\d{{6}}-\d+/broker/sock$",
                 )
-                self.assertRegex(line[9], rf"^{re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
-                self.assertEqual(line[10:], ["--profile", "router", "--version"])
+                self.assertRegex(line[10], rf"^{re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
+                self.assertEqual(line[11:], ["--profile", "router", "--version"])
                 self.assertEqual(
                     len(self.calls_of("srt")), before + 1, "the dry run reads the srt version and starts nothing"
                 )
@@ -1091,7 +1109,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 (name,) = self.slots()[0]
                 settings = Path(self.seats, ".sandbox", name, "srt-settings.json").read_bytes()
                 if label == "this head":
-                    settings = self.without_dsh_store_root_row(self.without_credential_rows(settings))
+                    settings = self.without_dsh_store_root_row(self.without_credential_rows(self.without_key_file_rows(settings)))  # fmt: skip
                 rendered[label] = self.without_launch_name(settings, name)
                 ((status, out, err),) = self.release(procs)
                 self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), f"{label} {head[:8]}: {err}")
@@ -1217,10 +1235,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         line = shlex.split(run.stdout)
         # U434: the broker socket's name rides last in the environment list, before the shim.
         self.assertRegex(
-            line[7], rf"^ACP_BROKER_SOCK={re.escape(self.seats)}/\.state/router-\d{{8}}-\d{{6}}-\d+/broker/sock$"
+            line[8], rf"^ACP_BROKER_SOCK={re.escape(self.seats)}/\.state/router-\d{{8}}-\d{{6}}-\d+/broker/sock$"
         )
-        self.assertRegex(line[8], rf"^{re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
-        self.assertEqual(line[9:], ["--profile", "router", "--version", "--flag", "-x", "value"])
+        self.assertRegex(line[9], rf"^{re.escape(self.seats)}/\.sandbox/router-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
+        self.assertEqual(line[10:], ["--profile", "router", "--version", "--flag", "-x", "value"])
         self.assertEqual(line.count("--profile"), 1)
         run = self.launch("--", "--profile", "thak", "--version")
         self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
@@ -1575,15 +1593,18 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             for row in (str(home / ".local/state/omp-seats"), str(seats))
         ]
         tags += [("profile", "denyRead", deny_read.index(profiles), profiles)]
-        # The credential root's rows (U353): the router row reads it, allowRead row 7, and denies writing it.
+        # The credential root's rows (U353): the router row reads it, allowRead row 8, and denies writing it.
         tags += [
-            ("credential", "allowRead", 7, cred),
+            ("credential", "allowRead", 8, cred),
             ("credential", "denyWrite", deny_write.index(cred), cred),
         ]
-        self.assertEqual(len(tags), 31, "the dsh role's structural-tag count, the credential root's read for its deny")
+        # The seats' API key file (U512): allowRead row 7 under the seats-root deny, and its denyWrite row.
+        key = str(self.key_file)
+        tags += [("slot", "allowRead", 7, key), ("slot", "denyWrite", deny_write.index(key), key)]
+        self.assertEqual(len(tags), 33, "the dsh role's structural-tag count, the credential root's read for its deny")
         without = list(tags)
         tags.append(("slot", "denyWrite", deny_write.index(broker), broker))
-        self.assertEqual(len(tags), 31 + 1, "the router role's one more tag, the broker deny")
+        self.assertEqual(len(tags), 33 + 1, "the router role's one more tag, the broker deny")
         clear = self.judge_run(tags, router["allowRead"], router["allowWrite"], deny_read, deny_write)
         self.assertEqual((clear.returncode, clear.stdout), (0, ""), clear.stderr)
         hit = self.judge_run(without, router["allowRead"], router["allowWrite"], deny_read, deny_write)
@@ -1656,9 +1677,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     list(cred.iterdir()), [], "the dsh launch makes the root empty and places nothing in it"
                 )
         dsh, router = rendered["dsh"], rendered["router"]
-        self.assertEqual(router["allowRead"][7], str(cred))
-        self.assertEqual(router["allowRead"][:7], dsh["allowRead"], "the dsh row's seven read grants come first")
-        self.assertEqual(len(dsh["allowRead"]), 7)
+        self.assertEqual(router["allowRead"][8], str(cred))
+        self.assertEqual(router["allowRead"][:8], dsh["allowRead"], "the dsh row's eight read grants come first")
+        self.assertEqual(len(dsh["allowRead"]), 8)
         self.assertNotIn(str(cred), dsh["allowRead"])
         self.assertIn(str(cred), dsh["denyRead"])
         self.assertNotIn(str(cred), router["denyRead"])
@@ -2119,7 +2140,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             ("credential", "denyRead", deny_read.index(cred), cred),
             ("credential", "denyWrite", deny_write.index(cred), cred),
         ]
-        self.assertEqual(len(tags), 10 + 8 + 8 + 2 + 1 + 2, tags)
+        # The seats' API key file (U512): allowRead row 7 under the seats-root deny, and its denyWrite row.
+        key = str(self.key_file)
+        tags += [("slot", "allowRead", 7, key), ("slot", "denyWrite", deny_write.index(key), key)]
+        self.assertEqual(len(tags), 10 + 8 + 8 + 2 + 1 + 2 + 2, tags)
 
         def judge(allow_read, write, deny_read, deny_write):
             return self.judge_run(tags, allow_read, write, deny_read, deny_write)
@@ -3135,16 +3159,16 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                         "--", "--version", USER="u345")  # fmt: skip
         self.assertEqual(run.returncode, 0, run.stderr)
         line = shlex.split(run.stdout)
-        shim = re.match(rf"^{re.escape(self.seats)}/\.sandbox/(router-\d{{8}}-\d{{6}}-\d+)/bin/dsh$", line[9])
+        shim = re.match(rf"^{re.escape(self.seats)}/\.sandbox/(router-\d{{8}}-\d{{6}}-\d+)/bin/dsh$", line[10])
         self.assertIsNotNone(shim, line)
-        self.assertEqual(line[7:9], ["USER=u345", f"ACP_BROKER_SOCK={self.seats}/.state/{shim[1]}/broker/sock"])
-        self.assertEqual(line[10:], ["--profile", "router", "--version"])
+        self.assertEqual(line[8:10], ["USER=u345", f"ACP_BROKER_SOCK={self.seats}/.state/{shim[1]}/broker/sock"])
+        self.assertEqual(line[11:], ["--profile", "router", "--version"])
         self.assertEqual(sum(entry.startswith("ACP_BROKER_SOCK=") for entry in line), 1)
         run = self.launch("--dry-run", "--", "--version", USER="u345")
         self.assertEqual(run.returncode, 0, run.stderr)
         line = shlex.split(run.stdout)
         self.assertEqual([entry for entry in line if entry.startswith("ACP_BROKER_SOCK=")], [])
-        self.assertRegex(line[8], rf"^{re.escape(self.seats)}/\.sandbox/dsh-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
+        self.assertRegex(line[9], rf"^{re.escape(self.seats)}/\.sandbox/dsh-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
         self.assertEqual(self.dsh_calls(), [], "the dry runs start nothing")
         self.assertFalse(Path(self.seats).exists(), "the dry runs make no seats root and no slot")
         run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version")

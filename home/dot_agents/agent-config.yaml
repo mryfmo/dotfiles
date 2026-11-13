@@ -915,7 +915,7 @@ claude:
   # policy row.
   levers:
     sha256:
-      hcom-seat: e83343bd148c3e4a3a418aa8287e93cb977143b874457f3e53357a1635640294
+      hcom-seat: 189f2ea3e410e0e1846c66c55da06fc3a4273b5bc08a25b17cbaf901029a93eb
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -924,7 +924,7 @@ claude:
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: 1c576fc79b9f21491fe3bbfcd221efa92af7e7aebbb7e479eaee3a94e91b758d
       checkout-guard.sh: 4fd793eeefa7312b8f23c74a5b8f457eb915213b55f1020cc260932657674c45
-      seat-login-preflight: 7d12ffb08da39735f6c368ddb9ab4ed10084d755a1f57470edc64d1d78e4ae61
+      seat-login-preflight: 033df6d1c5b2dfaec1c5cec25d5307507db92911fe6f44b191c764f23ed6dc18
       regime-start: 978087b6ac9cbe00a3cb4f45dd749a8634d960948b5e2df96a97bbafe9597d17
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       regime-store-move: 592ed0a7513a072446d1dee5a96b27b96b139eda33cfdc5ac95dd559aa66351a

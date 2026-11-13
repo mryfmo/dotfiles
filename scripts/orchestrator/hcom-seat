@@ -95,15 +95,23 @@
 #   sandbox on stderr, and creates and starts nothing but the private tool links. Otherwise hcom's own
 #   exit status is returned (`hcom omp --help`:
 #   0 ready, 1 launch failed, 2 still launching or blocked on user attention).
-#   The seat login (regime-cutover U318, U314 alternative A): every seat's bridge child and the dsh role's gateway
-#   child run with `CLAUDE_CONFIG_DIR=<seats-root>/.state/claude`, one directory per seats root holding one
-#   interactive claude.ai login that Claude Code itself stores and refreshes (the Keychain item keyed to that
-#   directory on macOS, `.credentials.json` 0600 there otherwise). The directory is the role table's `claude_config`
-#   row for every role: this lever makes it 0700 when absent (a link refuses, own_slots_check), the shim exports it,
-#   seat-login-preflight judges `claude auth status` under it, and the settings grant it for write and deny its
-#   `settings.json`, `settings.local.json`, `rules`, `hooks`, `plugins`, `skills`, `commands` and `agents` to every
-#   seat, so no seat changes what another seat's child, or the operator's login command, would load from it. No token
-#   file and no CLAUDE_CODE_OAUTH_TOKEN: the shim clears the name, and no seat reads the operator's `~/.claude`.
+#   The seat login (regime-cutover U318, U314 alternative A; the key route, regime-cutover U512): every seat's bridge
+#   child and the dsh role's gateway child run with `CLAUDE_CONFIG_DIR=<seats-root>/.state/claude`, one directory per
+#   seats root holding the child's `.claude.json`, state and sessions, and with
+#   `REGIME_ANTHROPIC_KEY_FILE=<seats-root>/.state/anthropic/api-key`, the seats' one API key file (the role table's
+#   `key_file` row, derived beside the `claude_config` row), which `claude-keyed`, the bridge's Claude Code executable
+#   (the U510 lever), reads and hands the child as ANTHROPIC_API_KEY; no login lives in the directory any more. The
+#   directory is the role table's `claude_config` row for every role: this lever makes it 0700 when absent (a link
+#   refuses, own_slots_check), the shim exports it, and the settings grant it for write and deny its `settings.json`,
+#   `settings.local.json`, `rules`, `hooks`, `plugins`, `skills`, `commands` and `agents` to every seat, so no seat
+#   changes what another seat's child would load from it. The key file's directory `.state/anthropic` is made 0700
+#   the same way (key_dir_make); the file is the operator's (handouts/anthropic-api-key-u510.md), granted for read to
+#   every seat beside the shared directory and denied for write to every seat, so no seat rewrites the key; the launch
+#   runs `claude-keyed --check` on it (the lever resolved and pinned like every tool, the installed
+#   `~/.local/bin/common/claude-keyed` on a host) for every role and in a dry run, and refuses on its refusal with the
+#   lever's line and the handout's step, or on any other status as unreadable (key_file_check, standing order 21); the
+#   preflight judges the same file and the key's validity against the Models API for the omp roles. No token file and
+#   no CLAUDE_CODE_OAUTH_TOKEN: the shim clears the name, and no seat reads the operator's `~/.claude`.
 #   The dsh role (regime-cutover U272, after the four audits of the standalone launcher of PR 687): the DeepSeek
 #   harness control host is contained the same way, by this lever, as a role whose differences from the worker are
 #   rows of the role table (the `case ${role}` after the options, seat_write_roots, the read grants in
@@ -125,8 +133,9 @@
 #   the own profile exempt from their structural denies by a tag that names each one row by its position in its list,
 #   never a spelling, so a DSH_HOME at or inside an exempted row's path is judged like any row), a hit refused before anything is made; DSH_HOME in the protected set
 #   before any tool is resolved; the command `<DSH_HOME>/bin/dsh`, a physical executable file that runs inside srt
-#   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME, OMP_PROFILE and
-#   CLAUDE_CONFIG_DIR before the shim adds its own exports (regime-cutover U312: a caller's CLAUDE_CODE_OAUTH_TOKEN
+#   only; and the environment reduced by `/usr/bin/env -i` to HOME, USER, LANG, TERM, PATH, DSH_HOME, OMP_PROFILE,
+#   CLAUDE_CONFIG_DIR and REGIME_ANTHROPIC_KEY_FILE before the shim adds its own exports (regime-cutover U312: a
+#   caller's CLAUDE_CODE_OAUTH_TOKEN
 #   is no input for any role). No rules file, `--config` overlay, `-e` list or login preflight is read for it. Its
 #   profile config row (regime-cutover U310): the rendered overlay `~/.agents/omp/profiles/dsh.yml` (the generator's,
 #   like the seat overlays) is placed as the profile's own `~/.omp/profiles/dsh/agent/config.yml`, the file the
@@ -165,7 +174,7 @@
 #   (broker_dir_make; a dry run says what a launch would make), so the Router reads it and connects to its socket and
 #   can plant, rename or unlink nothing in it. The Router's credential root `<DSH_HOME>/router-credentials`
 #   (regime-cutover U353, M-26 stage B; U353b; U353d): the one directory the role reads beyond the dsh row's grants,
-#   allowRead row 7, where the operator places the agent account's gh login (`router-gh` reads the token from its
+#   allowRead row 8 (after the seats' API key file, U512), where the operator places the agent account's gh login (`router-gh` reads the token from its
 #   `gh/hosts.yml`); held like the state root by every role (cred_home_hold, cred_root_hold: under the held physical
 #   DSH_HOME for the foreground rows and under the caller's DSH_HOME else `~/.dsh` for the omp roles, which hold no
 #   DSH_HOME; no link, a directory of this user, inside the home), made 0700 by every role's real launch before its
@@ -572,6 +581,8 @@ esac
 [[ ${name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "name '${name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
 # `<seats-root>/.state/claude` is the shared Claude Code directory (U318), so no seat's state slot may take that name.
 [[ ${name} != claude ]] || refuse "the seat name 'claude' is taken by the shared Claude Code directory <seats-root>/.state/claude; choose another --name"
+# `<seats-root>/.state/anthropic` holds the seats' API key file (U512), so no seat's state slot may take that name either.
+[[ ${name} != anthropic ]] || refuse "the seat name 'anthropic' is taken by the seats' API key directory <seats-root>/.state/anthropic; choose another --name"
 # A seat never launches a seat (regime-cutover U85): a launch is the operator's or the coordinator's step from a
 # terminal outside every seat (gate G7). hcom marks the seat's environment and the shim marks its own; the
 # filesystem probe after the seats root is known catches a seat that unset them.
@@ -1199,7 +1210,7 @@ pointer_values() {
 # @set pinned The argv.
 # @set pinned_spelled The interpreter as the `#!` line spells it (what the kernel follows), or empty.
 pin_exec() {
-    local label=$1 file first magic interp name extra interp_path
+    local label=$1 file first magic interp name extra interp_path interp_flag='' interp_flag_re='^-[A-Za-z]+$'
     pinned_spelled=''
     # The spelling the kernel will follow, every link hop, is held to the identity check too: a link in a write root
     # that points outside it passes the physical check today and can be retargeted before the next exec.
@@ -1225,7 +1236,11 @@ pin_exec() {
                 refuse "${label}: unsupported interpreter line '${first}' in ${file}"
             interp_path=$(find_on_path "${name}") || refuse "${label}: interpreter ${name} not found on PATH"
         else
-            [[ -z ${name} ]] || refuse "${label}: unsupported interpreter line '${first}' in ${file}"
+            # One option the kernel passes to an absolute interpreter (`#!/bin/bash -p`, claude-keyed's line,
+            # regime-cutover U512) is kept in the pinned argv (`<interpreter> -p <file>`); any other word is refused.
+            [[ -z ${name} || (${name} =~ ${interp_flag_re} && -z ${extra}) ]] ||
+                refuse "${label}: unsupported interpreter line '${first}' in ${file}"
+            interp_flag=${name}
             # The kernel would not run a relative interpreter as written; it is refused before any walk over it.
             [[ ${interp} == /* ]] || # lint-comparisons: allow an absolute-path test
                 refuse "${label}: interpreter line '${first}' in ${file} names no absolute path"
@@ -1237,7 +1252,7 @@ pin_exec() {
         [[ -r ${interp} ]] || refuse "cannot read the interpreter of ${label}: ${interp}"
         magic=$(/usr/bin/head -c 2 -- "${interp}" | /usr/bin/od -An -tx1) || refuse "cannot read the interpreter of ${label}: ${interp}"
         [[ ${magic//[[:space:]]/} != 2321 ]] || refuse "${label}: its interpreter ${interp} is itself a script" # lint-comparisons: allow the hex bytes of `#!`, no path compare
-        pinned=("${interp}" "${file}")
+        pinned=("${interp}" ${interp_flag:+"${interp_flag}"} "${file}")
         ;;
     esac
 }
@@ -1662,12 +1677,14 @@ if [[ -n ${mise_real} ]]; then
     pin_exec mise "${mise_real}"
     mise_cmd=("${pinned[@]}")
 fi
-required_tools=(git hcom herdr omp srt)
-# claude is seat-login-preflight's login reader (`claude auth status` under the shared Claude Code directory, U318),
-# regime-open-url and its python3 serve its interactive login handoff (U37), and jq reads the openai-siwc registration
-# and the auth status there (macOS 14 ships no /usr/bin/jq, so a mise or Homebrew jq is resolved and checked like every
-# tool). hcom-seat itself never runs them: the settings are read by plutil or /usr/bin/jq.
-optional_tools=(node bun claude python3 regime-open-url jq)
+required_tools=(git hcom herdr omp srt claude-keyed)
+# claude-keyed is the seats' API key judge (`claude-keyed --check`, the U510 lever installed as
+# `~/.local/bin/common/claude-keyed`; the launch's gate key_file_check and seat-login-preflight's Claude route run it,
+# regime-cutover U512), required for every role. regime-open-url and its python3 serve the preflight's interactive SIWC
+# login handoff (U37) and python3 its one Models API call (U512); jq reads the openai-siwc registration (macOS 14 ships
+# no /usr/bin/jq, so a mise or Homebrew jq is resolved and checked like every tool). hcom-seat itself runs none of them
+# but claude-keyed: the settings are read by plutil or /usr/bin/jq.
+optional_tools=(node bun python3 regime-open-url jq)
 case ${OSTYPE} in
 linux*) required_tools+=(bwrap socat rg) ;;
 esac
@@ -2027,9 +2044,15 @@ common=${git_paths[2]}
 seats_root=${seats_root:-${REGIME_SEATS_ROOT:-}}
 [[ -n ${seats_root} ]] || refuse 'no seats root: pass --seats-root or run inside a checkout'
 # The role table's `claude_config` row (regime-cutover U318): the shared Claude Code directory of every role, the
-# bridge child's and the dsh gateway child's `CLAUDE_CONFIG_DIR`, holding the one claude.ai login of this seats root.
-# Spelled here; own_slots_check reads it by lstat before anything resolves it, and seat_write_roots renders it physical.
+# bridge child's and the dsh gateway child's `CLAUDE_CONFIG_DIR`, holding the child's state and sessions (no login since
+# the key route, U512). Spelled here; own_slots_check reads it by lstat before anything resolves it, and
+# seat_write_roots renders it physical.
 claude_config=${seats_root%/}/.state/claude
+# The role table's `key_file` row (regime-cutover U512): the seats' one API key file `<seats-root>/.state/anthropic/
+# api-key`, the operator's file (the U510 handout) that `claude-keyed` reads for every seat's child; its directory is a
+# slot this lever makes 0700 (key_dir_make) and holds like the shared directory (own_slots_check).
+key_dir=${seats_root%/}/.state/anthropic
+key_file=${key_dir}/api-key
 # The role table's directory row: the orchestrator sits in the launch checkout, a worker in its worktree, the dsh and
 # router roles in a scratch directory inside their per-launch state slot, which seat_sandbox_write makes.
 case ${role} in
@@ -2368,7 +2391,7 @@ seat_write_roots() {
 # @arg $1 string The role.
 # @arg $2 string The seat name.
 own_slots_check() {
-    local slot parent real seats_phys slots=("${seats_root}/.state" "${seats_root}/.state/$2" "${claude_config}")
+    local slot parent real seats_phys slots=("${seats_root}/.state" "${seats_root}/.state/$2" "${claude_config}" "${key_dir}")
     [[ $1 == orchestrator ]] || slots+=("${seats_root}/$2")
     seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
     for slot in "${slots[@]}"; do
@@ -2387,6 +2410,10 @@ own_slots_check orchestrator orchestrator
 # The shared directory in physical form, for the shim's export, the dsh role's environment and the deny rows under it
 # (own_slots_check has just proved it is no link and sits in `.state`); seat_write_roots renders the same path.
 claude_config_real=$(physical_path "${claude_config}") || refuse "cannot resolve the shared Claude Code directory ${claude_config}"
+# The key file in physical form (regime-cutover U512), for the shim's export, the foreground rows' environment list,
+# the read grant and the write deny of every role, and the judge's REGIME_ANTHROPIC_KEY_FILE (own_slots_check has
+# just proved its directory no link and sitting in `.state`; a link at the file itself is claude-keyed's to refuse).
+key_file_real=$(physical_path "${key_file}") || refuse "cannot resolve the API key file ${key_file}"
 # The physical seats root goes to the preflight, so the login it judges and the directory the shim exports are one
 # spelling (the macOS Keychain item is keyed to the directory's path).
 seats_root_real=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
@@ -2616,6 +2643,11 @@ seat_settings_render() {
         tag_row slot denyWrite ${#deny_write[@]} "${claude_config_real}/${path}"
         deny_write+=("${claude_config_real}/${path}")
     done
+    # The seats' API key file (regime-cutover U512): denied for write to every seat, so no seat rewrites the key the
+    # bridge's child runs on; tagged `slot` like the rows above (the dsh judge pairs it with the role's allowRead row
+    # of the same file, which lies under the seats-root deny).
+    tag_row slot denyWrite ${#deny_write[@]} "${key_file_real}"
+    deny_write+=("${key_file_real}")
     for path in "${project_files[@]}"; do deny_write+=("${checkout}/${path}"); done
     # The git state host git reads for any worktree of this repository (regime-cutover U85): a seat that could write
     # it could make a later host git command run a program of its choosing (`core.fsmonitor`, `core.hooksPath`,
@@ -2683,7 +2715,7 @@ seat_settings_render() {
         deny_read+=("${cred_root_phys}")
         deny_write+=("${cred_root_phys}")
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
-            "${claude_config_real}" "${checkout}/.orchestration/orchestrate" "${seats_real}" ${store_root_phys:+"${store_root_phys}"})
+            "${claude_config_real}" "${key_file_real}" "${checkout}/.orchestration/orchestrate" "${seats_real}" ${store_root_phys:+"${store_root_phys}"})
         # The held store root is write row 7 (seat_write_roots), the one grant store_root_judge exempts, by this tag.
         if [[ -n ${store_root_phys} ]]; then tag_row store allowWrite 7 "${store_root_phys}"; fi
         ;;
@@ -2700,7 +2732,7 @@ seat_settings_render() {
             deny_write+=("${store_root_phys}")
         fi
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
-            "${claude_config_real}" "${checkout}/.orchestration/orchestrate" ${store_root_phys:+"${store_root_phys}"})
+            "${claude_config_real}" "${key_file_real}" "${checkout}/.orchestration/orchestrate" ${store_root_phys:+"${store_root_phys}"})
         ;;
     dsh | router)
         # The deny row (U272d): the role's own denies for read and for write, after the worker's. The credential root
@@ -2739,8 +2771,13 @@ seat_settings_render() {
         fi
         allow_read=("${dir_real}" "${sandbox_state}" "${claude_config_real}" "${dsh_home_phys}" "${h}/.omp/profiles/${omp_profile}"
             "${h}/.agents/skills" "${tools_dir}")
-        # The router row's credential root (U353): allowRead row 7, after the tool directory, so every position the dsh
-        # row tags stays; tagged `credential` like its denyWrite row, which it is by construction.
+        # The seats' API key file (regime-cutover U512): allowRead row 7, after the tool directory, so every position
+        # the dsh row tags stays; tagged `slot` like the shared directory's row (it lies under the seats-root denies
+        # the slot tag pairs it with) and like its denyWrite row above.
+        tag_row slot allowRead ${#allow_read[@]} "${key_file_real}"
+        allow_read+=("${key_file_real}")
+        # The router row's credential root (U353): allowRead row 8, after the key file, so every position the dsh row
+        # tags stays; tagged `credential` like its denyWrite row, which it is by construction.
         if [[ ${cred_root_grant} == read ]]; then # lint-comparisons: allow a cell word of the role table (read, deny), not a path
             tag_row credential allowRead ${#allow_read[@]} "${cred_root_phys}"
             allow_read+=("${cred_root_phys}")
@@ -3043,6 +3080,12 @@ for link in "${tools_dir}"/*; do
 done
 pin_exec git "${git_path}"
 git_cmd=("${pinned[@]}")
+# The seats' API key judge (regime-cutover U512): `claude-keyed`, the U510 lever (`~/.local/bin/common/claude-keyed` on
+# a host, resolved and linked above like every tool), by the argv pin_exec checked (`/bin/bash -p <file>`, its
+# interpreter line's one option kept), never by a lookup; key_file_check runs it.
+keyed_path=$(find_on_path claude-keyed) || refuse 'claude-keyed not found in the private tool directory'
+pin_exec claude-keyed "${keyed_path}"
+keyed_cmd=("${pinned[@]}")
 IFS=: read -r -a path_dirs <<< "${PATH}"
 for path_dir in "${path_dirs[@]}"; do
     path_real=$(physical_path "${path_dir}") || refuse "cannot resolve the PATH entry ${path_dir}"
@@ -3189,8 +3232,8 @@ seat_sandbox_write() {
         printf -v srt_q '%q ' "${srt_cmd[@]}"
         printf -v cmd_q '%q ' "${seat_cmd[@]}"
         echo "srt_cmd=(${srt_q}) cmd=(${cmd_q}) tool=${shim_tool}"
-        printf 'settings=%q canary=%q state=%q claude_config=%q push_url=%q sandbox=%q\n' "${settings}" \
-            "${sandbox_real}/canary" "${sandbox_state}" "${claude_config_real}" "${push_url}" "${sandbox_real}"
+        printf 'settings=%q canary=%q state=%q claude_config=%q key_file=%q push_url=%q sandbox=%q\n' "${settings}" \
+            "${sandbox_real}/canary" "${sandbox_state}" "${claude_config_real}" "${key_file_real}" "${push_url}" "${sandbox_real}"
         printf 'debug_canary=%q\n' "${h}/.claude/debug/hcom-seat-canary"
         # Outside the sandbox the shim and srt look up only in the private tool directory and the system directories;
         # inside it omp gets the seat's working PATH, applied by /usr/bin/env under srt.
@@ -3220,11 +3263,13 @@ if [[ ${probe} != 'write-denied read-denied ssh-denied debug-denied' || -e ${can
     exit 2
 fi
 export UV_CACHE_DIR=${state}/uv-cache
-# The child's Claude Code login and state (`.claude.json`, projects, sessions, plugins) live in the seats root's shared
-# directory, never in the operator's ~/.claude or ~/.claude.json (regime-cutover U190, U318): under that directory the
-# child reads the one claude.ai login the operator made there and refreshes it itself. No token rides: a caller's
-# CLAUDE_CODE_OAUTH_TOKEN is no input (regime-cutover U312), so the name is cleared.
+# The child's Claude Code state (`.claude.json`, projects, sessions, plugins) lives in the seats root's shared
+# directory, never in the operator's ~/.claude or ~/.claude.json (regime-cutover U190, U318). Its key is the seats' one
+# API key file, which `claude-keyed` (the bridge's Claude Code executable, U510) reads from the name exported here and
+# hands the child as ANTHROPIC_API_KEY (regime-cutover U512): no login lives in the directory any more, and no token
+# rides: a caller's CLAUDE_CODE_OAUTH_TOKEN is no input (regime-cutover U312), so the name is cleared.
 export CLAUDE_CONFIG_DIR=${claude_config}
+export REGIME_ANTHROPIC_KEY_FILE=${key_file}
 unset CLAUDE_CODE_OAUTH_TOKEN
 # omp's Bedrock discovery stats ~/.aws/{credentials,config} unless these name the files, and an EPERM from the read
 # deny ends omp at start (measured, omp 18.11.3 and 18.12.6); /dev/null reads as no AWS profile.
@@ -3267,8 +3312,8 @@ seat_wrapper_write() {
 
 # The role table's launch row: the hcom launch line for the omp roles; for the dsh role the shim run in the foreground
 # under `/usr/bin/env -i` with the listed names (U272: nothing of the caller's environment reaches the shim, srt or
-# dsh; the shim sets PATH and its own exports; the shared Claude Code directory rides in the list and as the shim's
-# export alike, U318).
+# dsh; the shim sets PATH and its own exports; the shared Claude Code directory and the seats' API key file ride in
+# the list and as the shim's exports alike, U318 and U512).
 case ${role_launch} in
 hcom)
     argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr --go -- --profile "${role}" --config "${policy}" --config "${profile}" --append-system-prompt "${rules}")
@@ -3278,7 +3323,7 @@ hcom)
     argv+=(--hcom-team "${HCOM_TEAM}")
     ;;
 foreground)
-    seat_env=("HOME=${HOME}" "PATH=${PATH}" "DSH_HOME=${dsh_home_phys}" "OMP_PROFILE=${omp_profile}" "CLAUDE_CONFIG_DIR=${claude_config_real}")
+    seat_env=("HOME=${HOME}" "PATH=${PATH}" "DSH_HOME=${dsh_home_phys}" "OMP_PROFILE=${omp_profile}" "CLAUDE_CONFIG_DIR=${claude_config_real}" "REGIME_ANTHROPIC_KEY_FILE=${key_file_real}")
     # Only a name the caller exported rides (`inherited`, the start-up list): bash gives TERM a value of its own when
     # the caller had none, and a `TERM=dumb` of bash's making would reach dsh as the terminal's.
     for var in USER LANG TERM; do
@@ -3326,6 +3371,50 @@ hcom_store_ensure() {
     done
 }
 
+# @description Make the seats' API key directory `<seats-root>/.state/anthropic` (regime-cutover U512: `key_dir`, the
+#   directory of the one key file every seat's child reads through claude-keyed) 0700 when absent, with the seats root
+#   and `.state` before it as seat_sandbox_write makes them (one component at a time, umask 077, the loser of a mkdir
+#   race taking the directory the winner made, each held to a real directory), in a real launch alone; a dry run
+#   makes nothing and says what a launch would make. own_slots_check has proved the directory no link and inside
+#   `.state` (lstat, before anything resolved it). The key file itself is never made here: it is the operator's step
+#   (handouts/anthropic-api-key-u510.md).
+# @arg $1 int 1 for a dry run.
+key_dir_make() {
+    local path
+    if [[ ! -e ${key_dir} && ! -L ${key_dir} ]]; then
+        if (($1)); then
+            echo "hcom-seat: the API key directory ${key_dir} does not exist; a launch creates it (0700)" >&2
+            return 0
+        fi
+        (umask 077 && /bin/mkdir -p "${seats_root}") || refuse "cannot create the seats root ${seats_root}"
+        for path in "${seats_root}/.state" "${key_dir}"; do
+            if [[ ! -e ${path} && ! -L ${path} ]]; then
+                (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} ]] || refuse "cannot create ${path}"
+            fi
+            [[ -d ${path} && ! -L ${path} ]] || refuse "${path} is not a real directory"
+        done
+    fi
+    (($1)) || [[ -d ${key_dir} && ! -L ${key_dir} && -O ${key_dir} ]] ||
+        refuse "the API key directory ${key_dir} is not a real directory of this user"
+}
+
+# @description Judge the seats' API key file by the one judge of its form, `claude-keyed --check` (regime-cutover
+#   U512; the U510 lever, resolved and pinned like every tool, the installed `~/.local/bin/common/claude-keyed` on a
+#   host), run with REGIME_ANTHROPIC_KEY_FILE set to the physical key file as the bridge's child will run it, its
+#   status read: 0 passes; 2 refuses the launch with the lever's one stderr line and the handout's step (the key is
+#   never read here and never printed: the lever names the file, not the content); any other status is unreadable, a
+#   refusal too (standing order 21: a judge that could not run is no pass). Runs for every role after the preflight
+#   and before the seat's settings are written, and in a dry run before the launch line prints.
+key_file_check() {
+    local line status=0
+    line=$(REGIME_ANTHROPIC_KEY_FILE=${key_file_real} "${keyed_cmd[@]}" --check 2>&1 > /dev/null) || status=$?
+    case ${status} in
+    0) ;;
+    2) refuse "${line:-claude-keyed: refused: (no line)}; place the API key at ${key_file_real} by the U510 handout (handouts/anthropic-api-key-u510.md, steps 2 and 3), then start the seat again" ;;
+    *) refuse "cannot judge the API key file ${key_file_real}: claude-keyed --check exited ${status} (unreadable: ${line:-no line}); the launch is refused" ;;
+    esac
+}
+
 hcom_store_ensure "${dry_run}"
 # The omp roles' credential root (regime-cutover U353d) and the program store's root (U219c): made beside the store,
 # before anything else of the launch is made or rendered, in a real launch; a dry run says what a launch would make.
@@ -3335,9 +3424,13 @@ if [[ ${role_launch} == hcom ]]; then
     store_root_make "${dry_run}"
 fi
 if ((dry_run)); then
+    # The seats' API key file (regime-cutover U512): a dry run judges it as a launch does (key_file_check, before the
+    # preflight a dry run skips), so an absent or malformed key refuses here too, naming the handout's step.
+    key_dir_make 1
+    key_file_check
     printf '%q ' "${argv[@]}"
     echo
-    echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-} REGIME_STORE_ROOT=${REGIME_STORE_ROOT:-}" >&2
+    echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-} REGIME_STORE_ROOT=${REGIME_STORE_ROOT:-} REGIME_ANTHROPIC_KEY_FILE=${key_file_real}" >&2
     echo "hcom-seat: sandbox ${sandbox} (srt ${srt_cmd[*]}, omp ${omp_cmd[*]}, hcom ${hcom_cmd[*]}, herdr ${herdr_cmd[*]})" >&2
     if ((broker)); then
         echo "hcom-seat: a launch starts the ACP broker ${LEVER_DIR}/acp-broker ${seats_root} ${name} ${dir} beside dsh and stops it when dsh exits" >&2
@@ -3351,6 +3444,12 @@ fi
 if [[ ${role_launch} == hcom ]]; then
     REGIME_SEATS_ROOT=${seats_root_real} /bin/bash "${BASH_SOURCE[0]%/*}/seat-login-preflight" "${role}" || exit $?
 fi
+# The seats' API key file (regime-cutover U512): its directory made 0700 (key_dir_make) and the file judged by
+# `claude-keyed --check` (key_file_check) for every role, after the preflight (which judged the same file and the key's
+# validity against the Models API for the omp roles) and before anything of the seat is made or written; a refusal
+# starts nothing.
+key_dir_make 0
+key_file_check
 if [[ ${role_launch} == foreground ]]; then
     # The scratch cwd is made by seat_sandbox_write inside the per-launch slot, proved absent above.
     :

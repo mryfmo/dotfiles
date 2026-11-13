@@ -913,6 +913,13 @@ claude:
   # it moves nothing. Run by the coordinator or the operator outside every
   # seat; installed and pinned the same way, with no allow rule and no seat
   # policy row.
+  # ticket-unit.py binds the Router's pull request to one program unit from its
+  # ticket (U493): it reads the ticket whose `follows` names the pull request from
+  # the Router's sqlite read-only, renders the request text into a brief as data,
+  # appends the unit's row to units.tsv under one lock, and prints the
+  # `Program-Unit` line the coordinator writes into the body. Installed and pinned
+  # the same way, run as `python3 -I` by the coordinator and allowed by the
+  # orchestrator policy alone; it runs no gh and no git.
   levers:
     sha256:
       hcom-seat: e83343bd148c3e4a3a418aa8287e93cb977143b874457f3e53357a1635640294
@@ -952,6 +959,7 @@ claude:
       router-settings-apply: 46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7
+      ticket-unit.py: 38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

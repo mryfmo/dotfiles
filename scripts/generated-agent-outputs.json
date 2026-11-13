@@ -653,6 +653,13 @@
       "sha256": "9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50"
     },
     {
+      "source": "home/dot_local/bin/common/executable_ticket-unit.py",
+      "target": ".local/bin/common/ticket-unit.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",
       "target": ".local/bin/common/worker-worktree.sh",
       "kind": "file",
@@ -960,6 +967,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "seat-settings-render.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "ticket-unit.py"
     },
     {
       "source": "home/dot_local/bin/common",

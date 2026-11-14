@@ -681,11 +681,18 @@
       "sha256": "6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e"
     },
     {
+      "source": "home/dot_local/bin/common/executable_worker-worktree-owner.py",
+      "target": ".local/bin/common/worker-worktree-owner.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "e0ee382e1252b529307a99fe8960a917bf5e1c28716e2e60fef45c54cc6e03e1"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",
       "target": ".local/bin/common/worker-worktree.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "3cfe8e3a98ce7379bcbfab9883e8c0f60c53fe7f38e2427512ef92c355c04dd1"
+      "sha256": "73b1797badb325e6df4edb44b02960519882a6954bf210db6c4fcb7b04980b81"
     },
     {
       "source": "home/dot_local/bin/common/executable_worktree-gc.sh",
@@ -1026,6 +1033,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "units-row.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "worker-worktree-owner.py"
     },
     {
       "source": "home/dot_local/bin/common",

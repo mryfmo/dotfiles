@@ -166,7 +166,7 @@ git_env_scrub
 lever='records-sync.sh'
 usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n> (default U20)]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
-footer='Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>'
+footer='Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>'
 pr_footer='🤖 Generated with [Claude Code](https://claude.com/claude-code)'
 
 # @description Print the refusal on stderr and exit 2.

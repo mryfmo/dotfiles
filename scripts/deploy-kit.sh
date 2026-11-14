@@ -9,10 +9,11 @@
 #   own roots and nothing more; the table below is the boundary, and everything else, the pinned asset refreshes
 #   included, is left to `make update` and the asset updater under their own contracts:
 #
-#     root            | reason   | source
-#     ~/.local/bin    | levers   | home/dot_local/bin (the orchestrator levers, the seat launcher)
-#     ~/.agents       | assets   | home/dot_agents (skills, rules, omp profiles and policies, regime files)
-#     ~/.dsh          | profiles | home/dot_dsh (the DSH profiles and plugins)
+#     root            | reason        | source
+#     ~/.local/bin    | levers        | home/dot_local/bin (the orchestrator levers, the seat launcher)
+#     ~/.agents       | assets        | home/dot_agents (skills, rules, omp profiles and policies, regime files)
+#     ~/.dsh          | profiles      | home/dot_dsh (the DSH profiles and plugins)
+#     ~/.omp/profiles | seat profiles | home/dot_omp/private_profiles (the seats' generated claude-bridge.json; U515)
 #
 #   Each root is read physically before anything else (`cd -P`, `pwd -P`): a root that is missing, is a symbolic
 #   link, or whose physical path is not the physical HOME joined with its name (a link on its path) refuses the run
@@ -70,7 +71,7 @@
 
 set -Eeuo pipefail
 
-readonly KIT_ROOTS=("${HOME}/.local/bin" "${HOME}/.agents" "${HOME}/.dsh")
+readonly KIT_ROOTS=("${HOME}/.local/bin" "${HOME}/.agents" "${HOME}/.dsh" "${HOME}/.omp/profiles")
 
 dry_run=false
 for argument in "$@"; do

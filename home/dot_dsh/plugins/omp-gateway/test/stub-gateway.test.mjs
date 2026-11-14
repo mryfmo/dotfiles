@@ -30,6 +30,20 @@ test('every selector names a fixture reply with a status and a body', () => {
   }
 })
 
+test('the model list names which rows were captured and which are derived, and every derived row stands in the list', () => {
+  // U506b: the 2026-11-06 capture (U240) listed claude-fable-5-1; U506 replaced that row with the kit's model of
+  // 2026-11-13, claude-fable-5-2, which no gateway had answered. The fixture says so under `derived`, beside the
+  // capture note, so `measured` claims only what was measured.
+  const ids = fixtures.replies.models.body.data.map(row => row.id)
+  const derived = fixtures.derived?.models
+  assert.equal(typeof derived?.note, 'string', 'derived.models.note says where the rows come from')
+  assert.match(derived.note, /not captured/, 'the note says the rows were not captured')
+  assert.ok(Array.isArray(derived.rows) && derived.rows.length > 0, 'derived.models.rows names the rows')
+  for (const id of derived.rows) assert.ok(ids.includes(id), `${id} stands in the model list`)
+  assert.ok(derived.rows.length < ids.length, 'at least one row is the captured one')
+  assert.match(fixtures.measured.models, /derived/, 'the capture note points at the derived rows')
+})
+
 test('parseFlags reads the fixtures, log and fault knobs and refuses unknown flags', () => {
   const flags = parseFlags(['--fixtures', '/f.json', '--log', '/l.log', '--no-ready', '--reply-id-offset', '7', '--sleep-ms', '20'])
   assert.deepEqual(flags, { fixtures: '/f.json', log: '/l.log', noReady: true, replyIdOffset: 7, sleepMs: 20 })

@@ -928,6 +928,17 @@ claude:
   # it moves nothing. Run by the coordinator or the operator outside every
   # seat; installed and pinned the same way, with no allow rule and no seat
   # policy row.
+  # stall-check.py (U496, standing order 57) reads a program store's in-flight
+  # units.tsv rows and each unit's progress file under the temporary
+  # directory's <slug>-wt ($TMPDIR when set and not empty, else the system
+  # default; the slug the store path's parent name as given) and prints one
+  # row per unit with its state (moving, stalled, done, no-file, unreadable,
+  # malformed; the workers' bare `done, head=<sha>` last line is done), so a
+  # worker silent past its deadline is named by a command the coordinator
+  # runs on every wake, not noticed by a habit; every path walked by
+  # descriptors from the root directory, read-only, it writes nothing.
+  # Installed and pinned the same way, run as `python3 -I`, allowed by the
+  # orchestrator policy at its installed path like brief-check.py.
   # program-status.py prints the operator's state report of a program store in
   # standing order 56's shape (U497): one word of state and its reason, a signal
   # per tests table, the operator's acts and decisions, the in-flight units with
@@ -998,10 +1009,11 @@ claude:
       router-settings-apply: 46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: bab47be7273025518efab995f6bd4f444d9f9f8a7447f8d315ef8a984b316b50
-      program-status.py: fdb8a940258f2c247e65f0bed45fd0e7ad42ab0e196d4cec9aa783862fd600a6
+      program-status.py: 28d4e82370463863eb63f4726c4fee4be1eaeb53dd30ef20e64b03271f5e7c76
       claude-keyed: 4066e144cb2d9e9d5ed7443a7dec477331196cdbe1f5cee2e4a25484eb43db77
       ticket-unit.py: 38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1
       units-row.py: 6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e
+      stall-check.py: 35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

@@ -580,7 +580,7 @@
       "target": ".local/bin/common/program-status.py",
       "kind": "file",
       "executable": true,
-      "sha256": "fdb8a940258f2c247e65f0bed45fd0e7ad42ab0e196d4cec9aa783862fd600a6"
+      "sha256": "28d4e82370463863eb63f4726c4fee4be1eaeb53dd30ef20e64b03271f5e7c76"
     },
     {
       "source": "home/dot_local/bin/common/executable_read-lib.sh",
@@ -665,6 +665,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_stall-check.py",
+      "target": ".local/bin/common/stall-check.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d"
     },
     {
       "source": "home/dot_local/bin/common/executable_ticket-unit.py",
@@ -1023,6 +1030,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "seat-settings-render.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "stall-check.py"
     },
     {
       "source": "home/dot_local/bin/common",

@@ -278,6 +278,7 @@ LEVERS = (
     "router-settings-apply.py",
     "seat-login-preflight",
     "seat-settings-render.sh",
+    "stall-check.py",
     "ticket-unit.py",
     "units-row.py",
     "worker-worktree-owner.py",

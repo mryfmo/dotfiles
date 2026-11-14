@@ -62,6 +62,11 @@ bash:
       approval: allow
     - match: "*brief-check.py *"
       approval: deny
+    # The stall check (U496): read-only, run on every wake over the store's in-flight units and their progress files.
+    - match: "~/.local/bin/common/stall-check.py *"
+      approval: allow
+    - match: "*stall-check.py *"
+      approval: deny
     # The program status report (U497): read-only, the store's tables to standing order 56's shape; the reply to the
     # operator's status question quotes its output.
     - match: "~/.local/bin/common/program-status.py *"

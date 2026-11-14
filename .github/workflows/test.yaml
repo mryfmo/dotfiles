@@ -45,8 +45,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     # Up to 409 s before `Run unit test` and 10 s after it in passing Ubuntu client jobs (October 2026), around the
-    # step's 35 minutes (tests/unit/test_apt_mirror.py BoundOrderTest checks the sum).
-    timeout-minutes: 45
+    # 60 minutes of `Run Python unit tests` (the longest step since U496 round 9) and the 35 of `Run unit test`
+    # (tests/unit/test_apt_mirror.py BoundOrderTest checks the sum: 480 + 3600 + 60 s under the job's bound).
+    timeout-minutes: 70
     continue-on-error: ${{ matrix.os == 'ubuntu-26.04' }}
     env:
       # Export matrix values to shell scripts so existing test helpers can use
@@ -190,7 +191,7 @@ jobs:
         # Twice the measured rest of this step (at most 73 s: ubuntu-24.04 server, run 40338292845; 14 to 46 s on
         # the other rows), rounded up plus one minute (tests/unit/test_apt_mirror.py BoundOrderTest); the apt calls
         # run in the step above under their own bound. A stalled download or gem install ends here, under this
-        # step's name, never at the job's 45 minutes.
+        # step's name, never at the job's 70 minutes.
         timeout-minutes: 4
         # gh and scripts/lib/github-release.sh authenticate with this token; no other step needs it.
         env:
@@ -506,12 +507,15 @@ jobs:
 
       - name: Run Python unit tests
         if: ${{ steps.decide.outputs.should_test == 'true' }}
-        # Twice the measured step (the macos-15 client step took 19.0 min at main 49f3c33c, run 42347799380, and 18.1 min
-        # at 6ad1be23, run 42356259565; it timed out at the earlier 24 min on main 238f898e, run 42356218234, and on PRs 721
-        # and 722, 2026-11-07; 7.5 to 11.5 min on the Ubuntu rows), rounded up plus one minute
-        # (tests/unit/test_apt_mirror.py BoundOrderTest, REST_ONLY_BUDGET 2280 s); the apt calls run in the step above
-        # under their own bound.
-        timeout-minutes: 39
+        # The measured step with margin: the macos-15 client step took 33 min 40 s at PR 788's head eab19212 (run
+        # 43547786562: unittest-shards 1872.6 s for 2816 tests, the test_hcom_seat.py and test_hcom_seat_dsh.py shards
+        # 850 to 1050 s each) and timed out at the earlier 39 min at PR 780's 606f8caf (run 43548813296, every module OK
+        # up to the cut); that 39 was twice a 19.0 min measurement of 2026-11-07 (main 49f3c33c, run 42347799380), before
+        # the suite grew by test_regime_start, test_worker_worktree, test_ticket_unit, test_units_row, test_program_status,
+        # test_stall_check and test_claude_keyed; the Ubuntu test jobs take 12 to 15 min whole. 59 min of rest, rounded up plus
+        # one minute (tests/unit/test_apt_mirror.py BoundOrderTest, REST_ONLY_BUDGET 3540 s); the apt calls run in the
+        # step above under their own bound.
+        timeout-minutes: 60
         run: |
           if [[ "${OS}" == macos-* ]]; then
             command -v jq > /dev/null 2>&1 || brew install jq

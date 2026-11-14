@@ -573,7 +573,7 @@
       "target": ".local/bin/common/program-status.py",
       "kind": "file",
       "executable": true,
-      "sha256": "fdb8a940258f2c247e65f0bed45fd0e7ad42ab0e196d4cec9aa783862fd600a6"
+      "sha256": "28d4e82370463863eb63f4726c4fee4be1eaeb53dd30ef20e64b03271f5e7c76"
     },
     {
       "source": "home/dot_local/bin/common/executable_read-lib.sh",
@@ -664,7 +664,7 @@
       "target": ".local/bin/common/stall-check.py",
       "kind": "file",
       "executable": true,
-      "sha256": "41add593c04989bd5849440c26f91a550ab91da1e54fead9382d0fc532ea261b"
+      "sha256": "35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d"
     },
     {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",

@@ -3,7 +3,9 @@ report of a program store in standing order 56's shape, as a subprocess under `p
 report byte for byte in English and with `--ja`, the three state words each from a fixture, a fake `stall-check.py`
 beside a copy of the lever, the absent-lever column, every header refusal and the self pin refusal of an altered copy;
 and (U497b) every refusal as one stderr line, every stall-check cell checked, and every report item one line; and
-(U497c) the gates header read by cell names, every printed cell one line, the tables read byte-exact."""
+(U497c) the gates header read by cell names, every printed cell one line, the tables read byte-exact; and (U496h) the
+real stall check's exit 2 with rows (a malformed file beside a stalled worker) read as rows, its exit 2 with nothing on
+stdout as its refusal with the reason, and its exit 1 with a traceback or no row as a refusal by name."""
 
 import os
 import shutil
@@ -15,6 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 LEVER = ROOT / "scripts/orchestrator/program-status.py"
+STALL_CHECK = ROOT / "scripts/orchestrator/stall-check.py"
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 NOW = "2026-11-12T07:00:00Z"
 # The kit's own gates template, copied into every new store by regime-init: its header cells are padded.
@@ -283,7 +286,98 @@ class ProgramStatusTest(unittest.TestCase):
     def test_a_stall_check_exit_2_refuses_the_report(self):
         levers = self.copy_lever()
         self.write_fake(levers, FAKE_REFUSES)
-        self.assert_refused("stall-check.py", "units.tsv unreadable")
+        stderr = self.assert_refused("stall-check.py refused this report", "units.tsv unreadable")
+        self.assertNotIn("no reason given", stderr)
+        # Nothing at all on exit 2 is still its refusal, with no reason to quote.
+        self.write_fake(levers, "#!/usr/bin/env -S python3 -I\nimport sys\nsys.exit(2)\n")
+        self.assert_refused("stall-check.py refused this report", "no reason given")
+
+    # (g) round 4 (U496h, verdict U496f-0eecc2a9 P1): the checker's exit 2 with rows is a report, never a refusal.
+
+    def test_the_real_stall_check_s_exit_2_with_a_malformed_row_beside_a_stalled_row_reaches_the_report(self):
+        """The real checker beside a copy of the lever, over a progress root where U2's last line is 47 minutes old
+        and U3's file is garbage: the checker prints both rows and exits 2 with nothing on stderr (U496e), and the
+        operator report carries each worker's row, the stalled one never hidden by the malformed one (at 0eecc2a9 the
+        exit 2 was read as a refusal, `no reason given`). The checker's exact result is then replayed by a fake that
+        writes the same bytes and exits the same, and reads the same."""
+        levers = self.copy_lever()
+        shutil.copy2(STALL_CHECK, levers / STALL_CHECK.name)
+        self.write_store(units=UNITS + unit_row("U3", "feat", "in-flight", "12"))
+        progress_root = Path(self.temp.name).resolve() / "wt"
+        progress_root.mkdir()
+        (progress_root / "U2-progress.txt").write_text("2026-11-12T06:13:00Z U2: read the brief\n")
+        (progress_root / "U3-progress.txt").write_text("garbage\n")
+        checker = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                str(levers / STALL_CHECK.name),
+                str(self.store),
+                "--progress-root",
+                str(progress_root),
+                "--now",
+                NOW,
+            ],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            timeout=60,
+            check=False,
+        )
+        malformed = "the last line has no YYYY-MM-DDTHH:MM:SSZ timestamp and a space before its text: garbage"
+        self.assertEqual(
+            (checker.returncode, checker.stdout, checker.stderr),
+            (2, f"U2\tstalled\t47\t2026-11-12T06:13:00Z U2: read the brief\nU3\tmalformed\t-\t{malformed}\n", ""),
+        )
+        expected_tail = [
+            "U2 feat pr - progress: stalled, 47 min, 2026-11-12T06:13:00Z U2: read the brief",
+            f"U3 feat pr 12 progress: malformed, - min, {malformed}",
+        ]
+        with self.subTest(checker="the real stall-check.py beside the lever"):
+            run = self.run_lever("--progress-root", str(progress_root))
+            self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+            lines = run.stdout.splitlines()
+            self.assertEqual(lines[-2:], expected_tail)
+            self.assertEqual(lines[0], "state: moving: 2 units in flight, last record 12 min ago")
+        with self.subTest(checker="a fake replaying the real result byte for byte"):
+            self.write_fake(
+                levers,
+                "#!/usr/bin/env -S python3 -I\nimport sys\n"
+                f"sys.stdout.write({checker.stdout!r})\nsys.exit({checker.returncode})\n",
+            )
+            run = self.run_lever()
+            self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+            self.assertEqual(run.stdout.splitlines()[-2:], expected_tail)
+
+    def test_a_stall_check_exit_2_with_rows_and_a_stderr_line_refuses_quoting_the_line(self):
+        """Rows and a stderr line together are outside the checker's contract (rows exit 2 with nothing on stderr; a
+        refusal with nothing on stdout), so the report is refused, the line quoted."""
+        levers = self.copy_lever()
+        self.write_fake(
+            levers,
+            "#!/usr/bin/env -S python3 -I\nimport sys\n"
+            "sys.stdout.write('U2\\tmalformed\\t-\\tthe file is empty\\n')\n"
+            "print('stall-check.py: refused: and yet', file=sys.stderr)\nsys.exit(2)\n",
+        )
+        self.assert_refused("stall-check.py", "exited 2", "and yet")
+
+    def test_a_stall_check_exit_1_with_a_traceback_or_no_row_refuses_by_name_never_no_row(self):
+        """A checker that crashes (exit 1, a traceback on stderr, nothing on stdout) or exits 1 with nothing at all is
+        no report of the workers: the refusal names the checker and quotes the traceback's last line, and `progress:
+        no row` is never printed for it (the U499 item, closed here)."""
+        levers = self.copy_lever()
+        self.write_fake(levers, "#!/usr/bin/env -S python3 -I\nraise RuntimeError('a bug in the checker')\n")
+        stderr = self.assert_refused("stall-check.py", "exited 1", "RuntimeError: a bug in the checker")
+        self.assertNotIn("no row", stderr)
+        self.write_fake(levers, "#!/usr/bin/env -S python3 -I\nimport sys\nsys.exit(1)\n")
+        self.assert_refused("stall-check.py", "exited 1", "no row")
+        # A traceback with exit 0 is no report either.
+        self.write_fake(
+            levers,
+            "#!/usr/bin/env -S python3 -I\nimport sys\n"
+            "sys.stdout.write('U2\\tstalled\\t47\\tread the brief\\n')\nprint('Traceback (most recent call last):\\n  x\\nValueError: late', file=sys.stderr)\n",
+        )
+        self.assert_refused("stall-check.py", "exited 0", "ValueError: late")
 
     def test_a_stall_check_row_of_another_shape_refuses(self):
         levers = self.copy_lever()
@@ -402,11 +496,16 @@ class ProgramStatusTest(unittest.TestCase):
         self.assert_refused("stall-check.py", "line 2", "state", "asleep")
         self.write_fake(levers, FAKE_ROWS.replace("U2\\tstalled\\t47", "U2\\tstalled\\t47\\r"))
         self.assert_refused("stall-check.py", "line 2", "carriage return")
-        # `-` and every one of the five states pass.
+        # `-` and every one of the six states pass.
         self.write_fake(levers, FAKE_ROWS.replace("U2\\tstalled\\t47", "U2\\tunreadable\\t-"))
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
         self.assertEqual(run.stdout.splitlines()[-1], "U2 feat pr - progress: unreadable, - min, read the brief")
+        self.write_fake(levers, FAKE_ROWS.replace("U2\\tstalled\\t47", "U2\\tmalformed\\t-"))
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+        self.assertEqual(run.stdout.splitlines()[-1], "U2 feat pr - progress: malformed, - min, read the brief")
+        self.assertEqual(run.stdout.splitlines()[0], "state: moving: 1 units in flight, last record 12 min ago")
 
     def test_a_tests_table_named_with_a_newline_or_outside_the_name_class_refuses_naming_the_file(self):
         (self.store / "tests/ga\nmma.tsv").write_text(ALPHA)

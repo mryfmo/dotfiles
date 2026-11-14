@@ -1,6 +1,7 @@
 #!/usr/bin/env -S python3 -I
 """Name every in-flight worker of a program store that is silent past its deadline (regime-cutover U496, round 2 U496b,
-round 3 U496c and U496d, round 4 U496e, round 5 the bare done line and the `malformed` row).
+round 3 U496c and U496d, round 4 U496e, round 5 the bare done line and the `malformed` row, round 7 U496h the refusal
+printer's fold).
 
 Measured 2026-11-06 to 2026-11-12: eleven worker stalls, each a Task subagent silent after a tool call for 30 to 45
 minutes, each found because the coordinator remembered to read the progress files by hand (standing order 57). This
@@ -60,7 +61,11 @@ digit limit as a traceback, verdict U496-d1256438 P2) or is outside 1 to 1440 (2
 option of this lever shares; a store or progress root that is not an absolute path, holds an empty, `.` or `..`
 component (a trailing or repeated separator included), or is not a real directory entry at the end of its walk (a
 missing progress root is a wrong root, never an empty set of workers); any argument that is not strict UTF-8 or holds
-a tab, a newline or a carriage return; and argparse's own usage errors, printed in the same one-line form.
+a tab, a newline or a carriage return; and argparse's own usage errors, printed in the same one-line form. The printer
+folds every line boundary `str.splitlines` knows (newline, carriage return, VT, FF, FS, GS, RS, NEL, U+2028, U+2029)
+inside the reason to a space before it writes, so a walked path whose link target holds one (an argument never does,
+`argument_rule` refuses it; a target is read from the file system) is still one stderr line (round 7, U496h, verdict
+U496f-0eecc2a9 P3).
 
 Every path is walked by descriptors from `/` (round 4, U496e; verdict U496-8cdd9a40 P1 :319: every earlier round
 validated the root by path and then opened it by path, so an ancestor replaced by a symbolic link between the two was
@@ -135,6 +140,9 @@ DONE_PREFIX = "done,"
 BARE_DONE = re.compile(r"^done, head=[0-9a-f]{40}$")
 # The three characters no argument holds: the output is tab-separated lines.
 CONTROL = (("\t", "a tab"), ("\n", "a newline"), ("\r", "a carriage return"))
+# The line boundaries `str.splitlines` knows; `one_line` replaces each with a space in every refusal, so a walked path
+# (a link target, never an argument) that holds one prints as one stderr line (round 7, U496h).
+LINE_BREAK = re.compile(r"[\n\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]")
 
 # The states, one table: the state word and the exit code a row of it contributes; `unreadable` (a file that yields no
 # text, round 2, U496b) and `malformed` (text outside the grammar, round 5) are one unit's row of exit 2, while a
@@ -178,9 +186,17 @@ class Malformed(Exception):
     line cell."""
 
 
+def one_line(text):
+    """`text` with every line boundary `str.splitlines` knows (newline, carriage return, VT, FF, FS, GS, RS, NEL,
+    U+2028, U+2029) replaced by a space, so a refusal is one stderr line whatever a walked path holds."""
+    return LINE_BREAK.sub(" ", text)
+
+
 def refuse(reason):
-    """Print the refusal in the shell levers' words on stderr and exit 2; nothing was printed on stdout."""
-    print(f"{LEVER}: refused: {reason}", file=sys.stderr)
+    """Print the refusal in the shell levers' words on stderr and exit 2; nothing was printed on stdout. The reason is
+    folded to one line (`one_line`): the arguments are clean by `argument_rule`, but a walked path is read from the
+    file system and an ancestor link's target may hold a newline (verdict U496f-0eecc2a9 P3)."""
+    print(f"{LEVER}: refused: {one_line(reason)}", file=sys.stderr)
     sys.exit(2)
 
 

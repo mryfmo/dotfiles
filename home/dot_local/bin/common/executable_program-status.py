@@ -39,11 +39,17 @@ The report, line by line:
   [--now <ts>]` with this lever's interpreter, its stdout and stderr read as bytes and decoded as strict UTF-8, and
   its rows, `unit<TAB>state<TAB>age_minutes<TAB>last_line` (an optional first row of those names is skipped), fill
   the column as `<state>, <age_minutes> min, <last_line>`, the state one of moving, stalled, done, no-file,
-  unreadable and the age `-` or 1 to 10 decimal digits; an in-flight unit it names no row for reads `progress: no
-  row`; its exit 0 or 1 is a report, its exit 2 is a refusal of this report quoting its first stderr line, any other
-  exit, output that is not UTF-8, a row of another width, a carriage return, a state or an age of another shape, a
-  unit named twice, a time limit of 120 seconds or a start that fails is a refusal too, the row ones naming the line.
-  Without the file beside this one the column reads `progress: unknown`. Rows of units not in flight print nothing.
+  unreadable, malformed and the age `-` or 1 to 10 decimal digits; an in-flight unit it names no row for reads
+  `progress: no row`. The checker's exit is read by its own contract (U496h, verdict U496f-0eecc2a9 P1): exit 0, 1 or
+  2 with rows on stdout and nothing on stderr is a report, each row one worker's state, so an `unreadable` or
+  `malformed` row (exit 2) stands beside a stalled peer's row and never hides it; exit 2 with nothing on stdout is the
+  checker's refusal and refuses this report quoting its first stderr line (`no reason given` when there is none);
+  exit 1 with nothing on stdout (a traceback, an empty report) and any stderr text beside rows or under exit 0 or 1
+  (a traceback) refuse this report naming the checker, its exit and the last stderr line, so a crashed checker never
+  reads as `no row`; any other exit, output that is not UTF-8, a row of another width, a carriage return, a state or
+  an age of another shape, a unit named twice, a time limit of 120 seconds or a start that fails is a refusal too,
+  the row ones naming the line. Without the file beside this one the column reads `progress: unknown`. Rows of units
+  not in flight print nothing.
 A section with no item prints `none`. `--ja` prints the five headings and the state word in the operator's forms
 (状態 / 要素 / 操作者の作業 / 操作者の判断 / agent が動かしているもの; 進んでいる / 止まっている / 完了) and translates nothing else.
 
@@ -98,8 +104,8 @@ GATES_HEADER = ("id", "gate", "moment", "options", "default", "result")
 GATES_WIDTH = len(GATES_HEADER)
 SEPARATOR_CELL = re.compile(r":?-+:?")
 STALL_HEADER = ("unit", "state", "age_minutes", "last_line")
-# The stall check's row contract (U496, U496b): the five states, the age `-` or 1 to 10 decimal digits.
-STALL_STATES = ("moving", "stalled", "done", "no-file", "unreadable")
+# The stall check's row contract (U496, U496b, U496h): the six states, the age `-` or 1 to 10 decimal digits.
+STALL_STATES = ("moving", "stalled", "done", "no-file", "unreadable", "malformed")
 STALL_AGE = re.compile(r"-|[0-9]{1,10}")
 STALL_TIMEOUT = 120
 # The stall check's states that mean the worker is silent (U496).
@@ -363,8 +369,12 @@ def decoded(data, what):
 
 def stall_rows(here, store, args):
     """The stall check's rows by unit as (state, age_minutes, last_line), or None when no `stall-check.py` is beside
-    this lever; its exit 2 and every other failure of the run, of its encoding or of a row's shape (width, carriage
-    return, state, age) is a refusal, the row ones naming the line."""
+    this lever. Its exit 0, 1 or 2 with rows on stdout and nothing on stderr is a report (exit 2 is an `unreadable` or
+    `malformed` row's, U496h: one worker's bad file never hides a stalled peer); its exit 2 with nothing on stdout is
+    its refusal, quoted from its first stderr line; exit 1 with nothing on stdout, any stderr text beside rows or
+    under exit 0 or 1 (a traceback, quoted from its last line), any other exit, and every failure of the run, of its
+    encoding or of a row's shape (width, carriage return, state, age, a unit twice) are refusals too, the row ones
+    naming the line."""
     path = os.path.join(here, STALL_CHECK)
     try:
         status = os.lstat(path)
@@ -386,12 +396,18 @@ def stall_rows(here, store, args):
     except OSError as error:
         refuse(f"cannot run {path}: {error.strerror}")
     stdout = decoded(run.stdout, f"{STALL_CHECK}'s stdout")
-    stderr = decoded(run.stderr, f"{STALL_CHECK}'s stderr")
-    first = stderr.strip().split("\n", 1)[0] if stderr.strip() else "no reason given"
-    if run.returncode == 2:
+    stderr = decoded(run.stderr, f"{STALL_CHECK}'s stderr").strip()
+    # A refusal is one stderr line, quoted first; a traceback ends with the exception, quoted last.
+    first = stderr.split("\n", 1)[0] if stderr else "no reason given"
+    last = stderr.rsplit("\n", 1)[-1] if stderr else "no reason given"
+    if run.returncode == 2 and not stdout.strip():
         refuse(f"{STALL_CHECK} refused this report: {first}")
-    if run.returncode not in (0, 1):
-        refuse(f"{STALL_CHECK} exited {run.returncode}: {first}")
+    if run.returncode not in (0, 1, 2):
+        refuse(f"{STALL_CHECK} exited {run.returncode}: {last}")
+    if stderr:
+        refuse(f"{STALL_CHECK} exited {run.returncode} and wrote to stderr: {last}")
+    if run.returncode == 1 and not stdout.strip():
+        refuse(f"{STALL_CHECK} exited 1 and printed no row")
     rows = {}
     for number, line in enumerate(stdout.split("\n"), 1):
         if not line:

@@ -729,6 +729,23 @@ class StallCheckTest(unittest.TestCase):
             os.unlink(parent)
         self.assertNotIn("OUTSIDE-SECRET-LINE", out + err)
 
+    def test_an_ancestor_link_whose_target_holds_a_line_boundary_yields_one_stderr_line(self) -> None:
+        """Verdict U496f-0eecc2a9 P3 :183: the arguments are clean (`argument_rule`), but a walked path is not an
+        argument: an ancestor of the progress root that is a link whose target holds a newline reached the refusal
+        printer verbatim and one refusal was two stderr lines. The printer folds every line boundary `str.splitlines`
+        knows to a space, so the refusal names the walked path on one line; the given path, the leaf and the reason
+        are still named."""
+        for label, boundary in (("newline", "\n"), ("carriage return", "\r"), ("line separator", "\u2028")):
+            with self.subTest(boundary=label):
+                target_name = f"tar{boundary}get-{len(label)}"
+                (self.dir / target_name).mkdir()
+                parent = self.dir / f"roots-{len(label)}"
+                os.symlink(target_name, parent)
+                root = parent / "dotfiles-wt"
+                run = self.run_lever(root=str(root))
+                self.assert_refused(run, f"progress root '{root}'", "/dotfiles-wt) cannot be read", "tar get")
+                self.assertNotIn(boundary, run.stderr.rstrip("\n"))
+
     def test_the_default_root_s_slug_is_the_store_s_parent_name_as_given_not_resolved(self) -> None:
         """Verdict U496-8cdd9a40 P2 :476: at 8cdd9a40 `default_root` read the resolved store path, so a store reached
         through an aliased parent (`regime-store/dotfiles -> realproject`) derived `realproject-wt`, a root no worker

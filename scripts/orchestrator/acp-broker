@@ -102,8 +102,9 @@
 #   `~/.omp/profiles/dsh` (the worker's omp profile, `OMP_PROFILE=dsh`), `~/.omp/run`, and srt 0.0.81's own writable
 #   paths (`/tmp/claude`, `/private/tmp/claude` on macOS, `~/.npm/_logs`), every one physical; `allowRead` the slot's
 #   task, the group's directory, that profile, `~/.agents/skills`, the private tool directory
-#   `~/.local/state/hcom-seat/tools` and the seats' API key file `REGIME_ANTHROPIC_KEY_FILE` names (U516, the @env
-#   row). No row names the Router's scratch cwd, its state slot, the repository or the legacy
+#   `~/.local/state/hcom-seat/tools` and the directory of the seats' API key file `REGIME_ANTHROPIC_KEY_FILE` names
+#   (U516, the @env row; U512i: the directory, not the file, as hcom-seat grants it). No row names the Router's
+#   scratch cwd, its state slot, the repository or the legacy
 #   `<seats-root>/.state/claude` (U318, one login per seats root; read by nothing since U498b). No DSH_HOME grant and
 #   no state slot: the worker is omp, not dsh, and the launch log is this lever's to write.
 #   `allowLocalBinding` false, `allowUnixSockets` empty, the domain list
@@ -290,7 +291,10 @@
 # @env REGIME_ANTHROPIC_KEY_FILE The seats' API key file `<seats-root>/.state/anthropic/api-key` (hcom-seat's router
 #   row, U512; the operator places it by handouts/anthropic-api-key-u510.md): held as data and never read, named in
 #   every worker's environment beside CLAUDE_CONFIG_DIR, where `claude-keyed` reads the key for the bridge's Claude
-#   Code child, and its physical path one worker read grant (regime-cutover U516; handoff/47). The key is a worker's
+#   Code child, and its directory's physical path one worker read grant (regime-cutover U516; handoff/47; U512i,
+#   verdict U512h-4c5ec14e: a file-only read grant under the read-denied seats root loses its parent's mode inside
+#   srt's Linux tmpfs, and `claude-keyed` holds the directory to 0700, so the grant is the directory, whose bind keeps
+#   its mode, as hcom-seat renders it for every role). The key is a worker's
 #   precondition, not the broker's (U516c): the listener starts whatever the variable holds, and each worker
 #   connection is judged before anything of the worker is made. Unset, empty, not a clean absolute path, a symbolic
 #   link, not a regular file of this user, not mode 0600, or a spelling whose physical path is not clean refuses that
@@ -895,9 +899,10 @@ physical_each() {
 #   (`allow_read_tags`, `allow_write_tags`); a denyRead row carries `slot` when it has the identity of the seats root
 #   or of `~/.local/state/omp-seats` and `profile` when it has the identity of `~/.omp/profiles` (the three
 #   references resolved and tabled with the rows); a denyWrite row carries `slot` when it lies strictly inside a
-#   slot-tagged grant (the project-file rows under the task cwd, the configuration rows under the group's directory)
-#   or when it has the identity of a slot-tagged read grant that is no write grant (the seats' API key file, which
-#   hcom-seat grants for read and denies for write under one tag, U512; U516).
+#   slot-tagged grant (the project-file rows under the task cwd, the configuration rows under the group's directory,
+#   and the seats' API key file under the key directory's read grant, U512; U516; U512i: the grant is the directory
+#   the file lies in, so the file's deny pairs by that rule alone, and a deny row with the identity of a grant, read
+#   or write, carries no tag and is a hit).
 #   A profile that is a link elsewhere is spelled `~/.omp/profiles/dsh` and resolves elsewhere, so its tag exempts
 #   nothing and it is judged like any row. The read grants go first, so the first hit names the row as the role
 #   spells it.
@@ -941,14 +946,10 @@ settings_judge() {
         *)
             for ((i = 0; i < n; i++)); do
                 [[ ${tags[i]} == slot ]] || continue # lint-comparisons: allow a tag word, no path compare
+                # Strictly inside: the seats' API key file's deny lies inside the key directory's read grant (U512i),
+                # as the project-file and configuration denies lie inside the task and the group's directory; a deny
+                # with a grant's identity, read or write, is no pair (a path granted and denied is a contradiction).
                 if within_ix "${i}" "${j}" && ! within_ix "${j}" "${i}"; then tags[j]=slot; fi
-                # The seats' API key file (U516): hcom-seat grants it for read and denies it for write under one tag
-                # (U512), so a deny row with the identity of a slot-tagged read grant is that row; the identity of a
-                # write grant stays a hit (a write granted and denied is a contradiction, not a pair), the write
-                # grants coming after the read grants in the table.
-                if within_ix "${i}" "${j}" && within_ix "${j}" "${i}"; then
-                    if [[ ${kinds[i]} == allowRead ]]; then tags[j]=slot; else tags[j]=''; fi # lint-comparisons: allow a kind word, no path compare
-                fi
             done
             ;;
         esac
@@ -981,7 +982,10 @@ esac
 # The seats' API key file (regime-cutover U516; handoff/47, U510, U512): REGIME_ANTHROPIC_KEY_FILE as hcom-seat's
 # router row set it in the sandbox environment this process runs in (the listener, and every connection through the
 # relay), held as data: this lever reads no key, names the path in every worker's environment beside CLAUDE_CONFIG_DIR
-# (where `claude-keyed`, the bridge's Claude Code executable, reads it) and grants its physical path for read. The key
+# (where `claude-keyed`, the bridge's Claude Code executable, reads it) and grants its directory's physical path for
+# read (U512i, verdict U512h-4c5ec14e: the directory, not the file, since a file-only read grant under the read-denied
+# seats root is bound back into srt's Linux tmpfs with its parents remade 0755, and `claude-keyed` holds the key
+# directory to 0700; a directory bind keeps its mode). The key
 # is a worker's precondition, not the broker's (regime-cutover U516c): the listener starts and listens whatever the
 # variable holds, so a launcher that predates U512 (hcom-seat on main sets no such row) still runs the Router, and
 # each worker connection is judged here, after its header's shape (a header refusal names the header, as before) and
@@ -1034,6 +1038,11 @@ if ((connection)); then
     key_real=$(physical_path "${key_file}" 2> /dev/null) || key_real=''
     early_clean_path "${key_real}" ||
         refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file} cannot be resolved to a clean physical path (a link that cannot be read, more than 40 links, or a component outside [A-Za-z0-9._@+-]); no worker starts without the seats' API key; ${key_handout}"
+    # The key's directory, the worker's read grant (U512i): the physical file's parent, physical by the same resolution
+    # (physical_path follows every link above the file), held clean like the file.
+    key_dir_real=${key_real%/*}
+    early_clean_path "${key_dir_real}" ||
+        refuse "REGIME_ANTHROPIC_KEY_FILE ${key_file}: its directory '${key_dir_real}' is not a clean absolute path; no worker starts without the seats' API key; ${key_handout}"
 fi
 
 # The one settings writer (regime-cutover U344; U344c), sourced before any row is checked or rendered, from the private
@@ -1552,8 +1561,8 @@ profile_real=$(physical_clean "${profile_spelled}") || unresolved "the worker's 
 run_real=$(physical_clean "${h}/.omp/run") || unresolved "omp's run directory" "${h}/.omp/run"
 skills_real=$(physical_clean "${h}/.agents/skills") || unresolved 'the skills directory' "${h}/.agents/skills"
 tools_row=$(physical_clean "${tools_dir}") || unresolved 'the private tool directory' "${tools_dir}"
-allow_read=("${task}" "${claude_real}" "${profile_real}" "${skills_real}" "${tools_row}" "${key_real}")
-allow_read_spelled=("${task}" "${claude_real}" "${profile_spelled}" "${h}/.agents/skills" "${tools_dir}" "${key_real}")
+allow_read=("${task}" "${claude_real}" "${profile_real}" "${skills_real}" "${tools_row}" "${key_dir_real}")
+allow_read_spelled=("${task}" "${claude_real}" "${profile_spelled}" "${h}/.agents/skills" "${tools_dir}" "${key_dir_real}")
 allow_read_tags=(slot slot profile '' '' slot)
 allow_write=("${task}" "${claude_real}" "${profile_real}" "${run_real}")
 allow_write_spelled=("${task}" "${claude_real}" "${profile_spelled}" "${h}/.omp/run")

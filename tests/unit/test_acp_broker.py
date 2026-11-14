@@ -271,7 +271,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.addCleanup(self.stop_all)
         # The seats' API key file (U516): `<seats-root>/.state/anthropic/api-key`, hcom-seat's `key_file` row (U512),
         # made here as the operator's handout places it (0700 directory, 0600 file), and named in the broker's
-        # environment as hcom-seat's router row names it for the broker it starts (the listener inherits it).
+        # environment as hcom-seat's router row names it for the broker it starts (the listener inherits it); the
+        # worker's read grant is the file's directory (U512i), as every hcom-seat role's is.
         self.key_file.parent.mkdir(mode=0o700, parents=True)
         self.seats_path.chmod(0o700)
         (self.seats_path / ".state").chmod(0o700)
@@ -310,7 +311,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                      f"{seats}/.sandbox", f"{home}/.local/state/omp-seats", str(seats), f"{home}/.claude",
                      f"{home}/.claude.json", str(repo), f"{repo}/.git", str(store), f"{repo}/.orchestration"]  # fmt: skip
         # The Router's denyWrite carries the seats' API key file after the group directory's rows, as hcom-seat
-        # renders it since U512 (the worker copies the table and grants the same file for read, U516).
+        # renders it since U512 (the worker copies the table and grants the file's directory for read, U516; U512i).
         claude_rows = [f"{seats}/.state/claude-router/{p}" for p in CLAUDE_ROWS] if claude_denies else []
         deny_write = [f"{seats}/.sandbox", *(f"{cwd}/{p}" for p in PROJECT_FILES),
                       *claude_rows, f"{seats}/.state/anthropic/api-key", *(f"{repo}/{p}" for p in PROJECT_FILES),
@@ -733,7 +734,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         moved = cwd / "work-moved"
         roles = {str(self.seats_path / ".state/claude-router"), f"{home}/.omp/profiles/dsh", f"{home}/.omp/run",
                  f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools", f"{home}/.npm/_logs",
-                 "/tmp/claude", "/private/tmp/claude", str(self.key_file)}  # fmt: skip
+                 "/tmp/claude", "/private/tmp/claude", str(self.key_dir)}  # fmt: skip
         for label, link in (
             ("the parent replaced by a link to ~/.aws", str(home / ".aws")),
             ("the parent renamed away", None),
@@ -816,7 +817,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertTrue(
             set(fs["allowWrite"][4:]) <= {"/tmp/claude", "/private/tmp/claude", f"{home}/.npm/_logs"}, fs["allowWrite"]
         )
-        self.assertEqual(fs["allowRead"], [str(task), str(self.seats_path / ".state/claude-router"), f"{home}/.omp/profiles/dsh", f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools", str(self.key_file)])  # fmt: skip
+        self.assertEqual(fs["allowRead"], [str(task), str(self.seats_path / ".state/claude-router"), f"{home}/.omp/profiles/dsh", f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools", str(self.key_dir)])  # fmt: skip
         state = self.seats_path / ".state" / name
         for kind in ("allowRead", "allowWrite", "denyRead", "denyWrite"):
             for row in fs[kind]:
@@ -3260,23 +3261,25 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             "byte-identical deny tables but the broker row",
         )
         self.assertNotIn("/broker", json.dumps(dsh), "the dsh row has no broker row")
-        # The grants: the dsh row's rows 0, 2, 4.. with the slot's task as row 0 (no state slot, no DSH_HOME), and the
-        # seats' API key file last (U516; the dsh row carries the same row once U512 lands, so it is matched by value).
+        # The grants: the dsh row's rows 0, 2, 4.. with the slot's task as row 0 (no state slot, no DSH_HOME); the
+        # seats' API key directory is the dsh row's row 7 and the worker's last row alike (U516; U512i: the directory,
+        # not the file, whose mode a file-only grant under the seats-root deny loses inside srt's Linux tmpfs).
         dsh_read, dsh_write = dsh["filesystem"]["allowRead"], dsh["filesystem"]["allowWrite"]
-        key_file = str(self.key_file)
+        key_file, key_dir = str(self.key_file), str(self.key_dir)
         self.assertEqual(dsh_read[1], str(self.seats_path / ".state" / rendered["dsh_name"]))
         self.assertEqual(dsh_read[3], str(dsh_home))
         self.assertEqual(
-            dsh_read[7], str(self.seats_path.resolve() / ".state/anthropic/api-key"), "the dsh-row key file (U512)"
+            dsh_read[7], str(self.seats_path.resolve() / ".state/anthropic"), "the dsh-row key directory (U512, U512i)"
         )
-        self.assertEqual(
-            worker["filesystem"]["allowRead"],
-            [task, dsh_read[2], *(r for r in dsh_read[4:] if r != key_file), key_file],
-        )
+        self.assertEqual(worker["filesystem"]["allowRead"], [task, dsh_read[2], *dsh_read[4:]])
+        self.assertEqual(worker["filesystem"]["allowRead"][-1], key_dir, "the worker reads the key directory (U516, U512i)")  # fmt: skip
         self.assertEqual(worker["filesystem"]["allowWrite"], [task, dsh_write[2], *dsh_write[4:]])
-        self.assertNotIn(
-            key_file, worker["filesystem"]["allowWrite"], "the key file is read, never written, by a worker (U516)"
+        self.assertNotIn(key_file, worker["filesystem"]["allowRead"] + worker["filesystem"]["allowWrite"], "the key file itself is no worker grant")  # fmt: skip
+        self.assertNotIn(key_dir, worker["filesystem"]["allowWrite"], "the key directory is read, never written, by a worker")  # fmt: skip
+        self.assertEqual(
+            worker["filesystem"]["denyWrite"].count(key_file), 1, "the file's write deny, the Router's row"
         )
+        self.assertEqual(test_hcom_seat.file_rows_under_read_denies(worker["filesystem"]), [], "no worker allowRead row is a regular file under a denyRead row (U512i)")  # fmt: skip
         self.assertEqual(worker["filesystem"]["allowRead"][1], str(self.seats_path / ".state/claude-router"))
         self.assertEqual(worker["filesystem"]["allowWrite"][2:4], [f"{home}/.omp/profiles/dsh", f"{home}/.omp/run"])
         # DSH_HOME reaches the worker's settings as the credential root alone (U343l): once in denyRead, once in
@@ -3390,18 +3393,20 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         dsh_read, dsh_write = dsh["filesystem"]["allowRead"], dsh["filesystem"]["allowWrite"]
         self.assertEqual(dsh_read[1], str(self.seats_path / ".state" / rendered["dsh_name"]))
         self.assertEqual(dsh_read[3], str(dsh_home))
-        # The seats' API key file is the dsh row's allowRead row 7 (U512) and the worker's allowRead last row (the
-        # broker's read grant, U516, since PR 787), never a worker allowWrite row (U512g, verdict U512f-b6a3e2c0 P2:
-        # this comment said no worker row names it), so the worker's read grants are the dsh row's rows 0, 2, 4, 5
-        # and 6 with the key file last, and its write grants the dsh row's rows 0, 2 and 4 on.
-        self.assertEqual(dsh_read[7], str(self.seats_path.resolve() / ".state/anthropic/api-key"))
+        # The seats' API key directory is the dsh row's allowRead row 7 (U512; U512i: the directory, not the file) and
+        # the worker's allowRead last row (the broker's read grant, U516, since PR 787); the key file itself is no
+        # worker grant, read or write (U512g, verdict U512f-b6a3e2c0 P2: this comment said no worker row names it),
+        # so the worker's read grants are the dsh row's rows 0, 2, 4, 5, 6 and 7, and its write grants the dsh row's
+        # rows 0, 2 and 4 on.
+        self.assertEqual(dsh_read[7], str(self.seats_path.resolve() / ".state/anthropic"))
         expected = normalised(dsh, dsh_cwd, rendered["dsh_name"])
         expected["filesystem"]["denyWrite"] = worker_n["filesystem"]["denyWrite"]
-        key_file = str(self.key_file)
-        expected["filesystem"]["allowRead"] = [task, dsh_read[2], *(r for r in dsh_read[4:] if r != key_file), key_file]
+        key_file, key_dir = str(self.key_file), str(self.key_dir)
+        expected["filesystem"]["allowRead"] = [task, dsh_read[2], *dsh_read[4:]]
         expected["filesystem"]["allowWrite"] = [task, dsh_write[2], *dsh_write[4:]]
-        self.assertEqual(worker["filesystem"]["allowRead"][-1], key_file, "the worker reads the key file (U516)")
-        self.assertNotIn(key_file, worker["filesystem"]["allowWrite"], "the key file is never written by a worker")
+        self.assertEqual(worker["filesystem"]["allowRead"][-1], key_dir, "the worker reads the key directory (U516, U512i)")  # fmt: skip
+        self.assertNotIn(key_file, worker["filesystem"]["allowRead"] + worker["filesystem"]["allowWrite"], "the key file is no worker grant")  # fmt: skip
+        self.assertNotIn(key_dir, worker["filesystem"]["allowWrite"], "the key directory is never written by a worker")
         expected_text = (
             json.dumps(expected, separators=(",", ":"))
             .replace("<cwd>", task)
@@ -3580,33 +3585,38 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
     def test_the_api_key_file_path_reaches_the_worker_and_no_worker_starts_without_it(self):
         """U516 (handoff/47; U510, U512): the Router's subagent turns run on the seats' API key like every other bridge
         turn, so the worker's environment carries `REGIME_ANTHROPIC_KEY_FILE` equal to the broker's own (hcom-seat's
-        router row sets it) beside `CLAUDE_CONFIG_DIR`, and the worker's `allowRead` gains the file's physical path
-        as its last row and no other list names it. The broker holds the path as data and reads no key: the key's
-        bytes appear in no stream, launch record or log line of the broker's. The key is a worker's precondition, not
-        the broker's (U516c): a broker started without the variable (a launcher that predates U512) listens, and each
-        worker request is refused on its stream with nothing of the worker made while the broker keeps listening. An
-        unset or empty name, a relative path, a path holding a newline, an absent file, a symbolic link, a directory,
-        another user's file, a mode other than 0600 and a clean spelling whose physical path is not clean (a parent
-        link into a directory outside the path rule, the resolver's failure) each refuse the worker's connection
-        before anything of it is made (fail closed, as `claude-keyed` refuses): one line whatever the path holds, on
-        the stream and on stderr, naming the variable and the handout, exit 2 of that connection, no slot, no omp run,
-        no log line (U516c, verdict U516-a5ea975b P2 :1001, P3 :1004, P3 :1007, and CI at a5ea975b: the listener's
-        own refusal stopped every Router launch of a launcher without the variable, test_hcom_seat_dsh's six; a
-        newline in the path printed two lines; the resolver's refusal named no handout)."""
+        router row sets it) beside `CLAUDE_CONFIG_DIR`, and the worker's `allowRead` gains the physical path of the
+        file's directory as its last row (U512i, verdict U512h-4c5ec14e: the directory, not the file, since a
+        file-only read grant under the read-denied seats root loses its parent's mode inside srt's Linux tmpfs, where
+        `claude-keyed` holds the key directory to 0700); the file itself stands in the copied write deny alone, and
+        the judge pairs that deny with the directory grant it lies inside. The broker holds the path as data and reads
+        no key: the key's bytes appear in no stream, launch record or log line of the broker's. The key is a worker's
+        precondition, not the broker's (U516c): a broker started without the variable (a launcher that predates U512)
+        listens, and each worker request is refused on its stream with nothing of the worker made while the broker
+        keeps listening. An unset or empty name, a relative path, a path holding a newline, an absent file, a symbolic
+        link, a directory, another user's file, a mode other than 0600 and a clean spelling whose physical path is not
+        clean (a parent link into a directory outside the path rule, the resolver's failure) each refuse the worker's
+        connection before anything of it is made (fail closed, as `claude-keyed` refuses): one line whatever the path
+        holds, on the stream and on stderr, naming the variable and the handout, exit 2 of that connection, no slot,
+        no omp run, no log line (U516c, verdict U516-a5ea975b P2 :1001, P3 :1004, P3 :1007, and CI at a5ea975b: the
+        listener's own refusal stopped every Router launch of a launcher without the variable, test_hcom_seat_dsh's
+        six; a newline in the path printed two lines; the resolver's refusal named no handout)."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
-        key = str(self.key_file)
+        key, key_dir = str(self.key_file), str(self.key_dir)
         self.assertEqual(self.key_file.read_text(), FIXTURE_KEY)
         proc, sock = self.start_broker(name, cwd)
         conn, slot, _task = self.held_connection(sock, repo, "w1")
         settings = json.loads((self.seats_path / ".state" / slot / "settings.json").read_text())
-        self.assertEqual(settings["filesystem"]["allowRead"][-1], key)
-        self.assertEqual(settings["filesystem"]["allowRead"].count(key), 1)
-        self.assertNotIn(key, settings["filesystem"]["allowRead"][:-1] + settings["filesystem"]["allowWrite"])
-        self.assertNotIn(key, settings["filesystem"]["denyRead"])
+        self.assertEqual(settings["filesystem"]["allowRead"][-1], key_dir)
+        self.assertEqual(settings["filesystem"]["allowRead"].count(key_dir), 1)
+        self.assertNotIn(key_dir, settings["filesystem"]["allowWrite"] + settings["filesystem"]["denyRead"] + settings["filesystem"]["denyWrite"])  # fmt: skip
+        self.assertNotIn(key, settings["filesystem"]["allowRead"] + settings["filesystem"]["allowWrite"] + settings["filesystem"]["denyRead"])  # fmt: skip
         # The Router's table denies the file for write (U512's row, which make_router renders as hcom-seat will) and
-        # the worker copies that table: the read grant and the write deny of one file are hcom-seat's pair, no overlap.
+        # the worker copies that table: the write deny of the file inside the read grant of its directory is
+        # hcom-seat's pair, no overlap (U512i).
         self.assertEqual(settings["filesystem"]["denyWrite"].count(key), 1)
+        self.assertEqual(test_hcom_seat.file_rows_under_read_denies(settings["filesystem"]), [], "no worker allowRead row is a regular file under a denyRead row (U512i)")  # fmt: skip
         self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
         _version, launch = self.calls_of("omp")
         self.assertEqual(launch["env"]["REGIME_ANTHROPIC_KEY_FILE"], key)

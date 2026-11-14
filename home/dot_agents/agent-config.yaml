@@ -971,7 +971,7 @@ claude:
   # no gh, no git and no network.
   levers:
     sha256:
-      hcom-seat: f683563d713de3631464263a627d4a17f19f904a0443eefc20dbe1ae89a5f111
+      hcom-seat: 26fa94906bf58865509e9c5b194d8691fe2b194eca627562799a648ac5a36e58
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -1000,7 +1000,7 @@ claude:
       ledger.py: 4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
-      acp-broker: 75ec381aef17ee809c3553bcd49493da6f49eab8fbd557d63ba0cfe08dad04da
+      acp-broker: 9b85951d01b3364f9f8c30b2214194ab92b3046fa387f35672c8136ed7b20edc
       acp-relay.py: 20f2aac43796339246df45b0e4a2e0eb42314802966ac7094cd3743f964fe269
       acp-seat: 7b8f5c930f0b5d16702cb8e3a392047c522a7aaaac12ee28b089be9a80c25fa9
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431

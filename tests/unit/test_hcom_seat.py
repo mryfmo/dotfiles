@@ -110,6 +110,21 @@ def login_read_denies(seats, group):
     return [f"{seats}/.state/claude-{other}" for other in LOGIN_GROUPS if other != group] + [f"{seats}/.state/claude"]
 
 
+def file_rows_under_read_denies(fs):
+    """The `(allowRead row, denyRead row)` pairs of a rendered settings `filesystem` block whose grant is a regular
+    file at or under the deny (U512i, verdict U512h-4c5ec14e: srt 0.0.81's Linux backend binds such a file back into
+    the tmpfs it mounts over the denied directory, with the file's parents remade 0755, so the grant loses its
+    directory's mode and `claude-keyed`, which holds the key directory to 0700, refuses inside the sandbox what the
+    host's preflight passed; hcom-seat's `allow_read_files_check` refuses the shape, and no role renders it)."""
+    return [
+        (row, deny)
+        for row in fs["allowRead"]
+        if Path(row).is_file()
+        for deny in fs["denyRead"]
+        if row == deny or row.startswith(f"{deny}/")
+    ]
+
+
 # U100: an env built from scratch carries scratch_git's settings too, so no commit starts background maintenance.
 GIT_IDENTITY = quiet_git_env(
     {
@@ -264,6 +279,11 @@ class SeatFixture(unittest.TestCase):
     def key_file(self):
         """The seats' API key file hcom-seat names to every seat (U512): `<seats-root>/.state/anthropic/api-key`."""
         return Path(self.seats, ".state/anthropic/api-key")
+
+    @property
+    def key_dir(self):
+        """The key file's directory `<seats-root>/.state/anthropic`, the read grant of every role (U512i)."""
+        return self.key_file.parent
 
     def place_key(self):
         """Place the fake key as the U510 handout does: one line, 0600, in the 0700 `.state/anthropic` directory."""
@@ -1086,6 +1106,51 @@ class HcomSeatTest(SeatFixture):
             self.assertNotIn(FAKE_KEY, text)
         self.assertNotIn("oauth-token", shim.read_text(), "the shim reads no token file")
 
+    def test_a_read_grant_that_is_a_regular_file_under_a_read_deny_refuses_the_launch(self):
+        """U512i (verdict U512h-4c5ec14e P1 `hcom-seat:2817`, class sandbox-mount-mode): srt 0.0.81's Linux backend
+        mounts a tmpfs over a read-denied directory and binds each allowed path back into it, making a bound file's
+        parents inside the tmpfs with bwrap's default mode, so a read grant of a regular file under a read deny loses
+        the file's directory mode inside the sandbox (the key file granted alone under the seats-root deny, rounds 1
+        to 5, left `.state/anthropic` 0755 there, and `claude-keyed`, which holds it to 0700, refused the key the
+        host's preflight had passed). `allow_read_files_check` refuses, after the rows are rendered and before the
+        settings file is written, any role whose allowRead holds a regular file at or under a denyRead row, naming
+        both paths and the reason. Through the fixture: the worker's records row `<checkout>/.orchestration/orchestrate`
+        lies under its checkout deny, so a regular file planted there refuses the worker's launch (exit 2, the line,
+        no settings file, no hcom), while the orchestrator, whose checkout is no deny of its own, launches with the
+        same file in place and renders no such row; a directory there launches the worker too. The key directory
+        grant of every role (U512i) passes the same check at every launch (the per-role assertions beside it)."""
+        self.place_key()
+        checkout = self.repo.resolve()
+        records = checkout / ".orchestration/orchestrate"
+        records.parent.mkdir(parents=True, exist_ok=True)
+        records.write_text("")
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn(
+            f"hcom-seat: the allowRead row {records} is a regular file under the denyRead row {checkout}: a file-only"
+            " read grant under a read-denied directory loses its parent's mode inside srt's Linux sandbox (the file is"
+            " bound back into a tmpfs whose directories are made 0755, verdict U512h-4c5ec14e), so a judge of that mode"
+            " cannot pass there; grant the file's directory instead\n",
+            run.stderr,
+        )
+        self.assertFalse(Path(self.seats, ".sandbox/worker/srt-settings.json").exists(), "no settings file written")
+        self.assertEqual(self.calls_of("hcom"), [], "nothing started")
+        run = self.seat("orchestrator", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        fs = self.settings_of("orchestrator")["filesystem"]
+        self.assertIn(str(records), fs["allowRead"])
+        self.assertNotIn(str(checkout), fs["denyRead"])
+        self.assertEqual(file_rows_under_read_denies(fs), [])
+        records.unlink()
+        records.mkdir()
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        fs = self.settings_of("worker")["filesystem"]
+        self.assertIn(str(records), fs["allowRead"])
+        self.assertIn(str(checkout), fs["denyRead"])
+        self.assertEqual(file_rows_under_read_denies(fs), [])
+        self.assertEqual(len(self.calls_of("hcom")), 2)
+
     def test_a_callers_token_reaches_no_child_of_the_launcher(self):
         """Codex P2 on PR 712 (review comment 4498955210, `hcom-seat:2210`, a residual on U318): the U312 head cleared
         CLAUDE_CODE_OAUTH_TOKEN inside the generated shim alone, so hcom, herdr and the shim's srt canary inherited a
@@ -1117,11 +1182,15 @@ class HcomSeatTest(SeatFixture):
         write-denied, so no seat changes what another seat's child loads from it. The legacy shared directory
         `.state/claude` is made and granted by no launch (the kit does not read or copy a login, order 54) and, since
         U498c, denied for read by every one, like every other group's directory. U512: the key file
-        `<seats-root>/.state/anthropic/api-key` is a read root of every role, beside the group's directory, and
-        write-denied to every role, so no seat rewrites the key; its directory is a 0700 slot the launch makes. A
+        `<seats-root>/.state/anthropic/api-key` is write-denied to every role, so no seat rewrites the key, and its
+        directory `.state/anthropic`, a 0700 slot the launch makes, is a read root of every role beside the group's
+        directory (U512i, verdict U512h-4c5ec14e: the directory, not the file, since a file-only read grant under the
+        read-denied seats root loses its parent's mode inside srt's Linux tmpfs, where `claude-keyed` holds the
+        directory to 0700; a directory bind keeps its mode); the file itself stands in no grant list, nothing else under
+        the directory is granted, and no allowRead row of either role is a regular file under a denyRead row. A
         linked group directory, or a linked key directory, refuses before anything is made, and no seat may take a
         `claude-*` name, `claude` or `anthropic`."""
-        key = self.key_file
+        key = self.place_key()
         record = self.plant_claude_env_recorder()
         legacy = Path(self.seats, ".state/claude")
         for role in ("worker", "orchestrator"):
@@ -1137,10 +1206,13 @@ class HcomSeatTest(SeatFixture):
                 self.assertEqual(fs["allowWrite"][2], str(group_dir), "row 2 of every role's write roots")
                 for kind in ("allowWrite", "allowRead"):
                     self.assertEqual(fs[kind].count(str(group_dir)), 1, (kind, fs[kind]))
-                self.assertEqual(fs["allowRead"][fs["allowRead"].index(str(group_dir)) + 1], str(key), "the key file beside the group's directory")  # fmt: skip
-                self.assertEqual((fs["allowRead"].count(str(key)), fs["denyWrite"].count(str(key))), (1, 1), fs)
-                self.assertNotIn(str(key), fs["allowWrite"] + fs["denyRead"])
-                self.assertEqual([row for row in fs["allowWrite"] + fs["allowRead"] if row == str(key.parent) or row.startswith(f"{key.parent}/") and row != str(key)], [], "nothing else under the key directory")  # fmt: skip
+                self.assertEqual(fs["allowRead"][fs["allowRead"].index(str(group_dir)) + 1], str(key.parent), "the key directory beside the group's directory (U512i)")  # fmt: skip
+                self.assertEqual((fs["allowRead"].count(str(key.parent)), fs["denyWrite"].count(str(key))), (1, 1), fs)
+                self.assertNotIn(str(key), fs["allowRead"] + fs["allowWrite"] + fs["denyRead"], "the file is in no list but denyWrite")  # fmt: skip
+                self.assertNotIn(str(key.parent), fs["allowWrite"] + fs["denyRead"] + fs["denyWrite"])
+                self.assertEqual([row for row in fs["allowWrite"] + fs["allowRead"] if row.startswith(f"{key.parent}/")], [], "nothing under the key directory is granted")  # fmt: skip
+                self.assertTrue(key.is_file() and not key.is_symlink(), key)
+                self.assertEqual(file_rows_under_read_denies(fs), [], f"a {role} allowRead row is a regular file under a denyRead row (U512i)")  # fmt: skip
                 denied = [f"{group_dir}/{name}" for name in SHARED_CLAUDE_DENIES]
                 self.assertEqual([row for row in fs["denyWrite"] if row.startswith(f"{group_dir}/")], denied)
                 self.assertEqual([row for row in fs["denyRead"] if row.startswith(str(group_dir))], [])
@@ -1184,7 +1256,7 @@ class HcomSeatTest(SeatFixture):
         # A linked key directory (U512) refuses the same, in a dry run too, with the link kept and nothing made.
         group_dir.unlink()
         group_dir.mkdir(0o700)
-        key.parent.rmdir()
+        shutil.rmtree(key.parent)
         key.parent.symlink_to(elsewhere)
         for extra in ([], ["--dry-run"]):
             with self.subTest(extra=extra):

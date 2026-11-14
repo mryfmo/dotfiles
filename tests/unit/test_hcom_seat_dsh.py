@@ -415,7 +415,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertNotIn(store, write_d)
         # allowRead (U272c): the role's own grants, in the row's order; none of the worker's rows but the substituted
         # cwd, state slot and profile and its own group's directory (the git directory, the store and the checkout's
-        # records are the worker's alone); the seats' API key file last (U512), the one file every role reads.
+        # records are the worker's alone); the seats' API key directory last (U512; U512i: the directory, not the file,
+        # since a file-only read grant under the read-denied seats root loses its parent's mode inside srt's Linux
+        # tmpfs), the one path every role reads, and no allowRead row of either role a regular file under a denyRead row.
         read_w, read_d = worker["filesystem"]["allowRead"], dsh["filesystem"]["allowRead"]
         self.assertEqual(read_w[:3], [clone, common, store])
         self.assertIn(shared_w, read_w)
@@ -423,8 +425,11 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual(
             read_d,
             [cwd, state_d, shared_d, str(self.dsh_home), str(home / ".omp/profiles/dsh"), str(home / ".agents/skills"),
-             str(self.tools), str(Path(self.seats, ".state/anthropic/api-key"))],
+             str(self.tools), str(self.key_dir)],
         )  # fmt: skip
+        self.assertNotIn(str(self.key_file), read_w + read_d, "the key file itself is no read grant (U512i)")
+        for role, fs in (("worker", worker["filesystem"]), ("dsh", dsh["filesystem"])):
+            self.assertEqual(test_hcom_seat.file_rows_under_read_denies(fs), [], f"a {role} allowRead row is a regular file under a denyRead row (U512i)")  # fmt: skip
         # denyWrite: the project files under the seat directory move with it; the worker's `.git` file has no dsh
         # counterpart (no worktree); the credential root (U353; the worker's own row of it under `~/.dsh`, U353d, is
         # taken out) and the deny row (U272d: the git common directory, the worker clone's `.git` entry, it being a
@@ -597,13 +602,15 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         return text
 
     def without_key_file_rows(self, settings):
-        """This head's rendered settings (bytes) of any role with exactly the U512 rows removed: the seats' API key file
-        `<seats-root>/.state/anthropic/api-key`, once in allowRead and once in denyWrite, each after another row;
-        nothing else names it."""
-        needle = b"," + json.dumps(str(self.key_file)).encode()
-        self.assertEqual(settings.count(needle), 2, settings)
-        text = settings.replace(needle, b"")
-        self.assertNotIn(b"anthropic/api-key", text)
+        """This head's rendered settings (bytes) of any role with exactly the U512 rows removed: the seats' API key
+        directory `<seats-root>/.state/anthropic` once in allowRead (U512i: the directory, not the file) and the key
+        file `<seats-root>/.state/anthropic/api-key` once in denyWrite, each after another row; nothing else names
+        either."""
+        text = settings
+        for needle in (b"," + json.dumps(str(self.key_dir)).encode(), b"," + json.dumps(str(self.key_file)).encode()):
+            self.assertEqual(text.count(needle), 1, (needle, settings))
+            text = text.replace(needle, b"")
+        self.assertNotIn(b"/.state/anthropic", text)
         return text
 
     def with_the_legacy_login_path(self, settings):
@@ -849,7 +856,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             procs = self.held_launch("--", "--version", role=role)
             (name,) = self.slots()[0]
             self.assertRegex(name, rf"^{role}-\d{{8}}-\d{{6}}-\d+$")
-            rendered[role] = self.without_launch_name(self.settings_of(name), name)
+            raw = self.settings_of(name)
+            self.assertEqual(test_hcom_seat.file_rows_under_read_denies(raw["filesystem"]), [], f"a {role} allowRead row is a regular file under a denyRead row (U512i)")  # fmt: skip
+            rendered[role] = self.without_launch_name(raw, name)
             ((status, out, err),) = self.release(procs)
             self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
             self.assertEqual(self.slots(), ([], []), f"the {role} slots are gone once dsh exited")
@@ -1741,9 +1750,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             ("credential", "allowRead", 8, cred),
             ("credential", "denyWrite", deny_write.index(cred), cred),
         ]
-        # The seats' API key file (U512): allowRead row 7 under the seats-root deny, and its denyWrite row.
+        # The seats' API key directory (U512, U512i): allowRead row 7 under the seats-root deny, and the key file's
+        # denyWrite row inside it.
         key = str(self.key_file)
-        tags += [("slot", "allowRead", 7, key), ("slot", "denyWrite", deny_write.index(key), key)]
+        tags += [("slot", "allowRead", 7, str(self.key_dir)), ("slot", "denyWrite", deny_write.index(key), key)]
         self.assertEqual(len(tags), 33, "the dsh role's structural-tag count, the credential root's read for its deny")
         without = list(tags)
         tags.append(("slot", "denyWrite", deny_write.index(broker), broker))
@@ -1788,6 +1798,86 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         script += f"row_tags=() row_tag_kinds=() row_tag_ixs=() row_tag_paths=()\n{tagged}\n"
         script += 'settings_judge || { printf "grant=%s\\ndeny=%s\\n" "${judge_grant}" "${judge_deny}"; exit 3; }\n'
         return subprocess.run(["/bin/bash", "-c", script], capture_output=True, text=True, check=False, timeout=60)
+
+    def files_check_run(self, allow_read, deny_read):
+        """Run the lever's own `allow_read_files_check` (its text and the functions it reads) over the two lists: exit 0
+        and no output when no allowRead row is a regular file at or under a denyRead row; exit 2 with the lever's
+        refusal line on stderr otherwise (`refuse` stands in by its first line, the launch's cleanup aside)."""
+        text = test_hcom_seat.SEAT.read_text()
+        names = ("clean_path", "require_clean_path", "physical_path", "physical_each", "ancestors_of", "identity_table",
+                 "ascii_lower", "within_ix", "allow_read_files_check")  # fmt: skip
+        functions = "\n".join(
+            text[text.index(f"\n{fn}() {{") : text.index("\n}\n", text.index(f"\n{fn}() {{")) + 3] for fn in names
+        )
+        stat_args = "stat_args=(-L -f '%d:%i')" if sys.platform == "darwin" else "stat_args=(-L -c '%d:%i')"
+        lists = "\n".join(
+            f"{var}=({' '.join(shlex.quote(row) for row in rows)})"
+            for var, rows in (("allow_read", allow_read), ("deny_read", deny_read))
+        )
+        script = f"set -euo pipefail\n{stat_args}\n" + 'refuse() { echo "hcom-seat: $*" >&2; exit 2; }\n'
+        script += f"{functions}\n{lists}\nallow_read_files_check\n"
+        return subprocess.run(["/bin/bash", "-c", script], capture_output=True, text=True, check=False, timeout=60)
+
+    def test_a_read_grant_of_a_regular_file_under_a_read_deny_refuses_and_the_key_directory_passes(self):
+        """U512i (verdict U512h-4c5ec14e P1 `hcom-seat:2817`, class sandbox-mount-mode): srt 0.0.81's Linux backend
+        mounts a tmpfs over a read-denied directory and binds each allowed path back into it, making a bound file's
+        parents inside the tmpfs with bwrap's default mode, so the key file granted alone under the seats-root deny
+        (rounds 1 to 5) left `.state/anthropic` 0755 inside the sandbox, and `claude-keyed`, which holds that directory
+        to 0700, refused the key the host's preflight had passed. Every role grants the key's directory for read now
+        (the dsh and router rows as allowRead row 7, the omp roles beside the group's directory; the file stays
+        write-denied and in no grant list), and `allow_read_files_check` refuses, after the rows are rendered and
+        before the settings are written, any role whose allowRead holds a regular file at or under a denyRead row,
+        naming both paths and the reason. The lever's own check over the rendered lists of the dsh, router and worker
+        roles passes with the key in place; the same lists with the round-5 row, the key file under the seats-root
+        deny, refuse naming the file and the seats root, as does any regular file under the seats root; a directory
+        under the deny and an absent path under it pass."""
+        self.place_key()
+        rendered = {}
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        rendered["worker"] = self.settings_of("worker")["filesystem"]
+        for role in ("dsh", "router"):
+            procs = self.held_launch("--", "--version", role=role)
+            (name,) = [entry for entry in self.slots()[0] if entry != "worker"]
+            rendered[role] = self.settings_of(name)["filesystem"]
+            ((status, out, err),) = self.release(procs)
+            self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        seats = Path(self.seats).resolve()
+        key_dir, key = str(self.key_dir), str(self.key_file)
+        self.assertTrue(self.key_file.is_file() and not self.key_file.is_symlink(), key)
+        probe = seats / ".sandbox/u512i-file"
+        probe.write_text("")
+        self.addCleanup(lambda: probe.unlink(missing_ok=True))
+        line = (
+            "hcom-seat: the allowRead row {row} is a regular file under the denyRead row {deny}: a file-only read grant"
+            " under a read-denied directory loses its parent's mode inside srt's Linux sandbox (the file is bound back"
+            " into a tmpfs whose directories are made 0755, verdict U512h-4c5ec14e), so a judge of that mode cannot"
+            " pass there; grant the file's directory instead\n"
+        )
+        for role, fs in rendered.items():
+            with self.subTest(role=role):
+                self.assertIn(key_dir, fs["allowRead"], "the key directory, the role's grant (U512i)")
+                self.assertNotIn(key, fs["allowRead"], "the file is no grant")
+                self.assertIn(str(seats), fs["denyRead"], "under the seats-root deny")
+                self.assertEqual(test_hcom_seat.file_rows_under_read_denies(fs), [])
+                clear = self.files_check_run(fs["allowRead"], fs["denyRead"])
+                self.assertEqual((clear.returncode, clear.stdout, clear.stderr), (0, "", ""))
+                for label, row in (
+                    ("the round-5 row, the key file", key),
+                    ("a regular file under the seats root", str(probe)),
+                ):
+                    hit = self.files_check_run([*fs["allowRead"], row], fs["denyRead"])
+                    deny = next(d for d in fs["denyRead"] if row == d or row.startswith(f"{d}/"))
+                    self.assertEqual(hit.returncode, 2, (label, hit.stdout, hit.stderr))
+                    self.assertEqual((hit.stdout, hit.stderr), ("", line.format(row=row, deny=deny)), label)
+                for label, row in (
+                    ("a directory under the deny", str(seats / ".state")),
+                    ("an absent path under the deny", f"{key_dir}/absent-u512i"),
+                ):
+                    clear = self.files_check_run([*fs["allowRead"], row], fs["denyRead"])
+                    self.assertEqual((clear.returncode, clear.stdout, clear.stderr), (0, "", ""), label)
+        probe.unlink()
+        self.assertEqual(self.slots(), (["worker"], ["worker"]))
 
     def test_the_router_settings_carry_the_credential_root_as_a_read_grant_and_the_dsh_row_denies_it(self):
         """U353 (M-26 stage B): the Router's credential root `<DSH_HOME>/router-credentials`, where the operator places
@@ -2283,9 +2373,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             ("credential", "denyRead", deny_read.index(cred), cred),
             ("credential", "denyWrite", deny_write.index(cred), cred),
         ]
-        # The seats' API key file (U512): allowRead row 7 under the seats-root deny, and its denyWrite row.
+        # The seats' API key directory (U512, U512i): allowRead row 7 under the seats-root deny, and the key file's
+        # denyWrite row inside it.
         key = str(self.key_file)
-        tags += [("slot", "allowRead", 7, key), ("slot", "denyWrite", deny_write.index(key), key)]
+        tags += [("slot", "allowRead", 7, str(self.key_dir)), ("slot", "denyWrite", deny_write.index(key), key)]
         self.assertEqual(len(tags), 10 + 8 + 8 + 2 + 1 + 2 + 2, tags)
 
         def judge(allow_read, write, deny_read, deny_write):

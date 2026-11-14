@@ -122,13 +122,22 @@
 #   and the own group's directory is the one login a seat reads or writes. The legacy shared directory
 #   `.state/claude` is read, granted, copied, made and removed by no launch (standing order 54). The key file's
 #   directory `.state/anthropic` is made 0700 the same way (key_dir_make; a link refuses, own_slots_check); the file
-#   is the operator's (handouts/anthropic-api-key-u510.md), granted for read to every seat beside the group's
-#   directory and denied for write to every seat, so no seat rewrites the key; the launch runs `claude-keyed --check`
-#   on it (the lever resolved and pinned like every tool, the installed `~/.local/bin/common/claude-keyed` on a host)
-#   for every role and in a dry run, and refuses on its refusal with the lever's line and the handout's step, or on
-#   any other status as unreadable (key_file_check, standing order 21); the preflight judges the same file and the
-#   key's validity against the Models API for the omp roles, beside the group's login. No token file and no
-#   CLAUDE_CODE_OAUTH_TOKEN: the shim clears the name, and no seat reads the operator's `~/.claude`.
+#   is the operator's (handouts/anthropic-api-key-u510.md). The directory, not the file, is granted for read to every
+#   seat beside the group's directory (regime-cutover U512i, verdict U512h-4c5ec14e P1: srt 0.0.81's Linux backend
+#   mounts a tmpfs over the read-denied seats root and binds each allowed path back into it, making a bound file's
+#   parents inside the tmpfs with bwrap's default mode, so a file-only read grant under a read-denied root loses its
+#   parent's mode, `.state/anthropic` is 0755 inside the sandbox and `claude-keyed`, which holds that directory to
+#   0700, refuses the key the host's preflight passed; a directory bind keeps its own mode and owner), the orchestrator
+#   row included (its seats-root grant covers the directory already; one shape for every role), and the file is denied
+#   for write to every seat, so no seat rewrites the key; allow_read_files_check refuses every role whose rendered
+#   allowRead holds a regular file at or under a denyRead row, before the settings are written (every launch, and the
+#   dsh and router dry runs, which render; the omp roles' dry run renders no settings). The
+#   launch runs `claude-keyed --check` on the file (the lever resolved and pinned like every tool, the installed
+#   `~/.local/bin/common/claude-keyed` on a host) for every role and in a dry run, and refuses on its refusal with the
+#   lever's line and the handout's step, or on any other status as unreadable (key_file_check, standing order 21); the
+#   preflight judges the same file and the key's validity against the Models API for the omp roles, beside the
+#   group's login. No token file and no CLAUDE_CODE_OAUTH_TOKEN: the shim clears the name, and no seat reads the
+#   operator's `~/.claude`.
 #   The dsh role (regime-cutover U272, after the four audits of the standalone launcher of PR 687): the DeepSeek
 #   harness control host is contained the same way, by this lever, as a role whose differences from the worker are
 #   rows of the role table (the `case ${role}` after the options, seat_write_roots, the read grants in
@@ -2098,7 +2107,8 @@ seats_root=${seats_root:-${REGIME_SEATS_ROOT:-}}
 claude_config=${seats_root%/}/.state/claude-${login_group}
 # The role table's `key_file` row (regime-cutover U512): the seats' one API key file `<seats-root>/.state/anthropic/
 # api-key`, the operator's file (the U510 handout) that `claude-keyed` reads for every seat's child; its directory is a
-# slot this lever makes 0700 (key_dir_make) and holds like the group's directory (own_slots_check).
+# slot this lever makes 0700 (key_dir_make) and holds like the group's directory (own_slots_check), and the read grant
+# of every role (U512i: the directory keeps its mode inside srt's Linux sandbox where a file alone does not).
 key_dir=${seats_root%/}/.state/anthropic
 key_file=${key_dir}/api-key
 # The role table's directory row: the orchestrator sits in the launch checkout, a worker in its worktree, the dsh and
@@ -2476,6 +2486,12 @@ claude_config_real=$(physical_path "${claude_config}") || refuse "cannot resolve
 [[ ! -L ${key_file} ]] ||
     refuse "the API key file ${key_file} is a symbolic link; the seats' key file must be a regular file of this user, placed by the U510 handout (handouts/anthropic-api-key-u510.md, steps 2 and 3)"
 key_file_real=$(physical_path "${key_file}") || refuse "cannot resolve the API key file ${key_file}"
+# The key's directory in physical form (regime-cutover U512i, verdict U512h-4c5ec14e), the read grant of every role in
+# place of the file: a file-only read grant under the read-denied seats root is bound back into srt's Linux tmpfs with
+# its parents remade 0755, so `claude-keyed` found the directory's mode wrong inside the sandbox; a directory bind
+# keeps its mode and owner. own_slots_check has just proved it no link and sitting in `.state`; key_dir_make makes it
+# 0700 before the settings file is written, so srt's Linux backend binds it.
+key_dir_real=$(physical_path "${key_dir}") || refuse "cannot resolve the API key directory ${key_dir}"
 # The physical seats root goes to the preflight, so the login it judges and the directory the shim exports are one
 # spelling (the macOS Keychain item is keyed to the directory's path).
 seats_root_real=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
@@ -2707,7 +2723,9 @@ seat_settings_render() {
     done
     # The seats' API key file (regime-cutover U512): denied for write to every seat, so no seat rewrites the key the
     # bridge's child runs on; tagged `slot` like the rows above (the dsh judge pairs it with the role's allowRead row
-    # of the same file, which lies under the seats-root deny).
+    # of the key directory, which contains it by construction and lies under the seats-root deny; U512i: the read
+    # grant is the directory, not the file, since a file-only read grant under a read-denied root loses its parent's
+    # mode inside srt's Linux tmpfs, verdict U512h-4c5ec14e).
     tag_row slot denyWrite ${#deny_write[@]} "${key_file_real}"
     deny_write+=("${key_file_real}")
     for path in "${project_files[@]}"; do deny_write+=("${checkout}/${path}"); done
@@ -2796,8 +2814,10 @@ seat_settings_render() {
     orchestrator)
         deny_read+=("${cred_root_phys}")
         deny_write+=("${cred_root_phys}")
+        # The key directory (U512i) beside the group's directory, as in every role, though the seats-root grant below
+        # covers it already: one shape across roles, and the row stands if that grant ever narrows (U498c's finding).
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
-            "${claude_config_real}" "${key_file_real}" "${checkout}/.orchestration/orchestrate" "${seats_real}" ${store_root_phys:+"${store_root_phys}"})
+            "${claude_config_real}" "${key_dir_real}" "${checkout}/.orchestration/orchestrate" "${seats_real}" ${store_root_phys:+"${store_root_phys}"})
         # The held store root is write row 7 (seat_write_roots), the one grant store_root_judge exempts, by this tag.
         if [[ -n ${store_root_phys} ]]; then tag_row store allowWrite 7 "${store_root_phys}"; fi
         ;;
@@ -2814,7 +2834,7 @@ seat_settings_render() {
             deny_write+=("${store_root_phys}")
         fi
         allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}"
-            "${claude_config_real}" "${key_file_real}" "${checkout}/.orchestration/orchestrate" ${store_root_phys:+"${store_root_phys}"})
+            "${claude_config_real}" "${key_dir_real}" "${checkout}/.orchestration/orchestrate" ${store_root_phys:+"${store_root_phys}"})
         ;;
     dsh | router)
         # The deny row (U272d): the role's own denies for read and for write, after the worker's. The credential root
@@ -2853,11 +2873,13 @@ seat_settings_render() {
         fi
         allow_read=("${dir_real}" "${sandbox_state}" "${claude_config_real}" "${dsh_home_phys}" "${h}/.omp/profiles/${omp_profile}"
             "${h}/.agents/skills" "${tools_dir}")
-        # The seats' API key file (regime-cutover U512): allowRead row 7, after the tool directory, so every position
-        # the dsh row tags stays; tagged `slot` like the shared directory's row (it lies under the seats-root denies
-        # the slot tag pairs it with) and like its denyWrite row above.
-        tag_row slot allowRead ${#allow_read[@]} "${key_file_real}"
-        allow_read+=("${key_file_real}")
+        # The seats' API key directory (regime-cutover U512, U512i): allowRead row 7, after the tool directory, so
+        # every position the dsh row tags stays; tagged `slot` like the shared directory's row (it lies under the
+        # seats-root denies the slot tag pairs it with) and like the key file's denyWrite row above, which it contains.
+        # The directory, not the file (verdict U512h-4c5ec14e): a file-only read grant under the read-denied seats
+        # root loses its parent's mode inside srt's Linux tmpfs, and the key's judge holds that mode.
+        tag_row slot allowRead ${#allow_read[@]} "${key_dir_real}"
+        allow_read+=("${key_dir_real}")
         # The router row's credential root (U353): allowRead row 8, after the key file, so every position the dsh row
         # tags stays; tagged `credential` like its denyWrite row, which it is by construction.
         if [[ ${cred_root_grant} == read ]]; then # lint-comparisons: allow a cell word of the role table (read, deny), not a path
@@ -3011,6 +3033,37 @@ settings_judge() {
     done
 }
 
+# @description Refuse (exit 2) when any `allowRead` row is a regular file at or under a `denyRead` row (regime-cutover
+#   U512i, verdict U512h-4c5ec14e P1 at the worker row: the key file granted alone under the seats-root deny). srt
+#   0.0.81's Linux backend mounts a tmpfs over a read-denied directory and binds each allowed path back into it
+#   (linux-sandbox-utils.js 1595-1669); for a file the bind target's parents are made inside the tmpfs with bwrap's
+#   default mode, so the file's directory is 0755 and root's inside the sandbox whatever it is on the host, and a judge
+#   of that directory's mode (`claude-keyed --check` holds the key directory to 0700 and this user's) cannot pass there
+#   while the host's preflight does. A directory bind keeps the directory's own mode and owner, so a directory grant is
+#   the one shape a file under a denied root is read by; the state refused here is never legitimate on Linux, and the
+#   refusal holds on macOS too, so the settings mean the same on both. Runs over the rendered lists of every role,
+#   after seat_settings_render and before the settings file is written (every launch, and the dsh and router dry runs,
+#   which render; the omp roles' dry run renders no settings): every row is rendered
+#   physical, the identity table decides containment by identity for what exists and by the absent components below
+#   one shared ancestor otherwise (identity_table, within_ix), and `-f` on the physical row reads its type. An absent
+#   row is no file and passes; nothing is made here.
+# @noargs
+# @exitcode 0 No allowRead row is a regular file at or under a denyRead row.
+allow_read_files_check() {
+    local i j n m
+    n=${#allow_read[@]} m=${#deny_read[@]}
+    ((n && m)) || return 0
+    physical_each "${allow_read[@]}" "${deny_read[@]}"
+    identity_table "${phys_list[@]}"
+    for ((i = 0; i < n; i++)); do
+        [[ -f ${phys_list[i]} ]] || continue
+        for ((j = n; j < n + m; j++)); do
+            within_ix "${j}" "${i}" || continue
+            refuse "the allowRead row ${allow_read[i]} is a regular file under the denyRead row ${deny_read[j - n]}: a file-only read grant under a read-denied directory loses its parent's mode inside srt's Linux sandbox (the file is bound back into a tmpfs whose directories are made 0755, verdict U512h-4c5ec14e), so a judge of that mode cannot pass there; grant the file's directory instead"
+        done
+    done
+}
+
 # @description Refuse (exit 2) unless the final `allowWrite` list of one seat keeps clear of every protected path
 #   (regime-cutover U85), one invariant instead of a list of cases: for every granted root R and every protected
 #   path P, R must not be or contain P, and R must not lie inside P. The protected paths are defined once: the main
@@ -3121,6 +3174,8 @@ seat_overlap_check orchestrator "${repo_phys}" "${orchestrator_write[@]}"
 # is one of the denies).
 if [[ ${role_launch} == foreground ]]; then
     seat_settings_render
+    # A read grant of a regular file under a read deny refuses here (allow_read_files_check, U512i), before the judge.
+    allow_read_files_check
     settings_judge ||
         refuse "the dsh role's ${judge_grant} is, contains or lies inside ${judge_deny}; the launch is refused before anything is made"
     # The router row's state root and both foreground rows' credential root are made now, after the home they lie in
@@ -3924,6 +3979,8 @@ if [[ ${role_launch} == foreground ]]; then
 fi
 if [[ ${role_launch} == hcom ]]; then
     seat_settings_render
+    # A read grant of a regular file under a read deny refuses here (allow_read_files_check, U512i), before the write.
+    allow_read_files_check
     # The omp roles' judgement (regime-cutover U219c): their grants contain their denies by design, so settings_judge
     # is the dsh role's; the store-root step alone runs here, over the rendered write list, before the settings file
     # is written (the worktree exists, so git_state_check has run inside the render).

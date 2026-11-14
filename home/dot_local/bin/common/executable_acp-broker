@@ -138,12 +138,14 @@
 #   exit line the reaper appends one `session cwd <original> mapped to <task>` line per mapped request (the
 #   paragraph below).
 #   The launch. `/usr/bin/env -i HOME PATH OMP_PROFILE=dsh CLAUDE_CONFIG_DIR AWS_SHARED_CREDENTIALS_FILE=/dev/null
-#   AWS_CONFIG_FILE=/dev/null HCOM_SEAT_SANDBOX=<slot> [USER LANG when this process has them] <srt> --settings <slot>/settings.json -- /usr/bin/env PATH=<seat path> <python3> -I -S <acp-relay.py>
+#   AWS_CONFIG_FILE=/dev/null HCOM_SEAT_SANDBOX=<slot> [USER LANG when this process has them] CLAUDE_CODE_OAUTH_TOKEN
+#   (the seats' setup-token, U551, this one command's alone) <srt> --settings <slot>/settings.json -- /usr/bin/env PATH=<seat path> <python3> -I -S <acp-relay.py>
 #   --map-session-cwd <task> -- <omp> acp --profile dsh`, in the slot's task, its stdin and stdout the connection,
 #   its stderr the file
 #   `<slot>/stderr`, in a process group of its own (job control on for the one start), so the reaper ends the mapper,
 #   omp and every descendant in that group with one signal; nothing else of this process's environment reaches srt,
-#   the mapper or omp, and `CLAUDE_CODE_OAUTH_TOKEN` is unset before the first child (U312). `HCOM_SEAT_SANDBOX`
+#   the mapper or omp, and a caller's `CLAUDE_CODE_OAUTH_TOKEN` outside hcom-seat's hand-off is no input (U312; the
+#   connection clears the name after holding the value, U551). `HCOM_SEAT_SANDBOX`
 #   makes `hcom-seat` and this lever refuse inside the worker. The outer PATH is the private tool directory and the
 #   system directories; inside, omp gets that list followed by this process's caller's absolute PATH entries (the
 #   construction of `hcom-seat`'s seat path).
@@ -285,6 +287,16 @@
 # @env HOME The user's home; the private tool directory, the omp profile and the credential denies derive from it.
 # @env DSH_HOME The Router's home (hcom-seat's seat_env); its credential root `<DSH_HOME>/router-credentials` is the
 #   one deny of the worker beyond the Router's table (U343l). Nothing else of the home reaches the worker.
+# @env CLAUDE_CODE_OAUTH_TOKEN The seats' Claude setup-token (regime-cutover U551): hcom-seat reads it from
+#   `<seats-root>/.state/claude-token` and hands it to this lever as an assignment on the broker's start line; the
+#   operator places the file by handouts/claude-setup-token-u551.md. Held as data and never printed: the listener
+#   keeps it exported for the relay's connection handlers, and a connection holds it, clears the name from its own
+#   environment and hands the value to its worker's omp launch environment alone (launch_env), where the bridge's
+#   Claude Code child reads it; the canary, the version read and the Router-side git runs get it not. A worker's
+#   precondition, not the broker's (U516c's rule): the listener starts and listens whatever it holds, and each worker
+#   connection is judged before anything of the worker is made. Unset, empty or outside the token's form
+#   (TOKEN_FORM_RE) refuses that connection by name, one line naming the handout on the stream and on stderr, exit 2
+#   of that connection; the broker keeps listening.
 # @stdout `acp-broker: listening on <sock>` once the socket accepts, the last start-up step and the one readiness sign
 #   (hcom-seat reads it through its FIFO and the test fixture from this stdout, neither the socket's existence; U447;
 #   a signal that arrived before it leaves no line); in a connection, the one line `acp-broker: record
@@ -303,9 +315,16 @@ set -euo pipefail
 caller_path=${PATH:-}
 system_path=/usr/bin:/bin:/usr/sbin:/sbin
 PATH=${system_path}
-# A caller's CLAUDE_CODE_OAUTH_TOKEN is no input to any child (regime-cutover U312): the worker's login is the shared
-# Claude Code directory, so the name goes before the first child process.
-unset CLAUDE_CODE_OAUTH_TOKEN
+# The seats' Claude credential (regime-cutover U551): hcom-seat hands this lever the token of the seats' token file as
+# CLAUDE_CODE_OAUTH_TOKEN on its start line (an assignment, no argument and no file); the listener keeps the name
+# exported, since the relay starts each connection handler with the listener's environment, and a connection holds
+# the value here and clears the name after its header checks (below), so no child of the connection (git, stat, the
+# canary, the version read) inherits it: the one place it reaches is the worker's omp launch environment
+# (launch_env), where the bridge's Claude Code child reads it. The form is the one text hcom-seat, seat-login-preflight
+# and seat-token-place hold (TOKEN_FORM_RE); a caller's value outside hcom-seat's hand-off is judged by it like any
+# other (regime-cutover U312: nothing else of a caller's environment is an input).
+seat_token=${CLAUDE_CODE_OAUTH_TOKEN-}
+TOKEN_FORM_RE='^sk-ant-oat01-[A-Za-z0-9_-]{20,255}$'
 # Everything this lever makes (the broker directory, the socket, the slot, its settings, the log) is this user's alone.
 umask 077
 
@@ -972,6 +991,19 @@ if ((connection)); then
     [[ ${f4} == ref=?* ]] || refuse "the header '${header}' has no 'ref=<rev>' fourth field"
     [[ ${f5} == name=?* ]] || refuse "the header '${header}' has no 'name=<name>' fifth field"
     [[ -z ${extra} ]] || refuse "the header '${header}' has more than five fields"
+    # The seats' Claude token (regime-cutover U551), a worker's precondition, not the broker's (U516c's rule: the
+    # listener starts and listens whatever it holds, so a launcher without it still runs the Router, and each worker
+    # connection is judged here, after the header's shape and before anything of the worker is made: no state
+    # directory, no copy, no slot, no task directory, no log line). Unset, empty or outside the token's form refuses
+    # this connection by name with the handout, one line on the stream and on stderr, exit 2; the broker keeps
+    # listening. The value is never printed and leaves this process's environment now: it rides to the worker's omp
+    # launch alone (launch_env).
+    token_handout="place the seats' Claude setup-token by the U551 handout (handouts/claude-setup-token-u551.md: claude setup-token in your own terminal, then seat-token-place)"
+    [[ -n ${seat_token} ]] ||
+        refuse "CLAUDE_CODE_OAUTH_TOKEN did not reach this connection; hcom-seat hands the seats' Claude setup-token to the broker it starts, and no worker starts without it; ${token_handout}"
+    [[ ${seat_token} =~ ${TOKEN_FORM_RE} ]] ||
+        refuse "CLAUDE_CODE_OAUTH_TOKEN holds no token of the form sk-ant-oat01-<20 to 255 of [A-Za-z0-9_-]> (the value is never printed); no worker starts without the seats' token; ${token_handout}"
+    unset CLAUDE_CODE_OAUTH_TOKEN
 fi
 
 # The one settings writer (regime-cutover U344; U344c), sourced before any row is checked or rendered, from the private
@@ -1532,6 +1564,10 @@ inherited=$(compgen -e) || refuse 'cannot list the environment'
 for var in USER LANG; do
     if [[ $'\n'${inherited}$'\n' == *$'\n'"${var}"$'\n'* && -n ${!var:-} ]]; then worker_env+=("${var}=${!var}"); fi
 done
+# The worker's omp launch environment (regime-cutover U551): the worker's names and the seats' Claude token, held by
+# the connection above, for the one command whose child reads it, the bridge's Claude Code under omp; the canary and
+# the version read run under worker_env, without it.
+launch_env=("${worker_env[@]}" "CLAUDE_CODE_OAUTH_TOKEN=${seat_token}")
 
 # @description Append one log line `<utc> acp-broker: $*` to the launch log in the broker's own log directory, made
 #   0700 when absent and held to a real directory of this user; a line that cannot be appended refuses by name.
@@ -2062,7 +2098,7 @@ printf 'acp-broker: record %s\n' "${slot_name}" || refuse "cannot write the reco
 # control is on for the one start, so the job gets a process group of its own and the reaper can end the mapper, omp
 # and every descendant in that group by one signal (verdict U343d-136fbe0a P2 :1079).
 set -m
-/usr/bin/env -i "${worker_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${python_cmd[@]}" -I -S "${helper}" --map-session-cwd "${task}" -- "${omp_cmd[@]}" acp --profile dsh <&0 4>&- 2>> "${slot}/stderr" &
+/usr/bin/env -i "${launch_env[@]}" "${srt_cmd[@]}" --settings "${settings}" -- /usr/bin/env PATH="${seat_path}" "${python_cmd[@]}" -I -S "${helper}" --map-session-cwd "${task}" -- "${omp_cmd[@]}" acp --profile dsh <&0 4>&- 2>> "${slot}/stderr" &
 child=$!
 set +m
 printf 'start %s\n' "${child}" >&4 || echo "acp-broker: cannot tell the reaper that omp started (pid ${child})" >&2

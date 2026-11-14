@@ -61,6 +61,11 @@ DOMAINS = ["github.com", "api.github.com", "uploads.github.com", "codeload.githu
            "api.anthropic.com", "claude.ai", "platform.claude.com", "console.anthropic.com", "chatgpt.com",
            "auth.openai.com", "api.openai.com"]  # fmt: skip
 PING = b'{"jsonrpc":"2.0","id":1,"method":"ping"}\n'
+# The fixture's seats' Claude setup-token (regime-cutover U551): the value hcom-seat hands the broker on its start line
+# and the broker hands its workers' omp launch alone; the distinctive mark must appear in no output of the broker's
+# (the launch log, its streams, the srt records) and in no environment but the omp launch's.
+TOKEN_MARK = "U551FIXTURETOKENNEVERINANYLOG"
+FIXTURE_TOKEN = f"sk-ant-oat01-{TOKEN_MARK}" + "0" * (60 - len(TOKEN_MARK))
 # The protected host file a Router-planted link points at (U343h; the auditor's reproduction used a scratch `.aws` file).
 VICTIM = b"[default]\naws_access_key_id = AKIAEXAMPLE\n# the protected host file a planted link points at\n"
 
@@ -264,6 +269,10 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.home_real = self.home.resolve()
         self.brokers = []
         self.addCleanup(self.stop_all)
+        # The seats' Claude token (U551): hcom-seat's router row hands it to the broker it starts as an assignment on
+        # the start line, so the broker's environment carries it here as that start line would; the broker reads no
+        # file for it (the fixture's token file under the seats root, SeatFixture.place_token, is hcom-seat's input).
+        self.env["CLAUDE_CODE_OAUTH_TOKEN"] = FIXTURE_TOKEN
 
     # --- the scratch Router, its repository and the broker ---
 
@@ -293,11 +302,14 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                      f"{home}/.omp/profiles", f"{home}/.hcom", f"{home}/.local/state/hcom",
                      f"{home}/.local/share/chezmoi", f"{home}/.local/share/chezmoi-private",
                      f"{home}/.config/chezmoi", f"{home}/.config/chezmoi-private", f"{home}/Workspace",
-                     f"{seats}/.sandbox", f"{home}/.local/state/omp-seats", str(seats), f"{home}/.claude",
-                     f"{home}/.claude.json", str(repo), f"{repo}/.git", str(store), f"{repo}/.orchestration"]  # fmt: skip
+                     f"{seats}/.sandbox", f"{home}/.local/state/omp-seats", str(seats), f"{seats}/.state/claude-token",
+                     f"{home}/.claude", f"{home}/.claude.json", str(repo), f"{repo}/.git", str(store),
+                     f"{repo}/.orchestration"]  # fmt: skip
         claude_rows = [f"{seats}/.state/claude-router/{p}" for p in CLAUDE_ROWS] if claude_denies else []
+        # The seats' Claude token file (U551): denied for read and for write in every role's table, as hcom-seat renders
+        # it after the login directories' rows; the worker copies both rows with the table.
         deny_write = [f"{seats}/.sandbox", *(f"{cwd}/{p}" for p in PROJECT_FILES),
-                      *claude_rows, *(f"{repo}/{p}" for p in PROJECT_FILES),
+                      *claude_rows, f"{seats}/.state/claude-token", *(f"{repo}/{p}" for p in PROJECT_FILES),
                       f"{repo}/.git/config", f"{repo}/.git/config.worktree", f"{repo}/.git/info", f"{repo}/.git/hooks",
                       f"{repo}/.git/worktrees/*/config.worktree", f"{repo}/.git/worktrees/*/info",
                       f"{repo}/.git/worktrees/*/commondir", f"{repo}/.git/worktrees/*/gitdir",
@@ -569,8 +581,14 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         return self.seats_path / ".state" / slot / "task"
 
     def state_names(self):
+        """The `.state` entries that are not a worker slot; the fixture's token file (U551, SeatFixture.place_token)
+        outlives every launch and is no slot."""
         state = self.seats_path / ".state"
-        return sorted(p.name for p in state.iterdir() if not p.name.startswith("acp-")) if state.exists() else []
+        return (
+            sorted(p.name for p in state.iterdir() if not p.name.startswith("acp-") and p.name != "claude-token")
+            if state.exists()
+            else []
+        )
 
     def canaries(self):
         return [c for c in self.calls_of("srt") if c["argv"][3:5] == ["/bin/sh", "-c"]]
@@ -1718,7 +1736,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         reads = [c for c in calls if c["argv"][1] == settings and "-C" in c["argv"]]
         self.assertEqual(len(reads), 2)
         for call in reads:
-            self.assertEqual(call["env"], launch["env"], "the worker's git runs in the launch's environment")
+            self.assertEqual(
+                call["env"],
+                [name for name in launch["env"] if name != "CLAUDE_CODE_OAUTH_TOKEN"],
+                "the worker's git runs in the launch's environment but the token, the omp launch's alone (U551)",
+            )
         self.assertEqual(self.scratch_git("rev-parse", "--verify", ref, cwd=repo), head)
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
@@ -2221,9 +2243,10 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         listed = {"HOME": str(self.home), "PATH": seat_path, "OMP_PROFILE": "dsh",
                   "CLAUDE_CONFIG_DIR": str(self.seats_path / ".state/claude-router"), "AWS_SHARED_CREDENTIALS_FILE": "/dev/null",
                   "AWS_CONFIG_FILE": "/dev/null", "HCOM_SEAT_SANDBOX": str(self.seats_path / ".state" / slot),
-                  "USER": "u343", "LANG": "C.UTF-8"}  # fmt: skip
+                  "CLAUDE_CODE_OAUTH_TOKEN": FIXTURE_TOKEN, "USER": "u343", "LANG": "C.UTF-8"}  # fmt: skip
         self.assertEqual({k: v for k, v in launch["env"].items() if k not in own}, listed)
         self.assertEqual(set(launch["env"]) - own, set(listed))
+        self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN", version["env"], "the version read runs without the token (U551)")
         resolve, pack, canary, version_call, launch_call, head_read = self.calls_of("srt")
         router_settings = str(self.seats_path / ".sandbox" / name / "srt-settings.json")
         for call in (resolve, pack):
@@ -2260,9 +2283,14 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertIn("core.hooksPath=/dev/null", head_read["argv"])
         self.assertEqual(head_read["argv"][-5:], ["-C", task, "rev-parse", "--verify", "HEAD^{commit}"])
         self.assertEqual(head_read["cwd"], task)
-        self.assertEqual(set(head_read["env"]) - own, set(listed), "the worker's git sees the launch's names")
-        # srt itself saw the listed names and nothing of the caller's (the outer PATH is the system directories).
-        self.assertEqual(set(canary["env"]) - own, set(listed))
+        self.assertEqual(
+            set(head_read["env"]) - own,
+            set(listed) - {"CLAUDE_CODE_OAUTH_TOKEN"},
+            "the worker's git sees the launch's names but the token (U551)",
+        )
+        # srt itself saw the listed names and nothing of the caller's (the outer PATH is the system directories); the
+        # token is the worker's launch's alone (U551), so the canary saw it not.
+        self.assertEqual(set(canary["env"]) - own, set(listed) - {"CLAUDE_CODE_OAUTH_TOKEN"})
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def test_two_connections_at_once_hold_two_slots_and_two_settings_files(self):
@@ -3142,6 +3170,71 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 )
                 self.assertEqual(self.log_lines("w1"), log_before, "no canary line: the launch log gained nothing")
                 self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_the_seats_token_reaches_the_workers_omp_launch_alone_and_no_worker_starts_without_it(self):
+        """U551: the Router's subagent turns run on the seats' Claude setup-token like every other bridge turn. hcom-seat
+        hands the token to the broker it starts as an assignment on the start line (CLAUDE_CODE_OAUTH_TOKEN in the
+        broker's environment, the fixture's env here), the listener keeps the name for the relay's connection handlers,
+        and a connection holds the value, clears the name and hands it to its worker's omp launch environment alone:
+        the omp launch's environment carries it, the version read's does not, and the canary, the version read and the
+        Router-side git runs (the srt records, environment names) carry no such name. The token's bytes appear in no
+        stream, log line or srt record of the broker's; the omp launch record is the one place (the fake records the
+        whole environment). The token is a worker's precondition, not the broker's (U516c's rule): a broker started
+        without the variable listens, and each worker request is refused on its stream with one line naming the
+        handout, nothing of the worker made, the broker listening on; a value outside the token's form is refused the
+        same, its bytes printed nowhere."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(name, cwd)
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
+        version, launch = self.calls_of("omp")
+        self.assertEqual(launch["env"]["CLAUDE_CODE_OAUTH_TOKEN"], FIXTURE_TOKEN)
+        self.assertEqual(launch["env"]["CLAUDE_CONFIG_DIR"], str(self.seats_path / ".state/claude-router"))
+        self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN", version["env"], "the version read runs without the token")
+        srt_calls = self.calls_of("srt")
+        self.assertEqual(len(srt_calls), 6, srt_calls)
+        resolve, pack, canary, version_call, launch_call, head_read = srt_calls
+        for label, call in (("resolve", resolve), ("pack", pack), ("canary", canary), ("version", version_call), ("head read", head_read)):  # fmt: skip
+            self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN", call["env"], f"the {label} run carries no token name")
+        self.assertIn("CLAUDE_CODE_OAUTH_TOKEN", launch_call["env"], "the omp launch's srt carries it to the worker")
+        status, out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM)
+        for where, text in (("stdout", out), ("stderr", err), ("the launch log", "\n".join(self.log_lines("w1"))),
+                            ("the srt records", json.dumps(srt_calls)), ("the version record", json.dumps(version))):  # fmt: skip
+            self.assertNotIn(TOKEN_MARK, text, f"the token's bytes reached {where}")
+        self.assertEqual(len(self.log_lines("w1")), 3, self.log_lines("w1"))
+
+        handout = "handouts/claude-setup-token-u551.md"
+        unset_line = (
+            "acp-broker: refused: CLAUDE_CODE_OAUTH_TOKEN did not reach this connection; hcom-seat hands the seats'"
+            " Claude setup-token to the broker it starts, and no worker starts without it; place the seats' Claude"
+            f" setup-token by the U551 handout ({handout}: claude setup-token in your own terminal, then seat-token-place)"
+        )
+        form_line = (
+            "acp-broker: refused: CLAUDE_CODE_OAUTH_TOKEN holds no token of the form"
+            " sk-ant-oat01-<20 to 255 of [A-Za-z0-9_-]> (the value is never printed); no worker starts without the"
+            f" seats' token; place the seats' Claude setup-token by the U551 handout ({handout}: claude setup-token in"
+            " your own terminal, then seat-token-place)"
+        )
+        srt_count, omp_count = len(self.calls_of("srt")), len(self.calls_of("omp"))
+        for label, override, line in (
+            ("unset", None, unset_line), ("empty", "", unset_line), ("off the form", "not-a-" + "token-u551", form_line),
+            ("a key, not a token", "sk-ant-api03-" + "NOTATOKEN" + "0" * 40, form_line),
+        ):  # fmt: skip
+            with self.subTest(case=label):
+                proc, sock = self.start_broker(name, cwd, CLAUDE_CODE_OAUTH_TOKEN=override)
+                for attempt in ("first", "second"):
+                    data = self.recv_all(self.connect(sock, repo, "w2")).decode()
+                    self.assertEqual(data, line + "\n", f"the {attempt} request")
+                    self.assertIsNone(proc.poll(), "the broker keeps listening")
+                self.assertEqual(self.acp_slots(), [])
+                self.assertEqual(len(self.calls_of("omp")), omp_count, "no omp run beyond the served connection's two")
+                self.assertEqual(len(self.calls_of("srt")), srt_count, "no srt run beyond the served connection's")
+                self.assertEqual(sorted(p.name for p in (self.seats_path / ".state/broker-logs").iterdir()), ["w1.log"])
+                status, out, err = self.stop_broker(proc)
+                self.assertEqual(status, -signal.SIGTERM)
+                if override:
+                    self.assertNotIn(override, out + err + data, "the refused value is printed nowhere")
 
     def test_the_worker_settings_are_the_dsh_row_but_the_named_rows(self):
         """The byte-identical compare (U343 ACCEPTANCE 6): the Router's settings come from a real held `hcom-seat

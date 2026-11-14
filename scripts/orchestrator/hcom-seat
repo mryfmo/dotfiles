@@ -95,32 +95,43 @@
 #   sandbox on stderr, and creates and starts nothing but the private tool links. Otherwise hcom's own
 #   exit status is returned (`hcom omp --help`:
 #   0 ready, 1 launch failed, 2 still launching or blocked on user attention).
-#   The seat login (regime-cutover U318, U314 alternative A; per login group since U498): every seat's bridge child
-#   and the dsh role's gateway child run with `CLAUDE_CONFIG_DIR=<seats-root>/.state/claude-<group>`, one directory
-#   per login group under the seats root, holding one interactive claude.ai login that Claude Code itself stores and
-#   refreshes (the Keychain item keyed to that directory on macOS, `.credentials.json` 0600 there otherwise) and the
-#   child's `.claude.json`, state and sessions. The group is a function of the role, the one table
-#   `login_group_of_role` (worker, orchestrator and audit each their own; the dsh and router roles the `router`
-#   group, since the gateway child is the Router's), copied as text into seat-login-preflight: a role's seats share
-#   their group's login, and two groups rotate no refresh token together (U318's one directory per seats root let the
-#   Router's long-lived children and the sweep seat rotate one token, and the login was invalidated five times,
-#   handoff/40). The directory is the role table's `claude_config` row: this lever makes it 0700 when absent, the
-#   shim exports it, seat-login-preflight judges `claude auth status` under it, and the settings grant it for write
-#   and deny its `settings.json`, `settings.local.json`, `rules`, `hooks`, `plugins`, `skills`, `commands` and
-#   `agents` to every seat, so no seat changes what another seat's child, or the operator's login command, would
-#   load from it. Every other group's directory and the legacy shared `.state/claude` are denied for read, by name,
-#   to every seat (U498c: srt reopens a root's subtree under an allow but for a more specific deny, so the
-#   orchestrator's read grant of the seats root reached the worker group's login until then; the rows come from the
-#   table's range, `LOGIN_GROUPS`, minus the own group), and every group's directory of that range is made, 0700 and
-#   empty, by every launch before its settings file is written (U498d, login_dirs_make: srt 0.0.81's Linux backend
-#   mounts nothing for a denyRead entry that is not there, so a deny of another group's directory bound nothing
-#   until that group's first launch or login made it; a link, a file or another user's directory at any group's path
-#   refuses the launch by name, own_slots_check and login_dirs_make), and the own group's directory is the one login
-#   a seat reads or writes. The legacy shared directory `.state/claude` is read, granted, copied, made and removed by
-#   no launch (standing order 54). The API key route (regime-cutover U510, U512: a keyed Claude Code executable as
-#   the bridge's, and one key file under `.state` named to every seat and judged at every launch) is retired
-#   (regime-cutover U551): no lever, row, grant or tool of it remains. No token file and
-#   no CLAUDE_CODE_OAUTH_TOKEN: the shim clears the name, and no seat reads the operator's `~/.claude`.
+#   The seats' Claude credential (regime-cutover U551; the login route of U318 and U498 and the API key route of
+#   U510 and U512 before it): one long-lived `claude setup-token` token in one file per host, the role table's
+#   `token_file` row `<seats-root>/.state/claude-token`, a regular file of this user, mode 0600, one line
+#   `sk-ant-oat01-<base64url>` with one trailing line feed, placed by the operator through `seat-token-place`
+#   (handouts/claude-setup-token-u551.md). A setup-token has no refresh token, so the renewal that revoked the seats'
+#   shared claude.ai login eight times (a rotating pair renewed inside srt, where the Keychain is readable but not
+#   writable, handoff/40 and the decisions of 2026-11-14) cannot occur. Before anything is made or written, and in a
+#   dry run before the launch line prints, this lever judges the file by its form (token_file_check: lstat on the
+#   spelled path first, so a link refuses before anything resolves it; then mode, owner, one line, the prefix and
+#   charset of TOKEN_FORM_RE; never the content) and refuses the launch with the file's name and the handout's step
+#   when it is absent or malformed. The shim is the one exporter (U312's rule): it reads the file outside the sandbox
+#   and exports `CLAUDE_CODE_OAUTH_TOKEN` into the sandboxed process tree, where omp, the bridge and its Claude Code
+#   child inherit it; the token appears in no argument (the dsh and router rows carry no value in their `env -i`
+#   list, whose line the dry run prints), no log, no settings file and no other process of this lever's: the ACP
+#   broker receives it as an assignment on its start line (broker_start) and hands it to its workers' omp launch
+#   alone. Every role's settings deny the token file for read and for write, so no process inside the sandbox reads
+#   or rewrites it (measured: the Claude child starts and answers with the file denied, since the value rides in its
+#   environment). A caller's CLAUDE_CODE_OAUTH_TOKEN is no input (U312): the name is cleared before the first child
+#   and the shim exports the file's line alone.
+#   The seat's Claude Code directory (regime-cutover U318, U314 alternative A; per login group since U498): every
+#   seat's bridge child and the dsh role's gateway child run with `CLAUDE_CONFIG_DIR=<seats-root>/.state/claude-<group>`,
+#   one directory per login group under the seats root, holding the child's `.claude.json`, state and sessions and
+#   no login (the token is the credential; a `.credentials.json` there is read by no lever). The group is a function
+#   of the role, the one table `login_group_of_role` (worker, orchestrator and audit each their own; the dsh and
+#   router roles the `router` group, since the gateway child is the Router's), copied as text into
+#   seat-login-preflight. The directory is the role table's `claude_config` row: this lever makes it 0700 when
+#   absent, the shim exports it, and the settings grant it for write and deny its `settings.json`,
+#   `settings.local.json`, `rules`, `hooks`, `plugins`, `skills`, `commands` and `agents` to every seat, so no seat
+#   changes what another seat's child would load from it. Every other group's directory and the legacy shared
+#   `.state/claude` are denied for read, by name, to every seat (U498c: srt reopens a root's subtree under an allow
+#   but for a more specific deny, so the orchestrator's read grant of the seats root reached the worker group's
+#   directory until then; the rows come from the table's range, `LOGIN_GROUPS`, minus the own group), and every
+#   group's directory of that range is made, 0700 and empty, by every launch before its settings file is written
+#   (U498d, login_dirs_make: srt 0.0.81's Linux backend mounts nothing for a denyRead entry that is not there; a
+#   link, a file or another user's directory at any group's path refuses the launch by name, own_slots_check and
+#   login_dirs_make). The legacy shared directory `.state/claude` is read, granted, copied, made and removed by no
+#   launch (standing order 54), and no seat reads the operator's `~/.claude`.
 #   The dsh role (regime-cutover U272, after the four audits of the standalone launcher of PR 687): the DeepSeek
 #   harness control host is contained the same way, by this lever, as a role whose differences from the worker are
 #   rows of the role table (the `case ${role}` after the options, seat_write_roots, the read grants in
@@ -233,8 +244,8 @@ caller_path=${PATH:-}
 system_path=/usr/bin:/bin:/usr/sbin:/sbin
 PATH=${system_path}
 # A caller's CLAUDE_CODE_OAUTH_TOKEN is no input to any child of this launcher (regime-cutover U312, U318; Codex P2 on
-# PR 712): the seats' login is the shared Claude Code directory, so the name goes before the first child process (the
-# preflight, srt's version read, hcom, herdr, the shim's canary), not only inside the shim.
+# PR 712): the seats' token comes from the token file alone (U551), read by the shim, so the name goes before the first
+# child process (the preflight, srt's version read, hcom, herdr, the shim's canary), not only inside the shim.
 unset CLAUDE_CODE_OAUTH_TOKEN
 # Git is steered by no inherited environment (regime-cutover U85): every `GIT_*` variable the caller exported
 # (GIT_DIR, GIT_COMMON_DIR, GIT_WORK_TREE, GIT_CONFIG_* and the rest) is removed before the first git command, so host
@@ -534,6 +545,12 @@ login_group_of_role() {
 # login_group_of_role are one table in two statements; the table test holds them equal (every role's group is here,
 # every group here is a role's, each once, in order). A group added to the table is added here, nowhere else.
 LOGIN_GROUPS=(worker orchestrator audit router)
+# The seats' Claude credential's form (regime-cutover U551): the one line `claude setup-token` prints, `sk-ant-oat01-`
+# and 20 to 255 characters of the base64url alphabet. One text in hcom-seat, seat-login-preflight, seat-token-place
+# and acp-broker (the tests hold the four equal); the file that holds it is the role table's `token_file` row, judged
+# by token_file_check, which holds the line in `seat_token` for the ACP broker's start line and nothing else.
+TOKEN_FORM_RE='^sk-ant-oat01-[A-Za-z0-9_-]{20,255}$'
+seat_token=''
 # The role table (regime-cutover U272, U321): every difference between the roles is a row read here or in the places
 # keyed on the role below (the directory row, seat_write_roots, the deny row before the overlap check and the judge
 # after it, the read grants in seat_settings_render, the binding value in seat_sandbox_write, the command the shim
@@ -2082,6 +2099,11 @@ seats_root=${seats_root:-${REGIME_SEATS_ROOT:-}}
 # (`login_group`); own_slots_check reads it by lstat before anything resolves it, and seat_write_roots renders it
 # physical.
 claude_config=${seats_root%/}/.state/claude-${login_group}
+# The role table's `token_file` row (regime-cutover U551): the seats' one Claude credential, `<seats-root>/.state/
+# claude-token`, a 0600 regular file of this user holding the one line of `claude setup-token`, placed by the operator
+# through seat-token-place (handouts/claude-setup-token-u551.md); judged by token_file_check before anything is made,
+# read by the shim alone into the Claude child's environment, denied for read and for write to every seat.
+token_file=${seats_root%/}/.state/claude-token
 # The role table's directory row: the orchestrator sits in the launch checkout, a worker in its worktree, the dsh and
 # router roles in a scratch directory inside their per-launch state slot, which seat_sandbox_write makes.
 case ${role} in
@@ -2447,6 +2469,12 @@ own_slots_check orchestrator orchestrator
 # The group's directory in physical form, for the shim's export, the dsh role's environment and the deny rows under it
 # (own_slots_check has just proved it is no link and sits in `.state`); seat_write_roots renders the same path.
 claude_config_real=$(physical_path "${claude_config}") || refuse "cannot resolve the login group's Claude Code directory ${claude_config}"
+# The token file in physical form (regime-cutover U551), for the deny rows of every role and the shim's one read: the
+# spelled path is judged by lstat first (a link refuses before anything resolves it, U512b's rule; token_file_check
+# looks again after the preflight), then resolved like every rendered row.
+[[ ! -L ${token_file} ]] ||
+    refuse "the seats' Claude token file ${token_file} is a symbolic link; the token file must be a regular file of this user, placed by seat-token-place (handouts/claude-setup-token-u551.md, step 2)"
+token_file_real=$(physical_path "${token_file}") || refuse "cannot resolve the seats' Claude token file ${token_file}"
 # The physical seats root goes to the preflight, so the login it judges and the directory the shim exports are one
 # spelling (the macOS Keychain item is keyed to the directory's path).
 seats_root_real=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
@@ -2738,6 +2766,13 @@ seat_settings_render() {
         deny_read+=("${seats_real}/.state/claude-${group}")
     done
     deny_read+=("${seats_real}/.state/claude")
+    # The seats' Claude token file (regime-cutover U551): denied for read and for write to every seat, by its physical
+    # path, so no process inside the sandbox reads or rewrites it; the shim reads it outside and the Claude child
+    # receives the value through its environment. Untagged: no grant of any role lies at or under it (the state slot
+    # and the group's directory are its siblings under `.state`, which no foreground role grants whole), and under
+    # the omp roles' seats-root grant the deeper deny wins (U498c's measurement).
+    deny_read+=("${token_file_real}")
+    deny_write+=("${token_file_real}")
     operator_claude_paths
     deny_write+=("${operator_claude[@]}")
     deny_read+=("${operator_claude[@]}")
@@ -3337,8 +3372,9 @@ seat_sandbox_write() {
         printf -v srt_q '%q ' "${srt_cmd[@]}"
         printf -v cmd_q '%q ' "${seat_cmd[@]}"
         echo "srt_cmd=(${srt_q}) cmd=(${cmd_q}) tool=${shim_tool}"
-        printf 'settings=%q canary=%q state=%q claude_config=%q push_url=%q sandbox=%q\n' "${settings}" \
-            "${sandbox_real}/canary" "${sandbox_state}" "${claude_config_real}" "${push_url}" "${sandbox_real}"
+        printf 'settings=%q canary=%q state=%q claude_config=%q token_file=%q token_form=%q push_url=%q sandbox=%q\n' \
+            "${settings}" "${sandbox_real}/canary" "${sandbox_state}" "${claude_config_real}" "${token_file_real}" \
+            "${TOKEN_FORM_RE}" "${push_url}" "${sandbox_real}"
         printf 'debug_canary=%q\n' "${h}/.claude/debug/hcom-seat-canary"
         # Outside the sandbox the shim and srt look up only in the private tool directory and the system directories;
         # inside it omp gets the seat's working PATH, applied by /usr/bin/env under srt.
@@ -3368,13 +3404,32 @@ if [[ ${probe} != 'write-denied read-denied ssh-denied debug-denied' || -e ${can
     exit 2
 fi
 export UV_CACHE_DIR=${state}/uv-cache
-# The child's Claude Code login and state (`.claude.json`, projects, sessions, plugins) live in its login group's
-# directory under the seats root, never in the operator's ~/.claude or ~/.claude.json (regime-cutover U190, U318,
-# U498): under that directory the child reads the one claude.ai login the operator made there for the group and
-# refreshes it itself. No token rides: a caller's CLAUDE_CODE_OAUTH_TOKEN is no input (regime-cutover U312), so the
-# name is cleared.
+# The child's Claude Code state (`.claude.json`, projects, sessions, plugins) lives in its login group's directory
+# under the seats root, never in the operator's ~/.claude or ~/.claude.json (regime-cutover U190, U318, U498).
 export CLAUDE_CONFIG_DIR=${claude_config}
-unset CLAUDE_CODE_OAUTH_TOKEN
+# The seats' Claude credential (regime-cutover U551): the one line of the token file, read here, outside the sandbox,
+# into the one name Claude Code reads a long-lived token from, and exported so omp, the bridge and its Claude Code
+# child inherit it; the file itself is denied inside the sandbox, so no process there reads or rewrites it, and this
+# shim is the one exporter (U312's rule: a caller's value is no input and was cleared by hcom-seat before any child).
+# The line is held to the token's form before anything starts; a refusal names the file and never its content.
+if [[ -L ${token_file} || ! -f ${token_file} ]]; then
+    echo "hcom-seat shim: the seats' Claude token file ${token_file} is absent, a link or no regular file; ${tool} not started (handouts/claude-setup-token-u551.md)" >&2
+    exit 2
+fi
+# The first line by a checked producer (no `read < file`, whose failure a fallback can mask; the marker keeps the
+# trailing line feed through the substitution): the line must end in a line feed, as seat-token-place writes it.
+CLAUDE_CODE_OAUTH_TOKEN=$(/usr/bin/head -n 1 -- "${token_file}" && printf .) || { echo "hcom-seat shim: cannot read the seats' Claude token file ${token_file}; ${tool} not started" >&2; exit 2; }
+CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN%.}
+if [[ ${CLAUDE_CODE_OAUTH_TOKEN} != *$'\n' ]]; then
+    echo "hcom-seat shim: the seats' Claude token file ${token_file} holds no line ending in a line feed; ${tool} not started" >&2
+    exit 2
+fi
+CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN%$'\n'}
+if [[ ! ${CLAUDE_CODE_OAUTH_TOKEN} =~ ${token_form} ]]; then
+    echo "hcom-seat shim: the seats' Claude token file ${token_file} holds no token of the form ${token_form} (the content is never printed); ${tool} not started" >&2
+    exit 2
+fi
+export CLAUDE_CODE_OAUTH_TOKEN
 # omp's Bedrock discovery stats ~/.aws/{credentials,config} unless these name the files, and an EPERM from the read
 # deny ends omp at start (measured, omp 18.11.3 and 18.12.6); /dev/null reads as no AWS profile.
 export AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null
@@ -3417,7 +3472,8 @@ seat_wrapper_write() {
 # The role table's launch row: the hcom launch line for the omp roles; for the dsh role the shim run in the foreground
 # under `/usr/bin/env -i` with the listed names (U272: nothing of the caller's environment reaches the shim, srt or
 # dsh; the shim sets PATH and its own exports; the login group's Claude Code directory rides in the list and as the
-# shim's export alike, U318, U498).
+# shim's export alike, U318, U498; the seats' token is the shim's export alone, read from the token file, never a
+# value in this list: an `env -i` assignment is an argument, and the dry run prints this list, U551).
 case ${role_launch} in
 hcom)
     argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr --go -- --profile "${role}" --config "${policy}" --config "${profile}" --append-system-prompt "${rules}")
@@ -3475,6 +3531,39 @@ hcom_store_ensure() {
     done
 }
 
+# @description Judge the seats' Claude token file `<seats-root>/.state/claude-token` by its form (regime-cutover U551)
+#   and hold its one line in `seat_token` for the ACP broker's start line: lstat on the spelled path first (a link
+#   refuses before anything resolves it; the row after claude_config_real refused it already, so this is the second
+#   look, at the dry run's and the launch's own moment), then present, a regular file, this user's, mode 0600
+#   (`/usr/bin/stat`, its status read), one line ending in one line feed (`read -r` with its status, `wc -c` against
+#   the line's length, so a second line, a missing or doubled line feed, a carriage return or a NUL the shell drops is
+#   seen) of the token's form (TOKEN_FORM_RE). Every refusal names the file and the handout's step, never the content;
+#   a producer that fails is a refusal too (standing order 21). Runs for every role after the preflight and before the
+#   seat's settings are written, and in a dry run before the launch line prints; nothing is made here (the file is the
+#   operator's, placed by seat-token-place).
+# @set seat_token The token, held for the ACP broker's start line alone (broker_start); never printed.
+token_file_check() {
+    local mode size line
+    local handout='run claude setup-token in your own terminal and place the token with seat-token-place (handouts/claude-setup-token-u551.md, steps 1 and 2), then start the seat again'
+    [[ ! -L ${token_file} ]] || refuse "the seats' Claude token file ${token_file} is a symbolic link; the token file must be a regular file of this user; ${handout}"
+    [[ -e ${token_file} ]] || refuse "the seats' Claude token file ${token_file} is absent; ${handout}"
+    [[ -f ${token_file} ]] || refuse "the seats' Claude token file ${token_file} is not a regular file; ${handout}"
+    [[ -O ${token_file} ]] || refuse "the seats' Claude token file ${token_file} is not this user's; ${handout}"
+    mode=$(/usr/bin/stat "${mode_args[@]}" -- "${token_file}") || refuse "cannot read the mode of the seats' Claude token file ${token_file}; the launch is refused"
+    [[ ${mode} == 600 ]] || refuse "the seats' Claude token file ${token_file} has mode ${mode}, not 0600; ${handout}" # lint-comparisons: allow a mode word from stat, no path compare
+    size=$(/usr/bin/wc -c < "${token_file}") || refuse "cannot read the size of the seats' Claude token file ${token_file}; the launch is refused"
+    size=${size//[[:space:]]/}
+    # The first line by a checked producer (no `read < file`, U85 round 17; the marker keeps the line feed through the
+    # substitution), so a read that fails is its own refusal and a line without its line feed is seen.
+    line=$(/usr/bin/head -n 1 -- "${token_file}" && printf .) || refuse "cannot read the seats' Claude token file ${token_file}; the launch is refused"
+    line=${line%.}
+    [[ ${line} == *$'\n' ]] || refuse "the seats' Claude token file ${token_file} holds no line ending in a line feed (the token is one line, as seat-token-place writes it); ${handout}"
+    line=${line%$'\n'}
+    [[ ${line} =~ ${TOKEN_FORM_RE} ]] || refuse "the seats' Claude token file ${token_file} holds no token of the form sk-ant-oat01-<20 to 255 of [A-Za-z0-9_-]> (the content is never printed); ${handout}"
+    ((size == ${#line} + 1)) || refuse "the seats' Claude token file ${token_file} holds more than its one line (a second line, a carriage return or other bytes beyond the token); ${handout}"
+    seat_token=${line}
+}
+
 hcom_store_ensure "${dry_run}"
 # The omp roles' credential root (regime-cutover U353d) and the program store's root (U219c): made beside the store,
 # before anything else of the launch is made or rendered, in a real launch; a dry run says what a launch would make.
@@ -3484,9 +3573,13 @@ if [[ ${role_launch} == hcom ]]; then
     store_root_make "${dry_run}"
 fi
 if ((dry_run)); then
+    # The seats' Claude token file (regime-cutover U551): a dry run judges it as a launch does (token_file_check, before
+    # the preflight a dry run skips), so an absent or malformed token refuses here too, naming the handout's step; the
+    # environment line names the file the shim reads, never the token.
+    token_file_check
     printf '%q ' "${argv[@]}"
     echo
-    echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-} REGIME_STORE_ROOT=${REGIME_STORE_ROOT:-} CLAUDE_CONFIG_DIR=${claude_config_real} (login group ${login_group})" >&2
+    echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-} REGIME_STORE_ROOT=${REGIME_STORE_ROOT:-} CLAUDE_CONFIG_DIR=${claude_config_real} CLAUDE_CODE_OAUTH_TOKEN=<the shim reads ${token_file_real}> (login group ${login_group})" >&2
     echo "hcom-seat: sandbox ${sandbox} (srt ${srt_cmd[*]}, omp ${omp_cmd[*]}, hcom ${hcom_cmd[*]}, herdr ${herdr_cmd[*]})" >&2
     if ((broker)); then
         echo "hcom-seat: a launch starts the ACP broker ${LEVER_DIR}/acp-broker ${seats_root} ${name} ${dir} beside dsh and stops it when dsh exits" >&2
@@ -3501,6 +3594,9 @@ fi
 if [[ ${role_launch} == hcom ]]; then
     REGIME_SEATS_ROOT=${seats_root_real} /bin/bash "${BASH_SOURCE[0]%/*}/seat-login-preflight" "${role}" || exit $?
 fi
+# The seats' Claude token file (regime-cutover U551): judged by its form for every role, after the preflight (which
+# judged the same file for the omp roles) and before anything of the seat is made or written; a refusal starts nothing.
+token_file_check
 if [[ ${role_launch} == foreground ]]; then
     # The scratch cwd is made by seat_sandbox_write inside the per-launch slot, proved absent above.
     :
@@ -3698,7 +3794,10 @@ broker_fifo_close() {
 # @description Start `acp-broker` beside the Router (regime-cutover U344, M-24 part 2; U344c): the broker's lever set
 #   copied into a private per-launch directory and each copy hashed against its pin (broker_copy_make), then
 #   `/bin/bash <copy>/acp-broker` run with the seats root, this launch's seat name and its scratch cwd, the held
-#   physical DSH_HOME in its environment (the broker holds the credential root from it, U343l), its stdin /dev/null
+#   physical DSH_HOME in its environment (the broker holds the credential root from it, U343l) and the seats' Claude
+#   token beside it (regime-cutover U551: token_file_check's one read, an assignment on the start line, no argument
+#   and no file, which the relay hands to each connection handler and the broker to its workers' omp launch alone;
+#   the value appears in no line of either lever), its stdin /dev/null
 #   and its stdout the readiness pipe, as a background child of this launch, so a signal to the process group reaches
 #   it too and broker_stop can read its status. Readiness is the broker's own message, never a path's existence
 #   (U343o's form; verdict U344-a8adad11 P2 `hcom-seat:3416`: a Unix socket path exists after `bind` and before
@@ -3735,7 +3834,7 @@ broker_start() {
         return 2
     }
     broker_fifo_open=1
-    DSH_HOME=${dsh_home_phys} /bin/bash "${broker_copy_lever}" "${seats_root}" "${name}" "${dir}" < /dev/null > "${fifo}" 7>&- &
+    CLAUDE_CODE_OAUTH_TOKEN=${seat_token} DSH_HOME=${dsh_home_phys} /bin/bash "${broker_copy_lever}" "${seats_root}" "${name}" "${dir}" < /dev/null > "${fifo}" 7>&- &
     broker_pid=$!
     while :; do
         line=''

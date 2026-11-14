@@ -419,7 +419,7 @@
       "target": ".local/bin/common/acp-broker",
       "kind": "file",
       "executable": true,
-      "sha256": "14e36aa04417d89a9e189de5155335e754cd75e1c9248512f3ac94830d8c1406"
+      "sha256": "df22cd45e75e1532be7837de6e7768bcf10be56d603553606aa887573730732d"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-record-place.py",
@@ -482,7 +482,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "44a6a9d87fba935ecf15b372cf0514ad34dde54ffa954f0575cabf465710588a"
+      "sha256": "a8928f1b4e677af29fadc3892bc072049dda56c4dd3e786b9a803b0fc7aff1e2"
     },
     {
       "source": "home/dot_local/bin/common/executable_intake-observe.py",

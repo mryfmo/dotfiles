@@ -482,6 +482,125 @@ function check_seat_logins() {
 }
 
 #
+# @description Report the class of the Router's GitHub token through the checkout's
+#   `scripts/orchestrator/router-gh api -i user` (regime-cutover U490), one call bounded by
+#   perl's alarm (`timeout` is not on every host) to `DOCTOR_ROUTER_TIMEOUT` seconds (an
+#   integer of 1 to 600; else 30), with the response headers read for `X-Oauth-Scopes` alone.
+#   Five cases, decided by router-gh's exit status and, once gh has answered, by the HTTP status
+#   line alone (U490e, U490f; the doctor holds no path test of its own: round 4's `[ ! -e ]` read
+#   a login directory under an unreadable parent as absent where router-gh refuses `cannot resolve
+#   the credential root`, verdict U490-e90feefa P1):
+#   (a) router-gh exits 3, its "not yet" code (the credential root, its gh directory or its
+#       hosts.yml absent, or hosts.yml naming no active login for github.com): the operator's
+#       step (docs/engagement-handout.md step 2), an optional warning quoting router-gh's one
+#       stderr line; gh itself is not run;
+#   (b) router-gh exits 2, every other refusal (a DSH_HOME that is not a real, searchable
+#       directory of this user, a link in the chain, a wrong owner or mode, a root that cannot be
+#       resolved, several oauth_token rows, a token outside the grammar): a required failure
+#       quoting router-gh's one stderr line (a broken root the operator must repair, never
+#       "pending"; rounds 1 to 3 read every refusal as the pending step and exited 0, verdict
+#       U490-f441420d P1);
+#   (c) any other non-zero exit whose output's first line is an HTTP status line of class 4xx or
+#       5xx (`^HTTP/[0-9.]+ [45][0-9][0-9]`; `gh api -i` prints the status line before the body
+#       whatever the class and exits 1 on an error answer): GitHub answered and rejected the token
+#       (revoked, expired or never valid), a required failure `GitHub answered <status line>` with
+#       the remedy (U490f; round 5 read every exit of gh's own as "unreadable", so a revoked token
+#       passed the gate as an optional warning, verdict U490-f6175c44 P1);
+#   (d) any other non-zero exit with no HTTP status line in front (the alarm included, the
+#       transport's own failure text for a host never reached), or an exit 0 without a 2xx status
+#       line and a login: an optional warning `unreadable` (an offline or stalled host);
+#   (e) a 2xx answer: no `X-Oauth-Scopes` header is a fine-grained token, whose permissions this
+#       check cannot read and which cannot write here (GitHub's fine-grained tokens cannot
+#       contribute to a repository where the account is a collaborator, and the Router's account
+#       is one by the kit's design, M-25), a required failure (U490c); a header is a classic token,
+#       found when its list holds `repo` or `public_repo`, else a required failure. Both failures
+#       ask for the classic token of the handout's step 2 (`repo` for the writes, `read:org` and
+#       `gist` for `gh auth login --with-token`, `notifications` for the poll; U490b), since no
+#       other token lets the Router write (measured 2026-11-12: a `notifications` token read the
+#       stream and every write failed `HTTP 403`).
+#   The decision reads router-gh's exit status and gh's HTTP status line, never router-gh's text
+#   and no path; the login is read from the body's `login` key; no token is printed.
+#
+function check_router_token() {
+    local lever="${BASH_SOURCE[0]%/*}/orchestrator/router-gh"
+    local root="${DSH_HOME:-${HOME%/}/.dsh}/router-credentials/gh"
+    local output line status=0 in_headers=1 first_line='' body='' login='' scopes='' scopes_seen=0
+    local scope writes=0 remedy bound=30
+    local -a scope_list=()
+    remedy="place the classic token of docs/engagement-handout.md step 2 (scopes repo, read:org, gist, notifications; a fine-grained token cannot write to a repository where the account is a collaborator) under ${root}"
+
+    if [ ! -x "${lever}" ]; then
+        warn_optional "router token check skipped: ${lever} is missing"
+        return 0
+    fi
+    if [[ "${DOCTOR_ROUTER_TIMEOUT:-}" =~ ^[0-9]{1,3}$ ]] && [ "${DOCTOR_ROUTER_TIMEOUT}" -ge 1 ] && [ "${DOCTOR_ROUTER_TIMEOUT}" -le 600 ]; then
+        bound="${DOCTOR_ROUTER_TIMEOUT}"
+    fi
+    output="$(perl -e 'my $bound = shift; alarm $bound; exec @ARGV or die "exec router-gh: $!\n"' "${bound}" "${lever}" api -i user 2>&1)" || status=$?
+    if [ "${status}" -eq 3 ]; then
+        IFS= read -r first_line <<< "${output}"
+        warn_optional "router token: ${first_line}"
+        return 0
+    fi
+    if [ "${status}" -eq 2 ]; then
+        IFS= read -r first_line <<< "${output}"
+        printf 'required failed: router token: %s\n' "${first_line}" >&2
+        ((required_failures += 1))
+        return 0
+    fi
+    if [ "${status}" -ne 0 ]; then
+        IFS= read -r first_line <<< "${output}"
+        first_line="${first_line%$'\r'}"
+        if [[ "${first_line}" =~ ^HTTP/[0-9.]+\ [45][0-9][0-9] ]]; then
+            printf 'required failed: router token: GitHub answered %s (the token is rejected or expired; %s)\n' \
+                "${first_line}" "${remedy}" >&2
+            ((required_failures += 1))
+            return 0
+        fi
+        warn_optional "router token: unreadable (router-gh api -i user exited ${status}: ${first_line})"
+        return 0
+    fi
+    # `gh api -i` prints the status line, each header with CRLF, a blank line, then the raw body.
+    while IFS= read -r line; do
+        line="${line%$'\r'}"
+        if [ "${in_headers}" -eq 0 ]; then
+            body="${body}${line}"
+        elif [ -z "${first_line}" ]; then
+            first_line="${line}"
+        elif [ -z "${line}" ]; then
+            in_headers=0
+        elif [[ "${line}" =~ ^[Xx]-[Oo][Aa][Uu][Tt][Hh]-[Ss][Cc][Oo][Pp][Ee][Ss]:[[:space:]]*(.*)$ ]]; then
+            scopes="${BASH_REMATCH[1]}"
+            scopes_seen=1
+        fi
+    done <<< "${output}"
+    if [[ ! "${first_line}" =~ ^HTTP/[0-9.]+\ 2[0-9][0-9] ]] || [[ ! "${body}" =~ \"login\":[[:space:]]*\"([A-Za-z0-9-]+)\" ]]; then
+        warn_optional "router token: unreadable (router-gh api -i user answered without a 2xx status line and a login)"
+        return 0
+    fi
+    login="${BASH_REMATCH[1]}"
+    if [ "${scopes_seen}" -eq 0 ]; then
+        printf "required failed: router token %s: fine-grained (no X-Oauth-Scopes header), which cannot write here (GitHub's fine-grained tokens cannot contribute to a repository where the account is a collaborator, and the Router's account is one by design); %s\n" \
+            "${login}" "${remedy}" >&2
+        ((required_failures += 1))
+        return 0
+    fi
+    IFS=', ' read -r -a scope_list <<< "${scopes}"
+    for scope in ${scope_list[@]+"${scope_list[@]}"}; do
+        case "${scope}" in
+        repo | public_repo) writes=1 ;;
+        esac
+    done
+    if [ "${writes}" -eq 1 ]; then
+        printf 'found:   router token %s: classic, scopes %s\n' "${login}" "${scopes}"
+        return 0
+    fi
+    printf 'required failed: router token %s: classic token with scopes %s, none of which lets the Router write (the acknowledgement, a pushed ref, a pull request); %s\n' \
+        "${login}" "${scopes:-<none>}" "${remedy}" >&2
+    ((required_failures += 1))
+}
+
+#
 # @description Run the read-only dotfiles health checks.
 #
 function main() {
@@ -513,6 +632,7 @@ function main() {
 
     section "Seat logins"
     check_seat_logins
+    check_router_token
 
     section "Zed"
     check_zed

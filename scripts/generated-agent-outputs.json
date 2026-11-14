@@ -636,7 +636,7 @@
       "target": ".local/bin/common/router-gh",
       "kind": "file",
       "executable": true,
-      "sha256": "c157bf49b703cdb940d734a1e6bdbd9be8d9352d1598eed8e4bfe38af5e93ee7"
+      "sha256": "bab47be7273025518efab995f6bd4f444d9f9f8a7447f8d315ef8a984b316b50"
     },
     {
       "source": "home/dot_local/bin/common/executable_router-settings-apply",

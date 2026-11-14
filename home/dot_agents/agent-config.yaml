@@ -946,6 +946,13 @@ claude:
   # `Program-Unit` line the coordinator writes into the body. Installed and pinned
   # the same way, run as `python3 -I` by the coordinator and allowed by the
   # orchestrator policy alone; it runs no gh and no git.
+  # units-row.py is the coordinator's one writer of a units.tsv row (U505): it
+  # adds or changes one row by the readers' grammar (the header, eight cells, each
+  # cell's closed class) in place under one lock on the register's own
+  # descriptor, never through a temporary file in the store. Installed and pinned
+  # the same way, run as `python3 -I` by the coordinator and allowed by the
+  # orchestrator policy alone, denied by name to the worker and the audit; it runs
+  # no gh, no git and no network.
   levers:
     sha256:
       hcom-seat: f0f160f50aa5150e7e937574e8d5e61604e767570a4c3f6af598c07e446efbea
@@ -988,6 +995,7 @@ claude:
       program-status.py: fdb8a940258f2c247e65f0bed45fd0e7ad42ab0e196d4cec9aa783862fd600a6
       claude-keyed: 4066e144cb2d9e9d5ed7443a7dec477331196cdbe1f5cee2e4a25484eb43db77
       ticket-unit.py: 38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1
+      units-row.py: 6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

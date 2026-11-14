@@ -674,6 +674,13 @@
       "sha256": "38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1"
     },
     {
+      "source": "home/dot_local/bin/common/executable_units-row.py",
+      "target": ".local/bin/common/units-row.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",
       "target": ".local/bin/common/worker-worktree.sh",
       "kind": "file",
@@ -1014,6 +1021,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "ticket-unit.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "units-row.py"
     },
     {
       "source": "home/dot_local/bin/common",

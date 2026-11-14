@@ -1033,6 +1033,14 @@ bash:
     # included; the audit writes its verdict to stdout and has no bus reply (U58).
     - match: "*hcom send*"
       approval: deny
+    # ticket-unit.py (regime-cutover U493) writes the program store; the audit reads only, so the store writer is
+    # denied by name as well as by the catch-all below.
+    - match: "*ticket-unit.py *"
+      approval: deny
+    # units-row.py (regime-cutover U505) writes the program store's units.tsv; the audit reads only, so the store
+    # writer is denied by name as well as by the catch-all below.
+    - match: "*units-row.py *"
+      approval: deny
     # The read-only git and gh commands an audit needs; an allow never rides a pipe or a redirect.
     - match: "git status"
       approval: allow

@@ -75,6 +75,8 @@ ORCHESTRATOR_LEVERS = [
     # U493: the ticket binding, the Router's pull request bound to a unit from its ticket (a store write, no gh).
     f"{LEVER}ticket-unit.py .orchestration/orchestrate/regime-cutover --db /x/orchestrator.sqlite --pr 777 "
     "--branch agent/fix-x --head abc",
+    # U505: the register writer, one units.tsv row by the readers' grammar (a store write, no gh).
+    f"{LEVER}units-row.py /Users/x/.local/state/regime-store/dotfiles/regime-cutover set --id U20 --state done",
     f"{LEVER}records-sync.sh --program regime-cutover --unit U20",
     # U71: the merge lever (a `correct` ledger row for the head and green CI).
     f"{LEVER}pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover",
@@ -500,6 +502,7 @@ class OmpSeatPolicyTest(unittest.TestCase):
                 "~/.local/bin/common/brief-check.py *",
                 "~/.local/bin/common/program-status.py *",
                 "~/.local/bin/common/ticket-unit.py *",
+                "~/.local/bin/common/units-row.py *",
                 "~/.local/bin/common/records-sync.sh *",
                 "~/.local/bin/common/records-sync.sh",
             ],

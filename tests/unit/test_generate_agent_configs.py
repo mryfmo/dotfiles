@@ -279,6 +279,7 @@ LEVERS = (
     "seat-login-preflight",
     "seat-settings-render.sh",
     "ticket-unit.py",
+    "units-row.py",
     "worker-worktree-owner.py",
     "worker-worktree.sh",
     "worktree-gc.sh",

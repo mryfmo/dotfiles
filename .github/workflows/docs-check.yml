@@ -43,12 +43,12 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v10.3.2
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: false
 
       - name: Setup mise
-        uses: jdx/mise-action@v5.2.2
+        uses: jdx/mise-action@v5.2.7
         with:
           # The newest mise at least 72 hours old, as hosts get it (minimum_release_age).
           minimum_release_age: 72h

@@ -124,7 +124,7 @@ jobs:
           after_local_change="$(cksum "${HOME}/.zprofile")"
           [ "${after_local_change}" = "${before_local_change}" ]
 
-      - uses: jdx/mise-action@v5.2.2
+      - uses: jdx/mise-action@v5.2.7
         with:
           # The newest mise at least 72 hours old, as hosts get it (minimum_release_age).
           minimum_release_age: 72h

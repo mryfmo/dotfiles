@@ -133,24 +133,30 @@ function setup() {
     [[ "${output}" == *"optional warning: crit --version failed"* ]]
 }
 
-# check_seat_logins (regime-cutover U37, U318): a fake HOME with two seat profiles and a seats root whose shared Claude
-# Code directory `.state/claude` the pre-flight judges through a fake `claude auth status` (exit
-# `${FAKE_CLAUDE_AUTH_STATUS:-0}`, method `${FAKE_CLAUDE_AUTH_METHOD:-claude.ai}`), so the host's Claude Code never runs.
+# check_seat_logins (regime-cutover U37, U318, U498, U512): a fake HOME with two seat profiles and a seats root whose
+# login group directory `.state/claude-orchestrator` (the orchestrator profile's group) the pre-flight judges through a
+# fake `claude auth status` (exit `${FAKE_CLAUDE_AUTH_STATUS:-0}`, method `${FAKE_CLAUDE_AUTH_METHOD:-claude.ai}`), and
+# whose API key file `.state/anthropic/api-key` it judges through a fake `claude-keyed --check` (the ok line) and a fake
+# `python3` standing for the Models API probe (prints 200), so the host's Claude Code never runs and no call leaves it;
+# every Claude line ends `; key ok (<seats-root>/.state/anthropic/api-key)`.
 function seat_login_home() {
     local home="${BATS_TEST_TMPDIR}/seat"
     mkdir -p "${home}/.agents/omp/profiles" "${BATS_TEST_TMPDIR}/fakebin"
     printf 'modelRoles:\n  default: openai-siwc/gpt-6-astra\n' > "${home}/.agents/omp/profiles/audit.yml"
-    printf 'modelRoles:\n  default: claude-bridge/claude-fable-5-1\n' > "${home}/.agents/omp/profiles/orchestrator.yml"
+    printf 'modelRoles:\n  default: claude-bridge/claude-fable-5-2\n' > "${home}/.agents/omp/profiles/orchestrator.yml"
     printf '#!/bin/sh\nprintf '"'"'{"configDirectory": "%%s", "authMethod": "%%s"}\\n'"'"' "${CLAUDE_CONFIG_DIR-}" "${FAKE_CLAUDE_AUTH_METHOD:-claude.ai}"\nexit "${FAKE_CLAUDE_AUTH_STATUS:-0}"\n' \
         > "${BATS_TEST_TMPDIR}/fakebin/claude"
-    chmod +x "${BATS_TEST_TMPDIR}/fakebin/claude"
+    printf '#!/bin/sh\nprintf '"'"'key file ok: %%s; executable: /fake/sdk/claude\\n'"'"' "${REGIME_ANTHROPIC_KEY_FILE-}"\n' \
+        > "${BATS_TEST_TMPDIR}/fakebin/claude-keyed"
+    printf '#!/bin/sh\nprintf '"'"'200\\n'"'"'\n' > "${BATS_TEST_TMPDIR}/fakebin/python3"
+    chmod +x "${BATS_TEST_TMPDIR}/fakebin/claude" "${BATS_TEST_TMPDIR}/fakebin/claude-keyed" "${BATS_TEST_TMPDIR}/fakebin/python3"
     printf '%s\n' "${home}"
 }
 
-@test "[common] check_seat_logins reports registered and present logins from presence, mtimes and the shared directory" {
+@test "[common] check_seat_logins reports registered and present logins from presence, mtimes and the group directory" {
     local home
     home="$(seat_login_home)"
-    mkdir -p "${home}/.omp/profiles/audit/agent/openai-siwc" "${home}/seats/.state/claude"
+    mkdir -p "${home}/.omp/profiles/audit/agent/openai-siwc" "${home}/seats/.state/claude-orchestrator"
     printf '{"hostId":"urn:uuid:11111111-1111-4111-8111-111111111111","clientId":"oaiapp_fake"}\n' \
         > "${home}/.omp/profiles/audit/agent/openai-siwc/registration.json"
     printf 'not a database\n' > "${home}/.omp/profiles/audit/agent/agent.db"
@@ -159,7 +165,7 @@ function seat_login_home() {
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins; echo \"failures=\${required_failures} warnings=\${optional_warnings}\""
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"found:   seat login audit openai-siwc: registered (host urn:uuid:11111111-1111-4111-8111-111111111111, client oaiapp_fake), agent.db mtime 20"* ]]
-    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: login present (claude.ai, ${home}/seats/.state/claude)"* ]]
+    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: login present (claude.ai, ${home}/seats/.state/claude-orchestrator); key ok (${home}/seats/.state/anthropic/api-key)"* ]]
     [[ "${output}" == *"failures=0 warnings=0"* ]]
 }
 
@@ -171,29 +177,54 @@ function seat_login_home() {
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins; echo \"failures=\${required_failures} warnings=\${optional_warnings}\""
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"optional warning: seat login audit openai-siwc: absent (no ${home}/.omp/profiles/audit/agent/openai-siwc/registration.json)"* ]]
-    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: absent (no ${home}/seats/.state/claude)"* ]]
+    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: absent (no ${home}/seats/.state/claude-orchestrator); key ok (${home}/seats/.state/anthropic/api-key) (log in on this host, once per login group: seat-login-preflight orchestrator prints the orchestrator group's command, docs/remote-host-logins.md)"* ]]
     [[ "${output}" == *"failures=0 warnings=2"* ]]
 }
 
-@test "[common] check_seat_logins counts the shared directory's claude.ai login alone and never prints a token" {
+@test "[common] check_seat_logins counts the group directory's claude.ai login alone and never prints a token" {
     local home
     home="$(seat_login_home)"
-    mkdir -p "${home}/seats/.state/claude" "${home}/.claude"
+    mkdir -p "${home}/seats/.state/claude-orchestrator" "${home}/.claude"
     printf '{}\n' > "${home}/.claude/.credentials.json"
     chmod 600 "${home}/.claude/.credentials.json"
 
-    # U312, U318: a token variable in the environment and the operator's own ~/.claude are no input; the shared
+    # U312, U318, U498: a token variable in the environment and the operator's own ~/.claude are no input; the group
     # directory's method decides, and a token or key login there is absent.
     run env -u CLAUDE_CONFIG_DIR CLAUDE_CODE_OAUTH_TOKEN=unused-variable-value HOME="${home}" REGIME_SEATS_ROOT="${home}/seats" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins"
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: login present (claude.ai, ${home}/seats/.state/claude)"* ]]
+    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: login present (claude.ai, ${home}/seats/.state/claude-orchestrator); key ok (${home}/seats/.state/anthropic/api-key)"* ]]
     [[ "${output}" != *"unused-variable-value"* ]]
 
     run env -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CONFIG_DIR FAKE_CLAUDE_AUTH_METHOD=oauth_token HOME="${home}" REGIME_SEATS_ROOT="${home}/seats" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins"
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: absent (authMethod oauth_token under ${home}/seats/.state/claude, not claude.ai)"* ]]
+    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: absent (authMethod oauth_token under ${home}/seats/.state/claude-orchestrator, not claude.ai); key ok (${home}/seats/.state/anthropic/api-key)"* ]]
+}
+
+@test "[common] check_seat_logins warns for a present login whose key is absent, naming the key step, and fails on an unreadable key" {
+    local home
+    home="$(seat_login_home)"
+    mkdir -p "${home}/seats/.state/claude-orchestrator"
+    # The fake lever refuses the file (exit 2) as the real one does for an absent file (U512).
+    printf '#!/bin/sh\nprintf '"'"'claude-keyed: refused: the key file %%s is absent; place the API key there (the U510 handout)\\n'"'"' "${REGIME_ANTHROPIC_KEY_FILE-}" >&2\nexit 2\n' \
+        > "${BATS_TEST_TMPDIR}/fakebin/claude-keyed"
+
+    run env -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CONFIG_DIR HOME="${home}" REGIME_SEATS_ROOT="${home}/seats" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
+        bash -c "source '${SCRIPT_PATH}'; check_seat_logins; echo \"failures=\${required_failures} warnings=\${optional_warnings}\""
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: login present (claude.ai, ${home}/seats/.state/claude-orchestrator); absent (the key file ${home}/seats/.state/anthropic/api-key is absent; place the API key there (the U510 handout)) (place the seats' API key on this host (one file for every seat): seat-login-preflight orchestrator prints the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md)"* ]]
+    [[ "${output}" != *"found:   seat login orchestrator"* ]]
+    [[ "${output}" == *"failures=0 warnings=2"* ]]
+
+    # A key judge that exits neither 0 nor 2 is unreadable: a required failure, never found and never absent.
+    printf '#!/bin/sh\nexit 5\n' > "${BATS_TEST_TMPDIR}/fakebin/claude-keyed"
+    run env -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CONFIG_DIR HOME="${home}" REGIME_SEATS_ROOT="${home}/seats" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
+        bash -c "source '${SCRIPT_PATH}'; check_seat_logins; echo \"failures=\${required_failures} warnings=\${optional_warnings}\""
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"required failed: seat login orchestrator claude-bridge: login present (claude.ai, ${home}/seats/.state/claude-orchestrator); unreadable (claude-keyed --check exited 5 for the API key file ${home}/seats/.state/anthropic/api-key)"* ]]
+    [[ "${output}" != *"found:   seat login orchestrator"* ]]
+    [[ "${output}" == *"failures=1 warnings=1"* ]]
 }
 
 @test "[common] check_seat_logins fails on an unreadable SIWC record instead of calling it absent" {

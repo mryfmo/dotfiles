@@ -209,10 +209,12 @@ tooling mode.
 **`make deploy-kit`.** The narrow deploy an agent runs after a pull request
 merges: `scripts/deploy-kit.sh` applies, by name, only the chezmoi targets
 under the kit's own roots, `~/.local/bin` (the levers), `~/.agents` (the agent
-assets) and `~/.dsh` (the DSH profiles), verifies them, and does nothing else.
-It pulls nothing, upgrades no tool, reloads no herdr, runs no step of
-`scripts/update-agent-assets.sh` and touches no other target (`~/.codex`,
-`~/.claude`, the shell rc files, `~/.config` stay as they are). The three roots
+assets), `~/.dsh` (the DSH profiles) and `~/.omp/profiles` (the seats' omp
+profile files; a seat launch, `hcom-seat <role>`, makes a profile directory),
+verifies them, and does nothing else. It pulls nothing, upgrades no tool,
+reloads no herdr, runs no step of `scripts/update-agent-assets.sh` and touches
+no other target (`~/.codex`, `~/.claude`, the shell rc files, `~/.config`,
+`~/.omp/agent` stay as they are). The four roots
 must be real directories: a missing root, or one that is or lies behind a
 symbolic link, is refused with its path before anything is read. Every pending
 name must be one `chezmoi managed` listed under the roots, or the run refuses

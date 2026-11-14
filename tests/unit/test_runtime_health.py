@@ -12,6 +12,7 @@ import stat
 import subprocess
 import tempfile
 import textwrap
+import time
 import unittest
 from pathlib import Path
 
@@ -854,11 +855,54 @@ EOF
         self.assertIn("index has unmerged files", result.stdout)
         self.assertNotIn("current branch is", result.stdout)
 
-    def doctor_environment(self, *, fail: str = "", os_name: str = "Linux") -> dict[str, str]:
+    def router_credential_root(self, dsh_home: Path, *, login: bool) -> None:
+        """The Router's credential root under a scratch DSH_HOME as the operator's step leaves it: the chain router-gh
+        holds (real directories of this user, the leaf readable by this user alone) with a fixture token the fake gh
+        never reads; without the login, the root alone, so the wrapper refuses as it does before the handout's step."""
+        root = dsh_home / "router-credentials"
+        root.mkdir(parents=True)
+        root.chmod(0o700)
+        if not login:
+            return
+        (root / "gh").mkdir()
+        hosts = root / "gh/hosts.yml"
+        hosts.write_text("github.com:\n    oauth_token: gho_fixture_router\n    user: fixture-router\n")
+        hosts.chmod(0o600)
+
+    def doctor_environment(
+        self,
+        *,
+        fail: str = "",
+        os_name: str = "Linux",
+        router_scopes: str | None = "gist, read:org, repo",
+        router_login: bool = True,
+        router_stall: int | None = None,
+        router_response: str | None = None,
+        router_exit: int = 0,
+    ) -> dict[str, str]:
         fixture_name = (fail or "healthy").replace(":", "-").replace(" ", "-")
         bin_dir = self.temp_dir / f"doctor-bin-{fixture_name}-{os_name}"
         log = self.temp_dir / "doctor.log"
         bin_dir.mkdir()
+        # What the Router's gh answers `api -i user` with, headers then body as `gh api -i` prints them (CRLF after
+        # each header, a blank line, the raw JSON): `router_scopes` None is a fine-grained token, which GitHub answers
+        # with no X-Oauth-Scopes header and the doctor refuses (U490c); a string is a classic token's header value,
+        # the default the healthy fixture's shape with `repo` (check_router_token, U490). `router_stall` is a host that
+        # never answers: the fake gh becomes `sleep <s>` in place (exec, one process, as the real gh would hang), so
+        # the doctor's alarm, not the fixture, ends the call (U490d). `router_response` replaces the whole answer and
+        # `router_exit` is the fake gh's status after printing it: a 401 answer with exit 1 is a rejected token, curl's
+        # own text with exit 1 an unreached host (U490f).
+        dsh_home = self.temp_dir / f"doctor-dsh-{fixture_name}-{os_name}"
+        self.router_credential_root(dsh_home, login=router_login)
+        headers = ["HTTP/2.0 200 OK", "Content-Type: application/json; charset=utf-8"]
+        if router_scopes is not None:
+            headers.append(f"X-Oauth-Scopes: {router_scopes}")
+        response = dsh_home / "api-user-response.txt"
+        response.write_text(
+            router_response
+            if router_response is not None
+            else "\r\n".join(headers) + "\r\n\r\n" + '{"login":"fixture-router","id":1}\n'
+        )
         missing = fail.removeprefix("missing:") if fail.startswith("missing:") else ""
         for command in ("git", "chezmoi", "mise", "uv", "gh", "brew", "bwrap", "socat"):
             if command == missing:
@@ -871,6 +915,10 @@ EOF
                 printf '%s %s\\n' "$(basename "$0")" "$*" >> "$TEST_LOG"
                 if [[ "$(basename "$0"):$*" == "$FAIL_COMMAND" ]]; then exit 9; fi
                 if [[ "$(basename "$0"):$1" == mise:which ]]; then command -v "$2"; exit $?; fi
+                if [[ "$(basename "$0"):$1 $2 $3" == "gh:api -i user" ]]; then
+                    [[ -z "$ROUTER_STALL" ]] || exec sleep "$ROUTER_STALL"
+                    cat "$ROUTER_RESPONSE"; exit "$ROUTER_EXIT"
+                fi
                 printf '%s healthy\\n' "$(basename "$0")"
                 """,
             )
@@ -892,6 +940,10 @@ EOF
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "FAIL_COMMAND": fail,
             "TEST_LOG": str(log),
+            "DSH_HOME": str(dsh_home),
+            "ROUTER_RESPONSE": str(response),
+            "ROUTER_STALL": "" if router_stall is None else str(router_stall),
+            "ROUTER_EXIT": str(router_exit),
             # Keep the host's AppArmor userns restriction out of these fixtures.
             "APPARMOR_USERNS_SYSCTL": str(self.temp_dir / "no-userns-restriction"),
         }
@@ -947,6 +999,364 @@ EOF
         result = self.run_test_command(["/bin/bash", "-c", script], env={"PATH": str(bin_dir)})
         self.assertIn("not applicable: Claude Code sandbox prerequisites", result.stdout)
         self.assertIn("warnings=0", result.stdout)
+
+    def run_doctor(self, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+        return self.run_test_command(["bash", str(ROOT / "scripts/check-tools.sh")], env=env)
+
+    def test_doctor_router_token_fine_grained_is_a_required_failure(self) -> None:
+        # (a) No X-Oauth-Scopes header: a fine-grained token, whose permissions the doctor cannot read and which cannot
+        #     write to a repository where the account is a collaborator, as the Router's account is by the kit's design
+        #     (M-25); a required failure with the classic-token remedy, exit 1, never found (U490c).
+        result = self.run_doctor(self.doctor_environment(router_scopes=None))
+        output = result.stdout + result.stderr
+        self.assertEqual(1, result.returncode, output)
+        self.assertIn(
+            "required failed: router token fixture-router: fine-grained (no X-Oauth-Scopes header), which cannot write"
+            " here (GitHub's fine-grained tokens cannot contribute to a repository where the account is a collaborator,"
+            " and the Router's account is one by design); place the classic token of docs/engagement-handout.md step 2"
+            " (scopes repo, read:org, gist, notifications; a fine-grained token cannot write to a repository where the"
+            " account is a collaborator) under",
+            result.stderr,
+        )
+        self.assertIn("/router-credentials/gh", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 1", result.stdout)
+
+    def test_doctor_router_token_notifications_only_is_a_required_failure(self) -> None:
+        # (b) The deployed shape of 2026-11-12: a classic token whose one scope reads the stream and writes nothing.
+        result = self.run_doctor(self.doctor_environment(router_scopes="notifications"))
+        output = result.stdout + result.stderr
+        self.assertEqual(1, result.returncode, output)
+        self.assertIn(
+            "required failed: router token fixture-router: classic token with scopes notifications, none of which lets"
+            " the Router write (the acknowledgement, a pushed ref, a pull request); place the classic token of"
+            " docs/engagement-handout.md step 2 (scopes repo, read:org, gist, notifications; a fine-grained token cannot"
+            " write to a repository where the account is a collaborator) under",
+            result.stderr,
+        )
+        self.assertIn("/router-credentials/gh", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 1", result.stdout)
+
+    def test_doctor_router_token_classic_with_repo_scope_is_found(self) -> None:
+        # (c) A classic token whose list holds a writing scope: found with the list, exit 0.
+        result = self.run_doctor(self.doctor_environment(router_scopes="repo, notifications"))
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn("found:   router token fixture-router: classic, scopes repo, notifications", result.stdout)
+        self.assertNotIn("router token", result.stderr)
+        self.assertIn("required failures: 0", result.stdout)
+
+    def test_doctor_router_token_absent_login_is_an_optional_warning(self) -> None:
+        # (d) The login directory `<DSH_HOME>/router-credentials/gh` is absent: router-gh runs and refuses with exit 3
+        #     (its "not yet" code, U490e), and the doctor relays its one line as an optional warning naming the
+        #     operator's step (docs/engagement-handout.md); gh itself never runs (the fake gh records no `api -i user`
+        #     call), never found, exit 0. The doctor holds no path test of its own (round 4's `[ ! -e ]` read a
+        #     directory under an unreadable parent as absent, verdict U490-e90feefa P1).
+        env = self.doctor_environment(router_login=False)
+        result = self.run_doctor(env)
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn(
+            "optional warning: router token: router-gh: no gh login under the credential root: ", result.stderr
+        )
+        self.assertIn(
+            "/router-credentials/gh is absent; the agent account's login inside the root is the operator's step"
+            " (docs/engagement-handout.md), and gh runs with no other credential",
+            result.stderr,
+        )
+        self.assertNotIn("required failed: router token", result.stderr)
+        self.assertNotIn("router token", result.stdout)
+        self.assertIn("required failures: 0", result.stdout)
+        calls = Path(env["TEST_LOG"]).read_text().splitlines()
+        self.assertIn("gh --version", calls)
+        self.assertFalse(any(call.startswith("gh api -i user") for call in calls), calls)
+
+    def test_doctor_router_token_broken_credential_root_is_a_required_failure(self) -> None:
+        # (e) The login directory exists and router-gh refuses (exit 2): a broken root the operator must repair, here
+        #     hosts.yml a symbolic link; a required failure quoting router-gh's one stderr line, exit 1, never the
+        #     pending warning (U490d: the round-3 doctor read every refusal as "no login yet" and exited 0, verdict
+        #     U490-f441420d P1).
+        env = self.doctor_environment()
+        hosts = Path(env["DSH_HOME"]) / "router-credentials/gh/hosts.yml"
+        elsewhere = Path(env["DSH_HOME"]) / "hosts-elsewhere.yml"
+        hosts.rename(elsewhere)
+        hosts.symlink_to(elsewhere)
+        result = self.run_doctor(env)
+        output = result.stdout + result.stderr
+        self.assertEqual(1, result.returncode, output)
+        self.assertIn("required failed: router token: router-gh: ", result.stderr)
+        self.assertIn("hosts.yml is a symbolic link", result.stderr)
+        self.assertNotIn("optional warning: router token", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 1", result.stdout)
+
+    def test_doctor_router_token_unreadable_parent_is_a_required_failure(self) -> None:
+        # (e') The login directory exists under a credential root of mode 000: a path test in the doctor cannot see it
+        #     (`[ ! -e <root>/gh ]` is false through an unreadable parent, so round 4 said "not yet" and exited 0,
+        #     verdict U490-e90feefa P1), while router-gh cannot resolve the root and refuses with exit 2; a required
+        #     failure quoting that line, exit 1, never the pending warning (U490e).
+        env = self.doctor_environment()
+        root = Path(env["DSH_HOME"]) / "router-credentials"
+        self.addCleanup(lambda: root.chmod(0o700) if root.exists() else None)
+        root.chmod(0)
+        result = self.run_doctor(env)
+        root.chmod(0o700)
+        output = result.stdout + result.stderr
+        self.assertEqual(1, result.returncode, output)
+        self.assertIn("required failed: router token: router-gh: cannot resolve the credential root ", result.stderr)
+        self.assertIn("/router-credentials\n", result.stderr)
+        self.assertNotIn("optional warning: router token", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 1", result.stdout)
+
+    def test_doctor_router_token_rejected_token_is_a_required_failure(self) -> None:
+        # (c) The login is in place and GitHub rejects its token: `gh api -i` prints the status line and headers before
+        #     the body whatever the class, so the answer is `HTTP/2.0 401 Unauthorized` with `{"message":"Bad
+        #     credentials"}` and gh exits 1. Round 5 read every status of gh's own as "unreadable", an offline host, so
+        #     a revoked token passed the gate as an optional warning (verdict U490-f6175c44 P1); a 4xx or 5xx status
+        #     line is the token's verdict, a required failure quoting it with the remedy, exit 1 (U490f). The same exit
+        #     1 with no status line (curl's own text, the host never reached) stays the optional `unreadable` warning,
+        #     asserted beside it.
+        rejected = (
+            "HTTP/2.0 401 Unauthorized\r\nContent-Type: application/json; charset=utf-8\r\n"
+            "X-Github-Request-Id: F00D:1234\r\n\r\n"
+            '{"message":"Bad credentials","documentation_url":"https://docs.github.com/rest"}\n'
+        )
+        env = self.doctor_environment(router_response=rejected, router_exit=1)
+        result = self.run_doctor(env)
+        output = result.stdout + result.stderr
+        self.assertEqual(1, result.returncode, output)
+        self.assertIn(
+            "required failed: router token: GitHub answered HTTP/2.0 401 Unauthorized (the token is rejected or expired;"
+            " place the classic token of docs/engagement-handout.md step 2",
+            result.stderr,
+        )
+        self.assertNotIn("Unauthorized\r", result.stderr)
+        self.assertNotIn("optional warning: router token", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 1", result.stdout)
+        calls = Path(env["TEST_LOG"]).read_text().splitlines()
+        self.assertTrue(any(call.startswith("gh api -i user") for call in calls), calls)
+        # No status line: the host was never reached and gh exits 1 with curl's text; an optional warning, exit 0.
+        Path(env["ROUTER_RESPONSE"]).write_text("curl: (6) Could not resolve host: api.github.com\n")
+        result = self.run_doctor(env)
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn(
+            "optional warning: router token: unreadable (router-gh api -i user exited 1: curl: (6) Could not resolve"
+            " host: api.github.com)",
+            result.stderr,
+        )
+        self.assertNotIn("required failed: router token", result.stderr)
+        self.assertNotIn("found:   router token", result.stdout)
+        self.assertIn("required failures: 0", result.stdout)
+
+    def test_doctor_router_token_stalled_call_is_an_optional_warning(self) -> None:
+        # (f) A host that never answers: the fake gh sleeps 5 s, the doctor's alarm is set to 1 s through
+        #     DOCTOR_ROUTER_TIMEOUT, so the call dies of SIGALRM (status 128 + 14 = 142 as bash reports a signalled
+        #     command substitution), an optional warning `unreadable (... exited <status> ...)`, exit 0, and the
+        #     doctor is back within the bound, well under the 5 s the fixture would sleep (U490d; the round-3 body
+        #     claimed the 30 s bound closed with no test that stalls the call).
+        env = {**self.doctor_environment(router_stall=5), "DOCTOR_ROUTER_TIMEOUT": "1"}
+        started = time.monotonic()
+        result = self.run_doctor(env)
+        elapsed = time.monotonic() - started
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertLess(elapsed, 5.0, f"the doctor took {elapsed:.1f} s; the alarm did not end the stalled call")
+        exited = re.search(
+            r"optional warning: router token: unreadable \(router-gh api -i user exited (\d+)", result.stderr
+        )
+        self.assertIsNotNone(exited, result.stderr)
+        self.assertIn(int(exited.group(1)), range(129, 160), result.stderr)
+        self.assertNotIn("router token", result.stdout)
+        self.assertIn("required failures: 0", result.stdout)
+
+    def test_doctor_reports_one_seat_login_line_per_login_group(self) -> None:
+        """U498: `check_seat_logins` runs the tree's seat-login-preflight `--check`, whose Claude lines name each login
+        group's directory from the one table: the orchestrator profile `.state/claude-orchestrator`, the worker
+        `.state/claude-worker`, the deployed dsh overlay the router group's `.state/claude-router`; U512: each line
+        ends with the seats' API key file's state (`key ok (<file>)` here: the fake `claude-keyed` passes the file and
+        a fake `python3` stands for the Models API probe). A present login with a passing key is a `found` line, an
+        absent login an optional warning naming the per-group step, never a failure; the legacy shared `.state/claude`
+        is read by no line."""
+        home = self.temp_dir / "home"
+        profiles = home / ".agents/omp/profiles"
+        profiles.mkdir(parents=True)
+        for profile in ("orchestrator", "worker", "dsh"):
+            (profiles / f"{profile}.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
+        seats = self.temp_dir / "seats"
+        (seats / ".state/claude-worker").mkdir(parents=True)
+        (seats / ".state/claude").mkdir()
+        bin_dir = self.temp_dir / "doctor-bin"
+        self.link_real_jq(bin_dir)
+        # `claude auth status` (U318): the documented record, a claude.ai login under whatever directory it is asked.
+        self.executable(
+            bin_dir / "claude",
+            'printf \'{"configDirectory": "%s", "authMethod": "claude.ai"}\\n\' "${CLAUDE_CONFIG_DIR-}"\n',
+        )
+        # `claude-keyed --check` (U512): the ok line for whatever file it is asked; `python3`, the Models API probe
+        # the pre-flight runs under perl's alarm, prints the one code the probe would (200), so no call leaves the host.
+        self.executable(
+            bin_dir / "claude-keyed",
+            "printf 'key file ok: %s; executable: /fake/sdk/claude\\n' \"${REGIME_ANTHROPIC_KEY_FILE-}\"\n",
+        )
+        self.executable(bin_dir / "python3", "printf '200\\n'\n")
+        key_ok = f"key ok ({seats}/.state/anthropic/api-key)"
+        script = (
+            f"source {ROOT / 'scripts/check-tools.sh'}; check_seat_logins;"
+            " echo failures=$required_failures warnings=$optional_warnings"
+        )
+        env = {"HOME": str(home), "PATH": f"{bin_dir}:/usr/bin:/bin", "REGIME_SEATS_ROOT": str(seats)}
+        result = self.run_test_command(["/bin/bash", "-c", script], env=env)
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn(
+            f"optional warning: seat login dsh claude-bridge: absent (no {seats}/.state/claude-router); {key_ok} (log in"
+            " on this host, once per login group: the dsh profile is the router group, which has no seat-login-preflight"
+            " profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory this line names"
+            " (hcom-seat router --dry-run prints it; BROWSER=regime-open-url first on a remote host),"
+            " docs/remote-host-logins.md)",
+            output,
+        )
+        self.assertIn(
+            f"optional warning: seat login orchestrator claude-bridge: absent (no {seats}/.state/claude-orchestrator);"
+            f" {key_ok} (log in on this host, once per login group: seat-login-preflight orchestrator prints the"
+            " orchestrator group's command, docs/remote-host-logins.md)",
+            output,
+        )
+        self.assertNotIn("seat-login-preflight dsh", output, "a profile mode the pre-flight refuses as unknown (U498d)")
+        self.assertNotIn("seat-login-preflight <profile>", output, "every line names its own profile's step")
+        self.assertIn(
+            f"found:   seat login worker claude-bridge: login present (claude.ai, {seats}/.state/claude-worker); {key_ok}",
+            output,
+        )
+        self.assertIn("failures=0 warnings=2", output)
+        self.assertNotIn(f"{seats}/.state/claude)", output, "the legacy shared directory is read by no line")
+        # A present login whose key the lever refuses (U512) is a warning naming the key step, never found; a key
+        # judge that exits neither 0 nor 2 is unreadable, a required failure.
+        self.executable(
+            bin_dir / "claude-keyed",
+            "printf 'claude-keyed: refused: the key file %s is absent; place the API key there (the U510 handout)\\n'"
+            ' "${REGIME_ANTHROPIC_KEY_FILE-}" >&2\nexit 2\n',
+        )
+        result = self.run_test_command(["/bin/bash", "-c", script], env=env)
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn(
+            f"optional warning: seat login worker claude-bridge: login present (claude.ai, {seats}/.state/claude-worker);"
+            f" absent (the key file {seats}/.state/anthropic/api-key is absent; place the API key there (the U510"
+            " handout)) (place the seats' API key on this host (one file for every seat): seat-login-preflight worker"
+            " prints the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3),"
+            " docs/remote-host-logins.md)",
+            output,
+        )
+        self.assertNotIn("found:   seat login worker", output)
+        self.assertIn("failures=0 warnings=3", output)
+        self.executable(bin_dir / "claude-keyed", "exit 5\n")
+        result = self.run_test_command(["/bin/bash", "-c", script], env=env)
+        output = result.stdout + result.stderr
+        self.assertIn(
+            f"required failed: seat login worker claude-bridge: login present (claude.ai, {seats}/.state/claude-worker);"
+            f" unreadable (claude-keyed --check exited 5 for the API key file {seats}/.state/anthropic/api-key)",
+            output,
+        )
+        self.assertIn("failures=1 warnings=0", output, "the lever's exit 1 is the one counted failure")
+
+    def test_the_doctors_login_group_table_is_the_levers_and_its_warning_names_each_groups_step(self) -> None:
+        """U498d (verdict U498-8f2cca8c P2 `check-tools.sh:413`): the doctor's absent-login warning named
+        `seat-login-preflight <profile>` for every line, and for the dsh profile that profile mode exits 2 as an unknown
+        seat profile (the pre-flight's `seat_profiles` are orchestrator, worker and audit; `router` is none either). The
+        doctor holds the login group table `login_group_of_role` as the same text as hcom-seat and the pre-flight, and
+        the pre-flight's profile list as the same text; `login_step_of` names, per line, the step of the profile's
+        group: the profile mode for a seat profile, the direct `claude auth login` under the line's directory for the
+        dsh profile (the router group, which `hcom-seat router --dry-run` prints), and the general sentence for a
+        profile outside the table. The pre-flight itself refuses `dsh` and `router` as profiles, so the doctor never
+        names them as one."""
+        doctor = ROOT / "scripts/check-tools.sh"
+        preflight = ROOT / "scripts/orchestrator/seat-login-preflight"
+        tables = {}
+        for lever in (ROOT / "scripts/orchestrator/hcom-seat", preflight, doctor):
+            text = lever.read_text()
+            start = text.index("login_group_of_role() {")
+            tables[lever.name] = text[start : text.index("\n}\n", start) + 3]
+        self.assertEqual(tables["check-tools.sh"], tables["hcom-seat"])
+        self.assertEqual(tables["check-tools.sh"], tables["seat-login-preflight"])
+        (profiles,) = [line for line in preflight.read_text().splitlines() if line.startswith("seat_profiles=(")]
+        self.assertIn(f"local -a {profiles}\n", doctor.read_text(), "the pre-flight's profile modes, the same text")
+        script = f'source {doctor}; login_step_of "$1"; printf \'%s\\n\' "${{login_step}}"'
+        general = (
+            "log in on this host, once per login group: seat-login-preflight <profile> prints the group's command,"
+            " docs/remote-host-logins.md"
+        )
+        cases = {
+            "dsh claude-bridge: absent (no /seats/.state/claude-router)": (
+                "log in on this host, once per login group: the dsh profile is the router group, which has no"
+                " seat-login-preflight profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory"
+                " this line names (hcom-seat router --dry-run prints it; BROWSER=regime-open-url first on a remote"
+                " host), docs/remote-host-logins.md"
+            ),
+            "worker claude-bridge: absent (not logged in under /seats/.state/claude-worker)": (
+                "log in on this host, once per login group: seat-login-preflight worker prints the worker group's"
+                " command, docs/remote-host-logins.md"
+            ),
+            "orchestrator claude-bridge: absent (authMethod oauth_token under /seats/.state/claude-orchestrator, not"
+            " claude.ai)": (
+                "log in on this host, once per login group: seat-login-preflight orchestrator prints the orchestrator"
+                " group's command, docs/remote-host-logins.md"
+            ),
+            "audit openai-siwc: absent (no /home/.omp/profiles/audit/agent/openai-siwc/registration.json)": (
+                "log in on this host, once per login group: seat-login-preflight audit prints the audit group's"
+                " command, docs/remote-host-logins.md"
+            ),
+            "review: no route": general,
+            "claude-router: not a seat login route (ollama)": general,
+            # U512: a claude-bridge line carries the key's state after the login's; the step names what is missing.
+            "worker claude-bridge: login present (claude.ai, /seats/.state/claude-worker); absent (the key file"
+            " /seats/.state/anthropic/api-key is absent; place the API key there (the U510 handout))": (
+                "place the seats' API key on this host (one file for every seat): seat-login-preflight worker prints"
+                " the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md"
+            ),
+            "orchestrator claude-bridge: login present (claude.ai, /seats/.state/claude-orchestrator); key rejected"
+            " (/seats/.state/anthropic/api-key; HTTP 401)": (
+                "place the seats' API key on this host (one file for every seat): seat-login-preflight orchestrator"
+                " prints the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3),"
+                " docs/remote-host-logins.md"
+            ),
+            "dsh claude-bridge: absent (no /seats/.state/claude-router); absent (the key file"
+            " /seats/.state/anthropic/api-key is absent; place the API key there (the U510 handout))": (
+                "log in on this host, once per login group: the dsh profile is the router group, which has no"
+                " seat-login-preflight profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory"
+                " this line names (hcom-seat router --dry-run prints it; BROWSER=regime-open-url first on a remote"
+                " host), docs/remote-host-logins.md; place the seats' API key on this host (one file for every seat):"
+                " seat-login-preflight <seat profile> prints the placement commands (handouts/anthropic-api-key-u510.md,"
+                " steps 2 and 3), docs/remote-host-logins.md"
+            ),
+            "worker claude-bridge: absent (not logged in under /seats/.state/claude-worker); key ok"
+            " (/seats/.state/anthropic/api-key)": (
+                "log in on this host, once per login group: seat-login-preflight worker prints the worker group's"
+                " command, docs/remote-host-logins.md"
+            ),
+        }
+        for line, step in cases.items():
+            with self.subTest(line=line):
+                result = self.run_test_command(["/bin/bash", "-c", script, "_", line])
+                self.assertEqual((result.returncode, result.stdout, result.stderr), (0, step + "\n", ""))
+        home = self.temp_dir / "preflight-home"
+        (home / ".agents/omp/profiles").mkdir(parents=True)
+        bin_dir = self.temp_dir / "preflight-bin"
+        self.executable(bin_dir / "uname", "printf 'Darwin\\n'\n")
+        for profile in ("dsh", "router"):
+            with self.subTest(profile=profile):
+                result = self.run_test_command(
+                    ["/bin/bash", str(preflight), profile],
+                    env={"HOME": str(home), "PATH": f"{bin_dir}:/usr/bin:/bin"},
+                )
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stderr)
+                self.assertIn(
+                    f"unknown seat profile '{profile}'; expected one of: orchestrator worker audit", result.stderr
+                )
 
     def test_make_doctor_propagates_runtime_drift_after_tool_checks(self) -> None:
         repo = self.temp_dir / "doctor-repo"

@@ -2784,7 +2784,7 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertIn(planted, (self.records / "notes.md").read_text(), "the checkout's file is never changed")
         message = self.git("log", "-1", "--format=%B", "records/sync-7", cwd=self.origin)
         self.assertTrue(message.startswith("chore(records): prog sync 7\n"))
-        self.assertIn("Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>", message)
+        self.assertIn("Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>", message)
         create = self.writes()[0]
         body = Path(create[create.index("--body-file") + 1])
         self.assertFalse(body.exists(), "the scratch directory is removed")

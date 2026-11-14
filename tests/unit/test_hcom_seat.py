@@ -98,6 +98,18 @@ def closed_loopback_url():
     return f"http://127.0.0.1:{port}/v1/models?limit=1"
 
 
+# The login group table's range (U498, `login_group_of_role`; `LOGIN_GROUPS` beside it in hcom-seat since U498c): the
+# login directories `<seats-root>/.state/claude-<group>` a seats root can hold, in the table's order. Every seat's
+# settings deny each but its own group's, and the legacy `.state/claude`, for read (U498c).
+LOGIN_GROUPS = ("worker", "orchestrator", "audit", "router")
+
+
+def login_read_denies(seats, group):
+    """The denyRead rows a seat of login `group` carries for the login directories under the physical seats root
+    `seats` (U498c): every other group's `.state/claude-<group>` in the table's order, then the legacy `.state/claude`."""
+    return [f"{seats}/.state/claude-{other}" for other in LOGIN_GROUPS if other != group] + [f"{seats}/.state/claude"]
+
+
 # U100: an env built from scratch carries scratch_git's settings too, so no commit starts background maintenance.
 GIT_IDENTITY = quiet_git_env(
     {
@@ -147,9 +159,13 @@ class SeatFixture(unittest.TestCase):
         # path): copies of the system's `true` binary, so the check runs as written on every host.
         for tool in ("bwrap", "socat", "rg"):
             shutil.copy(BINARY_STAND_IN, bindir / tool)
-        # The preflight's one judge of the seats' Claude route was `claude auth status` under the shared directory
-        # (U318); since U512 it is `claude-keyed --check` and the Models API, so this fake exists to prove that no
-        # launch calls `claude` any more: every call is recorded with its directory and whether a token name reached it.
+        # A launch whose profile names the claude-bridge route (the fixture's overlays name none, so most launches have
+        # nothing to log in) needs the login group's claude.ai login (U318, per group since U498) beside the seats' API
+        # key (U512): seat-login-preflight reads the login with `claude auth status` under
+        # `<seats-root>/.state/claude-<group>`, and `claude` is a tool hcom-seat resolves, so this fake answers for
+        # every launch and no test runs the host's Claude Code. It prints the documented record with the method
+        # FAKE_CLAUDE_AUTH_METHOD (`claude.ai` unless set), exits FAKE_CLAUDE_AUTH_STATUS (0 unless set) and records
+        # each call with its directory and whether a token name reached it.
         self.claude_calls = root / "claude-auth-calls"
         (bindir / "claude").write_text(
             "#!/bin/sh\n"
@@ -265,17 +281,23 @@ class SeatFixture(unittest.TestCase):
 
 
 class HcomSeatTest(SeatFixture):
-    def test_a_seat_without_an_api_key_file_starts_nothing(self):
-        """U512: hcom-seat names the seats' API key file `<seats-root>/.state/anthropic/api-key` to every seat as
+    def test_a_seat_without_a_login_or_an_api_key_file_starts_nothing(self):
+        """U37: hcom-seat runs seat-login-preflight beside it before it creates or starts anything. U512: hcom-seat
+        names the seats' API key file `<seats-root>/.state/anthropic/api-key` to every seat as
         REGIME_ANTHROPIC_KEY_FILE and runs `claude-keyed --check` on it (a tool it resolves like every other; the
         tests' fixture lever answers) after the preflight and before the seat's settings are written, for every role
         and in a dry run too (where it runs before the dry run prints): a refusal (exit 2) is the launch's refusal,
         naming the lever's line and the handout's step; a status that is neither 0 nor 2 is unreadable, a refusal too
-        (standing order 21). On the claude-bridge route the preflight judges the same file first and the key's
-        validity by one Models API call (the fixture's fake endpoint), so the seat starts on a 200 alone, and
-        `claude auth status` is never called. U37: all of it before anything is created or started."""
+        (standing order 21). U318, U498: on the claude-bridge route the preflight judges the worker group's claude.ai
+        login under `.state/claude-worker` through `claude`, a tool hcom-seat resolves (this fake answers and no test
+        runs the host's Claude Code), and the same key file with the same lever and the key's validity by one Models
+        API call (the fixture's fake endpoint), on one line, naming the operator's step of each state that is not
+        present, so the seat starts on a present login and a 200 alone; U190b: the rule holds on a local host too."""
         key = self.key_file
         handout = "handouts/anthropic-api-key-u510.md"
+        shared = Path(self.seats, ".state/claude-worker")
+        command = f"CLAUDE_CONFIG_DIR={shared} claude auth login"
+        key_absent = f"absent (the key file {key} is absent; place the API key there (the U510 handout))"
 
         def launch(*extra_args, **extra):
             overrides = {
@@ -335,37 +357,91 @@ class HcomSeatTest(SeatFixture):
         )
         self.assertEqual(self.calls_of("hcom"), [])
         self.assertEqual((self.tools / "claude-keyed").resolve(), (self.bindir / "claude-keyed").resolve())
+        self.assertEqual((self.tools / "claude").resolve(), (self.bindir / "claude").resolve())
         self.assertEqual(self.claude_keyed_calls.read_text(), f"--check REGIME_ANTHROPIC_KEY_FILE={key}\n" * 4)
-        self.assertFalse(self.claude_calls.exists(), "`claude auth status` is never called")
-        # On the claude-bridge route the preflight judges the file first, with the same lever, and names the
-        # handout's step; a placed key the Models API rejects (401) is its refusal too.
+        self.assertFalse(self.claude_calls.exists(), "no login route, so the preflight read no login")
+        # On the claude-bridge route the preflight judges the group's login and the key file first, the key with the
+        # same lever, and names the handout's step for an absent key beside a present login.
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         run = launch(FAKE_CLAUDE_KEYED_STATUS="2")
         self.assertEqual(run.returncode, 2, run.stderr)
         self.assertTrue(
             run.stderr.startswith(
-                f"seat-login-preflight: worker claude-bridge: absent (the key file {key} is absent; place the API key"
-                " there (the U510 handout)); place the key once: "
+                f"seat-login-preflight: worker claude-bridge: login present (claude.ai, {shared}); {key_absent}; place"
+                " the key once: "
             ),
             run.stderr,
         )
+        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertFalse(Path(self.seats, "worker").exists())
+        # The preflight made the group's directory (0700) for the operator's login; the launch made nothing else but
+        # the key directory of the earlier launches.
+        self.assertTrue(shared.is_dir() and not shared.is_symlink(), shared)
+        self.assertEqual(stat.S_IMODE(os.lstat(shared).st_mode), 0o700)
+        self.assertEqual(sorted(p.name for p in Path(self.seats).iterdir()), [".state"])
+        self.assertEqual(sorted(p.name for p in Path(self.seats, ".state").iterdir()), ["anthropic", "claude-worker"])
+        # An absent login beside the absent key names both steps, the login's first; a local host (no SSH session)
+        # refuses the same, and the command has no BROWSER prefix there (U190b: the child logs in by the group
+        # directory's login wherever it runs).
+        run = launch(FAKE_CLAUDE_AUTH_STATUS="1", FAKE_CLAUDE_KEYED_STATUS="2")
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn(
+            f"worker claude-bridge: absent (not logged in under {shared}); {key_absent}; log in once:"
+            f" BROWSER=regime-open-url {command}; place the key once: ",
+            run.stderr,
+        )
+        self.assertIn(
+            "; the login and the key are the operator's steps (handouts/anthropic-api-key-u510.md, steps 2 and 3, for"
+            " the key): run those commands in your own terminal on this host, then start the seat again",
+            run.stderr,
+        )
+        run = launch(SSH_CONNECTION=None, FAKE_CLAUDE_AUTH_STATUS="1", FAKE_CLAUDE_KEYED_STATUS="2")
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn(f"; log in once: {command}; place the key once: ", run.stderr)
+        # With the key placed and accepted, a token or key login under the directory is not the seat's claude.ai
+        # login: the login step alone.
         self.place_key()
+        for method in ("oauth_token", "api_key"):
+            with self.subTest(method=method):
+                run = launch(FAKE_CLAUDE_AUTH_METHOD=method, REGIME_ANTHROPIC_MODELS_URL=self.models_api(200))
+                self.assertEqual(run.returncode, 2, run.stderr)
+                self.assertIn(
+                    f"worker claude-bridge: absent (authMethod {method} under {shared}, not claude.ai); key ok ({key});"
+                    f" log in once: BROWSER=regime-open-url {command}; a login is the operator's step",
+                    run.stderr,
+                )
+        # A placed key the Models API rejects (401) beside a present login: the key steps alone.
         run = launch(REGIME_ANTHROPIC_MODELS_URL=self.models_api(401))
         self.assertEqual(run.returncode, 2, run.stderr)
-        self.assertIn(f"worker claude-bridge: key rejected ({key}; HTTP 401); place the key once: ", run.stderr)
+        self.assertIn(
+            f"worker claude-bridge: login present (claude.ai, {shared}); key rejected ({key}; HTTP 401); place the key"
+            " once: ",
+            run.stderr,
+        )
         self.assertEqual(self.calls_of("hcom"), [])
         self.assertEqual(self.models_requests, [{"path": "/v1/models?limit=1", "x-api-key": FAKE_KEY, "anthropic-version": "2023-06-01"}])  # fmt: skip
-        # A key the Models API accepts is the key the seat can use; the key's bytes reach no line.
+        # Every login call ran under the group's directory and without a token name: one per launch on the route,
+        # through the fake alone.
+        self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n" * 6)
+        # The claude.ai login under the directory and a key the Models API accepts are what the seat can use; the
+        # key's bytes reach no line.
         run = launch(REGIME_ANTHROPIC_MODELS_URL=self.models_api(200))
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn(f"seat-login-preflight: worker claude-bridge: key ok ({key})\n", run.stderr)
+        self.assertIn(
+            f"seat-login-preflight: worker claude-bridge: login present (claude.ai, {shared}); key ok ({key})\n",
+            run.stderr,
+        )
         self.assertEqual(len(self.calls_of("hcom")), 1)
-        self.assertNotIn(FAKE_KEY, run.stdout + run.stderr + self.claude_keyed_calls.read_text())
-        self.assertFalse(self.claude_calls.exists())
-        # The dry run's environment line and the shim carry the file; the launch's omp saw it exported.
+        self.assertNotIn(FAKE_KEY, run.stdout + run.stderr + self.claude_keyed_calls.read_text() + self.claude_calls.read_text())  # fmt: skip
+        # The dry run's environment line and the shim carry the file and the group's directory; the launch's omp saw
+        # them exported.
         run = launch("--dry-run")
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn(f" REGIME_STORE_ROOT={self.home.resolve()}/.local/state/regime-store/repo REGIME_ANTHROPIC_KEY_FILE={key}\n", run.stderr)  # fmt: skip
+        self.assertIn(
+            f" REGIME_STORE_ROOT={self.home.resolve()}/.local/state/regime-store/repo REGIME_ANTHROPIC_KEY_FILE={key}"
+            f" CLAUDE_CONFIG_DIR={shared} (login group worker)\n",
+            run.stderr,
+        )
         shim = Path(self.seats, ".sandbox/worker/bin/omp").read_text()
         self.assertIn(f"key_file={key}", shim)
         self.assertIn("\nexport REGIME_ANTHROPIC_KEY_FILE=${key_file}\n", shim)
@@ -419,8 +495,8 @@ class HcomSeatTest(SeatFixture):
         real = Path(os.path.realpath(other))
         run = self.seat("worker", "--seats-root", str(other))
         line = (
-            f"seat-login-preflight: refused: the shared Claude Code directory path component {real} is a directory of"
-            " another user; move it aside before a seat starts\n"
+            f"seat-login-preflight: refused: the login group's Claude Code directory path component {real} is a"
+            " directory of another user; move it aside before a seat starts\n"
         )
         self.assertEqual((run.returncode, run.stdout, run.stderr), (2, "", line))
         self.assertEqual(self.calls_of("hcom"), [], "no seat started")
@@ -903,14 +979,14 @@ class HcomSeatTest(SeatFixture):
         # U190b: being no root is not enough (srt grants ~/.claude/debug of the real HOME on its own), so the operator's
         # Claude Code state is denied explicitly, for write and for read.
         self.assert_operator_claude_denied(worker)
-        # U318: the bridge child's state lives in the shared Claude Code directory, a real 0700 directory the launch
-        # creates inside `.state`; no per-seat directory exists any more.
-        state_claude = Path(self.seats, ".state/claude")
+        # U318, U498: the bridge child's state lives in its login group's Claude Code directory, a real 0700 directory
+        # the launch creates inside `.state`; no per-seat directory exists any more.
+        state_claude = Path(self.seats, ".state/claude-worker")
         self.assertTrue(state_claude.is_dir() and not state_claude.is_symlink(), state_claude)
         self.assertEqual(stat.S_IMODE(os.lstat(state_claude).st_mode), 0o700)
         self.assertFalse(Path(self.seats, ".state/worker/claude").exists())
         self.assertIn(str(Path(self.seats, ".state/worker")), write)
-        # A caller's CLAUDE_CONFIG_DIR is no root either, and the shim hands omp the shared directory.
+        # A caller's CLAUDE_CONFIG_DIR is no root either, and the shim hands omp the group's directory.
         caller_config = self.home / "claude-config"
         caller_config.mkdir()
         record = self.plant_claude_env_recorder()
@@ -934,7 +1010,10 @@ class HcomSeatTest(SeatFixture):
             [entry for entry in orchestrator["filesystem"]["allowWrite"] if entry.startswith(str(home / ".claude"))], []
         )
         self.assert_operator_claude_denied(orchestrator, str(caller_config))
-        self.assertEqual(self.claude_env_of(record)["CLAUDE_CONFIG_DIR"], str(state_claude.resolve()))
+        self.assertEqual(
+            self.claude_env_of(record)["CLAUDE_CONFIG_DIR"],
+            str(Path(self.seats, ".state/claude-orchestrator").resolve()),
+        )
         shutil.copy(FAKE, self.bindir / "omp")
         run = self.seat("orchestrator", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -958,11 +1037,12 @@ class HcomSeatTest(SeatFixture):
                 self.assertEqual(listed.count(path), 1, (key, path, listed))
             self.assertEqual([entry for entry in listed if entry.startswith(str(home / ".claude"))], expected[:2])
 
-    def test_the_shim_exports_the_shared_directory_and_the_key_file_and_clears_a_callers_token(self):
-        """U318: the bridge child's state lives in the shared directory, which the shim exports; U512: its key is the
-        one file `<seats-root>/.state/anthropic/api-key`, exported as REGIME_ANTHROPIC_KEY_FILE for `claude-keyed`
-        to read, and no token. U312: a CLAUDE_CODE_OAUTH_TOKEN in the caller's environment is no input, at a launch
-        whose preflight found the key and when the shim runs directly."""
+    def test_the_shim_exports_the_groups_directory_and_the_key_file_and_clears_a_callers_token(self):
+        """U318, U498: the bridge child logs in by its login group's claude.ai login, which Claude Code stores and
+        refreshes there; the shim exports that directory. U512: its key is the one file
+        `<seats-root>/.state/anthropic/api-key`, exported as REGIME_ANTHROPIC_KEY_FILE for `claude-keyed` to read, and
+        no token. U312: a CLAUDE_CODE_OAUTH_TOKEN in the caller's environment is no input, at a launch whose preflight
+        found the login and the key and when the shim runs directly."""
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         record = self.plant_claude_env_recorder()
         caller = "fake-" + "caller-value-u190"
@@ -970,13 +1050,14 @@ class HcomSeatTest(SeatFixture):
         url = self.models_api(200)
         run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CODE_OAUTH_TOKEN=caller, REGIME_ANTHROPIC_MODELS_URL=url)  # fmt: skip
         self.assertEqual(run.returncode, 0, run.stderr)
-        shared = str(Path(self.seats, ".state/claude"))
-        self.assertIn(f"worker claude-bridge: key ok ({key})", run.stderr)
+        shared = str(Path(self.seats, ".state/claude-worker"))
+        self.assertIn(f"worker claude-bridge: login present (claude.ai, {shared}); key ok ({key})", run.stderr)
         expected = {"CLAUDE_CONFIG_DIR": shared, "CLAUDE_CODE_OAUTH_TOKEN": "unset", "REGIME_ANTHROPIC_KEY_FILE": key}
         self.assertEqual(self.claude_env_of(record), expected)
-        # The preflight's judge and the launcher's gate each ran the lever on the file; `claude` never ran.
+        # The preflight's one login call ran under the group's directory and without the caller's token name; its
+        # key judge and the launcher's gate each ran the lever on the file.
+        self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n")
         self.assertEqual(self.claude_keyed_calls.read_text(), f"--check REGIME_ANTHROPIC_KEY_FILE={key}\n" * 2)
-        self.assertFalse(self.claude_calls.exists())
         shim = Path(self.seats, ".sandbox/worker/bin/omp")
         env = {**self.env, "CLAUDE_CODE_OAUTH_TOKEN": caller}
         direct = subprocess.run([str(shim), "--version"], env=env, capture_output=True, text=True, check=False)
@@ -1004,61 +1085,87 @@ class HcomSeatTest(SeatFixture):
         run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CODE_OAUTH_TOKEN=caller, REGIME_ANTHROPIC_MODELS_URL=url)  # fmt: skip
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(record.read_text(), "CLAUDE_CODE_OAUTH_TOKEN=unset\n")
+        shared = str(Path(self.seats, ".state/claude-worker"))
+        self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n")
         self.assertEqual(self.claude_keyed_calls.read_text(), f"--check REGIME_ANTHROPIC_KEY_FILE={key}\n" * 2)
         self.assertNotIn(caller, run.stdout + run.stderr)
         self.assertNotIn(FAKE_KEY, run.stdout + run.stderr)
 
-    def test_every_role_shares_one_claude_code_directory_whose_configuration_no_seat_can_change(self):
-        """U318 (U314 alternative A): the bridge child of every seat runs under one `CLAUDE_CONFIG_DIR`,
-        `<seats-root>/.state/claude`, a real 0700 directory the launch makes; it is write row 2 and a read root of
-        every role's settings, and its settings, rules, hooks, plugins, skills, commands and agents are write-denied
-        for every role, so no seat changes what another seat's child loads from it. U512: the key file
-        `<seats-root>/.state/anthropic/api-key` is a read root of every role, beside the shared directory, and
+    def test_every_role_gets_its_login_groups_claude_code_directory_whose_configuration_no_seat_can_change(self):
+        """U498 (one login per seat group, replacing U318's one directory per seats root): the bridge child of a seat
+        runs under its login group's `CLAUDE_CONFIG_DIR`, `<seats-root>/.state/claude-<group>` (worker to `worker`,
+        orchestrator to `orchestrator`, from the one table), a real 0700 directory the launch makes; it is write row 2
+        and a read root of the role's settings, and its settings, rules, hooks, plugins, skills, commands and agents are
+        write-denied, so no seat changes what another seat's child loads from it. The legacy shared directory
+        `.state/claude` is made and granted by no launch (the kit does not read or copy a login, order 54) and, since
+        U498c, denied for read by every one, like every other group's directory. U512: the key file
+        `<seats-root>/.state/anthropic/api-key` is a read root of every role, beside the group's directory, and
         write-denied to every role, so no seat rewrites the key; its directory is a 0700 slot the launch makes. A
-        linked shared directory refuses before anything is made, and no seat may take its name."""
-        shared = Path(self.seats, ".state/claude")
+        linked group directory, or a linked key directory, refuses before anything is made, and no seat may take a
+        `claude-*` name, `claude` or `anthropic`."""
         key = self.key_file
         record = self.plant_claude_env_recorder()
+        legacy = Path(self.seats, ".state/claude")
         for role in ("worker", "orchestrator"):
             with self.subTest(role=role):
+                group_dir = Path(self.seats, f".state/claude-{role}")
                 run = self.seat(role, "--seats-root", self.seats)
                 self.assertEqual(run.returncode, 0, run.stderr)
-                self.assertTrue(shared.is_dir() and not shared.is_symlink(), shared)
-                self.assertEqual(stat.S_IMODE(os.lstat(shared).st_mode), 0o700)
+                self.assertTrue(group_dir.is_dir() and not group_dir.is_symlink(), group_dir)
+                self.assertEqual(stat.S_IMODE(os.lstat(group_dir).st_mode), 0o700)
                 self.assertTrue(key.parent.is_dir() and not key.parent.is_symlink(), key.parent)
                 self.assertEqual(stat.S_IMODE(os.lstat(key.parent).st_mode), 0o700)
                 fs = self.settings_of(role)["filesystem"]
-                self.assertEqual(fs["allowWrite"][2], str(shared), "row 2 of every role's write roots")
+                self.assertEqual(fs["allowWrite"][2], str(group_dir), "row 2 of every role's write roots")
                 for kind in ("allowWrite", "allowRead"):
-                    self.assertEqual(fs[kind].count(str(shared)), 1, (kind, fs[kind]))
-                self.assertEqual(fs["allowRead"][fs["allowRead"].index(str(shared)) + 1], str(key), "the key file beside the shared directory")  # fmt: skip
+                    self.assertEqual(fs[kind].count(str(group_dir)), 1, (kind, fs[kind]))
+                self.assertEqual(fs["allowRead"][fs["allowRead"].index(str(group_dir)) + 1], str(key), "the key file beside the group's directory")  # fmt: skip
                 self.assertEqual((fs["allowRead"].count(str(key)), fs["denyWrite"].count(str(key))), (1, 1), fs)
                 self.assertNotIn(str(key), fs["allowWrite"] + fs["denyRead"])
                 self.assertEqual([row for row in fs["allowWrite"] + fs["allowRead"] if row == str(key.parent) or row.startswith(f"{key.parent}/") and row != str(key)], [], "nothing else under the key directory")  # fmt: skip
-                denied = [f"{shared}/{name}" for name in SHARED_CLAUDE_DENIES]
-                self.assertEqual([row for row in fs["denyWrite"] if row.startswith(f"{shared}/")], denied)
-                self.assertEqual([row for row in fs["denyRead"] if row.startswith(str(shared))], [])
+                denied = [f"{group_dir}/{name}" for name in SHARED_CLAUDE_DENIES]
+                self.assertEqual([row for row in fs["denyWrite"] if row.startswith(f"{group_dir}/")], denied)
+                self.assertEqual([row for row in fs["denyRead"] if row.startswith(str(group_dir))], [])
+                for kind in ("allowWrite", "allowRead", "denyWrite"):
+                    self.assertEqual(
+                        [row for row in fs[kind] if row == str(legacy) or row.startswith(f"{legacy}/")], [], kind
+                    )
+                # U498c: the legacy directory is denied for read by name, once, and granted by nothing.
+                self.assertEqual(
+                    [row for row in fs["denyRead"] if row == str(legacy) or row.startswith(f"{legacy}/")], [str(legacy)]
+                )
                 env = self.claude_env_of(record)
-                self.assertEqual(env, {"CLAUDE_CONFIG_DIR": str(shared), "CLAUDE_CODE_OAUTH_TOKEN": "unset", "REGIME_ANTHROPIC_KEY_FILE": str(key)})  # fmt: skip
+                self.assertEqual(env, {"CLAUDE_CONFIG_DIR": str(group_dir), "CLAUDE_CODE_OAUTH_TOKEN": "unset", "REGIME_ANTHROPIC_KEY_FILE": str(key)})  # fmt: skip
                 self.assertFalse(Path(self.seats, ".state", role, "claude").exists(), "no per-seat directory")
-        # A linked shared directory, or a linked key directory, refuses (exit 2) before anything starts; so does the
-        # directory's name as a seat's.
-        shutil.rmtree(shared)
+        self.assertFalse(legacy.exists() or legacy.is_symlink(), "the legacy shared directory is not made")
+        # Two groups, two directories: a worker's child and an orchestrator's child rotate no refresh token together.
+        self.assertNotEqual(
+            self.settings_of("worker")["filesystem"]["allowWrite"][2],
+            self.settings_of("orchestrator")["filesystem"]["allowWrite"][2],
+        )
+        # A linked group directory refuses (exit 2) before anything starts; so does a login directory's name as a seat's,
+        # and the key directory's.
+        group_dir = Path(self.seats, ".state/claude-worker")
+        shutil.rmtree(group_dir)
         elsewhere = self.home / "elsewhere"
         elsewhere.mkdir()
-        shared.symlink_to(elsewhere)
+        group_dir.symlink_to(elsewhere)
         launches = len(record.read_text().splitlines())
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn(f"the seat slot {shared} is a symbolic link", run.stderr)
-        run = self.seat("worker", "--name", "claude", "--seats-root", self.seats, "--dry-run")
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn("the seat name 'claude' is taken by the shared Claude Code directory", run.stderr)
+        self.assertIn(f"the login group directory {group_dir} is a symbolic link", run.stderr)
+        for name in ("claude-worker", "claude-router", "claude-x", "claude"):
+            with self.subTest(name=name):
+                run = self.seat("worker", "--name", name, "--seats-root", self.seats, "--dry-run")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"the seat name '{name}' is taken by the Claude Code login directories", run.stderr)
         run = self.seat("worker", "--name", "anthropic", "--seats-root", self.seats, "--dry-run")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("the seat name 'anthropic' is taken by the seats' API key directory", run.stderr)
-        shared.unlink()
-        shared.mkdir()
+        self.assertTrue(group_dir.is_symlink(), "the launch neither removed nor replaced the link")
+        # A linked key directory (U512) refuses the same, in a dry run too, with the link kept and nothing made.
+        group_dir.unlink()
+        group_dir.mkdir(0o700)
         key.parent.rmdir()
         key.parent.symlink_to(elsewhere)
         for extra in ([], ["--dry-run"]):
@@ -1069,7 +1176,231 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual(len(record.read_text().splitlines()), launches, "no omp ran")
         self.assertTrue(key.parent.is_symlink(), "the launch neither removed nor replaced the link")
         self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), [])
-        self.assertFalse(self.claude_calls.exists(), "`claude auth status` is never called")
+
+    def test_the_login_group_table_is_one_text_in_both_levers(self):
+        """U498: the login group of a role is one table, `login_group_of_role`, held as the same text by hcom-seat and
+        seat-login-preflight (copied, each lever's tests asserting it): worker to worker, orchestrator to orchestrator,
+        audit to audit, dsh to router and router to router (the dsh gateway child is the Router's); any other name
+        fails (status 1) and prints nothing, so a caller's unread status is the lever's refusal, never a directory."""
+        tables = {}
+        for lever in (SEAT, SEAT.parent / "seat-login-preflight"):
+            text = lever.read_text()
+            start = text.index("login_group_of_role() {")
+            tables[lever.name] = text[start : text.index("\n}\n", start) + 3]
+        self.assertEqual(tables["hcom-seat"], tables["seat-login-preflight"])
+        table = tables["hcom-seat"]
+        script = f'set -euo pipefail\n{table}\nlogin_group_of_role "$1"\n'
+        roles = (
+            ("worker", "worker"), ("orchestrator", "orchestrator"), ("audit", "audit"), ("dsh", "router"), ("router", "router"),
+        )  # fmt: skip
+        for role, group in roles:
+            with self.subTest(role=role):
+                run = subprocess.run(["bash", "-c", script, "_", role], capture_output=True, text=True, check=False)
+                self.assertEqual((run.returncode, run.stdout, run.stderr), (0, f"{group}\n", ""))
+        for role in ("claude", "Worker", "worker ", "", "review"):
+            with self.subTest(role=role):
+                run = subprocess.run(["bash", "-c", script, "_", role], capture_output=True, text=True, check=False)
+                self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        # U498c: the table's range, the array `LOGIN_GROUPS` beside the table in hcom-seat (the login directories every
+        # seat denies for read but its own group's), is the set of groups the table gives its roles, each once, in the
+        # table's order, so a group the table gains is denied without a second list diverging from it.
+        (array,) = [line for line in SEAT.read_text().splitlines() if line.startswith("LOGIN_GROUPS=(")]
+        run = subprocess.run(
+            ["bash", "-c", f'set -euo pipefail\n{array}\nprintf "%s\\n" "${{LOGIN_GROUPS[@]}}"\n'],
+            capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        table_range = list(dict.fromkeys(group for _, group in roles))
+        self.assertEqual(run.stdout.split("\n")[:-1], table_range)
+        self.assertEqual(run.stdout.split("\n")[:-1], list(LOGIN_GROUPS))
+
+    def test_every_seat_is_denied_the_other_login_groups_directories_and_the_legacy_one(self):
+        """U498c (verdict U498-4d18d6dd P1 `hcom-seat:2062`; the finding's site is the orchestrator's allowRead of the
+        whole seats root): srt reopens a root's subtree under an allow but for a more specific deny, so until this head
+        a seat whose settings allowed the seats root for read, the orchestrator, could read another group's login
+        directory (`.state/claude-worker`, with its `.credentials.json` on Linux). Every role's settings carry one
+        denyRead row per login directory that is not its own group's: the other groups' `.state/claude-<group>` in the
+        table's order (LOGIN_GROUPS, the range of `login_group_of_role`) and the legacy `.state/claude`, each once,
+        under the physical seats root, with no grant and no other deny at or under any of them; the own group's
+        directory stays allowed for read and write and stands in no deny list. The orchestrator keeps its read grant
+        of the seats root, and the worker group's login is denied under it."""
+        seats = str(Path(self.seats).resolve())
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                run = self.seat(role, "--seats-root", self.seats)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                fs = self.settings_of(role)["filesystem"]
+                own = f"{seats}/.state/claude-{role}"
+                denied = login_read_denies(seats, role)
+                self.assertEqual([row for row in fs["denyRead"] if row.startswith(f"{seats}/.state/claude")], denied)
+                for row in denied:
+                    self.assertEqual(fs["denyRead"].count(row), 1, (row, fs["denyRead"]))
+                    for key in ("allowRead", "allowWrite", "denyWrite"):
+                        self.assertEqual([r for r in fs[key] if r == row or r.startswith(f"{row}/")], [], (key, row))
+                self.assertNotIn(own, denied)
+                self.assertEqual((fs["allowRead"].count(own), fs["allowWrite"].count(own)), (1, 1))
+                self.assertEqual([r for r in fs["denyRead"] if r == own or r.startswith(f"{own}/")], [])
+                self.assertNotIn(own, fs["denyWrite"])
+        orchestrator = self.settings_of("orchestrator")["filesystem"]
+        self.assertIn(seats, orchestrator["allowRead"], "the verdict's grant: the orchestrator reads the seats root")
+        self.assertIn(
+            f"{seats}/.state/claude-worker", orchestrator["denyRead"], "the worker group's login, denied under it"
+        )
+        self.assertNotIn(f"{seats}/.state/claude-orchestrator", orchestrator["denyRead"], "its own group's login, kept")
+
+    def test_a_dry_run_names_the_login_groups_directory_in_its_environment_line(self):
+        """U498 ACCEPTANCE 1: `hcom-seat <role> --name probe --dry-run` prints on stderr the environment a launch
+        exports, naming the role's login group directory as CLAUDE_CONFIG_DIR (`.state/claude-worker` for a worker,
+        `.state/claude-orchestrator` for the orchestrator) and the group; the dry run makes no seats root."""
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                run = self.seat(role, "--name", "probe", "--seats-root", self.seats, "--dry-run")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                (line,) = [row for row in run.stderr.splitlines() if row.startswith("hcom-seat: environment ")]
+                self.assertIn(f"HCOM_DIR={self.store} ", line)
+                self.assertTrue(
+                    line.endswith(
+                        f" CLAUDE_CONFIG_DIR={Path(self.seats, f'.state/claude-{role}')} (login group {role})"
+                    ),
+                    line,
+                )
+        self.assertFalse(Path(self.seats).exists(), "a dry run makes no seats root")
+
+    def test_every_launch_makes_every_login_groups_directory_before_its_settings_file_so_each_deny_binds(self):
+        """U498d (verdict U498-8f2cca8c P1 `hcom-seat:2713`; the mechanism-change row of 2026-11-12T15:05:20Z, form
+        allowlist: the table's range made real). srt 0.0.81's Linux backend mounts nothing for a denyRead entry that
+        is not there (`dist/sandbox/linux-sandbox-utils.js:1810-1812`), so until this head the orchestrator's U498c
+        deny of `.state/claude-worker` bound nothing before the worker group's first launch or the operator's login
+        made that directory, and its read grant of the seats root reached the credentials made later. Now every
+        launch of every role makes every group's directory of the table's range (LOGIN_GROUPS), 0700, empty, this
+        user's, before its settings file is written (login_dirs_make), so every login directory row of every role's
+        denyRead names a directory that exists when srt reads the file; the legacy `.state/claude` is in no range and
+        is made by nothing (standing order 54). A group directory planted as a symbolic link or a file, the own
+        group's or another's, refuses the launch naming it, with nothing made and nothing started; a dry run makes
+        nothing, as before."""
+        seats = Path(self.seats).resolve()
+        groups = [seats / f".state/claude-{group}" for group in LOGIN_GROUPS]
+        legacy = seats / ".state/claude"
+        run = self.seat("worker", "--name", "probe", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertFalse(seats.exists(), "a dry run makes no seats root and no login directory")
+        # The omp fake reads the settings srt was started with (the shim's HCOM_SEAT_SANDBOX names the sandbox) and
+        # records, for every denyRead row under the seats root, whether it is a real directory at that moment: on
+        # Linux the deny binds only then.
+        record = self.calls / "deny-rows-present"
+        (self.bindir / "omp").write_text(
+            "#!/usr/bin/env python3\n"
+            "import json, os\n"
+            "sandbox = os.environ['HCOM_SEAT_SANDBOX']\n"
+            "fs = json.load(open(os.path.join(sandbox, 'srt-settings.json')))['filesystem']\n"
+            f"seats = {str(seats)!r}\n"
+            "rows = {row: os.path.isdir(row) and not os.path.islink(row) for row in fs['denyRead']"
+            " if row.startswith(seats + '/')}\n"
+            f"open({str(record)!r}, 'a').write(json.dumps(rows) + chr(10))\n"
+        )
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                run = self.seat(role, "--seats-root", self.seats)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                settings_file = Path(self.seats, ".sandbox", role, "srt-settings.json")
+                for path in groups:
+                    self.assertTrue(path.is_dir() and not path.is_symlink(), path)
+                    self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
+                    self.assertEqual(path.stat().st_uid, os.geteuid(), "a directory of this user")
+                    self.assertEqual(list(path.iterdir()), [], "made empty: no login is made, read or copied")
+                    self.assertLessEqual(
+                        path.stat().st_mtime_ns, settings_file.stat().st_mtime_ns, "before the settings file is written"
+                    )
+                self.assertFalse(
+                    legacy.exists() or legacy.is_symlink(), "the legacy shared directory is made by nothing"
+                )
+                fs = self.settings_of(role)["filesystem"]
+                denied = login_read_denies(str(seats), role)
+                self.assertEqual([row for row in fs["denyRead"] if row.startswith(f"{seats}/.state/claude")], denied)
+                present = json.loads(record.read_text().splitlines()[-1])
+                for row in denied:
+                    self.assertEqual(present[row], row != str(legacy), (row, present))
+                # Every denyRead row under the seats root but the legacy directory is a directory when srt reads the file.
+                self.assertEqual([row for row, ok in present.items() if not ok], [str(legacy)], present)
+        # A link or a file at any group's directory, the own group's or another's, refuses before anything is made
+        # or started; the entry is neither followed, removed nor replaced.
+        launches = len(record.read_text().splitlines())
+        hcom_calls = len(self.calls_of("hcom"))
+        elsewhere = self.home / "elsewhere"
+        elsewhere.mkdir()
+        for group, plant in (("audit", "link"), ("router", "file"), ("worker", "link")):
+            with self.subTest(group=group, plant=plant):
+                path = seats / f".state/claude-{group}"
+                shutil.rmtree(path)
+                if plant == "link":
+                    path.symlink_to(elsewhere)
+                    message = f"the login group directory {path} is a symbolic link"
+                else:
+                    path.write_text("")
+                    message = f"the login group directory {path} is not a directory"
+                run = self.seat("worker", "--seats-root", self.seats)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertEqual(len(self.calls_of("hcom")), hcom_calls, "nothing started")
+                self.assertTrue(
+                    path.is_symlink() if plant == "link" else path.is_file(), "neither removed nor replaced"
+                )
+                self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), [])
+                path.unlink()
+                path.mkdir(0o700)
+        self.assertEqual(len(record.read_text().splitlines()), launches, "no omp ran")
+
+    def test_the_make_step_makes_the_tables_range_on_a_scratch_root_and_refuses_a_planted_entry_by_name(self):
+        """U498d: `login_dirs_make`, the make step, run from the lever's own text (with `refuse` and the `LOGIN_GROUPS`
+        line) on a scratch seats root whose `.state` exists: one 0700 directory per group of the range, empty, and
+        nothing else; a second run keeps them (present or made, each is a real directory of this user); a regular
+        file or a symbolic link planted at a group's path refuses (exit 2) naming the group and the path, the other
+        directories untouched; the legacy `.state/claude` is never made."""
+        text = SEAT.read_text()
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("refuse", "login_dirs_make")
+        )
+        (array,) = [line for line in text.splitlines() if line.startswith("LOGIN_GROUPS=(")]
+        root = Path(self.temp.name).resolve() / "scratch-seats"
+        (root / ".state").mkdir(parents=True)
+        script = f"set -euo pipefail\n{array}\n{functions}\nseats_root=$1\nlogin_dirs_make\n"
+
+        def make():
+            return subprocess.run(["bash", "-c", script, "_", str(root)], capture_output=True, text=True, check=False)
+
+        for attempt in ("made", "kept"):
+            with self.subTest(attempt):
+                run = make()
+                self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "", ""))
+                self.assertEqual(
+                    sorted(p.name for p in (root / ".state").iterdir()), sorted(f"claude-{g}" for g in LOGIN_GROUPS)
+                )
+                for group in LOGIN_GROUPS:
+                    path = root / f".state/claude-{group}"
+                    self.assertTrue(path.is_dir() and not path.is_symlink(), path)
+                    self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
+                    self.assertEqual(list(path.iterdir()), [], path)
+        for group, plant in (("worker", "file"), ("router", "link")):
+            with self.subTest(group=group, plant=plant):
+                path = root / f".state/claude-{group}"
+                path.rmdir()
+                if plant == "file":
+                    path.write_text("")
+                else:
+                    path.symlink_to(root)
+                run = make()
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(
+                    f"the {group} login group's Claude Code directory {path} is not a real directory of this user",
+                    run.stderr,
+                )
+                for other in LOGIN_GROUPS:
+                    if other != group:
+                        self.assertTrue((root / f".state/claude-{other}").is_dir(), other)
+                path.unlink()
+                path.mkdir(0o700)
+        self.assertFalse((root / ".state/claude").exists() or (root / ".state/claude").is_symlink())
 
     def test_the_canary_runs_under_a_posix_shell(self):
         """U85 round 2: under dash (Ubuntu's /bin/sh) the canary's denied write must not end the shell."""
@@ -3174,7 +3505,9 @@ class HcomSeatTest(SeatFixture):
                         above = [row for row in fs[key] if Path(row) in root.parents]
                         self.assertEqual(above, [], f"{key} grants a directory above the root")
                     self.assertEqual(
-                        fs["allowWrite"][2], str(Path(self.seats, ".state/claude")), "row 2 is the shared directory"
+                        fs["allowWrite"][2],
+                        str(Path(self.seats, f".state/claude-{role}")),
+                        "row 2 is the group directory",
                     )
                     self.assertEqual(
                         self.store_root_modes(root), [(0o700, True, True)] * 2, "the launch makes the root"

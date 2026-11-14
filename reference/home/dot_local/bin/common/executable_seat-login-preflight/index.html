@@ -6074,9 +6074,14 @@
 <li><code>claude_config_dir</code></li>
 <li><code>claude_config_ensure</code></li>
 <li><code>claude_config_validate</code></li>
+<li><code>claude_key_command</code></li>
+<li><code>claude_key_state</code></li>
 <li><code>claude_login_command</code></li>
 <li><code>claude_login_refuse</code></li>
-<li><code>claude_state</code></li>
+<li><code>claude_login_state</code></li>
+<li><code>claude_pass_report</code></li>
+<li><code>claude_state_hold</code></li>
+<li><code>claude_steps_hold</code></li>
 <li><code>die</code></li>
 <li><code>legacy_note_hold</code></li>
 <li><code>lever_self_check</code></li>
@@ -6089,6 +6094,7 @@
 <li><code>seats_root_normalise</code></li>
 <li><code>siwc_state</code></li>
 <li><code>stamp</code></li>
+<li><code>tool_physical_path</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -6102,18 +6108,42 @@
 <span class="c1">#   is on the laptop.</span>
 <span class="c1">#</span>
 <span class="c1">#   `--check [&lt;profile&gt;...]` prints one line per profile (all overlays when none is named) from metadata</span>
-<span class="c1">#   only, never a token: SIWC is `registration.json` (host id and issued client id, which carry no token),</span>
+<span class="c1">#   only, never a token or a key: SIWC is `registration.json` (host id and issued client id, which carry no token),</span>
 <span class="c1">#   held to the extension's record schema (one JSON document), plus the mtime of the profile's `agent.db`; Claude is</span>
-<span class="c1">#   the one claude.ai login of the profile's login group directory `&lt;seats-root&gt;/.state/claude-&lt;group&gt;` (regime-cutover</span>
-<span class="c1">#   U318, per group since U498: the group is the one table `login_group_of_role`, copied as text from hcom-seat, the</span>
-<span class="c1">#   worker, orchestrator and audit roles each their own group and the dsh and router roles the `router` group, so every</span>
-<span class="c1">#   seat's bridge child and the dsh gateway child run under their group's directory as `CLAUDE_CONFIG_DIR`), read by</span>
-<span class="c1">#   one call, `CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth status`, whose exit status and JSON `authMethod` decide (`login</span>
-<span class="c1">#   present (claude.ai, &lt;dir&gt;)`, else absent naming the method or the missing directory); the line prints the directory</span>
-<span class="c1">#   and the method, never a credential. A profile with a seat login route (SIWC included) outside the table refuses</span>
-<span class="c1">#   the lever (exit 2) naming the profile, the route and the table, never a line (regime-cutover U498b). A record that</span>
-<span class="c1">#   exists but cannot be read or breaks its schema, and a producer (`uname`, `stat`, `date`, `claude`, `jq`) that</span>
-<span class="c1">#   fails, are reported as unreadable, never as absent, and make the exit status 1.</span>
+<span class="c1">#   two states on one line, `&lt;login&gt;; &lt;key&gt;` (regime-cutover U318, U498, U512). The login is the one claude.ai login</span>
+<span class="c1">#   of the profile's login group directory `&lt;seats-root&gt;/.state/claude-&lt;group&gt;` (regime-cutover U318, per group since</span>
+<span class="c1">#   U498: the group is the one table `login_group_of_role`, copied as text from hcom-seat, the worker, orchestrator</span>
+<span class="c1">#   and audit roles each their own group and the dsh and router roles the `router` group, so every seat's bridge</span>
+<span class="c1">#   child and the dsh gateway child run under their group's directory as `CLAUDE_CONFIG_DIR`), read by one call,</span>
+<span class="c1">#   `CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth status`, whose exit status and JSON `authMethod` decide (`login present</span>
+<span class="c1">#   (claude.ai, &lt;dir&gt;)`, else absent naming the method or the missing directory); the line prints the directory and</span>
+<span class="c1">#   the method, never a credential. The key is the seats' one API key file `&lt;seats-root&gt;/.state/anthropic/api-key`</span>
+<span class="c1">#   (regime-cutover U512: every seat's bridge child runs on it through `claude-keyed`, the bridge's Claude Code</span>
+<span class="c1">#   executable of U510, which hands it to the child as ANTHROPIC_API_KEY), judged by two producers whose status is</span>
+<span class="c1">#   read: `claude-keyed --check` for the file's form (its one refusal line's reason is the `absent (&lt;reason&gt;)` state;</span>
+<span class="c1">#   the key is never read here), the lever found on PATH and run by its physical file, every link followed, as</span>
+<span class="c1">#   hcom-seat's pin_exec runs its tools (regime-cutover U512f, verdict U512e-a120aeff P1: inside a launch PATH's first</span>
+<span class="c1">#   entry is hcom-seat's private tool directory, where `claude-keyed` is a link to the installed lever, and the lever's</span>
+<span class="c1">#   self-check reads its layout from its own invocation directory, so run by the link's spelling it refused the tool</span>
+<span class="c1">#   directory's layout before judging the key, and every key-only launch refused); when it passes, one</span>
+<span class="c1">#   `GET https://api.anthropic.com/v1/models?limit=1` with the</span>
+<span class="c1">#   key in the `x-api-key` header and `anthropic-version: 2023-06-01` (the Models API,</span>
+<span class="c1">#   platform.claude.com/docs/en/api/models/list; no model turn) for the key's validity: 200 is `key ok (&lt;file&gt;)`, 401</span>
+<span class="c1">#   or 403 `key rejected (&lt;file&gt;; HTTP &lt;code&gt;)`. The call runs under `perl -e 'alarm 20; exec @ARGV'` through</span>
+<span class="c1">#   `python3 -I`, which reads the key from the file path given as its one argument (urllib; no argument, environment</span>
+<span class="c1">#   or line ever holds the key) and prints the three-digit code alone; any other code, a call that cannot run or does</span>
+<span class="c1">#   not answer within the alarm, a network denied, a claude-keyed status that is neither 0 nor 2, or</span>
+<span class="c1">#   REGIME_ANTHROPIC_MODELS_URL naming anything but a loopback `http://127.0.0.1:&lt;port&gt;/` URL (the tests' fake</span>
+<span class="c1">#   endpoint; the key never leaves the host for another name) is `unreadable (...)`. Both states are judged on every</span>
+<span class="c1">#   line, and the key decides (regime-cutover U512e, claude_state_hold): an accepted key is the seat's route, so the</span>
+<span class="c1">#   status is 0 whatever the login state, which the line prints as information; when the key is absent, refused or</span>
+<span class="c1">#   rejected, the login state is reported as before and a present login passes (the login route, until U513 retires</span>
+<span class="c1">#   it), both absent is absent, and a producer that failed on either side is unreadable. A profile with a seat login</span>
+<span class="c1">#   route (SIWC included) outside the table refuses the lever (exit 2) naming the profile, the route and the table,</span>
+<span class="c1">#   never a line (regime-cutover U498b). A record that exists but cannot be read or breaks its schema, and a producer</span>
+<span class="c1">#   (`uname`, `stat`, `date`, `claude`, `claude-keyed`, `python3`, `perl`, `jq`) that fails, are reported as</span>
+<span class="c1">#   unreadable, never as absent, and make the exit status 1 (the login's producers beside an accepted key excepted:</span>
+<span class="c1">#   their state is printed and decides nothing).</span>
 <span class="c1">#</span>
 <span class="c1">#   `&lt;profile&gt;` (a seat profile of the manifest's `omp.roles`: orchestrator, worker or audit; `hcom-seat`</span>
 <span class="c1">#   calls it with the seat's role before it creates or starts anything) checks that a seat can use the login,</span>
@@ -6122,44 +6152,56 @@
 <span class="c1">#   herdr pane on the seat host can be even when its server did not inherit `SSH_CONNECTION`) SIWC needs an</span>
 <span class="c1">#   active `openai-siwc` login in `agent.db`, counted by the extension's `src/credentials.ts` without reading a</span>
 <span class="c1">#   token: the issued client is saved before the token exchange, so a record proves only that a sign-in began.</span>
-<span class="c1">#   The Claude route is checked on every host (regime-cutover U190b), local included, since the seat's child logs</span>
-<span class="c1">#   in by its group directory's login wherever it runs: it needs `authMethod` `claude.ai` there (an `oauth_token` or</span>
-<span class="c1">#   `api_key` method, an exit 1 of `claude auth status` or an absent directory counts as absent; the operator's</span>
-<span class="c1">#   `~/.claude`, the Keychain item of the default directory and a variable in this environment are no input, regime-</span>
-<span class="c1">#   cutover U312, U318). An absent login is logged in here only in the operator's own terminal (stdin and stdout a</span>
-<span class="c1">#   TTY, not inside a seat): SIWC through `omp --profile &lt;profile&gt; login openai-siwc` with</span>
-<span class="c1">#   `OPENAI_SIWC_CALLBACK_PORT=1455`, which the `seat-host` SSH entry forwards back from the laptop, and</span>
-<span class="c1">#   `xdg-open`/`open` pointed at `regime-open-url` for that command only. Claude has no login to run here: the</span>
-<span class="c1">#   operator's one step per group is the printed command `CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth login` (with</span>
-<span class="c1">#   `BROWSER=regime-open-url` in an SSH session, where the page shows a code to paste at the prompt,</span>
-<span class="c1">#   docs/remote-host-logins.md), shell-quoted so a seats root with a space pastes whole, which Claude Code stores under</span>
-<span class="c1">#   that directory and refreshes itself; when the legacy shared directory `.state/claude` (U318) exists and the group's</span>
-<span class="c1">#   directory did not before this run, the refusal names it as the directory the operator may remove once every</span>
-<span class="c1">#   running group is logged in (the kit reads, copies and removes no login, standing order 54). Both modes hold the</span>
-<span class="c1">#   seats root, its `.state` and `claude-&lt;group&gt;` to real directories of this user (a link, a file or another user's</span>
-<span class="c1">#   directory refuses, exit 2, naming the component), on one normalised spelling of the root (no empty, `.` or `..`</span>
-<span class="c1">#   component, no trailing slash; regime-cutover U318c: `&lt;link&gt;//` made `-L` follow the link) and only under a parent</span>
-<span class="c1">#   this user can search (a component that cannot be judged refuses naming it, never reads as absent); the profile mode</span>
-<span class="c1">#   makes the chain 0700 first when absent, as hcom-seat does at a launch, so the login lands in a directory this kit</span>
-<span class="c1">#   made. The consent click is the human step. Anywhere else (a seat, a script) it prints the command and refuses,</span>
-<span class="c1">#   since a login is the operator's step (standing order 4).</span>
+<span class="c1">#   The Claude route is checked on every host (regime-cutover U190b), local included, since the seat's child runs on</span>
+<span class="c1">#   the seats' key wherever it runs: it needs the key file in place and accepted by the Models API (a refused form, a</span>
+<span class="c1">#   rejected key or an absent file counts as absent), or, until U513 retires the login route, `authMethod` `claude.ai`</span>
+<span class="c1">#   under its group directory (an `oauth_token` or `api_key` method, an exit 1 of `claude auth status` or an absent</span>
+<span class="c1">#   directory counts as absent); an accepted key needs no login (regime-cutover U512e); the operator's `~/.claude`,</span>
+<span class="c1">#   the Keychain item of the default directory and a variable in this environment are no input (regime-cutover U312,</span>
+<span class="c1">#   U318, U512). An absent SIWC login is logged in here only in</span>
+<span class="c1">#   the operator's own terminal (stdin and stdout a TTY, not inside a seat): SIWC through</span>
+<span class="c1">#   `omp --profile &lt;profile&gt; login openai-siwc` with `OPENAI_SIWC_CALLBACK_PORT=1455`, which the `seat-host` SSH</span>
+<span class="c1">#   entry forwards back from the laptop, and `xdg-open`/`open` pointed at `regime-open-url` for that command only.</span>
+<span class="c1">#   Claude has no login to run here: the operator's steps are printed for what is missing, each shell-quoted so a</span>
+<span class="c1">#   seats root with a space pastes whole: for the login, one command per group, `CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth</span>
+<span class="c1">#   login` (with `BROWSER=regime-open-url` in an SSH session, where the page shows a code to paste at the prompt,</span>
+<span class="c1">#   docs/remote-host-logins.md), which Claude Code stores under that directory and refreshes itself; for the key, the</span>
+<span class="c1">#   pair of commands of the U510 handout (`handouts/anthropic-api-key-u510.md`, steps 2 and 3: place the key as the</span>
+<span class="c1">#   one line of the 0600 file in the 0700 `.state/anthropic` directory, then `REGIME_ANTHROPIC_KEY_FILE=&lt;file&gt;</span>
+<span class="c1">#   claude-keyed --check`). When the legacy shared directory `.state/claude` (U318) exists and the group's directory</span>
+<span class="c1">#   did not before this run, the refusal names it as the directory the operator may remove once every running group</span>
+<span class="c1">#   is logged in (the kit reads, copies and removes no login, standing order 54). Both modes hold the seats root, its</span>
+<span class="c1">#   `.state` and `claude-&lt;group&gt;` to real directories of this user (a link, a file or another user's directory</span>
+<span class="c1">#   refuses, exit 2, naming the component), on one normalised spelling of the root (no empty, `.` or `..` component,</span>
+<span class="c1">#   no trailing slash; regime-cutover U318c: `&lt;link&gt;//` made `-L` follow the link) and only under a parent this user</span>
+<span class="c1">#   can search (a component that cannot be judged refuses naming it, never reads as absent); the profile mode makes</span>
+<span class="c1">#   the chain 0700 first when absent, as hcom-seat does at a launch, so the login lands in a directory this kit made;</span>
+<span class="c1">#   the key file's directory is hcom-seat's to make and claude-keyed's to judge. The consent click is the human step.</span>
+<span class="c1">#   Anywhere else (a seat, a script) it prints the steps and refuses, since the login and the key are the operator's</span>
+<span class="c1">#   steps (standing order 4). A pass with one state missing (a present login without an accepted key, the login route</span>
+<span class="c1">#   until U513 retires it, or an accepted key without a login; regime-cutover U512f, verdict U512e-a120aeff P2) prints</span>
+<span class="c1">#   the line and, after it, the missing half's command as information (claude_pass_report): the placement commands for</span>
+<span class="c1">#   the key, the login command for an absent login; nothing is refused and nothing runs.</span>
 <span class="c1"># @arg $1 string `--check`, or the profile.</span>
 <span class="c1"># @arg $@ string With `--check`: profile names (default: every deployed overlay).</span>
 <span class="c1"># @env SSH_CONNECTION Set by sshd: this host is remote to the operator's terminal.</span>
 <span class="c1"># @env DISPLAY With WAYLAND_DISPLAY: a Linux host with neither has no local browser, so it counts as remote.</span>
 <span class="c1"># @env HCOM_LAUNCHED Set by hcom inside a seat: never run a login there.</span>
 <span class="c1"># @env REGIME_SEATS_ROOT The seats root whose `.state/claude-&lt;group&gt;` directories are the login groups' Claude Code</span>
-<span class="c1">#   directories (hcom-seat passes its resolved one), an absolute path judged on its normalised spelling; unset,</span>
-<span class="c1">#   `~/.local/state/omp-seats/&lt;slug&gt;` of the checkout this runs in (regime-env's slug).</span>
+<span class="c1">#   directories and whose `.state/anthropic/api-key` is the seats' API key file (hcom-seat passes its resolved one),</span>
+<span class="c1">#   an absolute path judged on its normalised spelling; unset, `~/.local/state/omp-seats/&lt;slug&gt;` of the checkout this</span>
+<span class="c1">#   runs in (regime-env's slug).</span>
+<span class="c1"># @env REGIME_ANTHROPIC_MODELS_URL The Models API URL, a loopback `http://127.0.0.1:&lt;port&gt;/...` alone (the tests' fake</span>
+<span class="c1">#   endpoint); unset, `https://api.anthropic.com/v1/models?limit=1`. Any other value is unreadable, never called.</span>
 <span class="c1"># @stdout With `--check`: one line per profile.</span>
 <span class="c1"># @stderr The profile mode's report and refusals.</span>
 <span class="c1"># @exitcode 0 Checked, or the profile's route is usable (or the host is local and the route is openai-siwc).</span>
 <span class="c1"># @exitcode 1 A record or producer is unreadable, or a login ran and the route is still not usable.</span>
 <span class="c1"># @exitcode 2 A usage error, a deployed profile with a seat login route outside the login group table (U498b), a</span>
 <span class="c1">#   component of the login group's Claude Code directory path that is a link, a file or another user's directory or</span>
-<span class="c1">#   that cannot be judged (a parent this user cannot search), a failed read of the operator's login command, or a seat</span>
-<span class="c1">#   without a login outside the operator's terminal (a remote host, or any host on the claude-bridge route, whose login</span>
-<span class="c1">#   is the operator's printed command).</span>
+<span class="c1">#   that cannot be judged (a parent this user cannot search), a failed read of the operator's login or key step, or a</span>
+<span class="c1">#   seat without a usable login or key outside the operator's terminal (a remote host, or any host on the</span>
+<span class="c1">#   claude-bridge route, whose login and key are the operator's printed steps).</span>
 <span class="c1"># @example</span>
 <span class="c1">#   seat-login-preflight --check</span>
 <span class="c1">#   seat-login-preflight audit</span>
@@ -6262,12 +6304,66 @@ lever_self_check
 <span class="s1">    else error("not an auth status record")</span>
 <span class="s1">    end</span>
 <span class="s1">end'</span>
+<span class="c1"># The Models API (regime-cutover U512, platform.claude.com/docs/en/api/models/list): one `GET /v1/models?limit=1` with</span>
+<span class="c1"># the key in the `x-api-key` header judges the key without a model turn. The default URL is the API's; an override is</span>
+<span class="c1"># held to a loopback http URL, the tests' fake endpoint, so the key never leaves this host for another name. The call</span>
+<span class="c1"># runs under `perl -e 'alarm 20; exec @ARGV'` (the lever's own bound: an allow rule cannot carry a wrapper, README</span>
+<span class="c1"># "Pre-authorized levers") through `python3 -I`, which reads the key from the file path given as its one argument and</span>
+<span class="c1"># prints the three-digit status code alone; the key reaches no argument, no environment and no line. The opener</span>
+<span class="c1"># follows no redirect (regime-cutover U512b, verdict U512-2a49d363 P1: urllib's default opener re-sent the header to</span>
+<span class="c1"># the redirect's target): its redirect handler raises on every 3xx a redirect would follow, and any other 3xx is</span>
+<span class="c1"># refused after the fact, so the key is sent to the one address alone. The opener uses no proxy either</span>
+<span class="c1"># (regime-cutover U512e, verdict U512b-e5c1a610 P1: urllib's default ProxyHandler read an inherited `http_proxy` and</span>
+<span class="c1"># routed the loopback request, header included, to the proxy): `ProxyHandler({})` replaces the default, so neither a</span>
+<span class="c1"># proxy variable nor the system proxy settings are read, and claude_key_state runs the probe with the proxy variables</span>
+<span class="c1"># unset as a second fence. Exit 3: the API could not be reached (URLError, a network denied); 4: the key file could not</span>
+<span class="c1"># be read; 5: the API answered a redirect, refused (the code printed); 142: the alarm ended it.</span>
+<span class="nv">models_api_default</span><span class="o">=</span><span class="s1">'https://api.anthropic.com/v1/models?limit=1'</span>
+<span class="nv">models_api_loopback_re</span><span class="o">=</span><span class="s1">'^http://127\.0\.0\.1:[0-9]{1,5}/'</span>
+<span class="nv">models_api_probe</span><span class="o">=</span><span class="s1">'</span>
+<span class="s1">import os, sys, urllib.error, urllib.request</span>
+
+
+<span class="s1">class RedirectRefused(Exception):</span>
+<span class="s1">    pass</span>
+
+
+<span class="s1">class NoRedirect(urllib.request.HTTPRedirectHandler):</span>
+<span class="s1">    def redirect_request(self, req, fp, code, msg, headers, newurl):</span>
+<span class="s1">        raise RedirectRefused(code)</span>
+
+
+<span class="s1">try:</span>
+<span class="s1">    with open(sys.argv[1], "rb") as handle:</span>
+<span class="s1">        key = handle.read().rstrip(b"\n").decode()</span>
+<span class="s1">except (OSError, UnicodeDecodeError):</span>
+<span class="s1">    sys.exit(4)</span>
+<span class="s1">request = urllib.request.Request(</span>
+<span class="s1">    os.environ["REGIME_ANTHROPIC_MODELS_URL"], headers={"x-api-key": key, "anthropic-version": "2023-06-01"}, method="GET"</span>
+<span class="s1">)</span>
+<span class="s1">try:</span>
+<span class="s1">    with urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect).open(request) as response:</span>
+<span class="s1">        print(response.status)</span>
+<span class="s1">except RedirectRefused as refused:</span>
+<span class="s1">    print(refused.args[0])</span>
+<span class="s1">    sys.exit(5)</span>
+<span class="s1">except urllib.error.HTTPError as error:</span>
+<span class="s1">    print(error.code)</span>
+<span class="s1">    if 300 &lt;= error.code &lt; 400:</span>
+<span class="s1">        sys.exit(5)</span>
+<span class="s1">except urllib.error.URLError:</span>
+<span class="s1">    sys.exit(3)</span>
+<span class="s1">'</span>
 <span class="c1"># The login's scratch overlay and opener shims, removed on every exit.</span>
 <span class="nv">scratch</span><span class="o">=</span><span class="s2">""</span>
 <span class="nb">trap</span><span class="w"> </span><span class="s1">'[[ -z ${scratch} ]] || rm -rf -- "${scratch}"'</span><span class="w"> </span>EXIT
 
+<span class="c1"># @description Print one refusal line and exit. The message alone is printed (regime-cutover U512g: `$*` put the status</span>
+<span class="c1">#   argument on the line's end, so `die "&lt;line&gt;" 1` printed `&lt;line&gt; 1`; the readlink-failure test read it).</span>
+<span class="c1"># @arg $1 string The line, after the `seat-login-preflight: ` prefix.</span>
+<span class="c1"># @arg $2 int The exit status (2 when absent).</span>
 die<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'seat-login-preflight: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$*</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'seat-login-preflight: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="nv">2</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
@@ -6297,6 +6393,39 @@ mode_of<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-7<span class="o">]{</span><span class="m">3</span>,4<span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Print the physical file of the command `$1` on PATH (regime-cutover U512f, verdict U512e-a120aeff P1):</span>
+<span class="c1">#   `command -v`, then every symbolic link hop followed in turn (an absolute target as spelled, a relative one against</span>
+<span class="c1">#   its link's directory, at most 40 hops, readlink's status read), then the directory in `pwd -P` form, the way</span>
+<span class="c1">#   hcom-seat's pin_exec resolves what it runs. The one caller is claude_key_state: `claude-keyed`'s self-check reads</span>
+<span class="c1">#   its layout from its own invocation directory (`&lt;home&gt;/.local/bin/common` or `scripts/orchestrator`), so run by the</span>
+<span class="c1">#   spelling of hcom-seat's tool directory link it refused that directory's layout before judging the key; run by its</span>
+<span class="c1">#   physical file it reads its manifest by its installed layout. No other producer this lever runs (`claude`, `jq`,</span>
+<span class="c1">#   `python3`, `perl`, `bun`, `omp`, the system tools) judges its own path.</span>
+<span class="c1"># @arg $1 string The command name.</span>
+<span class="c1"># @stdout The physical path.</span>
+<span class="c1"># @exitcode 1 Not on PATH. 2 A hop could not be read, or the result is not an executable regular file.</span>
+tool_physical_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>path<span class="w"> </span>link<span class="w"> </span>dir<span class="w"> </span><span class="nv">n</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nv">path</span><span class="o">=</span><span class="k">$(</span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>/*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="c1"># lint-comparisons: allow an absolute-path shape test, no path compare</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">n</span><span class="o">=</span><span class="k">$((</span><span class="nv">n</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
+<span class="w">        </span><span class="o">((</span>n<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span><span class="m">40</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="nv">link</span><span class="o">=</span><span class="k">$(</span>readlink<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">link</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">link</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span>/*<span class="o">)</span><span class="w"> </span><span class="nv">path</span><span class="o">=</span><span class="si">${</span><span class="nv">link</span><span class="si">}</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">        </span>*<span class="o">)</span><span class="w"> </span><span class="nv">path</span><span class="o">=</span><span class="si">${</span><span class="nv">path</span><span class="p">%/*</span><span class="si">}</span>/<span class="si">${</span><span class="nv">link</span><span class="si">}</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="nv">dir</span><span class="o">=</span><span class="si">${</span><span class="nv">path</span><span class="p">%/*</span><span class="si">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span>/
+<span class="w">    </span><span class="nv">dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="nv">path</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="p">%/</span><span class="si">}</span>/<span class="si">${</span><span class="nv">path</span><span class="p">##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Print the provider of a profile's `modelRoles.default` (openai-siwc, claude-bridge, ...).</span>
@@ -6410,22 +6539,26 @@ login_group_of_role<span class="o">()</span><span class="w"> </span><span class=
 <span class="c1"># @description Set `claude_config` to the Claude Code directory of the profile `$1`'s login group under this host's</span>
 <span class="c1">#   seats root, `&lt;seats-root&gt;/.state/claude-&lt;group&gt;` (regime-cutover U318, per group since U498; hcom-seat's</span>
 <span class="c1">#   `claude_config` row, the group from the one table login_group_of_role), `claude_legacy` to the legacy shared</span>
-<span class="c1">#   directory `&lt;seats-root&gt;/.state/claude` (U318; named, never read or made) and `claude_seats_root` to that root:</span>
-<span class="c1">#   `REGIME_SEATS_ROOT` when set (hcom-seat passes its resolved one; it must be absolute), else</span>
-<span class="c1">#   `~/.local/state/omp-seats/&lt;slug&gt;` of the checkout this runs in (regime-env's toplevel and slug readers; the store</span>
-<span class="c1">#   binding is hcom-seat's concern), with HOME in `pwd -P` form. Either form is normalised to one spelling</span>
-<span class="c1">#   (seats_root_normalise) before any test reads it, so every component test and every printed path use that spelling.</span>
-<span class="c1">#   A failure sets `claude_config_error` and returns 2.</span>
+<span class="c1">#   directory `&lt;seats-root&gt;/.state/claude` (U318; named, never read or made), `claude_key_dir` and `claude_key_file`</span>
+<span class="c1">#   to the seats' API key directory `&lt;seats-root&gt;/.state/anthropic` and file `&lt;seats-root&gt;/.state/anthropic/api-key`</span>
+<span class="c1">#   (regime-cutover U512; hcom-seat's `key_file` row) and `claude_seats_root` to that root: `REGIME_SEATS_ROOT` when</span>
+<span class="c1">#   set (hcom-seat passes its resolved one; it must be absolute), else `~/.local/state/omp-seats/&lt;slug&gt;` of the</span>
+<span class="c1">#   checkout this runs in (regime-env's toplevel and slug readers; the store binding is hcom-seat's concern), with</span>
+<span class="c1">#   HOME in `pwd -P` form. Either form is normalised to one spelling (seats_root_normalise) before any test reads it,</span>
+<span class="c1">#   so every component test and every printed path use that spelling. A failure sets `claude_config_error` and</span>
+<span class="c1">#   returns 2.</span>
 <span class="c1"># @arg $1 string The profile (a role of the table).</span>
 <span class="c1"># @set claude_config The directory.</span>
 <span class="c1"># @set claude_legacy The legacy shared directory.</span>
 <span class="c1"># @set claude_seats_root The seats root, normalised.</span>
+<span class="c1"># @set claude_key_dir The seats' API key directory `&lt;seats-root&gt;/.state/anthropic` (regime-cutover U512).</span>
+<span class="c1"># @set claude_key_file The seats' API key file `&lt;seats-root&gt;/.state/anthropic/api-key`, the key state's one input.</span>
 <span class="c1"># @set claude_config_error The reason, when none can be derived.</span>
 <span class="c1"># @exitcode 2 No seats root can be derived, REGIME_SEATS_ROOT is not an absolute path, or the profile is outside the</span>
 <span class="c1">#   login group table.</span>
 claude_config_dir<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">root</span><span class="o">=</span><span class="si">${</span><span class="nv">REGIME_SEATS_ROOT</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span>top<span class="w"> </span>slug<span class="w"> </span>home<span class="w"> </span>group
-<span class="w">    </span><span class="nv">claude_config</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_legacy</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_seats_root</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_config_error</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="nv">claude_config</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_legacy</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_seats_root</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_config_error</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_key_dir</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_key_file</span><span class="o">=</span><span class="s1">''</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">group</span><span class="o">=</span><span class="k">$(</span>login_group_of_role<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">claude_config_error</span><span class="o">=</span><span class="s2">"no login group for the profile </span><span class="nv">$1</span><span class="s2">; the table names orchestrator, worker, audit, dsh and router"</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
@@ -6452,6 +6585,8 @@ claude_config_dir<span class="o">()</span><span class="w"> </span><span class="o
 <span class="w">    </span>seats_root_normalise<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">claude_config</span><span class="o">=</span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="p">%/</span><span class="si">}</span>/.state/claude-<span class="si">${</span><span class="nv">group</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">claude_legacy</span><span class="o">=</span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="p">%/</span><span class="si">}</span>/.state/claude
+<span class="w">    </span><span class="nv">claude_key_dir</span><span class="o">=</span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="p">%/</span><span class="si">}</span>/.state/anthropic
+<span class="w">    </span><span class="nv">claude_key_file</span><span class="o">=</span><span class="si">${</span><span class="nv">claude_key_dir</span><span class="si">}</span>/api-key
 <span class="o">}</span>
 
 <span class="c1"># @description Set `claude_legacy_note` for the profile mode's refusal (regime-cutover U498): when the legacy shared</span>
@@ -6467,10 +6602,10 @@ legacy_note_hold<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Print the operator's one Claude step for the group: `CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth login`, after</span>
-<span class="c1">#   `BROWSER=regime-open-url` in an SSH session, where the laptop's browser opens the page and shows a code to paste at</span>
-<span class="c1">#   the prompt (docs/remote-host-logins.md). The directory is shell-quoted (`%q`), so a seats root holding a space, a</span>
-<span class="c1">#   quote or a `$` pastes as one assignment of the same directory (regime-cutover U318b).</span>
+<span class="c1"># @description Print the operator's one Claude login step for the group: `CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth login`,</span>
+<span class="c1">#   after `BROWSER=regime-open-url` in an SSH session, where the laptop's browser opens the page and shows a code to</span>
+<span class="c1">#   paste at the prompt (docs/remote-host-logins.md). The directory is shell-quoted (`%q`), so a seats root holding a</span>
+<span class="c1">#   space, a quote or a `$` pastes as one assignment of the same directory (regime-cutover U318b).</span>
 <span class="c1"># @stdout The command, one line.</span>
 claude_login_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">browser</span><span class="o">=</span><span class="s1">''</span>
@@ -6478,16 +6613,97 @@ claude_login_command<span class="o">()</span><span class="w"> </span><span class
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%sCLAUDE_CONFIG_DIR=%q claude auth login\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">browser</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_config</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Refuse the Claude route's absent login after its state line, naming the operator's one step: the</span>
-<span class="c1">#   command claude_login_command prints, whose status is read (standing order 21; regime-cutover U318b: unread, a</span>
-<span class="c1">#   failed producer printed an ordinary absence with an empty command), so a failed producer refuses naming it instead;</span>
-<span class="c1">#   then the legacy note legacy_note_hold set, when it set one (U498; empty when the caller held none).</span>
+<span class="c1"># @description Print the operator's Claude key step (regime-cutover U512): the U510 handout's steps 2 and 3 as one</span>
+<span class="c1">#   line, one subshell under `umask 077` then `REGIME_ANTHROPIC_KEY_FILE=&lt;file&gt; claude-keyed --check`. The subshell</span>
+<span class="c1">#   (regime-cutover U512b, verdict U512-2a49d363 P1 and P2 at this row: the earlier form wrote through the existing</span>
+<span class="c1">#   file, so a 0644 file or a link's target received the key, and read `read`'s status from nowhere, so an EOF wrote a</span>
+<span class="c1">#   newline over the previous key and a failed write truncated it) holds the chain (the seats root, `.state`,</span>
+<span class="c1">#   `.state/anthropic`) to no symbolic link before `mkdir -p` makes what is absent (0700 under the umask), holds each</span>
+<span class="c1">#   to a directory of this user, tightens the key directory to 0700 (a 0755 directory is tightened, not refused),</span>
+<span class="c1">#   holds the destination to no link and, when present, a regular file of this user, then reads the key once,</span>
+<span class="c1">#   unechoed, refusing on EOF or an empty value, writes it to an exclusive 0600 temporary `mktemp` makes in the key</span>
+<span class="c1">#   directory and renames that over the destination (an existing 0644 file is replaced by the 0600 one), so the</span>
+<span class="c1">#   previous file survives every failure byte for byte and the key never lies in a file another user can read. Every</span>
+<span class="c1">#   path is shell-quoted (`%q`) into the subshell's own variables, so a seats root holding a space, a quote or a `$`</span>
+<span class="c1">#   pastes as the same file (regime-cutover U318b's rule for the login command); the variables die with the</span>
+<span class="c1">#   subshell. Tested by `test_the_placement_command_makes_the_chain_0700_and_replaces_the_file_through_a_0600_temporary`</span>
+<span class="c1">#   and `test_the_placement_command_keeps_the_previous_file_on_eof_an_empty_key_or_a_failed_write`.</span>
+<span class="c1"># @stdout The steps, one line.</span>
+claude_key_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2016 # the printed command holds `$p`, `$d`, `$f`, `$t` and `"$k"` for the operator's shell, not this one</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'(umask 077; r=%q; s=%q; d=%q; f=%q; for p in "$r" "$s" "$d"; do [[ ! -L $p ]] || { echo "refused: $p is a symbolic link" &gt;&amp;2; exit 1; }; done; mkdir -p "$d" || exit 1; for p in "$r" "$s" "$d"; do [[ -d $p &amp;&amp; -O $p ]] || { echo "refused: $p is not a directory of this user" &gt;&amp;2; exit 1; }; done; chmod 700 "$d" || exit 1; [[ ! -L $f ]] || { echo "refused: $f is a symbolic link" &gt;&amp;2; exit 1; }; [[ ! -e $f ]] || [[ -f $f &amp;&amp; -O $f ]] || { echo "refused: $f is not a regular file of this user" &gt;&amp;2; exit 1; }; t=$(mktemp "$d/.api-key.XXXXXX") || exit 1; printf '</span><span class="se">\'</span><span class="s1">'key: '</span><span class="se">\'</span><span class="s1">'; if ! IFS= read -rs k || [[ -z $k ]]; then echo; echo "refused: no key was read" &gt;&amp;2; rm -f "$t"; exit 1; fi; echo; printf '</span><span class="se">\'</span><span class="s1">'%%s\\n'</span><span class="se">\'</span><span class="s1">' "$k" &gt; "$t" &amp;&amp; mv -f "$t" "$f" || { rm -f "$t"; echo "refused: cannot write $f" &gt;&amp;2; exit 1; }) &amp;&amp; REGIME_ANTHROPIC_KEY_FILE=%q claude-keyed --check\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_seats_root</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.state"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Set `claude_steps` to the operator's step for each Claude state that is absent (regime-cutover U318,</span>
+<span class="c1">#   U512, U512f): `; log in once: &lt;command&gt;` (claude_login_command) when `claude_login_status` is 1, `; place the key</span>
+<span class="c1">#   once: &lt;commands&gt;` (claude_key_command) when `claude_key_status` is 1 (both set by claude_state_hold in this shell;</span>
+<span class="c1">#   unset, each counts as absent), the login's first; `claude_login_step` and `claude_key_step` hold each command or</span>
+<span class="c1">#   stay empty. Each producer's status is read (standing order 21; regime-cutover U318b: unread, a failed producer</span>
+<span class="c1">#   printed an ordinary absence with an empty command), so a failed producer dies naming it instead (exit 2) and no</span>
+<span class="c1">#   step reaches the operator. A state whose producer failed (status 2) names no step: it is unreadable, never absent,</span>
+<span class="c1">#   and the line names the producer. Shared by claude_login_refuse (both absent) and claude_pass_report (one absent</span>
+<span class="c1">#   beside a passing state).</span>
+<span class="c1"># @arg $1 string The profile line, for the refusal of a failed producer.</span>
+<span class="c1"># @set claude_steps The steps, each after `; `, or empty.</span>
+<span class="c1"># @set claude_login_step The login command, or empty.</span>
+<span class="c1"># @set claude_key_step The key commands, or empty.</span>
+<span class="c1"># @exitcode 2 A step could not be produced (the command dies).</span>
+claude_steps_hold<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nv">claude_login_step</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_key_step</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">claude_steps</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="si">${</span><span class="nv">claude_login_status</span><span class="k">:-</span><span class="nv">1</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">claude_login_step</span><span class="o">=</span><span class="k">$(</span>claude_login_command<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">; cannot name the operator's login step: claude_login_command failed"</span>
+<span class="w">        </span><span class="nv">claude_steps</span><span class="o">+=</span><span class="s2">"; log in once: </span><span class="si">${</span><span class="nv">claude_login_step</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="si">${</span><span class="nv">claude_key_status</span><span class="k">:-</span><span class="nv">1</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">claude_key_step</span><span class="o">=</span><span class="k">$(</span>claude_key_command<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">; cannot name the operator's key step: claude_key_command failed"</span>
+<span class="w">        </span><span class="nv">claude_steps</span><span class="o">+=</span><span class="s2">"; place the key once: </span><span class="si">${</span><span class="nv">claude_key_step</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Refuse the Claude route's absent login, absent or rejected key, or both, after its state line, naming</span>
+<span class="c1">#   the operator's steps for what is missing (regime-cutover U318, U512): the steps claude_steps_hold names from</span>
+<span class="c1">#   `claude_login_status` and `claude_key_status` (set by claude_state_hold in this shell; unset, each counts as</span>
+<span class="c1">#   missing), then the legacy note legacy_note_hold set, when it set one (U498; empty when the caller held none). Since</span>
+<span class="c1">#   claude_state_hold passes on either state present (regime-cutover U512e), the profile mode reaches this with both</span>
+<span class="c1">#   missing; the single-state branches stay for a caller that holds one status alone.</span>
 <span class="c1"># @arg $1 string The profile line of the absent state.</span>
-<span class="c1"># @exitcode 2 Always: the login is the operator's step, or its command could not be produced (the command dies).</span>
+<span class="c1"># @exitcode 2 Always: the login and the key are the operator's steps, or a step could not be produced (the command</span>
+<span class="c1">#   dies).</span>
 claude_login_refuse<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>step
-<span class="w">    </span><span class="nv">step</span><span class="o">=</span><span class="k">$(</span>claude_login_command<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">; cannot name the operator's login step: claude_login_command failed"</span>
-<span class="w">    </span>die<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">; log in once: </span><span class="si">${</span><span class="nv">step</span><span class="si">}</span><span class="s2">; a login is the operator's step: run that command in your own terminal on this host, then start the seat again</span><span class="si">${</span><span class="nv">claude_legacy_note</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>whose
+<span class="w">    </span>claude_steps_hold<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">claude_login_step</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">claude_key_step</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">whose</span><span class="o">=</span><span class="s2">"the login and the key are the operator's steps (handouts/anthropic-api-key-u510.md, steps 2 and 3, for the key): run those commands"</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">claude_key_step</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">whose</span><span class="o">=</span><span class="s2">"the key is the operator's step (handouts/anthropic-api-key-u510.md, steps 2 and 3): run those commands"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">whose</span><span class="o">=</span><span class="s2">"a login is the operator's step: run that command"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>die<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="si">${</span><span class="nv">claude_steps</span><span class="si">}</span><span class="s2">; </span><span class="si">${</span><span class="nv">whose</span><span class="si">}</span><span class="s2"> in your own terminal on this host, then start the seat again</span><span class="si">${</span><span class="nv">claude_legacy_note</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Report the Claude route's pass in the profile mode (regime-cutover U512f, verdict U512e-a120aeff P2):</span>
+<span class="c1">#   the state line, then, when one state is absent beside the passing one, the missing half's command as information,</span>
+<span class="c1">#   the steps claude_steps_hold names from `claude_login_status` and `claude_key_status` (claude_state_hold): a present</span>
+<span class="c1">#   login without an accepted key (the login route, until U513 retires it) is followed by the key's placement commands,</span>
+<span class="c1">#   says that hcom-seat starts no seat until the key is placed (its key_file_check refuses every role without the key;</span>
+<span class="c1">#   regime-cutover U512g, verdict U512f-b6a3e2c0 P2: until this head the sentence said the seat starts on the login)</span>
+<span class="c1">#   and names the key as the operator's step; an accepted key without a login by the group's login command, which the</span>
+<span class="c1">#   key-only launch does not need (round 4's rule: the key decides, the login is information). A state whose producer</span>
+<span class="c1">#   failed names no command (claude_steps_hold); both present prints the line alone. Until this head the pass printed</span>
+<span class="c1">#   the line alone, so a mixed state's advice named no command. Nothing is refused and nothing runs.</span>
+<span class="c1"># @arg $1 string The profile line of the passing state.</span>
+<span class="c1"># @stderr The report, one line.</span>
+claude_pass_report<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">note</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span>claude_steps_hold<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">claude_key_step</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">note</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_steps</span><span class="si">}</span><span class="s2">; the preflight passes on the group's login, but hcom-seat starts no seat until the key is placed; the key is the operator's step (handouts/anthropic-api-key-u510.md, steps 2 and 3): run those commands in your own terminal on this host"</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">claude_login_step</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">note</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_steps</span><span class="si">}</span><span class="s2">; the seat starts on the accepted key (U512e), so the login is information: run that command in your own terminal on this host to add the group's login"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'seat-login-preflight: %s%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">note</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Hold the login group's Claude Code directory path to its three components, the seats root, its `.state`</span>
@@ -6544,7 +6760,7 @@ claude_config_ensure<span class="o">()</span><span class="w"> </span><span class
 <span class="w">        </span>die<span class="w"> </span><span class="s2">"cannot create the login group's Claude Code directory </span><span class="si">${</span><span class="nv">claude_config</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Print the Claude Code login line of this host (regime-cutover U318, U498): the one claude.ai login of</span>
+<span class="c1"># @description Print the Claude Code login state of this host (regime-cutover U318, U498): the one claude.ai login of</span>
 <span class="c1">#   the group directory `claude_config`, which the caller derived (claude_config_dir) and held to a real directory chain</span>
 <span class="c1">#   of this user (claude_config_validate) in its own shell, so a refusal there exits the lever naming the component;</span>
 <span class="c1">#   every seat of the group's roles runs its bridge child, or the dsh gateway child, under it. The login is read by one call,</span>
@@ -6556,7 +6772,7 @@ claude_config_ensure<span class="o">()</span><span class="w"> </span><span class
 <span class="c1">#   CLAUDE_CODE_OAUTH_TOKEN in this environment is no input (regime-cutover U312): the call runs without it, as the</span>
 <span class="c1">#   seat shim clears it. The operator's step for an absent login is the caller's (claude_login_refuse).</span>
 <span class="c1"># @exitcode 0 Present. 1 Absent. 2 Unreadable.</span>
-claude_state<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+claude_login_state<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>body<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>method<span class="w"> </span>tool
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">claude_config</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'absent (no %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_config</span><span class="si">}</span><span class="s2">"</span>
@@ -6594,9 +6810,139 @@ claude_state<span class="o">()</span><span class="w"> </span><span class="o">{</
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Print `&lt;profile&gt; &lt;route&gt;: &lt;state&gt;` for one profile.</span>
+<span class="c1"># @description Print the Claude route's key state (regime-cutover U512): `key ok (&lt;file&gt;)`, `absent (&lt;reason&gt;)`,</span>
+<span class="c1">#   `key rejected (&lt;file&gt;; HTTP &lt;code&gt;)` or `unreadable (&lt;reason&gt;)` for the seats' API key file</span>
+<span class="c1">#   `&lt;seats-root&gt;/.state/anthropic/api-key` (claude_config_dir), the one file every seat's bridge child runs on through</span>
+<span class="c1">#   claude-keyed. Two producers, each with its status read: `claude-keyed --check` on the file (REGIME_ANTHROPIC_KEY_FILE</span>
+<span class="c1">#   set for that call alone; the lever run by its physical file, tool_physical_path, regime-cutover U512f; exit 0 the</span>
+<span class="c1">#   form holds, exit 2 absent with the lever's reason, its stderr line without the `claude-keyed: refused: ` prefix; any</span>
+<span class="c1">#   other status unreadable), then one Models API call (models_api_probe under the alarm) whose stdout is the code: 200</span>
+<span class="c1">#   present, 401 or 403 rejected (absent to the caller, which names the operator's steps), another code, a call that</span>
+<span class="c1">#   could not run, reach the API or answer in time unreadable (standing order 21). The key never reaches an argument,</span>
+<span class="c1">#   this shell's environment or a line; a CLAUDE_CODE_OAUTH_TOKEN in this environment is no input (regime-cutover</span>
+<span class="c1">#   U312). The operator's step for an absent key is the caller's (claude_login_refuse, claude_pass_report).</span>
+<span class="c1"># @exitcode 0 Present. 1 Absent (the file refused by claude-keyed, or the key rejected). 2 Unreadable.</span>
+claude_key_state<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>line<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>code<span class="w"> </span>tool<span class="w"> </span>models_url<span class="w"> </span>keyed
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>tool<span class="w"> </span><span class="k">in</span><span class="w"> </span>python3<span class="w"> </span>perl<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (no %s on PATH to judge the API key file %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="c1"># The judge by its physical file (U512f): a name not on PATH, a link hop that cannot be read or a result that is no</span>
+<span class="w">    </span><span class="c1"># executable regular file is unreadable, never absent.</span>
+<span class="w">    </span><span class="nv">keyed</span><span class="o">=</span><span class="k">$(</span>tool_physical_path<span class="w"> </span>claude-keyed<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">1</span><span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (no claude-keyed on PATH to judge the API key file %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (cannot resolve claude-keyed on PATH to its physical executable file, to judge the API key file %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="nv">models_url</span><span class="o">=</span><span class="si">${</span><span class="nv">REGIME_ANTHROPIC_MODELS_URL</span><span class="k">:-</span><span class="si">${</span><span class="nv">models_api_default</span><span class="si">}}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">models_url</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">models_api_default</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">models_url</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="si">${</span><span class="nv">models_api_loopback_re</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow the default URL's own spelling and a loopback shape test, no path compare</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (REGIME_ANTHROPIC_MODELS_URL is not a loopback http://127.0.0.1:&lt;port&gt;/ URL; the Models API call for the API key file %s is refused)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># The form: the lever's one line is on stderr; its stdout (the ok line, which names the executable) is dropped.</span>
+<span class="w">    </span><span class="nv">line</span><span class="o">=</span><span class="k">$(</span><span class="nv">REGIME_ANTHROPIC_KEY_FILE</span><span class="o">=</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">keyed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--check<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">2</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">line</span><span class="o">=</span><span class="si">${</span><span class="nv">line</span><span class="p">#claude-keyed: refused: </span><span class="si">}</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'absent (%s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="k">:-</span><span class="nv">claude</span><span class="p">-keyed --check refused the API key file </span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (claude-keyed --check exited %s for the API key file %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="c1"># The validity: the code alone comes back on stdout; the child's stderr is dropped, so no line of it is printed.</span>
+<span class="w">    </span><span class="c1"># The one call, with the proxy variables unset (the second fence beside the probe's own `ProxyHandler({})`,</span>
+<span class="w">    </span><span class="c1"># regime-cutover U512e), so the key-bearing request reaches the one address and no proxy.</span>
+<span class="w">    </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nv">code</span><span class="o">=</span><span class="k">$(</span><span class="nb">unset</span><span class="w"> </span>http_proxy<span class="w"> </span>https_proxy<span class="w"> </span>all_proxy<span class="w"> </span>HTTP_PROXY<span class="w"> </span>HTTPS_PROXY<span class="w"> </span>ALL_PROXY<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">REGIME_ANTHROPIC_MODELS_URL</span><span class="o">=</span><span class="si">${</span><span class="nv">models_url</span><span class="si">}</span><span class="w"> </span>perl<span class="w"> </span>-e<span class="w"> </span><span class="s1">'alarm 20; exec @ARGV'</span><span class="w"> </span>python3<span class="w"> </span>-I<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">models_api_probe</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">142</span><span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (the Models API did not answer within 20 s for the API key file %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">3</span><span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (the Models API could not be reached for the API key file %s; the network may be denied where this runs)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">5</span><span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (redirect refused: the Models API answered HTTP %s, a redirect, for the API key file %s; the key is sent to no other address)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">code</span><span class="k">:-</span><span class="nv">3xx</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">4</span><span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (cannot read the API key file %s for the Models API call)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (the Models API call exited %s for the API key file %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9<span class="o">]{</span><span class="m">3</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (the Models API call printed no status code for the API key file %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="m">200</span><span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'key ok (%s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">401</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">403</span><span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'key rejected (%s; HTTP %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unreadable (the Models API answered HTTP %s for the API key file %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Judge the Claude route in this shell (regime-cutover U318, U498, U512, U512e): the login state</span>
+<span class="c1">#   (claude_login_state) and the key state (claude_key_state), each run with its status read, both always (the</span>
+<span class="c1">#   operator is told of everything missing at once), the line `&lt;login&gt;; &lt;key&gt;` held in `claude_state_line` and the</span>
+<span class="c1">#   two statuses in `claude_login_status` and `claude_key_status`, for the caller's line and for claude_login_refuse,</span>
+<span class="c1">#   which names the step of each state that is not present. The one decision rule, which the `--check` line's status</span>
+<span class="c1">#   and the profile mode's verdict both follow (verdict U512b-e5c1a610 P1: until this head the worse state decided,</span>
+<span class="c1">#   so an accepted key beside an exit 1 of `claude auth status` refused the launch and asked for `claude auth login`):</span>
+<span class="c1">#   the key decides. An accepted key (status 0) is the seat's route, so the status is 0 whatever the login state,</span>
+<span class="c1">#   which the line prints as information. Otherwise the login state is reported as before: a failed producer on</span>
+<span class="c1">#   either side is unreadable (2, standing order 21); a present login passes (0; the login route, until U513 retires</span>
+<span class="c1">#   it); both absent is absent (1).</span>
+<span class="c1"># @set claude_state_line The line.</span>
+<span class="c1"># @set claude_login_status The login state's status.</span>
+<span class="c1"># @set claude_key_status The key state's status.</span>
+<span class="c1"># @exitcode 0 The key accepted, or the login present. 1 Both absent, none unreadable. 2 The key unreadable, or the key</span>
+<span class="c1">#   not accepted and the login unreadable.</span>
+claude_state_hold<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>login<span class="w"> </span>key
+<span class="w">    </span><span class="nv">claude_login_status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">claude_key_status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nv">login</span><span class="o">=</span><span class="k">$(</span>claude_login_state<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">claude_login_status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="nv">key</span><span class="o">=</span><span class="k">$(</span>claude_key_state<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">claude_key_status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="nv">claude_state_line</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">login</span><span class="si">}</span><span class="s2">; </span><span class="si">${</span><span class="nv">key</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">claude_key_status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">claude_login_status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">claude_key_status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">2</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">claude_login_status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Print `&lt;profile&gt; &lt;route&gt;: &lt;state&gt;` for one profile, and hold it in `profile_line_text` for a caller</span>
+<span class="c1">#   that runs this in its own shell (the profile mode: the Claude route's two statuses, claude_state_hold, must reach</span>
+<span class="c1">#   claude_login_refuse there, so the line is read from the variable, not a substitution).</span>
 <span class="c1"># @arg $1 string Profile name.</span>
 <span class="c1"># @arg $2 int 1 for launch readiness (the profile mode), else metadata only (`--check`).</span>
+<span class="c1"># @set profile_line_text The line printed.</span>
 <span class="c1"># @exitcode 0 Logged in. 1 Absent. 2 Unreadable. 3 No seat login route, so nothing to log in.</span>
 profile_line<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>route<span class="w"> </span>state<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">ready</span><span class="o">=</span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="nv">0</span><span class="si">}</span>
@@ -6604,11 +6950,13 @@ profile_line<span class="o">()</span><span class="w"> </span><span class="o">{</
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">    </span><span class="m">2</span><span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s: unreadable (%s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">profiles_dir</span><span class="si">}</span><span class="s2">/</span><span class="nv">$1</span><span class="s2">.yml"</span>
+<span class="w">        </span><span class="nv">profile_line_text</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">: unreadable (</span><span class="si">${</span><span class="nv">profiles_dir</span><span class="si">}</span><span class="s2">/</span><span class="nv">$1</span><span class="s2">.yml)"</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">profile_line_text</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s: no route (overlay %s absent or without modelRoles.default)\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">profiles_dir</span><span class="si">}</span><span class="s2">/</span><span class="nv">$1</span><span class="s2">.yml"</span>
+<span class="w">        </span><span class="nv">profile_line_text</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">: no route (overlay </span><span class="si">${</span><span class="nv">profiles_dir</span><span class="si">}</span><span class="s2">/</span><span class="nv">$1</span><span class="s2">.yml absent or without modelRoles.default)"</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">profile_line_text</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">3</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
@@ -6625,18 +6973,22 @@ profile_line<span class="o">()</span><span class="w"> </span><span class="o">{</
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>openai-siwc<span class="o">)</span><span class="w"> </span><span class="nv">state</span><span class="o">=</span><span class="k">$(</span>siwc_state<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ready</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">    </span>claude-bridge<span class="o">)</span>
-<span class="w">        </span><span class="c1"># The directory is derived per login group and its chain judged in this shell, so a bad component refuses the</span>
-<span class="w">        </span><span class="c1"># lever naming it (claude_config_validate), where a subshell's exit would read as one unreadable line (regime-cutover U318b).</span>
+<span class="w">        </span><span class="c1"># The directory and the key file are derived per login group and the directory's chain judged in this shell,</span>
+<span class="w">        </span><span class="c1"># so a bad component refuses the lever naming it (claude_config_validate), where a subshell's exit would read</span>
+<span class="w">        </span><span class="c1"># as one unreadable line (regime-cutover U318b); the two states are judged in this shell too</span>
+<span class="w">        </span><span class="c1"># (claude_state_hold), so their statuses reach the profile mode's refusal.</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>claude_config_dir<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span>claude_config_validate
-<span class="w">            </span><span class="nv">state</span><span class="o">=</span><span class="k">$(</span>claude_state<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">            </span>claude_state_hold<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">            </span><span class="nv">state</span><span class="o">=</span><span class="si">${</span><span class="nv">claude_state_line</span><span class="si">}</span>
 <span class="w">        </span><span class="k">else</span>
 <span class="w">            </span><span class="nv">state</span><span class="o">=</span><span class="s2">"unreadable (</span><span class="si">${</span><span class="nv">claude_config_error</span><span class="si">}</span><span class="s2">)"</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">2</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="nv">state</span><span class="o">=</span><span class="s2">"not a seat login route"</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">3</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s %s: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">profile_line_text</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2"> </span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">profile_line_text</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
@@ -6675,7 +7027,8 @@ peer_name<span class="o">()</span><span class="w"> </span><span class="o">{</spa
 <span class="o">}</span>
 
 <span class="c1"># @description Run the role's login in the operator's terminal, then report whether it took. The Claude route never</span>
-<span class="c1">#   reaches here: its login is the operator's printed command (U318), so the caller refuses before this runs.</span>
+<span class="c1">#   reaches here: its login and its key are the operator's printed steps (U318, U512), so the caller refuses before</span>
+<span class="c1">#   this runs.</span>
 <span class="c1"># @arg $1 string Role (its profile has the same name).</span>
 <span class="c1"># @arg $2 string Route.</span>
 login<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -6719,7 +7072,8 @@ login<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="k">fi</span>
 <span class="c1"># The Claude route's login lives in the role's login group directory of this seats root (U318, U498): derived here, its</span>
 <span class="c1"># chain held to real directories of this user and made 0700 when absent, before the one status call, so the operator's</span>
-<span class="c1"># login lands in a directory this kit made; the legacy note is held before the group's directory is made.</span>
+<span class="c1"># login lands in a directory this kit made; the legacy note is held before the group's directory is made. The key file</span>
+<span class="c1"># (U512) is derived beside it; its directory is hcom-seat's to make and claude-keyed's to judge.</span>
 <span class="nv">claude_legacy_note</span><span class="o">=</span><span class="s1">''</span>
 <span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">route_status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>claude-bridge<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>claude_config_dir<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="s2">: unreadable (</span><span class="si">${</span><span class="nv">claude_config_error</span><span class="si">}</span><span class="s2">); fix it before a seat starts"</span><span class="w"> </span><span class="m">1</span>
@@ -6727,11 +7081,20 @@ login<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>claude_config_ensure
 <span class="k">fi</span>
 
+<span class="c1"># The line is judged in this shell (no substitution), so the Claude route's two statuses (claude_state_hold) reach</span>
+<span class="c1"># claude_login_refuse; the line itself is read from profile_line_text.</span>
 <span class="nv">status</span><span class="o">=</span><span class="m">0</span>
-<span class="nv">line</span><span class="o">=</span><span class="k">$(</span>profile_line<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">1</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="nv">profile_line_text</span><span class="o">=</span><span class="s1">''</span>
+profile_line<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">1</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="nv">line</span><span class="o">=</span><span class="si">${</span><span class="nv">profile_line_text</span><span class="si">}</span>
 <span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
 <span class="m">0</span><span class="o">)</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'seat-login-preflight: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="c1"># The Claude route's pass names the missing half's command as information (U512f); any other route prints the line.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">route_status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>claude-bridge<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>claude_pass_report<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'seat-login-preflight: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="p">;;</span>
 <span class="m">2</span><span class="o">)</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">; fix or move the record aside before a seat starts"</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">;;</span>
@@ -6741,7 +7104,7 @@ login<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="p">;;</span>
 <span class="k">esac</span>
 <span class="nv">route</span><span class="o">=</span><span class="k">$(</span>route_of<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">1</span>
-<span class="c1"># The Claude route has no login to run here: the operator's one command follows the line (U318, standing order 48).</span>
+<span class="c1"># The Claude route has no login to run here: the operator's steps follow the line (U318, U512, standing order 48).</span>
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>claude-bridge<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>claude_login_refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span>
 <span class="k">fi</span>
@@ -6750,7 +7113,8 @@ login<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="k">fi</span>
 login<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="s2">"</span>
 <span class="nv">status</span><span class="o">=</span><span class="m">0</span>
-<span class="nv">line</span><span class="o">=</span><span class="k">$(</span>profile_line<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">1</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+profile_line<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">1</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="nv">line</span><span class="o">=</span><span class="si">${</span><span class="nv">profile_line_text</span><span class="si">}</span>
 <span class="o">((</span><span class="nv">status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2"> after the login"</span><span class="w"> </span><span class="m">1</span>
 <span class="nb">printf</span><span class="w"> </span><span class="s1">'seat-login-preflight: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 </code></pre></div>

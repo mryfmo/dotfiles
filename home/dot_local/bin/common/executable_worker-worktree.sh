@@ -68,30 +68,36 @@
 #   Trusted: the worker is a non-adversarial actor whose reflex the refusals stop, not an attacker. A worker that
 #   rewrites the fresh repository's config or hooks directory can restore the push path; the tree is the worker's,
 #   and the refusal removes the path a push takes by habit, which is the failure that happened.
-#   The tree's owner record (regime-cutover U509; standing order 27, one writer per tree): twice on 2026-11-12 and
-#   twice on 2026-11-13 a worker that had been cancelled kept editing while its successor was dispatched into the
+#   The tree's owner record (regime-cutover U509, U509e; standing order 27, one writer per tree): twice on 2026-11-12
+#   and twice on 2026-11-13 a worker that had been cancelled kept editing while its successor was dispatched into the
 #   same tree (decisions.tsv lessons 2026-11-12T11:31:15Z and 2026-11-13T01:39:15Z); the rule was prose and failed
 #   four times, so it is a refusal of this tool. `claim <unit> <owner> [--stale <minutes>]` writes
 #   `<root>/<unit>/.git/regime-owner`, the two lines `owner=<name>` (over `^[A-Za-z0-9._-]{1,64}$`) and
 #   `claimed=<YYYY-MM-DDTHH:MM:SSZ>`, mode 0600; its presence is the claim, and it lives under the tree's `.git`
 #   under a name git never writes, so no worker commit or `git status` sees it. Liveness is the record's age against
-#   `--stale` (default 20 minutes, the 10-minute progress rule doubled): a younger record refuses the claim with exit
-#   3, a code of its own, naming the owner, the claim time and the age; an older one is taken over with one stdout
-#   line naming the stale owner (a dead worker leaves a record; the coordinator's kill path runs `release`, and a
-#   crash is covered by the age). `release <unit> <owner>` removes the record when it names that owner, refuses
-#   with exit 3 when it names another, and prints `no claim <unit>` with exit 0 when there is none, so the
-#   coordinator's kill path can always run it. The coordinator claims right after the creation subcommand and
+#   `--stale` (default 20 minutes, the 10-minute progress rule doubled; 1 to 6 digits): a younger record refuses the
+#   claim with exit 3, a code of its own, naming the owner, the claim time and the age; an older one is taken over
+#   with one stdout line naming the stale owner (a dead worker leaves a record; the coordinator's kill path runs
+#   `release`, and a crash is covered by the age). `release <unit> <owner>` removes the record when it names that
+#   owner, refuses with exit 3 when it names another, and prints `no claim <unit>` with exit 0 when there is none, so
+#   the coordinator's kill path can always run it. The coordinator claims right after the creation subcommand and
 #   before every dispatch, and releases after the worker's return or kill; the creation subcommand does not claim,
 #   so a tree made for one owner and dispatched to another still passes through `claim`. The tree is `<root>/<unit>`
-#   as the creation subcommand places it (the same root checks); it must exist, with a `.git` that is a directory
-#   this user owns and no symbolic link, the shape of a repository this lever made, else exit 2. The record
-#   operations run after a `cd` into that `.git` directory, every later name relative to it (the directory the shell
-#   holds open is the descriptor `profile-config-place.py` places a file under, so a path component a worker renames
-#   between the checks and the write changes nothing the lever does): a fresh claim is one `O_CREAT | O_EXCL` write
-#   (the shell's `noclobber` redirection, under `umask 077`), a takeover writes an exclusive temporary beside the
-#   record and renames it over the old one, and the record is read as its two exact lines or refused by shape; the
-#   age comes from one `date -u` read whose status and shape are checked, the stamp converted in the shell's own
-#   arithmetic. These subcommands run no git, and the record is the only file they write or remove.
+#   as the creation subcommand places it (the same root checks). Every record operation runs in one program,
+#   `worker-worktree-owner.py` beside this file (pinned like this file; the lever reads its bytes once, hashes them
+#   against the pin and runs those same bytes, acting on the exit status alone), the form of `ledger-row.py` and
+#   `profile-config-place.py`: the tree and its `.git` opened `O_DIRECTORY | O_NOFOLLOW` (the open is the check; a
+#   link at either name refuses, exit 2) and `fstat`ed as a directory of this user, every later name relative to that
+#   descriptor; one `flock` on `regime-owner.lock` beside the record (0600; it stays) held over the read, the decision
+#   and the write or removal, so of two claimers on one stale record exactly one takes over and the other reads the
+#   fresh record and is refused, and a release delayed past a successor's claim reads the successor and is refused;
+#   the record read as bytes and matched whole (a NUL or any byte outside the two lines is malformed, refused and
+#   left for the operator; the stamp parsed with `strptime` and printed back, so 2026-02-31 is malformed); every
+#   write an exclusive 0600 temporary written, synced and renamed over the record, a failed step removing the
+#   temporary with exit 1 and the previous record standing. Round 1 (verdicts/U509-e343a569.md) kept these steps in
+#   the shell: the read and the write were unheld between them, `$(…)` dropped a NUL, `((10#n))` overflowed, a day of
+#   31 passed in every month, and a failed write left an empty record with exit 3. These subcommands run no git, and
+#   the record and its lock file are all they write or remove.
 # @arg $1 string The unit, `U<n>` or `U<n><letter>` (`U7`, `U7b`); the repository is `<root>/<unit>`.
 # @arg $2 string The branch to create: a name `git check-ref-format --branch` accepts (its normalized output is the
 #   name made, so `@{-1}` names the checkout's previous branch), over `[A-Za-z0-9._/-]`.
@@ -115,12 +121,15 @@
 #   path present (the reservation failed), a read (`git rev-parse`, `git config`, the resolver's `cd` and `pwd -P`,
 #   `uname -s`, `stat`) that failed, or the manifest pin differing from this file, each before anything is made; or a
 #   step after the reservation that failed, after which the directory this run made is removed again and nothing else;
-#   for the owner subcommands, an owner outside the grammar, a `--stale` that is no count of minutes, a tree that is
-#   absent or no repository this lever made (`.git` not a directory of this user, or a symbolic link), a clock read
-#   that failed, or a record outside its two exact lines (left for the operator), nothing written.
+#   for the owner subcommands, an owner outside the grammar, a `--stale` that is not 1 to 6 digits, a tree that is
+#   absent or no repository this lever made (`.git` not a directory of this user, or a symbolic link), no `python3` on
+#   PATH, the program beside this file unreadable or off its pin, the lock not taken within 10 s, or a record outside
+#   its two exact lines or unreadable (left for the operator), nothing written.
 # @exitcode 3 Refused by the owner record: a `claim` while a record younger than `--stale` holds the tree (`the tree
 #   <path> is owned by <old> (claimed <ts>, <age> min ago); release it or wait past --stale`), or a `release` by a
 #   name the record does not hold; the record is untouched.
+# @exitcode 1 For the owner subcommands, a write or removal that failed after the decision: the temporary removed,
+#   the previous record standing, one stderr line `worker-worktree.sh: failed: ...`.
 # @example
 #   ~/.local/bin/common/worker-worktree.sh U123 feat/refusals-not-sentences origin/main
 #   ~/.local/bin/common/worker-worktree.sh claim U123 U123Worker
@@ -132,6 +141,7 @@ set -euo pipefail
 #   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
 #   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
 # @set LEVER_MANIFEST The manifest the pin came from.
+# @set LEVER_DIR The physical directory of this file, where the owner subcommands' program sits (U509e).
 lever_self_check() {
     local src dir self name pin digest home
     # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
@@ -146,6 +156,7 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -308,198 +319,42 @@ place_root() {
     [[ ${root} != *$'\n'* ]] || refuse "DOTFILES_WT resolves to ${root//$'\n'/\\n}, which holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
 }
 
-# The tree's owner record (regime-cutover U509): `claim <unit> <owner> [--stale <minutes>]` and `release <unit> <owner>`.
-owner_file='regime-owner'
-stale_default=20
+# The tree's owner record (regime-cutover U509, U509e): `claim <unit> <owner> [--stale <minutes>]` and `release
+# <unit> <owner>` run the program `worker-worktree-owner.py` beside this file and end with its status.
+owner_program='worker-worktree-owner.py'
 
-# @description Print a refusal on stderr and exit 3: a live owner holds the tree, or the record names an owner other
-#   than the one releasing. A code of its own, so the coordinator's dispatch step tells it from a malformed call
-#   (exit 2). The record is untouched.
-# @arg $@ string The reason.
-refuse_owned() {
-    echo "${lever}: refused: $*" >&2
-    exit 3
-}
-
-# @description Set `epoch` to the seconds since 1970-01-01T00:00:00Z of $1, a `YYYY-MM-DDTHH:MM:SSZ` stamp, in the
-#   shell's own arithmetic (the days-from-civil formula of the proleptic Gregorian calendar), so the record's age
-#   needs no `date -d` or `date -j -f`, whose flags differ between Linux and macOS, and no producer stands between the
-#   record and the comparison. A stamp outside the shape, or with a field out of range, is a failure, never a time.
-# @arg $1 string The stamp.
-# @set epoch The seconds.
-# @exitcode 1 Not a stamp.
-epoch_of() {
-    local ts=$1 y m d hh mm ss era yoe doy doe days
-    [[ ${ts} =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})Z$ ]] || return 1
-    y=$((10#${BASH_REMATCH[1]})) m=$((10#${BASH_REMATCH[2]})) d=$((10#${BASH_REMATCH[3]}))
-    hh=$((10#${BASH_REMATCH[4]})) mm=$((10#${BASH_REMATCH[5]})) ss=$((10#${BASH_REMATCH[6]}))
-    ((m >= 1 && m <= 12 && d >= 1 && d <= 31 && hh <= 23 && mm <= 59 && ss <= 60)) || return 1
-    if ((m <= 2)); then
-        y=$((y - 1))
-    fi
-    era=$((y / 400))
-    yoe=$((y - era * 400))
-    doy=$(((153 * (m > 2 ? m - 3 : m + 9) + 2) / 5 + d - 1))
-    doe=$((yoe * 365 + yoe / 4 - yoe / 100 + doy))
-    days=$((era * 146097 + doe - 719468))
-    epoch=$((days * 86400 + hh * 3600 + mm * 60 + ss))
-}
-
-# @description Read the clock once: `now` (epoch seconds) and `now_stamp` (the `YYYY-MM-DDTHH:MM:SSZ` form of the same
-#   instant) from one `date -u`, its status and the shape of its line checked (standing order 21); a failed or
-#   misshapen read refuses, never an age or a claim time the lever made up.
-# @set now The epoch seconds.
-# @set now_stamp The stamp written into a record.
-read_clock() {
-    local line
-    line=$(date -u '+%s %Y-%m-%dT%H:%M:%SZ') || refuse 'cannot read the clock (date -u failed)'
-    [[ ${line} =~ ^([0-9]+)\ ([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$ ]] ||
-        refuse "cannot read the clock (date -u printed ${line}, not <epoch> <stamp>)"
-    now=${BASH_REMATCH[1]}
-    now_stamp=${BASH_REMATCH[2]}
-}
-
-# @description Enter the `.git` directory of the worker tree $1 for the owner subcommands. The tree must exist and
-#   be no symbolic link, and its `.git` must be a directory this user owns and no symbolic link (`-L` before `-d`, so
-#   a link planted at the name is refused, not followed): the shape of a repository this lever made (`git init` makes
-#   `.git` a directory; the lever writes no marker, and the tree is trusted as the lever's beyond this, U509 TRUST).
-#   The `cd` is the descriptor every record operation runs under: each later name is relative to the directory the
-#   shell holds open, so a rename of a path component by a worker between these checks and the write changes nothing
-#   the lever does (the form of `profile-config-place.py`'s dir_fd placement, in a shell). The lever's own directory
-#   changes here and the subcommand ends the run.
-# @arg $1 string The tree path.
-enter_git_dir() {
-    [[ -e $1 || -L $1 ]] || refuse "the tree $1 does not exist; make it with worker-worktree.sh <unit> <branch> <base> first"
-    [[ ! -L $1 ]] || refuse "the tree $1 is a symbolic link; a worker tree is the directory the lever made"
-    [[ ! -L $1/.git ]] || refuse "$1/.git is a symbolic link; a worker tree's .git is the directory the lever made"
-    [[ -d $1/.git ]] || refuse "$1 is no worker repository: $1/.git is not a directory"
-    [[ -O $1/.git ]] || refuse "$1 is no worker repository: $1/.git is not this user's"
-    cd -- "$1/.git" || refuse "cannot enter $1/.git"
-}
-
-# @description Read the owner record `regime-owner` of the entered `.git` directory: `rec_owner`, `rec_stamp` and
-#   `rec_epoch` set and status 0, or status 1 when there is none. The only shape read is the two newline-ended lines
-#   `owner=<name>` and `claimed=<stamp>`, matched whole (U509 TRUST): a symbolic link, a file of another kind, another
-#   line count, a line outside the grammar or a stamp that is no date refuses with exit 2 and leaves the file for the
-#   operator, and a file that is there but cannot be read (`cat`'s status) is a refusal, never an absence (standing
-#   order 21). The bytes are read through `cat` with a sentinel, as `exact_line` reads a path, so the final newline is
-#   part of what is matched (bash 3.2, the system shell, has no `mapfile`).
-# @set rec_owner The owner's name.
-# @set rec_stamp The claim time as written.
-# @set rec_epoch The claim time in epoch seconds.
-# @exitcode 0 Read.
-# @exitcode 1 No record.
-read_record() {
-    local content malformed pattern
-    malformed="the owner record ${record_path} is not the two lines owner=<name> and claimed=<YYYY-MM-DDTHH:MM:SSZ>; remove it by hand"
-    pattern="^owner=([A-Za-z0-9._-]{1,64})"$'\n'"claimed=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)"$'\n'"\$"
-    [[ ! -L ${owner_file} ]] || refuse "the owner record ${record_path} is a symbolic link; remove it by hand"
-    [[ -e ${owner_file} ]] || return 1
-    [[ -f ${owner_file} ]] || refuse "the owner record ${record_path} is not a regular file; remove it by hand"
-    content=$(cat -- "${owner_file}" 2> /dev/null && printf x) || refuse "cannot read the owner record ${record_path}"
-    content=${content%x}
-    [[ ${content} =~ ${pattern} ]] || refuse "${malformed}"
-    rec_owner=${BASH_REMATCH[1]}
-    rec_stamp=${BASH_REMATCH[2]}
-    epoch_of "${rec_stamp}" || refuse "${malformed}"
-    rec_epoch=${epoch}
-}
-
-# @description Write the record with owner $1 and stamp $2 as a fresh claim: one `O_CREAT | O_EXCL` open through the
-#   shell's `noclobber` redirection (bash opens a name nothing is at with `O_EXCL`, and refuses one a file is at),
-#   under `umask 077` in a subshell, so the file is made 0600 and this shell's umask is as it was. A name that appeared
-#   since the read is a claim that landed first: exit 3, never a rewrite.
-# @arg $1 string The owner.
-# @arg $2 string The stamp.
-write_fresh() {
-    if ! (umask 077 && set -o noclobber && printf 'owner=%s\nclaimed=%s\n' "$1" "$2" > "${owner_file}") 2> /dev/null; then
-        [[ -e ${owner_file} || -L ${owner_file} ]] || refuse "cannot write the owner record ${record_path}"
-        refuse_owned "the tree ${path} was claimed by another run while this claim was made; run claim again"
-    fi
-}
-
-# @description Replace the record with owner $1 and stamp $2 (a takeover): the new record is written 0600 under an
-#   exclusive temporary name beside it (`noclobber` again) and renamed over the old one in one step (`mv -f` within
-#   one directory is rename(2)), so no reader sees a partial record and the stale owner's file is never truncated in
-#   place. A failure removes the temporary and refuses.
-# @arg $1 string The owner.
-# @arg $2 string The stamp.
-write_takeover() {
-    local tmp=${owner_file}.$$.tmp
-    (umask 077 && set -o noclobber && printf 'owner=%s\nclaimed=%s\n' "$1" "$2" > "${tmp}") 2> /dev/null ||
-        refuse "cannot write ${record_path}.$$.tmp"
-    mv -f -- "${tmp}" "${owner_file}" || {
-        rm -f -- "${tmp}"
-        refuse "cannot replace the owner record ${record_path}"
-    }
-}
-
-# @description The owner subcommands: arguments checked (exit 2), the root placed as the creation subcommand places
-#   it, the tree's `.git` entered, then `claim` (the clock read, the record read, refused while live, taken over when
-#   stale, written when absent) or `release` (removed when the record names the owner, refused when it names another,
-#   `no claim` when absent). Ends the run.
-# @arg $1 string `claim` or `release`.
-# @arg $2 string The unit.
-# @arg $3 string The owner.
-# @arg $@ string For `claim`, `--stale <minutes>` at most.
+# @description The owner subcommands: the root placed as the creation subcommand places it (`place_root`, exit 2
+#   before anything runs), then the one program `worker-worktree-owner.py` beside this file, which checks the
+#   arguments, opens the tree's `.git` through descriptors, takes the one lock and reads, writes or removes the record
+#   (round 1 kept these steps in the shell, and the audit found the read and the write unheld between them, a NUL
+#   dropped by `$(…)`, an overflowed `--stale`, a day of 31 in every month and an empty record after a failed write;
+#   verdicts/U509-e343a569.md). The program's bytes are read once into the shell (`cat`, its status checked, a
+#   sentinel keeping the final newline as `exact_line` keeps one), hashed against the
+#   `claude.levers.sha256.worker-worktree-owner.py` pin of the manifest the self-check read (the readers of
+#   lever_self_check), and those same bytes are what `python3 -I -S -` runs from its stdin: no path is read twice
+#   between the hash and the run, so a file replaced after the hash runs nothing (the pin-then-run class of U344c).
+#   This function acts on the program's exit status alone and ends the run with it: 0 claimed, taken over, released
+#   or no claim (its one stdout line), 3 refused by the record, 2 refused by shape, 1 a write or removal that failed
+#   after the decision; the program's stdout and stderr are the lever's.
+# @arg $@ string The verb, then its arguments, as given to the lever.
 owner_subcommand() {
-    local verb=$1 unit owner stale=${stale_default} age
-    shift
-    (($# >= 2)) || refuse "${usage}"
-    unit=$1
-    owner=$2
-    shift 2
-    case ${verb} in
-    claim)
-        while (($# > 0)); do
-            case $1 in
-            --stale)
-                (($# >= 2)) || refuse '--stale needs a count of minutes'
-                [[ $2 =~ ^[0-9]+$ ]] || refuse "--stale $2 is not a count of minutes"
-                stale=$((10#$2))
-                shift 2
-                ;;
-            *) refuse "${usage}" ;;
-            esac
-        done
-        ;;
-    release) (($# == 0)) || refuse "${usage}" ;;
-    esac
-    [[ ${unit} =~ ^U[0-9]+[a-z]?$ ]] || refuse "the unit ${unit} is not U<n> or U<n><letter>"
-    [[ ${owner} =~ ^[A-Za-z0-9._-]{1,64}$ ]] || refuse "the owner ${owner} is not a name over [A-Za-z0-9._-]{1,64}"
+    local program=${LEVER_DIR}/${owner_program} content pin digest status=0
     place_root
-    path=${root%/}/${unit}
-    record_path=${path}/.git/${owner_file}
-    enter_git_dir "${path}"
-    case ${verb} in
-    claim)
-        read_clock
-        if read_record; then
-            age=$(((now - rec_epoch) / 60))
-            if ((age < 0)); then
-                age=0
-            fi
-            ((age >= stale)) ||
-                refuse_owned "the tree ${path} is owned by ${rec_owner} (claimed ${rec_stamp}, ${age} min ago); release it or wait past --stale"
-            write_takeover "${owner}" "${now_stamp}"
-            printf 'taken over %s from=%s age=%sm owner=%s\n' "${unit}" "${rec_owner}" "${age}" "${owner}"
-        else
-            write_fresh "${owner}" "${now_stamp}"
-            printf 'claimed %s owner=%s\n' "${unit}" "${owner}"
-        fi
-        ;;
-    release)
-        if read_record; then
-            [[ ${rec_owner} == "${owner}" ]] ||
-                refuse_owned "the tree ${path} is owned by ${rec_owner}, not ${owner}; only the owner releases it"
-            rm -f -- "${owner_file}" || refuse "cannot remove the owner record ${record_path}"
-            printf 'released %s owner=%s\n' "${unit}" "${owner}"
-        else
-            printf 'no claim %s\n' "${unit}"
-        fi
-        ;;
-    esac
-    exit 0
+    command -v python3 > /dev/null || refuse "python3 is not on PATH; the owner subcommands run ${program}"
+    content=$(cat -- "${program}" && printf x) || refuse "cannot read ${program}"
+    content=${content%x}
+    pin=$(sed -n -E "s/^      ${owner_program//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || refuse "cannot read ${LEVER_MANIFEST}"
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || refuse "no single sha256 pin for ${owner_program} in ${LEVER_MANIFEST}"
+    if command -v sha256sum > /dev/null; then
+        digest=$(printf '%s' "${content}" | sha256sum) || digest=''
+    else
+        digest=$(printf '%s' "${content}" | shasum -a 256) || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash ${program}"
+    [[ ${digest} == "${pin}" ]] || refuse "sha256 ${digest} of ${program} differs from the pin in ${LEVER_MANIFEST}; the program is not the pinned one"
+    printf '%s' "${content}" | python3 -I -S - "${root}" "$@" || status=$?
+    exit "${status}"
 }
 
 case ${1:-} in

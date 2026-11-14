@@ -276,6 +276,7 @@ LEVERS = (
     "router-settings-apply.py",
     "seat-login-preflight",
     "seat-settings-render.sh",
+    "worker-worktree-owner.py",
     "worker-worktree.sh",
     "worktree-gc.sh",
 )

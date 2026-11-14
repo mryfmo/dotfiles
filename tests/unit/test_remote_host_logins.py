@@ -345,7 +345,7 @@ class PreflightTest(unittest.TestCase):
         (profiles / "audit.yml").write_text(
             "# Generated\nmodelRoles:\n  default: openai-siwc/gpt-6-astra\nskills:\n  customDirectories: []\n"
         )
-        (profiles / "orchestrator.yml").write_text("modelRoles:\n  default: claude-bridge/claude-fable-5-1\n")
+        (profiles / "orchestrator.yml").write_text("modelRoles:\n  default: claude-bridge/claude-fable-5-2\n")
         (profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         # The seats root the login groups' Claude Code directories live in (U318, per group since U498), passed as
         # hcom-seat passes its resolved one: the orchestrator profile's group directory, the worker's, and the legacy
@@ -1103,7 +1103,7 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         remote = "100.64.0.2 50000 100.64.0.3 22"
         profiles = self.home / ".agents/omp/profiles"
         (profiles / "security.yml").write_text("modelRoles:\n  default: openai-siwc/gpt-6-astra\n")
-        (profiles / "review.yml").write_text("modelRoles:\n  default: claude-bridge/claude-fable-5-1\n")
+        (profiles / "review.yml").write_text("modelRoles:\n  default: claude-bridge/claude-fable-5-2\n")
         for profile in ("review", "security", "reviewer"):
             with self.subTest(profile=profile):
                 refused = self.run_lever(profile, SSH_CONNECTION=remote)

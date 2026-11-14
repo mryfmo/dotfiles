@@ -657,7 +657,7 @@
       "target": ".local/bin/common/seat-login-preflight",
       "kind": "file",
       "executable": true,
-      "sha256": "ee2eaa51dcee6bca8f45b95197f0a01e4cb631a49bf51774a65fc0e992163c4f"
+      "sha256": "61c365de11caf23d0d6a35f998c837913f1ed4cb2bb9214bc6d827b86893b8c2"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-settings-render.sh",

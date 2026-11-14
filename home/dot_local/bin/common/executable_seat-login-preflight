@@ -31,11 +31,15 @@
 #   not answer within the alarm, a network denied, a claude-keyed status that is neither 0 nor 2, or
 #   REGIME_ANTHROPIC_MODELS_URL naming anything but a loopback `http://127.0.0.1:<port>/` URL (the tests' fake
 #   endpoint; the key never leaves the host for another name) is `unreadable (...)`. Both states are judged on every
-#   line, and the worse decides the status (unreadable over absent over present). A profile with a seat login route
-#   (SIWC included) outside the table refuses the lever (exit 2) naming the profile, the route and the table, never a
-#   line (regime-cutover U498b). A record that exists but cannot be read or breaks its schema, and a producer
+#   line, and the key decides (regime-cutover U512e, claude_state_hold): an accepted key is the seat's route, so the
+#   status is 0 whatever the login state, which the line prints as information; when the key is absent, refused or
+#   rejected, the login state is reported as before and a present login passes (the login route, until U513 retires
+#   it), both absent is absent, and a producer that failed on either side is unreadable. A profile with a seat login
+#   route (SIWC included) outside the table refuses the lever (exit 2) naming the profile, the route and the table,
+#   never a line (regime-cutover U498b). A record that exists but cannot be read or breaks its schema, and a producer
 #   (`uname`, `stat`, `date`, `claude`, `claude-keyed`, `python3`, `perl`, `jq`) that fails, are reported as
-#   unreadable, never as absent, and make the exit status 1.
+#   unreadable, never as absent, and make the exit status 1 (the login's producers beside an accepted key excepted:
+#   their state is printed and decides nothing).
 #
 #   `<profile>` (a seat profile of the manifest's `omp.roles`: orchestrator, worker or audit; `hcom-seat`
 #   calls it with the seat's role before it creates or starts anything) checks that a seat can use the login,
@@ -44,12 +48,13 @@
 #   herdr pane on the seat host can be even when its server did not inherit `SSH_CONNECTION`) SIWC needs an
 #   active `openai-siwc` login in `agent.db`, counted by the extension's `src/credentials.ts` without reading a
 #   token: the issued client is saved before the token exchange, so a record proves only that a sign-in began.
-#   The Claude route is checked on every host (regime-cutover U190b), local included, since the seat's child logs
-#   in by its group directory's login and runs on the seats' key wherever it runs: it needs `authMethod` `claude.ai`
-#   there (an `oauth_token` or `api_key` method, an exit 1 of `claude auth status` or an absent directory counts as
-#   absent) and the key file in place and accepted by the Models API (a refused form, a rejected key or an absent
-#   file counts as absent); the operator's `~/.claude`, the Keychain item of the default directory and a variable in
-#   this environment are no input (regime-cutover U312, U318, U512). An absent SIWC login is logged in here only in
+#   The Claude route is checked on every host (regime-cutover U190b), local included, since the seat's child runs on
+#   the seats' key wherever it runs: it needs the key file in place and accepted by the Models API (a refused form, a
+#   rejected key or an absent file counts as absent), or, until U513 retires the login route, `authMethod` `claude.ai`
+#   under its group directory (an `oauth_token` or `api_key` method, an exit 1 of `claude auth status` or an absent
+#   directory counts as absent); an accepted key needs no login (regime-cutover U512e); the operator's `~/.claude`,
+#   the Keychain item of the default directory and a variable in this environment are no input (regime-cutover U312,
+#   U318, U512). An absent SIWC login is logged in here only in
 #   the operator's own terminal (stdin and stdout a TTY, not inside a seat): SIWC through
 #   `omp --profile <profile> login openai-siwc` with `OPENAI_SIWC_CALLBACK_PORT=1455`, which the `seat-host` SSH
 #   entry forwards back from the laptop, and `xdg-open`/`open` pointed at `regime-open-url` for that command only.
@@ -200,9 +205,12 @@ end'
 # prints the three-digit status code alone; the key reaches no argument, no environment and no line. The opener
 # follows no redirect (regime-cutover U512b, verdict U512-2a49d363 P1: urllib's default opener re-sent the header to
 # the redirect's target): its redirect handler raises on every 3xx a redirect would follow, and any other 3xx is
-# refused after the fact, so the key is sent to the one address alone. Exit 3: the API could not be reached
-# (URLError, a network denied); 4: the key file could not be read; 5: the API answered a redirect, refused (the code
-# printed); 142: the alarm ended it.
+# refused after the fact, so the key is sent to the one address alone. The opener uses no proxy either
+# (regime-cutover U512e, verdict U512b-e5c1a610 P1: urllib's default ProxyHandler read an inherited `http_proxy` and
+# routed the loopback request, header included, to the proxy): `ProxyHandler({})` replaces the default, so neither a
+# proxy variable nor the system proxy settings are read, and claude_key_state runs the probe with the proxy variables
+# unset as a second fence. Exit 3: the API could not be reached (URLError, a network denied); 4: the key file could not
+# be read; 5: the API answered a redirect, refused (the code printed); 142: the alarm ended it.
 models_api_default='https://api.anthropic.com/v1/models?limit=1'
 models_api_loopback_re='^http://127\.0\.0\.1:[0-9]{1,5}/'
 models_api_probe='
@@ -227,7 +235,7 @@ request = urllib.request.Request(
     os.environ["REGIME_ANTHROPIC_MODELS_URL"], headers={"x-api-key": key, "anthropic-version": "2023-06-01"}, method="GET"
 )
 try:
-    with urllib.request.build_opener(NoRedirect).open(request) as response:
+    with urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect).open(request) as response:
         print(response.status)
 except RedirectRefused as refused:
     print(refused.args[0])
@@ -489,7 +497,9 @@ claude_key_command() {
 #   `claude_key_status` is not 0 (both set by claude_state_hold in this shell; unset, each counts as missing), each
 #   producer's status read (standing order 21; regime-cutover U318b: unread, a failed producer printed an ordinary
 #   absence with an empty command), so a failed producer refuses naming it instead; then the legacy note
-#   legacy_note_hold set, when it set one (U498; empty when the caller held none).
+#   legacy_note_hold set, when it set one (U498; empty when the caller held none). Since claude_state_hold passes on
+#   either state present (regime-cutover U512e), the profile mode reaches this with both missing; the single-state
+#   branches stay for a caller that holds one status alone.
 # @arg $1 string The profile line of the absent state.
 # @exitcode 2 Always: the login and the key are the operator's steps, or a step could not be produced (the command
 #   dies).
@@ -656,8 +666,10 @@ claude_key_state() {
         ;;
     esac
     # The validity: the code alone comes back on stdout; the child's stderr is dropped, so no line of it is printed.
+    # The one call, with the proxy variables unset (the second fence beside the probe's own `ProxyHandler({})`,
+    # regime-cutover U512e), so the key-bearing request reaches the one address and no proxy.
     status=0
-    code=$(REGIME_ANTHROPIC_MODELS_URL=${models_url} perl -e 'alarm 20; exec @ARGV' python3 -I -c "${models_api_probe}" "${claude_key_file}" 2> /dev/null) || status=$?
+    code=$(unset http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY && REGIME_ANTHROPIC_MODELS_URL=${models_url} perl -e 'alarm 20; exec @ARGV' python3 -I -c "${models_api_probe}" "${claude_key_file}" 2> /dev/null) || status=$?
     case ${status} in
     0) ;;
     142)
@@ -699,25 +711,32 @@ claude_key_state() {
     return 2
 }
 
-# @description Judge the Claude route in this shell (regime-cutover U318, U498, U512): the login state
-#   (claude_login_state) and the key state (claude_key_state), each run with its status read, both always (a seat
-#   needs the group's login and the key, and the operator is told of everything missing at once), the line
-#   `<login>; <key>` held in `claude_state_line` and the two statuses in `claude_login_status` and
-#   `claude_key_status`, for the caller's line and for claude_login_refuse, which names the step of each state that
-#   is not present. The worse state decides the status: unreadable (2) over absent (1) over present (0).
+# @description Judge the Claude route in this shell (regime-cutover U318, U498, U512, U512e): the login state
+#   (claude_login_state) and the key state (claude_key_state), each run with its status read, both always (the
+#   operator is told of everything missing at once), the line `<login>; <key>` held in `claude_state_line` and the
+#   two statuses in `claude_login_status` and `claude_key_status`, for the caller's line and for claude_login_refuse,
+#   which names the step of each state that is not present. The one decision rule, which the `--check` line's status
+#   and the profile mode's verdict both follow (verdict U512b-e5c1a610 P1: until this head the worse state decided,
+#   so an accepted key beside an exit 1 of `claude auth status` refused the launch and asked for `claude auth login`):
+#   the key decides. An accepted key (status 0) is the seat's route, so the status is 0 whatever the login state,
+#   which the line prints as information. Otherwise the login state is reported as before: a failed producer on
+#   either side is unreadable (2, standing order 21); a present login passes (0; the login route, until U513 retires
+#   it); both absent is absent (1).
 # @set claude_state_line The line.
 # @set claude_login_status The login state's status.
 # @set claude_key_status The key state's status.
-# @exitcode 0 Both present. 1 One or both absent, none unreadable. 2 One or both unreadable.
+# @exitcode 0 The key accepted, or the login present. 1 Both absent, none unreadable. 2 The key unreadable, or the key
+#   not accepted and the login unreadable.
 claude_state_hold() {
     local login key
     claude_login_status=0 claude_key_status=0
     login=$(claude_login_state) || claude_login_status=$?
     key=$(claude_key_state) || claude_key_status=$?
     claude_state_line="${login}; ${key}"
+    if ((claude_key_status == 0)); then return 0; fi
     if ((claude_login_status == 2 || claude_key_status == 2)); then return 2; fi
-    if ((claude_login_status == 1 || claude_key_status == 1)); then return 1; fi
-    return 0
+    if ((claude_login_status == 0)); then return 0; fi
+    return 1
 }
 
 # @description Print `<profile> <route>: <state>` for one profile, and hold it in `profile_line_text` for a caller

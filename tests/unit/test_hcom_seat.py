@@ -292,7 +292,9 @@ class HcomSeatTest(SeatFixture):
         login under `.state/claude-worker` through `claude`, a tool hcom-seat resolves (this fake answers and no test
         runs the host's Claude Code), and the same key file with the same lever and the key's validity by one Models
         API call (the fixture's fake endpoint), on one line, naming the operator's step of each state that is not
-        present, so the seat starts on a present login and a 200 alone; U190b: the rule holds on a local host too."""
+        present, so the seat starts on a 200 alone (U512e: the key decides; a present login beside an absent key passes
+        the preflight as the login route, until U513 retires it, and the launcher's own gate refuses); U190b: the rule
+        holds on a local host too."""
         key = self.key_file
         handout = "handouts/anthropic-api-key-u510.md"
         shared = Path(self.seats, ".state/claude-worker")
@@ -361,17 +363,18 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual(self.claude_keyed_calls.read_text(), f"--check REGIME_ANTHROPIC_KEY_FILE={key}\n" * 4)
         self.assertFalse(self.claude_calls.exists(), "no login route, so the preflight read no login")
         # On the claude-bridge route the preflight judges the group's login and the key file first, the key with the
-        # same lever, and names the handout's step for an absent key beside a present login.
+        # same lever; a present login beside an absent key passes the preflight (U512e: the login route, until U513
+        # retires it) with the line as information, and the launcher's own gate is the refusal.
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         run = launch(FAKE_CLAUDE_KEYED_STATUS="2")
         self.assertEqual(run.returncode, 2, run.stderr)
         self.assertTrue(
             run.stderr.startswith(
-                f"seat-login-preflight: worker claude-bridge: login present (claude.ai, {shared}); {key_absent}; place"
-                " the key once: "
+                f"seat-login-preflight: worker claude-bridge: login present (claude.ai, {shared}); {key_absent}\n"
             ),
             run.stderr,
         )
+        self.assertTrue(run.stderr.endswith("\n" + absent), run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
         self.assertFalse(Path(self.seats, "worker").exists())
         # The preflight made the group's directory (0700) for the operator's login; the launch made nothing else but
@@ -398,31 +401,35 @@ class HcomSeatTest(SeatFixture):
         run = launch(SSH_CONNECTION=None, FAKE_CLAUDE_AUTH_STATUS="1", FAKE_CLAUDE_KEYED_STATUS="2")
         self.assertEqual(run.returncode, 2, run.stderr)
         self.assertIn(f"; log in once: {command}; place the key once: ", run.stderr)
-        # With the key placed and accepted, a token or key login under the directory is not the seat's claude.ai
-        # login: the login step alone.
+        # With the key placed and accepted, the key decides (U512e): a token or key login under the directory is
+        # information, and the seat starts on the key alone.
         self.place_key()
-        for method in ("oauth_token", "api_key"):
-            with self.subTest(method=method):
-                run = launch(FAKE_CLAUDE_AUTH_METHOD=method, REGIME_ANTHROPIC_MODELS_URL=self.models_api(200))
-                self.assertEqual(run.returncode, 2, run.stderr)
-                self.assertIn(
-                    f"worker claude-bridge: absent (authMethod {method} under {shared}, not claude.ai); key ok ({key});"
-                    f" log in once: BROWSER=regime-open-url {command}; a login is the operator's step",
-                    run.stderr,
-                )
-        # A placed key the Models API rejects (401) beside a present login: the key steps alone.
-        run = launch(REGIME_ANTHROPIC_MODELS_URL=self.models_api(401))
-        self.assertEqual(run.returncode, 2, run.stderr)
+        run = launch(
+            "--name",
+            "worker-keyed",
+            FAKE_CLAUDE_AUTH_METHOD="oauth_token",
+            REGIME_ANTHROPIC_MODELS_URL=self.models_api(200),
+        )
+        self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(
-            f"worker claude-bridge: login present (claude.ai, {shared}); key rejected ({key}; HTTP 401); place the key"
-            " once: ",
+            f"seat-login-preflight: worker claude-bridge: absent (authMethod oauth_token under {shared}, not claude.ai);"
+            f" key ok ({key})\n",
             run.stderr,
         )
-        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertEqual(len(self.calls_of("hcom")), 1)
+        # A placed key the Models API rejects (401) beside an absent login: both steps, the login's first.
+        run = launch(FAKE_CLAUDE_AUTH_STATUS="1", REGIME_ANTHROPIC_MODELS_URL=self.models_api(401))
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn(
+            f"worker claude-bridge: absent (not logged in under {shared}); key rejected ({key}; HTTP 401); log in once:"
+            f" BROWSER=regime-open-url {command}; place the key once: ",
+            run.stderr,
+        )
+        self.assertEqual(len(self.calls_of("hcom")), 1)
         self.assertEqual(self.models_requests, [{"path": "/v1/models?limit=1", "x-api-key": FAKE_KEY, "anthropic-version": "2023-06-01"}])  # fmt: skip
         # Every login call ran under the group's directory and without a token name: one per launch on the route,
         # through the fake alone.
-        self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n" * 6)
+        self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n" * 5)
         # The claude.ai login under the directory and a key the Models API accepts are what the seat can use; the
         # key's bytes reach no line.
         run = launch(REGIME_ANTHROPIC_MODELS_URL=self.models_api(200))
@@ -431,7 +438,7 @@ class HcomSeatTest(SeatFixture):
             f"seat-login-preflight: worker claude-bridge: login present (claude.ai, {shared}); key ok ({key})\n",
             run.stderr,
         )
-        self.assertEqual(len(self.calls_of("hcom")), 1)
+        self.assertEqual(len(self.calls_of("hcom")), 2)
         self.assertNotIn(FAKE_KEY, run.stdout + run.stderr + self.claude_keyed_calls.read_text() + self.claude_calls.read_text())  # fmt: skip
         # The dry run's environment line and the shim carry the file and the group's directory; the launch's omp saw
         # them exported.

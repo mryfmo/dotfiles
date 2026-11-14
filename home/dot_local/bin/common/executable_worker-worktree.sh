@@ -93,9 +93,11 @@
 #   `profile-config-place.py`: the tree and its `.git` opened `O_DIRECTORY | O_NOFOLLOW` (the open is the check; a
 #   link at either name refuses, exit 2) and `fstat`ed as a directory of this user, every later name relative to that
 #   descriptor; one `flock` on `regime-owner.lock` beside the record (created 0600 and `fchmod`ed after the open, so
-#   the umask never leaves a lock no later run can open; it stays) held over the read, the decision and the write or
-#   removal, so of two claimers on one stale record exactly one takes over and the other reads the fresh record and
-#   is refused, and a release delayed past a successor's claim reads a claim it does not present and is refused;
+#   the umask never leaves a lock no later run can open; it stays; an ENOENT from the open, macOS's answer to the
+#   loser of a concurrent first creation through one directory descriptor, is retried up to 10 times 0.05 s apart
+#   before it is a refusal, verdicts/U509f-f21a9f7f.md P2 :269, U509g) held over the read, the decision and the write
+#   or removal, so of two claimers on one stale record exactly one takes over and the other reads the fresh record
+#   and is refused, and a release delayed past a successor's claim reads a claim it does not present and is refused;
 #   the record read as bytes and matched whole (a NUL or any byte outside the two lines is malformed, refused and
 #   left for the operator; the stamp parsed with `strptime` and printed back, so 2026-02-31 is malformed); every
 #   write an exclusive 0600 temporary written, synced and renamed over the record, a failed step removing the

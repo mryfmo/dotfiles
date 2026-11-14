@@ -1,5 +1,6 @@
 #!/usr/bin/env -S python3 -I -S
-"""Claim or release a worker tree's owner record under one lock, through one descriptor (regime-cutover U509e, U509f).
+"""Claim or release a worker tree's owner record under one lock, through one descriptor (regime-cutover U509e, U509f,
+U509g).
 
 `worker-worktree.sh claim <unit> <owner> [--stale <minutes>]` and `release <unit> <owner> <claimed>` (U509, standing
 order 27: one writer per tree) run this program and act on its exit status alone: `worker-worktree-owner.py <root>
@@ -21,9 +22,15 @@ create left an empty record and exit 3). This program is the form `ledger-row.py
   after the open (`O_CREAT`'s mode is reduced by the umask, and round 2 never corrected it, so under umask 0777 the
   first claim left a mode-000 lock and every later claim and release refused with EACCES; it stays, since removing
   a lock file lets a waiter lock a dead inode) and `flock(LOCK_EX)` tried non-blocking every 0.05 s for up to 10 s,
-  expiry a refusal. The read, the decision and the write or removal all run under it, so of two claimers on one
-  stale record exactly one takes over and the other reads the fresh record and is refused, and a release that is
-  delayed past a successor's claim reads a record that is not the claim it presents and is refused.
+  expiry a refusal. An ENOENT from that open is retried, up to LOCK_OPEN_TRIES opens LOCK_POLL apart, before it is a
+  refusal: on macOS an `O_CREAT` open through a directory descriptor of a name another process is creating at the
+  same instant fails with ENOENT for the loser (round 4, verdicts/U509f-f21a9f7f.md P2 :269; a probe of 300
+  synchronized pairs failed 299 losers and one retry recovered every one; by absolute path, or `O_EXCL` first,
+  none failed), so of two claimers that reached the lock's first creation together one exited 2 instead of
+  reading the fresh record under the lock. The read, the decision and the write or removal all run under the lock,
+  so of two claimers on one stale record exactly one takes over and the other reads the fresh record and is
+  refused, and a release that is delayed past a successor's claim reads a record that is not the claim it presents
+  and is refused.
 - A release presents the claim it releases: `release <unit> <owner> <claimed>`, the owner and the claim time the
   claim printed (`claimed=<stamp>` ends its stdout line). The record is removed when it holds both; a record by the
   same name with another claim time is a successor's and is refused (exit 3) with the record intact. Round 2
@@ -90,6 +97,7 @@ STALE_DEFAULT = 20
 STAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 LOCK_WAIT = 10.0
 LOCK_POLL = 0.05
+LOCK_OPEN_TRIES = 10
 # Each grammar is matched with `fullmatch` (never `match` or `$`, which admit a final newline).
 UNIT = re.compile(r"U[0-9]+[a-z]?")
 OWNER = re.compile(r"[A-Za-z0-9._-]{1,64}")
@@ -262,13 +270,23 @@ def open_git_dir(path: str) -> int:
 
 def take_lock(dfd: int, git_dir: str) -> int:
     """The one lock every record operation runs under: `regime-owner.lock` beside the record, opened through the
-    descriptor, `fchmod`ed to 0600 (the create's mode is reduced by the umask; a lock left at mode 000 would refuse
-    every later run with EACCES) and `flock`ed exclusively; a wait past LOCK_WAIT seconds refuses naming the file."""
+    descriptor (an ENOENT retried up to LOCK_OPEN_TRIES times LOCK_POLL apart: macOS fails the loser of a concurrent
+    first creation through one directory descriptor with ENOENT, the round-4 P2), `fchmod`ed to 0600 (the create's
+    mode is reduced by the umask; a lock left at mode 000 would refuse every later run with EACCES) and `flock`ed
+    exclusively; a wait past LOCK_WAIT seconds refuses naming the file."""
     lock_path = f"{git_dir}/{LOCK}"
-    try:
-        lfd = os.open(LOCK, LOCK_FLAGS, 0o600, dir_fd=dfd)
-    except OSError as error:
-        raise refuse(f"cannot open the lock {lock_path}: {errno_text(error)}") from None
+    attempts = 0
+    while True:
+        attempts += 1
+        try:
+            lfd = os.open(LOCK, LOCK_FLAGS, 0o600, dir_fd=dfd)
+            break
+        except OSError as error:
+            if error.errno == errno.ENOENT and attempts < LOCK_OPEN_TRIES:
+                time.sleep(LOCK_POLL)
+                continue
+            tried = f" in {attempts} attempts" if attempts > 1 else ""
+            raise refuse(f"cannot open the lock {lock_path}{tried}: {errno_text(error)}") from None
     try:
         os.fchmod(lfd, 0o600)
     except OSError as error:

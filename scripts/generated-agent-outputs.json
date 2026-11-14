@@ -685,14 +685,14 @@
       "target": ".local/bin/common/worker-worktree-owner.py",
       "kind": "file",
       "executable": true,
-      "sha256": "135a074eec17364d0cc4278e505111fc8d1f84fb4a9940d3b42d392275ce9b9a"
+      "sha256": "e0ee382e1252b529307a99fe8960a917bf5e1c28716e2e60fef45c54cc6e03e1"
     },
     {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",
       "target": ".local/bin/common/worker-worktree.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "db50fb1bec87707b33e19675b42c46c73db38b8e77e402191f12b373ce5f5228"
+      "sha256": "73b1797badb325e6df4edb44b02960519882a6954bf210db6c4fcb7b04980b81"
     },
     {
       "source": "home/dot_local/bin/common/executable_worktree-gc.sh",

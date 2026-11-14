@@ -16,6 +16,7 @@ hash refusals run against the installed layout built under the scratch HOME from
 (`install_lever`). Nothing reads the real `~/.local/bin` or writes outside the scratch root.
 """
 
+import importlib.util
 import os
 import re
 import resource
@@ -1396,34 +1397,96 @@ class WorkerWorktreeTest(unittest.TestCase):
         of a record 25 minutes old, each held at its record read (the program's interpreter before it starts, so
         both reach the one lock together; round 1's `cat` after it printed, so both held the stale owner) and both
         released at once: exactly one exits 0 and prints `taken over`, the other exits 3 naming the winner at age 0,
-        and the record names the winner alone, with no temporary beside it."""
+        and the record names the winner alone, with no temporary beside it. The race is run three times on the tree,
+        the lock removed before each round so its first creation is raced too: the round-4 P2 (:269, U509g) was the
+        loser of that creation exiting 2 with ENOENT instead of 3 under the lock, once in three gate runs; the
+        creation itself is raced deterministically by the next test."""
         path = self.make_tree()
-        self.write_record(path, "W1", 25)
-        since = self.now()
-        hold = self.hold()
-        runs = {owner: self.start_lever("claim", "U7", owner, PATH=hold.path) for owner in ("W2", "W3")}
-        try:
-            hold.wait_for(2, runs.values())
-            hold.release()
-            results = {owner: (*run.communicate(timeout=120), run.returncode) for owner, run in runs.items()}
-        finally:
-            for run in runs.values():
-                if run.poll() is None:
-                    run.kill()
-        self.assertEqual(sorted(status for _, _, status in results.values()), [0, 3], results)
-        winner = next(owner for owner, (_, _, status) in results.items() if status == 0)
-        loser = next(owner for owner, (_, _, status) in results.items() if status == 3)
-        stamp = self.assert_record(path, winner, since)
-        self.assertEqual(results[winner][:2], (f"taken over U7 from=W1 age=25m owner={winner} claimed={stamp}\n", ""))
-        self.assertEqual(
-            results[loser][:2],
-            (
-                "",
-                f"worker-worktree.sh: refused: the tree {path} is owned by {winner} (claimed {stamp}, 0 min ago); "
-                "release it or wait past --stale\n",
-            ),
+        for round_number in range(3):
+            with self.subTest(round=round_number):
+                self.write_record(path, "W1", 25)
+                (path / OWNER_LOCK).unlink(missing_ok=True)
+                since = self.now()
+                hold = self.hold()
+                runs = {owner: self.start_lever("claim", "U7", owner, PATH=hold.path) for owner in ("W2", "W3")}
+                try:
+                    hold.wait_for(2, runs.values())
+                    hold.release()
+                    results = {owner: (*run.communicate(timeout=120), run.returncode) for owner, run in runs.items()}
+                finally:
+                    for run in runs.values():
+                        if run.poll() is None:
+                            run.kill()
+                self.assertEqual(sorted(status for _, _, status in results.values()), [0, 3], results)
+                winner = next(owner for owner, (_, _, status) in results.items() if status == 0)
+                loser = next(owner for owner, (_, _, status) in results.items() if status == 3)
+                stamp = self.assert_record(path, winner, since)
+                self.assertEqual(
+                    results[winner][:2], (f"taken over U7 from=W1 age=25m owner={winner} claimed={stamp}\n", "")
+                )
+                self.assertEqual(
+                    results[loser][:2],
+                    (
+                        "",
+                        f"worker-worktree.sh: refused: the tree {path} is owned by {winner} (claimed {stamp}, 0 min ago); "
+                        "release it or wait past --stale\n",
+                    ),
+                )
+                self.assertEqual(self.owner_entries(path), ["regime-owner", "regime-owner.lock"])
+
+    def test_the_lock_s_first_creation_raced_through_the_descriptor_is_opened_by_every_run_after_a_retry(self):
+        """The round-4 P2 (verdicts/U509f-f21a9f7f.md :269, U509g): on macOS an `O_CREAT` open through a directory
+        descriptor of a name another process is creating at the same instant fails with ENOENT for the loser (a probe
+        of 300 synchronized pairs failed 299 losers; by absolute path, or with `O_EXCL` first, none; one retry
+        recovered every one), so two claimers that reached the lock's first creation together exited 0 and 2 for 0 and
+        3, and the race above flaked once in three gate runs. The program's `take_lock`, loaded from the checkout's
+        file, runs in eight forked children released by one barrier against a directory holding no lock, ten times:
+        every child gets the lock in turn (a refusal is reported with its line and status), and one regular lock file
+        of mode 0600 is all that is left. Red at a7e4f042: the open without the retry refused the losers with ENOENT."""
+        spec = importlib.util.spec_from_file_location(
+            "worker_worktree_owner", ROOT / "scripts/orchestrator/worker-worktree-owner.py"
         )
-        self.assertEqual(self.owner_entries(path), ["regime-owner", "regime-owner.lock"])
+        program = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(program)
+        for round_number in range(10):
+            git_dir = self.root / f"lock-race-{round_number}"
+            git_dir.mkdir()
+            dfd = os.open(git_dir, os.O_RDONLY | os.O_DIRECTORY)
+            children = []
+            try:
+                barrier_read, barrier_write = os.pipe()
+                for _ in range(8):
+                    report_read, report_write = os.pipe()
+                    pid = os.fork()
+                    if pid == 0:  # the child: wait at the barrier, take the lock once, report and leave at once
+                        try:
+                            os.close(report_read)
+                            os.close(barrier_write)
+                            os.read(barrier_read, 1)
+                            try:
+                                program.take_lock(dfd, str(git_dir))
+                            except program.Refusal as refusal:
+                                os.write(report_write, refusal.reason.encode())
+                                os._exit(refusal.status)
+                            os._exit(0)
+                        except BaseException:
+                            os._exit(99)
+                    os.close(report_write)
+                    children.append((pid, report_read))
+                os.close(barrier_read)
+                time.sleep(0.01)
+                os.close(barrier_write)  # the EOF releases every child at once
+                outcomes = []
+                for pid, report_read in children:
+                    _, status = os.waitpid(pid, 0)
+                    outcomes.append((os.waitstatus_to_exitcode(status), os.read(report_read, 4096).decode()))
+                    os.close(report_read)
+            finally:
+                os.close(dfd)
+            self.assertEqual(outcomes, [(0, "")] * 8, f"round {round_number}: every run opens the lock")
+            self.assertEqual(sorted(entry.name for entry in git_dir.iterdir()), ["regime-owner.lock"])
+            self.assertTrue(stat.S_ISREG((git_dir / "regime-owner.lock").lstat().st_mode))
+            self.assertEqual(stat.S_IMODE((git_dir / "regime-owner.lock").lstat().st_mode), 0o600)
 
     def test_a_release_delayed_past_a_successor_s_claim_is_refused_and_the_successor_s_record_stands(self):
         """The round-1 P1's second half (:484): a release that had read its owner before a successor's claim went on

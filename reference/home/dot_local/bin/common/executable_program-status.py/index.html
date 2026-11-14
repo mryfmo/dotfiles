@@ -2766,6 +2766,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_stall-check.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_stall-check.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_ticket-unit.py/" class="md-nav__link">
         
   
@@ -6059,11 +6087,17 @@
 <span class="s2">  [--now &lt;ts&gt;]` with this lever's interpreter, its stdout and stderr read as bytes and decoded as strict UTF-8, and</span>
 <span class="s2">  its rows, `unit&lt;TAB&gt;state&lt;TAB&gt;age_minutes&lt;TAB&gt;last_line` (an optional first row of those names is skipped), fill</span>
 <span class="s2">  the column as `&lt;state&gt;, &lt;age_minutes&gt; min, &lt;last_line&gt;`, the state one of moving, stalled, done, no-file,</span>
-<span class="s2">  unreadable and the age `-` or 1 to 10 decimal digits; an in-flight unit it names no row for reads `progress: no</span>
-<span class="s2">  row`; its exit 0 or 1 is a report, its exit 2 is a refusal of this report quoting its first stderr line, any other</span>
-<span class="s2">  exit, output that is not UTF-8, a row of another width, a carriage return, a state or an age of another shape, a</span>
-<span class="s2">  unit named twice, a time limit of 120 seconds or a start that fails is a refusal too, the row ones naming the line.</span>
-<span class="s2">  Without the file beside this one the column reads `progress: unknown`. Rows of units not in flight print nothing.</span>
+<span class="s2">  unreadable, malformed and the age `-` or 1 to 10 decimal digits; an in-flight unit it names no row for reads</span>
+<span class="s2">  `progress: no row`. The checker's exit is read by its own contract (U496h, verdict U496f-0eecc2a9 P1): exit 0, 1 or</span>
+<span class="s2">  2 with rows on stdout and nothing on stderr is a report, each row one worker's state, so an `unreadable` or</span>
+<span class="s2">  `malformed` row (exit 2) stands beside a stalled peer's row and never hides it; exit 2 with nothing on stdout is the</span>
+<span class="s2">  checker's refusal and refuses this report quoting its first stderr line (`no reason given` when there is none);</span>
+<span class="s2">  exit 1 with nothing on stdout (a traceback, an empty report) and any stderr text beside rows or under exit 0 or 1</span>
+<span class="s2">  (a traceback) refuse this report naming the checker, its exit and the last stderr line, so a crashed checker never</span>
+<span class="s2">  reads as `no row`; any other exit, output that is not UTF-8, a row of another width, a carriage return, a state or</span>
+<span class="s2">  an age of another shape, a unit named twice, a time limit of 120 seconds or a start that fails is a refusal too,</span>
+<span class="s2">  the row ones naming the line. Without the file beside this one the column reads `progress: unknown`. Rows of units</span>
+<span class="s2">  not in flight print nothing.</span>
 <span class="s2">A section with no item prints `none`. `--ja` prints the five headings and the state word in the operator's forms</span>
 <span class="s2">(状態 / 要素 / 操作者の作業 / 操作者の判断 / agent が動かしているもの; 進んでいる / 止まっている / 完了) and translates nothing else.</span>
 
@@ -6118,8 +6152,8 @@ from<span class="w"> </span>datetime<span class="w"> </span>import<span class="w
 <span class="nv">GATES_WIDTH</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>len<span class="o">(</span>GATES_HEADER<span class="o">)</span>
 <span class="nv">SEPARATOR_CELL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">":?-+:?"</span><span class="o">)</span>
 <span class="nv">STALL_HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"unit"</span>,<span class="w"> </span><span class="s2">"state"</span>,<span class="w"> </span><span class="s2">"age_minutes"</span>,<span class="w"> </span><span class="s2">"last_line"</span><span class="o">)</span>
-<span class="c1"># The stall check's row contract (U496, U496b): the five states, the age `-` or 1 to 10 decimal digits.</span>
-<span class="nv">STALL_STATES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"moving"</span>,<span class="w"> </span><span class="s2">"stalled"</span>,<span class="w"> </span><span class="s2">"done"</span>,<span class="w"> </span><span class="s2">"no-file"</span>,<span class="w"> </span><span class="s2">"unreadable"</span><span class="o">)</span>
+<span class="c1"># The stall check's row contract (U496, U496b, U496h): the six states, the age `-` or 1 to 10 decimal digits.</span>
+<span class="nv">STALL_STATES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"moving"</span>,<span class="w"> </span><span class="s2">"stalled"</span>,<span class="w"> </span><span class="s2">"done"</span>,<span class="w"> </span><span class="s2">"no-file"</span>,<span class="w"> </span><span class="s2">"unreadable"</span>,<span class="w"> </span><span class="s2">"malformed"</span><span class="o">)</span>
 <span class="nv">STALL_AGE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"-|[0-9]{1,10}"</span><span class="o">)</span>
 <span class="nv">STALL_TIMEOUT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">120</span>
 <span class="c1"># The stall check's states that mean the worker is silent (U496).</span>
@@ -6383,8 +6417,12 @@ def<span class="w"> </span>decoded<span class="o">(</span>data,<span class="w"> 
 
 def<span class="w"> </span>stall_rows<span class="o">(</span>here,<span class="w"> </span>store,<span class="w"> </span>args<span class="o">)</span>:
 <span class="w">    </span><span class="s2">"""The stall check's rows by unit as (state, age_minutes, last_line), or None when no `stall-check.py` is beside</span>
-<span class="s2">    this lever; its exit 2 and every other failure of the run, of its encoding or of a row's shape (width, carriage</span>
-<span class="s2">    return, state, age) is a refusal, the row ones naming the line."""</span>
+<span class="s2">    this lever. Its exit 0, 1 or 2 with rows on stdout and nothing on stderr is a report (exit 2 is an `unreadable` or</span>
+<span class="s2">    `malformed` row's, U496h: one worker's bad file never hides a stalled peer); its exit 2 with nothing on stdout is</span>
+<span class="s2">    its refusal, quoted from its first stderr line; exit 1 with nothing on stdout, any stderr text beside rows or</span>
+<span class="s2">    under exit 0 or 1 (a traceback, quoted from its last line), any other exit, and every failure of the run, of its</span>
+<span class="s2">    encoding or of a row's shape (width, carriage return, state, age, a unit twice) are refusals too, the row ones</span>
+<span class="s2">    naming the line."""</span>
 <span class="w">    </span><span class="nv">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.path.join<span class="o">(</span>here,<span class="w"> </span>STALL_CHECK<span class="o">)</span>
 <span class="w">    </span>try:
 <span class="w">        </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.lstat<span class="o">(</span>path<span class="o">)</span>
@@ -6406,12 +6444,18 @@ def<span class="w"> </span>stall_rows<span class="o">(</span>here,<span class="w
 <span class="w">    </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>error:
 <span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot run {path}: {error.strerror}"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">stdout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decoded<span class="o">(</span>run.stdout,<span class="w"> </span>f<span class="s2">"{STALL_CHECK}'s stdout"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">stderr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decoded<span class="o">(</span>run.stderr,<span class="w"> </span>f<span class="s2">"{STALL_CHECK}'s stderr"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">first</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>stderr.strip<span class="o">()</span>.split<span class="o">(</span><span class="s2">"\n"</span>,<span class="w"> </span><span class="m">1</span><span class="o">)[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>stderr.strip<span class="o">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"no reason given"</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>run.returncode<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">2</span>:
+<span class="w">    </span><span class="nv">stderr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decoded<span class="o">(</span>run.stderr,<span class="w"> </span>f<span class="s2">"{STALL_CHECK}'s stderr"</span><span class="o">)</span>.strip<span class="o">()</span>
+<span class="w">    </span><span class="c1"># A refusal is one stderr line, quoted first; a traceback ends with the exception, quoted last.</span>
+<span class="w">    </span><span class="nv">first</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>stderr.split<span class="o">(</span><span class="s2">"\n"</span>,<span class="w"> </span><span class="m">1</span><span class="o">)[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>stderr<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"no reason given"</span>
+<span class="w">    </span><span class="nv">last</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>stderr.rsplit<span class="o">(</span><span class="s2">"\n"</span>,<span class="w"> </span><span class="m">1</span><span class="o">)[</span>-1<span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>stderr<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"no reason given"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>run.returncode<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">2</span><span class="w"> </span>and<span class="w"> </span>not<span class="w"> </span>stdout.strip<span class="o">()</span>:
 <span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{STALL_CHECK} refused this report: {first}"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>run.returncode<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="m">0</span>,<span class="w"> </span><span class="m">1</span><span class="o">)</span>:
-<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{STALL_CHECK} exited {run.returncode}: {first}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>run.returncode<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="m">0</span>,<span class="w"> </span><span class="m">1</span>,<span class="w"> </span><span class="m">2</span><span class="o">)</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{STALL_CHECK} exited {run.returncode}: {last}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>stderr:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{STALL_CHECK} exited {run.returncode} and wrote to stderr: {last}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>run.returncode<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">1</span><span class="w"> </span>and<span class="w"> </span>not<span class="w"> </span>stdout.strip<span class="o">()</span>:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"{STALL_CHECK} exited 1 and printed no row"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>stdout.split<span class="o">(</span><span class="s2">"\n"</span><span class="o">)</span>,<span class="w"> </span><span class="m">1</span><span class="o">)</span>:
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>line:

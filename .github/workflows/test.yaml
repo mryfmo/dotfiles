@@ -512,7 +512,7 @@ jobs:
         # 850 to 1050 s each) and timed out at the earlier 39 min at PR 780's 606f8caf (run 43548813296, every module OK
         # up to the cut); that 39 was twice a 19.0 min measurement of 2026-11-07 (main 49f3c33c, run 42347799380), before
         # the suite grew by test_regime_start, test_worker_worktree, test_ticket_unit, test_units_row, test_program_status,
-        # test_stall_check and test_claude_keyed; the Ubuntu test jobs take 12 to 15 min whole. 59 min of rest, rounded up plus
+        # test_stall_check (and test_claude_keyed, retired by U551); the Ubuntu test jobs take 12 to 15 min whole. 59 min of rest, rounded up plus
         # one minute (tests/unit/test_apt_mirror.py BoundOrderTest, REST_ONLY_BUDGET 3540 s); the apt calls run in the
         # step above under their own bound.
         timeout-minutes: 60

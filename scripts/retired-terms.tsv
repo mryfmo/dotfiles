@@ -88,6 +88,12 @@ gone	scripts/orchestrator/resolve-threads.sh	deleted source path
 gone	scripts/orchestrator/sandbox-scan.sh	deleted source path
 gone	scripts/orchestrator/task-consistency-check.py	deleted source path
 gone	scripts/orchestrator/three-repeat.sh	deleted source path
+gone	scripts/orchestrator/claude-keyed	deleted source path (U551: the API key route retired)
+gone	home/dot_local/bin/common/executable_claude-keyed	deleted source path (U551)
+gone	home/dot_omp/private_profiles/private_dsh/private_agent/modify_claude-bridge.json	deleted source path (U551: the bridge runs its bundled binary again)
+gone	home/dot_omp/private_profiles/private_orchestrator/private_agent/modify_claude-bridge.json	deleted source path (U551)
+gone	home/dot_omp/private_profiles/private_worker/private_agent/modify_claude-bridge.json	deleted source path (U551)
+gone	tests/unit/test_claude_keyed.py	deleted source path (U551)
 removed	.agents/skills/agmsg/**	deployed copy of a retired source
 removed	.claude/skills/agmsg/**	deployed copy of a retired source
 removed	.claude/commands/agmsg.md	deployed copy of a retired source
@@ -107,6 +113,7 @@ removed	.claude/skills/hcom-audit	deployed copy of a retired source
 removed	.local/bin/common/hcom-reply	deployed copy of a retired source
 removed	.agents/omp/profiles/review.yml	the omp review role, which no launcher started (U72)
 removed	.agents/omp/profiles/security.yml	the omp security role, which no launcher started (U72)
+removed	.local/bin/common/claude-keyed	deployed copy of a retired source (U551)
 skip	.orchestration/	the program records: history written by the coordinator, read as data, never as current rules
 skip	.ua/	the committed knowledge-graph snapshot: generated, refreshed only by a full rebuild on operator request; agents read it only when .ua/meta.json matches HEAD
 allow	.claude/contextdb/contextdb/normalize.py	MultiEdit	CompactionDB reads past transcripts, which name the legacy tool

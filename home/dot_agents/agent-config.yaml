@@ -945,16 +945,6 @@ claude:
   # stall-check.py's progress column when that lever is beside it. Installed and
   # pinned the same way, run as `python3 -I` by the coordinator and allowed by the
   # orchestrator policy alone; it reads the store's tables and writes nothing.
-  # claude-keyed (U510, handoff/47) is the pi-claude-bridge's
-  # `provider.pathToClaudeCodeExecutable` in every claude-bridge role's
-  # ~/.omp/profiles/<role>/agent/claude-bridge.json (placed by the generated
-  # modify_claude-bridge.json of home/dot_omp/private_profiles): the Agent SDK
-  # spawns it in place of Claude Code, and it execs the bridge package's one
-  # Claude Code binary with ANTHROPIC_API_KEY read from the file
-  # REGIME_ANTHROPIC_KEY_FILE names (0600, one line, this user's) and the login
-  # names unset, or refuses with nothing started; the seats' shared claude.ai
-  # login is no longer any seat's model credential. Installed and pinned the
-  # same way, run by the SDK child alone, so no allow rule and no seat policy row.
   # ticket-unit.py binds the Router's pull request to one program unit from its
   # ticket (U493): it reads the ticket whose `follows` names the pull request from
   # the Router's sqlite read-only, renders the request text into a brief as data,
@@ -971,7 +961,7 @@ claude:
   # no gh, no git and no network.
   levers:
     sha256:
-      hcom-seat: 26fa94906bf58865509e9c5b194d8691fe2b194eca627562799a648ac5a36e58
+      hcom-seat: 44a6a9d87fba935ecf15b372cf0514ad34dde54ffa954f0575cabf465710588a
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -981,7 +971,7 @@ claude:
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: 1c576fc79b9f21491fe3bbfcd221efa92af7e7aebbb7e479eaee3a94e91b758d
       checkout-guard.sh: 4fd793eeefa7312b8f23c74a5b8f457eb915213b55f1020cc260932657674c45
-      seat-login-preflight: 5dc7dfebbc026ee2e1af42549d2011bd0880c69b4686b58faa8ea96099ec40d0
+      seat-login-preflight: 79355bd8f42c0ee21466f6c2d5eb1a3030f8c490dfa619962be99900bd6abffb
       regime-start: 978087b6ac9cbe00a3cb4f45dd749a8634d960948b5e2df96a97bbafe9597d17
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       regime-store-move: 592ed0a7513a072446d1dee5a96b27b96b139eda33cfdc5ac95dd559aa66351a
@@ -1000,7 +990,7 @@ claude:
       ledger.py: 4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
-      acp-broker: 9b85951d01b3364f9f8c30b2214194ab92b3046fa387f35672c8136ed7b20edc
+      acp-broker: 14e36aa04417d89a9e189de5155335e754cd75e1c9248512f3ac94830d8c1406
       acp-relay.py: 20f2aac43796339246df45b0e4a2e0eb42314802966ac7094cd3743f964fe269
       acp-seat: 7b8f5c930f0b5d16702cb8e3a392047c522a7aaaac12ee28b089be9a80c25fa9
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431
@@ -1010,7 +1000,6 @@ claude:
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: bab47be7273025518efab995f6bd4f444d9f9f8a7447f8d315ef8a984b316b50
       program-status.py: 28d4e82370463863eb63f4726c4fee4be1eaeb53dd30ef20e64b03271f5e7c76
-      claude-keyed: 4066e144cb2d9e9d5ed7443a7dec477331196cdbe1f5cee2e4a25484eb43db77
       ticket-unit.py: 38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1
       units-row.py: 6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e
       stall-check.py: 35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d

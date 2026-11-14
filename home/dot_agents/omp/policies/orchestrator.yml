@@ -68,6 +68,12 @@ bash:
       approval: allow
     - match: "*program-status.py *"
       approval: deny
+    # The ticket binding (U493): the Router's pull request bound to one program unit from its ticket; it reads the
+    # Router's sqlite read-only, writes the unit's brief and row into the store, and runs no gh and no git.
+    - match: "~/.local/bin/common/ticket-unit.py *"
+      approval: allow
+    - match: "*ticket-unit.py *"
+      approval: deny
     # records-sync.sh acts with no arguments too (U28b F3): the exact bare form is allowed, every other bare
     # spelling and the bare form chained are denied as the argument forms are.
     - match: "~/.local/bin/common/records-sync.sh *"

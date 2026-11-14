@@ -10,8 +10,10 @@ what is left; it holds the call named by `FAKE_GIT_WAIT_ON` until the fifo `FAKE
 lever writes into it. The steps that are not git (`mkdir`, `chmod`, `rm`, `uname`, `stat`) are failed by PATH shims
 (`shim`). The owner-record tests (U509, U509e) run the lever's `claim` and `release`, which run the pinned program
 `worker-worktree-owner.py` beside it under one lock; two runs are raced by holding each at its record read (`hold`),
-and a failed write is injected with a file-size limit of 0 on the run. Nothing reads the real `~/.local/bin` or
-writes outside the scratch root.
+and a failed write is injected with a file-size limit of 0 on the run. A release names the claim time its claim
+printed (U509f), so a same-name successor's record is never removed by its predecessor; the program's read, pin and
+hash refusals run against the installed layout built under the scratch HOME from the checkout's bytes
+(`install_lever`). Nothing reads the real `~/.local/bin` or writes outside the scratch root.
 """
 
 import os
@@ -38,6 +40,8 @@ HOOK_MESSAGE = "standing order 29: the coordinator pushes"
 OWNER_RECORD = ".git/regime-owner"
 OWNER_LOCK = ".git/regime-owner.lock"
 STAMP = "%Y-%m-%dT%H:%M:%SZ"
+# A claim time in the grammar, for a release whose refusal or `no claim` comes before the record is compared.
+ANY_STAMP = "2026-11-13T05:00:00Z"
 # The record's two exact lines, as the program matches them over the file's bytes.
 RECORD = re.compile(
     rb"owner=([A-Za-z0-9._-]{1,64})\nclaimed=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)\n"
@@ -122,14 +126,15 @@ class WorkerWorktreeTest(unittest.TestCase):
         run = subprocess.run(["git", *args], cwd=cwd or self.checkout, env=self.env, capture_output=True, text=True)
         return run.returncode, run.stdout.strip(), run.stderr
 
-    def run_lever(self, *args, cwd=None, preexec_fn=None, **env):
-        """Run the lever from CWD (default the checkout) with ENV over the scratch env; a None value unsets the name;
-        PREEXEC_FN runs in the child before the lever (a resource limit on the run). The git calls of every lever
-        run accumulate in `self.lever_calls`, apart from the test's own."""
+    def run_lever(self, *args, cwd=None, preexec_fn=None, lever=LEVER, **env):
+        """Run the lever (the checkout's, or the installed copy LEVER names) from CWD (default the checkout) with ENV
+        over the scratch env; a None value unsets the name; PREEXEC_FN runs in the child before the lever (a resource
+        limit or an umask on the run). The git calls of every lever run accumulate in `self.lever_calls`, apart from
+        the test's own."""
         merged = {key: value for key, value in {**self.env, **env}.items() if value is not None}
         self.git_calls.write_text("")
         run = subprocess.run(
-            [str(LEVER), *args],
+            [str(lever), *args],
             cwd=cwd or self.checkout,
             env=merged,
             capture_output=True,
@@ -996,8 +1001,9 @@ class WorkerWorktreeTest(unittest.TestCase):
         self.assert_refusals_in_place(path, "feat/u7")
         self.assertEqual(self.checkout_state(), before)
 
-    # The tree's owner record (regime-cutover U509, U509e): `claim <unit> <owner> [--stale <minutes>]` writes
-    # `<tree>/.git/regime-owner` and refuses while a live owner holds it; `release <unit> <owner>` removes it. Every
+    # The tree's owner record (regime-cutover U509, U509e, U509f): `claim <unit> <owner> [--stale <minutes>]` writes
+    # `<tree>/.git/regime-owner` and refuses while a live owner holds it, printing the claim time; `release <unit>
+    # <owner> <claimed>` removes it when the record holds that owner and that claim time, and nothing else. Every
     # record operation runs in `worker-worktree-owner.py` beside the lever under one lock on `regime-owner.lock`,
     # which stays beside the record. The program reads the real clock, so a claim's stamp is read back and must lie
     # within the run, and a hand-written record is given its age with a 30 s margin, so its age in whole minutes is
@@ -1029,6 +1035,22 @@ class WorkerWorktreeTest(unittest.TestCase):
         self.assertLessEqual(since, claimed)
         self.assertLessEqual(claimed, self.now())
         return stamp
+
+    def verb_args(self, verb, unit, owner, stamp=ANY_STAMP):
+        """The lever's arguments for VERB on UNIT by OWNER: a release names the claim time it releases (U509f)."""
+        return (verb, unit, owner) if verb == "claim" else (verb, unit, owner, stamp)
+
+    def install_lever(self):
+        """The installed layout under the scratch HOME from the checkout's own bytes, as `test_lever_self_check`
+        builds it: the lever and its program under `~/.local/bin/common`, the manifest at
+        `~/.agents/agent-config.yaml`; the installed lever's path, which reads that manifest and that program."""
+        bindir = self.root / "home/.local/bin/common"
+        bindir.mkdir(parents=True)
+        (self.root / "home/.agents").mkdir()
+        shutil.copy2(ROOT / "home/dot_agents/agent-config.yaml", self.root / "home/.agents/agent-config.yaml")
+        for name in ("worker-worktree.sh", "worker-worktree-owner.py"):
+            shutil.copy2(ROOT / "home/dot_local/bin/common" / f"executable_{name}", bindir / name)
+        return bindir / "worker-worktree.sh"
 
     def owner_entries(self, path):
         """The entries of the tree's `.git` that belong to the owner record: the record, its lock, any temporary."""
@@ -1113,7 +1135,8 @@ class WorkerWorktreeTest(unittest.TestCase):
     def test_claim_writes_the_owner_record_under_the_tree_s_git_directory(self):
         """A fresh claim writes `<tree>/.git/regime-owner` as the two lines `owner=<name>` and `claimed=<ISO UTC>`,
         the claim time within the run, mode 0600, a regular file, with the lock file `regime-owner.lock` (0600)
-        beside it and nothing else, and prints `claimed <unit> owner=<name>`; the record lives under `.git`, so the
+        beside it and nothing else, and prints `claimed <unit> owner=<name> claimed=<stamp>` (the claim time a release
+        names, U509f); the record lives under `.git`, so the
         tree's `git status` (untracked and ignored files included) and its working tree are as they were, the main
         checkout is byte-identical, and the subcommand runs no git at all."""
         path = self.make_tree()
@@ -1122,8 +1145,9 @@ class WorkerWorktreeTest(unittest.TestCase):
         self.lever_calls = ""
         since = self.now()
         run = self.run_lever("claim", "U7", "U7Worker")
-        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "claimed U7 owner=U7Worker\n", ""))
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
         stamp = self.assert_record(path, "U7Worker", since)
+        self.assertEqual(run.stdout, f"claimed U7 owner=U7Worker claimed={stamp}\n", "the claim time a release names")
         self.assertEqual((path / OWNER_RECORD).read_bytes(), f"owner=U7Worker\nclaimed={stamp}\n".encode())
         self.assertEqual(self.owner_entries(path), ["regime-owner", "regime-owner.lock"])
         self.assertEqual(stat.S_IMODE((path / OWNER_LOCK).lstat().st_mode), 0o600)
@@ -1138,8 +1162,9 @@ class WorkerWorktreeTest(unittest.TestCase):
         run = self.run_lever("U8", "feat/u8", "origin/main", DOTFILES_WT=None, TMPDIR=str(tmpdir))
         self.assertEqual((run.returncode, run.stderr), (0, ""))
         run = self.run_lever("claim", "U8", "W8", DOTFILES_WT=None, TMPDIR=str(tmpdir))
-        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "claimed U8 owner=W8\n", ""))
-        self.assert_record(tmpdir / "dotfiles-wt/U8", "W8", since)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        stamp = self.assert_record(tmpdir / "dotfiles-wt/U8", "W8", since)
+        self.assertEqual(run.stdout, f"claimed U8 owner=W8 claimed={stamp}\n")
 
     def test_a_second_claim_within_stale_is_refused_with_exit_3_naming_the_owner_and_the_age(self):
         """While the record is younger than `--stale` minutes (default 20), a claim by anyone, the same name
@@ -1181,53 +1206,59 @@ class WorkerWorktreeTest(unittest.TestCase):
         self.write_record(path, "W1", 20)
         since = self.now()
         run = self.run_lever("claim", "U7", "W2")
-        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "taken over U7 from=W1 age=20m owner=W2\n", ""))
-        self.assert_record(path, "W2", since)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        stamp = self.assert_record(path, "W2", since)
+        self.assertEqual(run.stdout, f"taken over U7 from=W1 age=20m owner=W2 claimed={stamp}\n")
         self.assertEqual(self.owner_entries(path), ["regime-owner", "regime-owner.lock"], "no temporary left")
         self.write_record(path, "W2", 1)
         run = self.run_lever("claim", "U7", "W3", "--stale", "0")
-        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "taken over U7 from=W2 age=1m owner=W3\n", ""))
-        self.assert_record(path, "W3", since)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        stamp = self.assert_record(path, "W3", since)
+        self.assertEqual(run.stdout, f"taken over U7 from=W2 age=1m owner=W3 claimed={stamp}\n")
         self.write_record(path, "Old.worker-1", 60)
         run = self.run_lever("claim", "U7", "W4")
-        self.assertEqual(
-            (run.returncode, run.stdout, run.stderr), (0, "taken over U7 from=Old.worker-1 age=60m owner=W4\n", "")
-        )
-        self.assert_record(path, "W4", since)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        stamp = self.assert_record(path, "W4", since)
+        self.assertEqual(run.stdout, f"taken over U7 from=Old.worker-1 age=60m owner=W4 claimed={stamp}\n")
         stamp = self.write_record(path, "W4", 2)
         run = self.run_lever("claim", "U7", "W5", "--stale", "3")
         self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
         self.assertIn(f"is owned by W4 (claimed {stamp}, 2 min ago)", run.stderr)
         self.write_record(path, "W4", 3)
         run = self.run_lever("claim", "U7", "W5", "--stale", "3")
-        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "taken over U7 from=W4 age=3m owner=W5\n", ""))
-        self.assert_record(path, "W5", since)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        stamp = self.assert_record(path, "W5", since)
+        self.assertEqual(run.stdout, f"taken over U7 from=W4 age=3m owner=W5 claimed={stamp}\n")
         self.assertEqual(self.owner_entries(path), ["regime-owner", "regime-owner.lock"], "no temporary left")
         self.assertEqual(self.git("status", "--porcelain", "--untracked-files=all", "--ignored", cwd=path), "")
         self.assertEqual(self.checkout_state(), before)
 
     def test_release_by_the_owner_removes_the_record_and_release_with_no_record_is_no_claim(self):
-        """`release <unit> <owner>` by the record's owner removes it and prints `released <unit> owner=<name>`;
-        with no record it prints `no claim <unit>` and exits 0, so a release after a kill or a crash is idempotent;
-        nothing else under `.git` is touched (the lock file stays), and the next claim is a fresh one, not a
-        takeover."""
+        """`release <unit> <owner> <claimed>` by the record's owner, naming the claim time its claim printed, removes
+        the record and prints `released <unit> owner=<name>`; with no record it prints `no claim <unit>` and exits 0
+        whatever claim time it names, so a release after a kill or a crash is idempotent; nothing else under `.git`
+        is touched (the lock file stays), and the next claim is a fresh one, not a takeover."""
         path = self.make_tree()
-        run = self.run_lever("release", "U7", "W1")
+        run = self.run_lever("release", "U7", "W1", ANY_STAMP)
         self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "no claim U7\n", ""))
         self.assertEqual(self.owner_entries(path), ["regime-owner.lock"])
         listing = self.listing(path)
+        since = self.now()
         run = self.run_lever("claim", "U7", "W1")
         self.assertEqual((run.returncode, run.stderr), (0, ""))
-        run = self.run_lever("release", "U7", "W1")
+        stamp = self.assert_record(path, "W1", since)
+        self.assertEqual(run.stdout, f"claimed U7 owner=W1 claimed={stamp}\n")
+        run = self.run_lever("release", "U7", "W1", stamp)
         self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "released U7 owner=W1\n", ""))
         self.assertFalse((path / OWNER_RECORD).exists())
         self.assertEqual(self.listing(path), listing, "the release removed the record and nothing else")
-        run = self.run_lever("release", "U7", "W1")
+        run = self.run_lever("release", "U7", "W1", stamp)
         self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "no claim U7\n", ""))
         since = self.now()
         run = self.run_lever("claim", "U7", "W2")
-        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "claimed U7 owner=W2\n", ""))
-        self.assert_record(path, "W2", since)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        stamp = self.assert_record(path, "W2", since)
+        self.assertEqual(run.stdout, f"claimed U7 owner=W2 claimed={stamp}\n")
 
     def test_release_by_another_owner_is_refused_with_exit_3_and_keeps_the_record(self):
         """A release naming an owner other than the record's is refused with exit 3 and one stderr line, whatever
@@ -1235,9 +1266,9 @@ class WorkerWorktreeTest(unittest.TestCase):
         path = self.make_tree()
         for minutes in (1, 60):
             with self.subTest(minutes=minutes):
-                self.write_record(path, "W1", minutes)
+                stamp = self.write_record(path, "W1", minutes)
                 record = (path / OWNER_RECORD).read_bytes()
-                run = self.run_lever("release", "U7", "W2")
+                run = self.run_lever("release", "U7", "W2", stamp)
                 self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
                 self.assertEqual(
                     run.stderr,
@@ -1247,8 +1278,9 @@ class WorkerWorktreeTest(unittest.TestCase):
                 self.assertEqual((path / OWNER_RECORD).read_bytes(), record)
 
     def test_a_claim_or_release_outside_the_grammar_or_on_no_worker_tree_is_refused_with_exit_2(self):
-        """A name outside `^[A-Za-z0-9._-]{1,64}$`, a unit outside `U<n>` or `U<n><letter>`, a `--stale` that is no
-        count, a wrong argument count, a tree that does not exist or is no repository (no `.git` directory, a
+        """A name outside `[A-Za-z0-9._-]{1,64}`, a unit outside `U<n>` or `U<n><letter>`, a `--stale` that is no
+        count, a release without its claim time or with one outside `YYYY-MM-DDTHH:MM:SSZ`, a wrong argument count,
+        a tree that does not exist or is no repository (no `.git` directory, a
         `.git` file), a `.git` that is a symbolic link, a root outside the creation subcommand's shape rules, and a
         record outside the two exact lines (read by shape, never as an owner or an absence) each refuse with exit 2
         and one stderr line; no record or lock is written anywhere and a malformed record is left for the
@@ -1265,10 +1297,10 @@ class WorkerWorktreeTest(unittest.TestCase):
             (("claim", "U7", "a;b"), "the owner a;b is not a name over"),
             (("claim", "U7", "x" * 65), "is not a name over [A-Za-z0-9._-]{1,64}"),
             (("claim", "U7", ""), "is not a name over [A-Za-z0-9._-]{1,64}"),
-            (("release", "U7", "a/b"), "the owner a/b is not a name over"),
+            (("release", "U7", "a/b", ANY_STAMP), "the owner a/b is not a name over"),
             (("claim", "7", "W1"), "the unit 7 is not U<n> or U<n><letter>"),
             (("claim", "U7bb", "W1"), "the unit U7bb is not U<n> or U<n><letter>"),
-            (("release", "u7", "W1"), "the unit u7 is not U<n> or U<n><letter>"),
+            (("release", "u7", "W1", ANY_STAMP), "the unit u7 is not U<n> or U<n><letter>"),
             (("claim", "U7", "W1", "--stale", "x"), "--stale x is not a count of minutes"),
             (("claim", "U7", "W1", "--stale", "-1"), "--stale -1 is not a count of minutes"),
             (("claim", "U7", "W1", "--stale"), "--stale needs a count of minutes"),
@@ -1276,9 +1308,11 @@ class WorkerWorktreeTest(unittest.TestCase):
             (("claim", "U7"), "usage:"),
             (("claim",), "usage:"),
             (("release", "U7", "W1", "--stale", "5"), "usage:"),
-            (("release", "U7", "W1", "extra"), "usage:"),
+            (("release", "U7", "W1", "extra"), "the claim time extra is not YYYY-MM-DDTHH:MM:SSZ"),
+            (("release", "U7", "W1", "2026-11-13 05:00:00"), "the claim time 2026-11-13 05:00:00 is not"),
+            (("release", "U7", "W1"), "release names the claim it releases: release <unit> <owner> <claimed>"),
             (("claim", "U11", "W1"), f"the tree {self.root}/wt/U11 does not exist"),
-            (("release", "U11", "W1"), f"the tree {self.root}/wt/U11 does not exist"),
+            (("release", "U11", "W1", ANY_STAMP), f"the tree {self.root}/wt/U11 does not exist"),
             (
                 ("claim", "U8", "W1"),
                 f"{self.root}/wt/U8 is no worker repository: {self.root}/wt/U8/.git is not a directory",
@@ -1291,8 +1325,8 @@ class WorkerWorktreeTest(unittest.TestCase):
                 ("claim", "U9", "W1"),
                 f"{self.root}/wt/U9/.git is a symbolic link; a worker tree's .git is the directory the lever made",
             ),
-            (("release", "U9", "W1"), f"{self.root}/wt/U9/.git is a symbolic link"),
-            (("release", "U8", "W1"), "is no worker repository"),
+            (("release", "U9", "W1", ANY_STAMP), f"{self.root}/wt/U9/.git is a symbolic link"),
+            (("release", "U8", "W1", ANY_STAMP), "is no worker repository"),
         )
         for argv, message in cases:
             with self.subTest(argv=argv):
@@ -1330,7 +1364,7 @@ class WorkerWorktreeTest(unittest.TestCase):
             record.write_bytes(body)
             for verb in ("claim", "release"):
                 with self.subTest(body=body, verb=verb):
-                    run = self.run_lever(verb, "U7", "W2")
+                    run = self.run_lever(*self.verb_args(verb, "U7", "W2"))
                     self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                     self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
                     self.assertIn(f"the owner record {path}/.git/regime-owner is not the two lines", run.stderr)
@@ -1339,7 +1373,7 @@ class WorkerWorktreeTest(unittest.TestCase):
         (path / ".git/regime-owner").symlink_to(path / ".git/HEAD")
         for verb in ("claim", "release"):
             with self.subTest(verb=verb, record="a symbolic link"):
-                run = self.run_lever(verb, "U7", "W2")
+                run = self.run_lever(*self.verb_args(verb, "U7", "W2"))
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(f"the owner record {path}/.git/regime-owner is a symbolic link", run.stderr)
                 self.assertTrue(record.is_symlink())
@@ -1348,7 +1382,7 @@ class WorkerWorktreeTest(unittest.TestCase):
         os.mkfifo(record)
         for verb in ("claim", "release"):
             with self.subTest(verb=verb, record="a fifo"):
-                run = self.run_lever(verb, "U7", "W2")
+                run = self.run_lever(*self.verb_args(verb, "U7", "W2"))
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(f"the owner record {path}/.git/regime-owner is not a regular file", run.stderr)
                 self.assertTrue(stat.S_ISFIFO(record.lstat().st_mode))
@@ -1380,7 +1414,7 @@ class WorkerWorktreeTest(unittest.TestCase):
         winner = next(owner for owner, (_, _, status) in results.items() if status == 0)
         loser = next(owner for owner, (_, _, status) in results.items() if status == 3)
         stamp = self.assert_record(path, winner, since)
-        self.assertEqual(results[winner][:2], (f"taken over U7 from=W1 age=25m owner={winner}\n", ""))
+        self.assertEqual(results[winner][:2], (f"taken over U7 from=W1 age=25m owner={winner} claimed={stamp}\n", ""))
         self.assertEqual(
             results[loser][:2],
             (
@@ -1398,17 +1432,16 @@ class WorkerWorktreeTest(unittest.TestCase):
         and the successor's record is byte-identical afterwards. Under the lock the release reads and removes in
         one step, so nothing can land between its read and its removal; the delay a kill path shows is before it."""
         path = self.make_tree()
-        self.write_record(path, "W1", 25)
+        first = self.write_record(path, "W1", 25)
         hold = self.hold(once=True)
-        late = self.start_lever("release", "U7", "W1", PATH=hold.path)
+        late = self.start_lever("release", "U7", "W1", first, PATH=hold.path)
         try:
             hold.wait_for(1, (late,))
             since = self.now()
             run = self.run_lever("claim", "U7", "W2", "--stale", "0", PATH=hold.path)
-            self.assertEqual(
-                (run.returncode, run.stdout, run.stderr), (0, "taken over U7 from=W1 age=25m owner=W2\n", "")
-            )
+            self.assertEqual((run.returncode, run.stderr), (0, ""))
             stamp = self.assert_record(path, "W2", since)
+            self.assertEqual(run.stdout, f"taken over U7 from=W1 age=25m owner=W2 claimed={stamp}\n")
             hold.release()
             out, err = late.communicate(timeout=120)
         finally:
@@ -1445,7 +1478,7 @@ class WorkerWorktreeTest(unittest.TestCase):
             ("release", "U10", tree_link),
         ):
             with self.subTest(verb=verb, unit=unit):
-                run = self.run_lever(verb, unit, "W1")
+                run = self.run_lever(*self.verb_args(verb, unit, "W1"))
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertEqual(run.stderr, f"worker-worktree.sh: refused: {message}\n")
                 self.assertEqual(self.owner_entries(target), [], "nothing reached the link's target")
@@ -1468,7 +1501,7 @@ class WorkerWorktreeTest(unittest.TestCase):
             record.write_bytes(body)
             for verb, owner in (("claim", "W2"), ("release", "W1")):
                 with self.subTest(body=body, verb=verb):
-                    run = self.run_lever(verb, "U7", owner)
+                    run = self.run_lever(*self.verb_args(verb, "U7", owner, stamp))
                     self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                     self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
                     self.assertIn(
@@ -1496,13 +1529,13 @@ class WorkerWorktreeTest(unittest.TestCase):
             record.write_bytes(body)
             for verb, owner in (("claim", "W2"), ("release", "W1")):
                 with self.subTest(stamp=stamp, verb=verb):
-                    run = self.run_lever(verb, "U7", owner)
+                    run = self.run_lever(*self.verb_args(verb, "U7", owner, stamp))
                     self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                     self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
                     self.assertIn(f"the owner record {path}/.git/regime-owner is not the two lines", run.stderr)
                     self.assertEqual(record.read_bytes(), body, "left for the operator, as stderr says")
         record.write_bytes(b"owner=W1\nclaimed=2028-02-29T05:00:00Z\n")
-        run = self.run_lever("release", "U7", "W1")
+        run = self.run_lever("release", "U7", "W1", "2028-02-29T05:00:00Z")
         self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "released U7 owner=W1\n", ""))
         self.assertFalse(record.exists())
 
@@ -1529,8 +1562,9 @@ class WorkerWorktreeTest(unittest.TestCase):
         self.assertEqual((path / OWNER_RECORD).read_bytes(), record)
         since = self.now()
         run = self.run_lever("claim", "U7", "W2", "--stale", "000000")
-        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "taken over U7 from=W1 age=0m owner=W2\n", ""))
-        self.assert_record(path, "W2", since)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        stamp = self.assert_record(path, "W2", since)
+        self.assertEqual(run.stdout, f"taken over U7 from=W1 age=0m owner=W2 claimed={stamp}\n")
 
     def test_a_failed_write_after_the_exclusive_create_leaves_no_empty_record_and_no_temporary(self):
         """The round-1 P2 (:415): a write that failed after the exclusive create left an empty record and exit 3, and
@@ -1561,8 +1595,9 @@ class WorkerWorktreeTest(unittest.TestCase):
         self.assertEqual(self.owner_entries(path), ["regime-owner", "regime-owner.lock"], "no temporary left")
         since = self.now()
         run = self.run_lever("claim", "U7", "W2")
-        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "taken over U7 from=W1 age=25m owner=W2\n", ""))
-        self.assert_record(path, "W2", since)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        stamp = self.assert_record(path, "W2", since)
+        self.assertEqual(run.stdout, f"taken over U7 from=W1 age=25m owner=W2 claimed={stamp}\n")
 
     def test_a_record_that_cannot_be_read_refuses_both_verbs_in_one_line_and_is_left(self):
         """Standing order 21 for the record read (the round-1 P2 on the tests, :1212: neither verb had a committed
@@ -1578,7 +1613,7 @@ class WorkerWorktreeTest(unittest.TestCase):
         self.addCleanup(record.chmod, 0o600)
         for verb, owner in (("claim", "W2"), ("release", "W1")):
             with self.subTest(verb=verb):
-                run = self.run_lever(verb, "U7", owner)
+                run = self.run_lever(*self.verb_args(verb, "U7", owner, stamp))
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
                 self.assertTrue(
@@ -1590,6 +1625,203 @@ class WorkerWorktreeTest(unittest.TestCase):
                 self.assertEqual(stat.S_IMODE(record.lstat().st_mode), 0)
         record.chmod(0o600)
         self.assertEqual(record.read_bytes(), f"owner=W1\nclaimed={stamp}\n".encode())
+
+    # Round 3 (verdicts/U509e-d8529b25.md, U509f): the release's identity, the grammars matched whole, the lock's mode
+    # under the umask, the program's read, pin and hash refusals, and the one-line refusal.
+
+    def test_a_release_presents_the_claim_it_releases_so_a_same_name_successor_s_record_stands(self):
+        """The round-2 P1 (:351): the release compared the owner's name alone, so a successor that reused the name
+        (the documented `<unit>Worker` form, so every round's worker is `U7Worker`) could have its fresh claim
+        deleted by the previous worker's delayed release. A release presents the claim it releases, `release <unit>
+        <owner> <claimed>`, the claim time the claim printed: W1's stale claim is taken over by a second W1 (the
+        line prints the new claim time), the first W1's release, delayed past that takeover (held at its record
+        read) and also run afterwards, is refused with exit 3 naming the record's claim and the one presented, and
+        the successor's record is byte-identical; the old form without a claim time and a claim time outside the
+        grammar are refused by shape (exit 2) with the record untouched; the successor's own release removes it."""
+        path = self.make_tree()
+        first = self.write_record(path, "W1", 25)
+        hold = self.hold(once=True)
+        late = self.start_lever("release", "U7", "W1", first, PATH=hold.path)
+        try:
+            hold.wait_for(1, (late,))
+            since = self.now()
+            run = self.run_lever("claim", "U7", "W1", PATH=hold.path)
+            self.assertEqual((run.returncode, run.stderr), (0, ""))
+            second = self.assert_record(path, "W1", since)
+            self.assertEqual(run.stdout, f"taken over U7 from=W1 age=25m owner=W1 claimed={second}\n")
+            self.assertNotEqual(first, second)
+            record = (path / OWNER_RECORD).read_bytes()
+            hold.release()
+            out, err = late.communicate(timeout=120)
+        finally:
+            if late.poll() is None:
+                late.kill()
+        refused = (
+            f"worker-worktree.sh: refused: the tree {path} is owned by W1 since {second}, not the claim of {first} "
+            "this release presents; a later claim by the same name stands\n"
+        )
+        self.assertEqual((late.returncode, out, err), (3, "", refused))
+        self.assertEqual((path / OWNER_RECORD).read_bytes(), record, "the successor's record stands")
+        run = self.run_lever("release", "U7", "W1", first)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (3, "", refused), "and after the takeover too")
+        self.assertEqual((path / OWNER_RECORD).read_bytes(), record)
+        for argv, message in (
+            (("release", "U7", "W1"), "release names the claim it releases: release <unit> <owner> <claimed>"),
+            (("release", "U7", "W1", "yesterday"), "the claim time yesterday is not YYYY-MM-DDTHH:MM:SSZ"),
+        ):
+            with self.subTest(argv=argv):
+                run = self.run_lever(*argv)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertEqual((path / OWNER_RECORD).read_bytes(), record)
+        run = self.run_lever("release", "U7", "W1", second)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "released U7 owner=W1\n", ""))
+        self.assertEqual(self.owner_entries(path), ["regime-owner.lock"])
+
+    def test_an_argument_ending_in_a_newline_is_outside_its_grammar(self):
+        """The round-2 P2 (:153): Python's `$` admits a final newline, so an owner `W1<LF>` passed the grammar, exit
+        0, and the record written held three lines, which no later run could read; the unit and `--stale` grammars
+        shared the gap. Every grammar is matched whole: an owner, a unit, a `--stale` count and a release's claim
+        time ending in a newline each refuse with exit 2 and one stderr line naming the value with the newline
+        escaped, and nothing is written (no record, no lock, no tree of the newline name)."""
+        path = self.make_tree()
+        for argv, message in (
+            (("claim", "U7", "W1\n"), "the owner W1\\n is not a name over [A-Za-z0-9._-]{1,64}"),
+            (("claim", "U7\n", "W1"), "the unit U7\\n is not U<n> or U<n><letter>"),
+            (("claim", "U7", "W1", "--stale", "5\n"), "--stale 5\\n is not a count of minutes of 1 to 6 digits"),
+            (("release", "U7", "W1\n", ANY_STAMP), "the owner W1\\n is not a name over"),
+            (("release", "U7", "W1", ANY_STAMP + "\n"), f"the claim time {ANY_STAMP}\\n is not YYYY-MM-DDTHH:MM:SSZ"),
+        ):
+            with self.subTest(argv=argv):
+                run = self.run_lever(*argv)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertTrue(run.stderr.startswith("worker-worktree.sh: refused: "), run.stderr)
+                self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertEqual(self.owner_entries(path), [], "nothing written: no record, no lock")
+                self.assertEqual(sorted(entry.name for entry in (self.root / "wt").iterdir()), ["U7"])
+
+    def test_a_rejected_value_holding_a_newline_is_refused_in_one_line(self):
+        """The round-2 P3 (:154): a rejected owner holding a newline was printed verbatim, so the one-line refusal
+        ran over two stderr lines. Every refusal passes the one-line sink: a newline, a carriage return, a tab and a
+        backslash in a rejected owner, unit or `--stale` value print as `\\n`, `\\r`, `\\t` and `\\\\`, one line,
+        exit 2, nothing written."""
+        path = self.make_tree()
+        for argv, message in (
+            (("claim", "U7", "W\n1"), "the owner W\\n1 is not a name over [A-Za-z0-9._-]{1,64}"),
+            (("claim", "U7", "W\r1"), "the owner W\\r1 is not a name over"),
+            (("claim", "U7", "W\t1"), "the owner W\\t1 is not a name over"),
+            (("claim", "U7", "a\\nb"), "the owner a\\\\nb is not a name over"),
+            (("claim", "U7", "W\x011"), "the owner W\\x011 is not a name over"),
+            (("claim", "U\n7", "W1"), "the unit U\\n7 is not U<n> or U<n><letter>"),
+            (("claim", "U7", "W1", "--stale", "5\n5"), "--stale 5\\n5 is not a count of minutes"),
+            (("release", "U7", "W1", "2026\n-11-13T05:00:00Z"), "the claim time 2026\\n-11-13T05:00:00Z is not"),
+        ):
+            with self.subTest(argv=argv):
+                run = self.run_lever(*argv)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertTrue(run.stderr.startswith("worker-worktree.sh: refused: "), run.stderr)
+                self.assertTrue(run.stderr.endswith("\n"), run.stderr)
+                self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertEqual(self.owner_entries(path), [])
+
+    def test_a_claim_under_a_closed_umask_leaves_a_lock_and_a_record_of_mode_0600(self):
+        """The round-2 P2 (:217): the lock was created with mode 0600 reduced by the umask and never corrected, so
+        under umask 0777 the first claim passed and left a mode-000 lock, and every later claim and release refused
+        with EACCES. The lock and the record's temporary are `fchmod`ed after their open: a fresh claim, a release
+        and a takeover under umask 0777 each pass, the lock and the record are 0600 afterwards, and a run under the
+        caller's own umask follows them."""
+        path = self.make_tree()
+
+        def closed():
+            os.umask(0o777)
+
+        since = self.now()
+        run = self.run_lever("claim", "U7", "W1", preexec_fn=closed)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        stamp = self.assert_record(path, "W1", since)
+        self.assertEqual(stat.S_IMODE((path / OWNER_LOCK).lstat().st_mode), 0o600, "the lock's mode, umask or not")
+        run = self.run_lever("release", "U7", "W1", stamp, preexec_fn=closed)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "released U7 owner=W1\n", ""))
+        self.write_record(path, "W1", 25)
+        since = self.now()
+        run = self.run_lever("claim", "U7", "W2", preexec_fn=closed)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        stamp = self.assert_record(path, "W2", since)
+        self.assertEqual(run.stdout, f"taken over U7 from=W1 age=25m owner=W2 claimed={stamp}\n")
+        self.assertEqual(self.owner_entries(path), ["regime-owner", "regime-owner.lock"])
+        self.assertEqual(stat.S_IMODE((path / OWNER_LOCK).lstat().st_mode), 0o600)
+        run = self.run_lever("release", "U7", "W2", stamp)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "released U7 owner=W2\n", ""))
+        run = self.run_lever("claim", "U7", "W3")
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assert_record(path, "W3", since)
+
+    def test_an_unreadable_program_a_missing_pin_or_a_differing_hash_refuses_the_owner_subcommands_with_nothing_written(
+        self,
+    ):
+        """The round-2 P2 on the tests (:344): the lever's read of its program, the pin's presence and the hash
+        comparison had no committed failure-injection test. Through the installed layout (the lever, the program and
+        the manifest under the scratch HOME, the checkout's bytes), the program of mode 000, the manifest without
+        the program's pin line and the program with one appended line each refuse both verbs with exit 2, one
+        stderr line naming the file, nothing on stdout (the appended line never runs) and no claim: no record, no
+        lock. The intact layout claims and releases through the installed copy. Root reads a mode 000 file, so that
+        case is skipped there."""
+        path = self.make_tree()
+        lever = self.install_lever()
+        program = lever.parent / "worker-worktree-owner.py"
+        manifest = self.root / "home/.agents/agent-config.yaml"
+        original = program.read_bytes()
+        text = manifest.read_text()
+        pin_line = next(line for line in text.splitlines() if line.startswith("      worker-worktree-owner.py: "))
+        cases = [
+            (
+                "a missing pin",
+                lambda: manifest.write_text(text.replace(pin_line + "\n", "")),
+                lambda: manifest.write_text(text),
+                f"no single sha256 pin for worker-worktree-owner.py in {manifest}",
+            ),
+            (
+                "a differing hash",
+                lambda: program.write_bytes(original + b'print("rewritten")\n'),
+                lambda: program.write_bytes(original),
+                f"of {program} differs from the pin in {manifest}; the program is not the pinned one",
+            ),
+        ]
+        if os.geteuid() != 0:
+            cases.insert(
+                0,
+                (
+                    "an unreadable program",
+                    lambda: program.chmod(0),
+                    lambda: program.chmod(0o755),
+                    f"cannot read {program}",
+                ),
+            )
+        for label, inject, restore, message in cases:
+            inject()
+            try:
+                for verb in ("claim", "release"):
+                    with self.subTest(case=label, verb=verb):
+                        run = self.run_lever(*self.verb_args(verb, "U7", "W1"), lever=lever)
+                        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                        self.assertTrue(run.stderr.startswith("worker-worktree.sh: refused: "), run.stderr)
+                        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                        self.assertIn(message, run.stderr)
+                        self.assertNotIn("rewritten", run.stdout + run.stderr)
+                        self.assertEqual(self.owner_entries(path), [], "no claim: no record, no lock")
+            finally:
+                restore()
+        self.assertEqual(program.read_bytes(), original)
+        since = self.now()
+        run = self.run_lever("claim", "U7", "W1", lever=lever)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        stamp = self.assert_record(path, "W1", since)
+        self.assertEqual(run.stdout, f"claimed U7 owner=W1 claimed={stamp}\n")
+        run = self.run_lever("release", "U7", "W1", stamp, lever=lever)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "released U7 owner=W1\n", ""))
 
 
 if __name__ == "__main__":

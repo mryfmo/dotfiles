@@ -1,9 +1,10 @@
 #!/usr/bin/env -S python3 -I -S
-"""Claim or release a worker tree's owner record under one lock, through one descriptor (regime-cutover U509e).
+"""Claim or release a worker tree's owner record under one lock, through one descriptor (regime-cutover U509e, U509f).
 
-`worker-worktree.sh claim <unit> <owner> [--stale <minutes>]` and `release <unit> <owner>` (U509, standing order 27:
-one writer per tree) run this program and act on its exit status alone: `worker-worktree-owner.py <root> claim <unit>
-<owner> [--stale <minutes>]` or `<root> release <unit> <owner>`, the root the lever resolved (`place_root`). Round 1
+`worker-worktree.sh claim <unit> <owner> [--stale <minutes>]` and `release <unit> <owner> <claimed>` (U509, standing
+order 27: one writer per tree) run this program and act on its exit status alone: `worker-worktree-owner.py <root>
+claim <unit> <owner> [--stale <minutes>]` or `<root> release <unit> <owner> <claimed>`, the root the lever resolved
+(`place_root`). Round 1
 (verdicts/U509-e343a569.md) kept the record in the shell and found six defects of two classes: the read and the
 mutation were separate steps with nothing between them held (two stale claimers both won; a release that had read
 its owner before a successor's claim removed the successor's record), and the shell's reads were not the file's
@@ -16,15 +17,27 @@ create left an empty record and exit 3). This program is the form `ledger-row.py
   with the same flags (a link at either name is refused by the open itself, never by a check a swap could follow),
   `fstat`ed as a directory of this user. Every later name (`regime-owner`, the lock, the temporary) is relative to
   the `.git` descriptor (`dir_fd`); no path is walked again after that open.
-- One lock: `regime-owner.lock` beside the record, opened `O_CREAT` through the descriptor (mode 0600; it stays,
-  since removing a lock file lets a waiter lock a dead inode) and `flock(LOCK_EX)` tried non-blocking every 0.05 s
-  for up to 10 s, expiry a refusal. The read, the decision and the write or removal all run under it, so of two
-  claimers on one stale record exactly one takes over and the other reads the fresh record and is refused, and a
-  release that is delayed past a successor's claim reads the successor's name and is refused.
+- One lock: `regime-owner.lock` beside the record, opened `O_CREAT` through the descriptor and `fchmod`ed to 0600
+  after the open (`O_CREAT`'s mode is reduced by the umask, and round 2 never corrected it, so under umask 0777 the
+  first claim left a mode-000 lock and every later claim and release refused with EACCES; it stays, since removing
+  a lock file lets a waiter lock a dead inode) and `flock(LOCK_EX)` tried non-blocking every 0.05 s for up to 10 s,
+  expiry a refusal. The read, the decision and the write or removal all run under it, so of two claimers on one
+  stale record exactly one takes over and the other reads the fresh record and is refused, and a release that is
+  delayed past a successor's claim reads a record that is not the claim it presents and is refused.
+- A release presents the claim it releases: `release <unit> <owner> <claimed>`, the owner and the claim time the
+  claim printed (`claimed=<stamp>` ends its stdout line). The record is removed when it holds both; a record by the
+  same name with another claim time is a successor's and is refused (exit 3) with the record intact. Round 2
+  compared the name alone, and the names are reused (`U7Worker` is every round's worker of U7), so a successor that
+  reused the name had its fresh claim deleted by its predecessor's delayed release. A takeover by the same name in
+  the same second as the record it replaces (`--stale 0` alone allows it) writes the same two lines and is the
+  same claim.
 - The record is read as bytes through the descriptor (`O_NOFOLLOW | O_NONBLOCK`: a link refuses, a FIFO never
   blocks, ENOENT alone is absence) and matched whole: `owner=<name over [A-Za-z0-9._-]{1,64}>\\n` then
   `claimed=<YYYY-MM-DDTHH:MM:SSZ>\\n`, nothing before, between or after, so a NUL or any byte outside the grammar is
   malformed; the stamp is parsed with `strptime` and must print back to the same string (2026-02-31 is refused).
+  Every argument grammar is matched whole too (`re.fullmatch`): Python's `$` admits a final newline, so in round 2
+  an owner `W1<LF>` passed, exited 0 and wrote a three-line record no later run could read, and the unit and
+  `--stale` grammars shared the gap.
   A malformed record is left in place and named (exit 2); a read that fails is a refusal naming the error, never an
   absence (standing order 21).
 - The write, fresh or takeover, is an exclusive temporary `.regime-owner.<16 hex>` created through the descriptor
@@ -34,11 +47,14 @@ create left an empty record and exit 3). This program is the form `ledger-row.py
 - `--stale` is 1 to 6 decimal digits (at most 999999 minutes), so the age comparison is on small integers; the age
   is `(now - claimed) // 60` in whole minutes, a record from the future at age 0. The clock is `datetime.now(UTC)`.
 
-Exit 0 with one stdout line in the lever's words: `claimed <unit> owner=<name>`, `taken over <unit> from=<old>
-age=<min>m owner=<name>`, `released <unit> owner=<name>`, `no claim <unit>`. Exit 3 refused by the record (a live
-owner on `claim`, another owner on `release`), exit 2 refused by shape (usage, the grammar, the tree, a malformed or
-unreadable record, the lock), exit 1 a write or removal that failed after the decision; every refusal is one stderr
-line beginning `worker-worktree.sh: refused: ` (the lever's `refuse`), a failed write `worker-worktree.sh: failed: `.
+Exit 0 with one stdout line in the lever's words: `claimed <unit> owner=<name> claimed=<stamp>`, `taken over <unit>
+from=<old> age=<min>m owner=<name> claimed=<stamp>`, `released <unit> owner=<name>`, `no claim <unit>`. Exit 3 refused
+by the record (a live owner on `claim`; on `release` a record that is not the owner and claim time presented), exit 2
+refused by shape (usage, the grammar, the tree, a malformed or unreadable record, the lock), exit 1 a write or removal
+that failed after the decision; every refusal is one stderr line beginning `worker-worktree.sh: refused: ` (the
+lever's `refuse`), a failed write `worker-worktree.sh: failed: `, the line folded through `one_line` before it is
+printed (a backslash doubled, a newline, carriage return or tab as `\\n`, `\\r`, `\\t`, any other control character
+as `\\xNN`), so a rejected value holding a newline never splits it (round 2 printed it verbatim over two lines).
 Every argument must round-trip through strict UTF-8. The program imports `datetime`, `errno`, `fcntl`, `os`, `re`,
 `secrets`, `signal`, `stat`, `sys` and `time` only, reads no environment variable and runs under `-I -S`. It is shipped
 and pinned like the levers (`scripts/generate-agent-configs.py` writes the byte-identical
@@ -61,7 +77,11 @@ from datetime import datetime, timezone
 LEVER = "worker-worktree.sh"
 USAGE = (
     "usage: worker-worktree.sh <unit> <branch> <base> | claim <unit> <owner> [--stale <minutes>] | "
-    "release <unit> <owner>"
+    "release <unit> <owner> <claimed>"
+)
+RELEASE_USAGE = (
+    "release names the claim it releases: release <unit> <owner> <claimed>, the claim time the claim printed "
+    "(claimed=<YYYY-MM-DDTHH:MM:SSZ>)"
 )
 RECORD = "regime-owner"
 LOCK = "regime-owner.lock"
@@ -70,9 +90,11 @@ STALE_DEFAULT = 20
 STAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 LOCK_WAIT = 10.0
 LOCK_POLL = 0.05
-UNIT = re.compile(r"^U[0-9]+[a-z]?$")
-OWNER = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
-STALE = re.compile(r"^[0-9]{1,6}$")
+# Each grammar is matched with `fullmatch` (never `match` or `$`, which admit a final newline).
+UNIT = re.compile(r"U[0-9]+[a-z]?")
+OWNER = re.compile(r"[A-Za-z0-9._-]{1,64}")
+STALE = re.compile(r"[0-9]{1,6}")
+CLAIMED = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
 # The record, matched whole over its bytes: a NUL, a third line, a missing final newline or any byte outside the
 # grammar fails the match, so nothing of it is ever read as an owner or a time.
 RECORD_BYTES = re.compile(
@@ -119,6 +141,27 @@ def close_quietly(fd: int) -> None:
         pass
 
 
+def one_line(text: str) -> str:
+    """TEXT as one line for the one-line stderr sink: a backslash doubled, a newline, carriage return or tab as
+    `\\n`, `\\r`, `\\t`, any other control character (C0, DEL, C1) as `\\xNN`, so a rejected argument never splits a
+    refusal into two lines and the escaped form is unambiguous."""
+    parts = []
+    for character in text:
+        if character == "\\":
+            parts.append("\\\\")
+        elif character == "\n":
+            parts.append("\\n")
+        elif character == "\r":
+            parts.append("\\r")
+        elif character == "\t":
+            parts.append("\\t")
+        elif ord(character) < 0x20 or 0x7F <= ord(character) < 0xA0:
+            parts.append(f"\\x{ord(character):02x}")
+        else:
+            parts.append(character)
+    return "".join(parts)
+
+
 def check_arguments(argv: "list[str]") -> None:
     """Every argument round-trips through strict UTF-8 (Python decodes argv with surrogateescape, so a byte outside
     UTF-8 would otherwise travel into a message or a record)."""
@@ -129,32 +172,40 @@ def check_arguments(argv: "list[str]") -> None:
             raise refuse("an argument is not UTF-8") from None
 
 
-def parse(argv: "list[str]") -> "tuple[str, str, str, str, int]":
-    """(root, verb, unit, owner, stale) from the lever's arguments, each refused by name outside its grammar."""
+def parse(argv: "list[str]") -> "tuple[str, str, str, str, int, str]":
+    """(root, verb, unit, owner, stale, claimed) from the lever's arguments, each refused by name outside its
+    grammar, every grammar matched whole; `claimed` is the claim time a release presents (empty for a claim)."""
     if len(argv) < 4 or argv[1] not in ("claim", "release"):
         raise refuse(USAGE)
     root, verb, unit, owner = argv[0], argv[1], argv[2], argv[3]
     rest = argv[4:]
     stale = STALE_DEFAULT
+    claimed = ""
     if verb == "claim":
         while rest:
             if rest[0] != "--stale":
                 raise refuse(USAGE)
             if len(rest) < 2:
                 raise refuse("--stale needs a count of minutes")
-            if not STALE.match(rest[1]):
+            if not STALE.fullmatch(rest[1]):
                 raise refuse(f"--stale {rest[1]} is not a count of minutes of 1 to 6 digits")
             stale = int(rest[1])
             rest = rest[2:]
-    elif rest:
-        raise refuse(USAGE)
-    if not UNIT.match(unit):
+    else:
+        if not rest:
+            raise refuse(RELEASE_USAGE)
+        if len(rest) > 1:
+            raise refuse(USAGE)
+        claimed = rest[0]
+        if not CLAIMED.fullmatch(claimed):
+            raise refuse(f"the claim time {claimed} is not YYYY-MM-DDTHH:MM:SSZ, the claim time the claim printed")
+    if not UNIT.fullmatch(unit):
         raise refuse(f"the unit {unit} is not U<n> or U<n><letter>")
-    if not OWNER.match(owner):
+    if not OWNER.fullmatch(owner):
         raise refuse(f"the owner {owner} is not a name over [A-Za-z0-9._-]{{1,64}}")
-    if not root.startswith("/"):
+    if not root.startswith("/"):  # lint-comparisons: allow a shape test (absolute or not), no path identity is compared
         raise refuse(f"the root {root} is not an absolute path")
-    return root, verb, unit, owner, stale
+    return root, verb, unit, owner, stale, claimed
 
 
 def open_git_dir(path: str) -> int:
@@ -211,12 +262,18 @@ def open_git_dir(path: str) -> int:
 
 def take_lock(dfd: int, git_dir: str) -> int:
     """The one lock every record operation runs under: `regime-owner.lock` beside the record, opened through the
-    descriptor and `flock`ed exclusively; a wait past LOCK_WAIT seconds refuses naming the file."""
+    descriptor, `fchmod`ed to 0600 (the create's mode is reduced by the umask; a lock left at mode 000 would refuse
+    every later run with EACCES) and `flock`ed exclusively; a wait past LOCK_WAIT seconds refuses naming the file."""
     lock_path = f"{git_dir}/{LOCK}"
     try:
         lfd = os.open(LOCK, LOCK_FLAGS, 0o600, dir_fd=dfd)
     except OSError as error:
         raise refuse(f"cannot open the lock {lock_path}: {errno_text(error)}") from None
+    try:
+        os.fchmod(lfd, 0o600)
+    except OSError as error:
+        close_quietly(lfd)
+        raise refuse(f"cannot set the mode of the lock {lock_path}: {errno_text(error)}") from None
     deadline = time.monotonic() + LOCK_WAIT
     while True:
         try:
@@ -330,7 +387,7 @@ def claim(dfd: int, path: str, unit: str, owner: str, stale: int) -> str:
     current = read_record(dfd, f"{git_dir}/{RECORD}")
     if current is None:
         write_record(dfd, git_dir, owner, stamp)
-        return f"claimed {unit} owner={owner}"
+        return f"claimed {unit} owner={owner} claimed={stamp}"
     old_owner, old_stamp, claimed = current
     age = max(0, (int(now.timestamp()) - claimed) // 60)
     if age < stale:
@@ -339,17 +396,24 @@ def claim(dfd: int, path: str, unit: str, owner: str, stale: int) -> str:
             "--stale"
         )
     write_record(dfd, git_dir, owner, stamp)
-    return f"taken over {unit} from={old_owner} age={age}m owner={owner}"
+    return f"taken over {unit} from={old_owner} age={age}m owner={owner} claimed={stamp}"
 
 
-def release(dfd: int, path: str, unit: str, owner: str) -> str:
+def release(dfd: int, path: str, unit: str, owner: str, claimed: str) -> str:
+    """Remove the record when it holds the claim presented, OWNER and CLAIMED both; a record by another name, or by
+    the same name with another claim time (a successor's), is refused with exit 3 and left."""
     git_dir = f"{path}/.git"
     current = read_record(dfd, f"{git_dir}/{RECORD}")
     if current is None:
         return f"no claim {unit}"
-    old_owner = current[0]
+    old_owner, old_stamp, _ = current
     if old_owner != owner:
         raise refuse_owned(f"the tree {path} is owned by {old_owner}, not {owner}; only the owner releases it")
+    if old_stamp != claimed:
+        raise refuse_owned(
+            f"the tree {path} is owned by {old_owner} since {old_stamp}, not the claim of {claimed} this release "
+            "presents; a later claim by the same name stands"
+        )
     try:
         os.unlink(RECORD, dir_fd=dfd)
     except OSError as error:
@@ -362,20 +426,23 @@ def main(argv: "list[str]") -> int:
     signal.signal(signal.SIGXFSZ, signal.SIG_IGN)
     try:
         check_arguments(argv)
-        root, verb, unit, owner, stale = parse(argv)
+        root, verb, unit, owner, stale, claimed = parse(argv)
         path = f"{root.rstrip('/') or ''}/{unit}"
         dfd = open_git_dir(path)
         try:
             lfd = take_lock(dfd, f"{path}/.git")
             try:
-                line = claim(dfd, path, unit, owner, stale) if verb == "claim" else release(dfd, path, unit, owner)
+                if verb == "claim":
+                    line = claim(dfd, path, unit, owner, stale)
+                else:
+                    line = release(dfd, path, unit, owner, claimed)
             finally:
                 close_quietly(lfd)
         finally:
             close_quietly(dfd)
     except Refusal as refusal:
         word = "failed" if refusal.status == 1 else "refused"
-        print(f"{LEVER}: {word}: {refusal.reason}", file=sys.stderr)
+        print(f"{LEVER}: {word}: {one_line(refusal.reason)}", file=sys.stderr)
         return refusal.status
     print(line)
     return 0

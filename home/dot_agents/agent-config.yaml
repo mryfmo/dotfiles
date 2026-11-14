@@ -957,8 +957,8 @@ claude:
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
-      worker-worktree.sh: 8d0c3c116c043982dcd18d380b16ce5240de9b381b80e55af31e96e37d643c3f
-      worker-worktree-owner.py: ab2fdd1220b23a57f544471614271811689e6ef0994d6f1777cc158d20f52782
+      worker-worktree.sh: db50fb1bec87707b33e19675b42c46c73db38b8e77e402191f12b373ce5f5228
+      worker-worktree-owner.py: 135a074eec17364d0cc4278e505111fc8d1f84fb4a9940d3b42d392275ce9b9a
       regime-env: be25d823cd66bf4ed93da4a30f3bdf619fda06310c1ef0de53ab11e794d64257
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: 1c576fc79b9f21491fe3bbfcd221efa92af7e7aebbb7e479eaee3a94e91b758d

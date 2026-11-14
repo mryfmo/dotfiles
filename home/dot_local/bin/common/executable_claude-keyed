@@ -1,0 +1,324 @@
+#!/bin/bash -p
+# @file claude-keyed
+# @brief The bridge's Claude Code executable: run the Agent SDK's bundled Claude Code binary with `ANTHROPIC_API_KEY` read from one file, never on the seats' shared login.
+# @description
+#   Regime-cutover U510 (handoff/47-api-key-route-design.md). A seat's model turn ran on the seats' shared claude.ai
+#   login, whose refresh-token rotation revoked every seat five times since 2026-11-10 (handoff/43, handoff/46). This
+#   lever stands as the pi-claude-bridge's `provider.pathToClaudeCodeExecutable` (`~/.omp/profiles/<role>/agent/
+#   claude-bridge.json`, placed by the generated `modify_claude-bridge.json` of every role on the claude-bridge route),
+#   so the SDK spawns it where it spawned Claude Code: it `exec`s the one Claude Code binary of the bridge's SDK
+#   package with its own arguments unchanged (the SDK passes `--output-format stream-json --input-format stream-json
+#   ...`), stdin and stdout untouched, `ANTHROPIC_API_KEY` exported from the key file and the login names
+#   `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL` unset (the bridge README: an exported
+#   gateway variable redirects the child); nothing else of the environment changes, and the key reaches the child's
+#   environment alone, never an argument, a file, a log or a message. What shares the sandbox and the uid (the seat's
+#   bash tool) can read that environment as it can read the key file (`ps eww`, `/proc/<pid>/environ`, a core dump
+#   of the child): the residual U514's key-holding proxy outside the sandbox closes.
+#   The key file is the one path `REGIME_ANTHROPIC_KEY_FILE` names (hcom-seat sets it to `<seats-root>/.state/
+#   anthropic/api-key`, regime-cutover U512; the operator places the key there by the U510 handout): an absolute path
+#   to a regular file of this user, mode 0600, no symbolic link in its last component (`-L` false on the spelled path
+#   and on its physical directory's form), holding one line in the closed class `^sk-ant-[A-Za-z0-9_-]{20,}$` ending
+#   in one line feed or none; a second line, a carriage return, a trailing space, a NUL or any other byte refuses
+#   naming the file, never the content. The directory that holds it is held too (U510d): its spelled last component
+#   no link, this user's, mode 0700, so no other writer can swap a link in between the checks on the file and its
+#   read, each of which opens the path anew. The mode and the owner of the directory and of the file come from one
+#   `stat` call each, whose status and shape are read (standing order 21), the owner compared with this shell's EUID;
+#   the bytes come from `cat` with its status read, counted by `wc -c` against what the shell holds, so a NUL the shell
+#   drops is seen. Every producer this lever runs (`uname`, `stat`, `cat`, `wc`, `awk`, `cd` and `pwd`, the hash tool
+#   and `sed` of the self-check) runs with its stderr dropped, so a failure that prints a diagnostic still yields
+#   exactly one refusal line; and `uname`, `stat`, `cat`, `wc` and `awk` run on the system directories alone
+#   (`PATH=/usr/bin:/bin:/usr/sbin:/sbin`, hcom-seat's form, U510d): `bash -p` keeps PATH, and inside a seat PATH
+#   holds the seat's tool directory and the caller's, where a planted tool would decide the file admitted and the
+#   binary the key reaches; the caller's PATH is the child's again on the exec line. The executable is the one path
+#   `<bridge>/node_modules/@anthropic-ai/claude-agent-sdk-<platform>/claude`, where `<bridge>` is the directory
+#   `omp.extension_providers.claude-bridge` names in the manifest the self-check read (a `~/` spelled through the
+#   installed copy's own root, else HOME), required to be a row of `claude.levers.extensions`, the seats' extension
+#   allow-list, and `<platform>` comes from a closed table over `uname -s` and `uname -m`: Darwin arm64 is
+#   darwin-arm64, Darwin x86_64 darwin-x64, Linux x86_64 linux-x64, Linux aarch64 linux-arm64; any other pair refuses
+#   naming both words (U510c; a glob count chose wrong when the SDK installed both Linux packages of an architecture).
+#   On Linux the suffix `-musl` is appended when and only when a file matches the musl loader glob `/lib/ld-musl-*.so*`
+#   (a glibc host has none; `CLAUDE_KEYED_MUSL_MARKER_GLOB` renames the glob for the tests). The path must be an
+#   executable regular file and no link, else one refusal naming it. The manifest is read as text by indentation
+#   (awk, status read), as seat-login-preflight reads its overlays. Every refusal is one stderr line
+#   `claude-keyed: refused: <reason>` and exit 2 with nothing started (a line boundary in a path the environment named
+#   is folded to a space first, U510e); a refusal never falls back to the login (fail closed). Every name the lever
+#   assigns is unset before anything is assigned, so a variable of one of those names exported into its environment
+#   carries neither the key nor another value into a producer's or the child's environment under a second name
+#   (U510e; an export attribute survives an assignment); those names leave the child's environment, nothing else of
+#   it changes.
+#   `--check` runs every check and prints one stdout line `key file ok: <path>; executable: <path>` (exit 0) or
+#   refuses; the seat-login preflight and the doctor call it (U512, U513). `--dry-run [<argument>...]` prints the
+#   command it would exec with the key replaced by `<redacted>` and the names it unsets, and runs nothing.
+#   `#!/bin/bash -p` (pr-audit.sh and router-gh's form, U465f): bash ignores the functions, `BASH_ENV`, `ENV`,
+#   `SHELLOPTS` and `CDPATH` an environment could carry, so a poisoned environment replaces no builtin this lever
+#   runs; the self pin check runs before anything else is read.
+# @arg $1 string `--check`, `--dry-run`, or the first of Claude Code's own arguments.
+# @arg $@ string Claude Code's arguments, verbatim.
+# @env REGIME_ANTHROPIC_KEY_FILE The key file, an absolute path.
+# @env HOME The checkout copy expands the manifest's `~/` spellings through it; the installed copy reads the manifest
+#   of its own root, `<root>/.agents/agent-config.yaml` for `<root>/.local/bin/common/claude-keyed`, and expands `~/`
+#   through that root, so HOME steers neither the pin nor the bridge directory.
+# @env PATH The caller's; the child gets it back on the exec line. The lever's own producers run on the system
+#   directories alone.
+# @env CLAUDE_KEYED_MUSL_MARKER_GLOB The musl loader glob, `/lib/ld-musl-*.so*` unless set; it chooses between the
+#   SDK's glibc and musl package of one Linux architecture and nothing outside the bridge's node_modules.
+# @stdout With `--check`, the one ok line; with `--dry-run`, the command and the unset names; else Claude Code's own.
+# @stderr The refusal line; else Claude Code's own.
+# @exitcode 0 `--check` passed, or `--dry-run` printed.
+# @exitcode 2 A refusal: the self-check, the usage, the key file or its directory, the manifest, the platform or the executable.
+# @exitcode * Claude Code's own status after the exec.
+# @example
+#   REGIME_ANTHROPIC_KEY_FILE=~/.local/state/omp-seats/dotfiles/.state/anthropic/api-key claude-keyed --check
+set -euo pipefail
+
+# Every name this lever assigns is unset before anything is assigned (U510e, verdict U510-88ae09c6 P2 :228): a variable
+# of one of these names exported into this environment keeps its export attribute through the assignment (and a
+# `local` of the same name inherits it), so the key, the mode or a path would otherwise reach the producers' and the
+# child's environment under a second name. The names leave the child's environment; nothing else of it changes, and
+# PATH stays (the caller's is saved below and handed back on the exec line). `tests/unit/test_claude_keyed.py` holds
+# this list equal to the names the text assigns.
+unset LEVER_MANIFEST LEVER_ROOT src dir self name pin digest caller_path caller_path_set system_path usage mode \
+    key_file key_parent parent_rule key_dir key_phys os arch platform owner_mode_re parent_what parent_owner_mode \
+    parent_mode parent_owner owner_mode key_mode key_owner read_status key_text key_bytes key_chars key key_class \
+    bridge allowed listed row tilde_slash tilde_root musl_glob musl marker exe arg
+
+# @description Print the refusal on stderr and exit 2; nothing has started when it runs. The reason is folded onto one
+#   line first: a line feed, a carriage return, a vertical tab or a form feed in a path the environment named (U510e,
+#   P3 :150) becomes a space, pr-audit.sh's one_line form, so every refusal is one stderr line whatever the path holds.
+# @arg $1 string The reason, which never holds the key.
+refuse() {
+    echo "claude-keyed: refused: ${1//[$'\n\r\v\f']/ }" >&2
+    exit 2
+}
+
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31),
+#   chosen by this file's own physical directory and nothing else (U510d: a HOME of the caller's choosing steered the
+#   old form to the checkout layout's path): `<root>/.agents/agent-config.yaml` for the installed copy under
+#   `<root>/.local/bin/common`, which a sandboxed session cannot write, the checkout's home/dot_agents/agent-config.yaml
+#   for the copy under scripts/orchestrator, and a copy in neither layout refuses. Every read is checked; a failure
+#   exits 2 naming the file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py`
+#   refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+# @set LEVER_ROOT The installed copy's root (the home its manifest sits in); empty for the checkout copy.
+lever_self_check() {
+    local src dir self name pin digest
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" 2> /dev/null && pwd -P 2> /dev/null) || refuse "cannot resolve the script directory of ${src}"
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    name=${self##*/}
+    case ${dir} in # lint-comparisons: allow the layout is read from the pwd -P form's last components, no path compared with another
+    */.local/bin/common)
+        LEVER_ROOT=${dir%/.local/bin/common}
+        LEVER_MANIFEST=${LEVER_ROOT}/.agents/agent-config.yaml
+        ;;
+    */scripts/orchestrator)
+        LEVER_ROOT=''
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+        ;;
+    *)
+        refuse "${self} is neither an installed copy under <home>/.local/bin/common nor a checkout copy under scripts/orchestrator, so no manifest holds its pin"
+        ;;
+    esac
+    [[ -r ${LEVER_MANIFEST} ]] || refuse "manifest unreadable: ${LEVER_MANIFEST}"
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}" 2> /dev/null) ||
+        refuse "cannot read ${LEVER_MANIFEST}"
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || refuse "no single sha256 pin for ${name} in ${LEVER_MANIFEST}"
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}" 2> /dev/null) || digest='' # producer-status: allow the regex test below refuses an empty digest
+    else
+        digest=$(shasum -a 256 < "${self}" 2> /dev/null) || digest='' # producer-status: allow the regex test below refuses an empty digest
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash ${self}"
+    [[ ${digest} == "${pin}" ]] || refuse "sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}"
+}
+lever_self_check
+
+# The lever's own producers (uname, stat, cat, wc, awk) run on the system directories alone (hcom-seat's form, U85;
+# U510d): `bash -p` drops the imported functions and BASH_ENV, not PATH, and inside a seat PATH holds the seat's tool
+# directory and the caller's, where a planted tool would decide the file admitted and the binary the key reaches. The
+# caller's PATH is the child's again on the exec line (Claude Code finds its own tools by it); the self-check above
+# reads sed and the hash tool as every shell lever does (tests/unit/test_lever_self_check.py).
+caller_path=${PATH-}
+caller_path_set=${PATH+1}
+system_path=/usr/bin:/bin:/usr/sbin:/sbin
+PATH=${system_path}
+
+# The producers' stderr below is dropped per call (`2> /dev/null`), and where bash itself opens the file (a redirection
+# inside a command substitution) the whole block's is, so a diagnostic of either never joins the refusal line.
+
+usage='usage: claude-keyed --check | claude-keyed --dry-run [<argument>...] | claude-keyed [<argument>...]'
+mode='exec'
+if (($# > 0)); then
+    case $1 in
+    --check)
+        (($# == 1)) || refuse "${usage}"
+        mode=check
+        shift
+        ;;
+    --dry-run)
+        mode=dry-run
+        shift
+        ;;
+    esac
+fi
+
+# The key file: the one path the environment names, held to the form described in the header before a byte is read.
+key_file=${REGIME_ANTHROPIC_KEY_FILE:-}
+[[ -n ${key_file} ]] ||
+    refuse 'REGIME_ANTHROPIC_KEY_FILE is not set; hcom-seat sets it to <seats-root>/.state/anthropic/api-key (regime-cutover U512) and the operator places the key there (the U510 handout)'
+[[ ${key_file} == /* ]] || refuse "REGIME_ANTHROPIC_KEY_FILE '${key_file}' is not an absolute path" # lint-comparisons: allow an absolute-path shape test on one path, no path compare
+[[ ! -L ${key_file} ]] || refuse "the key file ${key_file} is a symbolic link; the key file must be a regular file of this user"
+[[ -e ${key_file} ]] || refuse "the key file ${key_file} is absent; place the API key there (the U510 handout)"
+[[ -f ${key_file} ]] || refuse "the key file ${key_file} is not a regular file"
+# The directory that holds the key file (U510d): its spelled last component is no link (a link earlier in the path is
+# allowed, as for the file), and below it is this user's alone; the physical directory's form of the file's name is
+# read from it too, so a link in the file's last component is refused under either spelling.
+key_parent=${key_file%/*}
+[[ -n ${key_parent} ]] || key_parent=/
+parent_rule="the directory must be this user's alone (0700)"
+[[ ! -L ${key_parent} ]] || refuse "the directory ${key_parent} of the key file ${key_file} is a symbolic link; ${parent_rule}"
+key_dir=$(cd "${key_parent}" 2> /dev/null && pwd -P 2> /dev/null) || refuse "cannot resolve the directory of the key file ${key_file}"
+key_phys=${key_dir%/}/${key_file##*/}
+[[ ! -L ${key_phys} ]] || refuse "the key file ${key_file} is a symbolic link; the key file must be a regular file of this user"
+# The platform, from a closed table over the two uname words (each producer's status read, its stderr dropped): it
+# chooses the stat dialect here and the SDK's platform package below; a pair outside the table refuses by name.
+os=$(uname -s 2> /dev/null) || refuse 'cannot read the operating system name (uname -s)'
+arch=$(uname -m 2> /dev/null) || refuse 'cannot read the machine name (uname -m)'
+case "${os} ${arch}" in
+'Darwin arm64') platform=darwin-arm64 ;;
+'Darwin x86_64') platform=darwin-x64 ;;
+'Linux x86_64') platform=linux-x64 ;;
+'Linux aarch64') platform=linux-arm64 ;;
+*) refuse "no Claude Code platform package for the pair '${os}' '${arch}' (uname -s, uname -m); the table is Darwin arm64, Darwin x86_64, Linux x86_64 and Linux aarch64" ;;
+esac
+# One stat call each for the directory's and the file's mode and owner, the status and the shape read; an injected or
+# failing stat refuses. The directory first: it is what holds the file still between the checks and the read.
+owner_mode_re='^([0-7]{3,4}) ([0-9]+)$'
+parent_what="the directory ${key_parent} of the key file ${key_file}"
+case ${os} in
+Darwin) parent_owner_mode=$(stat -f '%Lp %u' "${key_parent}" 2> /dev/null) || refuse "cannot read the mode and owner of ${parent_what} (stat failed)" ;;
+*) parent_owner_mode=$(stat -c '%a %u' "${key_parent}" 2> /dev/null) || refuse "cannot read the mode and owner of ${parent_what} (stat failed)" ;;
+esac
+[[ ${parent_owner_mode} =~ ${owner_mode_re} ]] ||
+    refuse "cannot read the mode and owner of ${parent_what} (stat printed '${parent_owner_mode}')"
+parent_mode=${BASH_REMATCH[1]} parent_owner=${BASH_REMATCH[2]}
+[[ ${parent_owner} == "${EUID}" ]] || refuse "${parent_what} is owned by uid ${parent_owner}, not this user (uid ${EUID})"
+[[ -O ${key_parent} ]] || refuse "${parent_what} is owned by uid ${parent_owner}, not this user (uid ${EUID})"
+[[ ${parent_mode} =~ ^0?700$ ]] || refuse "${parent_what} has mode ${parent_mode}; ${parent_rule}"
+case ${os} in
+Darwin) owner_mode=$(stat -f '%Lp %u' "${key_file}" 2> /dev/null) || refuse "cannot read the mode and owner of the key file ${key_file} (stat failed)" ;;
+*) owner_mode=$(stat -c '%a %u' "${key_file}" 2> /dev/null) || refuse "cannot read the mode and owner of the key file ${key_file} (stat failed)" ;;
+esac
+[[ ${owner_mode} =~ ${owner_mode_re} ]] ||
+    refuse "cannot read the mode and owner of the key file ${key_file} (stat printed '${owner_mode}')"
+key_mode=${BASH_REMATCH[1]} key_owner=${BASH_REMATCH[2]}
+[[ ${key_owner} == "${EUID}" ]] || refuse "the key file ${key_file} is owned by uid ${key_owner}, not this user (uid ${EUID})"
+[[ -O ${key_file} ]] || refuse "the key file ${key_file} is owned by uid ${key_owner}, not this user (uid ${EUID})"
+[[ ${key_mode} =~ ^0?600$ ]] || refuse "the key file ${key_file} has mode ${key_mode}; the key must be readable by this user alone (0600)"
+# The bytes, read by cat with its status read (bash 5.2 runs `$(< file)` without a fork, so a failed redirection there
+# would end the script under errexit before a handler ran, U310e), with a sentinel so a trailing line feed survives
+# the substitution; the block's stderr is dropped so bash's own note about a dropped NUL never joins a refusal line,
+# and the byte count, taken in a subshell under LC_ALL=C (the child's environment stays as it was), sees that NUL.
+read_status=0
+{ key_text=$(cat -- "${key_file}" && printf x) || read_status=$?; } 2> /dev/null
+((read_status == 0)) || refuse "cannot read the key file ${key_file}"
+key_text=${key_text%x}
+# The wc read: the `<` redirection is bash's own open, so its failure note (the file gone between cat and wc) would
+# print before wc ran; the block's stderr is dropped before the redirection is opened (U510e, P3 :231).
+read_status=0
+{ key_bytes=$(wc -c < "${key_file}") || read_status=$?; } 2> /dev/null
+((read_status == 0)) || refuse "cannot count the bytes of the key file ${key_file} (wc -c failed)"
+key_bytes=${key_bytes//[[:space:]]/}
+[[ ${key_bytes} =~ ^[0-9]+$ ]] || refuse "cannot count the bytes of the key file ${key_file} (wc -c printed '${key_bytes}')"
+key_chars=$(LC_ALL=C && printf '%s' "${#key_text}") || refuse "cannot count the bytes of the key file ${key_file}"
+((key_bytes > 0)) || refuse "the key file ${key_file} is empty; the key must be one line of the form sk-ant-... (the U510 handout)"
+((key_bytes == key_chars)) || refuse "the key file ${key_file} holds a byte the shell cannot read (a NUL); the key must be one line"
+[[ ${key_text} != *$'\r'* ]] || refuse "the key file ${key_file} holds a carriage return; the key must be one line ending in a line feed alone"
+key=${key_text%$'\n'}
+[[ ${key} != *$'\n'* ]] || refuse "the key file ${key_file} holds more than one line; the key must be one line"
+key_class='^sk-ant-[A-Za-z0-9_-]{20,}$'
+[[ ${key} =~ ${key_class} ]] ||
+    refuse "the key file ${key_file} does not hold a key of the form sk-ant-<20 or more of [A-Za-z0-9_-]> (the content is never printed)"
+
+# The bridge directory: `omp.extension_providers.claude-bridge` of the manifest the self-check read, by indentation,
+# required among the `claude.levers.extensions` rows (the seats' only -e directories); `~/` spelled through the
+# installed copy's root, else HOME.
+bridge=$(awk '
+/^omp:$/ { in_omp = 1; next }
+/^[^ #]/ { in_omp = 0; in_ext = 0 }
+in_omp && /^  extension_providers:$/ { in_ext = 1; next }
+in_omp && /^  [^ ]/ { in_ext = 0 }
+in_omp && in_ext && $1 == "claude-bridge:" { print $2; exit }
+' "${LEVER_MANIFEST}" 2> /dev/null) || refuse "cannot read the omp.extension_providers rows of the manifest ${LEVER_MANIFEST} (awk failed)"
+[[ -n ${bridge} ]] || refuse "the manifest ${LEVER_MANIFEST} names no omp.extension_providers.claude-bridge directory"
+allowed=$(awk '
+/^claude:$/ { in_claude = 1; next }
+/^[^ #]/ { in_claude = 0; in_levers = 0; in_ext = 0 }
+in_claude && /^  levers:$/ { in_levers = 1; next }
+in_claude && /^  [^ ]/ { in_levers = 0; in_ext = 0 }
+in_levers && /^    extensions:$/ { in_ext = 1; next }
+in_levers && /^    [^ ]/ { in_ext = 0 }
+in_ext && $1 == "-" { print $2 }
+' "${LEVER_MANIFEST}" 2> /dev/null) || refuse "cannot read the claude.levers.extensions rows of the manifest ${LEVER_MANIFEST} (awk failed)"
+listed=0
+while IFS= read -r row; do
+    if [[ ${row} == "${bridge}" ]]; then listed=1; fi # lint-comparisons: allow two manifest spellings of the same row, compared as the manifest writes them
+done <<< "${allowed}"
+# The manifest spells the directory through `~/`: the home the installed copy's manifest sits in (LEVER_ROOT), else
+# this user's HOME for the checkout copy (hcom-seat holds the entry the same way).
+# shellcheck disable=SC2088 # the manifest's own spelling, matched as text; the root replaces it on the line below
+tilde_slash='~/'
+case ${bridge} in
+"${tilde_slash}"*)
+    tilde_root=${LEVER_ROOT:-${HOME:-}}
+    [[ -n ${tilde_root} ]] || refuse "HOME is not set, so the manifest's spelling ${bridge} of the claude-bridge directory cannot be expanded"
+    bridge=${tilde_root}/${bridge#"${tilde_slash}"}
+    ;;
+esac
+((listed)) || refuse "the claude-bridge directory ${bridge} is not a row of claude.levers.extensions in ${LEVER_MANIFEST}"
+[[ -d ${bridge} ]] || refuse "the claude-bridge directory ${bridge} is not a directory"
+# The SDK's platform package of the table above (bun.lock names eight; the SDK installs the glibc and the musl one
+# of a Linux architecture side by side, so a count over the glob cannot choose). On Linux the musl package is the
+# one when and only when the musl loader is present: a file matching the marker glob, read by the shell's own glob
+# (compgen, a builtin, no producer); a glibc host has no such file.
+if [[ ${platform} == linux-* ]]; then
+    musl_glob=${CLAUDE_KEYED_MUSL_MARKER_GLOB:-/lib/ld-musl-*.so*}
+    musl=0
+    while IFS= read -r marker; do
+        if [[ -n ${marker} && -f ${marker} ]]; then musl=1; fi
+    done < <(compgen -G "${musl_glob}" || true)
+    ((musl == 0)) || platform=${platform}-musl
+fi
+exe=${bridge}/node_modules/@anthropic-ai/claude-agent-sdk-${platform}/claude
+[[ -e ${exe} || -L ${exe} ]] || refuse "no Claude Code executable at ${exe}; the SDK's ${platform} package is not installed under ${bridge}"
+[[ ! -L ${exe} && -f ${exe} && -x ${exe} ]] || refuse "the Claude Code executable ${exe} is not an executable regular file"
+
+case ${mode} in
+check)
+    printf 'key file ok: %s; executable: %s\n' "${key_file}" "${exe}"
+    exit 0
+    ;;
+dry-run)
+    printf 'ANTHROPIC_API_KEY=<redacted> %s' "${exe}"
+    for arg in "$@"; do
+        printf ' %q' "${arg}"
+    done
+    printf '\nunset: CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL\n'
+    exit 0
+    ;;
+esac
+# The login names leave; the key rides as the exec'd process's environment alone, never an argument; the caller's PATH
+# is the child's again (a caller without one hands none on: the binary is run by its absolute path).
+unset CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL
+if [[ -z ${caller_path_set} ]]; then
+    unset PATH
+    ANTHROPIC_API_KEY=${key} exec "${exe}" "$@"
+fi
+PATH=${caller_path} ANTHROPIC_API_KEY=${key} exec "${exe}" "$@"

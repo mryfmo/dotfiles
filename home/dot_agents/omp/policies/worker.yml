@@ -43,6 +43,14 @@ bash:
       approval: deny
     - match: "*pr-merge.sh *"
       approval: deny
+    # ticket-unit.py (regime-cutover U493) writes the store's units.tsv and a brief, the coordinator's writes
+    # (standing order 27): denied with arguments as the levers above are.
+    - match: "*ticket-unit.py *"
+      approval: deny
+    # units-row.py (regime-cutover U505) writes the store's units.tsv, the coordinator's register (standing order
+    # 27: the store has one writer): denied with arguments as the levers above are.
+    - match: "*units-row.py *"
+      approval: deny
     - match: "*records-sync.sh *"
       approval: deny
     # records-sync.sh acts with no arguments too (U28b F3), so its bare name is denied as well; a worker that edits

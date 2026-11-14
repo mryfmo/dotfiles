@@ -419,7 +419,7 @@
       "target": ".local/bin/common/acp-broker",
       "kind": "file",
       "executable": true,
-      "sha256": "3816f4a1e14799325855bc8702d84416a271ad8b56c937eccdcf17c87ace4343"
+      "sha256": "75ec381aef17ee809c3553bcd49493da6f49eab8fbd557d63ba0cfe08dad04da"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-record-place.py",
@@ -580,7 +580,7 @@
       "target": ".local/bin/common/program-status.py",
       "kind": "file",
       "executable": true,
-      "sha256": "fdb8a940258f2c247e65f0bed45fd0e7ad42ab0e196d4cec9aa783862fd600a6"
+      "sha256": "28d4e82370463863eb63f4726c4fee4be1eaeb53dd30ef20e64b03271f5e7c76"
     },
     {
       "source": "home/dot_local/bin/common/executable_read-lib.sh",
@@ -667,11 +667,39 @@
       "sha256": "9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50"
     },
     {
+      "source": "home/dot_local/bin/common/executable_stall-check.py",
+      "target": ".local/bin/common/stall-check.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_ticket-unit.py",
+      "target": ".local/bin/common/ticket-unit.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_units-row.py",
+      "target": ".local/bin/common/units-row.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_worker-worktree-owner.py",
+      "target": ".local/bin/common/worker-worktree-owner.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "e0ee382e1252b529307a99fe8960a917bf5e1c28716e2e60fef45c54cc6e03e1"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_worker-worktree.sh",
       "target": ".local/bin/common/worker-worktree.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "3cfe8e3a98ce7379bcbfab9883e8c0f60c53fe7f38e2427512ef92c355c04dd1"
+      "sha256": "73b1797badb325e6df4edb44b02960519882a6954bf210db6c4fcb7b04980b81"
     },
     {
       "source": "home/dot_local/bin/common/executable_worktree-gc.sh",
@@ -1002,6 +1030,26 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "seat-settings-render.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "stall-check.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "ticket-unit.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "units-row.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "worker-worktree-owner.py"
     },
     {
       "source": "home/dot_local/bin/common",

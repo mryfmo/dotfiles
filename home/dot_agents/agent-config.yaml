@@ -903,6 +903,11 @@ claude:
   # `python3 -I -S` over a private copy whose digest the reaper reads against this
   # pin before each run, never by a policy rule; it writes one record inside the
   # broker directory through one held directory descriptor and nothing else.
+  # worker-worktree-owner.py is worker-worktree.sh's program for the tree's owner
+  # record (U509e): installed and pinned the same way, run by the lever alone for
+  # `claim` and `release` as `python3 -I -S -` over the bytes the lever read once and
+  # hashed against this pin, never by a policy rule; it reads, writes or removes the
+  # one record under one lock through the tree's `.git` descriptor and nothing else.
   # router-settings-apply and router-gh (U353, M-26 stage B): the settings
   # writer the coordinator runs outside every sandbox after `hcom-seat router`
   # is ready (the manifest's sources.github row and accept mode into the Router's
@@ -923,6 +928,17 @@ claude:
   # it moves nothing. Run by the coordinator or the operator outside every
   # seat; installed and pinned the same way, with no allow rule and no seat
   # policy row.
+  # stall-check.py (U496, standing order 57) reads a program store's in-flight
+  # units.tsv rows and each unit's progress file under the temporary
+  # directory's <slug>-wt ($TMPDIR when set and not empty, else the system
+  # default; the slug the store path's parent name as given) and prints one
+  # row per unit with its state (moving, stalled, done, no-file, unreadable,
+  # malformed; the workers' bare `done, head=<sha>` last line is done), so a
+  # worker silent past its deadline is named by a command the coordinator
+  # runs on every wake, not noticed by a habit; every path walked by
+  # descriptors from the root directory, read-only, it writes nothing.
+  # Installed and pinned the same way, run as `python3 -I`, allowed by the
+  # orchestrator policy at its installed path like brief-check.py.
   # program-status.py prints the operator's state report of a program store in
   # standing order 56's shape (U497): one word of state and its reason, a signal
   # per tests table, the operator's acts and decisions, the in-flight units with
@@ -939,13 +955,28 @@ claude:
   # names unset, or refuses with nothing started; the seats' shared claude.ai
   # login is no longer any seat's model credential. Installed and pinned the
   # same way, run by the SDK child alone, so no allow rule and no seat policy row.
+  # ticket-unit.py binds the Router's pull request to one program unit from its
+  # ticket (U493): it reads the ticket whose `follows` names the pull request from
+  # the Router's sqlite read-only, renders the request text into a brief as data,
+  # appends the unit's row to units.tsv under one lock, and prints the
+  # `Program-Unit` line the coordinator writes into the body. Installed and pinned
+  # the same way, run as `python3 -I` by the coordinator and allowed by the
+  # orchestrator policy alone; it runs no gh and no git.
+  # units-row.py is the coordinator's one writer of a units.tsv row (U505): it
+  # adds or changes one row by the readers' grammar (the header, eight cells, each
+  # cell's closed class) in place under one lock on the register's own
+  # descriptor, never through a temporary file in the store. Installed and pinned
+  # the same way, run as `python3 -I` by the coordinator and allowed by the
+  # orchestrator policy alone, denied by name to the worker and the audit; it runs
+  # no gh, no git and no network.
   levers:
     sha256:
       hcom-seat: f683563d713de3631464263a627d4a17f19f904a0443eefc20dbe1ae89a5f111
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
-      worker-worktree.sh: 3cfe8e3a98ce7379bcbfab9883e8c0f60c53fe7f38e2427512ef92c355c04dd1
+      worker-worktree.sh: 73b1797badb325e6df4edb44b02960519882a6954bf210db6c4fcb7b04980b81
+      worker-worktree-owner.py: e0ee382e1252b529307a99fe8960a917bf5e1c28716e2e60fef45c54cc6e03e1
       regime-env: be25d823cd66bf4ed93da4a30f3bdf619fda06310c1ef0de53ab11e794d64257
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: 1c576fc79b9f21491fe3bbfcd221efa92af7e7aebbb7e479eaee3a94e91b758d
@@ -969,7 +1000,7 @@ claude:
       ledger.py: 4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
-      acp-broker: 3816f4a1e14799325855bc8702d84416a271ad8b56c937eccdcf17c87ace4343
+      acp-broker: 75ec381aef17ee809c3553bcd49493da6f49eab8fbd557d63ba0cfe08dad04da
       acp-relay.py: 20f2aac43796339246df45b0e4a2e0eb42314802966ac7094cd3743f964fe269
       acp-seat: 7b8f5c930f0b5d16702cb8e3a392047c522a7aaaac12ee28b089be9a80c25fa9
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431
@@ -978,8 +1009,11 @@ claude:
       router-settings-apply: 46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: bab47be7273025518efab995f6bd4f444d9f9f8a7447f8d315ef8a984b316b50
-      program-status.py: fdb8a940258f2c247e65f0bed45fd0e7ad42ab0e196d4cec9aa783862fd600a6
+      program-status.py: 28d4e82370463863eb63f4726c4fee4be1eaeb53dd30ef20e64b03271f5e7c76
       claude-keyed: 4066e144cb2d9e9d5ed7443a7dec477331196cdbe1f5cee2e4a25484eb43db77
+      ticket-unit.py: 38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1
+      units-row.py: 6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e
+      stall-check.py: 35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

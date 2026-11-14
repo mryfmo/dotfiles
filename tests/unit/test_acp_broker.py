@@ -63,6 +63,11 @@ DOMAINS = ["github.com", "api.github.com", "uploads.github.com", "codeload.githu
 PING = b'{"jsonrpc":"2.0","id":1,"method":"ping"}\n'
 # The protected host file a Router-planted link points at (U343h; the auditor's reproduction used a scratch `.aws` file).
 VICTIM = b"[default]\naws_access_key_id = AKIAEXAMPLE\n# the protected host file a planted link points at\n"
+# The fixture's API key file (regime-cutover U516): the bytes `claude-keyed` would read inside the worker; the broker
+# holds the path alone, so the distinctive mark must appear in no output of the broker's (the launch log, its streams,
+# the worker's launch record).
+KEY_MARK = "U516FIXTUREKEYNEVERINANYLOG"
+FIXTURE_KEY = f"sk-ant-api03-{KEY_MARK}_000000000000000000000000\n"
 
 # The fake srt: records argv, environment names and cwd; `--version` answers 0.0.81; when `swap-ancestor` exists
 # beside the calls it performs the swap that file describes (the Router replacing an ancestor of its repository:
@@ -264,6 +269,15 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.home_real = self.home.resolve()
         self.brokers = []
         self.addCleanup(self.stop_all)
+        # The seats' API key file (U516): `<seats-root>/.state/anthropic/api-key`, hcom-seat's `key_file` row (U512),
+        # made here as the operator's handout places it (0700 directory, 0600 file), and named in the broker's
+        # environment as hcom-seat's router row names it for the broker it starts (the listener inherits it).
+        self.key_file.parent.mkdir(mode=0o700, parents=True)
+        self.seats_path.chmod(0o700)
+        (self.seats_path / ".state").chmod(0o700)
+        self.key_file.touch(mode=0o600)
+        self.key_file.write_text(FIXTURE_KEY)
+        self.env["REGIME_ANTHROPIC_KEY_FILE"] = str(self.key_file)
 
     # --- the scratch Router, its repository and the broker ---
 
@@ -295,9 +309,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                      f"{home}/.config/chezmoi", f"{home}/.config/chezmoi-private", f"{home}/Workspace",
                      f"{seats}/.sandbox", f"{home}/.local/state/omp-seats", str(seats), f"{home}/.claude",
                      f"{home}/.claude.json", str(repo), f"{repo}/.git", str(store), f"{repo}/.orchestration"]  # fmt: skip
+        # The Router's denyWrite carries the seats' API key file after the group directory's rows, as hcom-seat
+        # renders it since U512 (the worker copies the table and grants the same file for read, U516).
         claude_rows = [f"{seats}/.state/claude-router/{p}" for p in CLAUDE_ROWS] if claude_denies else []
         deny_write = [f"{seats}/.sandbox", *(f"{cwd}/{p}" for p in PROJECT_FILES),
-                      *claude_rows, *(f"{repo}/{p}" for p in PROJECT_FILES),
+                      *claude_rows, f"{seats}/.state/anthropic/api-key", *(f"{repo}/{p}" for p in PROJECT_FILES),
                       f"{repo}/.git/config", f"{repo}/.git/config.worktree", f"{repo}/.git/info", f"{repo}/.git/hooks",
                       f"{repo}/.git/worktrees/*/config.worktree", f"{repo}/.git/worktrees/*/info",
                       f"{repo}/.git/worktrees/*/commondir", f"{repo}/.git/worktrees/*/gitdir",
@@ -654,7 +670,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 self.assertIn(message, data)
                 self.assertEqual(data.count("\n"), 1, data)
         self.assertEqual(self.acp_slots(), [])
-        self.assertEqual(self.state_names(), ["claude-router", name])
+        self.assertEqual(self.state_names(), ["anthropic", "claude-router", name])
         self.assertEqual(self.calls_of("srt"), [])
         self.assertEqual(self.calls_of("omp"), [])
         # A good header after the bad ones still works: the broker refused connections, not itself; a name of 64
@@ -688,7 +704,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 self.assertEqual(self.acp_slots(), [])
         self.assertEqual(self.canaries(), [], "no canary: the clone refused first")
         self.assertEqual(self.calls_of("omp"), [])
-        self.assertEqual(self.state_names(), ["claude-router", name], "no state slot and no log for a refused launch")
+        self.assertEqual(
+            self.state_names(), ["anthropic", "claude-router", name], "no state slot and no log for a refused launch"
+        )
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def test_a_router_moving_or_relinking_its_repository_after_the_header_changes_nothing_the_worker_may_read_or_write(
@@ -715,7 +733,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         moved = cwd / "work-moved"
         roles = {str(self.seats_path / ".state/claude-router"), f"{home}/.omp/profiles/dsh", f"{home}/.omp/run",
                  f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools", f"{home}/.npm/_logs",
-                 "/tmp/claude", "/private/tmp/claude"}  # fmt: skip
+                 "/tmp/claude", "/private/tmp/claude", str(self.key_file)}  # fmt: skip
         for label, link in (
             ("the parent replaced by a link to ~/.aws", str(home / ".aws")),
             ("the parent renamed away", None),
@@ -798,7 +816,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertTrue(
             set(fs["allowWrite"][4:]) <= {"/tmp/claude", "/private/tmp/claude", f"{home}/.npm/_logs"}, fs["allowWrite"]
         )
-        self.assertEqual(fs["allowRead"], [str(task), str(self.seats_path / ".state/claude-router"), f"{home}/.omp/profiles/dsh", f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools"])  # fmt: skip
+        self.assertEqual(fs["allowRead"], [str(task), str(self.seats_path / ".state/claude-router"), f"{home}/.omp/profiles/dsh", f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools", str(self.key_file)])  # fmt: skip
         state = self.seats_path / ".state" / name
         for kind in ("allowRead", "allowWrite", "denyRead", "denyWrite"):
             for row in fs[kind]:
@@ -906,7 +924,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 )
         self.assertEqual(self.acp_slots(), [])
         # The first launch made the broker's log directory (U343o); no `claude` and no `claude-*` slot was made.
-        self.assertEqual([n for n in self.state_names() if n != "broker-logs"], ["claude-router", name])
+        self.assertEqual([n for n in self.state_names() if n != "broker-logs"], ["anthropic", "claude-router", name])
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def test_c_the_end_of_session_push_lands_the_worker_head_at_refs_acp_seat_and_the_record_names_it(self):
@@ -1915,7 +1933,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             (self.calls / "srt-fail").unlink()
         self.assertEqual(self.calls_of("omp"), [])
         self.assertEqual(self.acp_slots(), [])
-        self.assertEqual(self.state_names(), ["claude-router", name], "no state slot and no log for a refused launch")
+        self.assertEqual(
+            self.state_names(), ["anthropic", "claude-router", name], "no state slot and no log for a refused launch"
+        )
         self.assertEqual(len(self.canaries()), 5, "one canary per connection, nothing after it")
         self.assertEqual(len(self.calls_of("srt")), 15, "the clone's two reads and the canary per connection")
         self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
@@ -2221,7 +2241,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         listed = {"HOME": str(self.home), "PATH": seat_path, "OMP_PROFILE": "dsh",
                   "CLAUDE_CONFIG_DIR": str(self.seats_path / ".state/claude-router"), "AWS_SHARED_CREDENTIALS_FILE": "/dev/null",
                   "AWS_CONFIG_FILE": "/dev/null", "HCOM_SEAT_SANDBOX": str(self.seats_path / ".state" / slot),
-                  "USER": "u343", "LANG": "C.UTF-8"}  # fmt: skip
+                  "REGIME_ANTHROPIC_KEY_FILE": str(self.key_file), "USER": "u343", "LANG": "C.UTF-8"}  # fmt: skip
         self.assertEqual({k: v for k, v in launch["env"].items() if k not in own}, listed)
         self.assertEqual(set(launch["env"]) - own, set(listed))
         resolve, pack, canary, version_call, launch_call, head_read = self.calls_of("srt")
@@ -2291,7 +2311,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         settings = [json.loads((self.seats_path / ".state" / s / "settings.json").read_text()) for s in slots]
         self.assertEqual([s["filesystem"]["allowWrite"][0] for s in settings], [str(self.slot_task(s)) for s in slots])
         self.assertEqual(
-            self.state_names(), ["broker-logs", "claude-router", name], "no seat slot is made for a worker"
+            self.state_names(), ["anthropic", "broker-logs", "claude-router", name], "no seat slot is made for a worker"
         )
         self.assertEqual(self.finish(c1, s1), (b"", "status=0 push=none"))
         self.assertEqual(self.finish(c2, s2), (b"", "status=0 push=none"))
@@ -3240,17 +3260,23 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             "byte-identical deny tables but the broker row",
         )
         self.assertNotIn("/broker", json.dumps(dsh), "the dsh row has no broker row")
-        # The grants: the dsh row's rows 0, 2, 4.. with the slot's task as row 0 (no state slot, no DSH_HOME, and not
-        # the seats' API key file, the dsh row's allowRead row 7 since U512: the worker's key is U516's, not this
-        # lever's yet, so no worker row names it).
+        # The grants: the dsh row's rows 0, 2, 4.. with the slot's task as row 0 (no state slot, no DSH_HOME), and the
+        # seats' API key file last (U516; the dsh row carries the same row once U512 lands, so it is matched by value).
         dsh_read, dsh_write = dsh["filesystem"]["allowRead"], dsh["filesystem"]["allowWrite"]
-        key_file = str(self.seats_path.resolve() / ".state/anthropic/api-key")
+        key_file = str(self.key_file)
         self.assertEqual(dsh_read[1], str(self.seats_path / ".state" / rendered["dsh_name"]))
         self.assertEqual(dsh_read[3], str(dsh_home))
-        self.assertEqual(dsh_read[7], key_file, "the dsh row's key file row (U512)")
-        self.assertEqual(worker["filesystem"]["allowRead"], [task, dsh_read[2], *dsh_read[4:7]])
+        self.assertEqual(
+            dsh_read[7], str(self.seats_path.resolve() / ".state/anthropic/api-key"), "the dsh-row key file (U512)"
+        )
+        self.assertEqual(
+            worker["filesystem"]["allowRead"],
+            [task, dsh_read[2], *(r for r in dsh_read[4:] if r != key_file), key_file],
+        )
         self.assertEqual(worker["filesystem"]["allowWrite"], [task, dsh_write[2], *dsh_write[4:]])
-        self.assertNotIn(key_file, worker["filesystem"]["allowRead"] + worker["filesystem"]["allowWrite"])
+        self.assertNotIn(
+            key_file, worker["filesystem"]["allowWrite"], "the key file is read, never written, by a worker (U516)"
+        )
         self.assertEqual(worker["filesystem"]["allowRead"][1], str(self.seats_path / ".state/claude-router"))
         self.assertEqual(worker["filesystem"]["allowWrite"][2:4], [f"{home}/.omp/profiles/dsh", f"{home}/.omp/run"])
         # DSH_HOME reaches the worker's settings as the credential root alone (U343l): once in denyRead, once in
@@ -3369,7 +3395,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(dsh_read[7], str(self.seats_path.resolve() / ".state/anthropic/api-key"))
         expected = normalised(dsh, dsh_cwd, rendered["dsh_name"])
         expected["filesystem"]["denyWrite"] = worker_n["filesystem"]["denyWrite"]
-        expected["filesystem"]["allowRead"] = [task, dsh_read[2], *dsh_read[4:7]]
+        key_file = str(self.key_file)
+        expected["filesystem"]["allowRead"] = [task, dsh_read[2], *(r for r in dsh_read[4:] if r != key_file), key_file]
         expected["filesystem"]["allowWrite"] = [task, dsh_write[2], *dsh_write[4:]]
         expected_text = (
             json.dumps(expected, separators=(",", ":"))
@@ -3425,7 +3452,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.calls_of("srt"), [], "no clone and no canary: the judge refused first")
         self.assertEqual(self.calls_of("omp"), [])
         self.assertEqual(self.acp_slots(), [])
-        self.assertEqual(self.state_names(), ["claude-router", name], "no state slot and no log for a refused launch")
+        self.assertEqual(
+            self.state_names(), ["anthropic", "claude-router", name], "no state slot and no log for a refused launch"
+        )
         self.assertTrue(profile.is_symlink(), "the launch neither removed nor replaced the link")
         self.assertEqual(sorted(p.name for p in (home / ".aws").iterdir()), [])
         self.assertEqual(sorted(p.name for p in (home / ".omp/profiles/orchestrator").iterdir()), [])
@@ -3528,7 +3557,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.assertIn(f"the Router's credential root {root} is not a real directory of this user", connection())
         self.assertEqual(self.calls_of("srt"), [], "nothing ran")
         self.assertEqual(self.calls_of("omp"), [])
-        self.assertEqual(self.state_names(), ["claude-router", name], "no slot and no log for a refused launch")
+        self.assertEqual(
+            self.state_names(), ["anthropic", "claude-router", name], "no slot and no log for a refused launch"
+        )
         # Made again, the broker started with the Router's environment serves a connection: the worker's denyRead
         # ends with the held root and its denyWrite carries the Router's row of it.
         root.mkdir(mode=0o700)
@@ -3541,6 +3572,262 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(json.dumps(rendered).count(str(dsh_home)), 2)
         self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_the_api_key_file_path_reaches_the_worker_and_no_worker_starts_without_it(self):
+        """U516 (handoff/47; U510, U512): the Router's subagent turns run on the seats' API key like every other bridge
+        turn, so the worker's environment carries `REGIME_ANTHROPIC_KEY_FILE` equal to the broker's own (hcom-seat's
+        router row sets it) beside `CLAUDE_CONFIG_DIR`, and the worker's `allowRead` gains the file's physical path
+        as its last row and no other list names it. The broker holds the path as data and reads no key: the key's
+        bytes appear in no stream, launch record or log line of the broker's. The key is a worker's precondition, not
+        the broker's (U516c): a broker started without the variable (a launcher that predates U512) listens, and each
+        worker request is refused on its stream with nothing of the worker made while the broker keeps listening. An
+        unset or empty name, a relative path, a path holding a newline, an absent file, a symbolic link, a directory,
+        another user's file, a mode other than 0600 and a clean spelling whose physical path is not clean (a parent
+        link into a directory outside the path rule, the resolver's failure) each refuse the worker's connection
+        before anything of it is made (fail closed, as `claude-keyed` refuses): one line whatever the path holds, on
+        the stream and on stderr, naming the variable and the handout, exit 2 of that connection, no slot, no omp run,
+        no log line (U516c, verdict U516-a5ea975b P2 :1001, P3 :1004, P3 :1007, and CI at a5ea975b: the listener's
+        own refusal stopped every Router launch of a launcher without the variable, test_hcom_seat_dsh's six; a
+        newline in the path printed two lines; the resolver's refusal named no handout)."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        key = str(self.key_file)
+        self.assertEqual(self.key_file.read_text(), FIXTURE_KEY)
+        proc, sock = self.start_broker(name, cwd)
+        conn, slot, _task = self.held_connection(sock, repo, "w1")
+        settings = json.loads((self.seats_path / ".state" / slot / "settings.json").read_text())
+        self.assertEqual(settings["filesystem"]["allowRead"][-1], key)
+        self.assertEqual(settings["filesystem"]["allowRead"].count(key), 1)
+        self.assertNotIn(key, settings["filesystem"]["allowRead"][:-1] + settings["filesystem"]["allowWrite"])
+        self.assertNotIn(key, settings["filesystem"]["denyRead"])
+        # The Router's table denies the file for write (U512's row, which make_router renders as hcom-seat will) and
+        # the worker copies that table: the read grant and the write deny of one file are hcom-seat's pair, no overlap.
+        self.assertEqual(settings["filesystem"]["denyWrite"].count(key), 1)
+        self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
+        _version, launch = self.calls_of("omp")
+        self.assertEqual(launch["env"]["REGIME_ANTHROPIC_KEY_FILE"], key)
+        self.assertEqual(launch["env"]["REGIME_ANTHROPIC_KEY_FILE"], self.broker_env()["REGIME_ANTHROPIC_KEY_FILE"])
+        self.assertEqual(launch["env"]["CLAUDE_CONFIG_DIR"], str(self.seats_path / ".state/claude-router"))
+        status, out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM)
+        for where, text in (("stdout", out), ("stderr", err), ("the launch log", "\n".join(self.log_lines("w1"))),
+                            ("the worker's launch record", json.dumps(launch))):  # fmt: skip
+            self.assertNotIn(KEY_MARK, text, f"the key's bytes reached {where}")
+        self.assertEqual(len(self.log_lines("w1")), 3, self.log_lines("w1"))
+
+        header = "ACP-SEAT v1 repo=/x ref=HEAD name=w2\n"
+        handout = "handouts/anthropic-api-key-u510.md"
+        unset_line = (
+            "acp-broker: refused: REGIME_ANTHROPIC_KEY_FILE did not reach this connection; the broker runs inside the"
+            " Router's sandbox, whose environment hcom-seat sets, and no worker starts without the seats' API key;"
+            f" place the seats' API key file by the U510 handout ({handout})"
+        )
+        srt_calls = len(self.calls_of("srt"))
+        # A broker started without the variable listens; its worker requests are each refused on their stream with
+        # the one line, nothing of the worker made, and the broker keeps listening.
+        proc, sock = self.start_broker(name, cwd, REGIME_ANTHROPIC_KEY_FILE=None)
+        for attempt in ("first", "second"):
+            data = self.recv_all(self.connect(sock, repo, "w2")).decode()
+            self.assertEqual(data, unset_line + "\n", f"the {attempt} request")
+            self.assertIsNone(proc.poll(), "the broker keeps listening")
+        self.assertEqual(self.acp_slots(), [])
+        self.assertEqual(len(self.calls_of("omp")), 2, "no omp run beyond the served connection's two")
+        self.assertEqual(len(self.calls_of("srt")), srt_calls, "no srt run beyond the served connection's")
+        self.assertEqual(sorted(p.name for p in (self.seats_path / ".state/broker-logs").iterdir()), ["w1.log"])
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+        # Each other case by a connection run by hand on its stream (the relay's form), with the fixture's state
+        # directory `~/.local/state/hcom-seat` (its tool links) set aside: the settings writer's copy would make it
+        # when absent, and the worker's judgement precedes it.
+        state_dir = self.home_real / ".local/state/hcom-seat"
+        aside = self.home_real / ".local/state/hcom-seat.aside"
+
+        def refused(part, **overrides):
+            run = subprocess.run(
+                [str(BROKER), "--connection", self.seats, name, str(cwd)], cwd=self.repo, input=header,
+                env=self.broker_env(**overrides), capture_output=True, text=True, check=False, timeout=60,
+            )  # fmt: skip
+            self.assertEqual(run.returncode, 2, run.stderr)
+            self.assertEqual(run.stdout.count("\n"), 1, run.stdout)
+            self.assertEqual(run.stdout, run.stderr, "the one line on the stream and on stderr")
+            self.assertTrue(run.stdout.startswith("acp-broker: refused: REGIME_ANTHROPIC_KEY_FILE"), run.stdout)
+            self.assertIn(part, run.stdout)
+            self.assertIn(handout, run.stdout)
+            self.assertEqual(self.acp_slots(), [])
+            self.assertFalse(
+                state_dir.exists() or state_dir.is_symlink(), "nothing made: the worker is judged before any directory"
+            )
+            self.assertEqual(len(self.calls_of("omp")), 2, "no omp run beyond the served connection's two")
+            self.assertEqual(sorted(p.name for p in (self.seats_path / ".state/broker-logs").iterdir()), ["w1.log"])
+
+        anthropic = self.key_file.parent
+        state_dir.rename(aside)
+        try:
+            with self.subTest(case="unset"):
+                refused("did not reach this connection", REGIME_ANTHROPIC_KEY_FILE=None)
+            with self.subTest(case="empty"):
+                refused("did not reach this connection", REGIME_ANTHROPIC_KEY_FILE="")
+            with self.subTest(case="a relative path"):
+                refused("'relative/api-key' is not a clean absolute path", REGIME_ANTHROPIC_KEY_FILE="relative/api-key")
+            with self.subTest(case="a newline in the path"):
+                # The refusal folds the line boundary to a space and stays one line (U516c, P3 :1004).
+                refused(
+                    f"'{anthropic}/api key' is not a clean absolute path",
+                    REGIME_ANTHROPIC_KEY_FILE=f"{anthropic}/api\nkey",
+                )
+            with self.subTest(case="an absent file"):
+                refused(f"{anthropic}/missing is not a regular file", REGIME_ANTHROPIC_KEY_FILE=f"{anthropic}/missing")
+            with self.subTest(case="a directory"):
+                refused(f"{anthropic} is not a regular file", REGIME_ANTHROPIC_KEY_FILE=str(anthropic))
+            with self.subTest(case="a symbolic link"):
+                link = anthropic / "api-key-link"
+                link.symlink_to(self.key_file)
+                try:
+                    refused(f"{link} is a symbolic link", REGIME_ANTHROPIC_KEY_FILE=str(link))
+                finally:
+                    link.unlink()
+            with self.subTest(case="a mode other than 0600"):
+                # The handout's file is 0600; a key file readable by its group or by others is refused by its mode.
+                self.key_file.chmod(0o644)
+                try:
+                    refused(f"{self.key_file} has mode 644, not 0600", REGIME_ANTHROPIC_KEY_FILE=key)
+                finally:
+                    self.key_file.chmod(0o600)
+            with self.subTest(case="another user's file"):
+                # The system's password file: a regular file of another user on macOS and Linux alike (root's), the
+                # fixture no test user can chown into being.
+                foreign = Path("/etc/passwd")
+                self.assertNotEqual(foreign.stat().st_uid, os.geteuid(), "the fixture needs a file of another user")
+                refused(f"{foreign} is not a regular file of this user", REGIME_ANTHROPIC_KEY_FILE=str(foreign))
+            with self.subTest(case="a parent link into a directory outside the path rule"):
+                # A clean spelling, a regular file of this user and no link itself, whose physical path holds a space:
+                # the resolver (physical_path, clean_path) fails and the refusal names the handout like every other.
+                unclean = anthropic / "un clean"
+                unclean.mkdir(mode=0o700)
+                (unclean / "api-key").touch(mode=0o600)
+                via = anthropic / "via"
+                via.symlink_to(unclean)
+                try:
+                    refused(
+                        f"REGIME_ANTHROPIC_KEY_FILE {via}/api-key cannot be resolved to a clean physical path",
+                        REGIME_ANTHROPIC_KEY_FILE=f"{via}/api-key",
+                    )
+                finally:
+                    via.unlink()
+                    shutil.rmtree(unclean)
+        finally:
+            aside.rename(state_dir)
+        self.assertEqual(self.key_file.read_text(), FIXTURE_KEY, "the key file is never written")
+
+    def test_the_key_holds_failed_producers_refuse_with_exactly_one_line_and_nothing_made(self):
+        """U516d (verdict U516c-23f4f25b P2 :3614, P3 :1022; standing order 21): the key hold's two safety decisions
+        each read a producer, `/usr/bin/stat` for the mode and `physical_path` for the physical form, and a producer
+        that fails is exactly one refusal line on the stream and on stderr naming the read and the handout, exit 2,
+        nothing of the worker made; the producer's own diagnostic never reaches stderr as a second line. The failures
+        are injected between the hold's tests and the producer, where the file system can change under the hold, by
+        a DEBUG trap bash reads from `BASH_ENV` before the lever's first line (the lever runs `/usr/bin/stat` by its
+        absolute path, so no wrapper on PATH reaches it): the key removed right before `stat` (at 23f4f25b stat's
+        "No such file" line preceded the refusal), the key's directory made unsearchable right before `stat` (stat's
+        "Permission denied" line), the key replaced by a chain of 41 links right before the resolver (the resolver's
+        silent failure, one line at 23f4f25b too, pinned here to exactly one) and the key's directory made
+        unsearchable right before the resolver (`cd`'s "Permission denied" line inside `physical_path`)."""
+        name, cwd = self.make_router()
+        header = "ACP-SEAT v1 repo=/x ref=HEAD name=w3\n"
+        handout = "handouts/anthropic-api-key-u510.md"
+        key = str(self.key_file)
+        anthropic = self.key_file.parent
+        scratch = Path(self.temp.name).resolve() / "u516d"
+        scratch.mkdir()
+        # The fixture's state directory `~/.local/state/hcom-seat` (its tool links) is absent until a served
+        # connection's settings writer makes it, and the worker's judgement precedes the writer: it stays absent.
+        state_dir = self.home_real / ".local/state/hcom-seat"
+        self.assertFalse(state_dir.exists() or state_dir.is_symlink(), "no state directory before a connection")
+        stat_read = "key_mode=\\$(/usr/bin/stat"
+        resolver = "key_real=\\$(physical_path"
+
+        def trap_file(case, producer, action):
+            """A `BASH_ENV` file whose DEBUG trap runs `action` once, right before the lever's simple command that
+            begins with the text `producer` (the hold's assignment from the producer's command substitution)."""
+            path = scratch / f"{case}.bash"
+            path.write_text(
+                "u516d_fired=0\n"
+                f"u516d_inject() {{\n    {action}\n}}\n"
+                f'trap \'if ((u516d_fired == 0)) && [[ ${{BASH_COMMAND}} == "{producer}"* ]]; then'
+                " u516d_fired=1; u516d_inject; fi' DEBUG\n"
+            )
+            return str(path)
+
+        def refused(part, bash_env):
+            run = subprocess.run(
+                [str(BROKER), "--connection", self.seats, name, str(cwd)], cwd=self.repo, input=header,
+                env=self.broker_env(BASH_ENV=bash_env), capture_output=True, text=True, check=False, timeout=60,
+            )  # fmt: skip
+            self.assertEqual(run.returncode, 2, run.stderr)
+            self.assertEqual(run.stdout.count("\n"), 1, run.stdout)
+            self.assertEqual(
+                run.stderr.count("\n"), 1, f"exactly one stderr line, the producer's diagnostic captured:\n{run.stderr}"
+            )
+            self.assertEqual(run.stdout, run.stderr, "the one line on the stream and on stderr")
+            self.assertTrue(run.stdout.startswith("acp-broker: refused: REGIME_ANTHROPIC_KEY_FILE"), run.stdout)
+            self.assertIn(part, run.stdout)
+            self.assertIn(handout, run.stdout)
+            self.assertEqual(self.acp_slots(), [])
+            self.assertFalse(
+                state_dir.exists() or state_dir.is_symlink(), "nothing made: the worker is judged before any directory"
+            )
+            self.assertFalse((self.seats_path / ".state/broker-logs").exists(), "no log line")
+            self.assertEqual(self.calls_of("omp"), [], "no omp run")
+            self.assertEqual(self.calls_of("srt"), [], "no srt run")
+
+        def key_restored():
+            self.key_file.touch(mode=0o600)
+            self.key_file.write_text(FIXTURE_KEY)
+            self.assertEqual(stat.S_IMODE(self.key_file.stat().st_mode), 0o600)
+
+        mode_part = f"REGIME_ANTHROPIC_KEY_FILE {key}: cannot read its mode"
+        path_part = f"REGIME_ANTHROPIC_KEY_FILE {key} cannot be resolved to a clean physical path"
+        with self.subTest(case="the key removed right before stat"):
+            try:
+                refused(mode_part, trap_file("removed", stat_read, 'rm -f -- "${REGIME_ANTHROPIC_KEY_FILE}"'))
+                self.assertFalse(self.key_file.exists(), "the injection ran: the key is gone")
+            finally:
+                key_restored()
+        with self.subTest(case="the key's directory made unsearchable right before stat"):
+            try:
+                refused(mode_part, trap_file("stat-denied", stat_read, f'chmod 000 "{anthropic}"'))
+                self.assertEqual(stat.S_IMODE(anthropic.stat().st_mode), 0, "the injection ran")
+            finally:
+                anthropic.chmod(0o700)
+        with self.subTest(case="the key replaced by a chain of 41 links right before the resolver"):
+            # l2 -> l3 -> ... -> l41 -> target, and the key itself the first link: 41 links, one over the
+            # resolver's 40, so physical_path fails (every earlier test of the hold saw the regular file).
+            target = anthropic / "target"
+            target.touch(mode=0o600)
+            for i in range(2, 42):
+                (anthropic / f"l{i}").symlink_to(anthropic / (f"l{i + 1}" if i < 41 else "target"))
+            try:
+                refused(
+                    path_part,
+                    trap_file(
+                        "chain",
+                        resolver,
+                        f'rm -f -- "${{REGIME_ANTHROPIC_KEY_FILE}}" && ln -s "{anthropic}/l2" "${{REGIME_ANTHROPIC_KEY_FILE}}"',
+                    ),
+                )
+                self.assertTrue(self.key_file.is_symlink(), "the injection ran: the key is the chain's first link")
+            finally:
+                self.key_file.unlink()
+                for i in range(2, 42):
+                    (anthropic / f"l{i}").unlink()
+                target.unlink()
+                key_restored()
+        with self.subTest(case="the key's directory made unsearchable right before the resolver"):
+            try:
+                refused(path_part, trap_file("cd-denied", resolver, f'chmod 000 "{anthropic}"'))
+                self.assertEqual(stat.S_IMODE(anthropic.stat().st_mode), 0, "the injection ran")
+            finally:
+                anthropic.chmod(0o700)
+        self.assertEqual(self.key_file.read_text(), FIXTURE_KEY, "the key file is never written")
 
     def header_sent_by(self, argv, cwd):
         """The client run with `argv` after `--socket <scratch>` in `cwd` (the request's cwd `dsh-subagent-acp`

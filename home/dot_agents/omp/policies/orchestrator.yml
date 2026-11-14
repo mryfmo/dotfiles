@@ -62,11 +62,28 @@ bash:
       approval: allow
     - match: "*brief-check.py *"
       approval: deny
+    # The stall check (U496): read-only, run on every wake over the store's in-flight units and their progress files.
+    - match: "~/.local/bin/common/stall-check.py *"
+      approval: allow
+    - match: "*stall-check.py *"
+      approval: deny
     # The program status report (U497): read-only, the store's tables to standing order 56's shape; the reply to the
     # operator's status question quotes its output.
     - match: "~/.local/bin/common/program-status.py *"
       approval: allow
     - match: "*program-status.py *"
+      approval: deny
+    # The ticket binding (U493): the Router's pull request bound to one program unit from its ticket; it reads the
+    # Router's sqlite read-only, writes the unit's brief and row into the store, and runs no gh and no git.
+    - match: "~/.local/bin/common/ticket-unit.py *"
+      approval: allow
+    - match: "*ticket-unit.py *"
+      approval: deny
+    # The register writer (U505): one units.tsv row added or changed by the readers' grammar, in place under the
+    # register's lock; it runs no gh, no git and no network.
+    - match: "~/.local/bin/common/units-row.py *"
+      approval: allow
+    - match: "*units-row.py *"
       approval: deny
     # records-sync.sh acts with no arguments too (U28b F3): the exact bare form is allowed, every other bare
     # spelling and the bare form chained are denied as the argument forms are.

@@ -68,10 +68,52 @@
 #   Trusted: the worker is a non-adversarial actor whose reflex the refusals stop, not an attacker. A worker that
 #   rewrites the fresh repository's config or hooks directory can restore the push path; the tree is the worker's,
 #   and the refusal removes the path a push takes by habit, which is the failure that happened.
+#   The tree's owner record (regime-cutover U509, U509e, U509f; standing order 27, one writer per tree): twice on 2026-11-12
+#   and twice on 2026-11-13 a worker that had been cancelled kept editing while its successor was dispatched into the
+#   same tree (decisions.tsv lessons 2026-11-12T11:31:15Z and 2026-11-13T01:39:15Z); the rule was prose and failed
+#   four times, so it is a refusal of this tool. `claim <unit> <owner> [--stale <minutes>]` writes
+#   `<root>/<unit>/.git/regime-owner`, the two lines `owner=<name>` (over `[A-Za-z0-9._-]{1,64}`, matched whole) and
+#   `claimed=<YYYY-MM-DDTHH:MM:SSZ>`, mode 0600; its presence is the claim, and it lives under the tree's `.git`
+#   under a name git never writes, so no worker commit or `git status` sees it. Liveness is the record's age against
+#   `--stale` (default 20 minutes, the 10-minute progress rule doubled; 1 to 6 digits): a younger record refuses the
+#   claim with exit 3, a code of its own, naming the owner, the claim time and the age; an older one is taken over
+#   with one stdout line naming the stale owner (a dead worker leaves a record; the coordinator's kill path runs
+#   `release`, and a crash is covered by the age). Both claim lines end in `claimed=<stamp>`, the claim time, which
+#   the release presents: `release <unit> <owner> <claimed>` removes the record when it holds that owner and that
+#   claim time, refuses with exit 3 when it holds another claim (another name, or the same name's later claim: round
+#   2 compared the name alone, and the names are reused, so a successor that reused its predecessor's name had its
+#   fresh claim deleted by the predecessor's delayed release; verdicts/U509e-d8529b25.md, U509f), and prints `no claim
+#   <unit>` with exit 0 when there is none, so the coordinator's kill path can always run it. The coordinator claims
+#   right after the creation subcommand and before every dispatch, keeps the claim time the line printed, and
+#   releases with it after the worker's return or kill; the creation subcommand does not claim,
+#   so a tree made for one owner and dispatched to another still passes through `claim`. The tree is `<root>/<unit>`
+#   as the creation subcommand places it (the same root checks). Every record operation runs in one program,
+#   `worker-worktree-owner.py` beside this file (pinned like this file; the lever reads its bytes once, hashes them
+#   against the pin and runs those same bytes, acting on the exit status alone), the form of `ledger-row.py` and
+#   `profile-config-place.py`: the tree and its `.git` opened `O_DIRECTORY | O_NOFOLLOW` (the open is the check; a
+#   link at either name refuses, exit 2) and `fstat`ed as a directory of this user, every later name relative to that
+#   descriptor; one `flock` on `regime-owner.lock` beside the record (created 0600 and `fchmod`ed after the open, so
+#   the umask never leaves a lock no later run can open; it stays; an ENOENT from the open, macOS's answer to the
+#   loser of a concurrent first creation through one directory descriptor, is retried up to 10 times 0.05 s apart
+#   before it is a refusal, verdicts/U509f-f21a9f7f.md P2 :269, U509g) held over the read, the decision and the write
+#   or removal, so of two claimers on one stale record exactly one takes over and the other reads the fresh record
+#   and is refused, and a release delayed past a successor's claim reads a claim it does not present and is refused;
+#   the record read as bytes and matched whole (a NUL or any byte outside the two lines is malformed, refused and
+#   left for the operator; the stamp parsed with `strptime` and printed back, so 2026-02-31 is malformed); every
+#   write an exclusive 0600 temporary written, synced and renamed over the record, a failed step removing the
+#   temporary with exit 1 and the previous record standing; every argument grammar matched whole (`re.fullmatch`: a
+#   value ending in a newline is outside it) and every refusal one stderr line, a rejected value folded into it with
+#   its newline escaped. Round 1 (verdicts/U509-e343a569.md) kept these steps in the shell: the read and the write
+#   were unheld between them, `$(…)` dropped a NUL, `((10#n))` overflowed, a day of 31 passed in every month, and a
+#   failed write left an empty record with exit 3. These subcommands run no git, and the record and its lock file are
+#   all they write or remove.
 # @arg $1 string The unit, `U<n>` or `U<n><letter>` (`U7`, `U7b`); the repository is `<root>/<unit>`.
 # @arg $2 string The branch to create: a name `git check-ref-format --branch` accepts (its normalized output is the
 #   name made, so `@{-1}` names the checkout's previous branch), over `[A-Za-z0-9._/-]`.
 # @arg $3 string The base, a revision the checkout resolves to a commit (`origin/main`).
+# @arg $1 string `claim` or `release` selects the owner subcommands (U509): then the unit, the owner's name over
+#   `[A-Za-z0-9._-]{1,64}`, and for `claim` an optional `--stale <minutes>` (default 20), for `release` the claim
+#   time the claim printed (`claimed=<YYYY-MM-DDTHH:MM:SSZ>`).
 # @env DOTFILES_WT The directory the worker trees live in (default `${TMPDIR:-/tmp}/dotfiles-wt`): an absolute path
 #   without `.` or `..` components or a newline, outside the checkout and its git directory by device and inode (its
 #   longest existing directory and each directory above it); made when absent, and printed as `pwd -P` resolves it,
@@ -80,15 +122,30 @@
 #   git -C <checkout> push <origin url> FETCH_HEAD:refs/heads/<branch>`, the line the coordinator runs from the main
 #   checkout, one per line; the paths and the URL are quoted for the shell (`printf %q`), the branch's character set
 #   needs none.
+# @stdout For `claim`: `claimed <unit> owner=<name> claimed=<stamp>`, or `taken over <unit> from=<old> age=<min>m
+#   owner=<name> claimed=<stamp>`, the stamp the release presents; for `release`: `released <unit> owner=<name>`, or
+#   `no claim <unit>` when there is no record.
 # @exitcode 0 The repository exists at the base on the branch with the refusals and the upstream set.
 # @exitcode 2 Refused: usage, a unit, branch or base outside the grammar, a working directory that is not the main
 #   checkout or has no `origin` or a relative origin URL, a root inside the checkout or its git directory by identity,
 #   or holding a `.`, `..` or a newline (its resolved form included), a checkout path holding a newline, the target
 #   path present (the reservation failed), a read (`git rev-parse`, `git config`, the resolver's `cd` and `pwd -P`,
 #   `uname -s`, `stat`) that failed, or the manifest pin differing from this file, each before anything is made; or a
-#   step after the reservation that failed, after which the directory this run made is removed again and nothing else.
+#   step after the reservation that failed, after which the directory this run made is removed again and nothing else;
+#   for the owner subcommands, an owner outside the grammar, a `--stale` that is not 1 to 6 digits, a `release`
+#   without its claim time or with one outside `YYYY-MM-DDTHH:MM:SSZ` (each grammar matched whole), a tree that is
+#   absent or no repository this lever made (`.git` not a directory of this user, or a symbolic link), no `python3` on
+#   PATH, the program beside this file unreadable or off its pin, the lock not taken within 10 s, or a record outside
+#   its two exact lines or unreadable (left for the operator), nothing written.
+# @exitcode 3 Refused by the owner record: a `claim` while a record younger than `--stale` holds the tree (`the tree
+#   <path> is owned by <old> (claimed <ts>, <age> min ago); release it or wait past --stale`), or a `release` whose
+#   owner and claim time are not the record's (another name, or the same name's later claim); the record is untouched.
+# @exitcode 1 For the owner subcommands, a write or removal that failed after the decision: the temporary removed,
+#   the previous record standing, one stderr line `worker-worktree.sh: failed: ...`.
 # @example
 #   ~/.local/bin/common/worker-worktree.sh U123 feat/refusals-not-sentences origin/main
+#   ~/.local/bin/common/worker-worktree.sh claim U123 U123Worker
+#   ~/.local/bin/common/worker-worktree.sh release U123 U123Worker 2026-11-14T01:00:00Z
 set -euo pipefail
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
@@ -96,6 +153,7 @@ set -euo pipefail
 #   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
 #   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
 # @set LEVER_MANIFEST The manifest the pin came from.
+# @set LEVER_DIR The physical directory of this file, where the owner subcommands' program sits (U509e).
 lever_self_check() {
     local src dir self name pin digest home
     # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
@@ -110,6 +168,7 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -147,7 +206,7 @@ lever_self_check() {
 lever_self_check
 
 lever='worker-worktree.sh'
-usage='usage: worker-worktree.sh <unit> <branch> <base>'
+usage='usage: worker-worktree.sh <unit> <branch> <base> | claim <unit> <owner> [--stale <minutes>] | release <unit> <owner> <claimed>'
 pushurl='refused://never-push-from-a-worker-worktree'
 hook_message='standing order 29: the coordinator pushes'
 path=''
@@ -251,6 +310,69 @@ identity_of() {
     printf '%s\n' "${id}"
 }
 
+# @description Place the root the worker trees live in: `$DOTFILES_WT` (default `${TMPDIR:-/tmp}/dotfiles-wt`),
+#   absolute, without a `.` or `..` component or a newline, resolved through its longest existing directory
+#   (`resolve_root`), the resolved form without a newline either. Shared by the creation subcommand and the owner
+#   subcommands (U509); every refusal is exit 2 before anything is made or written.
+# @set root The resolved root.
+# @set root_prefix The physical path of the root's longest existing directory, the first step of the identity walk.
+place_root() {
+    root=${DOTFILES_WT:-${TMPDIR:-/tmp}/dotfiles-wt}
+    [[ ${root} == /* ]] || refuse "DOTFILES_WT ${root} is not an absolute path" # lint-comparisons: allow a shape test (absolute or not), no path identity is compared
+    # A `.` or `..` component after the last existing directory would make `mkdir -p` land elsewhere than the resolved
+    # prefix says (`<tmp>/absent/../checkout`), so the root is taken without either.
+    [[ ${root} != */./* && ${root} != */../* && ${root} != */. && ${root} != */.. ]] || # lint-comparisons: allow a shape test (a . or .. component), no path identity is compared
+        refuse "DOTFILES_WT ${root} has a . or .. component; give the resolved path"
+    [[ ${root} != *$'\n'* ]] || refuse "DOTFILES_WT ${root//$'\n'/\\n} holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
+    resolve_root "${root}" || refuse "cannot resolve DOTFILES_WT ${root}; its longest existing directory cannot be entered"
+    root=${resolved_root}
+    # The resolved form is checked again: a symlink whose own name holds no newline may point at a directory whose name
+    # holds one, and the alternates file and the printed `worktree=` line are one path per line.
+    [[ ${root} != *$'\n'* ]] || refuse "DOTFILES_WT resolves to ${root//$'\n'/\\n}, which holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
+}
+
+# The tree's owner record (regime-cutover U509, U509e, U509f): `claim <unit> <owner> [--stale <minutes>]` and
+# `release <unit> <owner> <claimed>` run the program `worker-worktree-owner.py` beside this file and end with its status.
+owner_program='worker-worktree-owner.py'
+
+# @description The owner subcommands: the root placed as the creation subcommand places it (`place_root`, exit 2
+#   before anything runs), then the one program `worker-worktree-owner.py` beside this file, which checks the
+#   arguments, opens the tree's `.git` through descriptors, takes the one lock and reads, writes or removes the record
+#   (round 1 kept these steps in the shell, and the audit found the read and the write unheld between them, a NUL
+#   dropped by `$(…)`, an overflowed `--stale`, a day of 31 in every month and an empty record after a failed write;
+#   verdicts/U509-e343a569.md). The program's bytes are read once into the shell (`cat`, its status checked and its
+#   error words in the one refusal line, a sentinel keeping the final newline as `exact_line` keeps one), hashed against the
+#   `claude.levers.sha256.worker-worktree-owner.py` pin of the manifest the self-check read (the readers of
+#   lever_self_check), and those same bytes are what `python3 -I -S -` runs from its stdin: no path is read twice
+#   between the hash and the run, so a file replaced after the hash runs nothing (the pin-then-run class of U344c).
+#   This function acts on the program's exit status alone and ends the run with it: 0 claimed, taken over, released
+#   or no claim (its one stdout line), 3 refused by the record, 2 refused by shape, 1 a write or removal that failed
+#   after the decision; the program's stdout and stderr are the lever's.
+# @arg $@ string The verb, then its arguments, as given to the lever.
+owner_subcommand() {
+    local program=${LEVER_DIR}/${owner_program} content pin digest status=0
+    place_root
+    command -v python3 > /dev/null || refuse "python3 is not on PATH; the owner subcommands run ${program}"
+    content=$(cat -- "${program}" 2>&1 && printf x) || refuse "cannot read ${program}: ${content//$'\n'/ }"
+    content=${content%x}
+    pin=$(sed -n -E "s/^      ${owner_program//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || refuse "cannot read ${LEVER_MANIFEST}"
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || refuse "no single sha256 pin for ${owner_program} in ${LEVER_MANIFEST}"
+    if command -v sha256sum > /dev/null; then
+        digest=$(printf '%s' "${content}" | sha256sum) || digest=''
+    else
+        digest=$(printf '%s' "${content}" | shasum -a 256) || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash ${program}"
+    [[ ${digest} == "${pin}" ]] || refuse "sha256 ${digest} of ${program} differs from the pin in ${LEVER_MANIFEST}; the program is not the pinned one"
+    printf '%s' "${content}" | python3 -I -S - "${root}" "$@" || status=$?
+    exit "${status}"
+}
+
+case ${1:-} in
+claim | release) owner_subcommand "$@" ;;
+esac
+
 [[ $# == 3 ]] || refuse "${usage}"
 unit=$1
 branch=$2
@@ -299,18 +421,7 @@ esac
 base_sha=$(git_run rev-parse --verify --quiet "${base}^{commit}" 2> /dev/null) || refuse "the base ${base} names no commit; run git fetch origin"
 [[ ${base_sha} =~ ^[0-9a-f]{40,64}$ ]] || refuse "the base ${base} resolved to ${base_sha}, not an object name"
 
-root=${DOTFILES_WT:-${TMPDIR:-/tmp}/dotfiles-wt}
-[[ ${root} == /* ]] || refuse "DOTFILES_WT ${root} is not an absolute path" # lint-comparisons: allow a shape test (absolute or not), no path identity is compared
-# A `.` or `..` component after the last existing directory would make `mkdir -p` land elsewhere than the resolved
-# prefix says (`<tmp>/absent/../checkout`), so the root is taken without either.
-[[ ${root} != */./* && ${root} != */../* && ${root} != */. && ${root} != */.. ]] || # lint-comparisons: allow a shape test (a . or .. component), no path identity is compared
-    refuse "DOTFILES_WT ${root} has a . or .. component; give the resolved path"
-[[ ${root} != *$'\n'* ]] || refuse "DOTFILES_WT ${root//$'\n'/\\n} holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
-resolve_root "${root}" || refuse "cannot resolve DOTFILES_WT ${root}; its longest existing directory cannot be entered"
-root=${resolved_root}
-# The resolved form is checked again: a symlink whose own name holds no newline may point at a directory whose name
-# holds one, and the alternates file and the printed `worktree=` line are one path per line.
-[[ ${root} != *$'\n'* ]] || refuse "DOTFILES_WT resolves to ${root//$'\n'/\\n}, which holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
+place_root
 # A root inside the checkout's working tree or git directory (`<checkout>/.git/hooks`) would have the tree made
 # write the checkout, which this lever never does. Containment is decided by identity, not by spelling: round 5
 # compared the resolved strings, and on a case-insensitive volume a case alias of the checkout path

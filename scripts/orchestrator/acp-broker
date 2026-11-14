@@ -62,7 +62,7 @@
 #   that becomes a grant). The first line of a connection is `ACP-SEAT v1 repo=<path> ref=<rev> name=<name>`: the
 #   repository a clean absolute path (clean_path) the Router may read, the ref a revision in
 #   `^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$` without `..`, the name in the seat-name grammar `^[a-z0-9][a-z0-9_-]{0,63}$`
-#   (never `claude`, the shared Claude Code directory's name, never the Router's own seat name, never one beginning
+#   (never `claude` or `claude-*`, the Claude Code login directories' names, never the Router's own seat name, never one beginning
 #   `acp-`, the prefix of the slots below, never `broker-logs`, the launch logs' directory, U343o), nothing after the
 #   fifth field, the whole line within 1024 characters and
 #   its newline read. Anything else is refused with one line `acp-broker: refused: <reason>` on the connection and
@@ -94,14 +94,18 @@
 #   credential root `<DSH_HOME>/router-credentials` (regime-cutover U353, U343l: held from `DSH_HOME` in this
 #   process's environment in `hcom-seat`'s form, cred_root_hold, checked against the Router's own `denyWrite` row of
 #   it so the two levers name one root, and appended last, where the dsh row renders it). The grants are the role's
-#   own and the broker's: `allowWrite` the slot's task, the shared Claude Code directory `<seats-root>/.state/claude`
-#   (the worker's bridge child keeps the seats root's one login there, U318), `~/.omp/profiles/dsh` (the worker's
-#   omp profile, `OMP_PROFILE=dsh`), `~/.omp/run`, and srt 0.0.81's own writable paths (`/tmp/claude`,
-#   `/private/tmp/claude` on macOS, `~/.npm/_logs`), every one physical; `allowRead` the slot's task, the shared
-#   Claude Code directory, that profile, `~/.agents/skills`, the private tool directory
+#   own and the broker's: `allowWrite` the slot's task, the router login group's Claude Code directory
+#   `<seats-root>/.state/claude-router` (regime-cutover U498b: the workers are the Router's own processes, so they
+#   hold the Router's login, the group hcom-seat's `login_group_of_role` gives the dsh and router roles; the eight
+#   configuration rows under it are denied through the Router's own denyWrite table, which this lever requires to
+#   carry them, so a worker changes nothing a Router child or the operator's login command there would load),
+#   `~/.omp/profiles/dsh` (the worker's omp profile, `OMP_PROFILE=dsh`), `~/.omp/run`, and srt 0.0.81's own writable
+#   paths (`/tmp/claude`, `/private/tmp/claude` on macOS, `~/.npm/_logs`), every one physical; `allowRead` the slot's
+#   task, the group's directory, that profile, `~/.agents/skills`, the private tool directory
 #   `~/.local/state/hcom-seat/tools` and the seats' API key file `REGIME_ANTHROPIC_KEY_FILE` names (U516, the @env
-#   row). No row names the Router's scratch cwd, its state slot or the repository. No DSH_HOME grant and no state
-#   slot: the worker is omp, not dsh, and the launch log is this lever's to write.
+#   row). No row names the Router's scratch cwd, its state slot, the repository or the legacy
+#   `<seats-root>/.state/claude` (U318, one login per seats root; read by nothing since U498b). No DSH_HOME grant and
+#   no state slot: the worker is omp, not dsh, and the launch log is this lever's to write.
 #   `allowLocalBinding` false, `allowUnixSockets` empty, the domain list
 #   `hcom-seat`'s. The settings text is the one writer's: both levers source `seat-settings-render.sh`
 #   (regime-cutover U344: the path rule every row obeys, the domain list and the JSON text; the rows are each
@@ -113,7 +117,7 @@
 #   grant row is judged against every deny row, by identity for what exists and by the absent components below one
 #   shared ancestor otherwise (identity_table, within_ix: one stat for every row); a grant that is, contains or lies
 #   inside a deny refuses naming both rows, unless the pair is structural and the grant lies where the role spells
-#   it: the slot's task and the shared Claude Code directory under the seats-root denies (the seats root and
+#   it: the slot's task and the router group's Claude Code directory under the seats-root denies (the seats root and
 #   `~/.local/state/omp-seats`) and over the project-file and configuration denies rendered inside them, and
 #   `~/.omp/profiles/dsh` under `~/.omp/profiles`. A profile that is a link elsewhere is not where the role spells
 #   it, so it is judged like any row and refused (the round-1 finding: a dsh profile linked into the orchestrator
@@ -186,10 +190,10 @@
 #   record file `<seats-root>/.state/<router seat>/broker/<id>`, in the broker directory: the Router's settings grant
 #   its state slot for read (hcom-seat's router row; the test's rendering holds it in `allowRead`) and deny the broker
 #   directory for write (U343i, the paragraph above), and no worker setting reaches it (the worker's `denyRead` is the
-#   Router's table with the seats root, its grants are the slot's task, the shared Claude Code directory, the profile
+#   Router's table with the seats root, its grants are the slot's task, the router group's Claude Code directory, the profile
 #   and `~/.omp/run`, its `allowUnixSockets` empty; measured on this host for U343g: `srt --settings <the Router's
 #   settings> -- /bin/cat <record>` exits 0 with the content, the same read under a slot's settings fails with
-#   `Operation not permitted`). The shared Claude Code directory is worker-writable and never holds a record. The
+#   `Operation not permitted`). The group's Claude Code directory is worker-writable and never holds a record. The
 #   record is written by the reaper alone, never by the handler: its running form, present before omp starts, is
 #   `ref=refs/acp-seat/<name>/<stamp>-<pid>` and `reaper=<pid>`; its final form adds one line `status=<omp's status
 #   when the handler reported it, else 2; 2 when the slot remains> push=<ref|none|failed|skipped>`.
@@ -887,11 +891,11 @@ physical_each() {
 #   (within_ix either way) is a hit unless the pair is structural: both rows carry the same tag and the grant lies
 #   where the role spells it (its physical path is the path in `allow_read_spelled` or `allow_write_spelled`). The
 #   tags are the dsh row's, assigned by construction since this lever reads the deny table instead of rendering it:
-#   the grants carry `slot` for the task cwd and the shared Claude Code directory and `profile` for the omp profile
+#   the grants carry `slot` for the task cwd and the router group's Claude Code directory and `profile` for the omp profile
 #   (`allow_read_tags`, `allow_write_tags`); a denyRead row carries `slot` when it has the identity of the seats root
 #   or of `~/.local/state/omp-seats` and `profile` when it has the identity of `~/.omp/profiles` (the three
 #   references resolved and tabled with the rows); a denyWrite row carries `slot` when it lies strictly inside a
-#   slot-tagged grant (the project-file rows under the task cwd, the configuration rows under the shared directory)
+#   slot-tagged grant (the project-file rows under the task cwd, the configuration rows under the group's directory)
 #   or when it has the identity of a slot-tagged read grant that is no write grant (the seats' API key file, which
 #   hcom-seat grants for read and denies for write under one tag, U512; U516).
 #   A profile that is a link elsewhere is spelled `~/.omp/profiles/dsh` and resolves elsewhere, so its tag exempts
@@ -1042,7 +1046,9 @@ require_clean_path HOME "${HOME}"
 require_clean_path 'the seats root' "${seats_root}"
 require_clean_path "the Router's scratch cwd" "${scratch}"
 [[ ${router} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "the Router seat name '${router}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
-[[ ${router} != claude ]] || refuse "the seat name 'claude' is the shared Claude Code directory <seats-root>/.state/claude, not a Router"
+case ${router} in
+claude | claude-*) refuse "the seat name '${router}' is taken by the Claude Code login directories <seats-root>/.state/claude-<group> (and the legacy <seats-root>/.state/claude), not a Router" ;;
+esac
 
 # srt 0.0.81 keeps its own TMPDIR writable whatever the policy says (SANDBOX_OWN_WRITE_PATHS, sandbox-utils.js:499-508
 # lists both on every OS); /private exists on macOS alone, and on Linux srt binds only what exists (hcom-seat
@@ -1084,9 +1090,17 @@ template=${seats_real}/.sandbox/${router}/srt-settings.json
 [[ ! -L ${template} ]] || refuse "the Router's settings ${template} is a symbolic link"
 [[ -f ${template} ]] || refuse "the Router's settings ${template} is absent or not a regular file (hcom-seat renders it on the Router's launch)"
 [[ -O ${template} ]] || refuse "the Router's settings ${template} is not this user's file"
-claude_config=${seats_real}/.state/claude
-[[ ! -L ${claude_config} ]] || refuse "the shared Claude Code directory ${claude_config} is a symbolic link; it must be a real directory"
-claude_real=$(physical_clean "${claude_config}") || unresolved 'the shared Claude Code directory' "${claude_config}"
+# The workers' Claude Code directory (regime-cutover U498b; verdict U498-e08ce84c: until this head the legacy
+# `<seats-root>/.state/claude` of U318, which hcom-seat makes no more since U498, so every connection on a fresh seats
+# root refused, and the legacy grant carried none of the configuration denies). The Router's subagent workers are the
+# Router's own processes, so they belong to the router login group, `<seats-root>/.state/claude-router`: the group
+# hcom-seat's `login_group_of_role` (and the preflight's copy of the table) gives the dsh and router roles, one constant
+# here since this lever runs for the Router alone. hcom-seat makes the directory on the Router's launch (the connection
+# refuses below when it is absent); the eight configuration rows under it come from the Router's own denyWrite table
+# (checked once the template is read). The legacy directory is named, read, granted and made by nothing here.
+claude_config=${seats_real}/.state/claude-router
+[[ ! -L ${claude_config} ]] || refuse "the router group's Claude Code directory ${claude_config} is a symbolic link; it must be a real directory"
+claude_real=$(physical_clean "${claude_config}") || unresolved "the router group's Claude Code directory" "${claude_config}"
 broker_dir=${state_dir}/broker
 sock=${broker_dir}/sock
 tools_dir=${h}/.local/state/hcom-seat/tools
@@ -1270,6 +1284,21 @@ for row in ${template_deny_write[@]+"${template_deny_write[@]}"}; do
     if [[ ${row} == "${cred_root_real}" ]]; then cred_root_denied=1; fi # lint-comparisons: allow both operands physical (hcom-seat renders its rows physical, cred_root_real is physical_clean); an identity test of one row
 done
 ((cred_root_denied)) || refuse "the Router's settings deny no write of its credential root ${cred_root_real}; hcom-seat and this lever disagree on the root"
+# The two levers name one login directory (regime-cutover U498b): hcom-seat's router row denies writing the eight
+# configuration rows (SEAT_SETTINGS_CLAUDE_ROWS, the one writer's table: the settings files, rules, hooks, plugins,
+# skills, commands and agents) under the router group's directory it derived, so the Router's denyWrite carries each of
+# them under the directory this process derived, or the two disagree (another hcom-seat rendered the settings, or one
+# that still spelled the legacy directory) and the connection refuses before anything is made. The worker's denyWrite
+# is the Router's table (deny_write below), so the eight rows reach the worker's settings under its grant of the
+# directory through it, and the grant carries what hcom-seat's router row carries (verdict U498-e08ce84c P1
+# hcom-seat:2062).
+for path in "${SEAT_SETTINGS_CLAUDE_ROWS[@]}"; do
+    claude_row_denied=0
+    for row in ${template_deny_write[@]+"${template_deny_write[@]}"}; do
+        if [[ ${row} == "${claude_real}/${path}" ]]; then claude_row_denied=1; fi # lint-comparisons: allow both operands physical (hcom-seat renders its rows physical, claude_real is physical_clean); an identity test of one row
+    done
+    ((claude_row_denied)) || refuse "the Router's settings deny no write of ${claude_real}/${path}; hcom-seat and this lever disagree on the router group's Claude Code directory"
+done
 
 # The worker's PATH inside the sandbox: the private tool directory and the system directories, then the caller's
 # absolute entries (hcom-seat's seat path); outside, srt itself runs with the first two alone.
@@ -1476,7 +1505,9 @@ require_clean_path "the header repo" "${repo}"
 [[ ${ref} =~ ^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$ && ${ref} != *..* ]] || # lint-comparisons: allow a grammar test on one revision word, no path compare
     refuse "the header ref '${ref}' is outside ^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}\$ without '..'"
 [[ ${name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "the header name '${name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
-[[ ${name} != claude ]] || refuse "the seat name 'claude' is taken by the shared Claude Code directory <seats-root>/.state/claude; choose another name"
+case ${name} in
+claude | claude-*) refuse "the seat name '${name}' is taken by the Claude Code login directories <seats-root>/.state/claude-<group> (and the legacy <seats-root>/.state/claude); choose another name" ;;
+esac
 [[ ${name} != "${router}" ]] || refuse "the header name '${name}' is the Router's own seat name; a worker is never the Router"                                   # lint-comparisons: allow two seat names, no path compare
 [[ ${name} != acp-* ]] || refuse "the header name '${name}' begins with 'acp-', the prefix of the broker's slots under <seats-root>/.state; choose another name" # lint-comparisons: allow a prefix test on one seat name, no path compare
 [[ ${name} != broker-logs ]] || refuse "the header name 'broker-logs' is the broker's log directory <seats-root>/.state/broker-logs (regime-cutover U343o); choose another name"
@@ -1553,7 +1584,7 @@ seat_settings_json false '[]' "${deny_read_json}" "${allow_read_json}" "${allow_
 json=${settings_json}
 
 # The worker's environment, built and never inherited (hcom-seat's dsh launch): HOME, the outer PATH, the profile,
-# the shared Claude Code directory, the AWS file names omp's Bedrock discovery stats (an EPERM there ends omp), the
+# the router group's Claude Code directory, the AWS file names omp's Bedrock discovery stats (an EPERM there ends omp), the
 # seat marker, and USER and LANG when this process's caller exported them. The Router-side git runs get HOME and the
 # outer PATH alone.
 worker_env=("HOME=${HOME}" "PATH=${outer_path}" OMP_PROFILE=dsh "CLAUDE_CONFIG_DIR=${claude_real}"
@@ -2027,9 +2058,9 @@ if ! printf '%s\n' "${json}" > "${settings}.tmp" || ! /bin/mv -f -- "${settings}
     refuse "cannot write the worker settings ${settings}"
 fi
 # srt on Linux grants writes only to paths that exist, so omp's own directories are made first (hcom-seat does the
-# same on every launch); the shared Claude Code directory exists already or the launch refuses.
+# same on every launch); the router group's Claude Code directory exists already or the launch refuses (U498b).
 /bin/mkdir -p "${profile_real}" "${run_real}" || refuse "cannot create omp's directories ${profile_real} and ${run_real}"
-[[ -d ${claude_real} ]] || refuse "the shared Claude Code directory ${claude_real} does not exist; hcom-seat makes it on the Router's launch"
+[[ -d ${claude_real} ]] || refuse "the router group's Claude Code directory ${claude_real} does not exist; hcom-seat makes it on the Router's launch"
 
 # The clone (regime-cutover U343e). The repository is read inside the Router's own sandbox (router_git): the ref
 # resolved to a commit, then that commit packed onto this process's descriptor in the slot; the pack is indexed into

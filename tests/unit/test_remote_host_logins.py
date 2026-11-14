@@ -345,11 +345,15 @@ class PreflightTest(unittest.TestCase):
         (profiles / "audit.yml").write_text(
             "# Generated\nmodelRoles:\n  default: openai-siwc/gpt-6-astra\nskills:\n  customDirectories: []\n"
         )
-        (profiles / "orchestrator.yml").write_text("modelRoles:\n  default: claude-bridge/claude-fable-5-1\n")
+        (profiles / "orchestrator.yml").write_text("modelRoles:\n  default: claude-bridge/claude-fable-5-2\n")
         (profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
-        # The seats root the shared Claude Code directory lives in (U318), passed as hcom-seat passes its resolved one.
+        # The seats root the login groups' Claude Code directories live in (U318, per group since U498), passed as
+        # hcom-seat passes its resolved one: the orchestrator profile's group directory, the worker's, and the legacy
+        # shared directory the kit neither reads nor removes.
         self.seats = self.temp / "seats"
-        self.shared = self.seats / ".state/claude"
+        self.shared = self.seats / ".state/claude-orchestrator"
+        self.shared_worker = self.seats / ".state/claude-worker"
+        self.legacy = self.seats / ".state/claude"
         # The SIWC readiness count (src/credentials.ts) without a real agent.db: FAKE_SIWC_LOGINS logins.
         write_exec(
             self.bin / "bun",
@@ -462,7 +466,10 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         shared = self.shared
         self.assertEqual(
             lines[1:],
-            [f"orchestrator claude-bridge: absent (no {shared})", f"worker claude-bridge: absent (no {shared})"],
+            [
+                f"orchestrator claude-bridge: absent (no {shared})",
+                f"worker claude-bridge: absent (no {self.shared_worker})",
+            ],
         )
 
     def test_check_reports_the_shared_directorys_method_and_never_a_token(self) -> None:
@@ -503,8 +510,8 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         self.assertNotIn(FAKE_OAUTH_VALUE, self.calls_text() + result.stdout + result.stderr)
 
     def test_the_seats_root_derives_from_the_checkout_when_none_is_passed(self) -> None:
-        """U318: without REGIME_SEATS_ROOT the shared directory is `~/.local/state/omp-seats/<slug>/.state/claude` of
-        the checkout the command runs in (regime-env's slug, HOME in physical form); outside a checkout the Claude
+        """U318, U498: without REGIME_SEATS_ROOT the group directory is `~/.local/state/omp-seats/<slug>/.state/claude-<group>`
+        of the checkout the command runs in (regime-env's slug, HOME in physical form); outside a checkout the Claude
         route is unreadable, never absent, and the SIWC route is untouched."""
         env = {key: value for key, value in self.env().items() if key != "REGIME_SEATS_ROOT"}
         inside = subprocess.run(
@@ -515,7 +522,7 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         self.assertEqual(inside.returncode, 0, inside.stderr)
         self.assertRegex(
             inside.stdout,
-            rf"^orchestrator claude-bridge: absent \(no {re.escape(str(home))}/\.local/state/omp-seats/[a-z0-9][a-z0-9_-]{{0,39}}/\.state/claude\)\n$",
+            rf"^orchestrator claude-bridge: absent \(no {re.escape(str(home))}/\.local/state/omp-seats/[a-z0-9][a-z0-9_-]{{0,39}}/\.state/claude-orchestrator\)\n$",
         )
         outside = subprocess.run(
             [str(PREFLIGHT), "--check", "orchestrator", "audit"], env=env, cwd=self.temp,
@@ -528,6 +535,117 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         )
         self.assertTrue(outside.stdout.splitlines()[1].startswith("audit openai-siwc: absent (no "), outside.stdout)
         self.assertEqual(self.calls_text(), "")
+
+    def test_check_names_each_login_groups_directory(self) -> None:
+        """U498: `--check` derives the directory per login group from the one table (`login_group_of_role`): the
+        orchestrator and worker profiles name `.state/claude-orchestrator` and `.state/claude-worker`, a deployed dsh
+        overlay on the claude-bridge route names the router group's `.state/claude-router` (the gateway child is the
+        Router's). U498b (verdict U498-e08ce84c P2 `:525`): the table is run for every profile with a seat login route,
+        the SIWC route included, so a profile outside the table refuses the lever (exit 2) naming the profile, its
+        route and the table, never `absent` (the SIWC overlay read as absent with exit 0 until this head) and never
+        `unreadable`; the lines before it print, no call runs and nothing is made. Each line reads its own group's
+        directory: a worker login present leaves the orchestrator's absent."""
+        profiles = self.home / ".agents/omp/profiles"
+        (profiles / "dsh.yml").write_text("modelRoles:\n  default: claude-bridge/claude-haiku-5-5\n")
+        before = [
+            f"audit openai-siwc: absent (no {self.home}/.omp/profiles/audit/agent/openai-siwc/registration.json)",
+            f"dsh claude-bridge: absent (no {self.seats}/.state/claude-router)",
+            f"orchestrator claude-bridge: absent (no {self.shared})",
+        ]
+        for route in ("openai-siwc/gpt-6-astra", "claude-bridge/claude-haiku-5-5"):
+            with self.subTest(route=route):
+                (profiles / "other.yml").write_text(f"modelRoles:\n  default: {route}\n")
+                result = self.run_lever("--check")
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual(result.stdout.splitlines(), before, "the lines before the refusal print")
+                self.assertEqual(
+                    result.stderr,
+                    f"seat-login-preflight: refused: the profile other ({route.split('/')[0]}) is outside the login group"
+                    " table login_group_of_role, which names orchestrator, worker, audit, dsh and router; it has no login"
+                    " group, so no line is printed for it\n",
+                )
+                self.assertEqual(
+                    self.calls_text() + self.bun_calls_text(), "", "no call for a profile outside the table"
+                )
+                self.assertFalse((self.seats / ".state").exists(), "nothing made")
+        (profiles / "other.yml").unlink()
+        result = self.run_lever("--check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            result.stdout.splitlines(), [*before, f"worker claude-bridge: absent (no {self.shared_worker})"]
+        )
+        self.assertEqual(self.calls_text(), "", "no call without a directory")
+        self.shared_worker.mkdir(parents=True)
+        self.legacy.mkdir()
+        result = self.run_lever("--check", "orchestrator", "worker", "dsh")
+        self.assertEqual(
+            (result.returncode, result.stdout),
+            (
+                0,
+                f"orchestrator claude-bridge: absent (no {self.shared})\n"
+                f"worker claude-bridge: login present (claude.ai, {self.shared_worker})\n"
+                f"dsh claude-bridge: absent (no {self.seats}/.state/claude-router)\n",
+            ),
+            result.stderr,
+        )
+        self.assertEqual(
+            self.calls_text(), f"claude auth status CLAUDE_CONFIG_DIR={self.shared_worker} BROWSER=unset token=unset\n"
+        )
+        self.assertNotIn(f"{self.legacy})", result.stdout, "the legacy shared directory is read by no line")
+
+    def test_the_refusal_names_the_legacy_shared_directory_when_the_groups_is_absent(self) -> None:
+        """U498 (standing order 54): the kit neither reads, copies nor deletes U318's shared `.state/claude`. When it
+        exists and the group's directory did not before this run, the profile mode's refusal prints the group's
+        command and names the legacy directory as the one the operator may remove after logging in per group; the
+        directory and its contents are untouched. With the group's directory present, or no legacy one, the refusal
+        says nothing of it, and `--check` never mentions it."""
+        self.legacy.mkdir(parents=True)
+        (self.legacy / "marker").write_text("")
+        refused = self.run_lever("worker", DISPLAY=":0", FAKE_CLAUDE_AUTH_STATUS="1")
+        self.assertEqual(refused.returncode, 2, refused.stderr)
+        self.assertEqual(
+            refused.stderr,
+            f"seat-login-preflight: worker claude-bridge: absent (not logged in under {self.shared_worker}); log in"
+            f" once: CLAUDE_CONFIG_DIR={self.shared_worker} claude auth login; a login is the operator's step: run that"
+            " command in your own terminal on this host, then start the seat again; the legacy shared directory"
+            f" {self.legacy} (one login per seats root, U318) is read by no seat: remove it once every running group"
+            " is logged in\n",
+        )
+        self.assertEqual(sorted(path.name for path in self.legacy.iterdir()), ["marker"])
+        self.assertTrue(self.shared_worker.is_dir() and not self.shared_worker.is_symlink())
+        self.assertEqual(stat.S_IMODE(os.lstat(self.shared_worker).st_mode), 0o700)
+        # The group's directory exists now (this run made it), so the next refusal names no legacy directory.
+        again = self.run_lever("worker", DISPLAY=":0", FAKE_CLAUDE_AUTH_STATUS="1")
+        self.assertEqual(again.returncode, 2, again.stderr)
+        self.assertNotIn("legacy", again.stderr)
+        self.assertTrue(again.stderr.endswith("then start the seat again\n"), again.stderr)
+        check = self.run_lever("--check", "worker", FAKE_CLAUDE_AUTH_STATUS="1")
+        self.assertEqual(
+            (check.returncode, check.stdout),
+            (0, f"worker claude-bridge: absent (not logged in under {self.shared_worker})\n"),
+        )
+        self.assertNotIn("legacy", check.stdout + check.stderr)
+        self.assertEqual(
+            self.calls_text(),
+            f"claude auth status CLAUDE_CONFIG_DIR={self.shared_worker} BROWSER=unset token=unset\n" * 3,
+        )
+
+    def test_the_login_group_table_maps_each_role_and_refuses_any_other(self) -> None:
+        """U498: the preflight's `login_group_of_role` is the role table copied from hcom-seat as text
+        (`tests/unit/test_hcom_seat.py` holds the two texts equal): worker to worker, orchestrator to orchestrator,
+        audit to audit, dsh and router to router; any other name returns 1 and prints nothing."""
+        table = self.lever_functions("login_group_of_role")
+        script = f'set -euo pipefail\n{table}\nlogin_group_of_role "$1"\n'
+        for role, group in (
+            ("worker", "worker"), ("orchestrator", "orchestrator"), ("audit", "audit"), ("dsh", "router"), ("router", "router"),
+        ):  # fmt: skip
+            with self.subTest(role=role):
+                run = subprocess.run(["bash", "-c", script, "_", role], capture_output=True, text=True, check=False)
+                self.assertEqual((run.returncode, run.stdout, run.stderr), (0, f"{group}\n", ""))
+        for role in ("claude", "review", "WORKER", ""):
+            with self.subTest(role=role):
+                run = subprocess.run(["bash", "-c", script, "_", role], capture_output=True, text=True, check=False)
+                self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
 
     def test_an_unreadable_record_is_never_read_as_absent(self) -> None:
         reg = self.register(record="{ not json")
@@ -593,12 +711,12 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         self.assertEqual(credentials.read_text(), "{}", "the operator's store is untouched")
 
     def assert_component_refused(self, result: subprocess.CompletedProcess[str], path: Path | str, kind: str) -> None:
-        """U318b: a bad component of the shared directory chain refuses the lever (exit 2) naming it and its kind."""
+        """U318b, U498: a bad component of the group directory chain refuses the lever (exit 2) naming it and its kind."""
         self.assertEqual(result.returncode, 2, result.stderr)
         self.assertEqual(
             result.stderr,
-            f"seat-login-preflight: refused: the shared Claude Code directory path component {path} is {kind}; move it"
-            " aside before a seat starts\n",
+            f"seat-login-preflight: refused: the login group's Claude Code directory path component {path} is {kind};"
+            " move it aside before a seat starts\n",
         )
 
     def test_a_shared_directory_that_is_a_link_or_a_file_refuses_naming_it_never_absent(self) -> None:
@@ -625,13 +743,13 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         self.assertEqual(self.calls_text() + self.bun_calls_text(), "", "no claude call ran")
 
     def test_check_refuses_a_linked_state_parent_naming_it(self) -> None:
-        """U318b (verdict U318-e0dd8cc2, P2 at :333): `--check` judged the `claude` leaf alone, so a linked `.state`
-        parent reached another directory's `claude` and was reported by it. Both modes now hold the seats root,
-        `.state` and `claude` to real directories of this user, in this order, and refuse at the first that is not,
-        naming it; the SIWC line before it still prints, nothing is made and the link is kept."""
+        """U318b (verdict U318-e0dd8cc2, P2 at :333): `--check` judged the leaf alone, so a linked `.state` parent
+        reached another directory's leaf and was reported by it. Both modes now hold the seats root, `.state` and the
+        group directory to real directories of this user, in this order, and refuse at the first that is not, naming
+        it; the SIWC line before it still prints, nothing is made and the link is kept."""
         self.seats.mkdir()
         elsewhere = self.temp / "elsewhere"
-        (elsewhere / "claude").mkdir(parents=True)
+        (elsewhere / "claude-orchestrator").mkdir(parents=True)
         state = self.seats / ".state"
         state.symlink_to(elsewhere)
         self.assertTrue(self.shared.is_dir(), "the leaf resolves through the link: the round-1 hole")
@@ -644,7 +762,7 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         gate = self.run_lever("orchestrator", SSH_CONNECTION="100.64.0.2 50000 100.64.0.3 22")
         self.assert_component_refused(gate, state, "a symbolic link")
         self.assertTrue(state.is_symlink())
-        self.assertEqual(sorted(path.name for path in elsewhere.iterdir()), ["claude"])
+        self.assertEqual(sorted(path.name for path in elsewhere.iterdir()), ["claude-orchestrator"])
         self.assertEqual(sorted(path.name for path in self.seats.iterdir()), [".state"])
         self.assertEqual(self.calls_text() + self.bun_calls_text(), "", "no claude call ran")
 
@@ -678,7 +796,7 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
     def test_a_linked_root_spelled_with_trailing_or_dot_components_refuses_naming_the_link(self) -> None:
         """U318c (verdict U318b-ad9b9456, P2 at :320): `REGIME_SEATS_ROOT=<link>//` kept a trailing slash (`${root%/}`
         strips one), and a trailing slash makes `-L` follow the link, so `--check` exited 0 and the profile mode made
-        `.state/claude` through it. The root is normalised to one spelling before any test (no empty, `.` or `..`
+        the group directory through it. The root is normalised to one spelling before any test (no empty, `.` or `..`
         component, no trailing slash) by parameter expansion alone, never `realpath`, so every spelling of the link
         refuses (exit 2) naming the link in both modes, and nothing is made through it."""
         elsewhere = self.temp / "elsewhere"
@@ -717,7 +835,7 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
 
         def refusal(component: Path, parent: Path) -> str:
             return (
-                f"seat-login-preflight: refused: cannot read the shared Claude Code directory path component"
+                f"seat-login-preflight: refused: cannot read the login group's Claude Code directory path component"
                 f" {component} (permission denied: {parent} is not searchable by this user); fix its mode before a"
                 " seat starts\n"
             )
@@ -752,7 +870,7 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
 
     def test_a_plain_root_keeps_one_spelling_whatever_its_trailing_or_dot_components(self) -> None:
         """U318c: the normalisation changes nothing for a plain root. `<root>//`, `<root>/./` and `<root>/x/..` are the
-        root: `--check` prints the one spelling (round 2 printed `<root>//.state/claude` for the first), the profile
+        root: `--check` prints the one spelling (round 2 printed `<root>//.state/claude` for the first, U318), the profile
         mode makes the chain 0700 at the root and prints the command with the one spelling, and the one status call
         runs under it. A relative root is no seats root (unreadable, never a directory relative to the cwd)."""
         for spelling in (
@@ -801,7 +919,7 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         line, on the laptop and in the SSH form, runs `claude auth login` with `CLAUDE_CONFIG_DIR` set to the exact
         directory, which the profile mode made 0700 first."""
         seats = self.temp / "a b'$c"
-        shared = seats / ".state/claude"
+        shared = seats / ".state/claude-orchestrator"
         command_re = re.compile(r"; log in once: (.*); a login is the operator's step")
         for extra, browser in (({"DISPLAY": ":0"}, "unset"), ({"SSH_CONNECTION": "100.64.0.2 50000 100.64.0.3 22"}, "regime-open-url")):  # fmt: skip
             with self.subTest(**extra):
@@ -894,9 +1012,9 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         # The Claude route outside a TTY, and inside a seat: the printed command, no login run (U318).
         status, output = self.run_tty("worker", SSH_CONNECTION=remote, HCOM_LAUNCHED="1", FAKE_CLAUDE_AUTH_STATUS="1")
         self.assertEqual(status, 2, output)
-        self.assertIn(f"BROWSER=regime-open-url CLAUDE_CONFIG_DIR={self.shared} claude auth login", output)
+        self.assertIn(f"BROWSER=regime-open-url CLAUDE_CONFIG_DIR={self.shared_worker} claude auth login", output)
         self.assertEqual(
-            self.calls_text(), f"claude auth status CLAUDE_CONFIG_DIR={self.shared} BROWSER=unset token=unset\n"
+            self.calls_text(), f"claude auth status CLAUDE_CONFIG_DIR={self.shared_worker} BROWSER=unset token=unset\n"
         )
 
     def test_the_operators_terminal_runs_the_siwc_login_with_the_pinned_port_and_the_laptop_opener(self) -> None:
@@ -948,7 +1066,7 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         headless = self.run_lever("worker", FAKE_CLAUDE_AUTH_STATUS="1")
         self.assertEqual(headless.returncode, 2, headless.stderr)
         self.assertIn(
-            f"worker claude-bridge: absent (not logged in under {self.shared}); log in once:", headless.stderr
+            f"worker claude-bridge: absent (not logged in under {self.shared_worker}); log in once:", headless.stderr
         )
         for display in ({"DISPLAY": ":0"}, {"WAYLAND_DISPLAY": "wayland-0"}):
             with self.subTest(**display):
@@ -960,7 +1078,9 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
                 for extra in ({}, {TOKEN_VARIABLE: FAKE_OAUTH_VALUE}):
                     refused = self.run_lever("worker", **display, **extra, FAKE_CLAUDE_AUTH_STATUS="1")
                     self.assertEqual(refused.returncode, 2, refused.stderr)
-                    self.assertIn(f"worker claude-bridge: absent (not logged in under {self.shared})", refused.stderr)
+                    self.assertIn(
+                        f"worker claude-bridge: absent (not logged in under {self.shared_worker})", refused.stderr
+                    )
                     self.assertNotIn(FAKE_OAUTH_VALUE, refused.stderr)
 
     def test_a_profile_without_a_login_route_passes_and_an_unreadable_overlay_does_not(self) -> None:
@@ -983,7 +1103,7 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         remote = "100.64.0.2 50000 100.64.0.3 22"
         profiles = self.home / ".agents/omp/profiles"
         (profiles / "security.yml").write_text("modelRoles:\n  default: openai-siwc/gpt-6-astra\n")
-        (profiles / "review.yml").write_text("modelRoles:\n  default: claude-bridge/claude-fable-5-1\n")
+        (profiles / "review.yml").write_text("modelRoles:\n  default: claude-bridge/claude-fable-5-2\n")
         for profile in ("review", "security", "reviewer"):
             with self.subTest(profile=profile):
                 refused = self.run_lever(profile, SSH_CONNECTION=remote)
@@ -1097,13 +1217,14 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         self.assertIn("after the login", output)
 
     def test_readiness_counts_the_shared_directorys_claude_ai_login_alone(self) -> None:
-        """U318: a seat starts on the shared directory's claude.ai login alone. A credentials file of the operator's own
-        `~/.claude` and a token variable in the environment are no input (U190, U312); an `oauth_token` or `api_key`
-        method under the directory is absent too, naming the command; in the operator's terminal the same state
-        names the command and runs no login."""
+        """U318, U498: a seat starts on its login group's claude.ai login alone. A credentials file of the operator's
+        own `~/.claude` and a token variable in the environment are no input (U190, U312); an `oauth_token` or
+        `api_key` method under the directory is absent too, naming the command for that group; in the operator's
+        terminal the same state names the command and runs no login."""
         remote = "100.64.0.2 50000 100.64.0.3 22"
         shared = str(self.shared)
         command = f"BROWSER=regime-open-url CLAUDE_CONFIG_DIR={shared} claude auth login"
+        worker_command = f"BROWSER=regime-open-url CLAUDE_CONFIG_DIR={self.shared_worker} claude auth login"
         credentials = self.home / ".claude/.credentials.json"
         credentials.parent.mkdir()
         credentials.write_text("{}")
@@ -1125,8 +1246,8 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
                 other = self.run_lever("worker", SSH_CONNECTION=remote, FAKE_CLAUDE_AUTH_METHOD=method)
                 self.assertEqual(other.returncode, 2, other.stderr)
                 self.assertIn(
-                    f"worker claude-bridge: absent (authMethod {method} under {shared}, not claude.ai); log in once:"
-                    f" {command}",
+                    f"worker claude-bridge: absent (authMethod {method} under {self.shared_worker}, not claude.ai); log in"
+                    f" once: {worker_command}",
                     other.stderr,
                 )
         present = self.run_lever("orchestrator", SSH_CONNECTION=remote, **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
@@ -1137,7 +1258,7 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         # In the operator's terminal the same absent state names the command and runs no login.
         status, output = self.run_tty("worker", SSH_CONNECTION=remote, FAKE_CLAUDE_AUTH_STATUS="1")
         self.assertEqual(status, 2, output)
-        self.assertIn(f"log in once: {command}; a login is the operator's step", output)
+        self.assertIn(f"log in once: {worker_command}; a login is the operator's step", output)
         self.assertNotIn("auth login", self.calls_text())
         self.assertEqual(self.calls_text().count("claude auth status"), 5)
         for text in (variable_only.stderr, other.stderr, present.stderr, output):

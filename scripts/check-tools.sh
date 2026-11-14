@@ -423,22 +423,63 @@ function login_group_of_role() {
 #   directory, the one this line names and `hcom-seat router --dry-run`
 #   prints as CLAUDE_CONFIG_DIR (every group of the table is a role of
 #   hcom-seat). A profile outside the table (a `no route` overlay that is no
-#   seat) keeps the general sentence.
+#   seat) keeps the general sentence. A claude-bridge line carries two states
+#   (regime-cutover U512): the login's, then the seats' API key's, `key ok
+#   (<file>)` when the key passed; the step names what the line lacks: the
+#   login's step when the login is not present, the key's step (the handout's
+#   placement commands, which the pre-flight's profile mode prints for any
+#   seat profile, the key file being one for every seat) when the key state is
+#   not `key ok`, both when both are missing, the login's first. A mixed state
+#   (regime-cutover U512f, verdict U512e-a120aeff P2) names the missing half's
+#   command and says what happens meanwhile: beside a present login the
+#   pre-flight passes but hcom-seat starts no seat until the key is placed
+#   (its key_file_check refuses every role without the key; regime-cutover
+#   U512g, verdict U512f-b6a3e2c0 P2: until this head the sentence said the
+#   seat starts on the login), and the key's placement commands are the step;
+#   beside an accepted key the seat starts on the key and the login is
+#   information, its command the group's (the pre-flight's profile mode prints
+#   both as information on its pass, U512f).
 # @arg $1 string The `--check` line.
 # @set login_step The sentence the warning carries in parentheses.
 #
 function login_step_of() {
-    local profile="${1%% *}" group mode
+    local profile="${1%% *}" group mode login_missing=1 key_missing=0 key_ok=0 key_step
     local -a seat_profiles=(orchestrator worker audit)
     login_step="log in on this host, once per login group: seat-login-preflight <profile> prints the group's command, docs/remote-host-logins.md"
-    group="$(login_group_of_role "${profile}")" || return 0
+    case "$1" in
+    *' claude-bridge: '*)
+        case "$1" in *': login present ('*) login_missing=0 ;; esac
+        # A second state on the line is the key's (U512); any state but `key ok` wants the key placed.
+        case "$1" in *'; key ok ('*) key_ok=1 ;; *'; '*) key_missing=1 ;; esac
+        ;;
+    esac
+    key_step="place the seats' API key on this host (one file for every seat): seat-login-preflight <seat profile> prints the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md"
+    if [ "${login_missing}" -eq 0 ] && [ "${key_missing}" -eq 0 ]; then
+        return 0
+    fi
+    group="$(login_group_of_role "${profile}")" || {
+        if [ "${key_missing}" -eq 1 ]; then login_step="${key_step}"; fi
+        return 0
+    }
     for mode in "${seat_profiles[@]}"; do
         if [ "${profile}" = "${mode}" ]; then
             login_step="log in on this host, once per login group: seat-login-preflight ${profile} prints the ${group} group's command, docs/remote-host-logins.md"
-            return 0
+            key_step="place the seats' API key on this host (one file for every seat): seat-login-preflight ${profile} prints the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md"
+            break
         fi
     done
-    login_step="log in on this host, once per login group: the ${profile} profile is the ${group} group, which has no seat-login-preflight profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory this line names (hcom-seat ${group} --dry-run prints it; BROWSER=regime-open-url first on a remote host), docs/remote-host-logins.md"
+    if [ "${profile}" != "${mode}" ]; then
+        login_step="log in on this host, once per login group: the ${profile} profile is the ${group} group, which has no seat-login-preflight profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory this line names (hcom-seat ${group} --dry-run prints it; BROWSER=regime-open-url first on a remote host), docs/remote-host-logins.md"
+    fi
+    if [ "${key_missing}" -eq 1 ]; then
+        if [ "${login_missing}" -eq 1 ]; then
+            login_step="${login_step}; ${key_step}"
+        else
+            login_step="the preflight passes on the group's login, but hcom-seat starts no seat until the key is placed; ${key_step}"
+        fi
+    elif [ "${key_ok}" -eq 1 ]; then
+        login_step="the seat starts on the accepted key (U512e), so the login is information: ${login_step#log in on this host, once per login group: }"
+    fi
 }
 
 #
@@ -446,15 +487,25 @@ function login_step_of() {
 #   `scripts/orchestrator/seat-login-preflight --check` (regime-cutover U37):
 #   presence and mtimes only, never a token. The Claude lines name each
 #   profile's login group directory `<seats-root>/.state/claude-<group>`
-#   (U498: one line per deployed profile, so one per running group). An
-#   absent login is an optional warning naming the group's step
-#   (login_step_of, U498d), since a login is per host and per group and the
-#   operator's step; an unreadable login record is a required failure, never
-#   read as absent.
+#   (U498: one line per deployed profile, so one per running group) and, after
+#   it on the same line, the seats' API key file's state (U512: `key ok`, or
+#   its absence or rejection). An absent login, an absent or rejected key and
+#   a profile without a route are optional warnings naming the step
+#   (login_step_of, U498d), since a login and the key are per host and the
+#   operator's steps; an unreadable record, in either state, and the lever's
+#   own refusal are required failures, never read as absent. One failure
+#   counts once (regime-cutover U512g, verdict U512f-b6a3e2c0 P1): every
+#   `required failed` line counts where it is printed, and the lever's
+#   non-zero exit counts only when the loop counted no line, since the exit
+#   that follows a printed unreadable or refusal line is the same failure
+#   (U512f counted the line and then the exit, so one unreadable key counted
+#   twice); the line's own count is what holds an unreadable login beside an
+#   accepted key, which the lever passes with exit 0 (verdict U512e-a120aeff
+#   P2: that arm once printed without counting, so the doctor exited 0).
 #
 function check_seat_logins() {
     local lever="${BASH_SOURCE[0]%/*}/orchestrator/seat-login-preflight"
-    local output line login_step status=0
+    local output line login_step status=0 counted=0
 
     if [ ! -x "${lever}" ]; then
         warn_optional "seat login check skipped: ${lever} is missing"
@@ -465,17 +516,26 @@ function check_seat_logins() {
         case "${line}" in
         '') ;;
         'not applicable:'*) printf '%s\n' "${line}" ;;
-        # The lever's own refusal or failed producer (pin, uname), never a profile line.
-        'seat-login-preflight:'*) printf 'required failed: %s\n' "${line}" >&2 ;;
-        *': unreadable'*) printf 'required failed: seat login %s\n' "${line}" >&2 ;;
-        *': absent'* | *': no route'* | *': not a seat login route'*)
+        # The lever's own refusal or failed producer (pin, uname), never a profile line; or either state of a
+        # claude-bridge line unreadable (U512), the states matched anywhere after the route. One arm counts both, and
+        # marks the count so the lever's exit below is not counted again for the same failure (U512g).
+        'seat-login-preflight:'* | *': unreadable'* | *'; unreadable ('*)
+            case "${line}" in
+            'seat-login-preflight:'*) printf 'required failed: %s\n' "${line}" >&2 ;;
+            *) printf 'required failed: seat login %s\n' "${line}" >&2 ;;
+            esac
+            ((required_failures += 1))
+            counted=1
+            ;;
+        *': absent'* | *'; absent ('* | *'; key rejected ('* | *': no route'* | *': not a seat login route'*)
             login_step_of "${line}"
             warn_optional "seat login ${line} (${login_step})"
             ;;
         *) printf 'found:   seat login %s\n' "${line}" ;;
         esac
     done <<< "${output}"
-    if [ "${status}" -ne 0 ]; then
+    # The exit alone counts when no printed line did: a lever that died without a line of its own.
+    if [ "${status}" -ne 0 ] && [ "${counted}" -eq 0 ]; then
         printf 'required failed: seat-login-preflight --check exited %d\n' "${status}" >&2
         ((required_failures += 1))
     fi

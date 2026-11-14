@@ -86,6 +86,13 @@ class RegimeStartTest(unittest.TestCase):
         # hcom never runs it otherwise.
         (bindir / "srt").write_text(f'#!/bin/sh\n[ "$1" != --version ] || echo {SRT_PIN}\nexit 0\n')
         (bindir / "srt").chmod(0o755)
+        # claude-keyed is required too (U512): hcom-seat runs `claude-keyed --check` on the seats' API key file before
+        # every launch, so a stand-in answers the ok line; the fake hcom never runs it otherwise.
+        (bindir / "claude-keyed").write_text(
+            '#!/bin/sh\n[ "$1" = --check ] || exit 64\n'
+            "printf 'key file ok: %s; executable: /fake/sdk/claude\\n' \"${REGIME_ANTHROPIC_KEY_FILE-}\"\n"
+        )
+        (bindir / "claude-keyed").chmod(0o755)
         self.state = self.temp / "hcom-state.json"
         self.store = self.temp / "store"
         self.store.mkdir()

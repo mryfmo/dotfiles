@@ -154,17 +154,21 @@ REDEFINITION = "no workflow line gives `timeout` another meaning"
 # bounded, and no workflow comment names apt-get. A row must still match a line (test_no_apt_exemption_is_stale).
 APT_EXEMPT: dict[tuple[str, str], str] = {}
 # Measured, in seconds, outside the apt calls (passing `test` jobs, every matrix row, runs 40314863147 to
-# 40610790312): "Install tools" at most 73 s (ubuntu-24.04 server, run 40338292845), 14 to 46 s elsewhere; "Run
-# Python unit tests" at most 664 s (macos-15 client, run 40610790312), 189 to 388 s on the Ubuntu rows. Twice the
-# maximum each, so a step bound ends a stall, never a slow passing run. Round 12: every apt call runs in a step of its
-# own that holds nothing else (the tree rule below), so an apt step's rest is 0 and its bound is its calls alone;
-# the two steps that held the calls keep the formula over their measured rest (REST_ONLY_BUDGET, BoundOrderTest).
+# 40610790312): "Install tools" at most 73 s (ubuntu-24.04 server, run 40338292845), 14 to 46 s elsewhere. "Run
+# Python unit tests" runs no apt since round 12, so its rest is the whole step: 33 min 40 s (2020 s) on macos-15 client
+# at PR 788's head eab19212 (run 43547786562, unittest-shards 1872.6 s for 2816 tests; the Ubuntu test jobs take 12 to
+# 15 min whole); the earlier 2280 s (twice a 19.0 min measurement of 2026-11-07) ran out at PR 780's 606f8caf (run 43548813296,
+# every module OK up to the cut) after the suite grew by this week's units, so the row is 3540 s, the step 60 minutes
+# (U496 round 9). "Install tools" keeps twice its maximum, so a step bound ends a stall, never a slow passing run.
+# Round 12: every apt call runs in a step of its own that holds nothing else (the tree rule below), so an apt step's
+# rest is 0 and its bound is its calls alone; the two steps that held the calls keep the formula over their measured
+# rest (REST_ONLY_BUDGET, BoundOrderTest).
 STEP_REST_BUDGET = {
     "Install apt packages": 0,
     "Install apt packages for the unit tests": 0,
     "Install apt packages for Codecov": 0,
 }
-REST_ONLY_BUDGET = {"Install tools": 150, "Run Python unit tests": 2280}
+REST_ONLY_BUDGET = {"Install tools": 150, "Run Python unit tests": 3540}
 # U109 round 3 (audit of 0a9fa727): the step check attaches names and timeout-minutes through the hand-written
 # reader `jobs()` (CI's interpreter has no YAML parser), which returns a `run: |` body and a one-line plain scalar
 # and silently returned no body for `run: |-` and `run: >`. A failed read is never an absence (standing order 21):

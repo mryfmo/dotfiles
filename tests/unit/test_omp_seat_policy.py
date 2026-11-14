@@ -72,6 +72,9 @@ ORCHESTRATOR_LEVERS = [
     f"{LEVER}brief-check.py .orchestration/orchestrate/regime-cutover/briefs/U1-x.md",
     # U497: the program status report, read-only, the reply to the operator's status question.
     f"{LEVER}program-status.py .orchestration/orchestrate/regime-cutover --ja",
+    # U493: the ticket binding, the Router's pull request bound to a unit from its ticket (a store write, no gh).
+    f"{LEVER}ticket-unit.py .orchestration/orchestrate/regime-cutover --db /x/orchestrator.sqlite --pr 777 "
+    "--branch agent/fix-x --head abc",
     # U505: the register writer, one units.tsv row by the readers' grammar (a store write, no gh).
     f"{LEVER}units-row.py /Users/x/.local/state/regime-store/dotfiles/regime-cutover set --id U20 --state done",
     f"{LEVER}records-sync.sh --program regime-cutover --unit U20",
@@ -498,6 +501,7 @@ class OmpSeatPolicyTest(unittest.TestCase):
                 "~/.local/bin/common/pr-threads-check.sh *",
                 "~/.local/bin/common/brief-check.py *",
                 "~/.local/bin/common/program-status.py *",
+                "~/.local/bin/common/ticket-unit.py *",
                 "~/.local/bin/common/units-row.py *",
                 "~/.local/bin/common/records-sync.sh *",
                 "~/.local/bin/common/records-sync.sh",

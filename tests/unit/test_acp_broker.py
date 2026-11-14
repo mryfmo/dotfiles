@@ -267,17 +267,20 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
 
     # --- the scratch Router, its repository and the broker ---
 
-    def make_router(self, name="router-20261107-000000-1"):
-        """A Router slot in the shape `hcom-seat router` leaves: the state slot with its scratch cwd, the shared Claude
-        Code directory, the broker directory `<state>/broker` made 0700 and empty before the settings (U343i: hcom-seat
-        makes it; the broker takes it as made), the Router's credential root `<dsh-home>/router-credentials` made 0700
-        (U353's cred_root_make; the broker holds it from `DSH_HOME`, which broker_env passes, U343l), and the settings
-        file in the dsh row's shape with the router cells (the loopback grant, the state root, the broker directory in
-        allowUnixSockets and, U343i, in denyWrite; the credential root in allowRead row 7 and in denyWrite, U353)."""
+    def make_router(self, name="router-20261107-000000-1", claude_denies=True):
+        """A Router slot in the shape `hcom-seat router` leaves: the state slot with its scratch cwd, the router login
+        group's Claude Code directory `.state/claude-router` (U498: hcom-seat makes it on the Router's launch; the
+        legacy `.state/claude` is made by nothing), the broker directory `<state>/broker` made 0700 and empty before
+        the settings (U343i: hcom-seat makes it; the broker takes it as made), the Router's credential root
+        `<dsh-home>/router-credentials` made 0700 (U353's cred_root_make; the broker holds it from `DSH_HOME`, which
+        broker_env passes, U343l), and the settings file in the dsh row's shape with the router cells (the loopback
+        grant, the state root, the broker directory in allowUnixSockets and, U343i, in denyWrite; the credential root
+        in allowRead row 7 and in denyWrite, U353; the eight configuration denies under the group's directory, U498,
+        unless `claude_denies` is false, the hold test's Router)."""
         seats = self.seats_path
         seats.mkdir(mode=0o700, exist_ok=True)
         state = seats / ".state" / name
-        for path in (seats / ".state", state, state / "cwd", seats / ".state/claude", seats / ".sandbox",
+        for path in (seats / ".state", state, state / "cwd", seats / ".state/claude-router", seats / ".sandbox",
                      seats / ".sandbox" / name, state / "broker"):  # fmt: skip
             path.mkdir(mode=0o700, exist_ok=True)
         (state / "broker").chmod(0o700)
@@ -292,8 +295,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                      f"{home}/.config/chezmoi", f"{home}/.config/chezmoi-private", f"{home}/Workspace",
                      f"{seats}/.sandbox", f"{home}/.local/state/omp-seats", str(seats), f"{home}/.claude",
                      f"{home}/.claude.json", str(repo), f"{repo}/.git", str(store), f"{repo}/.orchestration"]  # fmt: skip
+        claude_rows = [f"{seats}/.state/claude-router/{p}" for p in CLAUDE_ROWS] if claude_denies else []
         deny_write = [f"{seats}/.sandbox", *(f"{cwd}/{p}" for p in PROJECT_FILES),
-                      *(f"{seats}/.state/claude/{p}" for p in CLAUDE_ROWS), *(f"{repo}/{p}" for p in PROJECT_FILES),
+                      *claude_rows, *(f"{repo}/{p}" for p in PROJECT_FILES),
                       f"{repo}/.git/config", f"{repo}/.git/config.worktree", f"{repo}/.git/info", f"{repo}/.git/hooks",
                       f"{repo}/.git/worktrees/*/config.worktree", f"{repo}/.git/worktrees/*/info",
                       f"{repo}/.git/worktrees/*/commondir", f"{repo}/.git/worktrees/*/gitdir",
@@ -304,9 +308,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                         "allowMachLookup": ["com.apple.trustd.agent"], "allowLocalBinding": True},
             "filesystem": {
                 "denyRead": deny_read,
-                "allowRead": [str(cwd), str(state), f"{seats}/.state/claude", str(dsh_home), f"{home}/.omp/profiles/dsh",
+                "allowRead": [str(cwd), str(state), f"{seats}/.state/claude-router", str(dsh_home), f"{home}/.omp/profiles/dsh",
                               f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools", f"{dsh_home}/router-credentials"],
-                "allowWrite": [str(cwd), str(state), f"{seats}/.state/claude", str(dsh_home), f"{home}/.omp/profiles/dsh",
+                "allowWrite": [str(cwd), str(state), f"{seats}/.state/claude-router", str(dsh_home), f"{home}/.omp/profiles/dsh",
                                f"{home}/.omp/run", f"{dsh_home}/router-state", "/tmp/claude", "/private/tmp/claude",
                                f"{home}/.npm/_logs"],
                 "denyWrite": deny_write,
@@ -632,7 +636,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             ("a bad ref", f"ACP-SEAT v1 repo={repo} ref=-x name=w1\n", "the header ref '-x' is outside"),
             ("a ref with a range", f"ACP-SEAT v1 repo={repo} ref=a..b name=w1\n", "the header ref 'a..b' is outside"),
             ("a bad name", f"ACP-SEAT v1 repo={repo} ref=HEAD name=W1\n", "is outside ^[a-z0-9][a-z0-9_-]{0,63}$"),
-            ("the name claude", f"ACP-SEAT v1 repo={repo} ref=HEAD name=claude\n", "'claude' is taken by the shared Claude Code directory"),
+            ("the name claude", f"ACP-SEAT v1 repo={repo} ref=HEAD name=claude\n", "'claude' is taken by the Claude Code login directories"),
+            ("the name claude-worker", f"ACP-SEAT v1 repo={repo} ref=HEAD name=claude-worker\n", "'claude-worker' is taken by the Claude Code login directories"),
             ("the Router's seat name", f"ACP-SEAT v1 repo={repo} ref=HEAD name={name}\n", "is the Router's own seat name"),
             ("the slot prefix", f"ACP-SEAT v1 repo={repo} ref=HEAD name=acp-w1\n", "begins with 'acp-', the prefix of the broker's slots"),
             ("a missing field", f"ACP-SEAT v1 repo={repo} ref=HEAD\n", "has no 'name=<name>' fifth field"),
@@ -649,7 +654,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 self.assertIn(message, data)
                 self.assertEqual(data.count("\n"), 1, data)
         self.assertEqual(self.acp_slots(), [])
-        self.assertEqual(self.state_names(), ["claude", name])
+        self.assertEqual(self.state_names(), ["claude-router", name])
         self.assertEqual(self.calls_of("srt"), [])
         self.assertEqual(self.calls_of("omp"), [])
         # A good header after the bad ones still works: the broker refused connections, not itself; a name of 64
@@ -683,7 +688,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 self.assertEqual(self.acp_slots(), [])
         self.assertEqual(self.canaries(), [], "no canary: the clone refused first")
         self.assertEqual(self.calls_of("omp"), [])
-        self.assertEqual(self.state_names(), ["claude", name], "no state slot and no log for a refused launch")
+        self.assertEqual(self.state_names(), ["claude-router", name], "no state slot and no log for a refused launch")
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def test_a_router_moving_or_relinking_its_repository_after_the_header_changes_nothing_the_worker_may_read_or_write(
@@ -708,7 +713,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         proc, sock = self.start_broker(name, cwd)
         swap = self.calls / "swap-ancestor"
         moved = cwd / "work-moved"
-        roles = {str(self.seats_path / ".state/claude"), f"{home}/.omp/profiles/dsh", f"{home}/.omp/run",
+        roles = {str(self.seats_path / ".state/claude-router"), f"{home}/.omp/profiles/dsh", f"{home}/.omp/run",
                  f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools", f"{home}/.npm/_logs",
                  "/tmp/claude", "/private/tmp/claude"}  # fmt: skip
         for label, link in (
@@ -770,8 +775,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
 
     def test_b_the_settings_rendered_for_a_connection_carry_the_slot_task_and_the_roles_roots_and_no_router_path(self):
         """U343e test (b) (the U343c shape rewritten): the settings read from the slot while omp runs. `allowWrite`
-        is the slot's task, then the role's own rows (the shared Claude Code directory, `~/.omp/profiles/dsh`,
-        `~/.omp/run`, srt's own paths); `allowRead` the task, the shared directory, the profile, the skills and the
+        is the slot's task, then the role's own rows (the router login group's Claude Code directory, U498,
+        `~/.omp/profiles/dsh`, `~/.omp/run`, srt's own paths); `allowRead` the task, the group's directory, the profile, the skills and the
         tool directory; no grant row lies under the Router's scratch cwd or its state slot, no deny row under the
         scratch cwd (the Router's project-file denies are re-rooted under the task), and the one deny row under the
         state slot is the Router's broker deny `<state>/broker` (U343i), carried as every Router deny is. The slot is
@@ -789,11 +794,11 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(stat.S_IMODE(os.lstat(task).st_mode), 0o700)
         settings = json.loads((slot_path / "settings.json").read_text())
         fs = settings["filesystem"]
-        self.assertEqual(fs["allowWrite"][:4], [str(task), str(self.seats_path / ".state/claude"), f"{home}/.omp/profiles/dsh", f"{home}/.omp/run"])  # fmt: skip
+        self.assertEqual(fs["allowWrite"][:4], [str(task), str(self.seats_path / ".state/claude-router"), f"{home}/.omp/profiles/dsh", f"{home}/.omp/run"])  # fmt: skip
         self.assertTrue(
             set(fs["allowWrite"][4:]) <= {"/tmp/claude", "/private/tmp/claude", f"{home}/.npm/_logs"}, fs["allowWrite"]
         )
-        self.assertEqual(fs["allowRead"], [str(task), str(self.seats_path / ".state/claude"), f"{home}/.omp/profiles/dsh", f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools"])  # fmt: skip
+        self.assertEqual(fs["allowRead"], [str(task), str(self.seats_path / ".state/claude-router"), f"{home}/.omp/profiles/dsh", f"{home}/.agents/skills", f"{home}/.local/state/hcom-seat/tools"])  # fmt: skip
         state = self.seats_path / ".state" / name
         for kind in ("allowRead", "allowWrite", "denyRead", "denyWrite"):
             for row in fs[kind]:
@@ -826,6 +831,82 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(stat.S_IMODE(os.lstat(slot_path / "stderr").st_mode), 0o600)
         self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
         self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
+    def test_the_worker_joins_the_router_login_group_and_a_login_directory_name_is_no_seat(self):
+        """U498b (verdict U498-e08ce84c, the two P1 on acp-broker): the worker is the Router's subagent, so its Claude
+        Code directory is the router login group's `<seats-root>/.state/claude-router` (hcom-seat's
+        `login_group_of_role`: the dsh and router roles map to `router`), exported as the worker's `CLAUDE_CONFIG_DIR`,
+        granted for read and write, and denied under it for the eight configuration rows the router row carries
+        (`SEAT_SETTINGS_CLAUDE_ROWS`, carried from the Router's rendered settings); the legacy `.state/claude` is
+        named by no row and need not exist (the fixture makes `claude-router` alone, as hcom-seat does on a fresh
+        seats root). A Router's settings that deny none of the eight under the group's directory refuse the broker by
+        name before anything is made (standing order 21; the one place the denies come from is hcom-seat's render).
+        `claude`, `claude-worker` and `claude-router` are refused as a Router's seat name and as a worker's."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        group = self.seats_path / ".state/claude-router"
+        legacy = self.seats_path / ".state/claude"
+        self.assertFalse(legacy.exists() or legacy.is_symlink(), "the fixture makes no legacy directory")
+        proc, sock = self.start_broker(name, cwd)
+        conn, slot, task = self.held_connection(sock, repo, "w1")
+        settings = json.loads((self.seats_path / ".state" / slot / "settings.json").read_text())
+        fs = settings["filesystem"]
+        self.assertEqual((fs["allowRead"][1], fs["allowWrite"][1]), (str(group), str(group)))
+        for row in CLAUDE_ROWS:
+            self.assertEqual(fs["denyWrite"].count(f"{group}/{row}"), 1, (row, fs["denyWrite"]))
+        for kind in ("allowRead", "allowWrite", "denyRead", "denyWrite"):
+            for row in fs[kind]:
+                self.assertFalse(
+                    row == str(legacy) or row.startswith(f"{legacy}/"), f"{kind} row {row} names the legacy directory"
+                )
+        self.assertEqual(self.calls_of("omp")[-1]["env"]["CLAUDE_CONFIG_DIR"], str(group))
+        self.assertEqual(self.finish(conn, slot), (b"", "status=0 push=none"))
+        self.wait_for(lambda: self.acp_slots() == [], "the slot's removal")
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+        self.assertFalse(legacy.exists() or legacy.is_symlink(), "the broker made no legacy directory")
+        # The hold: a Router whose settings deny none of the eight rows under the group's directory.
+        template = self.seats_path / ".sandbox" / name / "srt-settings.json"
+        good = template.read_text()
+        self.make_router(name, claude_denies=False)
+        try:
+            run = subprocess.run(
+                [str(BROKER), self.seats, name, str(cwd)], cwd=self.repo, env=self.broker_env(),
+                capture_output=True, text=True, check=False, timeout=60,
+            )  # fmt: skip
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertIn(
+                f"acp-broker: refused: the Router's settings deny no write of {group}/settings.json; hcom-seat and this"
+                " lever disagree on the router group's Claude Code directory",
+                run.stderr,
+            )
+        finally:
+            template.write_text(good)
+        # The names: a Router's (the listener refuses before it looks at the slot) and a worker's (the header).
+        for taken in ("claude", "claude-worker", "claude-router"):
+            with self.subTest(router=taken):
+                run = subprocess.run(
+                    [str(BROKER), self.seats, taken, str(cwd)], cwd=self.repo, env=self.broker_env(),
+                    capture_output=True, text=True, check=False, timeout=60,
+                )  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(
+                    f"acp-broker: refused: the seat name '{taken}' is taken by the Claude Code login directories"
+                    " <seats-root>/.state/claude-<group> (and the legacy <seats-root>/.state/claude), not a Router",
+                    run.stderr,
+                )
+        proc, sock = self.start_broker(name, cwd)
+        for taken in ("claude", "claude-worker", "claude-router"):
+            with self.subTest(worker=taken):
+                data = self.recv_all(self.connect(sock, repo, taken)).decode()
+                self.assertEqual(
+                    data,
+                    f"acp-broker: refused: the seat name '{taken}' is taken by the Claude Code login directories"
+                    " <seats-root>/.state/claude-<group> (and the legacy <seats-root>/.state/claude); choose another name\n",
+                )
+        self.assertEqual(self.acp_slots(), [])
+        # The first launch made the broker's log directory (U343o); no `claude` and no `claude-*` slot was made.
+        self.assertEqual([n for n in self.state_names() if n != "broker-logs"], ["claude-router", name])
         self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
 
     def test_c_the_end_of_session_push_lands_the_worker_head_at_refs_acp_seat_and_the_record_names_it(self):
@@ -1834,7 +1915,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             (self.calls / "srt-fail").unlink()
         self.assertEqual(self.calls_of("omp"), [])
         self.assertEqual(self.acp_slots(), [])
-        self.assertEqual(self.state_names(), ["claude", name], "no state slot and no log for a refused launch")
+        self.assertEqual(self.state_names(), ["claude-router", name], "no state slot and no log for a refused launch")
         self.assertEqual(len(self.canaries()), 5, "one canary per connection, nothing after it")
         self.assertEqual(len(self.calls_of("srt")), 15, "the clone's two reads and the canary per connection")
         self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
@@ -2138,7 +2219,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         )  # fmt: skip
         own = set(json.loads(probe.stdout)) - {"PATH"}
         listed = {"HOME": str(self.home), "PATH": seat_path, "OMP_PROFILE": "dsh",
-                  "CLAUDE_CONFIG_DIR": str(self.seats_path / ".state/claude"), "AWS_SHARED_CREDENTIALS_FILE": "/dev/null",
+                  "CLAUDE_CONFIG_DIR": str(self.seats_path / ".state/claude-router"), "AWS_SHARED_CREDENTIALS_FILE": "/dev/null",
                   "AWS_CONFIG_FILE": "/dev/null", "HCOM_SEAT_SANDBOX": str(self.seats_path / ".state" / slot),
                   "USER": "u343", "LANG": "C.UTF-8"}  # fmt: skip
         self.assertEqual({k: v for k, v in launch["env"].items() if k not in own}, listed)
@@ -2209,7 +2290,9 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.assertEqual((path / "task/a.txt").read_text(), "hello\n")
         settings = [json.loads((self.seats_path / ".state" / s / "settings.json").read_text()) for s in slots]
         self.assertEqual([s["filesystem"]["allowWrite"][0] for s in settings], [str(self.slot_task(s)) for s in slots])
-        self.assertEqual(self.state_names(), ["broker-logs", "claude", name], "no seat slot is made for a worker")
+        self.assertEqual(
+            self.state_names(), ["broker-logs", "claude-router", name], "no seat slot is made for a worker"
+        )
         self.assertEqual(self.finish(c1, s1), (b"", "status=0 push=none"))
         self.assertEqual(self.finish(c2, s2), (b"", "status=0 push=none"))
         records = sorted(p.name for p in sock.parent.iterdir() if p.name != "sock")
@@ -3163,7 +3246,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(dsh_read[3], str(dsh_home))
         self.assertEqual(worker["filesystem"]["allowRead"], [task, dsh_read[2], *dsh_read[4:]])
         self.assertEqual(worker["filesystem"]["allowWrite"], [task, dsh_write[2], *dsh_write[4:]])
-        self.assertEqual(worker["filesystem"]["allowRead"][1], str(self.seats_path / ".state/claude"))
+        self.assertEqual(worker["filesystem"]["allowRead"][1], str(self.seats_path / ".state/claude-router"))
         self.assertEqual(worker["filesystem"]["allowWrite"][2:4], [f"{home}/.omp/profiles/dsh", f"{home}/.omp/run"])
         # DSH_HOME reaches the worker's settings as the credential root alone (U343l): once in denyRead, once in
         # denyWrite (the Router's row, copied), and in no grant.
@@ -3334,7 +3417,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertEqual(self.calls_of("srt"), [], "no clone and no canary: the judge refused first")
         self.assertEqual(self.calls_of("omp"), [])
         self.assertEqual(self.acp_slots(), [])
-        self.assertEqual(self.state_names(), ["claude", name], "no state slot and no log for a refused launch")
+        self.assertEqual(self.state_names(), ["claude-router", name], "no state slot and no log for a refused launch")
         self.assertTrue(profile.is_symlink(), "the launch neither removed nor replaced the link")
         self.assertEqual(sorted(p.name for p in (home / ".aws").iterdir()), [])
         self.assertEqual(sorted(p.name for p in (home / ".omp/profiles/orchestrator").iterdir()), [])
@@ -3437,7 +3520,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
             self.assertIn(f"the Router's credential root {root} is not a real directory of this user", connection())
         self.assertEqual(self.calls_of("srt"), [], "nothing ran")
         self.assertEqual(self.calls_of("omp"), [])
-        self.assertEqual(self.state_names(), ["claude", name], "no slot and no log for a refused launch")
+        self.assertEqual(self.state_names(), ["claude-router", name], "no slot and no log for a refused launch")
         # Made again, the broker started with the Router's environment serves a connection: the worker's denyRead
         # ends with the held root and its denyWrite carries the Router's row of it.
         root.mkdir(mode=0o700)

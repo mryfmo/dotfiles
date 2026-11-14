@@ -384,15 +384,77 @@ function check_claude_sandbox() {
 }
 
 #
+# @description The login group of a seat profile (regime-cutover U498, U498d):
+#   the one table `login_group_of_role` of `scripts/orchestrator/hcom-seat` and
+#   `scripts/orchestrator/seat-login-preflight`, copied here as the same text
+#   (`tests/unit/test_runtime_health.py` holds the copy equal to the lever's),
+#   so the doctor names a group's login step from the table and not from a
+#   guess: the worker, orchestrator and audit roles are each their own group,
+#   the dsh and router roles the `router` group (the dsh gateway child is the
+#   Router's). Any other name is no role of the table (status 1, nothing
+#   printed).
+# @arg $1 string The role (a seat profile's name).
+# @stdout The group.
+# @exitcode 1 The role is not in the table.
+#
+function login_group_of_role() {
+    case $1 in
+    worker) printf 'worker\n' ;;
+    orchestrator) printf 'orchestrator\n' ;;
+    audit) printf 'audit\n' ;;
+    dsh | router) printf 'router\n' ;;
+    *) return 1 ;;
+    esac
+}
+
+#
+# @description Set `login_step` to the operator's step for an absent login
+#   line of `seat-login-preflight --check` (regime-cutover U498d; verdict
+#   U498-8f2cca8c P2 `:413`). The line is `<profile> <route>: <state>`
+#   (the pre-flight's `profile_line`), so the profile is its first word and
+#   the group the table's (login_group_of_role). The pre-flight's profile
+#   mode accepts the seat profiles alone (`seat_profiles` there, the values
+#   of `omp.roles`: orchestrator, worker, audit; copied here as the same
+#   text), so for those the step is `seat-login-preflight <profile>`, which
+#   prints the group's `CLAUDE_CONFIG_DIR=<dir> claude auth login` or runs
+#   the SIWC login. The dsh profile's group `router` has no profile mode
+#   (`seat-login-preflight dsh` and `seat-login-preflight router` exit 2 as
+#   unknown profiles), so its step is `claude auth login` under the group's
+#   directory, the one this line names and `hcom-seat router --dry-run`
+#   prints as CLAUDE_CONFIG_DIR (every group of the table is a role of
+#   hcom-seat). A profile outside the table (a `no route` overlay that is no
+#   seat) keeps the general sentence.
+# @arg $1 string The `--check` line.
+# @set login_step The sentence the warning carries in parentheses.
+#
+function login_step_of() {
+    local profile="${1%% *}" group mode
+    local -a seat_profiles=(orchestrator worker audit)
+    login_step="log in on this host, once per login group: seat-login-preflight <profile> prints the group's command, docs/remote-host-logins.md"
+    group="$(login_group_of_role "${profile}")" || return 0
+    for mode in "${seat_profiles[@]}"; do
+        if [ "${profile}" = "${mode}" ]; then
+            login_step="log in on this host, once per login group: seat-login-preflight ${profile} prints the ${group} group's command, docs/remote-host-logins.md"
+            return 0
+        fi
+    done
+    login_step="log in on this host, once per login group: the ${profile} profile is the ${group} group, which has no seat-login-preflight profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory this line names (hcom-seat ${group} --dry-run prints it; BROWSER=regime-open-url first on a remote host), docs/remote-host-logins.md"
+}
+
+#
 # @description Report each omp seat profile's login on this host through
 #   `scripts/orchestrator/seat-login-preflight --check` (regime-cutover U37):
-#   presence and mtimes only, never a token. An absent login is an optional
-#   warning, since a login is per host and the operator's step; an unreadable
-#   login record is a required failure, never read as absent.
+#   presence and mtimes only, never a token. The Claude lines name each
+#   profile's login group directory `<seats-root>/.state/claude-<group>`
+#   (U498: one line per deployed profile, so one per running group). An
+#   absent login is an optional warning naming the group's step
+#   (login_step_of, U498d), since a login is per host and per group and the
+#   operator's step; an unreadable login record is a required failure, never
+#   read as absent.
 #
 function check_seat_logins() {
     local lever="${BASH_SOURCE[0]%/*}/orchestrator/seat-login-preflight"
-    local output line status=0
+    local output line login_step status=0
 
     if [ ! -x "${lever}" ]; then
         warn_optional "seat login check skipped: ${lever} is missing"
@@ -407,7 +469,8 @@ function check_seat_logins() {
         'seat-login-preflight:'*) printf 'required failed: %s\n' "${line}" >&2 ;;
         *': unreadable'*) printf 'required failed: seat login %s\n' "${line}" >&2 ;;
         *': absent'* | *': no route'* | *': not a seat login route'*)
-            warn_optional "seat login ${line} (log in on this host: seat-login-preflight <profile>, docs/remote-host-logins.md)"
+            login_step_of "${line}"
+            warn_optional "seat login ${line} (${login_step})"
             ;;
         *) printf 'found:   seat login %s\n' "${line}" ;;
         esac
@@ -416,6 +479,125 @@ function check_seat_logins() {
         printf 'required failed: seat-login-preflight --check exited %d\n' "${status}" >&2
         ((required_failures += 1))
     fi
+}
+
+#
+# @description Report the class of the Router's GitHub token through the checkout's
+#   `scripts/orchestrator/router-gh api -i user` (regime-cutover U490), one call bounded by
+#   perl's alarm (`timeout` is not on every host) to `DOCTOR_ROUTER_TIMEOUT` seconds (an
+#   integer of 1 to 600; else 30), with the response headers read for `X-Oauth-Scopes` alone.
+#   Five cases, decided by router-gh's exit status and, once gh has answered, by the HTTP status
+#   line alone (U490e, U490f; the doctor holds no path test of its own: round 4's `[ ! -e ]` read
+#   a login directory under an unreadable parent as absent where router-gh refuses `cannot resolve
+#   the credential root`, verdict U490-e90feefa P1):
+#   (a) router-gh exits 3, its "not yet" code (the credential root, its gh directory or its
+#       hosts.yml absent, or hosts.yml naming no active login for github.com): the operator's
+#       step (docs/engagement-handout.md step 2), an optional warning quoting router-gh's one
+#       stderr line; gh itself is not run;
+#   (b) router-gh exits 2, every other refusal (a DSH_HOME that is not a real, searchable
+#       directory of this user, a link in the chain, a wrong owner or mode, a root that cannot be
+#       resolved, several oauth_token rows, a token outside the grammar): a required failure
+#       quoting router-gh's one stderr line (a broken root the operator must repair, never
+#       "pending"; rounds 1 to 3 read every refusal as the pending step and exited 0, verdict
+#       U490-f441420d P1);
+#   (c) any other non-zero exit whose output's first line is an HTTP status line of class 4xx or
+#       5xx (`^HTTP/[0-9.]+ [45][0-9][0-9]`; `gh api -i` prints the status line before the body
+#       whatever the class and exits 1 on an error answer): GitHub answered and rejected the token
+#       (revoked, expired or never valid), a required failure `GitHub answered <status line>` with
+#       the remedy (U490f; round 5 read every exit of gh's own as "unreadable", so a revoked token
+#       passed the gate as an optional warning, verdict U490-f6175c44 P1);
+#   (d) any other non-zero exit with no HTTP status line in front (the alarm included, the
+#       transport's own failure text for a host never reached), or an exit 0 without a 2xx status
+#       line and a login: an optional warning `unreadable` (an offline or stalled host);
+#   (e) a 2xx answer: no `X-Oauth-Scopes` header is a fine-grained token, whose permissions this
+#       check cannot read and which cannot write here (GitHub's fine-grained tokens cannot
+#       contribute to a repository where the account is a collaborator, and the Router's account
+#       is one by the kit's design, M-25), a required failure (U490c); a header is a classic token,
+#       found when its list holds `repo` or `public_repo`, else a required failure. Both failures
+#       ask for the classic token of the handout's step 2 (`repo` for the writes, `read:org` and
+#       `gist` for `gh auth login --with-token`, `notifications` for the poll; U490b), since no
+#       other token lets the Router write (measured 2026-11-12: a `notifications` token read the
+#       stream and every write failed `HTTP 403`).
+#   The decision reads router-gh's exit status and gh's HTTP status line, never router-gh's text
+#   and no path; the login is read from the body's `login` key; no token is printed.
+#
+function check_router_token() {
+    local lever="${BASH_SOURCE[0]%/*}/orchestrator/router-gh"
+    local root="${DSH_HOME:-${HOME%/}/.dsh}/router-credentials/gh"
+    local output line status=0 in_headers=1 first_line='' body='' login='' scopes='' scopes_seen=0
+    local scope writes=0 remedy bound=30
+    local -a scope_list=()
+    remedy="place the classic token of docs/engagement-handout.md step 2 (scopes repo, read:org, gist, notifications; a fine-grained token cannot write to a repository where the account is a collaborator) under ${root}"
+
+    if [ ! -x "${lever}" ]; then
+        warn_optional "router token check skipped: ${lever} is missing"
+        return 0
+    fi
+    if [[ "${DOCTOR_ROUTER_TIMEOUT:-}" =~ ^[0-9]{1,3}$ ]] && [ "${DOCTOR_ROUTER_TIMEOUT}" -ge 1 ] && [ "${DOCTOR_ROUTER_TIMEOUT}" -le 600 ]; then
+        bound="${DOCTOR_ROUTER_TIMEOUT}"
+    fi
+    output="$(perl -e 'my $bound = shift; alarm $bound; exec @ARGV or die "exec router-gh: $!\n"' "${bound}" "${lever}" api -i user 2>&1)" || status=$?
+    if [ "${status}" -eq 3 ]; then
+        IFS= read -r first_line <<< "${output}"
+        warn_optional "router token: ${first_line}"
+        return 0
+    fi
+    if [ "${status}" -eq 2 ]; then
+        IFS= read -r first_line <<< "${output}"
+        printf 'required failed: router token: %s\n' "${first_line}" >&2
+        ((required_failures += 1))
+        return 0
+    fi
+    if [ "${status}" -ne 0 ]; then
+        IFS= read -r first_line <<< "${output}"
+        first_line="${first_line%$'\r'}"
+        if [[ "${first_line}" =~ ^HTTP/[0-9.]+\ [45][0-9][0-9] ]]; then
+            printf 'required failed: router token: GitHub answered %s (the token is rejected or expired; %s)\n' \
+                "${first_line}" "${remedy}" >&2
+            ((required_failures += 1))
+            return 0
+        fi
+        warn_optional "router token: unreadable (router-gh api -i user exited ${status}: ${first_line})"
+        return 0
+    fi
+    # `gh api -i` prints the status line, each header with CRLF, a blank line, then the raw body.
+    while IFS= read -r line; do
+        line="${line%$'\r'}"
+        if [ "${in_headers}" -eq 0 ]; then
+            body="${body}${line}"
+        elif [ -z "${first_line}" ]; then
+            first_line="${line}"
+        elif [ -z "${line}" ]; then
+            in_headers=0
+        elif [[ "${line}" =~ ^[Xx]-[Oo][Aa][Uu][Tt][Hh]-[Ss][Cc][Oo][Pp][Ee][Ss]:[[:space:]]*(.*)$ ]]; then
+            scopes="${BASH_REMATCH[1]}"
+            scopes_seen=1
+        fi
+    done <<< "${output}"
+    if [[ ! "${first_line}" =~ ^HTTP/[0-9.]+\ 2[0-9][0-9] ]] || [[ ! "${body}" =~ \"login\":[[:space:]]*\"([A-Za-z0-9-]+)\" ]]; then
+        warn_optional "router token: unreadable (router-gh api -i user answered without a 2xx status line and a login)"
+        return 0
+    fi
+    login="${BASH_REMATCH[1]}"
+    if [ "${scopes_seen}" -eq 0 ]; then
+        printf "required failed: router token %s: fine-grained (no X-Oauth-Scopes header), which cannot write here (GitHub's fine-grained tokens cannot contribute to a repository where the account is a collaborator, and the Router's account is one by design); %s\n" \
+            "${login}" "${remedy}" >&2
+        ((required_failures += 1))
+        return 0
+    fi
+    IFS=', ' read -r -a scope_list <<< "${scopes}"
+    for scope in ${scope_list[@]+"${scope_list[@]}"}; do
+        case "${scope}" in
+        repo | public_repo) writes=1 ;;
+        esac
+    done
+    if [ "${writes}" -eq 1 ]; then
+        printf 'found:   router token %s: classic, scopes %s\n' "${login}" "${scopes}"
+        return 0
+    fi
+    printf 'required failed: router token %s: classic token with scopes %s, none of which lets the Router write (the acknowledgement, a pushed ref, a pull request); %s\n' \
+        "${login}" "${scopes:-<none>}" "${remedy}" >&2
+    ((required_failures += 1))
 }
 
 #
@@ -450,6 +632,7 @@ function main() {
 
     section "Seat logins"
     check_seat_logins
+    check_router_token
 
     section "Zed"
     check_zed

@@ -95,15 +95,29 @@
 #   sandbox on stderr, and creates and starts nothing but the private tool links. Otherwise hcom's own
 #   exit status is returned (`hcom omp --help`:
 #   0 ready, 1 launch failed, 2 still launching or blocked on user attention).
-#   The seat login (regime-cutover U318, U314 alternative A): every seat's bridge child and the dsh role's gateway
-#   child run with `CLAUDE_CONFIG_DIR=<seats-root>/.state/claude`, one directory per seats root holding one
-#   interactive claude.ai login that Claude Code itself stores and refreshes (the Keychain item keyed to that
-#   directory on macOS, `.credentials.json` 0600 there otherwise). The directory is the role table's `claude_config`
-#   row for every role: this lever makes it 0700 when absent (a link refuses, own_slots_check), the shim exports it,
-#   seat-login-preflight judges `claude auth status` under it, and the settings grant it for write and deny its
-#   `settings.json`, `settings.local.json`, `rules`, `hooks`, `plugins`, `skills`, `commands` and `agents` to every
-#   seat, so no seat changes what another seat's child, or the operator's login command, would load from it. No token
-#   file and no CLAUDE_CODE_OAUTH_TOKEN: the shim clears the name, and no seat reads the operator's `~/.claude`.
+#   The seat login (regime-cutover U318, U314 alternative A; per login group since U498): every seat's bridge child
+#   and the dsh role's gateway child run with `CLAUDE_CONFIG_DIR=<seats-root>/.state/claude-<group>`, one directory
+#   per login group under the seats root, holding one interactive claude.ai login that Claude Code itself stores and
+#   refreshes (the Keychain item keyed to that directory on macOS, `.credentials.json` 0600 there otherwise). The
+#   group is a function of the role, the one table `login_group_of_role` (worker, orchestrator and audit each their
+#   own; the dsh and router roles the `router` group, since the gateway child is the Router's), copied as text into
+#   seat-login-preflight: a role's seats share their group's login, and two groups rotate no refresh token together
+#   (U318's one directory per seats root let the Router's long-lived children and the sweep seat rotate one token,
+#   and the login was invalidated five times, handoff/40). The directory is the role table's `claude_config` row:
+#   this lever makes it 0700 when absent, the shim exports it, seat-login-preflight
+#   judges `claude auth status` under it, and the settings grant it for write and deny its `settings.json`,
+#   `settings.local.json`, `rules`, `hooks`, `plugins`, `skills`, `commands` and `agents` to every seat, so no seat
+#   changes what another seat's child, or the operator's login command, would load from it. Every other group's
+#   directory and the legacy shared `.state/claude` are denied for read, by name, to every seat (U498c: srt reopens
+#   a root's subtree under an allow but for a more specific deny, so the orchestrator's read grant of the seats root
+#   reached the worker group's login until then; the rows come from the table's range, `LOGIN_GROUPS`, minus the own
+#   group), and every group's directory of that range is made, 0700 and empty, by every launch before its settings
+#   file is written (U498d, login_dirs_make: srt 0.0.81's Linux backend mounts nothing for a denyRead entry that is
+#   not there, so a deny of another group's directory bound nothing until that group's first launch or login made it;
+#   a link, a file or another user's directory at any group's path refuses the launch by name, own_slots_check and
+#   login_dirs_make), and the own group's directory is the one login a seat reads or writes. The legacy shared
+#   directory `.state/claude` is read, granted, copied, made and removed by no launch (standing order 54). No token file
+#   and no CLAUDE_CODE_OAUTH_TOKEN: the shim clears the name, and no seat reads the operator's `~/.claude`.
 #   The dsh role (regime-cutover U272, after the four audits of the standalone launcher of PR 687): the DeepSeek
 #   harness control host is contained the same way, by this lever, as a role whose differences from the worker are
 #   rows of the role table (the `case ${role}` after the options, seat_write_roots, the read grants in
@@ -494,6 +508,29 @@ done
 bridge=${HOME}/.local/lib/omp-extensions/pi-claude-bridge
 siwc=${HOME}/.agents/omp/extensions/openai-siwc
 gate=${HOME}/.agents/omp/hooks
+# @description Print the login group of the role `$1` (regime-cutover U498): the one table both this lever and
+#   seat-login-preflight hold as the same text (each lever's tests assert the table and their equality). Every seat
+#   of a role shares its group's Claude Code directory `<seats-root>/.state/claude-<group>` and no other group's:
+#   the omp roles worker, orchestrator and audit are each their own group; the dsh and router roles are the `router`
+#   group, since the dsh gateway child is the Router's. Any other name is no role of the table (status 1, nothing
+#   printed), so a caller that reads the status refuses instead of deriving a directory.
+# @arg $1 string The role.
+# @stdout The group.
+# @exitcode 1 The role is not in the table.
+login_group_of_role() {
+    case $1 in
+    worker) printf 'worker\n' ;;
+    orchestrator) printf 'orchestrator\n' ;;
+    audit) printf 'audit\n' ;;
+    dsh | router) printf 'router\n' ;;
+    *) return 1 ;;
+    esac
+}
+# The table's range (regime-cutover U498c), in the table's order: the login directories `<seats-root>/.state/claude-<group>`
+# a seats root can hold. seat_settings_render denies every one but the seat's own group's for read, so this array and
+# login_group_of_role are one table in two statements; the table test holds them equal (every role's group is here,
+# every group here is a role's, each once, in order). A group added to the table is added here, nowhere else.
+LOGIN_GROUPS=(worker orchestrator audit router)
 # The role table (regime-cutover U272, U321): every difference between the roles is a row read here or in the places
 # keyed on the role below (the directory row, seat_write_roots, the deny row before the overlap check and the judge
 # after it, the read grants in seat_settings_render, the binding value in seat_sandbox_write, the command the shim
@@ -529,6 +566,8 @@ dsh) role_launch=foreground omp_profile=dsh allow_local_binding=false role_profi
 router) role_launch=foreground omp_profile=dsh allow_local_binding=true role_profile=router state_root=router-state broker_dir=broker cred_root_grant=read broker=1 ;;
 *) refuse "unknown role '${role}'; expected orchestrator, worker, dsh or router" ;;
 esac
+# The role table's login group cell (U498), read from the one table by its status (standing order 21).
+login_group=$(login_group_of_role "${role}") || refuse "no login group for the role '${role}'"
 case ${role_launch} in
 hcom)
     # The extension the role's model route needs first, the optional one second.
@@ -570,8 +609,11 @@ foreground)
     ;;
 esac
 [[ ${name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "name '${name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
-# `<seats-root>/.state/claude` is the shared Claude Code directory (U318), so no seat's state slot may take that name.
-[[ ${name} != claude ]] || refuse "the seat name 'claude' is taken by the shared Claude Code directory <seats-root>/.state/claude; choose another --name"
+# `<seats-root>/.state/claude-<group>` is a login group's Claude Code directory (U498) and `.state/claude` the legacy
+# shared one (U318), so no seat's state slot may take any of those names.
+case ${name} in
+claude | claude-*) refuse "the seat name '${name}' is taken by the Claude Code login directories <seats-root>/.state/claude-<group> (and the legacy <seats-root>/.state/claude); choose another --name" ;;
+esac
 # A seat never launches a seat (regime-cutover U85): a launch is the operator's or the coordinator's step from a
 # terminal outside every seat (gate G7). hcom marks the seat's environment and the shim marks its own; the
 # filesystem probe after the seats root is known catches a seat that unset them.
@@ -1663,7 +1705,7 @@ if [[ -n ${mise_real} ]]; then
     mise_cmd=("${pinned[@]}")
 fi
 required_tools=(git hcom herdr omp srt)
-# claude is seat-login-preflight's login reader (`claude auth status` under the shared Claude Code directory, U318),
+# claude is seat-login-preflight's login reader (`claude auth status` under the login group's Claude Code directory, U318, U498),
 # regime-open-url and its python3 serve its interactive login handoff (U37), and jq reads the openai-siwc registration
 # and the auth status there (macOS 14 ships no /usr/bin/jq, so a mise or Homebrew jq is resolved and checked like every
 # tool). hcom-seat itself never runs them: the settings are read by plutil or /usr/bin/jq.
@@ -2026,10 +2068,11 @@ common=${git_paths[2]}
     refuse "git resolves the checkout ${repo}, git directory ${git_paths[1]} and common directory ${common}, not ${top}, ${gitdir} and ${early_common} found before it ran"
 seats_root=${seats_root:-${REGIME_SEATS_ROOT:-}}
 [[ -n ${seats_root} ]] || refuse 'no seats root: pass --seats-root or run inside a checkout'
-# The role table's `claude_config` row (regime-cutover U318): the shared Claude Code directory of every role, the
-# bridge child's and the dsh gateway child's `CLAUDE_CONFIG_DIR`, holding the one claude.ai login of this seats root.
-# Spelled here; own_slots_check reads it by lstat before anything resolves it, and seat_write_roots renders it physical.
-claude_config=${seats_root%/}/.state/claude
+# The role table's `claude_config` row (regime-cutover U318, per login group since U498): the Claude Code directory of
+# the role's login group, the bridge child's and the dsh gateway child's `CLAUDE_CONFIG_DIR`, holding the one claude.ai
+# login of that group under this seats root. Spelled here from the one table's cell (`login_group`); own_slots_check
+# reads it by lstat before anything resolves it, and seat_write_roots renders it physical.
+claude_config=${seats_root%/}/.state/claude-${login_group}
 # The role table's directory row: the orchestrator sits in the launch checkout, a worker in its worktree, the dsh and
 # router roles in a scratch directory inside their per-launch state slot, which seat_sandbox_write makes.
 case ${role} in
@@ -2306,13 +2349,14 @@ fi
 #   U219c: the held physical `store_root_phys`, printed verbatim as row 7, the held slot after `~/.omp/run`, never
 #   resolved here; where the records live once U221 has moved them); the
 #   dsh role writes DSH_HOME and its own omp profile, where its login child
-#   lives, and no git or hcom path. Row 2 of every role is the shared Claude Code directory `<seats-root>/.state/claude`
-#   (the `claude_config` row, regime-cutover U318), which the shim exports as the seat's `CLAUDE_CONFIG_DIR`: the
-#   child's login, `.claude.json`, state and sessions live there, and seat_settings_render denies its settings, rules,
-#   hooks, plugins, skills, commands and agents under this grant (srt keeps a deeper deny under an allow). The
-#   operator's Claude Code state (a caller's `CLAUDE_CONFIG_DIR`, `~/.claude`, `~/.claude.json`) is no root of any
-#   seat (regime-cutover U190). Being no root is not enough: srt 0.0.81 grants `~/.claude/debug` of the real HOME on
-#   its own, so seat_sandbox_write denies that state explicitly (operator_claude_paths, regime-cutover U190b).
+#   lives, and no git or hcom path. Row 2 of every role is its login group's Claude Code directory
+#   `<seats-root>/.state/claude-<group>` (the `claude_config` row, regime-cutover U318, U498), which the shim exports
+#   as the seat's `CLAUDE_CONFIG_DIR`: the child's login, `.claude.json`, state and sessions live there, and
+#   seat_settings_render denies its settings, rules, hooks, plugins, skills, commands and agents under this grant (srt
+#   keeps a deeper deny under an allow). The operator's Claude Code state (a caller's `CLAUDE_CONFIG_DIR`, `~/.claude`,
+#   `~/.claude.json`) is no root of any seat (regime-cutover U190). Being no root is not enough: srt 0.0.81 grants
+#   `~/.claude/debug` of the real HOME on its own, so seat_sandbox_write denies that state explicitly
+#   (operator_claude_paths, regime-cutover U190b).
 # @arg $1 string The role.
 # @arg $2 string The seat name.
 # @arg $3 string The seat directory (the worktree, the checkout for the orchestrator, the scratch cwd for dsh).
@@ -2341,8 +2385,8 @@ seat_write_roots() {
         ;;
     *) extra=("${common}" "${HCOM_DIR}" "${HOME}/.omp/profiles/$1" "${HOME}/.omp/run") ;;
     esac
-    # The seat's own slots come first, then the shared Claude Code directory (seat_overlap_check and the dsh judge's
-    # tags rely on the positions): its directory, its state directory, the shared directory.
+    # The seat's own slots come first, then its login group's Claude Code directory (seat_overlap_check and the dsh
+    # judge's tags rely on the positions): its directory, its state directory, the group's directory.
     for path in "$3" "${seats_root%/}/.state/$2" "${claude_config}"; do
         physical_path "${path}" || return 1
     done
@@ -2357,36 +2401,43 @@ seat_write_roots() {
 }
 
 # @description Refuse (exit 2) unless a seat's own slots under the seats root are what the overlap check's exemption
-#   takes them for (regime-cutover U85): `<seats-root>/.state`, `<seats-root>/.state/<name>`, the shared Claude Code
-#   directory `<seats-root>/.state/claude` (U318) and, for a worker,
-#   `<seats-root>/<name>` are each no symbolic link, a directory when they exist, and, when they exist, their physical
-#   parent has the identity of the physical seats root (resp. `.state`) and their physical basename is the name they
-#   are spelled with. A `.state/<name> -> ..` or `<name> -> /` would otherwise resolve the slot to a wider root that
-#   the exemption skips. It runs before anything resolves those paths (lstat first, then physical_path), so a slot
-#   that is a link is refused before any link is followed. Missing slots are created later, one component at a time
-#   (seat_sandbox_write).
+#   takes them for (regime-cutover U85): `<seats-root>/.state`, `<seats-root>/.state/<name>` and, for a worker,
+#   `<seats-root>/<name>`, and every login group's Claude Code directory `<seats-root>/.state/claude-<group>` (U318;
+#   U498: the own group's, which the settings grant; U498d: every group of the table's range `LOGIN_GROUPS`, which
+#   the settings deny by name and login_dirs_make makes before the settings file is written), are each no symbolic
+#   link, a directory when they exist, and, when they exist, their physical parent has the identity of the physical
+#   seats root (resp. `.state`) and their physical basename is the name they are spelled with. A `.state/<name> -> ..`
+#   or `<name> -> /` would otherwise resolve the slot to a wider root that the exemption skips, and a
+#   `.state/claude-worker -> <elsewhere>` would make the deny or the grant name a directory outside the seats root.
+#   It runs before anything resolves those paths (lstat first, then physical_path), so a slot that is a link is
+#   refused before any link is followed. Missing slots are created later, one component at a time
+#   (seat_sandbox_write, login_dirs_make).
 # @arg $1 string The role.
 # @arg $2 string The seat name.
 own_slots_check() {
-    local slot parent real seats_phys slots=("${seats_root}/.state" "${seats_root}/.state/$2" "${claude_config}")
+    local slot parent real seats_phys group what own i slots=("${seats_root}/.state" "${seats_root}/.state/$2")
     [[ $1 == orchestrator ]] || slots+=("${seats_root}/$2")
+    own=${#slots[@]}
+    for group in "${LOGIN_GROUPS[@]}"; do slots+=("${seats_root}/.state/claude-${group}"); done
     seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
-    for slot in "${slots[@]}"; do
-        [[ ! -L ${slot} ]] || refuse "the seat slot ${slot} is a symbolic link; a seat's own slots must be real directories"
+    for i in "${!slots[@]}"; do
+        slot=${slots[i]}
+        if ((i < own)); then what='the seat slot'; else what='the login group directory'; fi
+        [[ ! -L ${slot} ]] || refuse "${what} ${slot} is a symbolic link; a seat's own slots and the login group directories must be real directories"
         [[ -e ${slot} ]] || continue
-        [[ -d ${slot} ]] || refuse "the seat slot ${slot} is not a directory"
-        real=$(physical_path "${slot}") || refuse "cannot resolve the seat slot ${slot}"
+        [[ -d ${slot} ]] || refuse "${what} ${slot} is not a directory"
+        real=$(physical_path "${slot}") || refuse "cannot resolve ${what} ${slot}"
         parent=${slot%/*}
         [[ ${real%/*} -ef ${parent} && ${parent} -ef ${seats_phys}${parent#"${seats_root}"} ]] ||
-            refuse "the seat slot ${slot} does not sit in ${parent}"
-        [[ ${real##*/} == "${slot##*/}" ]] || refuse "the seat slot ${slot} resolves to ${real}" # lint-comparisons: allow a basename test, the parent by identity
+            refuse "${what} ${slot} does not sit in ${parent}"
+        [[ ${real##*/} == "${slot##*/}" ]] || refuse "${what} ${slot} resolves to ${real}" # lint-comparisons: allow a basename test, the parent by identity
     done
 }
 own_slots_check "${role}" "${name}"
 own_slots_check orchestrator orchestrator
-# The shared directory in physical form, for the shim's export, the dsh role's environment and the deny rows under it
+# The group's directory in physical form, for the shim's export, the dsh role's environment and the deny rows under it
 # (own_slots_check has just proved it is no link and sits in `.state`); seat_write_roots renders the same path.
-claude_config_real=$(physical_path "${claude_config}") || refuse "cannot resolve the shared Claude Code directory ${claude_config}"
+claude_config_real=$(physical_path "${claude_config}") || refuse "cannot resolve the login group's Claude Code directory ${claude_config}"
 # The physical seats root goes to the preflight, so the login it judges and the directory the shim exports are one
 # spelling (the macOS Keychain item is keyed to the directory's path).
 seats_root_real=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
@@ -2558,9 +2609,9 @@ renderer_source
 #   inputs or of denied places can lack a member. Every directory is resolved by physical_path, present or
 #   absent, so the lists are the same before and after the slots are made. The settings name what the seat may
 #   write (its directory, the repository's git common directory, the program's hcom store, its own omp profile and
-#   the omp session leases, its own state slot (a per-seat cache root) and the shared Claude Code directory
-#   `<seats-root>/.state/claude` (the `CLAUDE_CONFIG_DIR` the shim exports, regime-cutover U318: one login per seats
-#   root, stored and refreshed by Claude Code itself); the same for both omp roles,
+#   the omp session leases, its own state slot (a per-seat cache root) and its login group's Claude Code directory
+#   `<seats-root>/.state/claude-<group>` (the `CLAUDE_CONFIG_DIR` the shim exports, regime-cutover U318, U498: one
+#   login per group, stored and refreshed by Claude Code itself); the same for both omp roles,
 #   so no seat writes the seats root or reaches the herdr socket, and none can start a seat), what it may not change
 #   inside those roots (git config and hooks, the hcom store's launch scripts and configuration, agent configuration
 #   that runs outside the seat and the package the checkout's Claude Code hooks import), what it may not write or
@@ -2583,7 +2634,7 @@ renderer_source
 #   grant tags are the dsh role's and the orchestrator's store row, read by their judges; the deny tags are rendered
 #   for every role and change no list.
 seat_settings_render() {
-    local root path kind i project_files=() spelled=()
+    local root path kind i group project_files=() spelled=()
     h=$(physical_path "${HOME}") || refuse "cannot resolve HOME ${HOME}"
     dir_real=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"
     common_real=$(physical_path "${common}") || refuse "cannot resolve the git common directory ${common}"
@@ -2606,10 +2657,10 @@ seat_settings_render() {
         tag_row slot denyWrite ${#deny_write[@]} "${dir_real}/${path}"
         deny_write+=("${dir_real}/${path}")
     done
-    # The shared Claude Code directory is a write root of every seat (the child's login, `.claude.json`, state and
-    # sessions live there, regime-cutover U318), and these rows under it are what a seat must not change: the
-    # settings, rules, hooks, plugins, skills, commands and agents that another seat's child, or the operator's login
-    # command under that directory, would load (the U190 hole, closed among seats). The bridge child loads none of
+    # The login group's Claude Code directory is a write root of every seat (the child's login, `.claude.json`, state
+    # and sessions live there, regime-cutover U318, U498), and these rows under it are what a seat must not change:
+    # the settings, rules, hooks, plugins, skills, commands and agents that another seat's child, or the operator's
+    # login command under that directory, would load (the U190 hole, closed among seats). The bridge child loads none of
     # them (`settingSources: []`, `--strict-mcp-config`); the rows hold whatever a child loads. Tagged like the
     # project-file rows: the grant at write row 2 contains them by construction.
     for path in "${SEAT_SETTINGS_CLAUDE_ROWS[@]}"; do
@@ -2658,6 +2709,26 @@ seat_settings_render() {
         tag_row slot denyRead ${#deny_read[@]} "${root}"
         deny_read+=("${root}")
     fi
+    # The other login groups' Claude Code directories and the legacy shared one (regime-cutover U498c; verdict
+    # U498-4d18d6dd P1 `:2062`): srt reopens a root's subtree under an allow but for a more specific deny, so the
+    # orchestrator's read grant of the seats root (its allowRead row 7) reached `.state/claude-worker`, the worker
+    # group's login (`.credentials.json` there on Linux). Every role denies, by name, each directory of the table's
+    # range (LOGIN_GROUPS) but its own group's, and `.state/claude` (U318's shared directory, which no launch makes,
+    # reads or grants, standing order 54), under the physical seats root, as the own directory is rendered. Each
+    # group's directory exists when srt reads the file (U498d, login_dirs_make, before the settings file is written;
+    # verdict U498-8f2cca8c P1 `:2713`: srt 0.0.81's Linux backend mounts nothing for a denyRead entry that is not
+    # there, so the orchestrator's deny of the worker group's directory bound nothing until the worker's first launch
+    # or login made it, and the seats-root grant reached the credentials made later); the legacy directory binds when
+    # it exists and is made by nothing. The rows stand here, before the role's own deny row, so the router row's
+    # denyRead stays a prefix of the dsh row's (acp-broker copies the Router's table to its workers and appends the
+    # credential root, U343l); they carry no tag, since no grant of any role lies at or under them. The own group's
+    # directory is the one login a seat reads or writes (allowRead and allowWrite row 2 of the foreground roles, the
+    # omp roles' `claude_config_real` rows).
+    for group in "${LOGIN_GROUPS[@]}"; do
+        [[ ${group} != "${login_group}" ]] || continue # lint-comparisons: allow two group words of the login table, not a path
+        deny_read+=("${seats_real}/.state/claude-${group}")
+    done
+    deny_read+=("${seats_real}/.state/claude")
     operator_claude_paths
     deny_write+=("${operator_claude[@]}")
     deny_read+=("${operator_claude[@]}")
@@ -2746,9 +2817,10 @@ seat_settings_render() {
             allow_read+=("${cred_root_phys}")
         fi
         # The judge's exempted grants, each one row by its position (tag_row, regime-cutover U272g): the own cwd and
-        # state slot, rows 0 and 1 of both grant lists, the shared Claude Code directory, row 2 of both (seat_write_roots
-        # puts the three first; the directory sits under the seats-root denies and over its configuration denies, U318),
-        # and the own omp profile, row 4 of both. DSH_HOME (row 3 of both) carries the `credential` tag (U353), which
+        # state slot, rows 0 and 1 of both grant lists, the login group's Claude Code directory, row 2 of both
+        # (seat_write_roots puts the three first; the directory sits under the seats-root denies and over its
+        # configuration denies, U318, U498), and the own omp profile, row 4 of both. DSH_HOME (row 3 of both) carries
+        # the `credential` tag (U353), which
         # pairs it with the credential-root rows alone (the denies it contains by construction, and the router row's
         # read grant against its own write deny); against every other deny it is judged like any row, as are
         # `~/.omp/run` (write row 5) and the router role's state root (write row 6), which carry no tag whatever they
@@ -3108,6 +3180,33 @@ Linux)
     ;;
 *) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
+# @description Make every login group's Claude Code directory `<seats-root>/.state/claude-<group>`, one per group of
+#   the table's range `LOGIN_GROUPS` (the own group's, which the settings grant, among them), 0700 and empty, when
+#   absent (regime-cutover U498d; verdict U498-8f2cca8c P1 `:2713`): srt 0.0.81's Linux backend mounts nothing for a
+#   denyRead entry that is not there (dist/sandbox/linux-sandbox-utils.js:1810-1812, the U353d class), so the
+#   orchestrator's deny of `.state/claude-worker` bound nothing until the worker group's first launch or the operator's
+#   login made that directory, and its read grant of the seats root reached the credentials made later. Called by
+#   seat_sandbox_write once `.state` exists and before the settings file is written, so every deny row of every role
+#   names a directory that exists when srt reads the file, on both backends. The shape of the own directory's make
+#   step (U318): own_slots_check proved each path no link and, when present, a directory sitting in `.state`; one
+#   `mkdir` under `umask 077` that takes no existing entry (two launches at once may both find a directory absent, and
+#   the loser of the race takes the directory the winner made); present or made, each is a real directory of this
+#   user, else the launch refuses naming the group and the path. No login is made, read or copied: the directory is
+#   empty until the operator's `claude auth login` under it (seat-login-preflight prints the command); the legacy
+#   `.state/claude` is not in the range and is made by nothing (standing order 54).
+# @noargs
+login_dirs_make() {
+    local group path
+    for group in "${LOGIN_GROUPS[@]}"; do
+        path=${seats_root}/.state/claude-${group}
+        if [[ ! -e ${path} && ! -L ${path} ]]; then
+            (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} ]] ||
+                refuse "cannot create the ${group} login group's Claude Code directory ${path}"
+        fi
+        [[ -d ${path} && ! -L ${path} && -O ${path} ]] ||
+            refuse "the ${group} login group's Claude Code directory ${path} is not a real directory of this user"
+    done
+}
 # @description Write the seat's srt settings (the lists seat_settings_render rendered) and its shim under
 #   `<seats-root>/.sandbox/<name>` (regime-cutover U85), afresh on every launch, after the seat directory exists.
 #   The shim runs a canary under those settings first, a write into the sandbox directory, reads of the settings
@@ -3119,7 +3218,8 @@ seat_sandbox_write() {
     local write_json deny_write_json deny_read_json allow_read_json unix_sockets_json
     # srt on Linux grants writes only to paths that exist, so omp's own state directories are made first. The seat's
     # slots under the seats root were proved free of links (own_slots_check); they are made one component at a time,
-    # and each is checked again to be a real directory.
+    # and each is checked again to be a real directory. The login group directories, the own group's grant and the
+    # other groups' denies, are made right after `.state` (login_dirs_make, U498d).
     (umask 077 && mkdir -p "${seats_root}" "${HOME}/.omp/profiles/${omp_profile}" "${HOME}/.omp/run") ||
         refuse "cannot create the seats root ${seats_root} or omp's state directories"
     # The row's state root (U321b, U321c, U321d): held by state_root_hold from the held physical DSH_HOME and made by
@@ -3134,11 +3234,17 @@ seat_sandbox_write() {
     # the deny or the grant that names it names a directory that exists when srt reads the settings.
     [[ -d ${cred_root_phys} && ! -L ${cred_root_phys} && -O ${cred_root_phys} ]] ||
         refuse "the ${role} role's credential root ${cred_root_phys} is not a real directory of this user"
-    for path in "${seats_root}/.state" "${claude_config}" "${seats_root}/.state/${name}" \
-        ${scratch_dir:+"${scratch_dir}"} "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do
+    # `.state` first, then every login group's directory under it (login_dirs_make), then the per-launch slots. Two
+    # launches at once (the dsh role's normal case) may both find a shared parent absent; the loser of the mkdir race
+    # takes the directory the winner made, held to a real directory by the check after it.
+    path=${seats_root}/.state
+    if [[ ! -e ${path} && ! -L ${path} ]]; then
+        (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} ]] || refuse "cannot create ${path}"
+    fi
+    [[ -d ${path} && ! -L ${path} ]] || refuse "${path} is not a real directory"
+    login_dirs_make
+    for path in "${seats_root}/.state/${name}" ${scratch_dir:+"${scratch_dir}"} "${seats_root}/.sandbox" "${sandbox}" "${sandbox}/bin"; do
         if [[ ! -e ${path} && ! -L ${path} ]]; then
-            # Two launches at once (the dsh role's normal case) may both find a shared parent absent; the loser of
-            # the mkdir race takes the directory the winner made, held to a real directory by the check below.
             (umask 077 && /bin/mkdir "${path}") || [[ -d ${path} && ! -L ${path} ]] || refuse "cannot create ${path}"
         fi
         [[ -d ${path} && ! -L ${path} ]] || refuse "${path} is not a real directory"
@@ -3220,10 +3326,11 @@ if [[ ${probe} != 'write-denied read-denied ssh-denied debug-denied' || -e ${can
     exit 2
 fi
 export UV_CACHE_DIR=${state}/uv-cache
-# The child's Claude Code login and state (`.claude.json`, projects, sessions, plugins) live in the seats root's shared
-# directory, never in the operator's ~/.claude or ~/.claude.json (regime-cutover U190, U318): under that directory the
-# child reads the one claude.ai login the operator made there and refreshes it itself. No token rides: a caller's
-# CLAUDE_CODE_OAUTH_TOKEN is no input (regime-cutover U312), so the name is cleared.
+# The child's Claude Code login and state (`.claude.json`, projects, sessions, plugins) live in its login group's
+# directory under the seats root, never in the operator's ~/.claude or ~/.claude.json (regime-cutover U190, U318,
+# U498): under that directory the child reads the one claude.ai login the operator made there for the group and
+# refreshes it itself. No token rides: a caller's CLAUDE_CODE_OAUTH_TOKEN is no input (regime-cutover U312), so the
+# name is cleared.
 export CLAUDE_CONFIG_DIR=${claude_config}
 unset CLAUDE_CODE_OAUTH_TOKEN
 # omp's Bedrock discovery stats ~/.aws/{credentials,config} unless these name the files, and an EPERM from the read
@@ -3267,8 +3374,8 @@ seat_wrapper_write() {
 
 # The role table's launch row: the hcom launch line for the omp roles; for the dsh role the shim run in the foreground
 # under `/usr/bin/env -i` with the listed names (U272: nothing of the caller's environment reaches the shim, srt or
-# dsh; the shim sets PATH and its own exports; the shared Claude Code directory rides in the list and as the shim's
-# export alike, U318).
+# dsh; the shim sets PATH and its own exports; the login group's Claude Code directory rides in the list and as the
+# shim's export alike, U318, U498).
 case ${role_launch} in
 hcom)
     argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr --go -- --profile "${role}" --config "${policy}" --config "${profile}" --append-system-prompt "${rules}")
@@ -3337,7 +3444,7 @@ fi
 if ((dry_run)); then
     printf '%q ' "${argv[@]}"
     echo
-    echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-} REGIME_STORE_ROOT=${REGIME_STORE_ROOT:-}" >&2
+    echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-} REGIME_STORE_ROOT=${REGIME_STORE_ROOT:-} CLAUDE_CONFIG_DIR=${claude_config_real} (login group ${login_group})" >&2
     echo "hcom-seat: sandbox ${sandbox} (srt ${srt_cmd[*]}, omp ${omp_cmd[*]}, hcom ${hcom_cmd[*]}, herdr ${herdr_cmd[*]})" >&2
     if ((broker)); then
         echo "hcom-seat: a launch starts the ACP broker ${LEVER_DIR}/acp-broker ${seats_root} ${name} ${dir} beside dsh and stops it when dsh exits" >&2
@@ -3345,9 +3452,10 @@ if ((dry_run)); then
     fi
     exit 0
 fi
-# U37: a seat host needs this host's own login first (seat-login-preflight beside this file), judged under the shared
-# Claude Code directory of this seats root, which the preflight derives from REGIME_SEATS_ROOT (U318). The dsh role
-# has no overlay for it; the shim exports the same directory into its sandbox as for every role.
+# U37: a seat host needs this host's own login first (seat-login-preflight beside this file), judged under the role's
+# login group directory of this seats root, which the preflight derives from REGIME_SEATS_ROOT and the role through
+# the same table (U318, U498). The dsh role has no overlay for it; the shim exports the router group's directory into
+# its sandbox.
 if [[ ${role_launch} == hcom ]]; then
     REGIME_SEATS_ROOT=${seats_root_real} /bin/bash "${BASH_SOURCE[0]%/*}/seat-login-preflight" "${role}" || exit $?
 fi

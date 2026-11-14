@@ -364,14 +364,22 @@ class HcomSeatTest(SeatFixture):
         self.assertFalse(self.claude_calls.exists(), "no login route, so the preflight read no login")
         # On the claude-bridge route the preflight judges the group's login and the key file first, the key with the
         # same lever; a present login beside an absent key passes the preflight (U512e: the login route, until U513
-        # retires it) with the line as information, and the launcher's own gate is the refusal.
+        # retires it) with the line as information, followed by the key's placement commands as information (U512f),
+        # and the launcher's own gate is the refusal.
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         run = launch(FAKE_CLAUDE_KEYED_STATUS="2")
         self.assertEqual(run.returncode, 2, run.stderr)
         self.assertTrue(
             run.stderr.startswith(
-                f"seat-login-preflight: worker claude-bridge: login present (claude.ai, {shared}); {key_absent}\n"
+                f"seat-login-preflight: worker claude-bridge: login present (claude.ai, {shared}); {key_absent}; place"
+                " the key once: (umask 077; "
             ),
+            run.stderr,
+        )
+        self.assertIn(
+            "; the seat starts on the group's login (the login route, until U513 retires it); the key is the operator's"
+            " step (handouts/anthropic-api-key-u510.md, steps 2 and 3): run those commands in your own terminal on this"
+            " host\nhcom-seat: ",
             run.stderr,
         )
         self.assertTrue(run.stderr.endswith("\n" + absent), run.stderr)
@@ -402,7 +410,8 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual(run.returncode, 2, run.stderr)
         self.assertIn(f"; log in once: {command}; place the key once: ", run.stderr)
         # With the key placed and accepted, the key decides (U512e): a token or key login under the directory is
-        # information, and the seat starts on the key alone.
+        # information, and the seat starts on the key alone; the pass names the group's login command as information
+        # (U512f) and the launch proceeds.
         self.place_key()
         run = launch(
             "--name",
@@ -413,7 +422,9 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(
             f"seat-login-preflight: worker claude-bridge: absent (authMethod oauth_token under {shared}, not claude.ai);"
-            f" key ok ({key})\n",
+            f" key ok ({key}); log in once: BROWSER=regime-open-url {command}; the seat starts on the accepted key"
+            " (U512e), so the login is information: run that command in your own terminal on this host to add the"
+            " group's login\n",
             run.stderr,
         )
         self.assertEqual(len(self.calls_of("hcom")), 1)

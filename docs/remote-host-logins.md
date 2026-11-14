@@ -50,8 +50,13 @@ which opens allow-listed sign-in hosts only.
   `BROWSER=regime-open-url` in an SSH session, naming the legacy shared `.state/claude` (U318) when it exists and the
   group's directory did not (the kit reads, copies and removes no login, standing order 54); for an absent or rejected
   key the U510 handout's placement commands (`handouts/anthropic-api-key-u510.md`, steps 2 and 3); the profile mode
-  makes the group's directory 0700 first. `hcom-seat` runs it with the seat's role before it creates or starts
-  anything.
+  makes the group's directory 0700 first. A pass with one state missing (U512f) prints the line and the missing
+  half's command after it as information: beside a present login the placement commands (the seat starts on the
+  login route until U513 retires it), beside an accepted key the group's login command. The key judge
+  `claude-keyed` is found on `PATH` and run by its physical file, every link followed (U512f): inside a launch `PATH`
+  begins with `hcom-seat`'s private tool directory, where `claude-keyed` is a link to the installed lever, and the
+  lever's self-check reads its layout from its own invocation directory. `hcom-seat` runs it with the seat's role
+  before it creates or starts anything.
 - `openai-siwc`: `OPENAI_SIWC_CALLBACK_PORT` and `src/seed.ts`, which seeds a registration with the
   laptop's issued client id and a fresh host id, so the ChatGPT account shows one client with one host
   per machine. The seat host still signs in once.

@@ -2,9 +2,12 @@
 token export, the SSH forwards, the launchd agent and the seat-login pre-flight lever. Everything runs
 against scratch homes and fake openers; no test opens a browser or reads a real login."""
 
+import glob
+import hashlib
 import http.server
 import json
 import os
+import platform
 import plistlib
 import pty
 import re
@@ -28,6 +31,9 @@ COMMON = ROOT / "home/dot_local/bin/common"
 OPENER = COMMON / "executable_regime-url-opener"
 OPEN_URL = COMMON / "executable_regime-open-url"
 PREFLIGHT = ROOT / "scripts/orchestrator/seat-login-preflight"
+# The seats' API key judge (regime-cutover U510, U512): the real lever, which the preflight tests run behind hcom-seat's
+# tool directory link in the installed layout its self-check accepts (U512f).
+KEYED = ROOT / "scripts/orchestrator/claude-keyed"
 HCOM_SEAT = ROOT / "scripts/orchestrator/hcom-seat"
 ZSHENV = ROOT / "home/dot_zshenv"
 PROFILE = ROOT / "home/dot_profile"
@@ -96,6 +102,29 @@ def closed_loopback_url() -> str:
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]
     return f"http://127.0.0.1:{port}/v1/models?limit=1"
+
+
+# claude-keyed's closed platform table over (uname -s, uname -m) and the musl loader marker it reads on Linux, copied
+# from tests/unit/test_claude_keyed.py: the real lever's `--check` needs the SDK platform package's executable of this
+# host under the fixture bridge, so the fixture makes the one the lever will look for.
+PLATFORMS = {
+    ("Darwin", "arm64"): "darwin-arm64",
+    ("Darwin", "x86_64"): "darwin-x64",
+    ("Linux", "x86_64"): "linux-x64",
+    ("Linux", "aarch64"): "linux-arm64",
+}
+MUSL_MARKER_GLOB = "/lib/ld-musl-*.so*"
+
+
+def host_platform() -> str | None:
+    """The lever's platform name for this host, or None when its uname pair is off the table."""
+    name = PLATFORMS.get((platform.system(), platform.machine()))
+    if name is not None and name.startswith("linux-") and glob.glob(MUSL_MARKER_GLOB):
+        name += "-musl"
+    return name
+
+
+HOST_PLATFORM = host_platform()
 
 
 def write_exec(path: Path, body: str) -> Path:
@@ -393,9 +422,16 @@ class PreflightTest(unittest.TestCase):
     """`seat-login-preflight`: presence and mtimes only, fail closed on unreadable records, logins only in the operator's TTY."""
 
     def setUp(self) -> None:
+        if HOST_PLATFORM is None:
+            self.skipTest(
+                f"this host's uname pair {platform.system()} {platform.machine()} is off claude-keyed's table"
+            )
         self.temp = Path(tempfile.mkdtemp(prefix="seat-login-"))
         self.home = self.temp / "home"
         self.bin = self.temp / "bin"
+        # hcom-seat's private tool directory, first on PATH in a launch (U85): `claude-keyed` there is a link to the
+        # installed lever (U512f).
+        self.tools = self.temp / "tools"
         self.calls = self.temp / "calls.txt"
         self.bun_calls = self.temp / "bun-calls.txt"
         profiles = self.home / ".agents/omp/profiles"
@@ -455,11 +491,68 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         # The seats' API key file (U512), `<seats-root>/.state/anthropic/api-key`, the one input of the Claude route.
         self.key_dir = self.seats / ".state/anthropic"
         self.key_file = self.key_dir / "api-key"
-        # `claude-keyed --check` (U512, the U510 lever): the form judge of the key file. This fake records each call
-        # with the file the environment named; unless FAKE_CLAUDE_KEYED_STATUS forces a status, it answers as the real
-        # lever does for the one thing these tests vary, the file's presence: the ok line (exit 0) when the file is
-        # there, the lever's absent-file refusal (exit 2) when not; FAKE_CLAUDE_KEYED_REASON replaces the reason, and
-        # a forced status that is neither 0 nor 2 prints a line and exits with it (unreadable to the lever).
+        # The key's form judge is the real lever (U512f, verdict U512e-a120aeff P1): the checkout's `claude-keyed`
+        # copied into the scratch HOME's installed layout, which its self-check accepts (`~/.local/bin/common/
+        # claude-keyed` beside `~/.agents/agent-config.yaml` carrying its pin, the bridge directory the manifest names
+        # with this host's SDK platform package executable), and linked from the tool directory first on PATH, as a
+        # launch runs it. A test that needs a judgement the real lever cannot produce (a status neither 0 nor 2)
+        # switches to the fake (fake_judge).
+        self.installed = self.home / ".local/bin/common/claude-keyed"
+        self.manifest = self.home / ".agents/agent-config.yaml"
+        self.bridge = self.home / "bridge"
+        self.exe = self.bridge / f"node_modules/@anthropic-ai/claude-agent-sdk-{HOST_PLATFORM}/claude"
+        self.install_real_judge()
+        # The Models API the lever calls (U512): a loopback port nothing listens on unless a test starts a fake
+        # (models_api), so no test reaches the real API.
+        self.models_url = closed_loopback_url()
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.temp)
+
+    def env(self, **extra: str) -> dict[str, str]:
+        env = {
+            "HOME": str(self.home), "PATH": f"{self.tools}:{self.bin}:{os.environ['PATH']}", "TMPDIR": str(self.temp),
+            "REGIME_SEATS_ROOT": str(self.seats), "REGIME_ANTHROPIC_MODELS_URL": self.models_url,
+        }  # fmt: skip
+        env.update(extra)
+        return env
+
+    def install_real_judge(self) -> None:
+        """The real `claude-keyed` in the layout its self-check reads (test_claude_keyed's fixture): the checkout's
+        bytes at `<HOME>/.local/bin/common/claude-keyed`, the manifest `<HOME>/.agents/agent-config.yaml` with the
+        copy's sha256 under `claude.levers.sha256`, the bridge `~/bridge` under `omp.extension_providers.claude-bridge`
+        and `claude.levers.extensions`, and the SDK platform package's `claude` under it (an executable file `--check`
+        never runs); then the tool directory's link `claude-keyed` to the installed copy."""
+        self.installed.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(KEYED, self.installed)
+        self.manifest.parent.mkdir(parents=True, exist_ok=True)
+        self.manifest.write_text(
+            "schema_version: 1\n"
+            "omp:\n"
+            "  extension_providers:\n"
+            "    claude-bridge: ~/bridge\n"
+            "claude:\n"
+            "  levers:\n"
+            "    sha256:\n"
+            f"      claude-keyed: {hashlib.sha256(self.installed.read_bytes()).hexdigest()}\n"
+            "    extensions:\n"
+            "      - ~/bridge\n"
+        )
+        write_exec(self.exe, "#!/bin/sh\nexit 0\n")
+        self.tools.mkdir(exist_ok=True)
+        link = self.tools / "claude-keyed"
+        if link.is_symlink() or link.exists():
+            link.unlink()
+        link.symlink_to(self.installed)
+
+    def fake_judge(self) -> None:
+        """Replace the real judge with the fake for a judgement the real lever cannot produce: the tool directory's
+        link goes, and `claude-keyed` on PATH is this script in the fixture bin. It records each call with the file
+        the environment named; unless FAKE_CLAUDE_KEYED_STATUS forces a status, it answers as the real lever does for
+        the file's presence: the ok line (exit 0) when the file is there, the lever's absent-file refusal (exit 2) when
+        not; FAKE_CLAUDE_KEYED_REASON replaces the reason, and a forced status that is neither 0 nor 2 prints a line
+        and exits with it (unreadable to the preflight)."""
+        (self.tools / "claude-keyed").unlink()
         write_exec(
             self.bin / "claude-keyed",
             f"""#!/bin/sh
@@ -474,20 +567,11 @@ case "$status" in
 esac
 """,
         )
-        # The Models API the lever calls (U512): a loopback port nothing listens on unless a test starts a fake
-        # (models_api), so no test reaches the real API.
-        self.models_url = closed_loopback_url()
 
-    def tearDown(self) -> None:
-        shutil.rmtree(self.temp)
-
-    def env(self, **extra: str) -> dict[str, str]:
-        env = {
-            "HOME": str(self.home), "PATH": f"{self.bin}:{os.environ['PATH']}", "TMPDIR": str(self.temp),
-            "REGIME_SEATS_ROOT": str(self.seats), "REGIME_ANTHROPIC_MODELS_URL": self.models_url,
-        }  # fmt: skip
-        env.update(extra)
-        return env
+    def judge_ok_line(self, key: Path | str) -> str:
+        """The real lever's `--check` stdout line for `key`: the file as named, the executable in its physical form
+        (the lever resolves its own directory with `pwd -P`, so `~/bridge` is spelled through that root)."""
+        return f"key file ok: {key}; executable: {self.exe.resolve()}\n"
 
     def run_lever(self, *args: str, **extra: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -545,7 +629,8 @@ esac
         return f"absent (no {self.group_dir(profile, root)})"
 
     def key_absent(self, root: Path | None = None) -> str:
-        """The key state without a key file under `root`: the fake lever's refusal reason, the real lever's text."""
+        """The key state without a key file under `root`: the real lever's refusal reason (the fake's text is the
+        same)."""
         key = (root or self.seats) / ".state/anthropic/api-key"
         return f"absent (the key file {key} is absent; place the API key there (the U510 handout))"
 
@@ -563,10 +648,6 @@ esac
         """The fake `claude`'s record of the preflight's one login status call for `profile`: under the group's
         directory, without a BROWSER and without the caller's token name (U312)."""
         return f"claude auth status CLAUDE_CONFIG_DIR={self.group_dir(profile, root)} BROWSER=unset token=unset\n"
-
-    def keyed_call(self, root: Path | None = None) -> str:
-        """The fake `claude-keyed`'s record of one `--check` on the key file under `root`."""
-        return f"claude-keyed --check REGIME_ANTHROPIC_KEY_FILE={(root or self.seats) / '.state/anthropic/api-key'}\n"
 
     def key_step(self, root: Path | None = None) -> str:
         """The operator's two steps the lever prints for an absent or rejected key (the U510 handout's steps 2 and 3),
@@ -607,6 +688,23 @@ esac
             f"seat-login-preflight: {line}; log in once: {login_command}; place the key once: {self.key_step(root)};"
             " the login and the key are the operator's steps (handouts/anthropic-api-key-u510.md, steps 2 and 3, for"
             " the key): run those commands in your own terminal on this host, then start the seat again\n"
+        )
+
+    def pass_report(self, line: str, root: Path | None = None, login_command: str | None = None) -> str:
+        """The profile mode's pass line for a mixed state (U512f): without `login_command`, a present login beside an
+        absent or rejected key, the key's placement commands as information after the line; with it, an accepted key
+        beside an absent login, the group's login command as information."""
+        if login_command is None:
+            return (
+                f"seat-login-preflight: {line}; place the key once: {self.key_step(root)}; the seat starts on the"
+                " group's login (the login route, until U513 retires it); the key is the operator's step"
+                " (handouts/anthropic-api-key-u510.md, steps 2 and 3): run those commands in your own terminal on this"
+                " host\n"
+            )
+        return (
+            f"seat-login-preflight: {line}; log in once: {login_command}; the seat starts on the accepted key (U512e),"
+            " so the login is information: run that command in your own terminal on this host to add the group's"
+            " login\n"
         )
 
     def place_key(self, root: Path | None = None) -> Path:
@@ -660,7 +758,7 @@ esac
         self.assertEqual(
             (result.returncode, result.stdout), (0, f"{self.check_absent_line('orchestrator')}\n"), result.stderr
         )
-        self.assertEqual(self.calls_text(), f"claude-keyed --check REGIME_ANTHROPIC_KEY_FILE={key}\n")
+        self.assertEqual(self.calls_text(), "", "no login call without a directory; the real judge records none")
         self.assertEqual(self.models_requests, [], "no call to the API without a key file")
         self.place_key()
         for answer, expected, status in (
@@ -671,7 +769,6 @@ esac
             (404, f"unreadable (the Models API answered HTTP 404 for the API key file {key})", 1),
         ):
             with self.subTest(answer=answer):
-                self.calls.unlink()
                 url = self.models_api(answer)
                 result = self.run_lever("--check", "orchestrator", REGIME_ANTHROPIC_MODELS_URL=url, **token)
                 self.assertEqual(
@@ -683,7 +780,6 @@ esac
                     self.models_requests,
                     [{"path": "/v1/models?limit=1", "x-api-key": FAKE_KEY, "anthropic-version": "2023-06-01"}],
                 )
-                self.assertEqual(self.calls_text(), f"claude-keyed --check REGIME_ANTHROPIC_KEY_FILE={key}\n")
                 self.assertNotIn(FAKE_KEY, result.stdout + result.stderr)
         # An endpoint that never answers: the alarm (20 s) ends the call, unreadable, never a pass.
         url = self.models_api("hang")
@@ -702,15 +798,19 @@ esac
             (1, f"orchestrator claude-bridge: {self.login_absent('orchestrator')}; unreadable (the Models API could not be reached for the API key file {key}; the network may be denied where this runs)\n"),
             result.stderr,
         )  # fmt: skip
-        # The lever's own refusal of a present file rides as the reason; a status that is neither 0 nor 2 is unreadable.
+        # The lever's own refusal of a present file rides as the reason: the real lever refuses a 0644 key file by name,
+        # and no call reaches the API for a refused file.
+        self.key_file.chmod(0o644)
         reason = f"the key file {key} has mode 644; the key must be readable by this user alone (0600)"
-        result = self.run_lever(
-            "--check", "orchestrator", FAKE_CLAUDE_KEYED_STATUS="2", FAKE_CLAUDE_KEYED_REASON=reason
-        )
+        result = self.run_lever("--check", "orchestrator", REGIME_ANTHROPIC_MODELS_URL=self.models_api(200))
         self.assertEqual(
             (result.returncode, result.stdout),
             (0, f"orchestrator claude-bridge: {self.login_absent('orchestrator')}; absent ({reason})\n"),
         )
+        self.assertEqual(self.models_requests, [], "no call to the API for a refused file")
+        self.key_file.chmod(0o600)
+        # A status that is neither 0 nor 2 is unreadable: a judgement the real lever cannot produce, so the fake's.
+        self.fake_judge()
         result = self.run_lever("--check", "orchestrator", FAKE_CLAUDE_KEYED_STATUS="5")
         self.assertEqual(
             (result.returncode, result.stdout),
@@ -829,10 +929,7 @@ esac
             "orchestrator claude-bridge: unreadable (no seats root: set REGIME_SEATS_ROOT or run inside a checkout)",
         )
         self.assertTrue(outside.stdout.splitlines()[1].startswith("audit openai-siwc: absent (no "), outside.stdout)
-        self.assertRegex(
-            self.calls_text(),
-            rf"^claude-keyed --check REGIME_ANTHROPIC_KEY_FILE={re.escape(str(home))}/\.local/state/omp-seats/[a-z0-9][a-z0-9_-]{{0,39}}/\.state/anthropic/api-key\n$",
-        )
+        self.assertEqual(self.calls_text(), "", "no login call without a directory")
 
     def test_check_names_each_login_groups_directory(self) -> None:
         """U498: `--check` derives the directory per login group from the one table (`login_group_of_role`): the
@@ -862,17 +959,15 @@ esac
                     " table login_group_of_role, which names orchestrator, worker, audit, dsh and router; it has no login"
                     " group, so no line is printed for it\n",
                 )
-                # The key judge ran once per line printed before the refusal (U512); no call names the profile
-                # outside the table, and no login call runs without a directory.
-                self.assertEqual(self.calls_text() + self.bun_calls_text(), self.keyed_call() * 2)
-                self.calls.unlink()
+                # The key judge (the real lever) ran once per line printed before the refusal (U512), as the lines
+                # show; no login call runs without a directory.
+                self.assertEqual(self.calls_text() + self.bun_calls_text(), "")
                 self.assertFalse((self.seats / ".state").exists(), "nothing made")
         (profiles / "other.yml").unlink()
         result = self.run_lever("--check")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.splitlines(), [*before, self.check_absent_line("worker")])
-        self.assertEqual(self.calls_text(), self.keyed_call() * 3, "no login call without a directory")
-        self.calls.unlink()
+        self.assertEqual(self.calls_text(), "", "no login call without a directory")
         self.shared_worker.mkdir(parents=True)
         self.legacy.mkdir()
         result = self.run_lever("--check", "orchestrator", "worker", "dsh")
@@ -886,7 +981,7 @@ esac
             ),
             result.stderr,
         )
-        self.assertEqual(self.calls_text(), self.keyed_call() + self.auth_call("worker") + self.keyed_call() * 2)
+        self.assertEqual(self.calls_text(), self.auth_call("worker"))
         self.assertNotIn(f"{self.legacy})", result.stdout, "the legacy shared directory is read by no line")
 
     def test_the_refusal_names_the_legacy_shared_directory_when_the_groups_is_absent(self) -> None:
@@ -920,7 +1015,7 @@ esac
         check = self.run_lever("--check", "worker", FAKE_CLAUDE_AUTH_STATUS="1")
         self.assertEqual((check.returncode, check.stdout), (0, f"{both_line}\n"))
         self.assertNotIn("legacy", check.stdout + check.stderr)
-        self.assertEqual(self.calls_text(), (self.auth_call("worker") + self.keyed_call()) * 3)
+        self.assertEqual(self.calls_text(), self.auth_call("worker") * 3)
 
     def test_an_accepted_key_needs_no_login_and_a_login_alone_still_passes(self) -> None:
         """U512e (verdict U512b-e5c1a610, P1 at seat-login-preflight:715): the worse of the two states decided, so an
@@ -944,7 +1039,10 @@ esac
                     profile, SSH_CONNECTION=remote, FAKE_CLAUDE_AUTH_STATUS="1",
                     REGIME_ANTHROPIC_MODELS_URL=self.models_api(200),
                 )  # fmt: skip
-                self.assertEqual((ready.returncode, ready.stderr), (0, f"seat-login-preflight: {line}\n"))
+                self.assertEqual(
+                    (ready.returncode, ready.stderr),
+                    (0, self.pass_report(line, login_command=f"BROWSER=regime-open-url CLAUDE_CONFIG_DIR={self.group_dir(profile)} claude auth login")),
+                )  # fmt: skip
                 check = self.run_lever(
                     "--check", profile, FAKE_CLAUDE_AUTH_STATUS="1", REGIME_ANTHROPIC_MODELS_URL=self.models_api(200)
                 )
@@ -957,8 +1055,10 @@ esac
         )  # fmt: skip
         self.assertEqual(
             (other.returncode, other.stderr),
-            (0, f"seat-login-preflight: worker claude-bridge: absent (authMethod oauth_token under {self.shared_worker},"
-                f" not claude.ai); key ok ({key})\n"),
+            (0, self.pass_report(
+                f"worker claude-bridge: absent (authMethod oauth_token under {self.shared_worker}, not claude.ai); key ok ({key})",
+                login_command=f"BROWSER=regime-open-url CLAUDE_CONFIG_DIR={self.shared_worker} claude auth login",
+            )),
         )  # fmt: skip
         failed = self.run_lever(
             "worker",
@@ -978,8 +1078,7 @@ esac
             with self.subTest(profile=profile, key="absent", login="present"):
                 login_route = self.run_lever(profile, SSH_CONNECTION=remote)
                 self.assertEqual(
-                    (login_route.returncode, login_route.stderr),
-                    (0, f"seat-login-preflight: {self.absent_line(profile)}\n"),
+                    (login_route.returncode, login_route.stderr), (0, self.pass_report(self.absent_line(profile)))
                 )
                 outputs.append(login_route.stderr)
         # A rejected key beside a present login: the same.
@@ -987,8 +1086,7 @@ esac
         rejected = self.run_lever("worker", SSH_CONNECTION=remote, REGIME_ANTHROPIC_MODELS_URL=self.models_api(401))
         self.assertEqual(
             (rejected.returncode, rejected.stderr),
-            (0, f"seat-login-preflight: worker claude-bridge: {self.login_present('worker')}; key rejected ({key};"
-                " HTTP 401)\n"),
+            (0, self.pass_report(f"worker claude-bridge: {self.login_present('worker')}; key rejected ({key}; HTTP 401)")),
         )  # fmt: skip
         outputs.append(rejected.stderr)
         # No key and no login: the refusal names both steps, the login's first, for both profiles.
@@ -1022,12 +1120,15 @@ esac
             ),
         )  # fmt: skip
         outputs.append(both_rejected.stderr)
-        # An unreadable key beside a present login, and an unreadable login beside a rejected key, are unreadable still.
+        # An unreadable login beside a rejected key is unreadable still (the real judge); so is an unreadable key beside
+        # a present login, a judgement (a status neither 0 nor 2) the real lever cannot produce, so the fake's.
         for label, extra in (
-            ("key", {"FAKE_CLAUDE_KEYED_STATUS": "3"}),
             ("login", {"FAKE_CLAUDE_AUTH_STATUS": "3", "REGIME_ANTHROPIC_MODELS_URL": self.models_api(401)}),
+            ("key", {"FAKE_CLAUDE_KEYED_STATUS": "3"}),
         ):
             with self.subTest(unreadable=label):
+                if label == "key":
+                    self.fake_judge()
                 gate = self.run_lever("worker", SSH_CONNECTION=remote, **extra)
                 self.assertEqual(gate.returncode, 1, gate.stderr)
                 self.assertIn("; fix or move the record aside before a seat starts", gate.stderr)
@@ -1043,6 +1144,191 @@ esac
         self.assertNotIn("auth login", self.calls_text())
         for output in outputs:
             self.assertNotIn(FAKE_KEY, output)
+
+    def test_the_key_judge_runs_by_its_physical_file_behind_the_tool_directorys_link(self) -> None:
+        """U512f (verdict U512e-a120aeff, P1 at seat-login-preflight:655): the preflight ran `claude-keyed --check` by
+        PATH lookup. In a launch PATH's first entry is hcom-seat's private tool directory, where `claude-keyed` is a
+        link to the installed lever `~/.local/bin/common/claude-keyed`, whose self-check reads its layout from its own
+        invocation directory; run by the link's spelling it refused the tool directory's layout before judging the
+        key, so every key-only launch refused. The fixture is that layout with the real lever (the checkout's bytes in
+        the scratch HOME's installed path beside a manifest carrying its pin, linked from the tool directory first on
+        PATH; no fake judge on PATH). The control: the lever run by the link refuses the layout. The preflight follows
+        the link chain to the physical file (tool_physical_path, hcom-seat's pin_exec form), so a 0600 key with no
+        login passes the worker and orchestrator launches and `--check`, through a two-hop chain too; the judgement
+        is the real lever's (a 0644 file refused by its text, no API call); without the link no judge is on PATH,
+        which is unreadable, never absent."""
+        key = str(self.place_key())
+        link = self.tools / "claude-keyed"
+        self.assertEqual(os.readlink(link), str(self.installed))
+        self.assertEqual(self.installed.read_bytes(), KEYED.read_bytes())
+        self.assertEqual(self.env()["PATH"].split(":")[0], str(self.tools))
+        self.assertFalse((self.bin / "claude-keyed").exists(), "no fake judge on PATH")
+        control = subprocess.run(
+            [str(link), "--check"], env=self.env(REGIME_ANTHROPIC_KEY_FILE=key), check=False, capture_output=True, text=True
+        )  # fmt: skip
+        self.assertEqual((control.returncode, control.stdout), (2, ""))
+        self.assertEqual(
+            control.stderr,
+            f"claude-keyed: refused: {self.tools.resolve()}/claude-keyed is neither an installed copy under"
+            " <home>/.local/bin/common nor a checkout copy under scripts/orchestrator, so no manifest holds its pin\n",
+        )
+        remote = "100.64.0.2 50000 100.64.0.3 22"
+        for profile in ("worker", "orchestrator"):
+            with self.subTest(profile=profile):
+                line = (
+                    f"{profile} claude-bridge: absent (not logged in under {self.group_dir(profile)}); key ok ({key})"
+                )
+                ready = self.run_lever(
+                    profile, SSH_CONNECTION=remote, FAKE_CLAUDE_AUTH_STATUS="1",
+                    REGIME_ANTHROPIC_MODELS_URL=self.models_api(200),
+                )  # fmt: skip
+                self.assertEqual(
+                    (ready.returncode, ready.stderr),
+                    (0, self.pass_report(line, login_command=f"BROWSER=regime-open-url CLAUDE_CONFIG_DIR={self.group_dir(profile)} claude auth login")),
+                )  # fmt: skip
+                self.assertEqual([request["x-api-key"] for request in self.models_requests], [FAKE_KEY])
+                check = self.run_lever(
+                    "--check", profile, FAKE_CLAUDE_AUTH_STATUS="1", REGIME_ANTHROPIC_MODELS_URL=self.models_api(200)
+                )
+                self.assertEqual((check.returncode, check.stdout, check.stderr), (0, f"{line}\n", ""))
+        # Two hops: the tool directory's link points at a link, which points at the installed copy.
+        hop = self.temp / "hop/claude-keyed"
+        hop.parent.mkdir()
+        hop.symlink_to(self.installed)
+        link.unlink()
+        link.symlink_to(hop)
+        ready = self.run_lever(
+            "worker",
+            SSH_CONNECTION=remote,
+            FAKE_CLAUDE_AUTH_STATUS="1",
+            REGIME_ANTHROPIC_MODELS_URL=self.models_api(200),
+        )
+        self.assertEqual(ready.returncode, 0, ready.stderr)
+        self.assertIn(f"; key ok ({key}); log in once: ", ready.stderr)
+        # The judgement is the real lever's: a 0644 key file is refused by its text and no call reaches the API.
+        Path(key).chmod(0o644)
+        url = self.models_api(200)
+        refused = self.run_lever(
+            "worker", SSH_CONNECTION=remote, FAKE_CLAUDE_AUTH_STATUS="1", REGIME_ANTHROPIC_MODELS_URL=url
+        )
+        self.assertEqual(refused.returncode, 2, refused.stderr)
+        self.assertIn(
+            f"worker claude-bridge: absent (not logged in under {self.shared_worker}); absent (the key file {key} has"
+            " mode 644; the key must be readable by this user alone (0600)); log in once: ",
+            refused.stderr,
+        )
+        self.assertEqual(self.models_requests, [])
+        Path(key).chmod(0o600)
+        # Without the link no judge is on PATH: unreadable, never absent, and no launch.
+        link.unlink()
+        check = self.run_lever("--check", "worker")
+        self.assertEqual(
+            (check.returncode, check.stdout),
+            (1, f"worker claude-bridge: {self.login_present('worker')}; unreadable (no claude-keyed on PATH to judge the API key file {key})\n"),
+        )  # fmt: skip
+        gate = self.run_lever("worker", SSH_CONNECTION=remote)
+        self.assertEqual(gate.returncode, 1, gate.stderr)
+        self.assertIn("; fix or move the record aside before a seat starts", gate.stderr)
+        self.assertNotIn("auth login", self.calls_text())
+        self.assertNotIn(FAKE_KEY, control.stderr + ready.stderr + refused.stderr + check.stdout + gate.stderr)
+
+    def test_a_pass_with_one_state_missing_names_the_missing_halfs_command_as_information(self) -> None:
+        """U512f (verdict U512e-a120aeff, P2 at the profile mode's pass and check-tools.sh:458): the pass printed the
+        line alone, so with a login present and the key absent the advice had no placement command (the preflight
+        returned 0 before claude_login_refuse), and beside an accepted key the login advice printed no login command.
+        The pass now names the missing half's command as information, from the same steps claude_login_refuse names
+        (claude_steps_hold): a present login beside an absent or rejected key prints the placement commands, whose
+        paste places the file the real lever then passes; an accepted key beside an absent login (an exit 1 or another
+        method) prints the group's login command, with `BROWSER=regime-open-url` in an SSH session; a login whose
+        producer failed names no command (unreadable is no absence, standing order 21); both present prints the line
+        alone; `--check` prints the line alone for the doctor's reader. Nothing runs and nothing is refused."""
+        remote = "100.64.0.2 50000 100.64.0.3 22"
+        key = str(self.key_file)
+        outputs: list[str] = []
+        # A present login, no key: the placement commands follow the line; pasted, they place the exact file.
+        login_route = self.run_lever("worker", SSH_CONNECTION=remote)
+        self.assertEqual(
+            (login_route.returncode, login_route.stderr), (0, self.pass_report(self.absent_line("worker")))
+        )
+        match = re.search(r"; place the key once: (.*); the seat starts on the group's login", login_route.stderr)
+        self.assertIsNotNone(match, login_route.stderr)
+        pasted = self.paste(match.group(1), FAKE_KEY + "\n")
+        self.assertEqual(
+            (pasted.returncode, pasted.stdout, pasted.stderr), (0, f"key: \n{self.judge_ok_line(key)}", "")
+        )
+        self.assertEqual(
+            (self.key_file.read_text(), stat.S_IMODE(os.lstat(self.key_file).st_mode)), (FAKE_KEY + "\n", 0o600)
+        )
+        # A present login, a rejected key: the same commands.
+        rejected = self.run_lever("worker", SSH_CONNECTION=remote, REGIME_ANTHROPIC_MODELS_URL=self.models_api(401))
+        self.assertEqual(
+            (rejected.returncode, rejected.stderr),
+            (0, self.pass_report(f"worker claude-bridge: {self.login_present('worker')}; key rejected ({key}; HTTP 401)")),
+        )  # fmt: skip
+        # An accepted key, no login: the group's login command, in the SSH form and the local one, for an exit 1 and
+        # for another method.
+        not_logged_in = f"absent (not logged in under {self.shared_worker})"
+        for extra, browser, login in (
+            ({"SSH_CONNECTION": remote, "FAKE_CLAUDE_AUTH_STATUS": "1"}, "BROWSER=regime-open-url ", not_logged_in),
+            ({"DISPLAY": ":0", "FAKE_CLAUDE_AUTH_STATUS": "1"}, "", not_logged_in),
+            (
+                {"SSH_CONNECTION": remote, "FAKE_CLAUDE_AUTH_METHOD": "api_key"},
+                "BROWSER=regime-open-url ",
+                f"absent (authMethod api_key under {self.shared_worker}, not claude.ai)",
+            ),
+        ):
+            with self.subTest(**extra):
+                ready = self.run_lever("worker", REGIME_ANTHROPIC_MODELS_URL=self.models_api(200), **extra)
+                self.assertEqual(
+                    (ready.returncode, ready.stderr),
+                    (0, self.pass_report(
+                        f"worker claude-bridge: {login}; key ok ({key})",
+                        login_command=f"{browser}CLAUDE_CONFIG_DIR={self.shared_worker} claude auth login",
+                    )),
+                )  # fmt: skip
+                outputs.append(ready.stderr)
+        # An accepted key beside a login whose producer failed: no command, the line names the producer.
+        failed = self.run_lever(
+            "worker",
+            SSH_CONNECTION=remote,
+            FAKE_CLAUDE_AUTH_STATUS="3",
+            REGIME_ANTHROPIC_MODELS_URL=self.models_api(200),
+        )
+        self.assertEqual(
+            (failed.returncode, failed.stderr),
+            (0, f"seat-login-preflight: worker claude-bridge: unreadable (claude auth status exited 3 under"
+                f" {self.shared_worker}); key ok ({key})\n"),
+        )  # fmt: skip
+        # Both present: the line alone.
+        both = self.run_lever("worker", SSH_CONNECTION=remote, REGIME_ANTHROPIC_MODELS_URL=self.models_api(200))
+        self.assertEqual(
+            (both.returncode, both.stderr),
+            (0, f"seat-login-preflight: worker claude-bridge: {self.login_present('worker')}; key ok ({key})\n"),
+        )
+        # In the operator's terminal the same information, and no login runs; `--check` prints the line alone.
+        status, tty = self.run_tty(
+            "worker",
+            SSH_CONNECTION=remote,
+            FAKE_CLAUDE_AUTH_STATUS="1",
+            REGIME_ANTHROPIC_MODELS_URL=self.models_api(200),
+        )
+        self.assertEqual(status, 0, tty)
+        self.assertIn(
+            f"; key ok ({key}); log in once: BROWSER=regime-open-url CLAUDE_CONFIG_DIR={self.shared_worker} claude auth"
+            " login; the seat starts on the accepted key (U512e), so the login is information",
+            tty,
+        )
+        check = self.run_lever(
+            "--check", "worker", FAKE_CLAUDE_AUTH_STATUS="1", REGIME_ANTHROPIC_MODELS_URL=self.models_api(200)
+        )
+        self.assertEqual(
+            (check.returncode, check.stdout, check.stderr),
+            (0, f"worker claude-bridge: {not_logged_in}; key ok ({key})\n", ""),
+        )
+        self.assertNotIn("auth login", self.calls_text())
+        self.assertNotIn("omp ", self.calls_text())
+        for text in (login_route.stderr, pasted.stdout, rejected.stderr, *outputs, failed.stderr, both.stderr, tty, check.stdout):  # fmt: skip
+            self.assertNotIn(FAKE_KEY, text)
 
     def test_the_login_group_table_maps_each_role_and_refuses_any_other(self) -> None:
         """U498: the preflight's `login_group_of_role` is the role table copied from hcom-seat as text
@@ -1117,8 +1403,7 @@ esac
             self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
         login_route = self.run_lever("orchestrator", DISPLAY=":0")
         self.assertEqual(
-            (login_route.returncode, login_route.stderr),
-            (0, f"seat-login-preflight: {self.absent_line('orchestrator')}\n"),
+            (login_route.returncode, login_route.stderr), (0, self.pass_report(self.absent_line("orchestrator")))
         )
         self.place_key()
         ready = self.run_lever("orchestrator", DISPLAY=":0", REGIME_ANTHROPIC_MODELS_URL=self.models_api(200))
@@ -1127,7 +1412,7 @@ esac
             ready.stderr,
             f"seat-login-preflight: orchestrator claude-bridge: {self.login_present('orchestrator')}; key ok ({key})\n",
         )
-        self.assertEqual(self.calls_text(), (self.auth_call("orchestrator") + self.keyed_call()) * 3)
+        self.assertEqual(self.calls_text(), self.auth_call("orchestrator") * 3)
         self.assertEqual(self.bun_calls_text(), "")
         self.assertEqual(credentials.read_text(), "{}", "the operator's store is untouched")
         self.assertNotIn(FAKE_KEY, no_key.stderr + login_route.stderr + ready.stderr)
@@ -1234,7 +1519,9 @@ esac
                     self.assertEqual(result.stdout, "")
         self.assertTrue(link.is_symlink(), "the link is kept")
         self.assertEqual(sorted(path.name for path in elsewhere.iterdir()), [], "nothing made through the link")
-        self.assertEqual(sorted(path.name for path in self.temp.iterdir()), ["bin", "elsewhere", "home", "link"])
+        self.assertEqual(
+            sorted(path.name for path in self.temp.iterdir()), ["bin", "elsewhere", "home", "link", "tools"]
+        )
         self.assertEqual(self.calls_text() + self.bun_calls_text(), "", "no claude call ran")
 
     @unittest.skipIf(os.geteuid() == 0, "root searches a mode-000 directory, so nothing is unknown to it")
@@ -1323,7 +1610,7 @@ esac
             self.assertTrue(path.is_dir() and not path.is_symlink(), path)
             self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
         self.assertEqual(sorted(path.name for path in self.seats.iterdir()), [".state"])
-        self.assertEqual(self.calls_text(), self.keyed_call() * 5 + self.auth_call("orchestrator") + self.keyed_call())
+        self.assertEqual(self.calls_text(), self.auth_call("orchestrator"))
         relative = self.run_lever("--check", "orchestrator", REGIME_SEATS_ROOT="seats")
         self.assertEqual(
             (relative.returncode, relative.stdout),
@@ -1359,17 +1646,12 @@ esac
                 self.assertEqual(command.count("\n"), 0, command)
                 self.assertNotIn(f"> {key};", command, "the file is quoted, not pasted raw")
                 self.assertNotIn(f"REGIME_ANTHROPIC_KEY_FILE={key} ", command, "the file is quoted, not pasted raw")
-                self.calls.unlink()
-                pasted = subprocess.run(
-                    ["bash", "-c", 'eval "$1"', "_", command], env=self.env(), input=FAKE_KEY + "\n",
-                    check=False, capture_output=True, text=True,
-                )  # fmt: skip
+                pasted = self.paste(command, FAKE_KEY + "\n")
                 self.assertEqual(pasted.returncode, 0, pasted.stderr)
-                self.assertEqual(pasted.stdout, f"key: \nkey file ok: {key}; executable: /fake/sdk/claude\n")
+                self.assertEqual(pasted.stdout, f"key: \n{self.judge_ok_line(key)}")
                 self.assertEqual(key.read_text(), FAKE_KEY + "\n")
                 self.assertEqual(stat.S_IMODE(os.lstat(key).st_mode), 0o600)
                 self.assertEqual(stat.S_IMODE(os.lstat(key.parent).st_mode), 0o700)
-                self.assertEqual(self.calls_text(), f"claude-keyed --check REGIME_ANTHROPIC_KEY_FILE={key}\n")
                 key.unlink()
         for path in (seats, seats / ".state", seats / ".state/claude-orchestrator"):
             self.assertTrue(path.is_dir() and not path.is_symlink(), path)
@@ -1390,9 +1672,13 @@ esac
         return command
 
     def paste(self, command: str, key_input: str | None, **extra: str) -> subprocess.CompletedProcess[str]:
-        """Run the printed command as the operator pastes it, with `key_input` on stdin (None: stdin closed, EOF)."""
+        """Run the printed command as the operator pastes it, with `key_input` on stdin (None: stdin closed, EOF), on
+        the operator's own PATH: the installed lever's directory `~/.local/bin/common` first (the handout's host), not
+        hcom-seat's private tool directory, which only a launch puts on PATH (and whose link the real lever refuses
+        when run by that spelling, the U512f layout refusal the preflight itself resolves past)."""
+        env = self.env(**{"PATH": f"{self.installed.parent}:{self.bin}:{os.environ['PATH']}", **extra})
         return subprocess.run(
-            ["bash", "-c", 'eval "$1"', "_", command], env=self.env(**extra),
+            ["bash", "-c", 'eval "$1"', "_", command], env=env,
             input=key_input, stdin=None if key_input is not None else subprocess.DEVNULL,
             check=False, capture_output=True, text=True,
         )  # fmt: skip
@@ -1417,16 +1703,14 @@ esac
         key.chmod(0o644)
         pasted = self.paste(command, FAKE_KEY + "\n")
         self.assertEqual((pasted.returncode, pasted.stderr), (0, ""))
-        self.assertEqual(pasted.stdout, f"key: \nkey file ok: {key}; executable: /fake/sdk/claude\n")
+        self.assertEqual(pasted.stdout, f"key: \n{self.judge_ok_line(key)}")
         self.assertEqual(key.read_text(), FAKE_KEY + "\n")
         self.assertTrue(key.is_file() and not key.is_symlink())
         self.assertEqual(stat.S_IMODE(os.lstat(key).st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(os.lstat(self.key_dir).st_mode), 0o700)
         self.assertEqual(sorted(p.name for p in self.key_dir.iterdir()), ["api-key"], "no temporary left behind")
-        self.assertEqual(self.calls_text(), f"claude-keyed --check REGIME_ANTHROPIC_KEY_FILE={key}\n")
         # A fresh chain is made 0700 throughout.
         shutil.rmtree(self.seats)
-        self.calls.unlink()
         pasted = self.paste(command, FAKE_KEY + "\n")
         self.assertEqual((pasted.returncode, pasted.stderr), (0, ""))
         for path in (self.seats, self.seats / ".state", self.key_dir):
@@ -1440,7 +1724,6 @@ esac
         target.write_text("target\n")
         key.unlink()
         key.symlink_to(target)
-        self.calls.unlink()
         pasted = self.paste(command, FAKE_KEY + "\n")
         self.assertNotEqual(pasted.returncode, 0)
         self.assertEqual(pasted.stderr, f"refused: {key} is a symbolic link\n")
@@ -1458,7 +1741,7 @@ esac
                 self.assertEqual(pasted.stderr, f"refused: {linked} is a symbolic link\n")
                 self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), ["target"], "nothing written through the link")  # fmt: skip
                 linked.unlink()
-        self.assertFalse(self.calls.exists(), "no refusal reached claude-keyed")
+        self.assertEqual(pasted.stdout, "", "no refusal reached claude-keyed: no ok line")
         self.assertNotIn(FAKE_KEY, pasted.stdout + pasted.stderr)
 
     def test_the_placement_command_keeps_the_previous_file_on_eof_an_empty_key_or_a_failed_write(self) -> None:
@@ -1469,7 +1752,11 @@ esac
         the previous file byte for byte and exits non-zero."""
         key = self.place_key()
         before = key.read_bytes()
-        command = self.placement_command(FAKE_CLAUDE_KEYED_STATUS="2")
+        # The commands come from a refusal of both states (placement_command): the real lever refuses the placed file
+        # while it is 0644, then it is 0600 again, the file the steps below must leave byte for byte.
+        key.chmod(0o644)
+        command = self.placement_command()
+        key.chmod(0o600)
         self.calls.unlink()
         for label, key_input in (("EOF", None), ("empty line", "\n"), ("partial line then EOF", "sk-ant-partial")):
             with self.subTest(label=label):
@@ -1490,7 +1777,6 @@ esac
                 self.assertNotIn(FAKE_KEY, pasted.stdout + pasted.stderr)
         self.assertEqual(sorted(p.name for p in self.key_dir.iterdir()), ["api-key"], "no temporary left behind")
         self.assertEqual(stat.S_IMODE(os.lstat(key).st_mode), 0o600)
-        self.assertFalse(self.calls.exists(), "no refusal reached claude-keyed")
 
     def lever_functions(self, *names: str) -> str:
         """Functions of the lever, extracted by name as `test_hcom_seat`'s `identity_functions` does, so a test can
@@ -1508,7 +1794,9 @@ esac
         reaches the operator. The steps named are those of the states that are not present (`claude_login_status`,
         `claude_key_status`, held by claude_state_hold): the key's alone, the login's alone, or both, the login's
         first."""
-        functions = self.lever_functions("die", "claude_login_command", "claude_key_command", "claude_login_refuse")
+        functions = self.lever_functions(
+            "die", "claude_login_command", "claude_key_command", "claude_steps_hold", "claude_login_refuse"
+        )
         self.assertIn("login_step=$(claude_login_command) || die", functions)
         self.assertIn("key_step=$(claude_key_command) || die", functions)
         shared = "/x/.state/claude-orchestrator"
@@ -1601,7 +1889,7 @@ esac
             " steps",
             output,
         )
-        self.assertEqual(self.calls_text(), self.auth_call("worker") + self.keyed_call())
+        self.assertEqual(self.calls_text(), self.auth_call("worker"))
 
     def test_the_operators_terminal_runs_the_siwc_login_with_the_pinned_port_and_the_laptop_opener(self) -> None:
         status, output = self.run_tty("audit", SSH_CONNECTION="100.64.0.2 50000 100.64.0.3 22")
@@ -1633,7 +1921,7 @@ esac
             " steps 2 and 3, for the key): run those commands in your own terminal on this host",
             output,
         )
-        self.assertEqual(self.calls_text(), self.auth_call("orchestrator") + self.keyed_call())
+        self.assertEqual(self.calls_text(), self.auth_call("orchestrator"))
         self.assertFalse((self.home / ".claude").exists())
         self.assertNotIn("omp ", self.calls_text())
         self.assertNotIn("auth login", self.calls_text())
@@ -1742,11 +2030,13 @@ esac
             (result.returncode, result.stdout), (1, f"audit openai-siwc: unreadable (cannot read the mtime of {db})\n")
         )
         (self.bin / "date").unlink()
-        # The key judge (U512): a `claude-keyed --check` that exits neither 0 nor 2, or no claude-keyed on PATH, is
-        # unreadable in `--check` and a refusal (exit 1) in the profile mode, never absent.
+        # The key judge (U512): a `claude-keyed --check` that exits neither 0 nor 2 (a judgement the real lever cannot
+        # produce, so the fake's), or no claude-keyed on PATH, is unreadable in `--check` and a refusal (exit 1) in the
+        # profile mode, never absent.
         self.shared.mkdir(parents=True)
         remote = "100.64.0.2 50000 100.64.0.3 22"
         key = str(self.key_file)
+        self.fake_judge()
         result = self.run_lever("--check", "orchestrator", FAKE_CLAUDE_KEYED_STATUS="3")
         self.assertEqual(
             (result.returncode, result.stdout),
@@ -1819,8 +2109,8 @@ esac
         # absence printed, and the variable is no input (the fake records none reaching it).
         variable_only = self.run_lever("orchestrator", SSH_CONNECTION=remote, **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
         self.assertEqual(variable_only.returncode, 0, variable_only.stderr)
-        self.assertEqual(variable_only.stderr, f"seat-login-preflight: {self.absent_line('orchestrator')}\n")
-        self.assertEqual(self.calls_text(), self.auth_call("orchestrator") + self.keyed_call())
+        self.assertEqual(variable_only.stderr, self.pass_report(self.absent_line("orchestrator")))
+        self.assertEqual(self.calls_text(), self.auth_call("orchestrator"))
         # No key and no login: both steps, the login's first.
         both = self.run_lever("orchestrator", SSH_CONNECTION=remote, FAKE_CLAUDE_AUTH_STATUS="1")
         self.assertEqual(both.returncode, 2, both.stderr)
@@ -1842,8 +2132,11 @@ esac
                 self.assertEqual(other.returncode, 0, other.stderr)
                 self.assertEqual(
                     other.stderr,
-                    f"seat-login-preflight: worker claude-bridge: absent (authMethod {method} under {self.shared_worker},"
-                    f" not claude.ai); key ok ({key})\n",
+                    self.pass_report(
+                        f"worker claude-bridge: absent (authMethod {method} under {self.shared_worker}, not claude.ai);"
+                        f" key ok ({key})",
+                        login_command=f"BROWSER=regime-open-url CLAUDE_CONFIG_DIR={self.shared_worker} claude auth login",
+                    ),
                 )
         # A placed key the API rejects: the login present passes (the login route) with the rejection printed; the
         # login absent refuses naming both steps.
@@ -1851,8 +2144,7 @@ esac
         self.assertEqual(rejected.returncode, 0, rejected.stderr)
         self.assertEqual(
             rejected.stderr,
-            f"seat-login-preflight: worker claude-bridge: {self.login_present('worker')}; key rejected ({key};"
-            " HTTP 401)\n",
+            self.pass_report(f"worker claude-bridge: {self.login_present('worker')}; key rejected ({key}; HTTP 401)"),
         )
         rejected_alone = self.run_lever(
             "worker",
@@ -1897,10 +2189,12 @@ esac
             REGIME_ANTHROPIC_MODELS_URL=self.models_api(200),
         )
         self.assertEqual(status, 0, tty_key)
-        self.assertIn(f"absent (not logged in under {self.shared_worker}); key ok ({key})\n", tty_key)
-        self.assertNotIn("log in once", tty_key)
+        self.assertIn(
+            f"absent (not logged in under {self.shared_worker}); key ok ({key}); log in once: {worker_command}; the seat"
+            " starts on the accepted key (U512e), so the login is information",
+            tty_key,
+        )
         self.assertNotIn("auth login", self.calls_text())
-        self.assertEqual(self.calls_text().count("claude-keyed --check"), 9)
         self.assertEqual(self.calls_text().count("claude auth status"), 9)
         for text in (
             variable_only.stderr, both.stderr, rejected.stderr, rejected_alone.stderr, present.stderr, output, tty_key,

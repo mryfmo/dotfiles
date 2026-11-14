@@ -1212,18 +1212,19 @@ EOF
         result = self.run_test_command(["/bin/bash", "-c", script], env=env)
         output = result.stdout + result.stderr
         self.assertEqual(0, result.returncode, output)
+        # U512f: beside an accepted key the login is information, and the warning says so before the group's step.
         self.assertIn(
-            f"optional warning: seat login dsh claude-bridge: absent (no {seats}/.state/claude-router); {key_ok} (log in"
-            " on this host, once per login group: the dsh profile is the router group, which has no seat-login-preflight"
-            " profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory this line names"
-            " (hcom-seat router --dry-run prints it; BROWSER=regime-open-url first on a remote host),"
-            " docs/remote-host-logins.md)",
+            f"optional warning: seat login dsh claude-bridge: absent (no {seats}/.state/claude-router); {key_ok} (the"
+            " seat starts on the accepted key (U512e), so the login is information: the dsh profile is the router"
+            " group, which has no seat-login-preflight profile mode; run claude auth login with CLAUDE_CONFIG_DIR set"
+            " to the directory this line names (hcom-seat router --dry-run prints it; BROWSER=regime-open-url first on"
+            " a remote host), docs/remote-host-logins.md)",
             output,
         )
         self.assertIn(
             f"optional warning: seat login orchestrator claude-bridge: absent (no {seats}/.state/claude-orchestrator);"
-            f" {key_ok} (log in on this host, once per login group: seat-login-preflight orchestrator prints the"
-            " orchestrator group's command, docs/remote-host-logins.md)",
+            f" {key_ok} (the seat starts on the accepted key (U512e), so the login is information: seat-login-preflight"
+            " orchestrator prints the orchestrator group's command, docs/remote-host-logins.md)",
             output,
         )
         self.assertNotIn("seat-login-preflight dsh", output, "a profile mode the pre-flight refuses as unknown (U498d)")
@@ -1247,9 +1248,9 @@ EOF
         self.assertIn(
             f"optional warning: seat login worker claude-bridge: login present (claude.ai, {seats}/.state/claude-worker);"
             f" absent (the key file {seats}/.state/anthropic/api-key is absent; place the API key there (the U510"
-            " handout)) (place the seats' API key on this host (one file for every seat): seat-login-preflight worker"
-            " prints the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3),"
-            " docs/remote-host-logins.md)",
+            " handout)) (the seat starts on the group's login (the login route, until U513 retires it); place the seats'"
+            " API key on this host (one file for every seat): seat-login-preflight worker prints the placement commands"
+            " (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md)",
             output,
         )
         self.assertNotIn("found:   seat login worker", output)
@@ -1262,7 +1263,11 @@ EOF
             f" unreadable (claude-keyed --check exited 5 for the API key file {seats}/.state/anthropic/api-key)",
             output,
         )
-        self.assertIn("failures=1 warnings=0", output, "the lever's exit 1 is the one counted failure")
+        self.assertIn(
+            "failures=4 warnings=0",
+            output,
+            "the three unreadable lines (one per deployed profile) and the lever's exit 1 each count once (U512f)",
+        )
 
     def test_the_doctors_login_group_table_is_the_levers_and_its_warning_names_each_groups_step(self) -> None:
         """U498d (verdict U498-8f2cca8c P2 `check-tools.sh:413`): the doctor's absent-login warning named
@@ -1313,16 +1318,18 @@ EOF
             "review: no route": general,
             "claude-router: not a seat login route (ollama)": general,
             # U512: a claude-bridge line carries the key's state after the login's; the step names what is missing.
+            # U512f: a mixed state says which route the seat starts on and names the missing half's command.
             "worker claude-bridge: login present (claude.ai, /seats/.state/claude-worker); absent (the key file"
             " /seats/.state/anthropic/api-key is absent; place the API key there (the U510 handout))": (
-                "place the seats' API key on this host (one file for every seat): seat-login-preflight worker prints"
-                " the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md"
+                "the seat starts on the group's login (the login route, until U513 retires it); place the seats' API"
+                " key on this host (one file for every seat): seat-login-preflight worker prints the placement commands"
+                " (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md"
             ),
             "orchestrator claude-bridge: login present (claude.ai, /seats/.state/claude-orchestrator); key rejected"
             " (/seats/.state/anthropic/api-key; HTTP 401)": (
-                "place the seats' API key on this host (one file for every seat): seat-login-preflight orchestrator"
-                " prints the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3),"
-                " docs/remote-host-logins.md"
+                "the seat starts on the group's login (the login route, until U513 retires it); place the seats' API"
+                " key on this host (one file for every seat): seat-login-preflight orchestrator prints the placement"
+                " commands (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md"
             ),
             "dsh claude-bridge: absent (no /seats/.state/claude-router); absent (the key file"
             " /seats/.state/anthropic/api-key is absent; place the API key there (the U510 handout))": (
@@ -1335,8 +1342,19 @@ EOF
             ),
             "worker claude-bridge: absent (not logged in under /seats/.state/claude-worker); key ok"
             " (/seats/.state/anthropic/api-key)": (
-                "log in on this host, once per login group: seat-login-preflight worker prints the worker group's"
-                " command, docs/remote-host-logins.md"
+                "the seat starts on the accepted key (U512e), so the login is information: seat-login-preflight worker"
+                " prints the worker group's command, docs/remote-host-logins.md"
+            ),
+            "orchestrator claude-bridge: absent (authMethod oauth_token under /seats/.state/claude-orchestrator, not"
+            " claude.ai); key ok (/seats/.state/anthropic/api-key)": (
+                "the seat starts on the accepted key (U512e), so the login is information: seat-login-preflight"
+                " orchestrator prints the orchestrator group's command, docs/remote-host-logins.md"
+            ),
+            "dsh claude-bridge: absent (no /seats/.state/claude-router); key ok (/seats/.state/anthropic/api-key)": (
+                "the seat starts on the accepted key (U512e), so the login is information: the dsh profile is the"
+                " router group, which has no seat-login-preflight profile mode; run claude auth login with"
+                " CLAUDE_CONFIG_DIR set to the directory this line names (hcom-seat router --dry-run prints it;"
+                " BROWSER=regime-open-url first on a remote host), docs/remote-host-logins.md"
             ),
         }
         for line, step in cases.items():
@@ -1357,6 +1375,107 @@ EOF
                 self.assertIn(
                     f"unknown seat profile '{profile}'; expected one of: orchestrator worker audit", result.stderr
                 )
+
+    def seat_login_doctor_fixture(
+        self, *, login_status: str = "0", key: str = "ok"
+    ) -> tuple[str, Path, dict[str, str]]:
+        """A doctor home with the worker overlay on the claude-bridge route, its group directory present, and the
+        fakes the pre-flight's Claude line reads: `claude auth status` exiting `login_status` (0: a claude.ai login;
+        1: not logged in; else a failed producer), `claude-keyed --check` passing the file (`key` ok), refusing it as
+        absent (`absent`) or exiting 5 (`unreadable`), and `python3` answering 200 for the Models API probe. Returns
+        the sourcing script, the seats root and the environment."""
+        home = self.temp_dir / "doctor-home"
+        profiles = home / ".agents/omp/profiles"
+        profiles.mkdir(parents=True, exist_ok=True)
+        (profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
+        seats = self.temp_dir / "doctor-seats"
+        (seats / ".state/claude-worker").mkdir(parents=True, exist_ok=True)
+        bin_dir = self.temp_dir / "doctor-fakes"
+        if not (bin_dir / "jq").exists():
+            self.link_real_jq(bin_dir)
+        self.executable(
+            bin_dir / "claude",
+            'printf \'{"configDirectory": "%s", "authMethod": "claude.ai"}\\n\' "${CLAUDE_CONFIG_DIR-}"\n'
+            f"exit {login_status}\n",
+        )
+        judge = {
+            "ok": "printf 'key file ok: %s; executable: /fake/sdk/claude\\n' \"${REGIME_ANTHROPIC_KEY_FILE-}\"\n",
+            "absent": "printf 'claude-keyed: refused: the key file %s is absent; place the API key there (the U510"
+            ' handout)\\n\' "${REGIME_ANTHROPIC_KEY_FILE-}" >&2\nexit 2\n',
+            "unreadable": "exit 5\n",
+        }[key]
+        self.executable(bin_dir / "claude-keyed", judge)
+        self.executable(bin_dir / "python3", "printf '200\\n'\n")
+        script = (
+            f"source {ROOT / 'scripts/check-tools.sh'}; check_seat_logins;"
+            ' echo failures=$required_failures warnings=$optional_warnings; [ "${required_failures}" -eq 0 ]'
+        )
+        env = {"HOME": str(home), "PATH": f"{bin_dir}:/usr/bin:/bin", "REGIME_SEATS_ROOT": str(seats)}
+        return script, seats, env
+
+    def test_doctor_counts_an_unreadable_login_beside_an_accepted_key_as_a_required_failure(self) -> None:
+        """U512f (verdict U512e-a120aeff, P2 at check-tools.sh:504): the arm that printed `required failed` for an
+        unreadable state did not count it, so an unreadable login beside an accepted key, a line the pre-flight passes
+        with exit 0 (the key decides, U512e), left the doctor's exit 0. Every `required failed` line counts once where
+        it is printed: that state is one failure and the doctor's verdict (`required_failures -eq 0`, main's last
+        line) is exit 1; a lever refusal line counts too, beside the lever's exit."""
+        script, seats, env = self.seat_login_doctor_fixture(login_status="3")
+        result = self.run_test_command(["/bin/bash", "-c", script], env=env)
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 1, output)
+        self.assertIn(
+            f"required failed: seat login worker claude-bridge: unreadable (claude auth status exited 3 under"
+            f" {seats}/.state/claude-worker); key ok ({seats}/.state/anthropic/api-key)",
+            output,
+        )
+        self.assertIn("failures=1 warnings=0", output)
+        self.assertNotIn("found:   seat login", output)
+        # The lever's own refusal (a deployed overlay on a seat login route outside the login group table, U498b): the
+        # refusal line counts once and the lever's exit 2 once more.
+        (Path(env["HOME"]) / ".agents/omp/profiles/other.yml").write_text(
+            "modelRoles:\n  default: claude-bridge/claude-opus-5-5\n"
+        )
+        result = self.run_test_command(["/bin/bash", "-c", script], env=env)
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 1, output)
+        self.assertIn(
+            "required failed: seat-login-preflight: refused: the profile other (claude-bridge) is outside", output
+        )
+        self.assertIn("required failed: seat-login-preflight --check exited 2", output)
+        self.assertIn("failures=2 warnings=0", output)
+
+    def test_the_doctors_advice_for_a_mixed_state_names_the_missing_halfs_command(self) -> None:
+        """U512f (verdict U512e-a120aeff, P2 at check-tools.sh:458): with a login present and the key absent the
+        warning pointed at a profile mode that printed no placement command, and beside an accepted key the login
+        advice named no login command. Through the doctor's reader (`check_seat_logins` on the tree's pre-flight with
+        the fakes): a present login beside an absent key is a warning that says the seat starts on the login and names
+        the key's placement step; an accepted key beside an absent login is a warning that says the seat starts on the
+        key and names the login's command as information; both are warnings, not failures, and the doctor exits 0."""
+        script, seats, env = self.seat_login_doctor_fixture(key="absent")
+        result = self.run_test_command(["/bin/bash", "-c", script], env=env)
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn(
+            f"optional warning: seat login worker claude-bridge: login present (claude.ai, {seats}/.state/claude-worker);"
+            f" absent (the key file {seats}/.state/anthropic/api-key is absent; place the API key there (the U510"
+            " handout)) (the seat starts on the group's login (the login route, until U513 retires it); place the"
+            " seats' API key on this host (one file for every seat): seat-login-preflight worker prints the placement"
+            " commands (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md)",
+            output,
+        )
+        self.assertIn("failures=0 warnings=1", output)
+        script, seats, env = self.seat_login_doctor_fixture(login_status="1", key="ok")
+        result = self.run_test_command(["/bin/bash", "-c", script], env=env)
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn(
+            f"optional warning: seat login worker claude-bridge: absent (not logged in under {seats}/.state/claude-worker);"
+            f" key ok ({seats}/.state/anthropic/api-key) (the seat starts on the accepted key (U512e), so the login is"
+            " information: seat-login-preflight worker prints the worker group's command, docs/remote-host-logins.md)",
+            output,
+        )
+        self.assertIn("failures=0 warnings=1", output)
+        self.assertNotIn("required failed", output)
 
     def test_make_doctor_propagates_runtime_drift_after_tool_checks(self) -> None:
         repo = self.temp_dir / "doctor-repo"

@@ -22,7 +22,12 @@
 #   (regime-cutover U512: every seat's bridge child runs on it through `claude-keyed`, the bridge's Claude Code
 #   executable of U510, which hands it to the child as ANTHROPIC_API_KEY), judged by two producers whose status is
 #   read: `claude-keyed --check` for the file's form (its one refusal line's reason is the `absent (<reason>)` state;
-#   the key is never read here) and, when it passes, one `GET https://api.anthropic.com/v1/models?limit=1` with the
+#   the key is never read here), the lever found on PATH and run by its physical file, every link followed, as
+#   hcom-seat's pin_exec runs its tools (regime-cutover U512f, verdict U512e-a120aeff P1: inside a launch PATH's first
+#   entry is hcom-seat's private tool directory, where `claude-keyed` is a link to the installed lever, and the lever's
+#   self-check reads its layout from its own invocation directory, so run by the link's spelling it refused the tool
+#   directory's layout before judging the key, and every key-only launch refused); when it passes, one
+#   `GET https://api.anthropic.com/v1/models?limit=1` with the
 #   key in the `x-api-key` header and `anthropic-version: 2023-06-01` (the Models API,
 #   platform.claude.com/docs/en/api/models/list; no model turn) for the key's validity: 200 is `key ok (<file>)`, 401
 #   or 403 `key rejected (<file>; HTTP <code>)`. The call runs under `perl -e 'alarm 20; exec @ARGV'` through
@@ -74,7 +79,10 @@
 #   the chain 0700 first when absent, as hcom-seat does at a launch, so the login lands in a directory this kit made;
 #   the key file's directory is hcom-seat's to make and claude-keyed's to judge. The consent click is the human step.
 #   Anywhere else (a seat, a script) it prints the steps and refuses, since the login and the key are the operator's
-#   steps (standing order 4).
+#   steps (standing order 4). A pass with one state missing (a present login without an accepted key, the login route
+#   until U513 retires it, or an accepted key without a login; regime-cutover U512f, verdict U512e-a120aeff P2) prints
+#   the line and, after it, the missing half's command as information (claude_pass_report): the placement commands for
+#   the key, the login command for an absent login; nothing is refused and nothing runs.
 # @arg $1 string `--check`, or the profile.
 # @arg $@ string With `--check`: profile names (default: every deployed overlay).
 # @env SSH_CONNECTION Set by sshd: this host is remote to the operator's terminal.
@@ -284,6 +292,39 @@ mode_of() {
     printf '%s\n' "${value}"
 }
 
+# @description Print the physical file of the command `$1` on PATH (regime-cutover U512f, verdict U512e-a120aeff P1):
+#   `command -v`, then every symbolic link hop followed in turn (an absolute target as spelled, a relative one against
+#   its link's directory, at most 40 hops, readlink's status read), then the directory in `pwd -P` form, the way
+#   hcom-seat's pin_exec resolves what it runs. The one caller is claude_key_state: `claude-keyed`'s self-check reads
+#   its layout from its own invocation directory (`<home>/.local/bin/common` or `scripts/orchestrator`), so run by the
+#   spelling of hcom-seat's tool directory link it refused that directory's layout before judging the key; run by its
+#   physical file it reads its manifest by its installed layout. No other producer this lever runs (`claude`, `jq`,
+#   `python3`, `perl`, `bun`, `omp`, the system tools) judges its own path.
+# @arg $1 string The command name.
+# @stdout The physical path.
+# @exitcode 1 Not on PATH. 2 A hop could not be read, or the result is not an executable regular file.
+tool_physical_path() {
+    local path link dir n=0
+    path=$(command -v "$1") || return 1
+    [[ ${path} == /* ]] || return 2 # lint-comparisons: allow an absolute-path shape test, no path compare
+    while [[ -L ${path} ]]; do
+        n=$((n + 1))
+        ((n <= 40)) || return 2
+        link=$(readlink "${path}") || return 2
+        [[ -n ${link} ]] || return 2
+        case ${link} in
+        /*) path=${link} ;;
+        *) path=${path%/*}/${link} ;;
+        esac
+    done
+    dir=${path%/*}
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || return 2
+    path=${dir%/}/${path##*/}
+    [[ -f ${path} && -x ${path} ]] || return 2
+    printf '%s\n' "${path}"
+}
+
 # @description Print the provider of a profile's `modelRoles.default` (openai-siwc, claude-bridge, ...).
 # @arg $1 string Profile name.
 # @exitcode 2 The overlay exists but cannot be read.
@@ -491,36 +532,73 @@ claude_key_command() {
         "${claude_seats_root}" "${claude_seats_root%/}/.state" "${claude_key_dir}" "${claude_key_file}" "${claude_key_file}"
 }
 
+# @description Set `claude_steps` to the operator's step for each Claude state that is absent (regime-cutover U318,
+#   U512, U512f): `; log in once: <command>` (claude_login_command) when `claude_login_status` is 1, `; place the key
+#   once: <commands>` (claude_key_command) when `claude_key_status` is 1 (both set by claude_state_hold in this shell;
+#   unset, each counts as absent), the login's first; `claude_login_step` and `claude_key_step` hold each command or
+#   stay empty. Each producer's status is read (standing order 21; regime-cutover U318b: unread, a failed producer
+#   printed an ordinary absence with an empty command), so a failed producer dies naming it instead (exit 2) and no
+#   step reaches the operator. A state whose producer failed (status 2) names no step: it is unreadable, never absent,
+#   and the line names the producer. Shared by claude_login_refuse (both absent) and claude_pass_report (one absent
+#   beside a passing state).
+# @arg $1 string The profile line, for the refusal of a failed producer.
+# @set claude_steps The steps, each after `; `, or empty.
+# @set claude_login_step The login command, or empty.
+# @set claude_key_step The key commands, or empty.
+# @exitcode 2 A step could not be produced (the command dies).
+claude_steps_hold() {
+    claude_login_step='' claude_key_step='' claude_steps=''
+    if ((${claude_login_status:-1} == 1)); then
+        claude_login_step=$(claude_login_command) || die "$1; cannot name the operator's login step: claude_login_command failed"
+        claude_steps+="; log in once: ${claude_login_step}"
+    fi
+    if ((${claude_key_status:-1} == 1)); then
+        claude_key_step=$(claude_key_command) || die "$1; cannot name the operator's key step: claude_key_command failed"
+        claude_steps+="; place the key once: ${claude_key_step}"
+    fi
+}
+
 # @description Refuse the Claude route's absent login, absent or rejected key, or both, after its state line, naming
-#   the operator's steps for what is missing (regime-cutover U318, U512): the login command claude_login_command
-#   prints when `claude_login_status` is not 0, the key placement commands claude_key_command prints when
-#   `claude_key_status` is not 0 (both set by claude_state_hold in this shell; unset, each counts as missing), each
-#   producer's status read (standing order 21; regime-cutover U318b: unread, a failed producer printed an ordinary
-#   absence with an empty command), so a failed producer refuses naming it instead; then the legacy note
-#   legacy_note_hold set, when it set one (U498; empty when the caller held none). Since claude_state_hold passes on
-#   either state present (regime-cutover U512e), the profile mode reaches this with both missing; the single-state
-#   branches stay for a caller that holds one status alone.
+#   the operator's steps for what is missing (regime-cutover U318, U512): the steps claude_steps_hold names from
+#   `claude_login_status` and `claude_key_status` (set by claude_state_hold in this shell; unset, each counts as
+#   missing), then the legacy note legacy_note_hold set, when it set one (U498; empty when the caller held none). Since
+#   claude_state_hold passes on either state present (regime-cutover U512e), the profile mode reaches this with both
+#   missing; the single-state branches stay for a caller that holds one status alone.
 # @arg $1 string The profile line of the absent state.
 # @exitcode 2 Always: the login and the key are the operator's steps, or a step could not be produced (the command
 #   dies).
 claude_login_refuse() {
-    local login_step='' key_step='' steps='' whose
-    if ((${claude_login_status:-1} != 0)); then
-        login_step=$(claude_login_command) || die "$1; cannot name the operator's login step: claude_login_command failed"
-        steps+="; log in once: ${login_step}"
-    fi
-    if ((${claude_key_status:-1} != 0)); then
-        key_step=$(claude_key_command) || die "$1; cannot name the operator's key step: claude_key_command failed"
-        steps+="; place the key once: ${key_step}"
-    fi
-    if [[ -n ${login_step} && -n ${key_step} ]]; then
+    local whose
+    claude_steps_hold "$1"
+    if [[ -n ${claude_login_step} && -n ${claude_key_step} ]]; then
         whose="the login and the key are the operator's steps (handouts/anthropic-api-key-u510.md, steps 2 and 3, for the key): run those commands"
-    elif [[ -n ${key_step} ]]; then
+    elif [[ -n ${claude_key_step} ]]; then
         whose="the key is the operator's step (handouts/anthropic-api-key-u510.md, steps 2 and 3): run those commands"
     else
         whose="a login is the operator's step: run that command"
     fi
-    die "$1${steps}; ${whose} in your own terminal on this host, then start the seat again${claude_legacy_note:-}"
+    die "$1${claude_steps}; ${whose} in your own terminal on this host, then start the seat again${claude_legacy_note:-}"
+}
+
+# @description Report the Claude route's pass in the profile mode (regime-cutover U512f, verdict U512e-a120aeff P2):
+#   the state line, then, when one state is absent beside the passing one, the missing half's command as information,
+#   the steps claude_steps_hold names from `claude_login_status` and `claude_key_status` (claude_state_hold): a present
+#   login without an accepted key (the login route, until U513 retires it) is followed by the key's placement commands
+#   and names the key as the operator's step; an accepted key without a login by the group's login command, which the
+#   key-only launch does not need (round 4's rule: the key decides, the login is information). A state whose producer
+#   failed names no command (claude_steps_hold); both present prints the line alone. Until this head the pass printed
+#   the line alone, so a mixed state's advice named no command. Nothing is refused and nothing runs.
+# @arg $1 string The profile line of the passing state.
+# @stderr The report, one line.
+claude_pass_report() {
+    local note=''
+    claude_steps_hold "$1"
+    if [[ -n ${claude_key_step} ]]; then
+        note="${claude_steps}; the seat starts on the group's login (the login route, until U513 retires it); the key is the operator's step (handouts/anthropic-api-key-u510.md, steps 2 and 3): run those commands in your own terminal on this host"
+    elif [[ -n ${claude_login_step} ]]; then
+        note="${claude_steps}; the seat starts on the accepted key (U512e), so the login is information: run that command in your own terminal on this host to add the group's login"
+    fi
+    printf 'seat-login-preflight: %s%s\n' "$1" "${note}" >&2
 }
 
 # @description Hold the login group's Claude Code directory path to its three components, the seats root, its `.state`
@@ -631,28 +709,43 @@ claude_login_state() {
 #   `key rejected (<file>; HTTP <code>)` or `unreadable (<reason>)` for the seats' API key file
 #   `<seats-root>/.state/anthropic/api-key` (claude_config_dir), the one file every seat's bridge child runs on through
 #   claude-keyed. Two producers, each with its status read: `claude-keyed --check` on the file (REGIME_ANTHROPIC_KEY_FILE
-#   set for that call alone; exit 0 the form holds, exit 2 absent with the lever's reason, its stderr line without the
-#   `claude-keyed: refused: ` prefix; any other status unreadable), then one Models API call (models_api_probe under the
-#   alarm) whose stdout is the code: 200 present, 401 or 403 rejected (absent to the caller, which names the operator's
-#   steps), another code, a call that could not run, reach the API or answer in time unreadable (standing order 21).
-#   The key never reaches an argument, this shell's environment or a line; a CLAUDE_CODE_OAUTH_TOKEN in this environment
-#   is no input (regime-cutover U312). The operator's step for an absent key is the caller's (claude_login_refuse).
+#   set for that call alone; the lever run by its physical file, tool_physical_path, regime-cutover U512f; exit 0 the
+#   form holds, exit 2 absent with the lever's reason, its stderr line without the `claude-keyed: refused: ` prefix; any
+#   other status unreadable), then one Models API call (models_api_probe under the alarm) whose stdout is the code: 200
+#   present, 401 or 403 rejected (absent to the caller, which names the operator's steps), another code, a call that
+#   could not run, reach the API or answer in time unreadable (standing order 21). The key never reaches an argument,
+#   this shell's environment or a line; a CLAUDE_CODE_OAUTH_TOKEN in this environment is no input (regime-cutover
+#   U312). The operator's step for an absent key is the caller's (claude_login_refuse, claude_pass_report).
 # @exitcode 0 Present. 1 Absent (the file refused by claude-keyed, or the key rejected). 2 Unreadable.
 claude_key_state() {
-    local line status=0 code tool models_url
-    for tool in claude-keyed python3 perl; do
+    local line status=0 code tool models_url keyed
+    for tool in python3 perl; do
         if ! command -v "${tool}" > /dev/null; then
             printf 'unreadable (no %s on PATH to judge the API key file %s)\n' "${tool}" "${claude_key_file}"
             return 2
         fi
     done
+    # The judge by its physical file (U512f): a name not on PATH, a link hop that cannot be read or a result that is no
+    # executable regular file is unreadable, never absent.
+    keyed=$(tool_physical_path claude-keyed) || status=$?
+    case ${status} in
+    0) ;;
+    1)
+        printf 'unreadable (no claude-keyed on PATH to judge the API key file %s)\n' "${claude_key_file}"
+        return 2
+        ;;
+    *)
+        printf 'unreadable (cannot resolve claude-keyed on PATH to its physical executable file, to judge the API key file %s)\n' "${claude_key_file}"
+        return 2
+        ;;
+    esac
     models_url=${REGIME_ANTHROPIC_MODELS_URL:-${models_api_default}}
     if [[ ${models_url} != "${models_api_default}" && ! ${models_url} =~ ${models_api_loopback_re} ]]; then # lint-comparisons: allow the default URL's own spelling and a loopback shape test, no path compare
         printf 'unreadable (REGIME_ANTHROPIC_MODELS_URL is not a loopback http://127.0.0.1:<port>/ URL; the Models API call for the API key file %s is refused)\n' "${claude_key_file}"
         return 2
     fi
     # The form: the lever's one line is on stderr; its stdout (the ok line, which names the executable) is dropped.
-    line=$(REGIME_ANTHROPIC_KEY_FILE=${claude_key_file} claude-keyed --check 2>&1 > /dev/null) || status=$?
+    line=$(REGIME_ANTHROPIC_KEY_FILE=${claude_key_file} "${keyed}" --check 2>&1 > /dev/null) || status=$?
     case ${status} in
     0) ;;
     2)
@@ -891,7 +984,12 @@ profile_line "${role}" 1 > /dev/null || status=$?
 line=${profile_line_text}
 case ${status} in
 0)
-    printf 'seat-login-preflight: %s\n' "${line}" >&2
+    # The Claude route's pass names the missing half's command as information (U512f); any other route prints the line.
+    if ((route_status == 0)) && [[ ${route} == claude-bridge ]]; then
+        claude_pass_report "${line}"
+    else
+        printf 'seat-login-preflight: %s\n' "${line}" >&2
+    fi
     exit 0
     ;;
 2) die "${line}; fix or move the record aside before a seat starts" 1 ;;

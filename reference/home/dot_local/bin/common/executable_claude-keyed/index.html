@@ -1,0 +1,6352 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Generated reference for shell-based dotfiles automation.">
+      
+      
+      
+      
+        <link rel="prev" href="../executable_chezmoi-cd/">
+      
+      
+        <link rel="next" href="../executable_compactiondb-install/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>home/dot_local/bin/common/executable_claude-keyed - Dotfiles Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#homedot_localbincommonexecutable_claude-keyed" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../../../.." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Dotfiles Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              home/dot_local/bin/common/executable_claude-keyed
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../../../.." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Dotfiles Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../deepseek-harness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DeepSeek harness (dsh) under srt
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../engagement-handout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engagement handout: the prepared host, the client repository and the program store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../omp-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    omp skills: which skills each omp launch and seat loads
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../openai-siwc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    openai-siwc: omp provider for Sign in with ChatGPT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../operator-handout-g16/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G16 operator handout: host cleanup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../orchestrator-seat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The orchestrator seat: stop gate, skill and doctor wiring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../pi-claude-bridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    pi-claude-bridge as an omp extension
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../remote-host-logins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Seat logins on a remote host
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    History
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    History
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Historical documents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../history/nix-first-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nix first architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../history/nix-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nix migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../chezmoi-templates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/.chezmoiscripts Template Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12_2" id="__nav_12_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_12_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_1" id="__nav_12_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot claude
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot claude
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_1_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_1_1" id="__nav_12_2_1_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_2_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_2_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Hooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_enforce-uv.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_format-edited-files.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../dot_claude/hooks/executable_project-map-reload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_project-map-reload.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_2" id="__nav_12_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot config
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot config
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_2_1" id="__nav_12_2_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alias
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_2_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_2_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Alias
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../dot_config/alias/common/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_config/alias/common.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_3" id="__nav_12_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot local
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_2_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot local
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_3_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_3_1" id="__nav_12_2_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bin
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_2_3_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12_2_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bin
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_3_1_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_3_1_1" id="__nav_12_2_3_1_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_12_2_3_1_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12_2_3_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_acp-broker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_acp-broker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_acp-record-place.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_acp-record-place.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_acp-relay.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_acp-relay.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_acp-seat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_acp-seat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_agent-session-staleness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_agent-session-staleness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_brief-check.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_brief-check.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_bus-history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_bus-history.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_cdgwq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_cdgwq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_cdw/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_cdw
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_checkout-guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_checkout-guard.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_chezmoi-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_chezmoi-cd
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_claude-keyed
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_claude-keyed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_compactiondb-install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_compactiondb-install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_contextdb-codex-notify/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_contextdb-codex-notify
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_dev/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_dev
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_disk-gc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_disk-gc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_fgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_fgc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_git-delete-merged-branches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-delete-merged-branches
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-isolated.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_hcom-dispatch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_hcom-dispatch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_hcom-seat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_hcom-seat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_intake-observe.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_intake-observe.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_ledger-row.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_ledger-row.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_omp-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_omp-run.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_permgate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_permgate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-audit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-body-edit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-body-edit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-close/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-close.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-merge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-merge.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-thread-reply/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-thread-reply.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-thread-resolve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-thread-resolve.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-threads-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-threads-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pr-update-branch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-update-branch.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_profile-config-place.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_profile-config-place.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_program-status.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_program-status.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_provision-machine-key/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_provision-machine-key
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_read-lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_read-lib.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_records-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_records-sync.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-env/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-env
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-init/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-init
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-open-url/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-open-url
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-stop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-stop
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-store-move/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-store-move
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-url-opener/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-url-opener
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_remove-agent-asset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_remove-agent-asset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_router-gh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_router-gh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_router-settings-apply/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_router-settings-apply
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_router-settings-apply.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_router-settings-apply.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_seat-login-preflight/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_seat-login-preflight
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_seat-settings-render/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_seat-settings-render.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_setup-gh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_setup-gh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_setup-gpg/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_setup-gpg
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_uv-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_uv-format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_worker-worktree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_worker-worktree.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_worktree-gc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_worktree-gc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ledger.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/ledger.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_2_3_1_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_2_3_1_2" id="__nav_12_2_3_1_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_12_2_3_1_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_2_3_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Server
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../server/cuda/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/server/cuda.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../server/ssh_agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/server/ssh_agent.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3" id="__nav_12_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_12_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Install
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_1" id="__nav_12_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/aws_cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/aws_cli.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/chezmoi_private/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/chezmoi_private.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/credential_dirs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/credential_dirs.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/gh_extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/gh_extensions.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/mise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/mise.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/common/sheldon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/sheldon.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_2" id="__nav_12_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Macos
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Macos
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_2_1" id="__nav_12_3_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arm64
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_3_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Arm64
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/arm64/prepare_arm64_system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/arm64/prepare_arm64_system.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_2_2" id="__nav_12_3_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_3_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/brew/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/brew.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/command_line_tool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/command_line_tool.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/defaults/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/defaults.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/dependencies.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/docker.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/ghostty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/ghostty.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/macos/common/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_3" id="__nav_12_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ubuntu
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ubuntu
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_3_1" id="__nav_12_3_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Client
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_3_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Client
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/default_shell/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/default_shell.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/docker.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/ghostty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/ghostty.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/gnome_settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/gnome_settings.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/tailscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/tailscale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/zed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/zed.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_3_2" id="__nav_12_3_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_3_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/common/apparmor_userns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/apparmor_userns.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/common/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/dependencies.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/common/setup_locale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/setup_locale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/common/ssh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/ssh.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_3_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_3_3_3" id="__nav_12_3_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_12_3_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_3_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Server
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/server/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/server/setup_timezone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/setup_timezone.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/server/ssh_server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/ssh_server.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/server/starship/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/starship.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_4" id="__nav_12_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_12_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Scripts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/apply-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/apply-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/check-sleep/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-sleep.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/check-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/deploy-kit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/deploy-kit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/generate-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/generate-docs.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/gh-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/gh-auth.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/run_benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/run_benchmark.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/run_unit_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/run_unit_test.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/update-agent-assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/update-agent-assets.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/upgrade-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/upgrade-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/usage-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/usage-snapshot.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_4_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_4_12" id="__nav_12_4_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ci
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_4_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_4_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ci
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/git-invocation-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/git-invocation-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/install-pinned-lint-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/install-pinned-lint-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/masked-dirname-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/npm-cooldown-skew-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/npm-cooldown-skew-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/pinned-tool-version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/pinned-tool-version.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/producer-status-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/producer-status-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/run-on-lint-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/run-on-lint-files.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_4_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_4_13" id="__nav_12_4_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lib
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_4_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_4_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Lib
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/asset-manifest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/asset-manifest.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/chezmoi-externals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/chezmoi-externals.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/ci-runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/ci-runner.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/github-release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/github-release.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/installer-pins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/installer-pins.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/lib/npm-release-age/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/npm-release-age.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12_4_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_12_4_14" id="__nav_12_4_14_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Orchestrator
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_12_4_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12_4_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Orchestrator
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/bus-history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/bus-history.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/checkout-guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/checkout-guard.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/ci-rerun/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/ci-rerun.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/git-isolated.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/omp-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/omp-run.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-audit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-body-edit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-body-edit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-close/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-close.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-merge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-merge.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-thread-reply/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-thread-reply.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-thread-resolve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-thread-resolve.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-threads-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-threads-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-update-branch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-update-branch.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/read-lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/read-lib.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/records-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/records-sync.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/seat-settings-render/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/seat-settings-render.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/worker-worktree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/worker-worktree.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/worktree-gc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/worktree-gc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Verification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_13_1" id="__nav_13_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acceptance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_13_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Acceptance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../verification/acceptance/005/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan 005 acceptance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="homedot_localbincommonexecutable_claude-keyed">home/dot_local/bin/common/executable_claude-keyed<a class="headerlink" href="#homedot_localbincommonexecutable_claude-keyed" title="Permanent link">&para;</a></h1>
+<p>Regime-cutover U510 (handoff/47-api-key-route-design.md). A seat's model turn ran on the seats' shared claude.ai login, whose refresh-token rotation revoked every seat five times since 2026-11-10 (handoff/43, handoff/46). This lever stands as the pi-claude-bridge's <code>provider.pathToClaudeCodeExecutable</code> (<code>~/.omp/profiles/&lt;role&gt;/agent/ claude-bridge.json</code>, placed by the generated <code>modify_claude-bridge.json</code> of every role on the claude-bridge route), so the SDK spawns it where it spawned Claude Code: it <code>exec</code>s the one Claude Code binary of the bridge's SDK package with its own arguments unchanged (the SDK passes <code>--output-format stream-json --input-format stream-json ...</code>), stdin and stdout untouched, <code>ANTHROPIC_API_KEY</code> exported from the key file and the login names <code>CLAUDE_CODE_OAUTH_TOKEN</code>, <code>ANTHROPIC_AUTH_TOKEN</code> and <code>ANTHROPIC_BASE_URL</code> unset (the bridge README: an exported gateway variable redirects the child); nothing else of the environment changes, and the key reaches the child's environment alone, never an argument, a file, a log or a message. What shares the sandbox and the uid (the seat's bash tool) can read that environment as it can read the key file (<code>ps eww</code>, <code>/proc/&lt;pid&gt;/environ</code>, a core dump of the child): the residual U514's key-holding proxy outside the sandbox closes. The key file is the one path <code>REGIME_ANTHROPIC_KEY_FILE</code> names (hcom-seat sets it to <code>&lt;seats-root&gt;/.state/ anthropic/api-key</code>, regime-cutover U512; the operator places the key there by the U510 handout): an absolute path to a regular file of this user, mode 0600, no symbolic link in its last component (<code>-L</code> false on the spelled path and on its physical directory's form), holding one line in the closed class <code>^sk-ant-[A-Za-z0-9_-]{20,}$</code> ending in one line feed or none; a second line, a carriage return, a trailing space, a NUL or any other byte refuses naming the file, never the content. The directory that holds it is held too (U510d): its spelled last component no link, this user's, mode 0700, so no other writer can swap a link in between the checks on the file and its read, each of which opens the path anew. The mode and the owner of the directory and of the file come from one <code>stat</code> call each, whose status and shape are read (standing order 21), the owner compared with this shell's EUID; the bytes come from <code>cat</code> with its status read, counted by <code>wc -c</code> against what the shell holds, so a NUL the shell drops is seen. Every producer this lever runs (<code>uname</code>, <code>stat</code>, <code>cat</code>, <code>wc</code>, <code>awk</code>, <code>cd</code> and <code>pwd</code>, the hash tool and <code>sed</code> of the self-check) runs with its stderr dropped, so a failure that prints a diagnostic still yields exactly one refusal line; and <code>uname</code>, <code>stat</code>, <code>cat</code>, <code>wc</code> and <code>awk</code> run on the system directories alone (<code>PATH=/usr/bin:/bin:/usr/sbin:/sbin</code>, hcom-seat's form, U510d): <code>bash -p</code> keeps PATH, and inside a seat PATH holds the seat's tool directory and the caller's, where a planted tool would decide the file admitted and the binary the key reaches; the caller's PATH is the child's again on the exec line. The executable is the one path <code>&lt;bridge&gt;/node_modules/@anthropic-ai/claude-agent-sdk-&lt;platform&gt;/claude</code>, where <code>&lt;bridge&gt;</code> is the directory <code>omp.extension_providers.claude-bridge</code> names in the manifest the self-check read (a <code>~/</code> spelled through the installed copy's own root, else HOME), required to be a row of <code>claude.levers.extensions</code>, the seats' extension allow-list, and <code>&lt;platform&gt;</code> comes from a closed table over <code>uname -s</code> and <code>uname -m</code>: Darwin arm64 is darwin-arm64, Darwin x86_64 darwin-x64, Linux x86_64 linux-x64, Linux aarch64 linux-arm64; any other pair refuses naming both words (U510c; a glob count chose wrong when the SDK installed both Linux packages of an architecture). On Linux the suffix <code>-musl</code> is appended when and only when a file matches the musl loader glob <code>/lib/ld-musl-*.so*</code> (a glibc host has none; <code>CLAUDE_KEYED_MUSL_MARKER_GLOB</code> renames the glob for the tests). The path must be an executable regular file and no link, else one refusal naming it. The manifest is read as text by indentation (awk, status read), as seat-login-preflight reads its overlays. Every refusal is one stderr line <code>claude-keyed: refused: &lt;reason&gt;</code> and exit 2 with nothing started (a line boundary in a path the environment named is folded to a space first, U510e); a refusal never falls back to the login (fail closed). Every name the lever assigns is unset before anything is assigned, so a variable of one of those names exported into its environment carries neither the key nor another value into a producer's or the child's environment under a second name (U510e; an export attribute survives an assignment); those names leave the child's environment, nothing else of it changes. <code>--check</code> runs every check and prints one stdout line <code>key file ok: &lt;path&gt;; executable: &lt;path&gt;</code> (exit 0) or refuses; the seat-login preflight and the doctor call it (U512, U513). <code>--dry-run [&lt;argument&gt;...]</code> prints the command it would exec with the key replaced by <code>&lt;redacted&gt;</code> and the names it unsets, and runs nothing. <code>#!/bin/bash -p</code> (pr-audit.sh and router-gh's form, U465f): bash ignores the functions, <code>BASH_ENV</code>, <code>ENV</code>, <code>SHELLOPTS</code> and <code>CDPATH</code> an environment could carry, so a poisoned environment replaces no builtin this lever runs; the self pin check runs before anything else is read.</p>
+<h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Source: <code>home/dot_local/bin/common/executable_claude-keyed</code></li>
+<li>Category: shell executable</li>
+<li>Renderer: <code>shell-fallback</code></li>
+</ul>
+<h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>lever_self_check</code></li>
+<li><code>refuse</code></li>
+</ul>
+<h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/bin/bash -p</span>
+<span class="c1"># @file claude-keyed</span>
+<span class="c1"># @brief The bridge's Claude Code executable: run the Agent SDK's bundled Claude Code binary with `ANTHROPIC_API_KEY` read from one file, never on the seats' shared login.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   Regime-cutover U510 (handoff/47-api-key-route-design.md). A seat's model turn ran on the seats' shared claude.ai</span>
+<span class="c1">#   login, whose refresh-token rotation revoked every seat five times since 2026-11-10 (handoff/43, handoff/46). This</span>
+<span class="c1">#   lever stands as the pi-claude-bridge's `provider.pathToClaudeCodeExecutable` (`~/.omp/profiles/&lt;role&gt;/agent/</span>
+<span class="c1">#   claude-bridge.json`, placed by the generated `modify_claude-bridge.json` of every role on the claude-bridge route),</span>
+<span class="c1">#   so the SDK spawns it where it spawned Claude Code: it `exec`s the one Claude Code binary of the bridge's SDK</span>
+<span class="c1">#   package with its own arguments unchanged (the SDK passes `--output-format stream-json --input-format stream-json</span>
+<span class="c1">#   ...`), stdin and stdout untouched, `ANTHROPIC_API_KEY` exported from the key file and the login names</span>
+<span class="c1">#   `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL` unset (the bridge README: an exported</span>
+<span class="c1">#   gateway variable redirects the child); nothing else of the environment changes, and the key reaches the child's</span>
+<span class="c1">#   environment alone, never an argument, a file, a log or a message. What shares the sandbox and the uid (the seat's</span>
+<span class="c1">#   bash tool) can read that environment as it can read the key file (`ps eww`, `/proc/&lt;pid&gt;/environ`, a core dump</span>
+<span class="c1">#   of the child): the residual U514's key-holding proxy outside the sandbox closes.</span>
+<span class="c1">#   The key file is the one path `REGIME_ANTHROPIC_KEY_FILE` names (hcom-seat sets it to `&lt;seats-root&gt;/.state/</span>
+<span class="c1">#   anthropic/api-key`, regime-cutover U512; the operator places the key there by the U510 handout): an absolute path</span>
+<span class="c1">#   to a regular file of this user, mode 0600, no symbolic link in its last component (`-L` false on the spelled path</span>
+<span class="c1">#   and on its physical directory's form), holding one line in the closed class `^sk-ant-[A-Za-z0-9_-]{20,}$` ending</span>
+<span class="c1">#   in one line feed or none; a second line, a carriage return, a trailing space, a NUL or any other byte refuses</span>
+<span class="c1">#   naming the file, never the content. The directory that holds it is held too (U510d): its spelled last component</span>
+<span class="c1">#   no link, this user's, mode 0700, so no other writer can swap a link in between the checks on the file and its</span>
+<span class="c1">#   read, each of which opens the path anew. The mode and the owner of the directory and of the file come from one</span>
+<span class="c1">#   `stat` call each, whose status and shape are read (standing order 21), the owner compared with this shell's EUID;</span>
+<span class="c1">#   the bytes come from `cat` with its status read, counted by `wc -c` against what the shell holds, so a NUL the shell</span>
+<span class="c1">#   drops is seen. Every producer this lever runs (`uname`, `stat`, `cat`, `wc`, `awk`, `cd` and `pwd`, the hash tool</span>
+<span class="c1">#   and `sed` of the self-check) runs with its stderr dropped, so a failure that prints a diagnostic still yields</span>
+<span class="c1">#   exactly one refusal line; and `uname`, `stat`, `cat`, `wc` and `awk` run on the system directories alone</span>
+<span class="c1">#   (`PATH=/usr/bin:/bin:/usr/sbin:/sbin`, hcom-seat's form, U510d): `bash -p` keeps PATH, and inside a seat PATH</span>
+<span class="c1">#   holds the seat's tool directory and the caller's, where a planted tool would decide the file admitted and the</span>
+<span class="c1">#   binary the key reaches; the caller's PATH is the child's again on the exec line. The executable is the one path</span>
+<span class="c1">#   `&lt;bridge&gt;/node_modules/@anthropic-ai/claude-agent-sdk-&lt;platform&gt;/claude`, where `&lt;bridge&gt;` is the directory</span>
+<span class="c1">#   `omp.extension_providers.claude-bridge` names in the manifest the self-check read (a `~/` spelled through the</span>
+<span class="c1">#   installed copy's own root, else HOME), required to be a row of `claude.levers.extensions`, the seats' extension</span>
+<span class="c1">#   allow-list, and `&lt;platform&gt;` comes from a closed table over `uname -s` and `uname -m`: Darwin arm64 is</span>
+<span class="c1">#   darwin-arm64, Darwin x86_64 darwin-x64, Linux x86_64 linux-x64, Linux aarch64 linux-arm64; any other pair refuses</span>
+<span class="c1">#   naming both words (U510c; a glob count chose wrong when the SDK installed both Linux packages of an architecture).</span>
+<span class="c1">#   On Linux the suffix `-musl` is appended when and only when a file matches the musl loader glob `/lib/ld-musl-*.so*`</span>
+<span class="c1">#   (a glibc host has none; `CLAUDE_KEYED_MUSL_MARKER_GLOB` renames the glob for the tests). The path must be an</span>
+<span class="c1">#   executable regular file and no link, else one refusal naming it. The manifest is read as text by indentation</span>
+<span class="c1">#   (awk, status read), as seat-login-preflight reads its overlays. Every refusal is one stderr line</span>
+<span class="c1">#   `claude-keyed: refused: &lt;reason&gt;` and exit 2 with nothing started (a line boundary in a path the environment named</span>
+<span class="c1">#   is folded to a space first, U510e); a refusal never falls back to the login (fail closed). Every name the lever</span>
+<span class="c1">#   assigns is unset before anything is assigned, so a variable of one of those names exported into its environment</span>
+<span class="c1">#   carries neither the key nor another value into a producer's or the child's environment under a second name</span>
+<span class="c1">#   (U510e; an export attribute survives an assignment); those names leave the child's environment, nothing else of</span>
+<span class="c1">#   it changes.</span>
+<span class="c1">#   `--check` runs every check and prints one stdout line `key file ok: &lt;path&gt;; executable: &lt;path&gt;` (exit 0) or</span>
+<span class="c1">#   refuses; the seat-login preflight and the doctor call it (U512, U513). `--dry-run [&lt;argument&gt;...]` prints the</span>
+<span class="c1">#   command it would exec with the key replaced by `&lt;redacted&gt;` and the names it unsets, and runs nothing.</span>
+<span class="c1">#   `#!/bin/bash -p` (pr-audit.sh and router-gh's form, U465f): bash ignores the functions, `BASH_ENV`, `ENV`,</span>
+<span class="c1">#   `SHELLOPTS` and `CDPATH` an environment could carry, so a poisoned environment replaces no builtin this lever</span>
+<span class="c1">#   runs; the self pin check runs before anything else is read.</span>
+<span class="c1"># @arg $1 string `--check`, `--dry-run`, or the first of Claude Code's own arguments.</span>
+<span class="c1"># @arg $@ string Claude Code's arguments, verbatim.</span>
+<span class="c1"># @env REGIME_ANTHROPIC_KEY_FILE The key file, an absolute path.</span>
+<span class="c1"># @env HOME The checkout copy expands the manifest's `~/` spellings through it; the installed copy reads the manifest</span>
+<span class="c1">#   of its own root, `&lt;root&gt;/.agents/agent-config.yaml` for `&lt;root&gt;/.local/bin/common/claude-keyed`, and expands `~/`</span>
+<span class="c1">#   through that root, so HOME steers neither the pin nor the bridge directory.</span>
+<span class="c1"># @env PATH The caller's; the child gets it back on the exec line. The lever's own producers run on the system</span>
+<span class="c1">#   directories alone.</span>
+<span class="c1"># @env CLAUDE_KEYED_MUSL_MARKER_GLOB The musl loader glob, `/lib/ld-musl-*.so*` unless set; it chooses between the</span>
+<span class="c1">#   SDK's glibc and musl package of one Linux architecture and nothing outside the bridge's node_modules.</span>
+<span class="c1"># @stdout With `--check`, the one ok line; with `--dry-run`, the command and the unset names; else Claude Code's own.</span>
+<span class="c1"># @stderr The refusal line; else Claude Code's own.</span>
+<span class="c1"># @exitcode 0 `--check` passed, or `--dry-run` printed.</span>
+<span class="c1"># @exitcode 2 A refusal: the self-check, the usage, the key file or its directory, the manifest, the platform or the executable.</span>
+<span class="c1"># @exitcode * Claude Code's own status after the exec.</span>
+<span class="c1"># @example</span>
+<span class="c1">#   REGIME_ANTHROPIC_KEY_FILE=~/.local/state/omp-seats/dotfiles/.state/anthropic/api-key claude-keyed --check</span>
+<span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
+
+<span class="c1"># Every name this lever assigns is unset before anything is assigned (U510e, verdict U510-88ae09c6 P2 :228): a variable</span>
+<span class="c1"># of one of these names exported into this environment keeps its export attribute through the assignment (and a</span>
+<span class="c1"># `local` of the same name inherits it), so the key, the mode or a path would otherwise reach the producers' and the</span>
+<span class="c1"># child's environment under a second name. The names leave the child's environment; nothing else of it changes, and</span>
+<span class="c1"># PATH stays (the caller's is saved below and handed back on the exec line). `tests/unit/test_claude_keyed.py` holds</span>
+<span class="c1"># this list equal to the names the text assigns.</span>
+<span class="nb">unset</span><span class="w"> </span>LEVER_MANIFEST<span class="w"> </span>LEVER_ROOT<span class="w"> </span>src<span class="w"> </span>dir<span class="w"> </span>self<span class="w"> </span>name<span class="w"> </span>pin<span class="w"> </span>digest<span class="w"> </span>caller_path<span class="w"> </span>caller_path_set<span class="w"> </span>system_path<span class="w"> </span>usage<span class="w"> </span>mode<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>key_file<span class="w"> </span>key_parent<span class="w"> </span>parent_rule<span class="w"> </span>key_dir<span class="w"> </span>key_phys<span class="w"> </span>os<span class="w"> </span>arch<span class="w"> </span>platform<span class="w"> </span>owner_mode_re<span class="w"> </span>parent_what<span class="w"> </span>parent_owner_mode<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>parent_mode<span class="w"> </span>parent_owner<span class="w"> </span>owner_mode<span class="w"> </span>key_mode<span class="w"> </span>key_owner<span class="w"> </span>read_status<span class="w"> </span>key_text<span class="w"> </span>key_bytes<span class="w"> </span>key_chars<span class="w"> </span>key<span class="w"> </span>key_class<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>bridge<span class="w"> </span>allowed<span class="w"> </span>listed<span class="w"> </span>row<span class="w"> </span>tilde_slash<span class="w"> </span>tilde_root<span class="w"> </span>musl_glob<span class="w"> </span>musl<span class="w"> </span>marker<span class="w"> </span>exe<span class="w"> </span>arg
+
+<span class="c1"># @description Print the refusal on stderr and exit 2; nothing has started when it runs. The reason is folded onto one</span>
+<span class="c1">#   line first: a line feed, a carriage return, a vertical tab or a form feed in a path the environment named (U510e,</span>
+<span class="c1">#   P3 :150) becomes a space, pr-audit.sh's one_line form, so every refusal is one stderr line whatever the path holds.</span>
+<span class="c1"># @arg $1 string The reason, which never holds the key.</span>
+refuse<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"claude-keyed: refused: </span><span class="si">${</span><span class="nv">1</span><span class="p">//[</span><span class="s1">$'\n\r\v\f'</span><span class="p">]/ </span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31),</span>
+<span class="c1">#   chosen by this file's own physical directory and nothing else (U510d: a HOME of the caller's choosing steered the</span>
+<span class="c1">#   old form to the checkout layout's path): `&lt;root&gt;/.agents/agent-config.yaml` for the installed copy under</span>
+<span class="c1">#   `&lt;root&gt;/.local/bin/common`, which a sandboxed session cannot write, the checkout's home/dot_agents/agent-config.yaml</span>
+<span class="c1">#   for the copy under scripts/orchestrator, and a copy in neither layout refuses. Every read is checked; a failure</span>
+<span class="c1">#   exits 2 naming the file. The pin is the `claude.levers.sha256.&lt;name&gt;` line, which `scripts/generate-agent-configs.py`</span>
+<span class="c1">#   refreshes.</span>
+<span class="c1"># @set LEVER_MANIFEST The manifest the pin came from.</span>
+<span class="c1"># @set LEVER_ROOT The installed copy's root (the home its manifest sits in); empty for the checkout copy.</span>
+lever_self_check<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>src<span class="w"> </span>dir<span class="w"> </span>self<span class="w"> </span>name<span class="w"> </span>pin<span class="w"> </span>digest
+<span class="w">    </span><span class="c1"># The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.</span>
+<span class="w">    </span><span class="nv">src</span><span class="o">=</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">src</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>*/*<span class="o">)</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span><span class="si">${</span><span class="nv">src</span><span class="p">%/*</span><span class="si">}</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span>.<span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span>/
+<span class="w">    </span><span class="nv">dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve the script directory of </span><span class="si">${</span><span class="nv">src</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">self</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/<span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">self</span><span class="p">##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="c1"># lint-comparisons: allow the layout is read from the pwd -P form's last components, no path compared with another</span>
+<span class="w">    </span>*/.local/bin/common<span class="o">)</span>
+<span class="w">        </span><span class="nv">LEVER_ROOT</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="p">%/.local/bin/common</span><span class="si">}</span>
+<span class="w">        </span><span class="nv">LEVER_MANIFEST</span><span class="o">=</span><span class="si">${</span><span class="nv">LEVER_ROOT</span><span class="si">}</span>/.agents/agent-config.yaml
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>*/scripts/orchestrator<span class="o">)</span>
+<span class="w">        </span><span class="nv">LEVER_ROOT</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">        </span><span class="nv">LEVER_MANIFEST</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/../../home/dot_agents/agent-config.yaml
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span>
+<span class="w">        </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2"> is neither an installed copy under &lt;home&gt;/.local/bin/common nor a checkout copy under scripts/orchestrator, so no manifest holds its pin"</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"manifest unreadable: </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">pin</span><span class="o">=</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>-E<span class="w"> </span><span class="s2">"s/^      </span><span class="si">${</span><span class="nv">name</span><span class="p">//./</span><span class="se">\\</span><span class="p">.</span><span class="si">}</span><span class="s2">: ([0-9a-f]{64})\$/\\1/p"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>refuse<span class="w"> </span><span class="s2">"cannot read </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">64</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"no single sha256 pin for </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2"> in </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>sha256sum<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>sha256sum<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="c1"># producer-status: allow the regex test below refuses an empty digest</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="c1"># producer-status: allow the regex test below refuses an empty digest</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">digest</span><span class="o">=</span><span class="si">${</span><span class="nv">digest</span><span class="p">%% *</span><span class="si">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">digest</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">64</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot hash </span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">digest</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"sha256 </span><span class="si">${</span><span class="nv">digest</span><span class="si">}</span><span class="s2"> of </span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2"> differs from the pin in </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+lever_self_check
+
+<span class="c1"># The lever's own producers (uname, stat, cat, wc, awk) run on the system directories alone (hcom-seat's form, U85;</span>
+<span class="c1"># U510d): `bash -p` drops the imported functions and BASH_ENV, not PATH, and inside a seat PATH holds the seat's tool</span>
+<span class="c1"># directory and the caller's, where a planted tool would decide the file admitted and the binary the key reaches. The</span>
+<span class="c1"># caller's PATH is the child's again on the exec line (Claude Code finds its own tools by it); the self-check above</span>
+<span class="c1"># reads sed and the hash tool as every shell lever does (tests/unit/test_lever_self_check.py).</span>
+<span class="nv">caller_path</span><span class="o">=</span><span class="si">${</span><span class="nv">PATH</span><span class="p">-</span><span class="si">}</span>
+<span class="nv">caller_path_set</span><span class="o">=</span><span class="si">${</span><span class="nv">PATH</span><span class="p">+1</span><span class="si">}</span>
+<span class="nv">system_path</span><span class="o">=</span>/usr/bin:/bin:/usr/sbin:/sbin
+<span class="nv">PATH</span><span class="o">=</span><span class="si">${</span><span class="nv">system_path</span><span class="si">}</span>
+
+<span class="c1"># The producers' stderr below is dropped per call (`2&gt; /dev/null`), and where bash itself opens the file (a redirection</span>
+<span class="c1"># inside a command substitution) the whole block's is, so a diagnostic of either never joins the refusal line.</span>
+
+<span class="nv">usage</span><span class="o">=</span><span class="s1">'usage: claude-keyed --check | claude-keyed --dry-run [&lt;argument&gt;...] | claude-keyed [&lt;argument&gt;...]'</span>
+<span class="nv">mode</span><span class="o">=</span><span class="s1">'exec'</span>
+<span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">$#</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>--check<span class="o">)</span>
+<span class="w">        </span><span class="o">((</span><span class="nv">$#</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">usage</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">mode</span><span class="o">=</span>check
+<span class="w">        </span><span class="nb">shift</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>--dry-run<span class="o">)</span>
+<span class="w">        </span><span class="nv">mode</span><span class="o">=</span>dry-run
+<span class="w">        </span><span class="nb">shift</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="k">fi</span>
+
+<span class="c1"># The key file: the one path the environment names, held to the form described in the header before a byte is read.</span>
+<span class="nv">key_file</span><span class="o">=</span><span class="si">${</span><span class="nv">REGIME_ANTHROPIC_KEY_FILE</span><span class="k">:-</span><span class="si">}</span>
+<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">    </span>refuse<span class="w"> </span><span class="s1">'REGIME_ANTHROPIC_KEY_FILE is not set; hcom-seat sets it to &lt;seats-root&gt;/.state/anthropic/api-key (regime-cutover U512) and the operator places the key there (the U510 handout)'</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>/*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"REGIME_ANTHROPIC_KEY_FILE '</span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2">' is not an absolute path"</span><span class="w"> </span><span class="c1"># lint-comparisons: allow an absolute-path shape test on one path, no path compare</span>
+<span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> is a symbolic link; the key file must be a regular file of this user"</span>
+<span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> is absent; place the API key there (the U510 handout)"</span>
+<span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> is not a regular file"</span>
+<span class="c1"># The directory that holds the key file (U510d): its spelled last component is no link (a link earlier in the path is</span>
+<span class="c1"># allowed, as for the file), and below it is this user's alone; the physical directory's form of the file's name is</span>
+<span class="c1"># read from it too, so a link in the file's last component is refused under either spelling.</span>
+<span class="nv">key_parent</span><span class="o">=</span><span class="si">${</span><span class="nv">key_file</span><span class="p">%/*</span><span class="si">}</span>
+<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">key_parent</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">key_parent</span><span class="o">=</span>/
+<span class="nv">parent_rule</span><span class="o">=</span><span class="s2">"the directory must be this user's alone (0700)"</span>
+<span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">key_parent</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the directory </span><span class="si">${</span><span class="nv">key_parent</span><span class="si">}</span><span class="s2"> of the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> is a symbolic link; </span><span class="si">${</span><span class="nv">parent_rule</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">key_dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_parent</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve the directory of the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">key_phys</span><span class="o">=</span><span class="si">${</span><span class="nv">key_dir</span><span class="p">%/</span><span class="si">}</span>/<span class="si">${</span><span class="nv">key_file</span><span class="p">##*/</span><span class="si">}</span>
+<span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">key_phys</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> is a symbolic link; the key file must be a regular file of this user"</span>
+<span class="c1"># The platform, from a closed table over the two uname words (each producer's status read, its stderr dropped): it</span>
+<span class="c1"># chooses the stat dialect here and the SDK's platform package below; a pair outside the table refuses by name.</span>
+<span class="nv">os</span><span class="o">=</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'cannot read the operating system name (uname -s)'</span>
+<span class="nv">arch</span><span class="o">=</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'cannot read the machine name (uname -m)'</span>
+<span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">os</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="nv">arch</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="s1">'Darwin arm64'</span><span class="o">)</span><span class="w"> </span><span class="nv">platform</span><span class="o">=</span>darwin-arm64<span class="w"> </span><span class="p">;;</span>
+<span class="s1">'Darwin x86_64'</span><span class="o">)</span><span class="w"> </span><span class="nv">platform</span><span class="o">=</span>darwin-x64<span class="w"> </span><span class="p">;;</span>
+<span class="s1">'Linux x86_64'</span><span class="o">)</span><span class="w"> </span><span class="nv">platform</span><span class="o">=</span>linux-x64<span class="w"> </span><span class="p">;;</span>
+<span class="s1">'Linux aarch64'</span><span class="o">)</span><span class="w"> </span><span class="nv">platform</span><span class="o">=</span>linux-arm64<span class="w"> </span><span class="p">;;</span>
+*<span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"no Claude Code platform package for the pair '</span><span class="si">${</span><span class="nv">os</span><span class="si">}</span><span class="s2">' '</span><span class="si">${</span><span class="nv">arch</span><span class="si">}</span><span class="s2">' (uname -s, uname -m); the table is Darwin arm64, Darwin x86_64, Linux x86_64 and Linux aarch64"</span><span class="w"> </span><span class="p">;;</span>
+<span class="k">esac</span>
+<span class="c1"># One stat call each for the directory's and the file's mode and owner, the status and the shape read; an injected or</span>
+<span class="c1"># failing stat refuses. The directory first: it is what holds the file still between the checks and the read.</span>
+<span class="nv">owner_mode_re</span><span class="o">=</span><span class="s1">'^([0-7]{3,4}) ([0-9]+)$'</span>
+<span class="nv">parent_what</span><span class="o">=</span><span class="s2">"the directory </span><span class="si">${</span><span class="nv">key_parent</span><span class="si">}</span><span class="s2"> of the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">os</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+Darwin<span class="o">)</span><span class="w"> </span><span class="nv">parent_owner_mode</span><span class="o">=</span><span class="k">$(</span>stat<span class="w"> </span>-f<span class="w"> </span><span class="s1">'%Lp %u'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_parent</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read the mode and owner of </span><span class="si">${</span><span class="nv">parent_what</span><span class="si">}</span><span class="s2"> (stat failed)"</span><span class="w"> </span><span class="p">;;</span>
+*<span class="o">)</span><span class="w"> </span><span class="nv">parent_owner_mode</span><span class="o">=</span><span class="k">$(</span>stat<span class="w"> </span>-c<span class="w"> </span><span class="s1">'%a %u'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_parent</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read the mode and owner of </span><span class="si">${</span><span class="nv">parent_what</span><span class="si">}</span><span class="s2"> (stat failed)"</span><span class="w"> </span><span class="p">;;</span>
+<span class="k">esac</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">parent_owner_mode</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="si">${</span><span class="nv">owner_mode_re</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">    </span>refuse<span class="w"> </span><span class="s2">"cannot read the mode and owner of </span><span class="si">${</span><span class="nv">parent_what</span><span class="si">}</span><span class="s2"> (stat printed '</span><span class="si">${</span><span class="nv">parent_owner_mode</span><span class="si">}</span><span class="s2">')"</span>
+<span class="nv">parent_mode</span><span class="o">=</span><span class="si">${</span><span class="nv">BASH_REMATCH</span><span class="p">[1]</span><span class="si">}</span><span class="w"> </span><span class="nv">parent_owner</span><span class="o">=</span><span class="si">${</span><span class="nv">BASH_REMATCH</span><span class="p">[2]</span><span class="si">}</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">parent_owner</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">EUID</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">parent_what</span><span class="si">}</span><span class="s2"> is owned by uid </span><span class="si">${</span><span class="nv">parent_owner</span><span class="si">}</span><span class="s2">, not this user (uid </span><span class="si">${</span><span class="nv">EUID</span><span class="si">}</span><span class="s2">)"</span>
+<span class="o">[[</span><span class="w"> </span>-O<span class="w"> </span><span class="si">${</span><span class="nv">key_parent</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">parent_what</span><span class="si">}</span><span class="s2"> is owned by uid </span><span class="si">${</span><span class="nv">parent_owner</span><span class="si">}</span><span class="s2">, not this user (uid </span><span class="si">${</span><span class="nv">EUID</span><span class="si">}</span><span class="s2">)"</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">parent_mode</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^0?700$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">parent_what</span><span class="si">}</span><span class="s2"> has mode </span><span class="si">${</span><span class="nv">parent_mode</span><span class="si">}</span><span class="s2">; </span><span class="si">${</span><span class="nv">parent_rule</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">os</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+Darwin<span class="o">)</span><span class="w"> </span><span class="nv">owner_mode</span><span class="o">=</span><span class="k">$(</span>stat<span class="w"> </span>-f<span class="w"> </span><span class="s1">'%Lp %u'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read the mode and owner of the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> (stat failed)"</span><span class="w"> </span><span class="p">;;</span>
+*<span class="o">)</span><span class="w"> </span><span class="nv">owner_mode</span><span class="o">=</span><span class="k">$(</span>stat<span class="w"> </span>-c<span class="w"> </span><span class="s1">'%a %u'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read the mode and owner of the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> (stat failed)"</span><span class="w"> </span><span class="p">;;</span>
+<span class="k">esac</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">owner_mode</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="si">${</span><span class="nv">owner_mode_re</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">    </span>refuse<span class="w"> </span><span class="s2">"cannot read the mode and owner of the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> (stat printed '</span><span class="si">${</span><span class="nv">owner_mode</span><span class="si">}</span><span class="s2">')"</span>
+<span class="nv">key_mode</span><span class="o">=</span><span class="si">${</span><span class="nv">BASH_REMATCH</span><span class="p">[1]</span><span class="si">}</span><span class="w"> </span><span class="nv">key_owner</span><span class="o">=</span><span class="si">${</span><span class="nv">BASH_REMATCH</span><span class="p">[2]</span><span class="si">}</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">key_owner</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">EUID</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> is owned by uid </span><span class="si">${</span><span class="nv">key_owner</span><span class="si">}</span><span class="s2">, not this user (uid </span><span class="si">${</span><span class="nv">EUID</span><span class="si">}</span><span class="s2">)"</span>
+<span class="o">[[</span><span class="w"> </span>-O<span class="w"> </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> is owned by uid </span><span class="si">${</span><span class="nv">key_owner</span><span class="si">}</span><span class="s2">, not this user (uid </span><span class="si">${</span><span class="nv">EUID</span><span class="si">}</span><span class="s2">)"</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">key_mode</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^0?600$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> has mode </span><span class="si">${</span><span class="nv">key_mode</span><span class="si">}</span><span class="s2">; the key must be readable by this user alone (0600)"</span>
+<span class="c1"># The bytes, read by cat with its status read (bash 5.2 runs `$(&lt; file)` without a fork, so a failed redirection there</span>
+<span class="c1"># would end the script under errexit before a handler ran, U310e), with a sentinel so a trailing line feed survives</span>
+<span class="c1"># the substitution; the block's stderr is dropped so bash's own note about a dropped NUL never joins a refusal line,</span>
+<span class="c1"># and the byte count, taken in a subshell under LC_ALL=C (the child's environment stays as it was), sees that NUL.</span>
+<span class="nv">read_status</span><span class="o">=</span><span class="m">0</span>
+<span class="o">{</span><span class="w"> </span><span class="nv">key_text</span><span class="o">=</span><span class="k">$(</span>cat<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span>x<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">read_status</span><span class="o">=</span><span class="nv">$?</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null
+<span class="o">((</span><span class="nv">read_status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">key_text</span><span class="o">=</span><span class="si">${</span><span class="nv">key_text</span><span class="p">%x</span><span class="si">}</span>
+<span class="c1"># The wc read: the `&lt;` redirection is bash's own open, so its failure note (the file gone between cat and wc) would</span>
+<span class="c1"># print before wc ran; the block's stderr is dropped before the redirection is opened (U510e, P3 :231).</span>
+<span class="nv">read_status</span><span class="o">=</span><span class="m">0</span>
+<span class="o">{</span><span class="w"> </span><span class="nv">key_bytes</span><span class="o">=</span><span class="k">$(</span>wc<span class="w"> </span>-c<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">read_status</span><span class="o">=</span><span class="nv">$?</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null
+<span class="o">((</span><span class="nv">read_status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot count the bytes of the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> (wc -c failed)"</span>
+<span class="nv">key_bytes</span><span class="o">=</span><span class="si">${</span><span class="nv">key_bytes</span><span class="p">//[[:</span><span class="nv">space</span><span class="p">:]]/</span><span class="si">}</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">key_bytes</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot count the bytes of the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> (wc -c printed '</span><span class="si">${</span><span class="nv">key_bytes</span><span class="si">}</span><span class="s2">')"</span>
+<span class="nv">key_chars</span><span class="o">=</span><span class="k">$(</span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">key_text</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot count the bytes of the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">((</span>key_bytes<span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> is empty; the key must be one line of the form sk-ant-... (the U510 handout)"</span>
+<span class="o">((</span><span class="nv">key_bytes</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>key_chars<span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> holds a byte the shell cannot read (a NUL); the key must be one line"</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">key_text</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s1">$'\r'</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> holds a carriage return; the key must be one line ending in a line feed alone"</span>
+<span class="nv">key</span><span class="o">=</span><span class="si">${</span><span class="nv">key_text</span><span class="p">%</span><span class="s1">$'\n'</span><span class="si">}</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">key</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> holds more than one line; the key must be one line"</span>
+<span class="nv">key_class</span><span class="o">=</span><span class="s1">'^sk-ant-[A-Za-z0-9_-]{20,}$'</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">key</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="si">${</span><span class="nv">key_class</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">    </span>refuse<span class="w"> </span><span class="s2">"the key file </span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2"> does not hold a key of the form sk-ant-&lt;20 or more of [A-Za-z0-9_-]&gt; (the content is never printed)"</span>
+
+<span class="c1"># The bridge directory: `omp.extension_providers.claude-bridge` of the manifest the self-check read, by indentation,</span>
+<span class="c1"># required among the `claude.levers.extensions` rows (the seats' only -e directories); `~/` spelled through the</span>
+<span class="c1"># installed copy's root, else HOME.</span>
+<span class="nv">bridge</span><span class="o">=</span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">'</span>
+<span class="s1">/^omp:$/ { in_omp = 1; next }</span>
+<span class="s1">/^[^ #]/ { in_omp = 0; in_ext = 0 }</span>
+<span class="s1">in_omp &amp;&amp; /^  extension_providers:$/ { in_ext = 1; next }</span>
+<span class="s1">in_omp &amp;&amp; /^  [^ ]/ { in_ext = 0 }</span>
+<span class="s1">in_omp &amp;&amp; in_ext &amp;&amp; $1 == "claude-bridge:" { print $2; exit }</span>
+<span class="s1">'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read the omp.extension_providers rows of the manifest </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2"> (awk failed)"</span>
+<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">bridge</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the manifest </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2"> names no omp.extension_providers.claude-bridge directory"</span>
+<span class="nv">allowed</span><span class="o">=</span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">'</span>
+<span class="s1">/^claude:$/ { in_claude = 1; next }</span>
+<span class="s1">/^[^ #]/ { in_claude = 0; in_levers = 0; in_ext = 0 }</span>
+<span class="s1">in_claude &amp;&amp; /^  levers:$/ { in_levers = 1; next }</span>
+<span class="s1">in_claude &amp;&amp; /^  [^ ]/ { in_levers = 0; in_ext = 0 }</span>
+<span class="s1">in_levers &amp;&amp; /^    extensions:$/ { in_ext = 1; next }</span>
+<span class="s1">in_levers &amp;&amp; /^    [^ ]/ { in_ext = 0 }</span>
+<span class="s1">in_ext &amp;&amp; $1 == "-" { print $2 }</span>
+<span class="s1">'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read the claude.levers.extensions rows of the manifest </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2"> (awk failed)"</span>
+<span class="nv">listed</span><span class="o">=</span><span class="m">0</span>
+<span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>row<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">bridge</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="nv">listed</span><span class="o">=</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span><span class="w"> </span><span class="c1"># lint-comparisons: allow two manifest spellings of the same row, compared as the manifest writes them</span>
+<span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">allowed</span><span class="si">}</span><span class="s2">"</span>
+<span class="c1"># The manifest spells the directory through `~/`: the home the installed copy's manifest sits in (LEVER_ROOT), else</span>
+<span class="c1"># this user's HOME for the checkout copy (hcom-seat holds the entry the same way).</span>
+<span class="c1"># shellcheck disable=SC2088 # the manifest's own spelling, matched as text; the root replaces it on the line below</span>
+<span class="nv">tilde_slash</span><span class="o">=</span><span class="s1">'~/'</span>
+<span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">bridge</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="s2">"</span><span class="si">${</span><span class="nv">tilde_slash</span><span class="si">}</span><span class="s2">"</span>*<span class="o">)</span>
+<span class="w">    </span><span class="nv">tilde_root</span><span class="o">=</span><span class="si">${</span><span class="nv">LEVER_ROOT</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="k">:-</span><span class="si">}}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">tilde_root</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"HOME is not set, so the manifest's spelling </span><span class="si">${</span><span class="nv">bridge</span><span class="si">}</span><span class="s2"> of the claude-bridge directory cannot be expanded"</span>
+<span class="w">    </span><span class="nv">bridge</span><span class="o">=</span><span class="si">${</span><span class="nv">tilde_root</span><span class="si">}</span>/<span class="si">${</span><span class="nv">bridge</span><span class="p">#</span><span class="s2">"</span><span class="si">${</span><span class="nv">tilde_slash</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span>
+<span class="w">    </span><span class="p">;;</span>
+<span class="k">esac</span>
+<span class="o">((</span>listed<span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the claude-bridge directory </span><span class="si">${</span><span class="nv">bridge</span><span class="si">}</span><span class="s2"> is not a row of claude.levers.extensions in </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">bridge</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the claude-bridge directory </span><span class="si">${</span><span class="nv">bridge</span><span class="si">}</span><span class="s2"> is not a directory"</span>
+<span class="c1"># The SDK's platform package of the table above (bun.lock names eight; the SDK installs the glibc and the musl one</span>
+<span class="c1"># of a Linux architecture side by side, so a count over the glob cannot choose). On Linux the musl package is the</span>
+<span class="c1"># one when and only when the musl loader is present: a file matching the marker glob, read by the shell's own glob</span>
+<span class="c1"># (compgen, a builtin, no producer); a glibc host has no such file.</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">platform</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>linux-*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">musl_glob</span><span class="o">=</span><span class="si">${</span><span class="nv">CLAUDE_KEYED_MUSL_MARKER_GLOB</span><span class="k">:-</span><span class="p">/lib/ld-musl-*.so*</span><span class="si">}</span>
+<span class="w">    </span><span class="nv">musl</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>marker<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">marker</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">marker</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="nv">musl</span><span class="o">=</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span><span class="nb">compgen</span><span class="w"> </span>-G<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">musl_glob</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="o">)</span>
+<span class="w">    </span><span class="o">((</span><span class="nv">musl</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">platform</span><span class="o">=</span><span class="si">${</span><span class="nv">platform</span><span class="si">}</span>-musl
+<span class="k">fi</span>
+<span class="nv">exe</span><span class="o">=</span><span class="si">${</span><span class="nv">bridge</span><span class="si">}</span>/node_modules/@anthropic-ai/claude-agent-sdk-<span class="si">${</span><span class="nv">platform</span><span class="si">}</span>/claude
+<span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">exe</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">exe</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"no Claude Code executable at </span><span class="si">${</span><span class="nv">exe</span><span class="si">}</span><span class="s2">; the SDK's </span><span class="si">${</span><span class="nv">platform</span><span class="si">}</span><span class="s2"> package is not installed under </span><span class="si">${</span><span class="nv">bridge</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">exe</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">exe</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">exe</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the Claude Code executable </span><span class="si">${</span><span class="nv">exe</span><span class="si">}</span><span class="s2"> is not an executable regular file"</span>
+
+<span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">mode</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+check<span class="o">)</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'key file ok: %s; executable: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">exe</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="p">;;</span>
+dry-run<span class="o">)</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ANTHROPIC_API_KEY=&lt;redacted&gt; %s'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">exe</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>arg<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">' %q'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">arg</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'\nunset: CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL\n'</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="p">;;</span>
+<span class="k">esac</span>
+<span class="c1"># The login names leave; the key rides as the exec'd process's environment alone, never an argument; the caller's PATH</span>
+<span class="c1"># is the child's again (a caller without one hands none on: the binary is run by its absolute path).</span>
+<span class="nb">unset</span><span class="w"> </span>CLAUDE_CODE_OAUTH_TOKEN<span class="w"> </span>ANTHROPIC_AUTH_TOKEN<span class="w"> </span>ANTHROPIC_BASE_URL
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">caller_path_set</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">unset</span><span class="w"> </span>PATH
+<span class="w">    </span><span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span><span class="si">${</span><span class="nv">key</span><span class="si">}</span><span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">exe</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
+<span class="k">fi</span>
+<span class="nv">PATH</span><span class="o">=</span><span class="si">${</span><span class="nv">caller_path</span><span class="si">}</span><span class="w"> </span><span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span><span class="si">${</span><span class="nv">key</span><span class="si">}</span><span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">exe</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -177,7 +177,7 @@ function seat_login_home() {
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins; echo \"failures=\${required_failures} warnings=\${optional_warnings}\""
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"optional warning: seat login audit openai-siwc: absent (no ${home}/.omp/profiles/audit/agent/openai-siwc/registration.json)"* ]]
-    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: absent (no ${home}/seats/.state/claude-orchestrator); key ok (${home}/seats/.state/anthropic/api-key) (log in on this host, once per login group: seat-login-preflight orchestrator prints the orchestrator group's command, docs/remote-host-logins.md)"* ]]
+    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: absent (no ${home}/seats/.state/claude-orchestrator); key ok (${home}/seats/.state/anthropic/api-key) (the seat starts on the accepted key (U512e), so the login is information: seat-login-preflight orchestrator prints the orchestrator group's command, docs/remote-host-logins.md)"* ]]
     [[ "${output}" == *"failures=0 warnings=2"* ]]
 }
 
@@ -213,7 +213,7 @@ function seat_login_home() {
     run env -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CONFIG_DIR HOME="${home}" REGIME_SEATS_ROOT="${home}/seats" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins; echo \"failures=\${required_failures} warnings=\${optional_warnings}\""
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: login present (claude.ai, ${home}/seats/.state/claude-orchestrator); absent (the key file ${home}/seats/.state/anthropic/api-key is absent; place the API key there (the U510 handout)) (place the seats' API key on this host (one file for every seat): seat-login-preflight orchestrator prints the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md)"* ]]
+    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: login present (claude.ai, ${home}/seats/.state/claude-orchestrator); absent (the key file ${home}/seats/.state/anthropic/api-key is absent; place the API key there (the U510 handout)) (the preflight passes on the group's login, but hcom-seat starts no seat until the key is placed; place the seats' API key on this host (one file for every seat): seat-login-preflight orchestrator prints the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md)"* ]]
     [[ "${output}" != *"found:   seat login orchestrator"* ]]
     [[ "${output}" == *"failures=0 warnings=2"* ]]
 

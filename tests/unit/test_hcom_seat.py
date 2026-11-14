@@ -377,9 +377,9 @@ class HcomSeatTest(SeatFixture):
             run.stderr,
         )
         self.assertIn(
-            "; the seat starts on the group's login (the login route, until U513 retires it); the key is the operator's"
-            " step (handouts/anthropic-api-key-u510.md, steps 2 and 3): run those commands in your own terminal on this"
-            " host\nhcom-seat: ",
+            "; the preflight passes on the group's login, but hcom-seat starts no seat until the key is placed; the key"
+            " is the operator's step (handouts/anthropic-api-key-u510.md, steps 2 and 3): run those commands in your own"
+            " terminal on this host\nhcom-seat: ",
             run.stderr,
         )
         self.assertTrue(run.stderr.endswith("\n" + absent), run.stderr)

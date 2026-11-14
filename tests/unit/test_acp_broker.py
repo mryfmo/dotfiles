@@ -3390,14 +3390,18 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         dsh_read, dsh_write = dsh["filesystem"]["allowRead"], dsh["filesystem"]["allowWrite"]
         self.assertEqual(dsh_read[1], str(self.seats_path / ".state" / rendered["dsh_name"]))
         self.assertEqual(dsh_read[3], str(dsh_home))
-        # The seats' API key file is the dsh row's allowRead row 7 (U512) and no worker row's (the broker's key is
-        # U516's), so the worker's grants are the dsh row's rows 0, 2, 4, 5 and 6.
+        # The seats' API key file is the dsh row's allowRead row 7 (U512) and the worker's allowRead last row (the
+        # broker's read grant, U516, since PR 787), never a worker allowWrite row (U512g, verdict U512f-b6a3e2c0 P2:
+        # this comment said no worker row names it), so the worker's read grants are the dsh row's rows 0, 2, 4, 5
+        # and 6 with the key file last, and its write grants the dsh row's rows 0, 2 and 4 on.
         self.assertEqual(dsh_read[7], str(self.seats_path.resolve() / ".state/anthropic/api-key"))
         expected = normalised(dsh, dsh_cwd, rendered["dsh_name"])
         expected["filesystem"]["denyWrite"] = worker_n["filesystem"]["denyWrite"]
         key_file = str(self.key_file)
         expected["filesystem"]["allowRead"] = [task, dsh_read[2], *(r for r in dsh_read[4:] if r != key_file), key_file]
         expected["filesystem"]["allowWrite"] = [task, dsh_write[2], *dsh_write[4:]]
+        self.assertEqual(worker["filesystem"]["allowRead"][-1], key_file, "the worker reads the key file (U516)")
+        self.assertNotIn(key_file, worker["filesystem"]["allowWrite"], "the key file is never written by a worker")
         expected_text = (
             json.dumps(expected, separators=(",", ":"))
             .replace("<cwd>", task)

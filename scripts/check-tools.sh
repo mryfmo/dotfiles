@@ -430,13 +430,15 @@ function login_group_of_role() {
 #   placement commands, which the pre-flight's profile mode prints for any
 #   seat profile, the key file being one for every seat) when the key state is
 #   not `key ok`, both when both are missing, the login's first. A mixed state
-#   (regime-cutover U512f, verdict U512e-a120aeff P2) says which route the
-#   seat starts on and names the missing half's command: beside a present
-#   login the seat starts on the login (the login route, until U513 retires
-#   it) and the key's placement commands are the step; beside an accepted key
-#   the seat starts on the key and the login is information, its command the
-#   group's (the pre-flight's profile mode prints both as information on its
-#   pass, U512f).
+#   (regime-cutover U512f, verdict U512e-a120aeff P2) names the missing half's
+#   command and says what happens meanwhile: beside a present login the
+#   pre-flight passes but hcom-seat starts no seat until the key is placed
+#   (its key_file_check refuses every role without the key; regime-cutover
+#   U512g, verdict U512f-b6a3e2c0 P2: until this head the sentence said the
+#   seat starts on the login), and the key's placement commands are the step;
+#   beside an accepted key the seat starts on the key and the login is
+#   information, its command the group's (the pre-flight's profile mode prints
+#   both as information on its pass, U512f).
 # @arg $1 string The `--check` line.
 # @set login_step The sentence the warning carries in parentheses.
 #
@@ -473,7 +475,7 @@ function login_step_of() {
         if [ "${login_missing}" -eq 1 ]; then
             login_step="${login_step}; ${key_step}"
         else
-            login_step="the seat starts on the group's login (the login route, until U513 retires it); ${key_step}"
+            login_step="the preflight passes on the group's login, but hcom-seat starts no seat until the key is placed; ${key_step}"
         fi
     elif [ "${key_ok}" -eq 1 ]; then
         login_step="the seat starts on the accepted key (U512e), so the login is information: ${login_step#log in on this host, once per login group: }"
@@ -491,16 +493,19 @@ function login_step_of() {
 #   a profile without a route are optional warnings naming the step
 #   (login_step_of, U498d), since a login and the key are per host and the
 #   operator's steps; an unreadable record, in either state, and the lever's
-#   own refusal are required failures, never read as absent, each printed
-#   line counted once where it is printed (regime-cutover U512f, verdict
-#   U512e-a120aeff P2: the unreadable arm printed `required failed` without
-#   counting, so an unreadable login beside an accepted key, which the lever
-#   passes with exit 0, left the doctor's exit 0), and the lever's non-zero
-#   exit is one more.
+#   own refusal are required failures, never read as absent. One failure
+#   counts once (regime-cutover U512g, verdict U512f-b6a3e2c0 P1): every
+#   `required failed` line counts where it is printed, and the lever's
+#   non-zero exit counts only when the loop counted no line, since the exit
+#   that follows a printed unreadable or refusal line is the same failure
+#   (U512f counted the line and then the exit, so one unreadable key counted
+#   twice); the line's own count is what holds an unreadable login beside an
+#   accepted key, which the lever passes with exit 0 (verdict U512e-a120aeff
+#   P2: that arm once printed without counting, so the doctor exited 0).
 #
 function check_seat_logins() {
     local lever="${BASH_SOURCE[0]%/*}/orchestrator/seat-login-preflight"
-    local output line login_step status=0
+    local output line login_step status=0 counted=0
 
     if [ ! -x "${lever}" ]; then
         warn_optional "seat login check skipped: ${lever} is missing"
@@ -512,13 +517,15 @@ function check_seat_logins() {
         '') ;;
         'not applicable:'*) printf '%s\n' "${line}" ;;
         # The lever's own refusal or failed producer (pin, uname), never a profile line; or either state of a
-        # claude-bridge line unreadable (U512), the states matched anywhere after the route. One arm counts both.
+        # claude-bridge line unreadable (U512), the states matched anywhere after the route. One arm counts both, and
+        # marks the count so the lever's exit below is not counted again for the same failure (U512g).
         'seat-login-preflight:'* | *': unreadable'* | *'; unreadable ('*)
             case "${line}" in
             'seat-login-preflight:'*) printf 'required failed: %s\n' "${line}" >&2 ;;
             *) printf 'required failed: seat login %s\n' "${line}" >&2 ;;
             esac
             ((required_failures += 1))
+            counted=1
             ;;
         *': absent'* | *'; absent ('* | *'; key rejected ('* | *': no route'* | *': not a seat login route'*)
             login_step_of "${line}"
@@ -527,7 +534,8 @@ function check_seat_logins() {
         *) printf 'found:   seat login %s\n' "${line}" ;;
         esac
     done <<< "${output}"
-    if [ "${status}" -ne 0 ]; then
+    # The exit alone counts when no printed line did: a lever that died without a line of its own.
+    if [ "${status}" -ne 0 ] && [ "${counted}" -eq 0 ]; then
         printf 'required failed: seat-login-preflight --check exited %d\n' "${status}" >&2
         ((required_failures += 1))
     fi

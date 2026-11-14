@@ -51,8 +51,9 @@ which opens allow-listed sign-in hosts only.
   group's directory did not (the kit reads, copies and removes no login, standing order 54); for an absent or rejected
   key the U510 handout's placement commands (`handouts/anthropic-api-key-u510.md`, steps 2 and 3); the profile mode
   makes the group's directory 0700 first. A pass with one state missing (U512f) prints the line and the missing
-  half's command after it as information: beside a present login the placement commands (the seat starts on the
-  login route until U513 retires it), beside an accepted key the group's login command. The key judge
+  half's command after it as information: beside a present login the placement commands (the preflight passes on the
+  login, but `hcom-seat` starts no seat until the key is placed: its gate refuses every role without the key), beside
+  an accepted key the group's login command. The key judge
   `claude-keyed` is found on `PATH` and run by its physical file, every link followed (U512f): inside a launch `PATH`
   begins with `hcom-seat`'s private tool directory, where `claude-keyed` is a link to the installed lever, and the
   lever's self-check reads its layout from its own invocation directory. `hcom-seat` runs it with the seat's role

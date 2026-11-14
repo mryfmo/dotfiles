@@ -696,8 +696,8 @@ esac
         beside an absent login, the group's login command as information."""
         if login_command is None:
             return (
-                f"seat-login-preflight: {line}; place the key once: {self.key_step(root)}; the seat starts on the"
-                " group's login (the login route, until U513 retires it); the key is the operator's step"
+                f"seat-login-preflight: {line}; place the key once: {self.key_step(root)}; the preflight passes on the"
+                " group's login, but hcom-seat starts no seat until the key is placed; the key is the operator's step"
                 " (handouts/anthropic-api-key-u510.md, steps 2 and 3): run those commands in your own terminal on this"
                 " host\n"
             )
@@ -1232,6 +1232,46 @@ esac
         self.assertNotIn("auth login", self.calls_text())
         self.assertNotIn(FAKE_KEY, control.stderr + ready.stderr + refused.stderr + check.stdout + gate.stderr)
 
+    def test_a_failed_readlink_on_the_judges_link_is_unreadable_never_absent_and_never_a_pass(self) -> None:
+        """U512g (verdict U512f-b6a3e2c0, P2 at seat-login-preflight:306-320): tool_physical_path returns 2 when
+        `readlink` fails on a link hop and claude_key_state reads that status as unreadable, but no test injected the
+        failure. A `readlink` ahead of PATH that exits 1 printing nothing, on the fixture's launch layout (the tool
+        directory's link to the installed lever first on PATH): the worker profile mode refuses with the line naming
+        the judge, the login present and the key unreadable, and exits 1, the lever's unreadable status; `--check`
+        prints the same line and exits 1; neither reads the key as absent, neither passes, and no call reaches the
+        Models API. The control, the same layout and key on the real readlink, passes both modes."""
+        key = str(self.place_key())
+        self.assertTrue((self.tools / "claude-keyed").is_symlink())
+        ahead = self.temp / "ahead"
+        write_exec(ahead / "readlink", "#!/bin/sh\nexit 1\n")
+        path = f"{ahead}:{self.env()['PATH']}"
+        remote = "100.64.0.2 50000 100.64.0.3 22"
+        url = self.models_api(200)
+        line = (
+            f"worker claude-bridge: {self.login_present('worker')}; unreadable (cannot resolve claude-keyed on PATH to"
+            f" its physical executable file, to judge the API key file {key})"
+        )
+        gate = self.run_lever("worker", PATH=path, SSH_CONNECTION=remote, REGIME_ANTHROPIC_MODELS_URL=url)
+        self.assertEqual(
+            (gate.returncode, gate.stdout, gate.stderr),
+            (1, "", f"seat-login-preflight: {line}; fix or move the record aside before a seat starts\n"),
+        )
+        check = self.run_lever("--check", "worker", PATH=path, REGIME_ANTHROPIC_MODELS_URL=url)
+        self.assertEqual((check.returncode, check.stdout, check.stderr), (1, f"{line}\n", ""))
+        self.assertEqual(self.models_requests, [], "no judgement, so no call reaches the API")
+        for output in (gate.stderr, check.stdout):
+            self.assertNotIn("absent", output)
+            self.assertNotIn("key ok", output)
+        # The control: the real readlink resolves the link, and the same key passes both modes.
+        ok = f"worker claude-bridge: {self.login_present('worker')}; key ok ({key})"
+        ready = self.run_lever("worker", SSH_CONNECTION=remote, REGIME_ANTHROPIC_MODELS_URL=url)
+        self.assertEqual((ready.returncode, ready.stderr), (0, f"seat-login-preflight: {ok}\n"))
+        check = self.run_lever("--check", "worker", REGIME_ANTHROPIC_MODELS_URL=url)
+        self.assertEqual((check.returncode, check.stdout, check.stderr), (0, f"{ok}\n", ""))
+        self.assertEqual([request["x-api-key"] for request in self.models_requests], [FAKE_KEY, FAKE_KEY])
+        self.assertNotIn("auth login", self.calls_text())
+        self.assertNotIn(FAKE_KEY, gate.stderr + check.stdout + ready.stderr)
+
     def test_a_pass_with_one_state_missing_names_the_missing_halfs_command_as_information(self) -> None:
         """U512f (verdict U512e-a120aeff, P2 at the profile mode's pass and check-tools.sh:458): the pass printed the
         line alone, so with a login present and the key absent the advice had no placement command (the preflight
@@ -1250,7 +1290,7 @@ esac
         self.assertEqual(
             (login_route.returncode, login_route.stderr), (0, self.pass_report(self.absent_line("worker")))
         )
-        match = re.search(r"; place the key once: (.*); the seat starts on the group's login", login_route.stderr)
+        match = re.search(r"; place the key once: (.*); the preflight passes on the group's login", login_route.stderr)
         self.assertIsNotNone(match, login_route.stderr)
         pasted = self.paste(match.group(1), FAKE_KEY + "\n")
         self.assertEqual(

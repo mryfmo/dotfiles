@@ -259,8 +259,12 @@ except urllib.error.URLError:
 scratch=""
 trap '[[ -z ${scratch} ]] || rm -rf -- "${scratch}"' EXIT
 
+# @description Print one refusal line and exit. The message alone is printed (regime-cutover U512g: `$*` put the status
+#   argument on the line's end, so `die "<line>" 1` printed `<line> 1`; the readlink-failure test read it).
+# @arg $1 string The line, after the `seat-login-preflight: ` prefix.
+# @arg $2 int The exit status (2 when absent).
 die() {
-    printf 'seat-login-preflight: %s\n' "$*" >&2
+    printf 'seat-login-preflight: %s\n' "$1" >&2
     exit "${2:-2}"
 }
 
@@ -583,7 +587,9 @@ claude_login_refuse() {
 # @description Report the Claude route's pass in the profile mode (regime-cutover U512f, verdict U512e-a120aeff P2):
 #   the state line, then, when one state is absent beside the passing one, the missing half's command as information,
 #   the steps claude_steps_hold names from `claude_login_status` and `claude_key_status` (claude_state_hold): a present
-#   login without an accepted key (the login route, until U513 retires it) is followed by the key's placement commands
+#   login without an accepted key (the login route, until U513 retires it) is followed by the key's placement commands,
+#   says that hcom-seat starts no seat until the key is placed (its key_file_check refuses every role without the key;
+#   regime-cutover U512g, verdict U512f-b6a3e2c0 P2: until this head the sentence said the seat starts on the login)
 #   and names the key as the operator's step; an accepted key without a login by the group's login command, which the
 #   key-only launch does not need (round 4's rule: the key decides, the login is information). A state whose producer
 #   failed names no command (claude_steps_hold); both present prints the line alone. Until this head the pass printed
@@ -594,7 +600,7 @@ claude_pass_report() {
     local note=''
     claude_steps_hold "$1"
     if [[ -n ${claude_key_step} ]]; then
-        note="${claude_steps}; the seat starts on the group's login (the login route, until U513 retires it); the key is the operator's step (handouts/anthropic-api-key-u510.md, steps 2 and 3): run those commands in your own terminal on this host"
+        note="${claude_steps}; the preflight passes on the group's login, but hcom-seat starts no seat until the key is placed; the key is the operator's step (handouts/anthropic-api-key-u510.md, steps 2 and 3): run those commands in your own terminal on this host"
     elif [[ -n ${claude_login_step} ]]; then
         note="${claude_steps}; the seat starts on the accepted key (U512e), so the login is information: run that command in your own terminal on this host to add the group's login"
     fi

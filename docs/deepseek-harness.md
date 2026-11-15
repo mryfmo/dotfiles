@@ -48,8 +48,11 @@ file and `~/.ssh`, a write under the operator's `~/.claude/debug` must all fail
 inside) and only then execs `srt --settings <file> -- /usr/bin/env PATH=<seat
 path> <DSH_HOME>/bin/dsh [--profile <name>] <args>`; the lever runs that shim
 in the foreground under `/usr/bin/env -i` with `HOME`, `USER`, `LANG`, `TERM`,
-`PATH`, `DSH_HOME`, `OMP_PROFILE` and a caller's `CLAUDE_CODE_OAUTH_TOKEN`
-alone, waits, removes the per-launch slots and returns dsh's status; a hangup,
+`PATH`, `DSH_HOME`, `OMP_PROFILE` and `CLAUDE_CONFIG_DIR` alone (the shim adds its
+own exports, the seats' `claude setup-token` read from
+`<seats-root>/.state/claude-token` among them, U551; a caller's
+`CLAUDE_CODE_OAUTH_TOKEN` is no input), waits, removes the per-launch slots and
+returns dsh's status; a hangup,
 interrupt or termination runs the same removal before the lever ends by that
 signal. Before the launch the lever places the kit's rendered overlay
 `~/.agents/omp/profiles/dsh.yml` (the bridge route as `modelRoles.default`,

@@ -51,6 +51,9 @@ term	task-consistency-check	deleted in U26
 term	three-repeat	deleted in U26
 term	omp-run.sh --role audit	the omp audit route, retired by U119 round 3; the audit is `~/.local/bin/common/pr-audit.sh <n> --records <store>`
 term	gh pr merge	the raw merge command; the merge path is `~/.local/bin/common/pr-merge.sh <n> --records <store>` alone (U71)
+term	claude-keyed	the API key route's Claude Code executable (U510), retired with the route by U551; the seats run on the setup-token file
+term	REGIME_ANTHROPIC_KEY_FILE	the API key route's file variable (U512, U516), retired by U551; no lever names a key file
+term	anthropic/api-key	the API key route's file (U510 handout), retired by U551; the seats' credential is `.state/claude-token`
 gone	home/dot_local/bin/common/executable_agmsg-dispatch	deleted source path
 gone	home/dot_local/bin/common/executable_codex-orchestrate	deleted source path
 gone	home/dot_local/bin/common/executable_herdr-agents	deleted source path
@@ -126,6 +129,7 @@ allow	docs/orchestrator-seat.md	audit seat	states that the retired kinds, seat, 
 allow	docs/orchestrator-seat.md	hcom-audit	states that the retired kinds, seat, skill and lever are refused or gone
 allow	docs/orchestrator-seat.md	hcom-reply	states that the retired kinds, seat, skill and lever are refused or gone
 allow	home/.chezmoiremove	agmsg	the removal entries for the retired deployed copies
+allow	home/.chezmoiremove	claude-keyed	the removal entry for the retired deployed copy (U551)
 allow	home/.chezmoiremove	codex-orchestrate	the removal entries for the retired deployed copies
 allow	home/.chezmoiremove	crit-review	the removal entries for the retired deployed copies
 allow	home/.chezmoiremove	hcom-audit	the removal entries for the retired deployed copies

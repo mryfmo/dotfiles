@@ -5,8 +5,10 @@
 `claude setup-token` が印字する長期 OAuth token 1 つで動かす。token は host ごとに 1 ファイル
 `<seats-root>/.state/claude-token`(0600、1 行)に置き、読むのは hcom-seat の shim だけ。shim が
 `CLAUDE_CODE_OAUTH_TOKEN` として Claude 子の環境に渡し、sandbox の中ではファイル自体は読めない
-(実測: ファイルを deny した sandbox で子は起動し API に到達する)。refresh token が無いので更新も
-回転も起きない。有効期限は 1 年。失効させるには claude.ai で account の全 session を sign out する。
+(deny 行。`tests/unit/test_hcom_seat.py` が子の環境に値が届きファイルが deny されることを fixture で
+確認。実 token での API 到達は配備後の検証で測る)。refresh token が無いので更新も回転も起きない。
+有効期限は 1 年(Claude Code 公式 docs の Authentication)。失効させるには claude.ai で account の
+全 session を sign out する。
 
 前提(agent 側で済ませる部分): U551 の head が merge され、`make deploy-kit` で
 `~/.local/bin/common/seat-token-place` と新しい `hcom-seat`、`seat-login-preflight`、`acp-broker` が
@@ -23,8 +25,8 @@ claude setup-token
 ブラウザが開くので、席に使う claude.ai account で sign in し、同意する。端末に `sk-ant-oat01-` で
 始まる 1 行の token が一度だけ印字される。クリップボードに残さず、次の手順 2 のプロンプトに貼る。
 
-期待する結果: 端末に token 1 行。`~/.claude` の自分の login は変わらない(setup-token は login を
-置き換えない。実測 2026-11-14: 発行後も `claude auth status` は変わらず)。
+期待する結果: 端末に token 1 行。`~/.claude` の自分の login は変わらない(公式 docs: setup-token は
+長期 token を印字するだけで login を置き換えない。配備後に `claude auth status` で確認する)。
 
 ## 2. 人間がやること: token の配置 (laptop のターミナル、1 回)
 

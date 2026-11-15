@@ -3197,6 +3197,13 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         for label, call in (("resolve", resolve), ("pack", pack), ("canary", canary), ("version", version_call), ("head read", head_read)):  # fmt: skip
             self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN", call["env"], f"the {label} run carries no token name")
         self.assertIn("CLAUDE_CODE_OAUTH_TOKEN", launch_call["env"], "the omp launch's srt carries it to the worker")
+        # The value reaches srt's environment by export from a cleared subshell, never as a word of `/usr/bin/env -i`'s
+        # argument list, which `ps` shows to every process of this user (the coordinator's review of U551's first head).
+        source = (Path(__file__).resolve().parents[2] / "scripts/orchestrator/acp-broker").read_text(encoding="utf-8")
+        for line in source.splitlines():
+            if "env -i" in line:
+                self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN", line, "the token on an env -i line is an argument")
+                self.assertNotIn("seat_token", line, "the token on an env -i line is an argument")
         status, out, err = self.stop_broker(proc)
         self.assertEqual(status, -signal.SIGTERM)
         for where, text in (("stdout", out), ("stderr", err), ("the launch log", "\n".join(self.log_lines("w1"))),

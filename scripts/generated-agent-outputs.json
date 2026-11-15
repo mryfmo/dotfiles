@@ -660,6 +660,13 @@
       "sha256": "9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50"
     },
     {
+      "source": "home/dot_local/bin/common/executable_seat-token-place",
+      "target": ".local/bin/common/seat-token-place",
+      "kind": "file",
+      "executable": true,
+      "sha256": "8b1eacbcccbef8e17afef971f6750da2de25ba32090eb02b0e408f99811e8a29"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_stall-check.py",
       "target": ".local/bin/common/stall-check.py",
       "kind": "file",
@@ -1000,6 +1007,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "seat-settings-render.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "seat-token-place"
     },
     {
       "source": "home/dot_local/bin/common",

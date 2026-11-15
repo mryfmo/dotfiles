@@ -25,6 +25,7 @@ LEVERS = (
     "regime-env",
     "regime-init",
     "seat-login-preflight",
+    "seat-token-place",
     "regime-start",
     "regime-stop",
     "regime-store-move",

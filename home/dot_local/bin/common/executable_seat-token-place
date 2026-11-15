@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+# @file seat-token-place
+# @brief Place the seats' Claude setup-token: read it unechoed, hold it to its form and write the one 0600 file every seat's Claude Code child runs on.
+# @description
+#   regime-cutover U551 (handouts/claude-setup-token-u551.md). The seats' Claude credential is one long-lived
+#   `claude setup-token` token in one file per host, `<seats-root>/.state/claude-token`: a regular file of this user,
+#   mode 0600, one line `sk-ant-oat01-<base64url>` with one trailing line feed, in the 0700 `.state` of the seats root.
+#   hcom-seat judges that file before every launch (token_file_check), its shim reads it into the Claude child's
+#   environment, and seat-login-preflight reports its state; this lever is the operator's one way to write it. The
+#   operator runs `claude setup-token` in their own terminal first (the browser opens; the token prints once), then
+#   this lever, which prompts `token: ` and reads one line from stdin with echo off (`read -rs`): the pasted line is
+#   taken whole, so a terminal's bracketed-paste marks and any other CSI sequence (`ESC [ ... final`) are stripped,
+#   as are a carriage return and surrounding whitespace, and the rest is held to the token's form (TOKEN_FORM_RE, the
+#   one text hcom-seat, seat-login-preflight and acp-broker hold). An EOF, an empty line, a line of CSI sequences
+#   alone or a line off the form refuses (exit 1) naming the character count after stripping and never the input;
+#   nothing is written. The chain is held before anything is written: the seats root and its `.state` are each no
+#   symbolic link (lstat on the spelled path, before anything resolves it), made 0700 under `umask 077` when absent,
+#   held to directories of this user, and `.state` tightened to 0700; the destination is no link and, when present,
+#   a regular file of this user (a 0644 file is replaced, not refused). The token is written to an exclusive 0600
+#   temporary `mktemp` makes beside the destination and renamed over it, so a previous file survives every failure
+#   byte for byte and the token never lies in a file another user can read. The one stdout line is the result,
+#   `seat-token-place: placed <file> (<n> characters, mode 0600)`; the token reaches no argument, no line and no
+#   other process. The seats root is `--seats-root <dir>`, else `REGIME_SEATS_ROOT`, else `~/.local/state/omp-seats/
+#   <slug>` of the checkout this runs in (regime-env's slug, as seat-login-preflight derives it), an absolute clean
+#   path without `.` or `..` components or a trailing slash. Run by the operator alone, outside every seat (standing
+#   orders 4 and 48); installed and pinned like every lever (`claude.levers.sha256`), with no allow rule and no seat
+#   policy row.
+# @option --seats-root <dir> The seats root whose `.state/claude-token` is written; default as described.
+# @env REGIME_SEATS_ROOT The seats root when `--seats-root` is not given.
+# @stdin The token, one line, read unechoed at the prompt.
+# @stdout One line: `seat-token-place: placed <file> (<n> characters, mode 0600)`.
+# @stderr The prompt and every refusal, `seat-token-place: refused: <reason>`; the token never.
+# @exitcode 0 The token is placed.
+# @exitcode 1 Refused: nothing written (an EOF, an empty or CSI-only input, a line off the form, a link in the chain or
+#   at the destination, a component that is not this user's directory, a write that failed).
+# @exitcode 2 The self-check or the usage refused, or no seats root could be derived.
+# @example
+#   claude setup-token            # in the operator's own terminal; the token prints once
+#   seat-token-place              # paste the token at the prompt
+#   seat-login-preflight --check  # every Claude line reads `token present (<file>)`
+set -euo pipefail
+
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the sourced regime-env helper's caller below
+    LEVER_DIR=${dir}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${self}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
+# The seats root derivation (regime_toplevel, regime_slug) comes from the pinned helper beside this file (U33, U318).
+[[ -r ${LEVER_DIR}/regime-env ]] || {
+    echo "seat-token-place: refused: regime-env unreadable beside this script: ${LEVER_DIR}/regime-env" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/regime-env
+. "${LEVER_DIR}/regime-env"
+
+# The seats' Claude credential's form (regime-cutover U551): the one line `claude setup-token` prints, `sk-ant-oat01-`
+# and 20 to 255 characters of the base64url alphabet (RE_DUP_MAX, the interval bound of the macOS regex library). One
+# text in hcom-seat, seat-login-preflight, seat-token-place and acp-broker (the tests hold the four equal).
+TOKEN_FORM_RE='^sk-ant-oat01-[A-Za-z0-9_-]{20,255}$'
+# A CSI sequence as a terminal writes one: ESC, `[`, parameter bytes, intermediate bytes, one final byte (ECMA-48 5.4).
+# A bracketed paste wraps the pasted text in `ESC [ 200 ~` and `ESC [ 201 ~`, which `read` keeps as input.
+CSI_RE=$'\e''\[[0-?]*[ -/]*[@-~]'
+
+# @description Print one refusal line and exit 1: nothing has been written.
+# @arg $1 string The reason.
+refuse() {
+    printf 'seat-token-place: refused: %s\n' "$1" >&2
+    exit 1
+}
+
+usage='usage: seat-token-place [--seats-root <dir>]  (reads the token from stdin at the prompt, unechoed)'
+seats_root=${REGIME_SEATS_ROOT:-}
+while (($# > 0)); do
+    case $1 in
+    --seats-root)
+        (($# >= 2)) || {
+            echo "seat-token-place: refused: --seats-root needs a directory; ${usage}" >&2
+            exit 2
+        }
+        seats_root=$2
+        shift 2
+        ;;
+    -h | --help)
+        echo "${usage}"
+        exit 0
+        ;;
+    *)
+        echo "seat-token-place: refused: unknown argument '$1'; ${usage}" >&2
+        exit 2
+        ;;
+    esac
+done
+if [[ -z ${seats_root} ]]; then
+    top=$(regime_toplevel) || {
+        echo 'seat-token-place: refused: no seats root: pass --seats-root, set REGIME_SEATS_ROOT or run inside a checkout' >&2
+        exit 2
+    }
+    slug=$(regime_slug "${top}") || {
+        echo "seat-token-place: refused: no seats root: cannot derive a repository slug from ${top}" >&2
+        exit 2
+    }
+    home=$(cd "${HOME}" && pwd -P) || {
+        echo "seat-token-place: refused: no seats root: cannot resolve HOME ${HOME}" >&2
+        exit 2
+    }
+    seats_root=${home}/.local/state/omp-seats/${slug}
+fi
+# One spelling of the root (hcom-seat's clean-path rule, regime-cutover U85): absolute, no empty, `.` or `..` component,
+# no trailing slash, so the chain below is judged on the path the levers render.
+[[ ${seats_root} =~ ^(/[A-Za-z0-9._@+-]+)+$ && /${seats_root}/ != */./* && /${seats_root}/ != */../* ]] || { # lint-comparisons: allow the clean-path rule on one path, no path compare
+    echo "seat-token-place: refused: the seats root '${seats_root//[$'\r\n']/ }' is not a clean absolute path (components of [A-Za-z0-9._@+-], no trailing slash)" >&2
+    exit 2
+}
+state=${seats_root}/.state
+dest=${state}/claude-token
+
+# The chain, before anything is written (regime-cutover U512b's rule for the key command, kept for the token): each of
+# the seats root and `.state` no symbolic link by lstat on the spelled path, made 0700 under the umask when absent,
+# then a directory of this user; `.state` tightened to 0700 (hcom-seat makes it so; a 0755 one is tightened, not
+# refused). The destination no link and, when present, a regular file of this user.
+umask 077
+# The root's parents (`~/.local/state/omp-seats` on a fresh host, before any seat ran) are made 0700 when absent; the
+# chain this lever judges starts at the root, as hcom-seat's and seat-login-preflight's do.
+if [[ ! -e ${seats_root%/*} ]]; then
+    /bin/mkdir -p -- "${seats_root%/*}" || refuse "cannot create ${seats_root%/*} (nothing written)"
+fi
+for path in "${seats_root}" "${state}"; do
+    [[ ! -L ${path} ]] || refuse "${path} is a symbolic link; the seats root and its .state must be real directories of this user (nothing written)"
+    if [[ ! -e ${path} ]]; then
+        mkdir "${path}" || refuse "cannot create ${path} (nothing written)"
+    fi
+    [[ -d ${path} && -O ${path} ]] || refuse "${path} is not a directory of this user (nothing written)"
+done
+chmod 700 "${state}" || refuse "cannot set the mode of ${state} to 0700 (nothing written)"
+[[ ! -L ${dest} ]] || refuse "${dest} is a symbolic link; the token file must be a regular file of this user (nothing written)"
+[[ ! -e ${dest} ]] || [[ -f ${dest} && -O ${dest} ]] || refuse "${dest} is not a regular file of this user (nothing written)"
+
+# The token, one line from stdin with echo off; the prompt and the newline after the hidden input go to stderr, so
+# stdout carries the result line alone. The status is read (standing order 21): an EOF before a line refuses.
+printf 'token: ' >&2
+IFS= read -rs token || {
+    [[ -n ${token} ]] || {
+        echo >&2
+        refuse 'no token was read (end of input before a line; nothing written)'
+    }
+}
+echo >&2
+# Strip what a terminal adds to a pasted line and never a token's own byte: every CSI sequence (bracketed-paste marks
+# included), a carriage return, and whitespace at either end.
+while [[ ${token} =~ ${CSI_RE} ]]; do
+    token=${token//"${BASH_REMATCH[0]}"/}
+done
+token=${token//$'\r'/}
+token=${token#"${token%%[![:space:]]*}"}
+token=${token%"${token##*[![:space:]]}"}
+count=${#token}
+((count > 0)) || refuse 'the input is empty after stripping (nothing written)'
+[[ ${token} =~ ${TOKEN_FORM_RE} ]] ||
+    refuse "the input (${count} characters after stripping) is not a token of the form sk-ant-oat01-<20 to 255 of [A-Za-z0-9_-]>; the input is never printed (nothing written)"
+
+# The write: an exclusive 0600 temporary beside the destination, renamed over it, so a failure leaves the previous
+# file byte for byte and the token is never in a file another user can read.
+tmp=$(mktemp "${state}/.claude-token.XXXXXX") || refuse "cannot make a temporary file in ${state} (nothing written)"
+[[ ${tmp} == "${state}"/.claude-token.* && ! -L ${tmp} && -f ${tmp} ]] || { # lint-comparisons: allow the temporary's place under the one directory this lever writes
+    rm -f -- "${tmp}" 2> /dev/null || :
+    refuse "mktemp made no regular file under ${state} (nothing written)"
+}
+if ! printf '%s\n' "${token}" > "${tmp}" || ! chmod 600 "${tmp}" || ! mv -f -- "${tmp}" "${dest}"; then
+    rm -f -- "${tmp}" 2> /dev/null || :
+    refuse "cannot write ${dest} (the previous file, if any, is unchanged)"
+fi
+printf 'seat-token-place: placed %s (%s characters, mode 0600)\n' "${dest}" "${count}"

@@ -133,25 +133,30 @@ function setup() {
     [[ "${output}" == *"optional warning: crit --version failed"* ]]
 }
 
-# check_seat_logins (regime-cutover U37, U318, U498): a fake HOME with two seat profiles and a seats root whose login
-# group directory `.state/claude-orchestrator` (the orchestrator profile's group) the pre-flight judges through a fake
-# `claude auth status` (exit `${FAKE_CLAUDE_AUTH_STATUS:-0}`, method `${FAKE_CLAUDE_AUTH_METHOD:-claude.ai}`), so the
-# host's Claude Code never runs.
+# check_seat_logins (regime-cutover U37, U318, U498, U551): a fake HOME with two seat profiles and a seats root whose
+# Claude token file `.state/claude-token` the pre-flight judges by its form alone (no fake `claude`: the lever runs none);
+# `seat_token_place` puts a token of the form there (never a real one, built here), one 0600 line in a 0700 chain.
 function seat_login_home() {
     local home="${BATS_TEST_TMPDIR}/seat"
     mkdir -p "${home}/.agents/omp/profiles" "${BATS_TEST_TMPDIR}/fakebin"
     printf 'modelRoles:\n  default: openai-siwc/gpt-6-astra\n' > "${home}/.agents/omp/profiles/audit.yml"
     printf 'modelRoles:\n  default: claude-bridge/claude-fable-5-2\n' > "${home}/.agents/omp/profiles/orchestrator.yml"
-    printf '#!/bin/sh\nprintf '"'"'{"configDirectory": "%%s", "authMethod": "%%s"}\\n'"'"' "${CLAUDE_CONFIG_DIR-}" "${FAKE_CLAUDE_AUTH_METHOD:-claude.ai}"\nexit "${FAKE_CLAUDE_AUTH_STATUS:-0}"\n' \
-        > "${BATS_TEST_TMPDIR}/fakebin/claude"
-    chmod +x "${BATS_TEST_TMPDIR}/fakebin/claude"
     printf '%s\n' "${home}"
 }
 
-@test "[common] check_seat_logins reports registered and present logins from presence, mtimes and the group directory" {
+function seat_token_place() {
+    local home=$1 token="sk-ant-oat01-FAKETOKENFORTEST00000000000000000000000000000000000000000000"
+    mkdir -p "${home}/seats/.state"
+    chmod 700 "${home}/seats" "${home}/seats/.state"
+    printf '%s\n' "${token}" > "${home}/seats/.state/claude-token"
+    chmod 600 "${home}/seats/.state/claude-token"
+}
+
+@test "[common] check_seat_logins reports a registered login and a present token from presence, mtimes and the file's form" {
     local home
     home="$(seat_login_home)"
-    mkdir -p "${home}/.omp/profiles/audit/agent/openai-siwc" "${home}/seats/.state/claude-orchestrator"
+    seat_token_place "${home}"
+    mkdir -p "${home}/.omp/profiles/audit/agent/openai-siwc"
     printf '{"hostId":"urn:uuid:11111111-1111-4111-8111-111111111111","clientId":"oaiapp_fake"}\n' \
         > "${home}/.omp/profiles/audit/agent/openai-siwc/registration.json"
     printf 'not a database\n' > "${home}/.omp/profiles/audit/agent/agent.db"
@@ -160,11 +165,12 @@ function seat_login_home() {
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins; echo \"failures=\${required_failures} warnings=\${optional_warnings}\""
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"found:   seat login audit openai-siwc: registered (host urn:uuid:11111111-1111-4111-8111-111111111111, client oaiapp_fake), agent.db mtime 20"* ]]
-    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: login present (claude.ai, ${home}/seats/.state/claude-orchestrator)"* ]]
+    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: token present (${home}/seats/.state/claude-token)"* ]]
+    [[ "${output}" != *"FAKETOKENFORTEST"* ]]
     [[ "${output}" == *"failures=0 warnings=0"* ]]
 }
 
-@test "[common] check_seat_logins warns for an absent login without failing" {
+@test "[common] check_seat_logins warns for an absent login and an absent token without failing, naming the steps" {
     local home
     home="$(seat_login_home)"
 
@@ -172,29 +178,33 @@ function seat_login_home() {
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins; echo \"failures=\${required_failures} warnings=\${optional_warnings}\""
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"optional warning: seat login audit openai-siwc: absent (no ${home}/.omp/profiles/audit/agent/openai-siwc/registration.json)"* ]]
-    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: absent (no ${home}/seats/.state/claude-orchestrator)"* ]]
+    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: token absent (no ${home}/seats/.state/claude-token) (place the seats' Claude setup-token on this host (one file for every seat): run claude setup-token in your own terminal, then seat-token-place (handouts/claude-setup-token-u551.md), docs/remote-host-logins.md)"* ]]
     [[ "${output}" == *"failures=0 warnings=2"* ]]
 }
 
-@test "[common] check_seat_logins counts the group directory's claude.ai login alone and never prints a token" {
+@test "[common] check_seat_logins judges the token file by its form alone and never prints the token" {
     local home
     home="$(seat_login_home)"
+    seat_token_place "${home}"
     mkdir -p "${home}/seats/.state/claude-orchestrator" "${home}/.claude"
     printf '{}\n' > "${home}/.claude/.credentials.json"
     chmod 600 "${home}/.claude/.credentials.json"
 
-    # U312, U318, U498: a token variable in the environment and the operator's own ~/.claude are no input; the group
-    # directory's method decides, and a token or key login there is absent.
+    # U312, U318, U551: a token variable in the environment, the operator's own ~/.claude and the group directory's
+    # content are no input; the token file's form decides, and a 0644 file is absent naming its mode.
     run env -u CLAUDE_CONFIG_DIR CLAUDE_CODE_OAUTH_TOKEN=unused-variable-value HOME="${home}" REGIME_SEATS_ROOT="${home}/seats" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins"
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: login present (claude.ai, ${home}/seats/.state/claude-orchestrator)"* ]]
+    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: token present (${home}/seats/.state/claude-token)"* ]]
     [[ "${output}" != *"unused-variable-value"* ]]
+    [[ "${output}" != *"FAKETOKENFORTEST"* ]]
 
-    run env -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CONFIG_DIR FAKE_CLAUDE_AUTH_METHOD=oauth_token HOME="${home}" REGIME_SEATS_ROOT="${home}/seats" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
+    chmod 644 "${home}/seats/.state/claude-token"
+    run env -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CONFIG_DIR HOME="${home}" REGIME_SEATS_ROOT="${home}/seats" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
         bash -c "source '${SCRIPT_PATH}'; check_seat_logins"
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: absent (authMethod oauth_token under ${home}/seats/.state/claude-orchestrator, not claude.ai)"* ]]
+    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: token absent (${home}/seats/.state/claude-token has mode 644, not 0600) (place the seats' Claude setup-token on this host"* ]]
+    [[ "${output}" != *"FAKETOKENFORTEST"* ]]
 }
 
 @test "[common] check_seat_logins fails on an unreadable SIWC record instead of calling it absent" {

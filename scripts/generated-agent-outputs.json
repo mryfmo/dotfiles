@@ -482,7 +482,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "a8928f1b4e677af29fadc3892bc072049dda56c4dd3e786b9a803b0fc7aff1e2"
+      "sha256": "984465439b04e504c59f81390e2e85944f892c1ffd5aea7ea47e803e1753a4e7"
     },
     {
       "source": "home/dot_local/bin/common/executable_intake-observe.py",
@@ -650,7 +650,7 @@
       "target": ".local/bin/common/seat-login-preflight",
       "kind": "file",
       "executable": true,
-      "sha256": "79355bd8f42c0ee21466f6c2d5eb1a3030f8c490dfa619962be99900bd6abffb"
+      "sha256": "09b8409ecb34fe716e1a4cc1aab630bdf2fb4c1916df795e1a833ae5aa717fe0"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-settings-render.sh",

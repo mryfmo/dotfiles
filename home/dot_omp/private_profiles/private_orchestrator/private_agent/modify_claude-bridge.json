@@ -1,0 +1,78 @@
+#!/bin/sh
+# Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.
+# @file home/dot_omp/private_profiles/private_<role>/private_agent/modify_claude-bridge.json
+# @brief Delete the retired claude-keyed row, provider.pathToClaudeCodeExecutable, from ~/.omp/profiles/<role>/agent/claude-bridge.json and keep every other byte.
+# @description
+#   regime-cutover U510 placed the row; U551 and U552 retire it. chezmoi passes the live file on stdin. The
+#   pi-claude-bridge extension reads provider.pathToClaudeCodeExecutable from this file alone (patch 06;
+#   config.ts:61, :110), and the Agent SDK spawned the lever it named, claude-keyed, in place of its bundled
+#   Claude Code; since U551 the seats' credential is the setup-token the seat shim exports and the bundled
+#   binary reads, so the row must go from every deployed file. When the live file names that key and parses
+#   as a JSON object holding it, the key is deleted and the rest written by json.dumps(indent=2) and a
+#   newline, key order kept (a float's form may change, 1e-7 to 1e-07). Otherwise the input passes through
+#   byte for byte, whatever it is (absent, empty, not JSON, a list), so chezmoi apply never clobbers the
+#   bridge's file and never fails on its content; a file that names the key but is no JSON object this
+#   script can read or write passes through with one stderr line naming this file (the operator deletes the
+#   row by hand, handouts/claude-setup-token-u551.md). A second run on this script's output changes nothing,
+#   which is what the output index's modify comparison measures (check-agent-runtime.py). It runs under the
+#   system `python3 -I` with the standard library alone, the kit's baseline, which the apply container has,
+#   and no other tool (U510b). Without python3 it prints one line on stderr and nothing on stdout and exits
+#   1, so chezmoi apply fails naming this file: fail closed, never the override left in place by silence.
+set -eu
+
+if ! command -v python3 > /dev/null 2>&1; then
+    echo "claude-bridge.json: python3 is not on PATH; the apply of this profile's claude-bridge.json fails rather than leave the claude-keyed row in place" >&2
+    exit 1
+fi
+
+merge=$(
+    cat << 'PY'
+import json
+import sys
+
+MANAGED_KEY = "pathToClaudeCodeExecutable"
+
+
+def warn(reason):
+    print(f"claude-bridge.json: {reason}; the file passes through unchanged", file=sys.stderr)
+
+
+def refuse_constant(token):
+    raise ValueError(f"the live file holds {token}, which JSON cannot carry")
+
+
+def without_the_row(raw):
+    """The live file without provider.pathToClaudeCodeExecutable, or None when nothing is to be written."""
+    if MANAGED_KEY.encode("utf-8") not in raw:
+        return None
+    try:
+        data = json.loads(raw.decode("utf-8"), parse_constant=refuse_constant)
+    except (UnicodeDecodeError, ValueError, RecursionError):
+        warn("the live file names the row but is no JSON object this script reads")
+        return None
+    provider = data.get("provider") if isinstance(data, dict) else None
+    if not isinstance(provider, dict) or MANAGED_KEY not in provider:
+        return None
+    del provider[MANAGED_KEY]
+    for ensure_ascii in (False, True):
+        try:
+            text = json.dumps(data, indent=2, ensure_ascii=ensure_ascii, allow_nan=False) + "\n"
+            return text.encode("utf-8")
+        except (UnicodeEncodeError, ValueError, RecursionError):
+            continue
+    warn("the live file holds a value this script cannot write")
+    return None
+
+
+def main():
+    raw = sys.stdin.buffer.read()
+    out = without_the_row(raw)
+    sys.stdout.buffer.write(raw if out is None else out)
+    return 0
+
+
+sys.exit(main())
+PY
+)
+
+exec python3 -I -c "$merge"

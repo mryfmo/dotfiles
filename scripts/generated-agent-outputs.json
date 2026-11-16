@@ -723,6 +723,24 @@
       "sha256": "4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21"
     },
     {
+      "source": "home/dot_omp/private_profiles/private_dsh/private_agent/modify_claude-bridge.json",
+      "target": ".omp/profiles/dsh/agent/claude-bridge.json",
+      "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_omp/private_profiles/private_orchestrator/private_agent/modify_claude-bridge.json",
+      "target": ".omp/profiles/orchestrator/agent/claude-bridge.json",
+      "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_omp/private_profiles/private_worker/private_agent/modify_claude-bridge.json",
+      "target": ".omp/profiles/worker/agent/claude-bridge.json",
+      "kind": "modify",
+      "executable": false
+    },
+    {
       "source": "install/common/aws_cli.sh",
       "target": null
     },

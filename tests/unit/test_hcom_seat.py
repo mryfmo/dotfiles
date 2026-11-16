@@ -1049,10 +1049,12 @@ class HcomSeatTest(SeatFixture):
         """U552 (verdict U552-484346a3 P1 x2): the launcher clears every name that outranks the token in Claude Code's
         credential precedence or redirects the request (ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL,
         the cloud provider selectors, the Anthropic profile and federation names: CREDENTIAL_ENV_NAMES) before its
-        first child, and the shim clears the same list again before its export, so a worker's omp holds the file's
-        token and none of them (round 1 kept them, and an inherited key or gateway URL outranked the token); and
-        `seat_token` is unset before its first assignment, so a caller's exported variable of that name (its export
-        attribute survives a plain assignment) carries the token into neither hcom nor the shim's child."""
+        first child, and the shim clears the same list again before its own first child, the canary under srt (round
+        3, verdict U552-953af858 P2: round 2's shim cleared it after the canary, so a caller's key reached that srt
+        child), so neither the canary nor a worker's omp holds any of them and omp holds the file's token (round 1
+        kept them, and an inherited key or gateway URL outranked the token); and `seat_token` is unset before its
+        first assignment, so a caller's exported variable of that name (its export attribute survives a plain
+        assignment) carries the token into neither hcom nor the shim's child."""
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         names = (
             "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL", "CLAUDE_CODE_USE_BEDROCK",
@@ -1087,9 +1089,28 @@ class HcomSeatTest(SeatFixture):
         self.assertIn('unset "${credential_names[@]}"', shim_text)
         for name in names:
             self.assertIn(name, shim_text)
-        direct = subprocess.run(
-            [str(shim), "--version"], env={**self.env, **caller}, capture_output=True, text=True, check=False
+        # Round 3: the clearing precedes the shim's first child. In the text it stands before the canary's srt line,
+        # and a recorder put in front of srt's argv sees every name unset in both srt runs, the canary (no token
+        # yet: the export follows the judge) and the launch (the file's token).
+        self.assertLess(
+            shim_text.index('unset "${credential_names[@]}"'), shim_text.index("probe=$("), "cleared before the canary"
         )
+        srt_record = self.calls / "srt-credential-env"
+        recorder = self.bindir / "srt-env-recorder"
+        recorder.write_text(
+            f"#!/bin/sh\nprintf '%s\\n' \"{probe} CLAUDE_CODE_OAUTH_TOKEN=${{CLAUDE_CODE_OAUTH_TOKEN-unset}}\""
+            f' >> {shlex.quote(str(srt_record))}\nexec "$@"\n'
+        )
+        recorder.chmod(0o755)
+        self.assertEqual(shim_text.count("srt_cmd=("), 1, shim_text)
+        recording = shim.with_name("omp-srt-recorded")
+        recording.write_text(shim_text.replace("srt_cmd=(", f"srt_cmd=({shlex.quote(str(recorder))} ", 1))
+        recording.chmod(0o755)
+        direct = subprocess.run(
+            [str(recording), "--version"],
+            env={**self.env, **caller, "CLAUDE_CODE_OAUTH_TOKEN": "caller-" + "oauth-value"},
+            capture_output=True, text=True, check=False,
+        )  # fmt: skip
         self.assertEqual(direct.returncode, 0, direct.stderr)
         # The shim clears the credential list, not every caller variable: `seat_token` means nothing to it and rides
         # as any other name would; its clearing is the launcher's, measured through hcom above.
@@ -1098,7 +1119,13 @@ class HcomSeatTest(SeatFixture):
             omp_record.read_text(),
             f"{names_unset} seat_token={caller['seat_token']} CLAUDE_CODE_OAUTH_TOKEN={FAKE_OAT}\n",
         )
-        for value in caller.values():
+        self.assertEqual(
+            srt_record.read_text(),
+            f"{names_unset} seat_token={caller['seat_token']} CLAUDE_CODE_OAUTH_TOKEN=unset\n"
+            f"{names_unset} seat_token={caller['seat_token']} CLAUDE_CODE_OAUTH_TOKEN={FAKE_OAT}\n",
+            "the canary's srt holds no credential name and no token; the launch's holds the file's token alone",
+        )
+        for value in (*caller.values(), "caller-" + "oauth-value"):
             self.assertNotIn(value, run.stdout + run.stderr + direct.stdout + direct.stderr + shim_text)
 
     def test_a_failing_producer_in_the_token_judge_or_the_shim_refuses_instead_of_deciding(self):

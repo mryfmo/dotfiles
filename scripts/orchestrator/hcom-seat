@@ -254,7 +254,9 @@ PATH=${system_path}
 # verdict U552-484346a3 P1: an inherited ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL reached a
 # worker's omp beside the token): the API key and the gateway bearer token, the base URL, the cloud provider selectors,
 # the Anthropic profile and the workload identity federation names (Claude Code's Environment variables and
-# Authentication pages as read on 2026-11-16). One list, cleared here and again inside the shim, whose text carries it.
+# Authentication pages as read on 2026-11-16). One list, cleared here and again inside the shim, whose text carries it,
+# before the shim's first child, its canary (U552 round 3, verdict U552-953af858 P2: the shim cleared the list after
+# the canary had run under srt, so a caller's key reached that child; now nothing but PATH precedes the clearing).
 CREDENTIAL_ENV_NAMES=(
     CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL
     CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX CLAUDE_CODE_USE_FOUNDRY CLAUDE_CODE_USE_MANTLE
@@ -3407,6 +3409,11 @@ seat_sandbox_write() {
         printf 'outer_path=%q seat_path=%q\n' "${sandbox_real}/bin:${PATH}" "${seat_path}"
         cat << 'SHIM'
 export PATH=${outer_path}
+# Every name that outranks the token or redirects the request is cleared before the shim's first child, the canary
+# (U552: the list hcom-seat holds, which cleared it before its own first child; U552 round 3, verdict U552-953af858 P2:
+# the shim's clearing stood after the canary, so a caller's ANTHROPIC_API_KEY rode into that srt child), so nothing of
+# the shim's caller rides beside the file's line into any process the shim starts.
+unset "${credential_names[@]}"
 /bin/rm -f "${canary}" || { echo "hcom-seat shim: cannot clear ${canary}" >&2; exit 2; }
 # `true`, not `:`: a failed redirection on a special builtin ends a POSIX shell (dash, Ubuntu's /bin/sh).
 # The fourth probe (regime-cutover U190b) opens a file under the operator's ~/.claude/debug, which srt 0.0.81 grants on
@@ -3437,12 +3444,10 @@ export CLAUDE_CONFIG_DIR=${claude_config}
 # into the one name Claude Code reads a long-lived token from, and exported so omp, the bridge and its Claude Code
 # child inherit it; the file itself is denied inside the sandbox, so no process there reads or rewrites it, and this
 # shim is the one exporter (U312's rule: a caller's value is no input and was cleared by hcom-seat before any child).
-# Every name that outranks the token or redirects the request is cleared again here (U552: the list hcom-seat holds),
-# so nothing of the shim's caller rides beside the file's line. The file is judged as token_file_check judged it at
-# the launch (U552, verdict U552-484346a3 P2: the shim read the first line of any regular file, so a file made 0644 or
-# given a second line after the launch still started omp): lstat, a regular file of this user, mode 0600, one line
-# ending in one line feed, the form; a refusal names the file and never its content.
-unset "${credential_names[@]}"
+# The file is judged as token_file_check judged it at the launch (U552, verdict U552-484346a3 P2: the shim read the
+# first line of any regular file, so a file made 0644 or given a second line after the launch still started omp):
+# lstat, a regular file of this user, mode 0600, one line ending in one line feed, the form; a refusal names the file
+# and never its content. The credential names were cleared above, before the canary.
 if [[ -L ${token_file} || ! -f ${token_file} ]]; then
     echo "hcom-seat shim: the seats' Claude token file ${token_file} is absent, a link or no regular file; ${tool} not started (handouts/claude-setup-token-u551.md)" >&2
     exit 2

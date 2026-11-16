@@ -113,7 +113,11 @@
 #   alone. Every role's settings deny the token file for read and for write, so no process inside the sandbox reads
 #   or rewrites it (measured: the Claude child starts and answers with the file denied, since the value rides in its
 #   environment). A caller's CLAUDE_CODE_OAUTH_TOKEN is no input (U312): the name is cleared before the first child
-#   and the shim exports the file's line alone.
+#   and the shim exports the file's line alone; with it goes every name that outranks the token in Claude Code's
+#   credential precedence or redirects the request (ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, the
+#   cloud provider selectors, the Anthropic profile and federation names: CREDENTIAL_ENV_NAMES, one list cleared
+#   before the first child and again inside the shim, U552), and `seat_token` is unset before its first assignment so
+#   no caller's export attribute carries the token into a child.
 #   The seat's Claude Code directory (regime-cutover U318, U314 alternative A; per login group since U498): every
 #   seat's bridge child and the dsh role's gateway child run with `CLAUDE_CONFIG_DIR=<seats-root>/.state/claude-<group>`,
 #   one directory per login group under the seats root, holding the child's `.claude.json`, state and sessions and
@@ -245,8 +249,19 @@ system_path=/usr/bin:/bin:/usr/sbin:/sbin
 PATH=${system_path}
 # A caller's CLAUDE_CODE_OAUTH_TOKEN is no input to any child of this launcher (regime-cutover U312, U318; Codex P2 on
 # PR 712): the seats' token comes from the token file alone (U551), read by the shim, so the name goes before the first
-# child process (the preflight, srt's version read, hcom, herdr, the shim's canary), not only inside the shim.
-unset CLAUDE_CODE_OAUTH_TOKEN
+# child process (the preflight, srt's version read, hcom, herdr, the shim's canary), not only inside the shim. With it
+# goes every name that outranks the token in Claude Code's credential precedence or redirects the request (U552,
+# verdict U552-484346a3 P1: an inherited ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or ANTHROPIC_BASE_URL reached a
+# worker's omp beside the token): the API key and the gateway bearer token, the base URL, the cloud provider selectors,
+# the Anthropic profile and the workload identity federation names (Claude Code's Environment variables and
+# Authentication pages as read on 2026-11-16). One list, cleared here and again inside the shim, whose text carries it.
+CREDENTIAL_ENV_NAMES=(
+    CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL
+    CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX CLAUDE_CODE_USE_FOUNDRY CLAUDE_CODE_USE_MANTLE
+    CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD ANTHROPIC_PROFILE ANTHROPIC_FEDERATION_RULE_ID ANTHROPIC_ORGANIZATION_ID
+    ANTHROPIC_WORKSPACE_ID
+)
+unset "${CREDENTIAL_ENV_NAMES[@]}"
 # Git is steered by no inherited environment (regime-cutover U85): every `GIT_*` variable the caller exported
 # (GIT_DIR, GIT_COMMON_DIR, GIT_WORK_TREE, GIT_CONFIG_* and the rest) is removed before the first git command, so host
 # git, and the seat, find the repository from the working directory alone. hcom-seat takes no input that way.
@@ -550,6 +565,10 @@ LOGIN_GROUPS=(worker orchestrator audit router)
 # and acp-broker (the tests hold the four equal); the file that holds it is the role table's `token_file` row, judged
 # by token_file_check, which holds the line in `seat_token` for the ACP broker's start line and nothing else.
 TOKEN_FORM_RE='^sk-ant-oat01-[A-Za-z0-9_-]{20,255}$'
+# `seat_token` is unset before its first assignment (U552, verdict U552-484346a3 P1): a caller's exported variable of
+# that name keeps its export attribute through a plain assignment, and the token would ride into hcom, herdr and the
+# shim's canary; unset, the name is this shell's alone and reaches the broker's start line as an assignment, nothing else.
+unset seat_token
 seat_token=''
 # The role table (regime-cutover U272, U321): every difference between the roles is a row read here or in the places
 # keyed on the role below (the directory row, seat_write_roots, the deny row before the overlap check and the judge
@@ -3376,6 +3395,12 @@ seat_sandbox_write() {
         printf 'settings=%q canary=%q state=%q claude_config=%q token_file=%q token_form=%q push_url=%q sandbox=%q\n' \
             "${settings}" "${sandbox_real}/canary" "${sandbox_state}" "${claude_config_real}" "${token_file_real}" \
             "${TOKEN_FORM_RE}" "${push_url}" "${sandbox_real}"
+        # The shim judges the file as token_file_check does and clears the same credential names (U552): the stat mode
+        # arguments of this host and the one list ride into the shim text, so the two judges and the two clearings are
+        # one text each.
+        printf -v names_q '%q ' "${CREDENTIAL_ENV_NAMES[@]}"
+        printf -v mode_q '%q ' "${mode_args[@]}"
+        echo "credential_names=(${names_q}) mode_args=(${mode_q})"
         printf 'debug_canary=%q\n' "${h}/.claude/debug/hcom-seat-canary"
         # Outside the sandbox the shim and srt look up only in the private tool directory and the system directories;
         # inside it omp gets the seat's working PATH, applied by /usr/bin/env under srt.
@@ -3412,11 +3437,27 @@ export CLAUDE_CONFIG_DIR=${claude_config}
 # into the one name Claude Code reads a long-lived token from, and exported so omp, the bridge and its Claude Code
 # child inherit it; the file itself is denied inside the sandbox, so no process there reads or rewrites it, and this
 # shim is the one exporter (U312's rule: a caller's value is no input and was cleared by hcom-seat before any child).
-# The line is held to the token's form before anything starts; a refusal names the file and never its content.
+# Every name that outranks the token or redirects the request is cleared again here (U552: the list hcom-seat holds),
+# so nothing of the shim's caller rides beside the file's line. The file is judged as token_file_check judged it at
+# the launch (U552, verdict U552-484346a3 P2: the shim read the first line of any regular file, so a file made 0644 or
+# given a second line after the launch still started omp): lstat, a regular file of this user, mode 0600, one line
+# ending in one line feed, the form; a refusal names the file and never its content.
+unset "${credential_names[@]}"
 if [[ -L ${token_file} || ! -f ${token_file} ]]; then
     echo "hcom-seat shim: the seats' Claude token file ${token_file} is absent, a link or no regular file; ${tool} not started (handouts/claude-setup-token-u551.md)" >&2
     exit 2
 fi
+if [[ ! -O ${token_file} ]]; then
+    echo "hcom-seat shim: the seats' Claude token file ${token_file} is not this user's; ${tool} not started" >&2
+    exit 2
+fi
+mode=$(/usr/bin/stat "${mode_args[@]}" -- "${token_file}") || { echo "hcom-seat shim: cannot read the mode of the seats' Claude token file ${token_file}; ${tool} not started" >&2; exit 2; }
+if [[ ${mode} != 600 ]]; then # lint-comparisons: allow a mode word from stat, no path compare
+    echo "hcom-seat shim: the seats' Claude token file ${token_file} has mode ${mode}, not 0600; ${tool} not started" >&2
+    exit 2
+fi
+size=$(/usr/bin/wc -c < "${token_file}") || { echo "hcom-seat shim: cannot read the size of the seats' Claude token file ${token_file}; ${tool} not started" >&2; exit 2; }
+size=${size//[[:space:]]/}
 # The first line by a checked producer (no `read < file`, whose failure a fallback can mask; the marker keeps the
 # trailing line feed through the substitution): the line must end in a line feed, as seat-token-place writes it.
 CLAUDE_CODE_OAUTH_TOKEN=$(/usr/bin/head -n 1 -- "${token_file}" && printf .) || { echo "hcom-seat shim: cannot read the seats' Claude token file ${token_file}; ${tool} not started" >&2; exit 2; }
@@ -3428,6 +3469,10 @@ fi
 CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN%$'\n'}
 if [[ ! ${CLAUDE_CODE_OAUTH_TOKEN} =~ ${token_form} ]]; then
     echo "hcom-seat shim: the seats' Claude token file ${token_file} holds no token of the form ${token_form} (the content is never printed); ${tool} not started" >&2
+    exit 2
+fi
+if ((size != ${#CLAUDE_CODE_OAUTH_TOKEN} + 1)); then
+    echo "hcom-seat shim: the seats' Claude token file ${token_file} holds more than its one line (a second line, a carriage return or other bytes beyond the token); ${tool} not started" >&2
     exit 2
 fi
 export CLAUDE_CODE_OAUTH_TOKEN

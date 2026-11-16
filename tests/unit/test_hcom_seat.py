@@ -879,7 +879,8 @@ class HcomSeatTest(SeatFixture):
         Claude Code child under it) holds the file's line; the shim text names the file and never the token, and the
         canary runs before the export. U312: a CLAUDE_CODE_OAUTH_TOKEN in the caller's environment is no input, at a
         launch and when the shim runs directly: the child holds the file's line, never the caller's value. A shim run
-        after the file is gone starts nothing and names the file."""
+        after the file is gone starts nothing and names the file; since U552 the shim judges the file as the launch did
+        (verdict U552-484346a3 P2), so a file made 0644 or given a second line after the launch starts nothing either."""
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         record = self.plant_claude_env_recorder()
         caller = "fake-" + "caller-value-u190"
@@ -923,6 +924,22 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual((off.returncode, off.stdout), (2, ""), off.stderr)
         self.assertIn(f"the seats' Claude token file {self.token_file} holds no token of the form", off.stderr)
         self.assertNotIn("not-a-" + "token-u551", off.stderr)
+        self.assertEqual(len(record.read_text().splitlines()), lines, "no omp ran")
+        # U552: the shim's own judge is the launch's: a file made 0644 or given a second line after the launch starts
+        # nothing and names the fault, never the content.
+        self.place_token()
+        self.token_file.chmod(0o644)
+        wide = subprocess.run([str(shim), "--version"], env=env, capture_output=True, text=True, check=False)
+        self.assertEqual((wide.returncode, wide.stdout), (2, ""), wide.stderr)
+        self.assertEqual(
+            wide.stderr,
+            f"hcom-seat shim: the seats' Claude token file {self.token_file} has mode 644, not 0600; omp not started\n",
+        )
+        self.place_token(content=FAKE_OAT + "\nsecond")
+        two = subprocess.run([str(shim), "--version"], env=env, capture_output=True, text=True, check=False)
+        self.assertEqual((two.returncode, two.stdout), (2, ""), two.stderr)
+        self.assertIn(f"the seats' Claude token file {self.token_file} holds more than its one line", two.stderr)
+        self.assertNotIn(FAKE_OAT, wide.stderr + two.stderr)
         self.assertEqual(len(record.read_text().splitlines()), lines, "no omp ran")
 
     def test_a_seat_without_the_token_file_starts_nothing(self):
@@ -1027,6 +1044,125 @@ class HcomSeatTest(SeatFixture):
         shared = str(Path(self.seats, ".state/claude-worker"))
         self.assertFalse(self.claude_calls.exists(), "no claude runs")
         self.assertNotIn(caller, run.stdout + run.stderr)
+
+    def test_a_callers_credential_names_and_an_exported_seat_token_reach_no_child(self):
+        """U552 (verdict U552-484346a3 P1 x2): the launcher clears every name that outranks the token in Claude Code's
+        credential precedence or redirects the request (ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL,
+        the cloud provider selectors, the Anthropic profile and federation names: CREDENTIAL_ENV_NAMES) before its
+        first child, and the shim clears the same list again before its export, so a worker's omp holds the file's
+        token and none of them (round 1 kept them, and an inherited key or gateway URL outranked the token); and
+        `seat_token` is unset before its first assignment, so a caller's exported variable of that name (its export
+        attribute survives a plain assignment) carries the token into neither hcom nor the shim's child."""
+        (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
+        names = (
+            "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL", "CLAUDE_CODE_USE_BEDROCK",
+            "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY", "CLAUDE_CODE_USE_MANTLE",
+            "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD", "ANTHROPIC_PROFILE", "ANTHROPIC_FEDERATION_RULE_ID",
+            "ANTHROPIC_ORGANIZATION_ID", "ANTHROPIC_WORKSPACE_ID",
+        )  # fmt: skip
+        text = SEAT.read_text()
+        start = text.index("CREDENTIAL_ENV_NAMES=(")
+        listed = text[start : text.index("\n)\n", start)].replace("\n", " ")
+        for name in ("CLAUDE_CODE_OAUTH_TOKEN", *names):
+            self.assertIn(f" {name}", listed, "the one list names it")
+        probed = (*names, "seat_token")
+        caller = {name: f"caller-{name.lower()}" for name in probed}
+        probe = " ".join(f"{name}=${{{name}-unset}}" for name in probed)
+        unset = " ".join(f"{name}=unset" for name in probed)
+        hcom_record = self.calls / "hcom-credential-env"
+        (self.bindir / "hcom").write_text(f"#!/bin/sh\nprintf '%s\\n' \"{probe}\" >> {shlex.quote(str(hcom_record))}\n")
+        # The omp recorder is planted before the launch, which pins the fake's interpreter line into the shim.
+        omp_record = self.calls / "omp-credential-env"
+        (self.bindir / "omp").write_text(
+            f"#!/bin/sh\nprintf '%s\\n' \"{probe} CLAUDE_CODE_OAUTH_TOKEN=${{CLAUDE_CODE_OAUTH_TOKEN-unset}}\""
+            f" >> {shlex.quote(str(omp_record))}\n"
+        )
+        run = self.seat("worker", "--seats-root", self.seats, **caller)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(hcom_record.read_text(), unset + "\n", "nothing of the list reaches the launcher's child")
+        # The shim, run directly with the same caller environment: the child holds the file's token and none of them.
+        shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        shim_text = shim.read_text()
+        self.assertIn("credential_names=(", shim_text, "the list rides into the shim")
+        self.assertIn('unset "${credential_names[@]}"', shim_text)
+        for name in names:
+            self.assertIn(name, shim_text)
+        direct = subprocess.run(
+            [str(shim), "--version"], env={**self.env, **caller}, capture_output=True, text=True, check=False
+        )
+        self.assertEqual(direct.returncode, 0, direct.stderr)
+        # The shim clears the credential list, not every caller variable: `seat_token` means nothing to it and rides
+        # as any other name would; its clearing is the launcher's, measured through hcom above.
+        names_unset = " ".join(f"{name}=unset" for name in names)
+        self.assertEqual(
+            omp_record.read_text(),
+            f"{names_unset} seat_token={caller['seat_token']} CLAUDE_CODE_OAUTH_TOKEN={FAKE_OAT}\n",
+        )
+        for value in caller.values():
+            self.assertNotIn(value, run.stdout + run.stderr + direct.stdout + direct.stderr + shim_text)
+
+    def test_a_failing_producer_in_the_token_judge_or_the_shim_refuses_instead_of_deciding(self):
+        """U552 (verdict U552-484346a3 P2; standing order 21): the three producers of token_file_check (stat for the
+        mode, wc for the size, head for the line) and the shim's same three are checked: one that prints a plausible
+        answer and fails refuses the launch, or starts nothing, naming the file and the failed read, never deciding
+        on the plausible output and never printing the content; the judge as written passes the file in place."""
+        text = SEAT.read_text()
+        start = text.index("token_file_check() {")
+        judge = text[start : text.index("\n}\n", start) + 3]
+        fakes = Path(self.temp.name).resolve() / "failing"
+        fakes.mkdir()
+
+        def fake(name, body):
+            path = fakes / name
+            path.write_text(f"#!/bin/sh\n{body}\n")
+            path.chmod(0o755)
+            return str(path)
+
+        def judge_script(replace=None):
+            body = judge if replace is None else judge.replace(*replace)
+            mode_args = "(-L -f '%Lp')" if sys.platform == "darwin" else "(-L -c '%a')"
+            return (
+                'set -euo pipefail\nrefuse() { echo "hcom-seat: $*" >&2; exit 2; }\n'
+                f"mode_args={mode_args}\nTOKEN_FORM_RE='^sk-ant-oat01-[A-Za-z0-9_-]{{20,255}}$'\n"
+                f"token_file={shlex.quote(str(self.token_file))}\n{body}\ntoken_file_check\necho decided\n"
+            )
+
+        cases = {
+            "/usr/bin/stat": (fake("stat-fail", "echo 600\nexit 7"), "cannot read the mode of the seats' Claude token file"),
+            "/usr/bin/wc": (fake("wc-fail", f"echo {len(FAKE_OAT) + 1}\nexit 7"), "cannot read the size of the seats' Claude token file"),
+            "/usr/bin/head": (fake("head-fail", '/usr/bin/head "$@"\nexit 7'), "cannot read the seats' Claude token file"),
+        }  # fmt: skip
+        run = subprocess.run(["/bin/bash", "-c", judge_script()], capture_output=True, text=True, check=False)
+        self.assertEqual((run.returncode, run.stdout), (0, "decided\n"), run.stderr)
+        for real, (stand_in, message) in cases.items():
+            with self.subTest(producer=real, judge="token_file_check"):
+                self.assertIn(real, judge, "the judge runs the producer by its absolute path")
+                run = subprocess.run(
+                    ["/bin/bash", "-c", judge_script((real, stand_in))], capture_output=True, text=True, check=False
+                )
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stdout + run.stderr)
+                self.assertIn(f"{message} {self.token_file}", run.stderr)
+                self.assertNotIn(FAKE_OAT, run.stderr)
+        # The shim, generated by a launch, then run with each producer replaced by its failing stand-in.
+        (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
+        record = self.plant_claude_env_recorder()
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        lines = len(record.read_text().splitlines())
+        for real, (stand_in, message) in cases.items():
+            with self.subTest(producer=real, judge="shim"):
+                self.assertIn(real, shim.read_text(), "the shim runs the producer by its absolute path")
+                injected = shim.with_name("omp-injected")
+                injected.write_text(shim.read_text().replace(real, stand_in))
+                injected.chmod(0o755)
+                result = subprocess.run(
+                    [str(injected), "--version"], env=self.env, capture_output=True, text=True, check=False
+                )
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stderr)
+                self.assertEqual(result.stderr, f"hcom-seat shim: {message} {self.token_file}; omp not started\n")
+                self.assertNotIn(FAKE_OAT, result.stderr)
+                self.assertEqual(len(record.read_text().splitlines()), lines, "no omp ran")
 
     def test_every_role_gets_its_login_groups_claude_code_directory_whose_configuration_no_seat_can_change(self):
         """U498 (one login per seat group, replacing U318's one directory per seats root): the bridge child of a seat

@@ -2788,6 +2788,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_seat-token-place/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_seat-token-place
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
         
   
@@ -6325,19 +6353,21 @@ comes from an extension that <code>omp.extensions</code> does not list.</p>
 <code>&lt;seats-root&gt;/.state/claude</code> (<code>~/.local/state/omp-seats/&lt;slug&gt;/.state/claude</code>), which
 <code>hcom-seat</code>'s shim exports (regime-cutover U190, U318), so its <code>.claude.json</code>, projects,
 sessions, backups and plugins land in the seats' shared directory and never in the
-operator's <code>~/.claude</code> or <code>~/.claude.json</code>. It logs in by that directory's own
-claude.ai login: one per host, made once by the operator with the command the
-pre-flight prints, <code>CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth login</code> (after
-<code>BROWSER=regime-open-url</code> on a seat host reached over SSH, where the page shows a code
-to paste at the prompt), stored by Claude Code itself (the Keychain item keyed to the
-directory on macOS, <code>.credentials.json</code> 0600 there on Linux), refreshed by Claude Code
-across the seats that share it, and revoked with <code>CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth
-logout</code>. No token: <code>claude setup-token</code>, its yearly plaintext token and the token file
-are retired (U314 measured them against the documented login routes; U318), the shim
-clears <code>CLAUDE_CODE_OAUTH_TOKEN</code>, and a caller's variable is no input (U312).
-<code>seat-login-preflight &lt;role&gt;</code> judges <code>claude auth status</code> under the directory and
-starts no seat without <code>authMethod</code> <code>claude.ai</code> there; a <code>oauth_token</code> or <code>api_key</code>
-method, or the operator's host login alone, is reported absent with the command.
+operator's <code>~/.claude</code> or <code>~/.claude.json</code>. It runs on the seats' one long-lived
+<code>claude setup-token</code> token (regime-cutover U551), <code>CLAUDE_CODE_OAUTH_TOKEN</code> in its
+environment: the seat shim reads the one line of <code>&lt;seats-root&gt;/.state/claude-token</code>
+(a 0600 file the operator places with <code>seat-token-place</code> after <code>claude setup-token</code> in
+their own terminal) outside the sandbox and exports it, and the child inherits it
+through omp and the bridge; the file itself is denied inside the sandbox (measured: the
+child starts and answers with the file denied). A setup-token has no refresh token, so
+the rotation that revoked the seats' claude.ai login eight times (U318's shared login,
+renewed inside srt where the Keychain is readable but not writable) cannot occur; it is
+revoked by signing out of the account's sessions. The directory holds no login:
+<code>claude auth login</code> under it, the API key route (U510, U512) and the operator's host
+login are no input, and a caller's <code>CLAUDE_CODE_OAUTH_TOKEN</code> is no input either (U312).
+<code>seat-login-preflight &lt;role&gt;</code> judges the token file by its form and starts no seat
+without it, printing the two steps; hcom-seat judges the same file before anything is
+made.
 Measured 2026-11-05 (Claude Code 2.1.316): a scratch <code>CLAUDE_CONFIG_DIR</code> with the host
 Keychain item and credentials file present answers <code>Not logged in</code>, so the child cannot
 borrow a host login; measured 2026-11-06: the laptop's Keychain held only the default

@@ -2733,6 +2733,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_seat-token-place/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_seat-token-place
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
         
   
@@ -6125,10 +6153,10 @@
 </tr>
 <tr>
 <td>3</td>
-<td>then the seat login once per login group that runs on that host, typed in the operator's own terminal (U318, per group since U498): <code>seat-login-preflight orchestrator</code> and <code>seat-login-preflight worker</code> each print their group's command, <code>CLAUDE_CONFIG_DIR=&lt;seats-root&gt;/.state/claude-&lt;group&gt;</code> <code>claude auth login</code> (with <code>BROWSER=regime-open-url</code> on the Ubuntu seat host, where the sign-in opens in the laptop's browser and shows a code to paste at the prompt), and refuse until that login is there; the Router's group <code>router</code> (the <code>dsh</code> and <code>router</code> roles, whose gateway child is the Router's) is logged in the same way under <code>.state/claude-router</code>, the directory <code>hcom-seat router --dry-run</code> prints; a present login makes the lever report <code>login present (claude.ai, &lt;dir&gt;)</code> and exit 0. The legacy shared <code>.state/claude</code> (U318) is read by no seat: remove it once every running group is logged in. Anywhere else (a seat, a script) the lever prints the command and refuses</td>
-<td><code>make doctor</code> exit 0 on that host: <code>scripts/check-tools.sh</code> prints the section <code>Seat logins</code> with one line <code>found:   seat login &lt;profile&gt; &lt;route&gt;: &lt;state&gt;</code> per deployed seat profile, each naming its group's directory, an absent login as an optional warning naming the command to type, and the line <code>Tool check summary: required failures: 0; optional warnings: &lt;n&gt;</code>; <code>scripts/check-agent-runtime.py</code> prints <code>active agent runtime files match this chezmoi source tree</code>; the Makefile prints <code>Doctor summary: tools=passed; runtime=passed</code></td>
-<td><code>scripts/orchestrator/seat-login-preflight</code> (the header: the login is the operator's step, the per-group directory and the printed command; <code>login_group_of_role</code>, the table; <code>claude_login_refuse</code>, the refusal and the legacy note), <code>scripts/orchestrator/hcom-seat</code> (<code>login_group_of_role</code> and the <code>claude_config</code> row); <a href="../remote-host-logins/"><code>docs/remote-host-logins.md</code></a> line 15 (the Claude route; the bridge child uses its login group's login); <code>README.md:107-111</code> (the Ubuntu steps); the check: <code>Makefile:167-185</code>, <code>scripts/check-tools.sh</code> (<code>check_seat_logins</code>: the section, the <code>found</code> line, the warning), <code>scripts/check-agent-runtime.py:1460</code>, <code>Makefile:184</code></td>
-<td><code>operator-only: a login needs the operator's terminal and browser, and the lever refuses anywhere else; make doctor per host is the coordinator's measured run in the table of the last section</code></td>
+<td>then the seats' Claude credential once per host, typed in the operator's own terminal (regime-cutover U551): run <code>claude setup-token</code> on the laptop (the browser opens; sign in; the token prints once), then <code>seat-token-place</code> on the seat host, which prompts <code>token:</code>, reads the pasted line unechoed, holds it to the token's form and writes <code>&lt;seats-root&gt;/.state/claude-token</code> (0600) for every seat of that host, printing the character count and never the token (the handout <code>handouts/claude-setup-token-u551.md</code> in the program store). A setup-token has no refresh, so no renewal can revoke it; the login group directories <code>.state/claude-&lt;group&gt;</code> hold the children's own state and no login. The SIWC route (the audit profile) keeps its per-host login: <code>seat-login-preflight audit</code> runs it in the operator's terminal. Anywhere else (a seat, a script) the lever prints the two steps and refuses</td>
+<td><code>make doctor</code> exit 0 on that host: <code>scripts/check-tools.sh</code> prints the section <code>Seat logins</code> with one line <code>found:   seat login &lt;profile&gt; &lt;route&gt;: &lt;state&gt;</code> per deployed seat profile, the Claude lines reading <code>token present (&lt;seats-root&gt;/.state/claude-token)</code>, an absent token or SIWC login as an optional warning naming the step to take, and the line <code>Tool check summary: required failures: 0; optional warnings: &lt;n&gt;</code>; <code>scripts/check-agent-runtime.py</code> prints <code>active agent runtime files match this chezmoi source tree</code>; the Makefile prints <code>Doctor summary: tools=passed; runtime=passed</code></td>
+<td><code>scripts/orchestrator/seat-login-preflight</code> (the header: the token file judged by its form, <code>claude_token_state</code>; <code>claude_token_refuse</code>, the two steps), <code>scripts/orchestrator/seat-token-place</code> (the placer), <code>scripts/orchestrator/hcom-seat</code> (<code>token_file_check</code> and the shim's one export); <a href="../remote-host-logins/"><code>docs/remote-host-logins.md</code></a> (the Claude route: the seats' setup-token); <code>README.md</code> (the Ubuntu steps); the check: <code>scripts/check-tools.sh</code> (<code>check_seat_logins</code>: the section, the <code>found</code> line, the warning), <code>scripts/check-agent-runtime.py</code></td>
+<td><code>operator-only: the token prints in the operator's browser session and is pasted into the placer in their terminal; the lever refuses anywhere else; make doctor per host is the coordinator's measured run in the table of the last section</code></td>
 </tr>
 </tbody>
 </table>

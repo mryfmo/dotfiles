@@ -2641,6 +2641,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_seat-token-place/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_seat-token-place
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
         
   
@@ -5988,8 +6016,11 @@ file and <code>~/.ssh</code>, a write under the operator's <code>~/.claude/debug
 inside) and only then execs <code>srt --settings &lt;file&gt; -- /usr/bin/env PATH=&lt;seat
 path&gt; &lt;DSH_HOME&gt;/bin/dsh [--profile &lt;name&gt;] &lt;args&gt;</code>; the lever runs that shim
 in the foreground under <code>/usr/bin/env -i</code> with <code>HOME</code>, <code>USER</code>, <code>LANG</code>, <code>TERM</code>,
-<code>PATH</code>, <code>DSH_HOME</code>, <code>OMP_PROFILE</code> and a caller's <code>CLAUDE_CODE_OAUTH_TOKEN</code>
-alone, waits, removes the per-launch slots and returns dsh's status; a hangup,
+<code>PATH</code>, <code>DSH_HOME</code>, <code>OMP_PROFILE</code> and <code>CLAUDE_CONFIG_DIR</code> alone (the shim adds its
+own exports, the seats' <code>claude setup-token</code> read from
+<code>&lt;seats-root&gt;/.state/claude-token</code> among them, U551; a caller's
+<code>CLAUDE_CODE_OAUTH_TOKEN</code> is no input), waits, removes the per-launch slots and
+returns dsh's status; a hangup,
 interrupt or termination runs the same removal before the lever ends by that
 signal. Before the launch the lever places the kit's rendered overlay
 <code>~/.agents/omp/profiles/dsh.yml</code> (the bridge route as <code>modelRoles.default</code>,

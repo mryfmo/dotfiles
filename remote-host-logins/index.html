@@ -2722,6 +2722,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_seat-token-place/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_seat-token-place
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
         
   
@@ -6074,11 +6102,13 @@
 
 <h1 id="seat-logins-on-a-remote-host">Seat logins on a remote host<a class="headerlink" href="#seat-logins-on-a-remote-host" title="Permanent link">&para;</a></h1>
 <p>regime-cutover U37. The laptop (macOS: Ghostty, herdr, omp) reaches the Ubuntu host with
-<code>herdr --remote &lt;ssh-target&gt;</code> over SSH inside the tailnet. omp seats run on Ubuntu, but the Claude and
-ChatGPT sign-ins end in a browser consent, and the browser is on the laptop. A login is per host:
-each host signs in once, keeps its own tokens and refreshes them, and nothing copies a token between
-hosts. SIWC refresh tokens rotate, so one session cannot serve two hosts. The human acts are the
-consent click and, for Claude, pasting a code.</p>
+<code>herdr --remote &lt;ssh-target&gt;</code> over SSH inside the tailnet. omp seats run on Ubuntu, but the ChatGPT
+sign-in ends in a browser consent, and the browser is on the laptop; the Claude route runs on a
+<code>claude setup-token</code> token the operator makes in their own terminal and places on each host (U551).
+A login is per host: each host signs in once, keeps its own tokens and refreshes them, and nothing
+copies a token between hosts; the setup-token is made and placed once per host too. SIWC refresh
+tokens rotate, so one session cannot serve two hosts. The human acts are the consent click and, for
+Claude, running <code>claude setup-token</code> and pasting its one line at <code>seat-token-place</code>'s prompt.</p>
 <h2 id="routes">Routes<a class="headerlink" href="#routes" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6096,8 +6126,8 @@ consent click and, for Claude, pasting a code.</p>
 </tr>
 <tr>
 <td>Claude (<code>claude-bridge</code>, the <code>orchestrator</code> and <code>worker</code> profiles; every seat's bridge child and the dsh role's gateway child run under their login group's <code>CLAUDE_CONFIG_DIR</code>, U318, one directory per group since U498)</td>
-<td><code>&lt;seats-root&gt;/.state/claude-&lt;group&gt;</code> (<code>~/.local/state/omp-seats/&lt;slug&gt;/.state/claude-&lt;group&gt;</code>, a 0700 directory the kit makes; the group is the role table's <code>login_group_of_role</code>, the same text in <code>hcom-seat</code> and the pre-flight: <code>worker</code>, <code>orchestrator</code> and <code>audit</code> each their own, <code>router</code> for the dsh and router roles): one claude.ai login per group per host, stored and refreshed by Claude Code itself (the Keychain item keyed to that directory on macOS, its <code>.credentials.json</code> 0600 there on Linux), so two groups rotate no refresh token together; never the operator's <code>~/.claude</code>, the Keychain item of the default directory or a <code>CLAUDE_CODE_OAUTH_TOKEN</code> (U312: no shell exports one, and a variable in the environment is no input); the legacy shared <code>.state/claude</code> (U318) is read by no seat</td>
-<td><code>BROWSER=regime-open-url CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth login</code> on the seat host, the command the pre-flight prints for the group: the callback port is random, so the laptop browser shows a code to paste at the prompt. Once per running group per host; <code>CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth logout</code> revokes it.</td>
+<td><code>&lt;seats-root&gt;/.state/claude-token</code> (<code>~/.local/state/omp-seats/&lt;slug&gt;/.state/claude-token</code>): the seats' one Claude credential (U551), a 0600 file of one line, the long-lived token <code>claude setup-token</code> prints, placed by the operator with <code>seat-token-place</code>; it has no refresh token, so nothing rotates it, and hcom-seat's shim reads it outside the sandbox into the child's environment while every seat's settings deny the file. The group directory <code>&lt;seats-root&gt;/.state/claude-&lt;group&gt;</code> (the role table's <code>login_group_of_role</code>, the same text in <code>hcom-seat</code> and the pre-flight: <code>worker</code>, <code>orchestrator</code> and <code>audit</code> each their own, <code>router</code> for the dsh and router roles) keeps the child's <code>.claude.json</code>, state and sessions and holds no login</td>
+<td>none: the token is made on the laptop with <code>claude setup-token</code> (the browser opens there) and pasted at <code>seat-token-place</code> on the seat host over the SSH session; no sign-in runs on the seat host</td>
 </tr>
 </tbody>
 </table>
@@ -6116,34 +6146,31 @@ which opens allow-listed sign-in hosts only.</p>
   parent itself and records its start, a failed bind and every request there.</li>
 <li><code>seat-login-preflight</code> (<code>scripts/orchestrator/</code>, installed to <code>~/.local/bin/common/</code>, pinned in
   <code>claude.levers.sha256</code>). With <code>--check</code> it backs the "Seat logins" section of <code>make doctor</code> from metadata only. Given
-  a seat profile (orchestrator, worker or audit), it checks that a seat can use the login:
-  an <code>openai-siwc</code> login stored in the profile's <code>agent.db</code>, counted by the extension's <code>src/credentials.ts</code>
-  without reading a token, and for Claude, on every host, a <code>claude.ai</code> login under the profile's login group directory
-  <code>&lt;seats-root&gt;/.state/claude-&lt;group&gt;</code> (U498: the group from the one table <code>login_group_of_role</code>, held as the same text
-  by <code>hcom-seat</code>; <code>worker</code>, <code>orchestrator</code>, <code>audit</code>, and <code>router</code> for the dsh overlay, whose gateway child is the
-  Router's), read by one call, <code>CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth status</code> (its exit status and its JSON <code>authMethod</code>;
-  U318), and, on the same line after the login's state, the seats' API key file <code>&lt;seats-root&gt;/.state/anthropic/api-key</code>
-  (U512: the file <code>claude-keyed</code>, the bridge's Claude Code executable, reads for every seat's child), judged by
-  <code>claude-keyed --check</code> for its form and by one Models API call (<code>GET /v1/models?limit=1</code> with the key in the
-  <code>x-api-key</code> header, through <code>python3 -I</code> under a 20 s alarm, following no redirect) for its validity: <code>key ok</code>,
-  <code>absent (&lt;reason&gt;)</code> or <code>key rejected (&lt;file&gt;; HTTP &lt;code&gt;)</code>. The key decides (U512e): an accepted key passes the
-  profile whatever the login state, which the line prints as information, and without an accepted key the login state
-  decides as before, a present login passing until U513 retires the login route and both absent refusing with both
-  steps. The seats root is <code>REGIME_SEATS_ROOT</code> when set
-  (<code>hcom-seat</code> passes its resolved one), else the checkout's <code>~/.local/state/omp-seats/&lt;slug&gt;</code>. A token variable in
-  the environment is no input (U312), and the operator's <code>~/.claude</code> is never read. The profile mode names the step of
-  each state that is not present: for an absent login the one operator command for the group, with
-  <code>BROWSER=regime-open-url</code> in an SSH session, naming the legacy shared <code>.state/claude</code> (U318) when it exists and the
-  group's directory did not (the kit reads, copies and removes no login, standing order 54); for an absent or rejected
-  key the U510 handout's placement commands (<code>handouts/anthropic-api-key-u510.md</code>, steps 2 and 3); the profile mode
-  makes the group's directory 0700 first. A pass with one state missing (U512f) prints the line and the missing
-  half's command after it as information: beside a present login the placement commands (the preflight passes on the
-  login, but <code>hcom-seat</code> starts no seat until the key is placed: its gate refuses every role without the key), beside
-  an accepted key the group's login command. The key judge
-  <code>claude-keyed</code> is found on <code>PATH</code> and run by its physical file, every link followed (U512f): inside a launch <code>PATH</code>
-  begins with <code>hcom-seat</code>'s private tool directory, where <code>claude-keyed</code> is a link to the installed lever, and the
-  lever's self-check reads its layout from its own invocation directory. <code>hcom-seat</code> runs it with the seat's role
-  before it creates or starts anything.</li>
+  a seat profile (orchestrator, worker or audit), it checks that a seat can use its route: an <code>openai-siwc</code> login
+  stored in the profile's <code>agent.db</code>, counted by the extension's <code>src/credentials.ts</code> without reading a token, and for
+  Claude, on every host, the seats' token file <code>&lt;seats-root&gt;/.state/claude-token</code> (U551), judged by its form alone: no
+  symbolic link (lstat first), a regular file of this user, mode 0600, one line of the token's shape
+  (<code>sk-ant-oat01-</code> and 20 to 255 base64url characters) ending in one line feed. The line is <code>token present (&lt;file&gt;)</code>
+  or <code>token absent (&lt;reason&gt;)</code> naming the file and the fault, never the content; two states and no third (a <code>stat</code>
+  that fails is absent naming the read). It runs no <code>claude auth status</code> and no model call, so no renewal and no
+  request is ever made from outside the sandbox. The seats root is <code>REGIME_SEATS_ROOT</code> when set (<code>hcom-seat</code> passes
+  its resolved one), else the checkout's <code>~/.local/state/omp-seats/&lt;slug&gt;</code>; both modes hold the root, its <code>.state</code>
+  and the group directory <code>.state/claude-&lt;group&gt;</code> to real directories of this user (the group from the one table
+  <code>login_group_of_role</code>, held as the same text by <code>hcom-seat</code>) and make nothing. A token variable in the environment,
+  a login under the group directory and the operator's <code>~/.claude</code> are no input (U312, U318). The profile mode refuses
+  an absent token after its line and prints the operator's two steps as information: <code>claude setup-token</code> in the
+  operator's own terminal on this host (the browser opens; the token prints once), then <code>seat-token-place</code>
+  (<code>handouts/claude-setup-token-u551.md</code>); it runs neither. <code>hcom-seat</code> runs it with the seat's role before it creates
+  or starts anything, and judges the same file itself (<code>token_file_check</code>).</li>
+<li><code>seat-token-place</code> (<code>scripts/orchestrator/</code>, installed and pinned the same way; U551): the operator's one writer of
+  the token file. It prompts <code>token:</code>, reads one line unechoed (into a variable unset first, so no caller's export
+  attribute carries the line into a child, U552), strips a terminal's CSI sequences (a bracketed paste's marks) and
+  surrounding whitespace (a trailing carriage return among it), holds the rest to the token's form, holds every
+  directory of the seats root's path and <code>.state</code> to no symbolic link, the root and <code>.state</code> to directories of this
+  user (made 0700 under <code>umask 077</code> when absent) and the destination to no link and a regular 0600 file of this user,
+  writes through an exclusive 0600 temporary renamed over the destination, and prints the character count and the
+  result alone; an EOF, an empty or CSI-only line, a line off the form, a second line, a link in the chain or a
+  destination of another mode writes nothing and leaves a previous file byte for byte.</li>
 <li><code>openai-siwc</code>: <code>OPENAI_SIWC_CALLBACK_PORT</code> and <code>src/seed.ts</code>, which seeds a registration with the
   laptop's issued client id and a fresh host id, so the ChatGPT account shows one client with one host
   per machine. The seat host still signs in once.</li>
@@ -6151,10 +6178,11 @@ which opens allow-listed sign-in hosts only.</p>
   <code>CLAUDE_CODE_OAUTH_TOKEN</code> from a token file into every zsh and every login shell, so on a host that
   held the file the operator's interactive Claude Code, its hooks and every child process logged in with
   the seat token instead of the host's claude.ai login and lost the claude.ai connectors (measured on the
-  laptop, 2026-11-06). Since U318 no seat reads a token at all: the seats log in by the shared directory's
-  claude.ai login, which Claude Code refreshes itself, so there is no yearly token and no file to copy
-  between hosts. The managed Claude settings still deny the variable (<code>sandbox.credentials.envVars</code>) and
-  the retired token file (<code>sandbox.credentials.files</code>) to sandboxed commands, as defence in depth (U68).</li>
+  laptop, 2026-11-06). Since U551 the seats' credential is again a <code>claude setup-token</code> token, but in one
+  0600 file under the seats root that only <code>hcom-seat</code>'s shim reads, outside the sandbox, into the seat's
+  own process tree: no shell exports it, the operator's Claude Code never sees it, and the managed Claude
+  settings still deny the variable (<code>sandbox.credentials.envVars</code>) and the retired <code>~/.config/claude-code/
+oauth-token</code> file (<code>sandbox.credentials.files</code>) to the operator's sandboxed commands, as defence in depth (U68).</li>
 </ul>
 <h2 id="measurements-2026-10-24-this-laptop">Measurements (2026-10-24, this laptop)<a class="headerlink" href="#measurements-2026-10-24-this-laptop" title="Permanent link">&para;</a></h2>
 <ul>
@@ -6218,18 +6246,23 @@ seat-host</code> gave the forwards to the tagged host only. A Unix-socket <code>
 </tr>
 <tr>
 <td><code>&lt;seats-root&gt;/.state/claude-&lt;group&gt;</code> (the login groups' directories)</td>
-<td>Made 0700 and empty by <code>hcom-seat</code> (every group's directory of the table's range at every launch of every role, before the seat's settings file is written, U498d) or by the pre-flight's profile mode (the profile's group's), one per login group (U498: <code>worker</code>, <code>orchestrator</code>, <code>audit</code>, <code>router</code>; the group from the one table both levers hold as the same text); a symbolic link, a file or another user's directory at any group's path refuses the launch by name (U318, U498d), so two groups share no refresh token; the login inside is Claude Code's own (the Keychain item keyed to the directory on macOS, <code>.credentials.json</code> 0600 on Linux), written by the operator's <code>claude auth login</code> under it and refreshed by Claude Code. Every seat's srt settings grant its own group's directory for write (the child's state, <code>.claude.json</code>, sessions and its own refresh) and deny its <code>settings.json</code>, <code>settings.local.json</code>, <code>rules</code>, <code>hooks</code>, <code>plugins</code>, <code>skills</code>, <code>commands</code> and <code>agents</code> for write, so no seat changes what another seat's child, or the operator's login command there, would load; the bridge child loads none of them anyway (<code>settingSources: []</code>, <code>--strict-mcp-config</code>). The router group's directory is one process family's: the Router's own bridge children, its dsh gateway child and its ACP subagent workers (<code>acp-broker</code> grants <code>claude-router</code> for read and write with the same eight denies, read from the Router's rendered settings, U498b) all use <code>claude-router</code>, one login. Every seat's settings and every ACP worker's settings deny by name, for read, every other group's directory and the legacy shared <code>.state/claude</code> (U498c), and each group's directory exists before the first render: <code>hcom-seat</code> makes the table's whole range at every launch (U498d; srt 0.0.81's Linux backend mounts nothing for a deny of a path that is not there, so until then the orchestrator's deny of <code>.state/claude-worker</code> bound nothing before the worker group's first launch or login, and its read grant of the seats root reached the credentials made later). No settings grant another group's directory or the legacy one, which no lever reads, grants, copies, makes or removes (standing order 54): its deny binds while it exists, and the operator removes it once every running group is logged in. The operator's <code>~/.claude</code> and <code>~/.claude.json</code> stay denied for read and write (U190b). No seat prints, logs or copies a credential; the shim exports the directory and clears <code>CLAUDE_CODE_OAUTH_TOKEN</code>. No seat and no ACP worker may take a <code>claude-*</code> name or <code>claude</code>.</td>
-<td>closed: <code>test_every_role_gets_its_login_groups_claude_code_directory_whose_configuration_no_seat_can_change</code>, <code>test_every_launch_makes_every_login_groups_directory_before_its_settings_file_so_each_deny_binds</code> (<code>tests/unit/test_hcom_seat.py</code>, U498d), <code>test_the_dsh_and_router_launches_make_every_login_groups_directory_too</code> (<code>tests/unit/test_hcom_seat_dsh.py</code>, U498d), <code>test_the_login_group_table_is_one_text_in_both_levers</code>, <code>test_a_dry_run_names_the_login_groups_directory_in_its_environment_line</code>, <code>test_the_shim_exports_the_groups_directory_and_the_key_file_and_clears_a_callers_token</code>, <code>test_the_omp_roles_settings_are_byte_identical_to_the_earlier_heads</code> (exactly these rows added), the dsh cases of <code>test_the_dsh_settings_are_the_workers_but_the_named_rows</code>, <code>test_the_environment_reaching_dsh_is_the_listed_names_and_the_shims_exports</code> and <code>test_the_dsh_settings_are_byte_identical_to_the_u318_head</code> (the router group's directory the one change), <code>test_no_lever_or_rc_file_names_the_token_file_or_setup_token</code>, <code>test_the_worker_joins_the_router_login_group_and_a_login_directory_name_is_no_seat</code> and <code>test_the_worker_settings_are_the_dsh_row_but_the_named_rows</code> (<code>tests/unit/test_acp_broker.py</code>, U498b). residual: every seat of a group shares that group's login and its refresh, which is the design (one login per group, U498); the Router's three process kinds (its bridge children, the gateway child and the ACP workers) share the router group's directory by the same design; a seat's child can read its group's <code>.credentials.json</code>, as it must to log in, inside its own srt boundary.</td>
+<td>Made 0700 and empty by <code>hcom-seat</code> (every group's directory of the table's range at every launch of every role, before the seat's settings file is written, U498d), one per login group (U498: <code>worker</code>, <code>orchestrator</code>, <code>audit</code>, <code>router</code>; the group from the one table both levers hold as the same text); a symbolic link, a file or another user's directory at any group's path refuses the launch by name (U318, U498d). Since U551 the directory holds the child's <code>.claude.json</code>, state and sessions and no credential: the pre-flight reads nothing in it, and the seats' token lives beside it in <code>.state/claude-token</code>. Every other group's directory and the legacy <code>.state/claude</code> are denied for read to every seat (U498c).</td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;seats-root&gt;/.state/claude-token</code> (the seats' token file, U551)</td>
+<td>Written by <code>seat-token-place</code> alone (0600, one line, through an exclusive temporary, the chain held to no link), judged by its form by <code>hcom-seat</code> before every launch and by the pre-flight for its line, read by <code>hcom-seat</code>'s shim outside the sandbox and exported to the child's environment, and denied for read and for write to every seat (measured 2026-11-15: the child starts and answers with the file denied). No lever prints its content; a refusal names the file and the fault. The token has no refresh token and is revoked by the account's sign-out.</td>
+<td></td>
 </tr>
 <tr>
 <td><code>seat-login-preflight --check</code> and <code>make doctor</code></td>
-<td>Metadata only. It reads <code>registration.json</code> (host id and client id, which carry no token), held to the extension's record schema as exactly one JSON document (<code>store.ts</code> reads it with <code>JSON.parse</code>, so concatenated records are unreadable), and never opens <code>agent.db</code> or a credentials file; for Claude it runs <code>claude auth status</code> under the profile's login group directory (one line per deployed profile, so one per running group, U498), without a token name in its environment, and reads one field, <code>authMethod</code>, held to a charset through jq; nothing else of the record reaches the terminal, and an absent directory is reported absent without a call. On the same line it judges the seats' API key file <code>&lt;seats-root&gt;/.state/anthropic/api-key</code> (U512): <code>claude-keyed --check</code> for the file's form (the key is never read by the pre-flight) and one Models API call for its validity, the key read from the file by <code>python3 -I</code> and sent in the <code>x-api-key</code> header to <code>api.anthropic.com</code> alone (an override must be a loopback URL, and no redirect is followed), so the key reaches no argument, environment or line; the doctor's warning for an absent or rejected key names the handout's placement step. The doctor's warning for an absent login names the profile's group and its step from the same table, copied into <code>scripts/check-tools.sh</code> as the same text (U498d): <code>seat-login-preflight &lt;profile&gt;</code> for the orchestrator, worker and audit profiles, the pre-flight's profile modes; for the dsh profile the <code>router</code> group's <code>claude auth login</code> under the directory the line names (the one <code>hcom-seat router --dry-run</code> prints), since the dsh and router roles have no pre-flight profile mode. An unreadable or schema-breaking record, a failed <code>uname</code>, <code>stat</code> or <code>date</code>, a <code>claude auth status</code> that exits other than 0 or 1 or prints no auth status record, a missing <code>claude</code> or <code>jq</code>, a <code>claude-keyed --check</code> that exits neither 0 nor 2, a Models API call that cannot run, reach the API, answer in time or answers anything but 200, 401 or 403, a missing <code>claude-keyed</code>, <code>python3</code> or <code>perl</code>, a directory that is a link or a file, a seats root that cannot be derived and a profile outside the login group table are failures, never "absent" or "local".</td>
-<td>closed: <code>test_an_unreadable_record_is_never_read_as_absent</code>, <code>test_a_failing_jq_with_a_valid_record_is_unreadable_not_absent</code>, <code>test_check_judges_the_key_by_claude_keyed_and_the_models_api_and_never_prints_the_key</code>, <code>test_the_models_api_call_follows_no_redirect_and_the_key_reaches_no_other_address</code>, <code>test_the_models_api_call_uses_no_proxy_and_the_key_reaches_no_proxy_address</code>, <code>test_check_names_each_login_groups_directory</code>, <code>test_the_seats_root_derives_from_the_checkout_when_none_is_passed</code>, <code>test_a_shared_directory_that_is_a_link_or_a_file_refuses_naming_it_never_absent</code>, <code>test_a_record_that_breaks_the_store_schema_is_unreadable_not_registered</code>, <code>test_a_failed_producer_is_unreadable_never_absent_or_local</code>, <code>test_doctor_reports_one_seat_login_line_per_login_group</code> and <code>test_the_doctors_login_group_table_is_the_levers_and_its_warning_names_each_groups_step</code> (<code>tests/unit/test_runtime_health.py</code>, U498d), and the <code>check_seat_logins</code> bats cases.</td>
+<td>Metadata only. It reads <code>registration.json</code> (host id and client id, which carry no token), held to the extension's record schema as exactly one JSON document (<code>store.ts</code> reads it with <code>JSON.parse</code>, so concatenated records are unreadable), and never opens <code>agent.db</code> or a credentials file; for Claude it judges the token file's form (lstat, <code>stat</code>, <code>wc -c</code>, one <code>read -r</code> whose line is compared to the token's shape and never printed) and runs no <code>claude auth status</code> and no request; one line per deployed profile, every Claude line the one file's state (U551).</td>
+<td></td>
 </tr>
 <tr>
 <td><code>seat-login-preflight &lt;profile&gt;</code> (readiness and logins)</td>
-<td>Accepts the three seat profiles of <code>omp.roles</code> (orchestrator, worker, audit) and refuses any other name, a deployed overlay or not. A seat starts only on a login it can use: an <code>openai-siwc</code> login counted in <code>agent.db</code> (an issued client is saved before the token exchange, so a record alone proves nothing), and for the claude-bridge route, on every host (local included, U190b), a <code>claude.ai</code> login under the profile's login group directory (<code>authMethod</code> of <code>claude auth status</code>; an <code>oauth_token</code> or <code>api_key</code> method, an exit 1 or an absent login is absent, a token variable in the environment is no input, U312) or the seats' API key file in place and accepted by the Models API (U512: a refused form, an absent file or a 401 or 403 is absent; U512e: the key decides, so an accepted key passes whatever the login state, and without one a present login passes until U513 retires the login route; the probe follows no redirect and uses no proxy). The refusal names the step of each state that is not present: for an absent Claude login the operator's one command for the group, <code>CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth login</code> (after <code>BROWSER=regime-open-url</code> in an SSH session), naming the legacy shared <code>.state/claude</code> when it exists and the group's directory did not (U498); for an absent or rejected key the handout's placement commands (<code>handouts/anthropic-api-key-u510.md</code>, steps 2 and 3: the key written through a 0600 temporary into the 0700 <code>.state/anthropic</code> directory, then <code>claude-keyed --check</code>), every path shell-quoted; it refuses (exit 2) in a TTY too: the pre-flight runs no Claude login and places no key. Runs the SIWC login only with stdin and stdout on a TTY and <code>HCOM_LAUNCHED</code> unset, so only in the operator's own terminal and never in a seat (standing order 4); elsewhere it refuses with exit 2 and names the command. The opener shims and the overlay live in a <code>mktemp -d</code> directory removed on exit. A failed or ineffective login exits 1, so the seat does not start.</td>
-<td>closed: <code>test_without_the_operators_terminal_a_missing_login_refuses_and_runs_nothing</code>, <code>test_a_failed_or_ineffective_login_keeps_the_seat_from_starting</code>, <code>test_the_retired_review_and_security_seat_profiles_are_refused_even_with_a_deployed_overlay</code>, <code>test_a_registration_without_a_stored_login_is_not_ready</code>, <code>test_readiness_counts_the_groups_login_and_the_key_file_alone</code>, <code>test_an_accepted_key_needs_no_login_and_a_login_alone_still_passes</code>, <code>test_the_claude_rule_holds_on_a_local_host</code>, <code>test_the_refusal_names_the_legacy_shared_directory_when_the_groups_is_absent</code>, <code>test_the_login_group_table_maps_each_role_and_refuses_any_other</code>, <code>test_the_operators_terminal_names_the_key_step_for_claude_and_runs_no_login</code>, <code>test_a_failed_step_producer_refuses_naming_it_and_prints_no_empty_step</code>, <code>test_the_placement_command_makes_the_chain_0700_and_replaces_the_file_through_a_0600_temporary</code>, <code>test_the_placement_command_keeps_the_previous_file_on_eof_an_empty_key_or_a_failed_write</code>, <code>test_a_linux_host_without_a_display_counts_as_remote</code>, <code>test_a_seat_without_a_login_or_an_api_key_file_starts_nothing</code> (<code>tests/unit/test_hcom_seat.py</code>).</td>
+<td>Accepts the three seat profiles of <code>omp.roles</code> (orchestrator, worker, audit) and refuses any other name, a deployed overlay or not. A seat starts only on a route it can use: an <code>openai-siwc</code> login counted in <code>agent.db</code> (an issued client is saved before the token exchange, so a record alone proves nothing), and for the claude-bridge route, on every host (local included, U190b), the seats' token file present by its form (U551); a token variable in the environment, a login under the group directory and the operator's <code>~/.claude</code> are no input (U312, U318). An SIWC login runs only in the operator's own TTY, never inside a seat; the Claude route runs nothing and prints the two steps.</td>
+<td></td>
 </tr>
 <tr>
 <td><code>src/credentials.ts</code> (login count)</td>

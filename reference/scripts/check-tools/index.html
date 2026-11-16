@@ -2633,6 +2633,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../home/dot_local/bin/common/executable_seat-token-place/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_seat-token-place
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
         
   
@@ -6497,100 +6525,60 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Set `login_step` to the operator's step for an absent login</span>
-<span class="c1">#   line of `seat-login-preflight --check` (regime-cutover U498d; verdict</span>
-<span class="c1">#   U498-8f2cca8c P2 `:413`). The line is `&lt;profile&gt; &lt;route&gt;: &lt;state&gt;`</span>
-<span class="c1">#   (the pre-flight's `profile_line`), so the profile is its first word and</span>
-<span class="c1">#   the group the table's (login_group_of_role). The pre-flight's profile</span>
-<span class="c1">#   mode accepts the seat profiles alone (`seat_profiles` there, the values</span>
-<span class="c1">#   of `omp.roles`: orchestrator, worker, audit; copied here as the same</span>
-<span class="c1">#   text), so for those the step is `seat-login-preflight &lt;profile&gt;`, which</span>
-<span class="c1">#   prints the group's `CLAUDE_CONFIG_DIR=&lt;dir&gt; claude auth login` or runs</span>
-<span class="c1">#   the SIWC login. The dsh profile's group `router` has no profile mode</span>
-<span class="c1">#   (`seat-login-preflight dsh` and `seat-login-preflight router` exit 2 as</span>
-<span class="c1">#   unknown profiles), so its step is `claude auth login` under the group's</span>
-<span class="c1">#   directory, the one this line names and `hcom-seat router --dry-run`</span>
-<span class="c1">#   prints as CLAUDE_CONFIG_DIR (every group of the table is a role of</span>
-<span class="c1">#   hcom-seat). A profile outside the table (a `no route` overlay that is no</span>
-<span class="c1">#   seat) keeps the general sentence. A claude-bridge line carries two states</span>
-<span class="c1">#   (regime-cutover U512): the login's, then the seats' API key's, `key ok</span>
-<span class="c1">#   (&lt;file&gt;)` when the key passed; the step names what the line lacks: the</span>
-<span class="c1">#   login's step when the login is not present, the key's step (the handout's</span>
-<span class="c1">#   placement commands, which the pre-flight's profile mode prints for any</span>
-<span class="c1">#   seat profile, the key file being one for every seat) when the key state is</span>
-<span class="c1">#   not `key ok`, both when both are missing, the login's first. A mixed state</span>
-<span class="c1">#   (regime-cutover U512f, verdict U512e-a120aeff P2) names the missing half's</span>
-<span class="c1">#   command and says what happens meanwhile: beside a present login the</span>
-<span class="c1">#   pre-flight passes but hcom-seat starts no seat until the key is placed</span>
-<span class="c1">#   (its key_file_check refuses every role without the key; regime-cutover</span>
-<span class="c1">#   U512g, verdict U512f-b6a3e2c0 P2: until this head the sentence said the</span>
-<span class="c1">#   seat starts on the login), and the key's placement commands are the step;</span>
-<span class="c1">#   beside an accepted key the seat starts on the key and the login is</span>
-<span class="c1">#   information, its command the group's (the pre-flight's profile mode prints</span>
-<span class="c1">#   both as information on its pass, U512f).</span>
+<span class="c1"># @description Set `login_step` to the operator's step for an absent line of</span>
+<span class="c1">#   `seat-login-preflight --check` (regime-cutover U498d; verdict U498-8f2cca8c</span>
+<span class="c1">#   P2 `:413`). The line is `&lt;profile&gt; &lt;route&gt;: &lt;state&gt;` (the pre-flight's</span>
+<span class="c1">#   `profile_line`), so the profile is its first word and the group the</span>
+<span class="c1">#   table's (login_group_of_role). A claude-bridge line is the seats' Claude</span>
+<span class="c1">#   setup-token's state (regime-cutover U551): `token present (&lt;file&gt;)` or</span>
+<span class="c1">#   `token absent (&lt;reason&gt;)`, one file `&lt;seats-root&gt;/.state/claude-token` for</span>
+<span class="c1">#   every seat of the host, so an absent token names the operator's two steps,</span>
+<span class="c1">#   `claude setup-token` in the operator's own terminal and `seat-token-place`</span>
+<span class="c1">#   (handouts/claude-setup-token-u551.md), whatever the profile; no login and</span>
+<span class="c1">#   no group directory enters it. For the SIWC route the pre-flight's profile</span>
+<span class="c1">#   mode accepts the seat profiles alone (`seat_profiles` there, the values of</span>
+<span class="c1">#   `omp.roles`: orchestrator, worker, audit; copied here as the same text), so</span>
+<span class="c1">#   for those the step is `seat-login-preflight &lt;profile&gt;`, which runs the SIWC</span>
+<span class="c1">#   login; a profile outside the table (a `no route` overlay that is no seat)</span>
+<span class="c1">#   keeps the general sentence.</span>
 <span class="c1"># @arg $1 string The `--check` line.</span>
 <span class="c1"># @set login_step The sentence the warning carries in parentheses.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>login_step_of<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">profile</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="p">%% *</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>group<span class="w"> </span>mode<span class="w"> </span><span class="nv">login_missing</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">key_missing</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">key_ok</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>key_step
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">profile</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="p">%% *</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>group<span class="w"> </span>mode
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">seat_profiles</span><span class="o">=(</span>orchestrator<span class="w"> </span>worker<span class="w"> </span>audit<span class="o">)</span>
 <span class="w">    </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"log in on this host, once per login group: seat-login-preflight &lt;profile&gt; prints the group's command, docs/remote-host-logins.md"</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">    </span>*<span class="s1">' claude-bridge: '</span>*<span class="o">)</span>
-<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>*<span class="s1">': login present ('</span>*<span class="o">)</span><span class="w"> </span><span class="nv">login_missing</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="p">;;</span><span class="w"> </span><span class="k">esac</span>
-<span class="w">        </span><span class="c1"># A second state on the line is the key's (U512); any state but `key ok` wants the key placed.</span>
-<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>*<span class="s1">'; key ok ('</span>*<span class="o">)</span><span class="w"> </span><span class="nv">key_ok</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="p">;;</span><span class="w"> </span>*<span class="s1">'; '</span>*<span class="o">)</span><span class="w"> </span><span class="nv">key_missing</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="p">;;</span><span class="w"> </span><span class="k">esac</span>
+<span class="w">    </span>*<span class="s1">' claude-bridge: token absent ('</span>*<span class="o">)</span>
+<span class="w">        </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"place the seats' Claude setup-token on this host (one file for every seat): run claude setup-token in your own terminal, then seat-token-place (handouts/claude-setup-token-u551.md), docs/remote-host-logins.md"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
-<span class="w">    </span><span class="nv">key_step</span><span class="o">=</span><span class="s2">"place the seats' API key on this host (one file for every seat): seat-login-preflight &lt;seat profile&gt; prints the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md"</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">login_missing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_missing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nv">group</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>login_group_of_role<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_missing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">key_step</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">fi</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">group</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>login_group_of_role<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>mode<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_profiles</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mode</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"log in on this host, once per login group: seat-login-preflight </span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2"> prints the </span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2"> group's command, docs/remote-host-logins.md"</span>
-<span class="w">            </span><span class="nv">key_step</span><span class="o">=</span><span class="s2">"place the seats' API key on this host (one file for every seat): seat-login-preflight </span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2"> prints the placement commands (handouts/anthropic-api-key-u510.md, steps 2 and 3), docs/remote-host-logins.md"</span>
-<span class="w">            </span><span class="k">break</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">done</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mode</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"log in on this host, once per login group: the </span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2"> profile is the </span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2"> group, which has no seat-login-preflight profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory this line names (hcom-seat </span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2"> --dry-run prints it; BROWSER=regime-open-url first on a remote host), docs/remote-host-logins.md"</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_missing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">login_missing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">login_step</span><span class="si">}</span><span class="s2">; </span><span class="si">${</span><span class="nv">key_step</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">else</span>
-<span class="w">            </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"the preflight passes on the group's login, but hcom-seat starts no seat until the key is placed; </span><span class="si">${</span><span class="nv">key_step</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_ok</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"the seat starts on the accepted key (U512e), so the login is information: </span><span class="si">${</span><span class="nv">login_step</span><span class="p">#log in on this host, once per login group: </span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">login_step</span><span class="o">=</span><span class="s2">"log in on this host, once per login group: the </span><span class="si">${</span><span class="nv">profile</span><span class="si">}</span><span class="s2"> profile is the </span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2"> group, which has no seat-login-preflight profile mode; its route's login is the operator's step in their own terminal, docs/remote-host-logins.md"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Report each omp seat profile's login on this host through</span>
 <span class="c1">#   `scripts/orchestrator/seat-login-preflight --check` (regime-cutover U37):</span>
-<span class="c1">#   presence and mtimes only, never a token. The Claude lines name each</span>
-<span class="c1">#   profile's login group directory `&lt;seats-root&gt;/.state/claude-&lt;group&gt;`</span>
-<span class="c1">#   (U498: one line per deployed profile, so one per running group) and, after</span>
-<span class="c1">#   it on the same line, the seats' API key file's state (U512: `key ok`, or</span>
-<span class="c1">#   its absence or rejection). An absent login, an absent or rejected key and</span>
-<span class="c1">#   a profile without a route are optional warnings naming the step</span>
-<span class="c1">#   (login_step_of, U498d), since a login and the key are per host and the</span>
-<span class="c1">#   operator's steps; an unreadable record, in either state, and the lever's</span>
-<span class="c1">#   own refusal are required failures, never read as absent. One failure</span>
-<span class="c1">#   counts once (regime-cutover U512g, verdict U512f-b6a3e2c0 P1): every</span>
-<span class="c1">#   `required failed` line counts where it is printed, and the lever's</span>
-<span class="c1">#   non-zero exit counts only when the loop counted no line, since the exit</span>
-<span class="c1">#   that follows a printed unreadable or refusal line is the same failure</span>
-<span class="c1">#   (U512f counted the line and then the exit, so one unreadable key counted</span>
-<span class="c1">#   twice); the line's own count is what holds an unreadable login beside an</span>
-<span class="c1">#   accepted key, which the lever passes with exit 0 (verdict U512e-a120aeff</span>
-<span class="c1">#   P2: that arm once printed without counting, so the doctor exited 0).</span>
+<span class="c1">#   presence and mtimes only, never a token. The Claude lines carry the state</span>
+<span class="c1">#   of the seats' Claude setup-token file `&lt;seats-root&gt;/.state/claude-token`</span>
+<span class="c1">#   (regime-cutover U551: `token present (&lt;file&gt;)` or `token absent (&lt;reason&gt;)`,</span>
+<span class="c1">#   one file for every seat, judged by its form, never read into a line). An</span>
+<span class="c1">#   absent SIWC login or an absent token is an optional warning naming the step</span>
+<span class="c1">#   (login_step_of, U498d, U551), since both are per host and the operator's</span>
+<span class="c1">#   steps; an unreadable SIWC record or overlay and the lever's own refusal are</span>
+<span class="c1">#   required failures, never read as absent. One failure counts once</span>
+<span class="c1">#   (regime-cutover U512g, verdict U512f-b6a3e2c0 P1): every `required failed`</span>
+<span class="c1">#   line counts where it is printed, and the lever's non-zero exit counts only</span>
+<span class="c1">#   when the loop counted no line, since the exit that follows a printed</span>
+<span class="c1">#   unreadable or refusal line is the same failure.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>check_seat_logins<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">lever</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]%/*</span><span class="si">}</span><span class="s2">/orchestrator/seat-login-preflight"</span>
@@ -6605,10 +6593,10 @@
 <span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">        </span><span class="s1">''</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">        </span><span class="s1">'not applicable:'</span>*<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
-<span class="w">        </span><span class="c1"># The lever's own refusal or failed producer (pin, uname), never a profile line; or either state of a</span>
-<span class="w">        </span><span class="c1"># claude-bridge line unreadable (U512), the states matched anywhere after the route. One arm counts both, and</span>
-<span class="w">        </span><span class="c1"># marks the count so the lever's exit below is not counted again for the same failure (U512g).</span>
-<span class="w">        </span><span class="s1">'seat-login-preflight:'</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">': unreadable'</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">'; unreadable ('</span>*<span class="o">)</span>
+<span class="w">        </span><span class="c1"># The lever's own refusal or failed producer (pin, uname), never a profile line; or a profile line whose state</span>
+<span class="w">        </span><span class="c1"># is unreadable. One arm counts both, and marks the count so the lever's exit below is not counted again for</span>
+<span class="w">        </span><span class="c1"># the same failure (regime-cutover U512g: every `required failed` line counts once where it is printed).</span>
+<span class="w">        </span><span class="s1">'seat-login-preflight:'</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">': unreadable'</span>*<span class="o">)</span>
 <span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">            </span><span class="s1">'seat-login-preflight:'</span>*<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'required failed: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">            </span>*<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'required failed: seat login %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span><span class="w"> </span><span class="p">;;</span>
@@ -6616,7 +6604,7 @@
 <span class="w">            </span><span class="o">((</span><span class="nv">required_failures</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span>
 <span class="w">            </span><span class="nv">counted</span><span class="o">=</span><span class="m">1</span>
 <span class="w">            </span><span class="p">;;</span>
-<span class="w">        </span>*<span class="s1">': absent'</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">'; absent ('</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">'; key rejected ('</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">': no route'</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">': not a seat login route'</span>*<span class="o">)</span>
+<span class="w">        </span>*<span class="s1">': absent'</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">': token absent ('</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">': no route'</span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*<span class="s1">': not a seat login route'</span>*<span class="o">)</span>
 <span class="w">            </span>login_step_of<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span>warn_optional<span class="w"> </span><span class="s2">"seat login </span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2"> (</span><span class="si">${</span><span class="nv">login_step</span><span class="si">}</span><span class="s2">)"</span>
 <span class="w">            </span><span class="p">;;</span>

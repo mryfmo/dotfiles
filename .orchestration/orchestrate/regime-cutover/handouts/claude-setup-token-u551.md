@@ -5,14 +5,17 @@
 `claude setup-token` が印字する長期 OAuth token 1 つで動かす。token は host ごとに 1 ファイル
 `<seats-root>/.state/claude-token`(0600、1 行)に置き、読むのは hcom-seat の shim だけ。shim が
 `CLAUDE_CODE_OAUTH_TOKEN` として Claude 子の環境に渡し、sandbox の中ではファイル自体は読めない
-(deny 行。`tests/unit/test_hcom_seat.py` が子の環境に値が届きファイルが deny されることを fixture で
-確認。実 token での API 到達は配備後の検証で測る)。refresh token が無いので更新も回転も起きない。
+(deny 行。`tests/unit/test_hcom_seat.py` が子の環境に値が届きファイルが deny されることを
+fixture で確認。実 token での API 到達は配備後の検証で測る)。refresh token が無いので更新も回転も
+起きない。
 有効期限は 1 年(Claude Code 公式 docs の Authentication)。失効させるには claude.ai で account の
 全 session を sign out する。
 
 前提(agent 側で済ませる部分): U551 の head が merge され、`make deploy-kit` で
 `~/.local/bin/common/seat-token-place` と新しい `hcom-seat`、`seat-login-preflight` が
-配備されていること。`chezmoi apply` は退役した `~/.local/bin/common/claude-keyed` を消す。
+配備されていること。`chezmoi apply` は各 role の `~/.omp/profiles/<role>/agent/claude-bridge.json`
+から `claude-keyed` を指す `provider.pathToClaudeCodeExecutable` 行を消す(modify script。
+他の key はそのまま)。`claude-keyed` 自体の退役と modify script の削除は U553。
 
 ## 1. 人間がやること: token の発行 (自分の端末、ブラウザ)
 
@@ -45,9 +48,10 @@ claude setup-token
 seat-token-place: placed <seats-root>/.state/claude-token (<n> characters, mode 0600)
 ```
 
-`seat-token-place: refused: ...` の 1 行(exit 1)が出た場合、その行が理由を名指しする(EOF、空、
-CSI 列だけ、形式外、chain や宛先の symlink、自分のものでない directory)。token の内容は決して
-表示されず、何も書かれない。前のファイルがあればそのまま残る。手順 1 からやり直す。
+`seat-token-place: refused: ...` の 1 行(exit 1)が出た場合、その行が理由を名指しする
+(EOF、空、CSI 列だけ、形式外、2 行、chain や宛先の symlink、自分のものでない directory、
+0600 でない既存の宛先)。token の内容は決して表示されず、何も書かれない。前のファイルがあれば
+そのまま残る。手順 1 からやり直す。
 
 ## 3. 人間が実行する検証コマンド (結果は agent が判定できる)
 
@@ -69,7 +73,8 @@ CR)。手順 2 をやり直す。`make doctor` の Seat logins も同じ行を�
 
 手順 1(期待: `sk-ant-oat01-` で始まる 1 行)
 
-- source: Claude Code 公式 docs の Authentication、`CLAUDE_CODE_OAUTH_TOKEN` と `claude setup-token`
+- source: Claude Code 公式 docs の Authentication、`CLAUDE_CODE_OAUTH_TOKEN` と
+  `claude setup-token`
 - dry-run: operator-only。ブラウザ同意が要り、agent は実 token を扱わない(第 59 条)
 
 手順 2(期待: `placed <file> (<n> characters, mode 0600)`)
@@ -77,7 +82,7 @@ CR)。手順 2 をやり直す。`make doctor` の Seat logins も同じ行を�
 - source: `scripts/orchestrator/seat-token-place`(形は `TOKEN_FORM_RE`、0600 の一時ファイル経由、
   chain と宛先の symlink は拒否)
 - dry-run: `tests/unit/test_remote_host_logins.py` の `SeatTokenPlaceTest`。fixture token の配置、
-  bracketed paste、EOF / 空 / CSI だけ / 形式外 / link の各注入は何も書かない
+  bracketed paste、EOF / 空 / CSI だけ / 形式外 / 2 行 / link / 0644 の宛先の各注入は何も書かない
 
 手順 3(期待: `token present (<file>)`)
 
@@ -88,11 +93,13 @@ CR)。手順 2 をやり直す。`make doctor` の Seat logins も同じ行を�
 
 ## 補足
 
-- 席の起動は `hcom-seat` が同じファイルを毎回判定する(`token_file_check`)。無い、link、0600 でない、
-  形式外、2 行のどれでも起動を拒否し、この handout の手順を名指しする。dry run も同じ。
+- 席の起動は `hcom-seat` が同じファイルを毎回判定する(`token_file_check`)。無い、link、0600 で
+  ない、形式外、2 行のどれでも起動を拒否し、この handout の手順を名指しする。dry run も同じ。
 - 旧 API key 経路の名残 `.state/anthropic/`(空の `api-key` を含む)はどの lever も読まない。
   消してよい: `rm -r ~/.local/state/omp-seats/dotfiles/.state/anthropic`
 - U510 の modify script を `chezmoi apply` した host では、`~/.omp/profiles/<role>/agent/` の
   `claude-bridge.json` に `provider.pathToClaudeCodeExecutable` 行が残りうる(この laptop には無い、
-  実測 11-15)。残っていればその行を消す。bridge は同梱の Claude Code binary に戻る。
+  実測 11-15)。この head の modify script が `chezmoi apply` でその行だけを消す(他の key は
+  そのまま、`tests/unit/test_generate_agent_configs.py`)。script が読めない JSON なら stderr に
+  1 行出して素通しするので、その時はその行を手で消す。bridge は同梱の Claude Code binary に戻る。
 - token は 1 年で切れる。切れたら手順 1 と 2 をやり直す。

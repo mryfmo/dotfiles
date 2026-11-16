@@ -49,12 +49,14 @@ which opens allow-listed sign-in hosts only.
   (`handouts/claude-setup-token-u551.md`); it runs neither. `hcom-seat` runs it with the seat's role before it creates
   or starts anything, and judges the same file itself (`token_file_check`).
 - `seat-token-place` (`scripts/orchestrator/`, installed and pinned the same way; U551): the operator's one writer of
-  the token file. It prompts `token: `, reads one line unechoed, strips a terminal's CSI sequences (a bracketed
-  paste's marks), a carriage return and surrounding whitespace, holds the rest to the token's form, holds the seats
-  root and `.state` to no symbolic link and to directories of this user (made 0700 under `umask 077` when absent) and
-  the destination to no link and a regular file of this user, writes through an exclusive 0600 temporary renamed over
-  the destination, and prints the character count and the result alone; an EOF, an empty or CSI-only line, a line
-  off the form or a link in the chain writes nothing and leaves a previous file byte for byte.
+  the token file. It prompts `token: `, reads one line unechoed (into a variable unset first, so no caller's export
+  attribute carries the line into a child, U552), strips a terminal's CSI sequences (a bracketed paste's marks) and
+  surrounding whitespace (a trailing carriage return among it), holds the rest to the token's form, holds every
+  directory of the seats root's path and `.state` to no symbolic link, the root and `.state` to directories of this
+  user (made 0700 under `umask 077` when absent) and the destination to no link and a regular 0600 file of this user,
+  writes through an exclusive 0600 temporary renamed over the destination, and prints the character count and the
+  result alone; an EOF, an empty or CSI-only line, a line off the form, a second line, a link in the chain or a
+  destination of another mode writes nothing and leaves a previous file byte for byte.
 - `openai-siwc`: `OPENAI_SIWC_CALLBACK_PORT` and `src/seed.ts`, which seeds a registration with the
   laptop's issued client id and a fresh host id, so the ChatGPT account shows one client with one host
   per machine. The seat host still signs in once.

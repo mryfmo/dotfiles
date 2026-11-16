@@ -945,10 +945,11 @@ claude:
   # stall-check.py's progress column when that lever is beside it. Installed and
   # pinned the same way, run as `python3 -I` by the coordinator and allowed by the
   # orchestrator policy alone; it reads the store's tables and writes nothing.
-  # claude-keyed (U510, handoff/47) is the pi-claude-bridge's
+  # claude-keyed (U510, handoff/47) was the pi-claude-bridge's
   # `provider.pathToClaudeCodeExecutable` in every claude-bridge role's
   # ~/.omp/profiles/<role>/agent/claude-bridge.json (placed by the generated
-  # modify_claude-bridge.json of home/dot_omp/private_profiles): the Agent SDK
+  # modify_claude-bridge.json of home/dot_omp/private_profiles, which since U552
+  # delete that row instead; the lever retires in U553): the Agent SDK
   # spawns it in place of Claude Code, and it execs the bridge package's one
   # Claude Code binary with ANTHROPIC_API_KEY read from the file
   # REGIME_ANTHROPIC_KEY_FILE names (0600, one line, this user's) and the login

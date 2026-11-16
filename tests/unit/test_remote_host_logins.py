@@ -1269,9 +1269,11 @@ class SeatTokenPlaceTest(unittest.TestCase):
     def test_eof_empty_csi_only_and_off_form_inputs_write_nothing_and_print_the_count_alone(self) -> None:
         """The failure injections of the brief: an end of input before a line, an empty line, a line of CSI sequences
         alone, a line off the token's form (a key, a short token, a token with a space or a carriage return inside)
-        and, since U552, a second line behind the first (with or without its line feed) each refuse (exit 1) naming
-        the character count after stripping or the second line, and never the input; nothing is written, not even the
-        chain's directories' content beyond the empty `.state`, and a previous file survives byte for byte."""
+        and, since U552, a second line behind the first (with or without its line feed; round 3, verdict
+        U552-953af858 P2: a blank one, a blank one with more behind it and one of spaces, which round 2 passed by
+        judging the bytes read instead of the read's status) each refuse (exit 1) naming the character count after
+        stripping or the second line, and never the input; nothing is written, not even the chain's directories'
+        content beyond the empty `.state`, and a previous file survives byte for byte."""
         self.assert_placed(self.run_placer("--seats-root", str(self.seats), stdin=FAKE_OAT + "\n"))
         before = self.token.read_bytes()
         cases = (
@@ -1285,6 +1287,9 @@ class SeatTokenPlaceTest(unittest.TestCase):
             ("a carriage return inside", FAKE_OAT[:30] + "\r" + FAKE_OAT[30:] + "\n", f"the input ({len(FAKE_OAT) + 1} characters after stripping) is not a token of the form"),
             ("a second line", FAKE_OAT + "\nsecond\n", "the input holds more than one line (nothing written)"),
             ("a second line without its line feed", FAKE_OAT + "\nx", "the input holds more than one line (nothing written)"),
+            ("a blank second line", FAKE_OAT + "\n\n", "the input holds more than one line (nothing written)"),
+            ("a blank second line with more behind it", FAKE_OAT + "\n\nsecond\n", "the input holds more than one line (nothing written)"),
+            ("a second line of spaces", FAKE_OAT + "\n   \n", "the input holds more than one line (nothing written)"),
         )  # fmt: skip
         for label, stdin, reason in cases:
             with self.subTest(label=label):
@@ -1387,6 +1392,43 @@ class SeatTokenPlaceTest(unittest.TestCase):
                 self.assertEqual(sorted(p.name for p in (self.seats / ".state").iterdir()), ["claude-token"])
                 self.assertNotIn(second, result.stdout + result.stderr)
         (self.bin / "mktemp").unlink()
+
+    def test_a_failing_uname_or_stat_refuses_before_the_prompt_and_writes_nothing(self) -> None:
+        """Round 3 (verdict U552-953af858 P2; standing order 21): the placer's two producers, `uname -s` for the one
+        stat form and `stat` for a present destination's mode, are read with their status and their output's shape: a
+        uname that prints a system name and fails refuses (exit 2) before the chain is made; a stat that prints a
+        plausible mode and fails, prints nothing or prints no octal mode refuses (exit 1) naming the destination,
+        before the prompt; nothing is written, the previous file is byte for byte what it was and no temporary stays."""
+        write_exec(self.bin / "uname", "#!/bin/sh\necho Darwin\nexit 1\n")
+        result = self.run_placer("--seats-root", str(self.seats), stdin=FAKE_OAT + "\n")
+        self.assertEqual((result.returncode, result.stdout), (2, ""), result.stderr)
+        self.assertEqual(result.stderr, "seat-token-place: refused: cannot read the system name: uname -s failed\n")
+        self.assertFalse(self.seats.exists() or self.seats.is_symlink(), "refused before the chain is made")
+        (self.bin / "uname").unlink()
+        self.assert_placed(self.run_placer("--seats-root", str(self.seats), stdin=FAKE_OAT + "\n"))
+        before = self.token.read_bytes()
+        second = "sk-ant-oat01-" + "SECONDFAKETOKEN" + "1" * 44
+        for label, body in (
+            ("stat prints a mode and fails", "#!/bin/sh\necho 600\nexit 7\n"),
+            ("stat prints nothing", "#!/bin/sh\nexit 0\n"),
+            ("stat prints no octal mode", "#!/bin/sh\necho rw-------\n"),
+        ):
+            with self.subTest(label=label):
+                write_exec(self.bin / "stat", body)
+                result = self.run_placer("--seats-root", str(self.seats), stdin=second + "\n")
+                self.assertEqual((result.returncode, result.stdout), (1, ""), result.stderr)
+                self.assertEqual(
+                    result.stderr,
+                    f"seat-token-place: refused: cannot read the mode of {self.token} (nothing written)\n",
+                )
+                self.assertNotIn("token: ", result.stderr, "refused before the prompt")
+                self.assertEqual(self.token.read_bytes(), before, "the previous file is untouched")
+                self.assertEqual(
+                    sorted(p.name for p in (self.seats / ".state").iterdir()), ["claude-token"], "no temporary left"
+                )
+                self.assertNotIn(second, result.stdout + result.stderr)
+        (self.bin / "stat").unlink()
+        self.assert_placed(self.run_placer("--seats-root", str(self.seats), stdin=second + "\n"), token=second)
 
     def test_the_seats_root_comes_from_the_option_the_environment_or_the_checkout_and_must_be_clean(self) -> None:
         """Without `--seats-root` the root is `REGIME_SEATS_ROOT`, else `~/.local/state/omp-seats/<slug>` of the

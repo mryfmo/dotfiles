@@ -13,8 +13,9 @@
 #   as is the whitespace at either end (a Windows clipboard's trailing carriage return among it), and the rest is held
 #   to the token's form (TOKEN_FORM_RE, the one text hcom-seat, seat-login-preflight and acp-broker hold). An EOF, an
 #   empty line, a line of CSI sequences alone, a line off the form (a carriage return inside it included) or a second
-#   line behind the first refuses (exit 1) naming the character count after stripping and never the input; nothing is
-#   written. The chain is held before anything is written: every directory of the seats root's path, from `/` down,
+#   line behind the first, blank or not (the read's status says a line was read, U552 round 3), refuses (exit 1)
+#   naming the character count after stripping and never the input; nothing is written. The chain is held before
+#   anything is written: every directory of the seats root's path, from `/` down,
 #   and its `.state` are each no symbolic link (lstat on the spelled path, before anything resolves it; U552: a link
 #   above the root wrote through it), the root and `.state` made 0700 under `umask 077` when absent, held to
 #   directories of this user, and `.state` tightened to 0700; the destination is no link and, when present, a regular
@@ -237,11 +238,18 @@ IFS= read -rs token || {
     }
 }
 echo >&2
-# A second line behind the first refuses before anything is judged (U552, verdict P2: it stayed on stdin and the first
-# line was placed): whatever follows is read for up to one second (a terminal's pasted lines are already in its buffer;
-# a pipe answers at once), and anything but nothing refuses.
+# A second line behind the first refuses before anything is judged (U552, verdict U552-484346a3 P2: it stayed on stdin
+# and the first line was placed): one more byte is read for up to one second (a terminal's pasted lines are already in
+# its buffer; a pipe answers at once), and the read's status decides, not the bytes alone (round 3, verdict
+# U552-953af858 P2: round 2 read a line and judged the variable, so a blank second line, and anything behind it,
+# passed): status 0 means a byte was there, a second line's first character or its bare line feed, and refuses; a
+# failure means nothing followed within the second (the end of the input or a silent terminal), the one accepted
+# shape. One byte, not a line: bash 3.2 (macOS /bin/bash) drops what a timed-out line read had taken, so a second
+# line without its line feed at a terminal would have passed by silence.
 more=''
-IFS= read -rs -t 1 more || :
+if IFS= read -rs -t 1 -n 1 more; then
+    refuse 'the input holds more than one line (nothing written)'
+fi
 [[ -z ${more} ]] || refuse 'the input holds more than one line (nothing written)'
 # Strip what a terminal adds to a pasted line and never a token's own byte: every CSI sequence (bracketed-paste marks
 # included) and whitespace at either end, a Windows clipboard's trailing carriage return among it; a carriage return

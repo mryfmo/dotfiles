@@ -489,7 +489,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "26fa94906bf58865509e9c5b194d8691fe2b194eca627562799a648ac5a36e58"
+      "sha256": "49020939fd54c02331b30de5e1e532bf3a670fe4fa7af830736e50d4b3bc5615"
     },
     {
       "source": "home/dot_local/bin/common/executable_intake-observe.py",
@@ -657,7 +657,7 @@
       "target": ".local/bin/common/seat-login-preflight",
       "kind": "file",
       "executable": true,
-      "sha256": "5dc7dfebbc026ee2e1af42549d2011bd0880c69b4686b58faa8ea96099ec40d0"
+      "sha256": "09b8409ecb34fe716e1a4cc1aab630bdf2fb4c1916df795e1a833ae5aa717fe0"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-settings-render.sh",
@@ -665,6 +665,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "9c9971c00595c23c3202cbcfb3ac7cc6f96b5e8aebf84e116d2e8b6678232b50"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_seat-token-place",
+      "target": ".local/bin/common/seat-token-place",
+      "kind": "file",
+      "executable": true,
+      "sha256": "dce59cb7fafdbf24308dcf379813c7e84d55c75100047bde82b7b105effc5a95"
     },
     {
       "source": "home/dot_local/bin/common/executable_stall-check.py",
@@ -1030,6 +1037,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "seat-settings-render.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "seat-token-place"
     },
     {
       "source": "home/dot_local/bin/common",

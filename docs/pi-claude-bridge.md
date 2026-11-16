@@ -112,19 +112,21 @@ The bridge child of every seat runs under one `CLAUDE_CONFIG_DIR`,
 `<seats-root>/.state/claude` (`~/.local/state/omp-seats/<slug>/.state/claude`), which
 `hcom-seat`'s shim exports (regime-cutover U190, U318), so its `.claude.json`, projects,
 sessions, backups and plugins land in the seats' shared directory and never in the
-operator's `~/.claude` or `~/.claude.json`. It logs in by that directory's own
-claude.ai login: one per host, made once by the operator with the command the
-pre-flight prints, `CLAUDE_CONFIG_DIR=<dir> claude auth login` (after
-`BROWSER=regime-open-url` on a seat host reached over SSH, where the page shows a code
-to paste at the prompt), stored by Claude Code itself (the Keychain item keyed to the
-directory on macOS, `.credentials.json` 0600 there on Linux), refreshed by Claude Code
-across the seats that share it, and revoked with `CLAUDE_CONFIG_DIR=<dir> claude auth
-logout`. No token: `claude setup-token`, its yearly plaintext token and the token file
-are retired (U314 measured them against the documented login routes; U318), the shim
-clears `CLAUDE_CODE_OAUTH_TOKEN`, and a caller's variable is no input (U312).
-`seat-login-preflight <role>` judges `claude auth status` under the directory and
-starts no seat without `authMethod` `claude.ai` there; a `oauth_token` or `api_key`
-method, or the operator's host login alone, is reported absent with the command.
+operator's `~/.claude` or `~/.claude.json`. It runs on the seats' one long-lived
+`claude setup-token` token (regime-cutover U551), `CLAUDE_CODE_OAUTH_TOKEN` in its
+environment: the seat shim reads the one line of `<seats-root>/.state/claude-token`
+(a 0600 file the operator places with `seat-token-place` after `claude setup-token` in
+their own terminal) outside the sandbox and exports it, and the child inherits it
+through omp and the bridge; the file itself is denied inside the sandbox (measured: the
+child starts and answers with the file denied). A setup-token has no refresh token, so
+the rotation that revoked the seats' claude.ai login eight times (U318's shared login,
+renewed inside srt where the Keychain is readable but not writable) cannot occur; it is
+revoked by signing out of the account's sessions. The directory holds no login:
+`claude auth login` under it, the API key route (U510, U512) and the operator's host
+login are no input, and a caller's `CLAUDE_CODE_OAUTH_TOKEN` is no input either (U312).
+`seat-login-preflight <role>` judges the token file by its form and starts no seat
+without it, printing the two steps; hcom-seat judges the same file before anything is
+made.
 Measured 2026-11-05 (Claude Code 2.1.316): a scratch `CLAUDE_CONFIG_DIR` with the host
 Keychain item and credentials file present answers `Not logged in`, so the child cannot
 borrow a host login; measured 2026-11-06: the laptop's Keychain held only the default

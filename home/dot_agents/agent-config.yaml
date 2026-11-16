@@ -945,10 +945,11 @@ claude:
   # stall-check.py's progress column when that lever is beside it. Installed and
   # pinned the same way, run as `python3 -I` by the coordinator and allowed by the
   # orchestrator policy alone; it reads the store's tables and writes nothing.
-  # claude-keyed (U510, handoff/47) is the pi-claude-bridge's
+  # claude-keyed (U510, handoff/47) was the pi-claude-bridge's
   # `provider.pathToClaudeCodeExecutable` in every claude-bridge role's
   # ~/.omp/profiles/<role>/agent/claude-bridge.json (placed by the generated
-  # modify_claude-bridge.json of home/dot_omp/private_profiles): the Agent SDK
+  # modify_claude-bridge.json of home/dot_omp/private_profiles, which since U552
+  # delete that row instead; the lever retires in U553): the Agent SDK
   # spawns it in place of Claude Code, and it execs the bridge package's one
   # Claude Code binary with ANTHROPIC_API_KEY read from the file
   # REGIME_ANTHROPIC_KEY_FILE names (0600, one line, this user's) and the login
@@ -969,9 +970,17 @@ claude:
   # the same way, run as `python3 -I` by the coordinator and allowed by the
   # orchestrator policy alone, denied by name to the worker and the audit; it runs
   # no gh, no git and no network.
+  # seat-token-place is the operator's one writer of the seats' Claude token file
+  # (U551): it reads the `claude setup-token` line unechoed at a prompt, strips
+  # what a terminal adds to a paste, holds it to the token's form and writes
+  # `<seats-root>/.state/claude-token` (0600, through an exclusive temporary),
+  # printing the character count and never the token. Installed and pinned the
+  # same way; run by the operator alone outside every seat, with no allow rule
+  # and no seat policy row (every seat's sandbox denies the file for read and
+  # for write).
   levers:
     sha256:
-      hcom-seat: 26fa94906bf58865509e9c5b194d8691fe2b194eca627562799a648ac5a36e58
+      hcom-seat: 49020939fd54c02331b30de5e1e532bf3a670fe4fa7af830736e50d4b3bc5615
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -981,7 +990,8 @@ claude:
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: 1c576fc79b9f21491fe3bbfcd221efa92af7e7aebbb7e479eaee3a94e91b758d
       checkout-guard.sh: 4fd793eeefa7312b8f23c74a5b8f457eb915213b55f1020cc260932657674c45
-      seat-login-preflight: 5dc7dfebbc026ee2e1af42549d2011bd0880c69b4686b58faa8ea96099ec40d0
+      seat-login-preflight: 09b8409ecb34fe716e1a4cc1aab630bdf2fb4c1916df795e1a833ae5aa717fe0
+      seat-token-place: dce59cb7fafdbf24308dcf379813c7e84d55c75100047bde82b7b105effc5a95
       regime-start: 978087b6ac9cbe00a3cb4f45dd749a8634d960948b5e2df96a97bbafe9597d17
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       regime-store-move: 592ed0a7513a072446d1dee5a96b27b96b139eda33cfdc5ac95dd559aa66351a

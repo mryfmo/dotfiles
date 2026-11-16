@@ -278,6 +278,7 @@ LEVERS = (
     "router-settings-apply.py",
     "seat-login-preflight",
     "seat-settings-render.sh",
+    "seat-token-place",
     "stall-check.py",
     "ticket-unit.py",
     "units-row.py",
@@ -1151,22 +1152,19 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def run_modify(
         self, script: Path, current: str | bytes, home: Path, path: str | None = None
-    ) -> subprocess.CompletedProcess[str]:
-        """Run the modify script as chezmoi does, the live file on stdin (bytes when the case is about the bytes);
-        `path` replaces PATH for the fixture runs."""
+    ) -> subprocess.CompletedProcess[bytes]:
+        """Run the modify script as chezmoi does, the live file on stdin, bytes in and bytes out (the comparison the
+        output index makes is byte for byte); `path` replaces PATH for the fixture runs."""
         env = os.environ | {"HOME": str(home)}
         if path is not None:
             env["PATH"] = path
-        run = subprocess.run(
+        return subprocess.run(
             [str(script)],
             input=current.encode() if isinstance(current, str) else current,
             capture_output=True,
             env=env,
             timeout=180,
             check=False,
-        )
-        return subprocess.CompletedProcess(
-            run.args, run.returncode, run.stdout.decode("utf-8", "replace"), run.stderr.decode("utf-8", "replace")
         )
 
     def write_fixture_path(self, name: str, *tools: str) -> str:
@@ -1180,12 +1178,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         return str(bin_dir)
 
     def test_the_claude_bridge_modify_scripts_render_for_the_bridge_routed_roles_only(self) -> None:
-        """regime-cutover U510: `provider.pathToClaudeCodeExecutable` of every role on the claude-bridge route (a seat
-        role whose omp model route is claude-bridge, and every gateway role, whose child the bridge serves) is the
-        installed `claude-keyed`, placed by the chezmoi modify script `home/dot_omp/private_profiles/private_<role>/
-        private_agent/modify_claude-bridge.json` (the private_ attributes keep hcom-seat's 0700 profile directories);
-        a role on another route gets none. The committed files are the renderer's bytes, executable, and the output
-        index deploys each as a modify entry on `~/.omp/profiles/<role>/agent/claude-bridge.json`."""
+        """regime-cutover U510 placed `provider.pathToClaudeCodeExecutable` (the installed `claude-keyed`) in every
+        bridge-routed role's claude-bridge.json by the chezmoi modify script `home/dot_omp/private_profiles/
+        private_<role>/private_agent/modify_claude-bridge.json`; U552 keeps the three scripts and has them delete that
+        row from the deployed file (a seat role whose omp model route is claude-bridge, and every gateway role, whose
+        child the bridge serves; the private_ attributes keep hcom-seat's 0700 profile directories). A role on another
+        route gets none. The committed files are the renderer's bytes, executable, name the row and no claude-keyed
+        path, and the output index deploys each as a modify entry on `~/.omp/profiles/<role>/agent/claude-bridge.json`."""
         self.module.ROOT = ROOT
         manifest = load_manifest_fixture(self.temp_dir)
         outputs = self.module.expected_outputs(manifest)
@@ -1203,7 +1202,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(path.read_bytes(), text.encode(), "the committed file is the renderer's bytes")
                 self.assertTrue(os.access(path, os.X_OK))
                 self.assertTrue(text.startswith("#!/bin/sh\n"))
-                self.assertIn(self.module.CLAUDE_KEYED_INSTALL_PATH, text)
+                self.assertIn(self.module.CLAUDE_BRIDGE_MANAGED_KEY, text)
+                self.assertNotIn("/.local/bin/common/claude-keyed", text, "the script places no path")
                 role = rel.split("/")[3].removeprefix("private_")
                 self.assertEqual(
                     entries[rel],
@@ -1224,12 +1224,18 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             [self.module.CLAUDE_BRIDGE_MODIFY_PATH.format(role=role) for role in ("audit", "dsh", "orchestrator")],
         )
 
-    def test_the_claude_bridge_modify_script_keeps_the_bridges_own_keys_and_is_idempotent(self) -> None:
-        """The merge sets the one managed key and keeps every other key the bridge wrote (config.ts:29 records
-        `startupNoticeShown` with `{...existing}`) in its order, as `json.dumps(indent=2)` and a newline, so a second
-        run on its own output returns the same bytes and chezmoi apply and the output index's modify comparison see no
-        change. It runs on the system python3 alone (U510b): a PATH holding python3 and cat and nothing else, no uv,
-        is enough."""
+    def test_the_claude_bridge_modify_script_cuts_the_rows_bytes_alone_and_is_idempotent(self) -> None:
+        """U552: a live file holding U510's row loses that one key and keeps every other key the bridge wrote
+        (config.ts:29 records `startupNoticeShown` with `{...existing}`) in its order, `provider` among them with its
+        other keys. Round 3 (verdict U552-953af858 P2): the change is a cut of the row's bytes, with the comma and
+        whitespace that bound it, and nothing else: json.dumps's layout when the file has it, and otherwise the file's
+        own bytes (a float spelled 1e-7, a `\\/` and a `\\u00e9` escape, tabs, CRLF line endings, spaces around the
+        colons, trailing blanks) stay as they were; the row last, in the middle, first or alone in `provider`, twice
+        in it, under two `provider` members, and under an escaped spelling of either key is found and cut, while the
+        same key elsewhere than under `provider` stays. A second run on the output is the identity, so chezmoi apply
+        and the output index's modify comparison see no change. A lone surrogate escape beside the row stays the
+        escape it was. It runs on the system python3 alone (U510b): a PATH holding python3 and cat and nothing else,
+        no uv, is enough."""
         script = self.write_claude_bridge_modify_script()
         home = self.temp_dir / "target-home"
         home.mkdir()
@@ -1237,7 +1243,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             json.dumps(
                 {
                     "startupNoticeShown": "2026-11-13",
-                    "provider": {"plan": "max", "pathToClaudeCodeExecutable": "/old/claude"},
+                    "provider": {"plan": "max", "pathToClaudeCodeExecutable": f"{home}/.local/bin/common/claude-keyed"},
                     "askClaude": {"enabled": True},
                 },
                 indent=2,
@@ -1245,133 +1251,119 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             + "\n"
         )
         run = self.run_modify(script, current, home, path=self.write_fixture_path("python3-only", "python3", "cat"))
-        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        self.assertEqual((run.returncode, run.stderr), (0, b""), run.stderr)
         merged = json.loads(run.stdout)
-        self.assertEqual(
-            merged["provider"], {"plan": "max", "pathToClaudeCodeExecutable": f"{home}/.local/bin/common/claude-keyed"}
-        )
-        self.assertEqual(merged["startupNoticeShown"], "2026-11-13")
-        self.assertEqual(merged["askClaude"], {"enabled": True})
+        self.assertEqual(merged["provider"], {"plan": "max"})
         self.assertEqual(list(merged), ["startupNoticeShown", "provider", "askClaude"], "the key order stays")
-        self.assertEqual(run.stdout, json.dumps(merged, indent=2) + "\n")
+        self.assertEqual(run.stdout, (json.dumps(merged, indent=2) + "\n").encode(), "the layout is the file's own")
+        self.assertNotIn(b"claude-keyed", run.stdout)
         again = self.run_modify(script, run.stdout, home)
-        self.assertEqual((again.returncode, again.stderr, again.stdout), (0, "", run.stdout))
+        self.assertEqual((again.returncode, again.stderr, again.stdout), (0, b"", run.stdout))
+        cases = (
+            ("the row in the middle, a float and an escape beside it",
+             b'{\n  "provider": {\n    "plan": "max",\n    "pathToClaudeCodeExecutable": "/x",\n    "timeout": 1e-7,\n    "name": "caf\\u00e9\\/bar"\n  }\n}\n',
+             b'{\n  "provider": {\n    "plan": "max",\n    "timeout": 1e-7,\n    "name": "caf\\u00e9\\/bar"\n  }\n}\n'),
+            ("the row first, compact", b'{"provider": {"pathToClaudeCodeExecutable": "/x", "plan": "max"}}\n', b'{"provider": {"plan": "max"}}\n'),
+            ("the row alone", b'{\n  "provider": {\n    "pathToClaudeCodeExecutable": "/old/claude"\n  }\n}\n', b'{\n  "provider": {}\n}\n'),
+            ("the file's own bytes: tabs, CRLF, spaces, trailing blanks",
+             b'{\r\n\t"a" :  "\\/\\u00e9" ,\r\n\t"provider" : { "plan":"max" , "pathToClaudeCodeExecutable":"/x" , "t":1e-7 }  \r\n}   \n',
+             b'{\r\n\t"a" :  "\\/\\u00e9" ,\r\n\t"provider" : { "plan":"max" , "t":1e-7 }  \r\n}   \n'),
+            ("an escaped spelling of the key and of provider (round 3)",
+             b'{"provid\\u0065r": {"plan": "max", "pathToClaude\\u0043odeExecutable": "/x"}}\n',
+             b'{"provid\\u0065r": {"plan": "max"}}\n'),
+            ("the row twice in provider", b'{"provider": {"pathToClaudeCodeExecutable": "/x", "plan": "max", "pathToClaudeCodeExecutable": "/y"}}\n', b'{"provider": {"plan": "max"}}\n'),
+            ("two provider members", b'{"provider": {"pathToClaudeCodeExecutable": "/x"}, "provider": {"a": 1, "pathToClaudeCodeExecutable": "/y"}}\n', b'{"provider": {}, "provider": {"a": 1}}\n'),
+            ("the same key elsewhere stays", b'{"other": {"pathToClaudeCodeExecutable": "/x"}, "provider": {"pathToClaudeCodeExecutable": "/y"}}\n', b'{"other": {"pathToClaudeCodeExecutable": "/x"}, "provider": {}}\n'),
+            ("a nested value behind the row", b'{"provider": {"pathToClaudeCodeExecutable": "/x", "deep": {"a": [1, {"b": 2}]}}}\n', b'{"provider": {"deep": {"a": [1, {"b": 2}]}}}\n'),
+            ("a lone surrogate escape beside the row", b'{"startupNoticeShown": "\\ud800", "provider": {"pathToClaudeCodeExecutable": "/old/claude"}}\n', b'{"startupNoticeShown": "\\ud800", "provider": {}}\n'),
+        )  # fmt: skip
+        for label, before, after in cases:
+            with self.subTest(input=label):
+                run = self.run_modify(script, before, home)
+                self.assertEqual((run.returncode, run.stderr, run.stdout), (0, b"", after))
+                json.loads(run.stdout)
+                again = self.run_modify(script, run.stdout, home)
+                self.assertEqual((again.returncode, again.stderr, again.stdout), (0, b"", after), "idempotent")
 
-    def test_the_claude_bridge_modify_script_prints_the_managed_object_with_a_warning_on_empty_or_invalid_input(
-        self,
-    ) -> None:
-        """chezmoi apply never clobbers: an input the merge cannot read yields the managed object alone, one stderr
-        warning naming the file, exit 0 (the bridge rewrites the file whole on its next notice anyway)."""
+    def test_the_claude_bridge_modify_script_passes_every_object_without_the_row_through_byte_for_byte(self) -> None:
+        """U552: the script's one change is the row's deletion; a file without the row comes back byte for byte,
+        whatever its bytes (U510d: the live file sits in the seat's own write root, so its content is the seat's): an
+        empty or absent file, one of whitespace alone, the bridge's own float form (1e-7), an empty provider, a
+        provider that is no object, the key elsewhere than under provider and a lone surrogate escape, each with exit
+        0 and no stderr line, so chezmoi apply never clobbers the bridge's file and the output index's modify
+        comparison is stable."""
         script = self.write_claude_bridge_modify_script()
         home = self.temp_dir / "target-home"
         home.mkdir()
-        managed = (
-            json.dumps({"provider": {"pathToClaudeCodeExecutable": f"{home}/.local/bin/common/claude-keyed"}}, indent=2)
-            + "\n"
-        )
         cases = (
-            ("empty", ""),
-            ("invalid JSON", "{not json\n"),
-            ("a JSON list", "[1, 2]\n"),
-            ("a provider that is no object", '{"provider": 3}\n'),
-        )
+            ("empty", b""),
+            ("whitespace alone", b" \n\t\r\n"),
+            ("the bridge's float form", b'{\n  "startupNoticeShown": "2026-11-13",\n  "provider": {\n    "plan": "max",\n    "timeout": 1e-7\n  }\n}\n'),
+            ("an empty provider", b'{"provider": {}}\n'),
+            ("a provider that is no object", b'{"provider": 3}\n'),
+            ("the key elsewhere than under provider", b'{"other": {"pathToClaudeCodeExecutable": "/x"}}\n'),
+            ("a lone surrogate escape", b'{"startupNoticeShown": "\\ud800"}\n'),
+        )  # fmt: skip
         for label, current in cases:
             with self.subTest(input=label):
                 run = self.run_modify(script, current, home)
-                self.assertEqual(run.returncode, 0, run.stderr)
-                self.assertEqual(run.stdout, managed)
-                self.assertEqual(len(run.stderr.splitlines()), 1, run.stderr)
-                self.assertIn("claude-bridge.json", run.stderr)
+                self.assertEqual((run.returncode, run.stderr), (0, b""), run.stderr)
+                self.assertEqual(run.stdout, current, "byte for byte")
 
-    def test_the_claude_bridge_modify_script_routes_every_odd_input_into_its_warn_branch(self) -> None:
-        """U510d (the review of 5594f0e7, findings 1 and 8): the live file sits in the seat's own write root, so its
-        content is an input of the seat's choosing. A NaN or an Infinity (json.loads admits them and json.dumps
-        re-emits them, so the file became non-JSON, the bridge's tryParseJson read `{}` and the SDK fell back to its
-        bundled binary on the login, silently), a lone surrogate escape (an encode error at the write), nesting past
-        the recursion limit (a traceback and exit 1), a byte order mark and bytes that are not UTF-8 each yield the
-        managed object alone, strict JSON, one stderr warning naming the file, exit 0: the warn branch and nothing
-        else, never a traceback, never a file the bridge cannot parse."""
+    def test_the_claude_bridge_modify_script_warns_once_and_passes_through_what_it_cannot_read(self) -> None:
+        """U552, round 3 (verdict U552-953af858 P2: a raw-byte search for the key decided whether to warn, and an
+        escaped spelling escaped it): a live file that is not UTF-8 or no JSON object the scanner reads (invalid JSON,
+        with or without the row's spelling in it, a list, the key in a list, a NaN beside the row or alone, a byte
+        order mark, bytes after the object, a trailing comma) passes through byte for byte with exit 0 and one stderr
+        line naming claude-bridge.json and the manual step, never a traceback: the script cannot tell whether such a
+        file names the row, chezmoi apply never fails on the file's content, and the row is the operator's to delete
+        by hand (the handout's manual step). Nesting 100000 deep passes through the same way, with the warning only
+        where the parser gives up (Python 3.13 raises RecursionError; 3.14 on ubuntu-26.04 parses it, U552 round 5),
+        so that case asserts the pass-through and no traceback, not the line."""
         script = self.write_claude_bridge_modify_script()
         home = self.temp_dir / "target-home"
         home.mkdir()
-        managed = (
-            json.dumps({"provider": {"pathToClaudeCodeExecutable": f"{home}/.local/bin/common/claude-keyed"}}, indent=2)
-            + "\n"
-        )
-
-        def refuse_constant(token: str) -> None:
-            raise AssertionError(f"the output holds {token}, which is no JSON")
-
         cases = (
-            ("a NaN", '{"startupNoticeShown": "2026-11-13", "provider": {"plan": NaN}}\n'),
-            ("an Infinity", '{"provider": {"plan": -Infinity}}\n'),
-            ("a lone surrogate escape", '{"startupNoticeShown": "\\ud800", "provider": {"plan": "max"}}\n'),
-            ("nesting past the recursion limit", '{"a":' * 100000 + "1" + "}" * 100000 + "\n"),
-            ("a byte order mark", "\ufeff" + json.dumps({"startupNoticeShown": "2026-11-13"}) + "\n"),
-            ("bytes that are not UTF-8", b'\xff\xfe{"startupNoticeShown": "2026-11-13"}\n'),
-        )
+            ("invalid JSON around the row", b'{"provider": {"pathToClaudeCodeExecutable": \n'),
+            ("invalid JSON without the row", b"{not json\n"),
+            ("a JSON list", b"[1, 2]\n"),
+            ("the key in a list", b'[{"provider": {"pathToClaudeCodeExecutable": "/x"}}]\n'),
+            ("a NaN beside the row", b'{"provider": {"pathToClaudeCodeExecutable": "/x", "plan": NaN}}\n'),
+            ("a NaN alone", b'{"provider": {"plan": NaN}}\n'),
+            ("a byte order mark", "\ufeff".encode() + b'{"provider": {"pathToClaudeCodeExecutable": "/x"}}\n'),
+            ("bytes that are not UTF-8", b'\xff\xfe{"provider": {"pathToClaudeCodeExecutable": "/x"}}\n'),
+            ("bytes after the object", b'{"provider": {"pathToClaudeCodeExecutable": "/x"}} x\n'),
+            ("a trailing comma", b'{"provider": {"pathToClaudeCodeExecutable": "/x",}}\n'),
+        )  # fmt: skip
         for label, current in cases:
             with self.subTest(input=label):
                 run = self.run_modify(script, current, home)
                 self.assertEqual(run.returncode, 0, (run.stdout, run.stderr))
-                self.assertEqual(run.stdout, managed)
-                self.assertEqual(json.loads(run.stdout, parse_constant=refuse_constant), json.loads(managed))
+                self.assertEqual(run.stdout, current, "byte for byte")
                 self.assertEqual(len(run.stderr.splitlines()), 1, run.stderr)
-                self.assertIn("claude-bridge.json", run.stderr)
-                self.assertNotIn("Traceback", run.stderr)
+                self.assertIn(b"claude-bridge.json: the live file is no", run.stderr)
+                self.assertIn(b"delete provider.pathToClaudeCodeExecutable by hand if it is there", run.stderr)
+                self.assertIn(b"the file passes through unchanged", run.stderr)
+                self.assertNotIn(b"Traceback", run.stderr)
+        deep = b'{"a":' * 100000 + b"1" + b"}" * 100000 + b"\n"
+        with self.subTest(input="nesting past the recursion limit"):
+            run = self.run_modify(script, deep, home)
+            self.assertEqual(run.returncode, 0, (run.stdout, run.stderr))
+            self.assertEqual(run.stdout, deep, "byte for byte")
+            self.assertNotIn(b"Traceback", run.stderr)
+            self.assertLessEqual(len(run.stderr.splitlines()), 1, run.stderr)
+            if run.stderr:
+                self.assertIn(b"claude-bridge.json: the live file is no", run.stderr)
         text = script.read_text()
         self.assertIn("parse_constant", text, "a NaN or an Infinity is refused at the parse")
-        self.assertIn("allow_nan=False", text, "and never written")
-
-    def test_the_claude_bridge_modify_script_claims_idempotence_of_its_own_output_not_the_bridges_bytes(self) -> None:
-        """U510e (verdict U510-88ae09c6 P2 :2546): json.dumps writes a float as 1e-07 where the bridge's
-        JSON.stringify writes 1e-7, so the script cannot promise byte equality with the bridge's rewrite and claims
-        none: its contract is idempotence of its own output and the provider row's presence. A float the bridge
-        wrote survives two runs unchanged in value, the second run's bytes equal the first's, and the header states
-        the contract and the float form it does not match."""
-        script = self.write_claude_bridge_modify_script()
-        home = self.temp_dir / "target-home"
-        home.mkdir()
-        bridge_form = '{\n  "startupNoticeShown": "2026-11-13",\n  "provider": {\n    "plan": "max",\n    "timeout": 1e-7,\n    "ratio": 0.1,\n    "big": 1e+21\n  }\n}\n'
-        first = self.run_modify(script, bridge_form, home)
-        self.assertEqual((first.returncode, first.stderr), (0, ""), first.stderr)
-        merged = json.loads(first.stdout)
-        self.assertEqual(merged["provider"]["timeout"], 1e-7)
-        self.assertEqual(merged["provider"]["ratio"], 0.1)
-        self.assertEqual(merged["provider"]["big"], 1e21)
-        self.assertEqual(merged["provider"]["pathToClaudeCodeExecutable"], f"{home}/.local/bin/common/claude-keyed")
-        self.assertIn('"timeout": 1e-07,', first.stdout, "json.dumps's float form, not the bridge's 1e-7")
-        second = self.run_modify(script, first.stdout, home)
-        self.assertEqual((second.returncode, second.stderr, second.stdout), (0, "", first.stdout))
-        self.assertEqual(json.loads(second.stdout), merged)
-        header = script.read_text().split("set -eu", 1)[0]
-        self.assertIn("idempotence of its own output", header)
-        self.assertIn("1e-07", header)
-        self.assertNotIn("so a second apply changes nothing", header, "no byte-stability claim against the bridge")
-
-    def test_the_claude_bridge_modify_script_warns_once_when_two_conditions_apply(self) -> None:
-        """U510e (verdict U510-88ae09c6 P3 :2565): a live file whose provider is no object and which also holds a
-        lone surrogate met two warn branches and printed two lines; the script prints one warning per run, the first
-        condition met naming the reason, with the managed object alone on stdout and exit 0."""
-        script = self.write_claude_bridge_modify_script()
-        home = self.temp_dir / "target-home"
-        home.mkdir()
-        managed = (
-            json.dumps({"provider": {"pathToClaudeCodeExecutable": f"{home}/.local/bin/common/claude-keyed"}}, indent=2)
-            + "\n"
-        )
-        run = self.run_modify(script, '{"startupNoticeShown": "\\ud800", "provider": 3}\n', home)
-        self.assertEqual(run.returncode, 0, (run.stdout, run.stderr))
-        self.assertEqual(run.stdout, managed)
-        self.assertEqual(len(run.stderr.splitlines()), 1, run.stderr)
-        self.assertIn("claude-bridge.json: provider is not a JSON object", run.stderr)
-        self.assertNotIn("surrogate", run.stderr, "the first condition met names the reason")
+        self.assertNotIn("json.dumps", text, "nothing is reserialized: the cut is of the file's own bytes")
+        self.assertIn("scanstring", text, "every key is decoded, so an escaped spelling is the same key")
 
     def test_the_claude_bridge_modify_script_needs_no_uv_and_fails_the_apply_without_python3(self) -> None:
         """regime-cutover U510b: the apply container (Dockerfile) has python3 and no uv, and the first form's
         `exec cat` without uv echoed the empty stdin, so chezmoi apply wrote nothing, exit 0, and the doctor found
-        the three bridge files missing: the login route left in place by silence. The script holds no `uv`, runs the
-        merge under `python3 -I -c` (the kit's baseline), and without python3 exits 1 with one stderr line naming
+        the three bridge files missing: a route left in place by silence. The script holds no `uv`, runs the merge
+        under `python3 -I -c` (the kit's baseline), and without python3 exits 1 with one stderr line naming
         claude-bridge.json and python3 and nothing on stdout, so chezmoi fails the apply naming the file."""
         script = self.write_claude_bridge_modify_script()
         text = script.read_text()
@@ -1383,15 +1375,15 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         home = self.temp_dir / "target-home"
         home.mkdir()
         no_python3 = self.write_fixture_path("no-python3", "cat")
-        live = json.dumps({"startupNoticeShown": "2026-10-23"}, indent=2) + "\n"
+        live = json.dumps({"provider": {"pathToClaudeCodeExecutable": "/old/claude"}}, indent=2) + "\n"
         for label, current in (("an absent file", ""), ("the bridge's live file", live)):
             with self.subTest(input=label):
                 run = self.run_modify(script, current, home, path=no_python3)
                 self.assertEqual(run.returncode, 1, (run.stdout, run.stderr))
-                self.assertEqual(run.stdout, "", "nothing on stdout: chezmoi gets no content to write")
+                self.assertEqual(run.stdout, b"", "nothing on stdout: chezmoi gets no content to write")
                 self.assertEqual(len(run.stderr.splitlines()), 1, run.stderr)
-                self.assertIn("claude-bridge.json", run.stderr)
-                self.assertIn("python3", run.stderr)
+                self.assertIn(b"claude-bridge.json", run.stderr)
+                self.assertIn(b"python3", run.stderr)
 
     def test_check_reports_a_stale_lever_pin_and_a_run_refreshes_it(self) -> None:
         (self.temp_dir / "scripts/orchestrator").mkdir(parents=True)

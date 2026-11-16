@@ -86,18 +86,16 @@ class RegimeStartTest(unittest.TestCase):
         # hcom never runs it otherwise.
         (bindir / "srt").write_text(f'#!/bin/sh\n[ "$1" != --version ] || echo {SRT_PIN}\nexit 0\n')
         (bindir / "srt").chmod(0o755)
-        # claude-keyed is required too (U512): hcom-seat runs `claude-keyed --check` on the seats' API key file before
-        # every launch, so a stand-in answers the ok line; the fake hcom never runs it otherwise.
-        (bindir / "claude-keyed").write_text(
-            '#!/bin/sh\n[ "$1" = --check ] || exit 64\n'
-            "printf 'key file ok: %s; executable: /fake/sdk/claude\\n' \"${REGIME_ANTHROPIC_KEY_FILE-}\"\n"
-        )
-        (bindir / "claude-keyed").chmod(0o755)
         self.state = self.temp / "hcom-state.json"
         self.store = self.temp / "store"
         self.store.mkdir()
         self.repo = self.temp / "pilot"
         self.repo.mkdir()
+        # The seats' Claude token file (regime-cutover U551): hcom-seat refuses every launch without it, so the fixture
+        # places a token of the form (never a real one) under the checkout's derived seats root
+        # `~/.local/state/omp-seats/<slug>` (regime-env's slug of `pilot`; a test that launches from another checkout
+        # places its own), one 0600 line in the 0700 chain.
+        self.place_token("pilot")
         self.env = {
             "HOME": str(self.home),
             # The fake bin and the system directories only: no tool of the host or the runner (a mise shim of claude)
@@ -115,6 +113,17 @@ class RegimeStartTest(unittest.TestCase):
         self.registry = self.home / ".local/state/regime-supervisor"
         self.conf = self.conf_of(self.repo)
         self.lock = self.registry / "supervisor.lock"
+
+    def place_token(self, slug):
+        """The seats' Claude token file under the derived seats root of `slug` (U551), as seat-token-place writes it."""
+        seats = self.home / f".local/state/omp-seats/{slug}"
+        (seats / ".state").mkdir(parents=True, exist_ok=True)
+        for path in (seats, seats / ".state"):
+            path.chmod(0o700)
+        token = seats / ".state/claude-token"
+        token.write_text("sk-ant-oat01-" + "FAKETOKENFORTEST" + "0" * 44 + "\n")
+        token.chmod(0o600)
+        return token
 
     def conf_of(self, toplevel, slug="pilot"):
         """The checkout's registration: `<slug>-<first 12 hex of sha256(toplevel)>.conf` (U36 F3)."""
@@ -396,6 +405,7 @@ class RegimeStartTest(unittest.TestCase):
         repo.mkdir()
         git_init(repo, env=self.env)
         self.git("commit", "-q", "--allow-empty", "-m", "init", cwd=repo)
+        self.place_token("dotfiles")
         legacy = self.home / ".local/state/hcom-regime"
         legacy.mkdir(parents=True)
         (legacy / "hcom.db").write_text("")

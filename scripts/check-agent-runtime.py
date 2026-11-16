@@ -108,10 +108,18 @@ def same_modified(
     The script reads this checkout's managed baseline (CHEZMOI_SOURCE_DIR) and, when given, the working tree chezmoi
     applies from (CHEZMOI_WORKING_TREE), which the Codex config keys its project trust with (F058). `quiet` makes any
     stderr output a mismatch, for a script that degrades to passing its input through with a warning.
+
+    An absent target passes only when the script maps empty input to empty output: a script that deletes a managed
+    row has nothing to delete there (U552), while one that places rows would create them, so its target is missing.
+    Absent means no entry at the path: a directory, a dangling link or any other non-file there is a mismatch (U552
+    round 3, verdict U552-953af858 P2: it read as an absent file and a deleting script passed it).
     """
-    if not target.is_file():
+    if target.is_file():
+        current = target.read_bytes()
+    elif target.exists() or target.is_symlink():
         return False
-    current = target.read_bytes()
+    else:
+        current = b""
     env = os.environ.copy()
     env["CHEZMOI_SOURCE_DIR"] = str(SOURCE_ROOT)
     if working_tree is not None:

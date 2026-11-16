@@ -990,7 +990,7 @@ claude:
       regime-init: 1c576fc79b9f21491fe3bbfcd221efa92af7e7aebbb7e479eaee3a94e91b758d
       checkout-guard.sh: 4fd793eeefa7312b8f23c74a5b8f457eb915213b55f1020cc260932657674c45
       seat-login-preflight: 09b8409ecb34fe716e1a4cc1aab630bdf2fb4c1916df795e1a833ae5aa717fe0
-      seat-token-place: 8b1eacbcccbef8e17afef971f6750da2de25ba32090eb02b0e408f99811e8a29
+      seat-token-place: 44d904f7809b991bcdf6866968ae13fea9b32a42163871ba59b3ecb2c2149a6e
       regime-start: 978087b6ac9cbe00a3cb4f45dd749a8634d960948b5e2df96a97bbafe9597d17
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       regime-store-move: 592ed0a7513a072446d1dee5a96b27b96b139eda33cfdc5ac95dd559aa66351a

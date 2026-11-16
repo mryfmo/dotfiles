@@ -671,7 +671,7 @@
       "target": ".local/bin/common/seat-token-place",
       "kind": "file",
       "executable": true,
-      "sha256": "8b1eacbcccbef8e17afef971f6750da2de25ba32090eb02b0e408f99811e8a29"
+      "sha256": "44d904f7809b991bcdf6866968ae13fea9b32a42163871ba59b3ecb2c2149a6e"
     },
     {
       "source": "home/dot_local/bin/common/executable_stall-check.py",

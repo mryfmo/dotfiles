@@ -10,15 +10,19 @@
 #   operator runs `claude setup-token` in their own terminal first (the browser opens; the token prints once), then
 #   this lever, which prompts `token: ` and reads one line from stdin with echo off (`read -rs`): the pasted line is
 #   taken whole, so a terminal's bracketed-paste marks and any other CSI sequence (`ESC [ ... final`) are stripped,
-#   as are a carriage return and surrounding whitespace, and the rest is held to the token's form (TOKEN_FORM_RE, the
-#   one text hcom-seat, seat-login-preflight and acp-broker hold). An EOF, an empty line, a line of CSI sequences
-#   alone or a line off the form refuses (exit 1) naming the character count after stripping and never the input;
-#   nothing is written. The chain is held before anything is written: the seats root and its `.state` are each no
-#   symbolic link (lstat on the spelled path, before anything resolves it), made 0700 under `umask 077` when absent,
-#   held to directories of this user, and `.state` tightened to 0700; the destination is no link and, when present,
-#   a regular file of this user (a 0644 file is replaced, not refused). The token is written to an exclusive 0600
-#   temporary `mktemp` makes beside the destination and renamed over it, so a previous file survives every failure
-#   byte for byte and the token never lies in a file another user can read. The one stdout line is the result,
+#   as is the whitespace at either end (a Windows clipboard's trailing carriage return among it), and the rest is held
+#   to the token's form (TOKEN_FORM_RE, the one text hcom-seat, seat-login-preflight and acp-broker hold). An EOF, an
+#   empty line, a line of CSI sequences alone, a line off the form (a carriage return inside it included) or a second
+#   line behind the first refuses (exit 1) naming the character count after stripping and never the input; nothing is
+#   written. The chain is held before anything is written: every directory of the seats root's path, from `/` down,
+#   and its `.state` are each no symbolic link (lstat on the spelled path, before anything resolves it; U552: a link
+#   above the root wrote through it), the root and `.state` made 0700 under `umask 077` when absent, held to
+#   directories of this user, and `.state` tightened to 0700; the destination is no link and, when present, a regular
+#   0600 file of this user (a 0644 file refuses, naming the mode: the operator removes or tightens it first). The token
+#   is written to an exclusive 0600 temporary `mktemp` makes beside the destination and renamed over it, so a previous
+#   file survives every failure byte for byte and the token never lies in a file another user can read. The variable
+#   that holds the line is unset before it is read, so no caller's export attribute carries the token into `mktemp` or
+#   any other child (U552). The one stdout line is the result,
 #   `seat-token-place: placed <file> (<n> characters, mode 0600)`; the token reaches no argument, no line and no
 #   other process. The seats root is `--seats-root <dir>`, else `REGIME_SEATS_ROOT`, else `~/.local/state/omp-seats/
 #   <slug>` of the checkout this runs in (regime-env's slug, as seat-login-preflight derives it), an absolute clean
@@ -31,8 +35,9 @@
 # @stdout One line: `seat-token-place: placed <file> (<n> characters, mode 0600)`.
 # @stderr The prompt and every refusal, `seat-token-place: refused: <reason>`; the token never.
 # @exitcode 0 The token is placed.
-# @exitcode 1 Refused: nothing written (an EOF, an empty or CSI-only input, a line off the form, a link in the chain or
-#   at the destination, a component that is not this user's directory, a write that failed).
+# @exitcode 1 Refused: nothing written (an EOF, an empty or CSI-only input, a line off the form, a second line, a link
+#   in the chain or at the destination, a component that is not this user's directory, a destination that is not a
+#   0600 regular file of this user, a write that failed).
 # @exitcode 2 The self-check or the usage refused, or no seats root could be derived.
 # @example
 #   claude setup-token            # in the operator's own terminal; the token prints once
@@ -119,6 +124,26 @@ refuse() {
     exit 1
 }
 
+# The system name once, for the one `stat` form below (as seat-login-preflight reads it).
+os=$(uname -s) || {
+    echo 'seat-token-place: refused: cannot read the system name: uname -s failed' >&2
+    exit 2
+}
+
+# @description Print a file's permission bits in octal (seat-login-preflight's form).
+# @arg $1 path File.
+# @exitcode 2 `stat` failed or printed no mode.
+mode_of() {
+    local value
+    if [[ ${os} == Darwin ]]; then
+        value=$(stat -f %Lp "$1") || return 2
+    else
+        value=$(stat -c %a "$1") || return 2
+    fi
+    [[ ${value} =~ ^[0-7]{3,4}$ ]] || return 2
+    printf '%s\n' "${value}"
+}
+
 usage='usage: seat-token-place [--seats-root <dir>]  (reads the token from stdin at the prompt, unechoed)'
 seats_root=${REGIME_SEATS_ROOT:-}
 while (($# > 0)); do
@@ -165,13 +190,22 @@ fi
 state=${seats_root}/.state
 dest=${state}/claude-token
 
-# The chain, before anything is written (regime-cutover U512b's rule for the key command, kept for the token): each of
-# the seats root and `.state` no symbolic link by lstat on the spelled path, made 0700 under the umask when absent,
-# then a directory of this user; `.state` tightened to 0700 (hcom-seat makes it so; a 0755 one is tightened, not
-# refused). The destination no link and, when present, a regular file of this user.
+# The chain, before anything is written (regime-cutover U512b's rule for the key command, kept for the token): every
+# directory of the seats root's path, from `/` down to the root itself, then `.state`, no symbolic link by lstat on the
+# spelled path (U552, verdict U552-484346a3 P2: the root and `.state` alone were judged, so `--seats-root <link>/seats`
+# wrote through the link above the root); the root and `.state` made 0700 under the umask when absent, then
+# directories of this user; `.state` tightened to 0700 (hcom-seat makes it so; a 0755 one is tightened, not refused).
+# The destination no link and, when present, a regular 0600 file of this user: a wider mode refuses naming it, since
+# the previous token lay readable and the operator decides about it before a new one lands at the same name.
 umask 077
+IFS=/ read -r -a components <<< "${seats_root#/}"
+ancestor=''
+for ((i = 0; i < ${#components[@]} - 1; i++)); do
+    ancestor=${ancestor}/${components[i]}
+    [[ ! -L ${ancestor} ]] || refuse "${ancestor} is a symbolic link above the seats root; every directory of the root's path must be real (nothing written)"
+done
 # The root's parents (`~/.local/state/omp-seats` on a fresh host, before any seat ran) are made 0700 when absent; the
-# chain this lever judges starts at the root, as hcom-seat's and seat-login-preflight's do.
+# chain this lever judges by ownership starts at the root, as hcom-seat's and seat-login-preflight's do.
 if [[ ! -e ${seats_root%/*} ]]; then
     /bin/mkdir -p -- "${seats_root%/*}" || refuse "cannot create ${seats_root%/*} (nothing written)"
 fi
@@ -184,24 +218,37 @@ for path in "${seats_root}" "${state}"; do
 done
 chmod 700 "${state}" || refuse "cannot set the mode of ${state} to 0700 (nothing written)"
 [[ ! -L ${dest} ]] || refuse "${dest} is a symbolic link; the token file must be a regular file of this user (nothing written)"
-[[ ! -e ${dest} ]] || [[ -f ${dest} && -O ${dest} ]] || refuse "${dest} is not a regular file of this user (nothing written)"
+if [[ -e ${dest} ]]; then
+    [[ -f ${dest} && -O ${dest} ]] || refuse "${dest} is not a regular file of this user (nothing written)"
+    dest_mode=$(mode_of "${dest}") || refuse "cannot read the mode of ${dest} (nothing written)"
+    [[ ${dest_mode} == 600 ]] || refuse "${dest} has mode ${dest_mode}, not 0600; remove it or chmod 600 it, then run again (nothing written)" # lint-comparisons: allow a mode word from stat, no path compare
+fi
 
 # The token, one line from stdin with echo off; the prompt and the newline after the hidden input go to stderr, so
-# stdout carries the result line alone. The status is read (standing order 21): an EOF before a line refuses.
+# stdout carries the result line alone. The status is read (standing order 21): an EOF before a line refuses. The
+# variable is unset first (U552, verdict U552-484346a3 P1): a caller's exported `token` keeps its export attribute
+# through the read, and the pasted line would reach mktemp through its environment.
+unset token more
 printf 'token: ' >&2
 IFS= read -rs token || {
-    [[ -n ${token} ]] || {
+    [[ -n ${token:-} ]] || {
         echo >&2
         refuse 'no token was read (end of input before a line; nothing written)'
     }
 }
 echo >&2
+# A second line behind the first refuses before anything is judged (U552, verdict P2: it stayed on stdin and the first
+# line was placed): whatever follows is read for up to one second (a terminal's pasted lines are already in its buffer;
+# a pipe answers at once), and anything but nothing refuses.
+more=''
+IFS= read -rs -t 1 more || :
+[[ -z ${more} ]] || refuse 'the input holds more than one line (nothing written)'
 # Strip what a terminal adds to a pasted line and never a token's own byte: every CSI sequence (bracketed-paste marks
-# included), a carriage return, and whitespace at either end.
+# included) and whitespace at either end, a Windows clipboard's trailing carriage return among it; a carriage return
+# inside the line is a byte off the form and refuses below.
 while [[ ${token} =~ ${CSI_RE} ]]; do
     token=${token//"${BASH_REMATCH[0]}"/}
 done
-token=${token//$'\r'/}
 token=${token#"${token%%[![:space:]]*}"}
 token=${token%"${token##*[![:space:]]}"}
 count=${#token}

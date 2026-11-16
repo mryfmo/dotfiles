@@ -1173,7 +1173,8 @@ class SeatTokenPlaceTest(unittest.TestCase):
     HOME and seats root with the token on stdin; nothing of a real token or terminal is touched."""
 
     def setUp(self) -> None:
-        self.temp = Path(tempfile.mkdtemp(prefix="seat-token-place-"))
+        # Physical (macOS's TMPDIR lies under the /var link): the lever refuses a link anywhere in the root's path (U552).
+        self.temp = Path(tempfile.mkdtemp(prefix="seat-token-place-")).resolve()
         self.home = self.temp / "home"
         self.home.mkdir()
         self.bin = self.temp / "bin"
@@ -1215,15 +1216,26 @@ class SeatTokenPlaceTest(unittest.TestCase):
     def test_the_placer_writes_one_0600_line_in_the_0700_chain_and_prints_the_count_alone(self) -> None:
         """The fixture token pasted at the prompt: the chain is made 0700 under umask 077, the file holds the one line
         with one line feed, mode 0600, and the one stdout line names the file and the character count, never the
-        token; the prompt and a newline are the whole of stderr. A second placement replaces a 0644 previous file
-        through the exclusive temporary (0600 again, no temporary left), and the placed file reads `token present` in
-        the pre-flight and `--check`."""
+        token; the prompt and a newline are the whole of stderr. A 0644 previous file refuses before the prompt,
+        naming its mode, and stays byte for byte (U552, verdict U552-484346a3 P2: the previous token lay readable and
+        is the operator's to settle first); tightened to 0600 it is replaced through the exclusive temporary (0600
+        again, no temporary left, `.state` tightened to 0700), and the placed file reads `token present` in the
+        pre-flight and `--check`."""
         self.assert_placed(self.run_placer("--seats-root", str(self.seats), stdin=FAKE_OAT + "\n"))
         self.assertEqual(stat.S_IMODE(os.lstat(self.seats).st_mode), 0o700, "a root this lever made is 0700")
         self.token.write_text("old\n")
         self.token.chmod(0o644)
         (self.seats / ".state").chmod(0o755)
         second = "sk-ant-oat01-" + "SECONDFIXTURETOKEN" + "1" * 42
+        wide = self.run_placer("--seats-root", str(self.seats), stdin=second + "\n")
+        self.assertEqual((wide.returncode, wide.stdout), (1, ""), wide.stderr)
+        self.assertEqual(wide.stderr, f"seat-token-place: refused: {self.token} has mode 644, not 0600; remove it or chmod 600 it, then run again (nothing written)\n")  # fmt: skip
+        self.assertEqual(self.token.read_text(), "old\n")
+        self.assertEqual(stat.S_IMODE(os.lstat(self.token).st_mode), 0o644)
+        self.assertEqual(sorted(p.name for p in (self.seats / ".state").iterdir()), ["claude-token"], "no temporary")
+        self.assertNotIn(second, wide.stderr)
+        self.assertNotIn("token: ", wide.stderr, "refused before the prompt")
+        self.token.chmod(0o600)
         self.assert_placed(self.run_placer("--seats-root", str(self.seats), stdin=second + "\n"), second)
         # The pre-flight reads the placed file as present, by the same form.
         profiles = self.home / ".agents/omp/profiles"
@@ -1256,9 +1268,10 @@ class SeatTokenPlaceTest(unittest.TestCase):
 
     def test_eof_empty_csi_only_and_off_form_inputs_write_nothing_and_print_the_count_alone(self) -> None:
         """The failure injections of the brief: an end of input before a line, an empty line, a line of CSI sequences
-        alone, a line off the token's form (a key, a short token, a token with a space inside) each refuse (exit 1)
-        naming the character count after stripping and never the input; nothing is written, not even the chain's
-        directories' content beyond the empty `.state`, and a previous file survives byte for byte."""
+        alone, a line off the token's form (a key, a short token, a token with a space or a carriage return inside)
+        and, since U552, a second line behind the first (with or without its line feed) each refuse (exit 1) naming
+        the character count after stripping or the second line, and never the input; nothing is written, not even the
+        chain's directories' content beyond the empty `.state`, and a previous file survives byte for byte."""
         self.assert_placed(self.run_placer("--seats-root", str(self.seats), stdin=FAKE_OAT + "\n"))
         before = self.token.read_bytes()
         cases = (
@@ -1269,6 +1282,9 @@ class SeatTokenPlaceTest(unittest.TestCase):
             ("a key, not a token", "sk-ant-api03-" + "NOTATOKEN" + "0" * 40 + "\n", "the input (62 characters after stripping) is not a token of the form"),
             ("a short token", "sk-ant-oat01-" + "short\n", "the input (18 characters after stripping) is not a token of the form"),
             ("a space inside", FAKE_OAT[:30] + " " + FAKE_OAT[30:] + "\n", f"the input ({len(FAKE_OAT) + 1} characters after stripping) is not a token of the form"),
+            ("a carriage return inside", FAKE_OAT[:30] + "\r" + FAKE_OAT[30:] + "\n", f"the input ({len(FAKE_OAT) + 1} characters after stripping) is not a token of the form"),
+            ("a second line", FAKE_OAT + "\nsecond\n", "the input holds more than one line (nothing written)"),
+            ("a second line without its line feed", FAKE_OAT + "\nx", "the input holds more than one line (nothing written)"),
         )  # fmt: skip
         for label, stdin, reason in cases:
             with self.subTest(label=label):
@@ -1293,7 +1309,8 @@ class SeatTokenPlaceTest(unittest.TestCase):
     def test_a_link_in_the_chain_or_at_the_destination_refuses_with_nothing_written_through_it(self) -> None:
         """A symbolic link at the seats root, at `.state` or at the destination refuses (exit 1) before the token is
         read, naming the link; nothing is written at the link's target, and a file at `.state` or a root of another
-        user refuses the same way."""
+        user refuses the same way. Since U552 a link above the root (`--seats-root <link>/seats`) refuses the same
+        way, by lstat on the link before anything is made (verdict U552-484346a3 P2: round 1 wrote through it)."""
         elsewhere = self.temp / "elsewhere"
         elsewhere.mkdir()
         target = elsewhere / "target"
@@ -1325,6 +1342,30 @@ class SeatTokenPlaceTest(unittest.TestCase):
         self.assertIn(f"{self.seats}/.state is not a directory of this user (nothing written)", result.stderr)
         self.assertNotIn(FAKE_OAT, result.stderr)
         self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), ["target"])
+        # U552: a link above the root refuses before anything is made or read; nothing is written through it.
+        linked_parent = self.temp / "linked-parent"
+        linked_parent.symlink_to(elsewhere)
+        result = self.run_placer("--seats-root", f"{linked_parent}/seats", stdin=FAKE_OAT + "\n")
+        self.assertEqual((result.returncode, result.stdout), (1, ""), result.stderr)
+        self.assertEqual(result.stderr, f"seat-token-place: refused: {linked_parent} is a symbolic link above the seats root; every directory of the root's path must be real (nothing written)\n")  # fmt: skip
+        self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), ["target"], "nothing made through the link")
+        self.assertNotIn("token: ", result.stderr, "refused before the prompt")
+
+    def test_a_callers_exported_token_variable_reaches_no_child_of_the_placer(self) -> None:
+        """U552 (verdict U552-484346a3 P1): the variable the pasted line is read into is unset before the read, so a
+        caller's exported `token` (whose export attribute a plain read would keep) carries the pasted line into neither
+        mktemp's environment nor any other child; the placement itself is unchanged."""
+        record = self.temp / "mktemp-env"
+        write_exec(
+            self.bin / "mktemp",
+            f'#!/bin/sh\nprintf \'%s\\n\' "${{token-unset}}" >> {record}\nexec /usr/bin/mktemp "$@"\n',
+        )
+        result = self.run_placer(
+            "--seats-root", str(self.seats), stdin=FAKE_OAT + "\n", env={"token": "caller-" + "exported-value"}
+        )
+        self.assert_placed(result)
+        self.assertEqual(record.read_text(), "unset\n", "the pasted line reached no child's environment")
+        (self.bin / "mktemp").unlink()
 
     def test_a_failed_temporary_leaves_the_previous_file_byte_for_byte(self) -> None:
         """A `mktemp` that fails, or one that names a path outside `.state`, refuses after the token was read and

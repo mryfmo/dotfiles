@@ -107,30 +107,33 @@ click is the laptop's. The design and the threat table are in
 3. On the Ubuntu host, in your own terminal, run
    `seat-login-preflight <profile>` for each seat profile (orchestrator,
    worker, audit) that `make doctor` reports absent. The ChatGPT sign-in completes through the forwarded callback. For
-   Claude the pre-flight prints the one command to run there,
-   `BROWSER=regime-open-url CLAUDE_CONFIG_DIR=<seats-root>/.state/claude claude auth login`:
-   the sign-in shows a code in the laptop tab; paste it at the terminal prompt.
-   That directory, `~/.local/state/omp-seats/<slug>/.state/claude`, is the
-   seats' shared Claude Code directory on every host, the laptop included
-   (U318): one claude.ai login per host, made once with that command (without
-   the `BROWSER` prefix on the laptop), stored and refreshed by Claude Code
-   itself, and revoked with `CLAUDE_CONFIG_DIR=<dir> claude auth logout`. Every
-   seat's child runs under it; no token file, no yearly copy. The operator's
-   own Claude Code keeps the host login (the Keychain on macOS, its credentials
-   file on Linux) and its claude.ai connectors; no shell exports a token
-   (U312), and the managed Claude settings still withhold the retired token
-   variable and file from sandboxed commands as defence in depth.
+   Claude the pre-flight prints the operator's two steps (regime-cutover U551):
+   run `claude setup-token` in your own terminal (the browser opens; the
+   long-lived token prints once), then `seat-token-place`, which reads it
+   unechoed and writes the seats' one token file,
+   `~/.local/state/omp-seats/<slug>/.state/claude-token` (0600, one line), on
+   that host. Every seat's Claude Code child runs on that token, handed to it
+   by the seat shim's environment alone (the file is denied inside the
+   sandbox); a setup-token has no refresh token, so nothing renews or rotates
+   it, and it is revoked by signing out of the account's sessions. The seats'
+   Claude Code directory `.state/claude-<group>` keeps the child's state and
+   sessions and holds no login. The operator's own Claude Code keeps the host
+   login (the Keychain on macOS, its credentials file on Linux) and its
+   claude.ai connectors; no shell exports a token (U312), and the managed Claude
+   settings still withhold the token variable and the retired token file from
+   sandboxed commands as defence in depth.
 4. `make doctor` on the Ubuntu host lists each seat profile under "Seat logins"
-   from presence and mtimes only; the Claude line names the shared directory
-   and the login's method (`claude.ai`).
-5. `hcom-seat <role>` there runs the same pre-flight before it starts a seat.
-   It also checks that the seat can use the login: a ChatGPT login stored in
-   the profile's `agent.db`, and for Claude a `claude.ai` login under the shared
-   directory (`claude auth status` under it). A `CLAUDE_CODE_OAUTH_TOKEN` in the
-   shell, the operator's own `~/.claude` and a token or API-key login under the
-   directory are no input, so a host without that login starts no seat, by
-   design. A seat never runs a login: without one, it refuses and prints the
-   command.
+   from presence and mtimes only; the Claude line names the token file and its
+   state (`token present (<file>)`, or `token absent (<reason>)` with the two
+   steps).
+5. `hcom-seat <role>` there runs the same pre-flight before it starts a seat,
+   and judges the token file itself before anything is made: a ChatGPT login
+   stored in the profile's `agent.db`, and for Claude the token file by its form
+   (a regular 0600 file of this user, one line of the token's shape). A
+   `CLAUDE_CODE_OAUTH_TOKEN` in the shell, the operator's own `~/.claude` and a
+   login under the seats' directory are no input, so a host without the token
+   file starts no seat, by design. A seat never makes a token: without the
+   file, it refuses and prints the two steps.
 
 ### Private credentials and keys
 
@@ -727,10 +730,11 @@ subprocess:
   Linux the Claude login is the denied
   `~/.claude/.credentials.json` and the `gh` token is the denied hosts file.
 - `sandbox.credentials.envVars` removes `CLAUDE_CODE_OAUTH_TOKEN` from the
-  environment of sandboxed commands, as defence in depth: no shell exports it
-  (U312) and no seat reads a token at all since U318 (the seats log in by the
-  shared directory, docs/remote-host-logins.md); the retired token file stays
-  denied for the same reason.
+  environment of the operator's sandboxed commands, as defence in depth: no
+  shell exports it (U312); the seats' own token (U551) rides only inside the
+  seat shim's sandboxed process tree, read from `<seats-root>/.state/claude-token`
+  by that shim and never by a shell (docs/remote-host-logins.md); the retired
+  `~/.config/claude-code/oauth-token` file stays denied for the same reason.
 - `sandbox.filesystem.denyRead` denies `~/**/.env`, `~/**/.env.*` and the same
   pair under `/tmp` (and `/private/tmp` on macOS), which covers checkouts
   outside `$HOME` such as the audit worktrees and Claude's own

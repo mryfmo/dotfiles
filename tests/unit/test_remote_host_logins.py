@@ -26,6 +26,8 @@ COMMON = ROOT / "home/dot_local/bin/common"
 OPENER = COMMON / "executable_regime-url-opener"
 OPEN_URL = COMMON / "executable_regime-open-url"
 PREFLIGHT = ROOT / "scripts/orchestrator/seat-login-preflight"
+# The operator's one writer of the seats' Claude token file (regime-cutover U551).
+PLACER = ROOT / "scripts/orchestrator/seat-token-place"
 HCOM_SEAT = ROOT / "scripts/orchestrator/hcom-seat"
 ZSHENV = ROOT / "home/dot_zshenv"
 PROFILE = ROOT / "home/dot_profile"
@@ -1164,6 +1166,228 @@ printf '{{"hostId":"{HOST_ID}","clientId":"oaiapp_fake"}}\\n' > "$agent/openai-s
         for text in (variable_only.stderr, refused.stderr, output, present.stderr, tty):
             self.assertNotIn(FAKE_OAUTH_VALUE, text)
             self.assertNotIn(FAKE_OAT, text)
+
+
+class SeatTokenPlaceTest(unittest.TestCase):
+    """`seat-token-place` (U551): the operator's one writer of `<seats-root>/.state/claude-token`, run against a scratch
+    HOME and seats root with the token on stdin; nothing of a real token or terminal is touched."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="seat-token-place-"))
+        self.home = self.temp / "home"
+        self.home.mkdir()
+        self.bin = self.temp / "bin"
+        self.bin.mkdir()
+        self.seats = self.temp / "seats"
+        self.token = self.seats / ".state/claude-token"
+
+    def tearDown(self) -> None:
+        for path in self.temp.rglob("*"):
+            if path.is_dir() and not path.is_symlink() and not os.access(path, os.R_OK | os.X_OK):
+                path.chmod(0o700)
+        shutil.rmtree(self.temp)
+
+    def run_placer(
+        self, *args: str, stdin: str | None, env: dict[str, str] | None = None, cwd: Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        environment = {"HOME": str(self.home), "PATH": f"{self.bin}:/usr/bin:/bin", "TMPDIR": str(self.temp)}
+        environment.update(env or {})
+        return subprocess.run(
+            [str(PLACER), *args], env=environment, cwd=cwd or self.temp, input=stdin,
+            stdin=None if stdin is not None else subprocess.DEVNULL, capture_output=True, text=True, check=False,
+        )  # fmt: skip
+
+    def assert_placed(self, result: subprocess.CompletedProcess[str], token: str = FAKE_OAT) -> None:
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, f"seat-token-place: placed {self.token} ({len(token)} characters, mode 0600)\n")
+        self.assertEqual(result.stderr, "token: \n", "the prompt and the newline after the hidden input alone")
+        self.assertEqual(self.token.read_text(), token + "\n")
+        self.assertEqual(stat.S_IMODE(os.lstat(self.token).st_mode), 0o600)
+        self.assertTrue(self.token.is_file() and not self.token.is_symlink())
+        for path in (self.seats, self.seats / ".state"):
+            self.assertTrue(path.is_dir() and not path.is_symlink(), path)
+        self.assertEqual(stat.S_IMODE(os.lstat(self.seats / ".state").st_mode), 0o700)
+        self.assertEqual(
+            sorted(p.name for p in (self.seats / ".state").iterdir()), ["claude-token"], "no temporary left"
+        )
+        self.assertNotIn(token, result.stdout + result.stderr)
+
+    def test_the_placer_writes_one_0600_line_in_the_0700_chain_and_prints_the_count_alone(self) -> None:
+        """The fixture token pasted at the prompt: the chain is made 0700 under umask 077, the file holds the one line
+        with one line feed, mode 0600, and the one stdout line names the file and the character count, never the
+        token; the prompt and a newline are the whole of stderr. A second placement replaces a 0644 previous file
+        through the exclusive temporary (0600 again, no temporary left), and the placed file reads `token present` in
+        the pre-flight and `--check`."""
+        self.assert_placed(self.run_placer("--seats-root", str(self.seats), stdin=FAKE_OAT + "\n"))
+        self.assertEqual(stat.S_IMODE(os.lstat(self.seats).st_mode), 0o700, "a root this lever made is 0700")
+        self.token.write_text("old\n")
+        self.token.chmod(0o644)
+        (self.seats / ".state").chmod(0o755)
+        second = "sk-ant-oat01-" + "SECONDFIXTURETOKEN" + "1" * 42
+        self.assert_placed(self.run_placer("--seats-root", str(self.seats), stdin=second + "\n"), second)
+        # The pre-flight reads the placed file as present, by the same form.
+        profiles = self.home / ".agents/omp/profiles"
+        profiles.mkdir(parents=True)
+        (profiles / "orchestrator.yml").write_text("modelRoles:\n  default: claude-bridge/claude-fable-5-2\n")
+        check = subprocess.run(
+            [str(PREFLIGHT), "--check", "orchestrator"],
+            env={"HOME": str(self.home), "PATH": f"{self.bin}:/usr/bin:/bin", "REGIME_SEATS_ROOT": str(self.seats)},
+            capture_output=True, text=True, check=False, stdin=subprocess.DEVNULL,
+        )  # fmt: skip
+        self.assertEqual(
+            (check.returncode, check.stdout), (0, f"orchestrator claude-bridge: token present ({self.token})\n")
+        )
+
+    def test_a_pasted_line_is_stripped_of_csi_sequences_a_carriage_return_and_whitespace(self) -> None:
+        """A terminal's bracketed paste wraps the line in `ESC [ 200 ~` and `ESC [ 201 ~`, a Windows clipboard adds a
+        carriage return and a pasted line may carry spaces or a tab at either end: each is stripped and the token is
+        placed as its own characters; the count is the token's."""
+        for label, stdin in (
+            ("a bracketed paste", f"\x1b[200~{FAKE_OAT}\x1b[201~\n"),
+            ("a carriage return", f"{FAKE_OAT}\r\n"),
+            ("surrounding whitespace", f"  \t{FAKE_OAT} \n"),
+            ("a paste with other CSI sequences", f"\x1b[?2004l\x1b[200~ {FAKE_OAT}\x1b[201~\x1b[0m\r\n"),
+            ("a partial line then EOF", FAKE_OAT),
+        ):
+            with self.subTest(label=label):
+                if self.seats.exists():
+                    shutil.rmtree(self.seats)
+                self.assert_placed(self.run_placer("--seats-root", str(self.seats), stdin=stdin))
+
+    def test_eof_empty_csi_only_and_off_form_inputs_write_nothing_and_print_the_count_alone(self) -> None:
+        """The failure injections of the brief: an end of input before a line, an empty line, a line of CSI sequences
+        alone, a line off the token's form (a key, a short token, a token with a space inside) each refuse (exit 1)
+        naming the character count after stripping and never the input; nothing is written, not even the chain's
+        directories' content beyond the empty `.state`, and a previous file survives byte for byte."""
+        self.assert_placed(self.run_placer("--seats-root", str(self.seats), stdin=FAKE_OAT + "\n"))
+        before = self.token.read_bytes()
+        cases = (
+            ("EOF", None, "no token was read (end of input before a line; nothing written)"),
+            ("an empty line", "\n", "the input is empty after stripping (nothing written)"),
+            ("CSI sequences alone", "\x1b[200~\x1b[201~\n", "the input is empty after stripping (nothing written)"),
+            ("whitespace alone", "   \n", "the input is empty after stripping (nothing written)"),
+            ("a key, not a token", "sk-ant-api03-" + "NOTATOKEN" + "0" * 40 + "\n", "the input (62 characters after stripping) is not a token of the form"),
+            ("a short token", "sk-ant-oat01-" + "short\n", "the input (18 characters after stripping) is not a token of the form"),
+            ("a space inside", FAKE_OAT[:30] + " " + FAKE_OAT[30:] + "\n", f"the input ({len(FAKE_OAT) + 1} characters after stripping) is not a token of the form"),
+        )  # fmt: skip
+        for label, stdin, reason in cases:
+            with self.subTest(label=label):
+                result = self.run_placer("--seats-root", str(self.seats), stdin=stdin)
+                self.assertEqual((result.returncode, result.stdout), (1, ""), result.stderr)
+                self.assertTrue(result.stderr.startswith("token: \n"), result.stderr)
+                self.assertIn(f"seat-token-place: refused: {reason}", result.stderr)
+                if stdin and stdin.strip().replace("\x1b", ""):
+                    self.assertNotIn(stdin.strip().replace("\x1b", ""), result.stderr, "the input is never printed")
+                self.assertNotIn("NOTATOKEN", result.stderr)
+                self.assertEqual(self.token.read_bytes(), before, "the previous file is untouched")
+                self.assertEqual(
+                    sorted(p.name for p in (self.seats / ".state").iterdir()), ["claude-token"], "no temporary left"
+                )
+        # Without a previous file nothing is written at all: the chain alone, empty.
+        self.token.unlink()
+        result = self.run_placer("--seats-root", str(self.seats), stdin="not-a-" + "token\n")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertEqual(sorted(p.name for p in (self.seats / ".state").iterdir()), [])
+        self.assertNotIn("not-a-" + "token", result.stderr)
+
+    def test_a_link_in_the_chain_or_at_the_destination_refuses_with_nothing_written_through_it(self) -> None:
+        """A symbolic link at the seats root, at `.state` or at the destination refuses (exit 1) before the token is
+        read, naming the link; nothing is written at the link's target, and a file at `.state` or a root of another
+        user refuses the same way."""
+        elsewhere = self.temp / "elsewhere"
+        elsewhere.mkdir()
+        target = elsewhere / "target"
+        target.write_text("target\n")
+        self.seats.mkdir(mode=0o700)
+        (self.seats / ".state").mkdir(mode=0o700)
+        self.token.symlink_to(target)
+        result = self.run_placer("--seats-root", str(self.seats), stdin=FAKE_OAT + "\n")
+        self.assertEqual((result.returncode, result.stdout), (1, ""), result.stderr)
+        self.assertEqual(result.stderr, f"seat-token-place: refused: {self.token} is a symbolic link; the token file must be a regular file of this user (nothing written)\n")  # fmt: skip
+        self.assertEqual(target.read_text(), "target\n")
+        self.assertTrue(self.token.is_symlink(), "the link is neither removed nor replaced")
+        self.token.unlink()
+        for linked in (self.seats / ".state", self.seats):
+            with self.subTest(linked=linked):
+                shutil.rmtree(linked)
+                linked.symlink_to(elsewhere)
+                result = self.run_placer("--seats-root", str(self.seats), stdin=FAKE_OAT + "\n")
+                self.assertEqual((result.returncode, result.stdout), (1, ""), result.stderr)
+                self.assertEqual(result.stderr, f"seat-token-place: refused: {linked} is a symbolic link; the seats root and its .state must be real directories of this user (nothing written)\n")  # fmt: skip
+                self.assertEqual(
+                    sorted(p.name for p in elsewhere.iterdir()), ["target"], "nothing written through the link"
+                )
+                linked.unlink()
+        self.seats.mkdir(mode=0o700)
+        (self.seats / ".state").write_text("")
+        result = self.run_placer("--seats-root", str(self.seats), stdin=FAKE_OAT + "\n")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn(f"{self.seats}/.state is not a directory of this user (nothing written)", result.stderr)
+        self.assertNotIn(FAKE_OAT, result.stderr)
+        self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), ["target"])
+
+    def test_a_failed_temporary_leaves_the_previous_file_byte_for_byte(self) -> None:
+        """A `mktemp` that fails, or one that names a path outside `.state`, refuses after the token was read and
+        before anything is renamed: the previous file is byte for byte what it was, no temporary stays behind and the
+        token is printed nowhere."""
+        self.assert_placed(self.run_placer("--seats-root", str(self.seats), stdin=FAKE_OAT + "\n"))
+        before = self.token.read_bytes()
+        second = "sk-ant-oat01-" + "SECONDFIXTURETOKEN" + "1" * 42
+        for label, body, reason in (
+            ("mktemp fails", "#!/bin/sh\nexit 1\n", f"cannot make a temporary file in {self.seats}/.state (nothing written)"),
+            ("mktemp names a path elsewhere", f"#!/bin/sh\nprintf '%s\\n' {self.temp}/nowhere/claude-token.tmp\n", f"mktemp made no regular file under {self.seats}/.state (nothing written)"),
+        ):  # fmt: skip
+            with self.subTest(label=label):
+                write_exec(self.bin / "mktemp", body)
+                result = self.run_placer("--seats-root", str(self.seats), stdin=second + "\n")
+                self.assertEqual((result.returncode, result.stdout), (1, ""), result.stderr)
+                self.assertIn(f"seat-token-place: refused: {reason}", result.stderr)
+                self.assertEqual(self.token.read_bytes(), before)
+                self.assertEqual(sorted(p.name for p in (self.seats / ".state").iterdir()), ["claude-token"])
+                self.assertNotIn(second, result.stdout + result.stderr)
+        (self.bin / "mktemp").unlink()
+
+    def test_the_seats_root_comes_from_the_option_the_environment_or_the_checkout_and_must_be_clean(self) -> None:
+        """Without `--seats-root` the root is `REGIME_SEATS_ROOT`, else `~/.local/state/omp-seats/<slug>` of the
+        checkout the lever runs in (regime-env's slug, as the pre-flight derives it); outside a checkout with neither
+        it refuses (exit 2) before reading anything; a relative root, one with `..` or a trailing slash is refused
+        (exit 2) as unclean; a usage error is exit 2 too."""
+        env_root = self.run_placer(stdin=FAKE_OAT + "\n", env={"REGIME_SEATS_ROOT": str(self.seats)})
+        self.assert_placed(env_root)
+        shutil.rmtree(self.seats)
+        derived = self.run_placer(stdin=FAKE_OAT + "\n", cwd=ROOT)
+        self.assertEqual(derived.returncode, 0, derived.stderr)
+        self.assertRegex(
+            derived.stdout,
+            rf"^seat-token-place: placed {re.escape(str(self.home.resolve()))}/\.local/state/omp-seats/[a-z0-9][a-z0-9_-]{{0,39}}/\.state/claude-token \({len(FAKE_OAT)} characters, mode 0600\)\n$",
+        )
+        outside = self.run_placer(stdin=FAKE_OAT + "\n")
+        self.assertEqual((outside.returncode, outside.stdout), (2, ""), outside.stderr)
+        self.assertIn(
+            "no seats root: pass --seats-root, set REGIME_SEATS_ROOT or run inside a checkout", outside.stderr
+        )
+        for bad in ("seats", f"{self.seats}/", f"{self.seats}/../seats", f"{self.temp}/a b"):
+            with self.subTest(root=bad):
+                result = self.run_placer("--seats-root", bad, stdin=FAKE_OAT + "\n")
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stderr)
+                self.assertIn("is not a clean absolute path", result.stderr)
+        usage = self.run_placer("--nope", stdin=FAKE_OAT + "\n")
+        self.assertEqual(usage.returncode, 2, usage.stderr)
+        self.assertIn("usage: seat-token-place [--seats-root <dir>]", usage.stderr)
+        for result in (outside, usage):
+            self.assertNotIn(FAKE_OAT, result.stdout + result.stderr)
+        self.assertNotIn("token" + ": ", outside.stderr + usage.stderr, "refused before the prompt")
+
+    def test_the_token_form_is_one_text_across_the_three_levers(self) -> None:
+        """The token's form (`TOKEN_FORM_RE`) is one text in hcom-seat, seat-login-preflight and seat-token-place, so
+        no lever admits a line another refuses (U551b adds acp-broker, which hands the token to its workers)."""
+        forms = {}
+        for lever in (HCOM_SEAT, PREFLIGHT, PLACER):
+            (line,) = [l for l in lever.read_text().splitlines() if l.startswith("TOKEN_FORM_RE=")]
+            forms[lever.name] = line
+        self.assertEqual(len(set(forms.values())), 1, forms)
+        self.assertEqual(forms["hcom-seat"], "TOKEN_FORM_RE='^sk-ant-oat01-[A-Za-z0-9_-]{20,255}$'")
+        self.assertRegex(FAKE_OAT, r"^sk-ant-oat01-[A-Za-z0-9_-]{20,255}$")
 
 
 if __name__ == "__main__":

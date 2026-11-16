@@ -969,6 +969,14 @@ claude:
   # the same way, run as `python3 -I` by the coordinator and allowed by the
   # orchestrator policy alone, denied by name to the worker and the audit; it runs
   # no gh, no git and no network.
+  # seat-token-place is the operator's one writer of the seats' Claude token file
+  # (U551): it reads the `claude setup-token` line unechoed at a prompt, strips
+  # what a terminal adds to a paste, holds it to the token's form and writes
+  # `<seats-root>/.state/claude-token` (0600, through an exclusive temporary),
+  # printing the character count and never the token. Installed and pinned the
+  # same way; run by the operator alone outside every seat, with no allow rule
+  # and no seat policy row (every seat's sandbox denies the file for read and
+  # for write).
   levers:
     sha256:
       hcom-seat: 984465439b04e504c59f81390e2e85944f892c1ffd5aea7ea47e803e1753a4e7
@@ -982,6 +990,7 @@ claude:
       regime-init: 1c576fc79b9f21491fe3bbfcd221efa92af7e7aebbb7e479eaee3a94e91b758d
       checkout-guard.sh: 4fd793eeefa7312b8f23c74a5b8f457eb915213b55f1020cc260932657674c45
       seat-login-preflight: 09b8409ecb34fe716e1a4cc1aab630bdf2fb4c1916df795e1a833ae5aa717fe0
+      seat-token-place: 8b1eacbcccbef8e17afef971f6750da2de25ba32090eb02b0e408f99811e8a29
       regime-start: 978087b6ac9cbe00a3cb4f45dd749a8634d960948b5e2df96a97bbafe9597d17
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       regime-store-move: 592ed0a7513a072446d1dee5a96b27b96b139eda33cfdc5ac95dd559aa66351a

@@ -51,6 +51,9 @@ term	task-consistency-check	deleted in U26
 term	three-repeat	deleted in U26
 term	omp-run.sh --role audit	the omp audit route, retired by U119 round 3; the audit is `~/.local/bin/common/pr-audit.sh <n> --records <store>`
 term	gh pr merge	the raw merge command; the merge path is `~/.local/bin/common/pr-merge.sh <n> --records <store>` alone (U71)
+term	claude-keyed	the API key route's Claude Code executable (U510), retired with the route by U551; the seats run on the setup-token file
+term	REGIME_ANTHROPIC_KEY_FILE	the API key route's file variable (U512, U516), retired by U551; no lever names a key file
+term	anthropic/api-key	the API key route's file (U510 handout), retired by U551; the seats' credential is `.state/claude-token`
 gone	home/dot_local/bin/common/executable_agmsg-dispatch	deleted source path
 gone	home/dot_local/bin/common/executable_codex-orchestrate	deleted source path
 gone	home/dot_local/bin/common/executable_herdr-agents	deleted source path
@@ -88,6 +91,12 @@ gone	scripts/orchestrator/resolve-threads.sh	deleted source path
 gone	scripts/orchestrator/sandbox-scan.sh	deleted source path
 gone	scripts/orchestrator/task-consistency-check.py	deleted source path
 gone	scripts/orchestrator/three-repeat.sh	deleted source path
+gone	scripts/orchestrator/claude-keyed	deleted source path (U551: the API key route retired)
+gone	home/dot_local/bin/common/executable_claude-keyed	deleted source path (U551)
+gone	home/dot_omp/private_profiles/private_dsh/private_agent/modify_claude-bridge.json	deleted source path (U551: U552 made the three deleters of the deployed claude-keyed row; U553 deletes them, every host that applied U552 having lost the row)
+gone	home/dot_omp/private_profiles/private_orchestrator/private_agent/modify_claude-bridge.json	deleted source path (U551)
+gone	home/dot_omp/private_profiles/private_worker/private_agent/modify_claude-bridge.json	deleted source path (U551)
+gone	tests/unit/test_claude_keyed.py	deleted source path (U551)
 removed	.agents/skills/agmsg/**	deployed copy of a retired source
 removed	.claude/skills/agmsg/**	deployed copy of a retired source
 removed	.claude/commands/agmsg.md	deployed copy of a retired source
@@ -107,6 +116,7 @@ removed	.claude/skills/hcom-audit	deployed copy of a retired source
 removed	.local/bin/common/hcom-reply	deployed copy of a retired source
 removed	.agents/omp/profiles/review.yml	the omp review role, which no launcher started (U72)
 removed	.agents/omp/profiles/security.yml	the omp security role, which no launcher started (U72)
+removed	.local/bin/common/claude-keyed	deployed copy of a retired source (U551)
 skip	.orchestration/	the program records: history written by the coordinator, read as data, never as current rules
 skip	.ua/	the committed knowledge-graph snapshot: generated, refreshed only by a full rebuild on operator request; agents read it only when .ua/meta.json matches HEAD
 allow	.claude/contextdb/contextdb/normalize.py	MultiEdit	CompactionDB reads past transcripts, which name the legacy tool
@@ -119,6 +129,7 @@ allow	docs/orchestrator-seat.md	audit seat	states that the retired kinds, seat, 
 allow	docs/orchestrator-seat.md	hcom-audit	states that the retired kinds, seat, skill and lever are refused or gone
 allow	docs/orchestrator-seat.md	hcom-reply	states that the retired kinds, seat, skill and lever are refused or gone
 allow	home/.chezmoiremove	agmsg	the removal entries for the retired deployed copies
+allow	home/.chezmoiremove	claude-keyed	the removal entry for the retired deployed copy (U551)
 allow	home/.chezmoiremove	codex-orchestrate	the removal entries for the retired deployed copies
 allow	home/.chezmoiremove	crit-review	the removal entries for the retired deployed copies
 allow	home/.chezmoiremove	hcom-audit	the removal entries for the retired deployed copies

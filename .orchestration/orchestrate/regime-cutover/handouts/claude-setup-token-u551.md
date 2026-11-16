@@ -13,10 +13,8 @@ fixture で確認。実 token での API 到達は配備後の検証で測る)�
 
 前提(agent 側で済ませる部分): U551 の head が merge され、`make deploy-kit` で
 `~/.local/bin/common/seat-token-place` と新しい `hcom-seat`、`seat-login-preflight`、
-`acp-broker` が配備されていること。`chezmoi apply` は各 role の
-`~/.omp/profiles/<role>/agent/claude-bridge.json` から `claude-keyed` を指す
-`provider.pathToClaudeCodeExecutable` 行を消す(modify script。他の key はそのまま)。
-`claude-keyed` 自体の退役と modify script の削除は U553。
+`acp-broker` が配備されていること。`chezmoi apply` は退役した
+`~/.local/bin/common/claude-keyed` を消す(U553。旧 API key 経路の lever)。
 
 ## 1. 人間がやること: token の発行 (自分の端末、ブラウザ)
 
@@ -103,8 +101,7 @@ CR)。手順 2 をやり直す。`make doctor` の Seat logins も同じ行を�
   `rm -r ~/.local/state/omp-seats/dotfiles/.state/anthropic`
 - U510 の modify script を `chezmoi apply` した host では、`~/.omp/profiles/<role>/agent/` の
   `claude-bridge.json` に `provider.pathToClaudeCodeExecutable` 行が残りうる(この laptop には無い、
-  実測 11-15)。この head の modify script が `chezmoi apply` でその行の byte だけを切り取る
-  (他の byte はそのまま。key の綴りが JSON escape でも見つける。
-  `tests/unit/test_generate_agent_configs.py`)。script が読めない JSON なら stderr に 1 行出して
-  素通しするので、その時はその行を手で消す。bridge は同梱の Claude Code binary に戻る。
+  実測 11-15)。U552 を apply した host ではその modify script が同じ apply でその行の byte だけを
+  切り取っている(他の byte はそのまま)。U553 で modify script は無くなるので、U552 を apply せずに
+  来た host では、その行があれば手で消す。bridge は同梱の Claude Code binary に戻る。
 - token は 1 年で切れる。切れたら手順 1 と 2 をやり直す。

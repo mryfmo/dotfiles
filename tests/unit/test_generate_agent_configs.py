@@ -1313,11 +1313,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def test_the_claude_bridge_modify_script_warns_once_and_passes_through_what_it_cannot_read(self) -> None:
         """U552, round 3 (verdict U552-953af858 P2: a raw-byte search for the key decided whether to warn, and an
         escaped spelling escaped it): a live file that is not UTF-8 or no JSON object the scanner reads (invalid JSON,
-        with or without the row's spelling in it, a list, the key in a list, a NaN beside the row or alone, nesting
-        past the recursion limit, a byte order mark, bytes after the object, a trailing comma) passes through byte for
-        byte with exit 0 and one stderr line naming claude-bridge.json and the manual step, never a traceback: the
-        script cannot tell whether such a file names the row, chezmoi apply never fails on the file's content, and the
-        row is the operator's to delete by hand (the handout's manual step)."""
+        with or without the row's spelling in it, a list, the key in a list, a NaN beside the row or alone, a byte
+        order mark, bytes after the object, a trailing comma) passes through byte for byte with exit 0 and one stderr
+        line naming claude-bridge.json and the manual step, never a traceback: the script cannot tell whether such a
+        file names the row, chezmoi apply never fails on the file's content, and the row is the operator's to delete
+        by hand (the handout's manual step). Nesting 100000 deep passes through the same way, with the warning only
+        where the parser gives up (Python 3.13 raises RecursionError; 3.14 on ubuntu-26.04 parses it, U552 round 5),
+        so that case asserts the pass-through and no traceback, not the line."""
         script = self.write_claude_bridge_modify_script()
         home = self.temp_dir / "target-home"
         home.mkdir()
@@ -1328,7 +1330,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             ("the key in a list", b'[{"provider": {"pathToClaudeCodeExecutable": "/x"}}]\n'),
             ("a NaN beside the row", b'{"provider": {"pathToClaudeCodeExecutable": "/x", "plan": NaN}}\n'),
             ("a NaN alone", b'{"provider": {"plan": NaN}}\n'),
-            ("nesting past the recursion limit", b'{"a":' * 100000 + b"1" + b"}" * 100000 + b"\n"),
             ("a byte order mark", "\ufeff".encode() + b'{"provider": {"pathToClaudeCodeExecutable": "/x"}}\n'),
             ("bytes that are not UTF-8", b'\xff\xfe{"provider": {"pathToClaudeCodeExecutable": "/x"}}\n'),
             ("bytes after the object", b'{"provider": {"pathToClaudeCodeExecutable": "/x"}} x\n'),
@@ -1344,6 +1345,15 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertIn(b"delete provider.pathToClaudeCodeExecutable by hand if it is there", run.stderr)
                 self.assertIn(b"the file passes through unchanged", run.stderr)
                 self.assertNotIn(b"Traceback", run.stderr)
+        deep = b'{"a":' * 100000 + b"1" + b"}" * 100000 + b"\n"
+        with self.subTest(input="nesting past the recursion limit"):
+            run = self.run_modify(script, deep, home)
+            self.assertEqual(run.returncode, 0, (run.stdout, run.stderr))
+            self.assertEqual(run.stdout, deep, "byte for byte")
+            self.assertNotIn(b"Traceback", run.stderr)
+            self.assertLessEqual(len(run.stderr.splitlines()), 1, run.stderr)
+            if run.stderr:
+                self.assertIn(b"claude-bridge.json: the live file is no", run.stderr)
         text = script.read_text()
         self.assertIn("parse_constant", text, "a NaN or an Infinity is refused at the parse")
         self.assertNotIn("json.dumps", text, "nothing is reserialized: the cut is of the file's own bytes")

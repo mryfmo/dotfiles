@@ -122,13 +122,12 @@ class SeatFixture(unittest.TestCase):
         # path): copies of the system's `true` binary, so the check runs as written on every host.
         for tool in ("bwrap", "socat", "rg"):
             shutil.copy(BINARY_STAND_IN, bindir / tool)
-        # A launch whose profile names the claude-bridge route (the fixture's overlays name none, so most launches have
-        # nothing to log in) needs the login group's claude.ai login (U318, per group since U498): seat-login-preflight
-        # reads it with `claude auth status` under `<seats-root>/.state/claude-<group>`, and `claude` is a tool
-        # hcom-seat resolves, so this fake answers for every launch and no test runs the host's Claude Code. It prints
-        # the documented record with the method FAKE_CLAUDE_AUTH_METHOD (`claude.ai` unless set), exits
-        # FAKE_CLAUDE_AUTH_STATUS (0 unless set) and records each call with its directory and whether a token name
-        # reached it.
+        # A fake `claude` on the fixture's PATH, kept from the login route (U318, U498: the preflight read `claude auth
+        # status` under the group's directory): since U551 the seats' credential is the token file, judged by its
+        # form, and no lever resolves or runs `claude`; the fake records every call with its directory and whether a
+        # token name reached it, so the tests hold that record absent (nothing of Claude Code runs in a launch) and no
+        # test runs the host's Claude Code should a lever regress to it. It prints the documented record with the
+        # method FAKE_CLAUDE_AUTH_METHOD (`claude.ai` unless set) and exits FAKE_CLAUDE_AUTH_STATUS (0 unless set).
         self.claude_calls = root / "claude-auth-calls"
         (bindir / "claude").write_text(
             "#!/bin/sh\n"
@@ -229,63 +228,46 @@ class SeatFixture(unittest.TestCase):
 
 
 class HcomSeatTest(SeatFixture):
-    def test_a_remote_seat_without_a_login_starts_nothing(self):
-        """U37: hcom-seat runs seat-login-preflight beside it before it creates or starts anything. U318, U498: the
-        Claude login is the worker group's claude.ai login under `.state/claude-worker`, read through `claude`, a tool
-        hcom-seat resolves, so this fake answers and no test runs the host's Claude Code; U190b: the rule holds on a
-        local host too."""
+    def test_the_preflight_judges_the_token_file_for_the_claude_route_and_runs_no_login(self):
+        """U37: hcom-seat runs seat-login-preflight beside it before it creates or starts anything. U551: on the
+        claude-bridge route the preflight judges the seats' token file by its form, runs no `claude auth status` (no
+        `claude` is resolved or linked into the tool directory any more) and makes no directory; a present token
+        passes with its one line, an absent one refuses (exit 2) with the operator's two steps before the launcher's
+        own gate runs, and nothing is made or started either way but the preflight's refusal."""
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
-        shared = Path(self.seats, ".state/claude-worker")
-        command = f"CLAUDE_CONFIG_DIR={shared} claude auth login"
+        token = self.token_file
 
         def launch(**extra):
-            overrides = {
-                "SSH_CONNECTION": "100.64.0.2 50000 100.64.0.3 22",
-                "CLAUDE_CODE_OAUTH_TOKEN": None,
-                "CLAUDE_CONFIG_DIR": None,
-                **extra,
-            }
+            overrides = {"SSH_CONNECTION": "100.64.0.2 50000 100.64.0.3 22", "CLAUDE_CODE_OAUTH_TOKEN": None, **extra}
             return self.seat("worker", "--seats-root", self.seats, **overrides)
 
-        run = launch(FAKE_CLAUDE_AUTH_STATUS="1")
-        self.assertEqual(run.returncode, 2, run.stderr)
-        self.assertIn(
-            f"worker claude-bridge: absent (not logged in under {shared}); log in once: BROWSER=regime-open-url"
-            f" {command}; a login is the operator's step: run that command in your own terminal on this host",
-            run.stderr,
-        )
-        self.assertEqual(self.calls_of("hcom"), [])
-        self.assertFalse(Path(self.seats, "worker").exists())
-        # The preflight made the group's directory (0700) for the operator's login; the launch made nothing else.
-        self.assertTrue(shared.is_dir() and not shared.is_symlink(), shared)
-        self.assertEqual(stat.S_IMODE(os.lstat(shared).st_mode), 0o700)
-        self.assertEqual(sorted(p.name for p in Path(self.seats).iterdir()), [".state"])
-        # A local host (no SSH session) refuses the same, and the command has no BROWSER prefix there (U190b: the
-        # child logs in by the shared directory's login wherever it runs).
-        run = launch(SSH_CONNECTION=None, FAKE_CLAUDE_AUTH_STATUS="1")
-        self.assertEqual(run.returncode, 2, run.stderr)
-        self.assertIn(
-            f"worker claude-bridge: absent (not logged in under {shared}); log in once: {command};", run.stderr
-        )
-        # A token or key login under the directory is not the seat's claude.ai login either.
-        for method in ("oauth_token", "api_key"):
-            with self.subTest(method=method):
-                run = launch(FAKE_CLAUDE_AUTH_METHOD=method)
-                self.assertEqual(run.returncode, 2, run.stderr)
-                self.assertIn(
-                    f"worker claude-bridge: absent (authMethod {method} under {shared}, not claude.ai); log in once:"
-                    f" BROWSER=regime-open-url {command}",
-                    run.stderr,
-                )
-        self.assertEqual(self.calls_of("hcom"), [])
-        self.assertEqual((self.tools / "claude").resolve(), (self.bindir / "claude").resolve())
-        # Every call ran under the shared directory and without a token name: one per launch, through the fake alone.
-        self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n" * 4)
-        # The claude.ai login under the directory is the login the seat can use.
         run = launch()
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn(f"seat-login-preflight: worker claude-bridge: login present (claude.ai, {shared})", run.stderr)
+        self.assertIn(f"seat-login-preflight: worker claude-bridge: token present ({token})\n", run.stderr)
         self.assertEqual(len(self.calls_of("hcom")), 1)
+        self.assertFalse(self.claude_calls.exists(), "no claude runs: the token file is judged by its form")
+        self.assertFalse((self.tools / "claude").exists(), "claude is no tool of the launch")
+        self.assertNotIn(FAKE_OAT, run.stdout + run.stderr)
+        token.unlink()
+        made = sorted(str(p.relative_to(self.seats)) for p in Path(self.seats).rglob("*"))
+        for extra in ({}, {"SSH_CONNECTION": None}):
+            with self.subTest(**extra):
+                run = launch(**extra)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(
+                    run.stderr,
+                    f"seat-login-preflight: worker claude-bridge: token absent (no {token}); the seats' Claude credential"
+                    " is the operator's step: 1) run `claude setup-token` in your own terminal on this host (the browser"
+                    " opens; sign in; the token prints once), 2) place it with `seat-token-place`"
+                    " (handouts/claude-setup-token-u551.md), then start the seat again\n",
+                )
+        self.assertEqual(len(self.calls_of("hcom")), 1, "no second seat started")
+        self.assertEqual(
+            sorted(str(p.relative_to(self.seats)) for p in Path(self.seats).rglob("*")),
+            made,
+            "the first launch's slots and directories alone; the refusals made nothing",
+        )
+        self.assertFalse(self.claude_calls.exists())
 
     def test_a_preflight_component_refusal_stops_the_launch_with_exit_2(self):
         """U318c: hcom-seat runs seat-login-preflight with `|| exit $?`, so a component refusal of the shared Claude
@@ -904,10 +886,10 @@ class HcomSeatTest(SeatFixture):
         run = self.seat("worker", "--seats-root", self.seats, CLAUDE_CODE_OAUTH_TOKEN=caller)
         self.assertEqual(run.returncode, 0, run.stderr)
         shared = str(Path(self.seats, ".state/claude-worker"))
-        self.assertIn(f"worker claude-bridge: login present (claude.ai, {shared})", run.stderr)
+        self.assertIn(f"worker claude-bridge: token present ({self.token_file})", run.stderr)
         self.assertEqual(self.claude_env_of(record), {"CLAUDE_CONFIG_DIR": shared, "CLAUDE_CODE_OAUTH_TOKEN": FAKE_OAT})
-        # The preflight's one call ran under the group's directory and without the caller's token name.
-        self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n")
+        # The preflight judged the token file's form and ran no claude (U551).
+        self.assertFalse(self.claude_calls.exists())
         shim = Path(self.seats, ".sandbox/worker/bin/omp")
         text = shim.read_text()
         self.assertIn(f"token_file={self.token_file}", text, "the shim names the file")
@@ -1031,7 +1013,7 @@ class HcomSeatTest(SeatFixture):
         """Codex P2 on PR 712 (review comment 4498955210, `hcom-seat:2210`, a residual on U318): the U312 head cleared
         CLAUDE_CODE_OAUTH_TOKEN inside the generated shim alone, so hcom, herdr and the shim's srt canary inherited a
         caller's variable before the shim's unset. The launcher clears the name before its first child process: an
-        hcom spawned by a launcher invoked with the variable set sees it unset, and so does the preflight's `claude`."""
+        hcom spawned by a launcher invoked with the variable set sees it unset; the preflight runs no `claude` (U551)."""
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         caller = "fake-" + "caller-value-u318"
         record = self.calls / "hcom-claude-env"
@@ -1043,7 +1025,7 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(record.read_text(), "CLAUDE_CODE_OAUTH_TOKEN=unset\n")
         shared = str(Path(self.seats, ".state/claude-worker"))
-        self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n")
+        self.assertFalse(self.claude_calls.exists(), "no claude runs")
         self.assertNotIn(caller, run.stdout + run.stderr)
 
     def test_every_role_gets_its_login_groups_claude_code_directory_whose_configuration_no_seat_can_change(self):

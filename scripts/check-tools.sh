@@ -408,22 +408,22 @@ function login_group_of_role() {
 }
 
 #
-# @description Set `login_step` to the operator's step for an absent login
-#   line of `seat-login-preflight --check` (regime-cutover U498d; verdict
-#   U498-8f2cca8c P2 `:413`). The line is `<profile> <route>: <state>`
-#   (the pre-flight's `profile_line`), so the profile is its first word and
-#   the group the table's (login_group_of_role). The pre-flight's profile
-#   mode accepts the seat profiles alone (`seat_profiles` there, the values
-#   of `omp.roles`: orchestrator, worker, audit; copied here as the same
-#   text), so for those the step is `seat-login-preflight <profile>`, which
-#   prints the group's `CLAUDE_CONFIG_DIR=<dir> claude auth login` or runs
-#   the SIWC login. The dsh profile's group `router` has no profile mode
-#   (`seat-login-preflight dsh` and `seat-login-preflight router` exit 2 as
-#   unknown profiles), so its step is `claude auth login` under the group's
-#   directory, the one this line names and `hcom-seat router --dry-run`
-#   prints as CLAUDE_CONFIG_DIR (every group of the table is a role of
-#   hcom-seat). A profile outside the table (a `no route` overlay that is no
-#   seat) keeps the general sentence.
+# @description Set `login_step` to the operator's step for an absent line of
+#   `seat-login-preflight --check` (regime-cutover U498d; verdict U498-8f2cca8c
+#   P2 `:413`). The line is `<profile> <route>: <state>` (the pre-flight's
+#   `profile_line`), so the profile is its first word and the group the
+#   table's (login_group_of_role). A claude-bridge line is the seats' Claude
+#   setup-token's state (regime-cutover U551): `token present (<file>)` or
+#   `token absent (<reason>)`, one file `<seats-root>/.state/claude-token` for
+#   every seat of the host, so an absent token names the operator's two steps,
+#   `claude setup-token` in the operator's own terminal and `seat-token-place`
+#   (handouts/claude-setup-token-u551.md), whatever the profile; no login and
+#   no group directory enters it. For the SIWC route the pre-flight's profile
+#   mode accepts the seat profiles alone (`seat_profiles` there, the values of
+#   `omp.roles`: orchestrator, worker, audit; copied here as the same text), so
+#   for those the step is `seat-login-preflight <profile>`, which runs the SIWC
+#   login; a profile outside the table (a `no route` overlay that is no seat)
+#   keeps the general sentence.
 # @arg $1 string The `--check` line.
 # @set login_step The sentence the warning carries in parentheses.
 #
@@ -431,6 +431,12 @@ function login_step_of() {
     local profile="${1%% *}" group mode
     local -a seat_profiles=(orchestrator worker audit)
     login_step="log in on this host, once per login group: seat-login-preflight <profile> prints the group's command, docs/remote-host-logins.md"
+    case "$1" in
+    *' claude-bridge: token absent ('*)
+        login_step="place the seats' Claude setup-token on this host (one file for every seat): run claude setup-token in your own terminal, then seat-token-place (handouts/claude-setup-token-u551.md), docs/remote-host-logins.md"
+        return 0
+        ;;
+    esac
     group="$(login_group_of_role "${profile}")" || return 0
     for mode in "${seat_profiles[@]}"; do
         if [ "${profile}" = "${mode}" ]; then
@@ -438,18 +444,19 @@ function login_step_of() {
             return 0
         fi
     done
-    login_step="log in on this host, once per login group: the ${profile} profile is the ${group} group, which has no seat-login-preflight profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory this line names (hcom-seat ${group} --dry-run prints it; BROWSER=regime-open-url first on a remote host), docs/remote-host-logins.md"
+    login_step="log in on this host, once per login group: the ${profile} profile is the ${group} group, which has no seat-login-preflight profile mode; its route's login is the operator's step in their own terminal, docs/remote-host-logins.md"
 }
 
 #
 # @description Report each omp seat profile's login on this host through
 #   `scripts/orchestrator/seat-login-preflight --check` (regime-cutover U37):
-#   presence and mtimes only, never a token. The Claude lines name each
-#   profile's login group directory `<seats-root>/.state/claude-<group>`
-#   (U498: one line per deployed profile, so one per running group). An
-#   absent login is an optional warning naming the group's step
-#   (login_step_of, U498d), since a login is per host and per group and the
-#   operator's step; an unreadable login record and the lever's own refusal are
+#   presence and mtimes only, never a token. The Claude lines carry the state
+#   of the seats' Claude setup-token file `<seats-root>/.state/claude-token`
+#   (regime-cutover U551: `token present (<file>)` or `token absent (<reason>)`,
+#   one file for every seat, judged by its form, never read into a line). An
+#   absent SIWC login or an absent token is an optional warning naming the step
+#   (login_step_of, U498d, U551), since both are per host and the operator's
+#   steps; an unreadable SIWC record or overlay and the lever's own refusal are
 #   required failures, never read as absent. One failure counts once
 #   (regime-cutover U512g, verdict U512f-b6a3e2c0 P1): every `required failed`
 #   line counts where it is printed, and the lever's non-zero exit counts only
@@ -480,7 +487,7 @@ function check_seat_logins() {
             ((required_failures += 1))
             counted=1
             ;;
-        *': absent'* | *': no route'* | *': not a seat login route'*)
+        *': absent'* | *': token absent ('* | *': no route'* | *': not a seat login route'*)
             login_step_of "${line}"
             warn_optional "seat login ${line} (${login_step})"
             ;;

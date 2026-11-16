@@ -1174,11 +1174,11 @@ EOF
         self.assertIn("required failures: 0", result.stdout)
 
     def test_doctor_reports_one_seat_login_line_per_login_group(self) -> None:
-        """U498: `check_seat_logins` runs the tree's seat-login-preflight `--check`, whose Claude lines name each login
-        group's directory from the one table: the orchestrator profile `.state/claude-orchestrator`, the worker
-        `.state/claude-worker`, the deployed dsh overlay the router group's `.state/claude-router`. A present login is
-        a `found` line, an absent one an optional warning naming the per-group step, never a failure; the legacy
-        shared `.state/claude` is read by no line."""
+        """U498, U551: `check_seat_logins` runs the tree's seat-login-preflight `--check`, one Claude line per deployed
+        profile (the orchestrator and worker seats, the dsh overlay whose gateway child is the Router's), each the
+        state of the seats' one Claude token file `.state/claude-token`: present is a `found` line, absent an optional
+        warning naming the operator's two steps, never a failure; no `claude` runs, the legacy shared `.state/claude`
+        and the group directories are read by no line, and the token's bytes reach no line."""
         home = self.temp_dir / "home"
         profiles = home / ".agents/omp/profiles"
         profiles.mkdir(parents=True)
@@ -1189,10 +1189,11 @@ EOF
         (seats / ".state/claude").mkdir()
         bin_dir = self.temp_dir / "doctor-bin"
         self.link_real_jq(bin_dir)
-        # `claude auth status` (U318): the documented record, a claude.ai login under whatever directory it is asked.
-        self.executable(
-            bin_dir / "claude",
-            'printf \'{"configDirectory": "%s", "authMethod": "claude.ai"}\\n\' "${CLAUDE_CONFIG_DIR-}"\n',
+        token = seats / ".state/claude-token"
+        fake_oat = "sk-ant-oat01-" + "FAKETOKENFORTEST" + "0" * 44
+        step = (
+            "(place the seats' Claude setup-token on this host (one file for every seat): run claude setup-token in"
+            " your own terminal, then seat-token-place (handouts/claude-setup-token-u551.md), docs/remote-host-logins.md)"
         )
         script = (
             f"source {ROOT / 'scripts/check-tools.sh'}; check_seat_logins;"
@@ -1202,47 +1203,48 @@ EOF
         result = self.run_test_command(["/bin/bash", "-c", script], env=env)
         output = result.stdout + result.stderr
         self.assertEqual(0, result.returncode, output)
-        self.assertIn(
-            f"optional warning: seat login dsh claude-bridge: absent (no {seats}/.state/claude-router) (log in on this"
-            " host, once per login group: the dsh profile is the router group, which has no seat-login-preflight"
-            " profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory this line names"
-            " (hcom-seat router --dry-run prints it; BROWSER=regime-open-url first on a remote host),"
-            " docs/remote-host-logins.md)",
-            output,
-        )
-        self.assertIn(
-            f"optional warning: seat login orchestrator claude-bridge: absent (no {seats}/.state/claude-orchestrator)"
-            " (log in on this host, once per login group: seat-login-preflight orchestrator prints the orchestrator"
-            " group's command, docs/remote-host-logins.md)",
-            output,
-        )
-        self.assertNotIn("seat-login-preflight dsh", output, "a profile mode the pre-flight refuses as unknown (U498d)")
-        self.assertNotIn("seat-login-preflight <profile>", output, "every line names its own profile's step")
-        self.assertIn(
-            f"found:   seat login worker claude-bridge: login present (claude.ai, {seats}/.state/claude-worker)", output
-        )
-        self.assertIn("failures=0 warnings=2", output)
+        for profile in ("dsh", "orchestrator", "worker"):
+            self.assertIn(
+                f"optional warning: seat login {profile} claude-bridge: token absent (no {token}) {step}", output
+            )
+        self.assertNotIn("found:   seat login", output)
+        self.assertIn("failures=0 warnings=3", output)
         self.assertNotIn(f"{seats}/.state/claude)", output, "the legacy shared directory is read by no line")
+        self.assertNotIn("claude-worker", output, "no group directory enters a Claude line")
+        for path in (seats, seats / ".state"):
+            path.chmod(0o700)
+        token.write_text(fake_oat + "\n")
+        token.chmod(0o600)
+        result = self.run_test_command(["/bin/bash", "-c", script], env=env)
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        for profile in ("dsh", "orchestrator", "worker"):
+            self.assertIn(f"found:   seat login {profile} claude-bridge: token present ({token})", output)
+        self.assertIn("failures=0 warnings=0", output)
+        self.assertNotIn(fake_oat, output, "the token's bytes reach no line")
 
     def test_doctor_counts_each_unreadable_seat_login_line_once_and_the_levers_exit_no_more(self) -> None:
         """U512g (verdict U512f-b6a3e2c0, P1): every `required failed` line of `check_seat_logins` counts once where it
         is printed, and the lever's non-zero exit counts only when no line was counted, since the exit that follows a
         printed unreadable or refusal line is the same failure (until U512g the line printed without counting and the
         exit counted once, so three unreadable lines counted one, and a counted line plus the exit counted twice).
-        Three claude-bridge profiles whose login producer fails (`claude auth status` exiting 3) are three failures
-        and no `exited` line; the lever's own refusal (a deployed overlay on a seat login route outside the login group
-        table, U498b) is one failure and no `exited` line."""
+        Three SIWC profiles whose registration record is not one JSON document (`siwc_state` reads it with jq, whose
+        failure is the unreadable line; the Claude route has no unreadable state since U551, its token file being
+        present or absent) are three failures and no `exited` line; the lever's own refusal (a deployed overlay on a
+        seat login route outside the login group table, U498b) is one failure and no `exited` line."""
         home = self.temp_dir / "count-home"
         profiles = home / ".agents/omp/profiles"
         profiles.mkdir(parents=True)
-        for profile in ("orchestrator", "worker", "dsh"):
-            (profiles / f"{profile}.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
+        records = {}
+        for profile in ("orchestrator", "worker", "audit"):
+            (profiles / f"{profile}.yml").write_text("modelRoles:\n  default: openai-siwc/gpt-6-astra\n")
+            record = home / f".omp/profiles/{profile}/agent/openai-siwc/registration.json"
+            record.parent.mkdir(parents=True)
+            record.write_text("{not one JSON document")
+            records[profile] = record
         seats = self.temp_dir / "count-seats"
-        for group in ("orchestrator", "worker", "router"):
-            (seats / f".state/claude-{group}").mkdir(parents=True)
         bin_dir = self.temp_dir / "count-bin"
         self.link_real_jq(bin_dir)
-        self.executable(bin_dir / "claude", "exit 3\n")
         script = (
             f"source {ROOT / 'scripts/check-tools.sh'}; check_seat_logins;"
             ' echo failures=$required_failures warnings=$optional_warnings; [ "${required_failures}" -eq 0 ]'
@@ -1251,20 +1253,14 @@ EOF
         result = self.run_test_command(["/bin/bash", "-c", script], env=env)
         output = result.stdout + result.stderr
         self.assertEqual(result.returncode, 1, output)
-        for profile, group in (("dsh", "router"), ("orchestrator", "orchestrator"), ("worker", "worker")):
-            self.assertIn(
-                f"required failed: seat login {profile} claude-bridge: unreadable (claude auth status exited 3 under"
-                f" {seats}/.state/claude-{group})",
-                output,
-            )
+        for profile, record in records.items():
+            self.assertIn(f"required failed: seat login {profile} openai-siwc: unreadable ({record})", output)
         self.assertIn("failures=3 warnings=0", output, "one count per unreadable line, the lever's exit 1 no more")
         self.assertNotIn("--check exited", output)
         self.assertNotIn("found:   seat login", output)
+        for profile in records:
+            (profiles / f"{profile}.yml").unlink()
         (profiles / "other.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
-        self.executable(
-            bin_dir / "claude",
-            'printf \'{"configDirectory": "%s", "authMethod": "claude.ai"}\\n\' "${CLAUDE_CONFIG_DIR-}"\n',
-        )
         result = self.run_test_command(["/bin/bash", "-c", script], env=env)
         output = result.stdout + result.stderr
         self.assertEqual(result.returncode, 1, output)
@@ -1279,11 +1275,11 @@ EOF
         `seat-login-preflight <profile>` for every line, and for the dsh profile that profile mode exits 2 as an unknown
         seat profile (the pre-flight's `seat_profiles` are orchestrator, worker and audit; `router` is none either). The
         doctor holds the login group table `login_group_of_role` as the same text as hcom-seat and the pre-flight, and
-        the pre-flight's profile list as the same text; `login_step_of` names, per line, the step of the profile's
-        group: the profile mode for a seat profile, the direct `claude auth login` under the line's directory for the
-        dsh profile (the router group, which `hcom-seat router --dry-run` prints), and the general sentence for a
-        profile outside the table. The pre-flight itself refuses `dsh` and `router` as profiles, so the doctor never
-        names them as one."""
+        the pre-flight's profile list as the same text; `login_step_of` names, per line, the step: for the SIWC route
+        the profile mode of a seat profile, for a claude-bridge line the seats' token's two steps (U551: one file for
+        every seat, so the dsh overlay's line names them too, and no group directory enters it), and the general
+        sentence for a profile outside the table. The pre-flight itself refuses `dsh` and `router` as profiles, so the
+        doctor never names them as one."""
         doctor = ROOT / "scripts/check-tools.sh"
         preflight = ROOT / "scripts/orchestrator/seat-login-preflight"
         tables = {}
@@ -1300,22 +1296,16 @@ EOF
             "log in on this host, once per login group: seat-login-preflight <profile> prints the group's command,"
             " docs/remote-host-logins.md"
         )
+        # U551: a claude-bridge line is the seats' one token file's state, so an absent token names the operator's two
+        # steps whatever the profile, the dsh overlay's (the router group, which has no profile mode) included.
+        token_step = (
+            "place the seats' Claude setup-token on this host (one file for every seat): run claude setup-token in your"
+            " own terminal, then seat-token-place (handouts/claude-setup-token-u551.md), docs/remote-host-logins.md"
+        )
         cases = {
-            "dsh claude-bridge: absent (no /seats/.state/claude-router)": (
-                "log in on this host, once per login group: the dsh profile is the router group, which has no"
-                " seat-login-preflight profile mode; run claude auth login with CLAUDE_CONFIG_DIR set to the directory"
-                " this line names (hcom-seat router --dry-run prints it; BROWSER=regime-open-url first on a remote"
-                " host), docs/remote-host-logins.md"
-            ),
-            "worker claude-bridge: absent (not logged in under /seats/.state/claude-worker)": (
-                "log in on this host, once per login group: seat-login-preflight worker prints the worker group's"
-                " command, docs/remote-host-logins.md"
-            ),
-            "orchestrator claude-bridge: absent (authMethod oauth_token under /seats/.state/claude-orchestrator, not"
-            " claude.ai)": (
-                "log in on this host, once per login group: seat-login-preflight orchestrator prints the orchestrator"
-                " group's command, docs/remote-host-logins.md"
-            ),
+            "dsh claude-bridge: token absent (no /seats/.state/claude-token)": token_step,
+            "worker claude-bridge: token absent (no /seats/.state/claude-token)": token_step,
+            "orchestrator claude-bridge: token absent (/seats/.state/claude-token has mode 644, not 0600)": token_step,
             "audit openai-siwc: absent (no /home/.omp/profiles/audit/agent/openai-siwc/registration.json)": (
                 "log in on this host, once per login group: seat-login-preflight audit prints the audit group's"
                 " command, docs/remote-host-logins.md"

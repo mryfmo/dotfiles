@@ -1729,12 +1729,12 @@ if [[ -n ${mise_real} ]]; then
     mise_cmd=("${pinned[@]}")
 fi
 required_tools=(git hcom herdr omp srt)
-# claude is seat-login-preflight's login reader (`claude auth status` under the login group's Claude Code directory,
-# U318, U498), regime-open-url and its python3 serve the preflight's interactive SIWC login handoff (U37); jq reads
-# the openai-siwc registration and the auth status there (macOS 14 ships no /usr/bin/jq, so a mise or Homebrew jq is
-# resolved and checked like every tool). hcom-seat itself runs none of them: the settings are read by plutil or
-# /usr/bin/jq.
-optional_tools=(node bun claude python3 regime-open-url jq)
+# regime-open-url and its python3 serve the preflight's interactive SIWC login handoff (U37); jq reads the openai-siwc
+# registration there (macOS 14 ships no /usr/bin/jq, so a mise or Homebrew jq is resolved and checked like every
+# tool). No `claude` is resolved (regime-cutover U551): the preflight runs no `claude auth status`, the seats' Claude
+# Code is the bridge's bundled binary, and the credential is the token file. hcom-seat itself runs none of them: the
+# settings are read by plutil or /usr/bin/jq.
+optional_tools=(node bun python3 regime-open-url jq)
 case ${OSTYPE} in
 linux*) required_tools+=(bwrap socat rg) ;;
 esac
@@ -3268,9 +3268,10 @@ esac
 #   step (U318): own_slots_check proved each path no link and, when present, a directory sitting in `.state`; one
 #   `mkdir` under `umask 077` that takes no existing entry (two launches at once may both find a directory absent, and
 #   the loser of the race takes the directory the winner made); present or made, each is a real directory of this
-#   user, else the launch refuses naming the group and the path. No login is made, read or copied: the directory is
-#   empty until the operator's `claude auth login` under it (seat-login-preflight prints the command); the legacy
-#   `.state/claude` is not in the range and is made by nothing (standing order 54).
+#   user, else the launch refuses naming the group and the path. No credential is made, read or copied: the
+#   directory is empty until the group's Claude Code child writes its own state there (`.claude.json`, sessions; the
+#   credential is the token file beside it, regime-cutover U551); the legacy `.state/claude` is not in the range and
+#   is made by nothing (standing order 54).
 # @noargs
 login_dirs_make() {
     local group path

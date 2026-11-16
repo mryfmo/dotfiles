@@ -38,6 +38,10 @@ HOST_ID = "urn:uuid:11111111-1111-4111-8111-111111111111"
 # Built at runtime, so this file never holds a literal the committed-secret scan matches.
 TOKEN_VARIABLE = "CLAUDE_CODE_OAUTH_" + "TOKEN"
 FAKE_OAUTH_VALUE = "fake-" + "oauth-value"
+# The fixture's seats' Claude setup-token (regime-cutover U551): the form the preflight holds the token file to (TOKEN_FORM_RE,
+# one text with hcom-seat, seat-token-place and acp-broker), never a real token, built at runtime so no file holds a
+# literal the secret scan matches; it must appear in no line of the lever.
+FAKE_OAT = "sk-ant-oat01-" + "FAKETOKENFORTEST" + "0" * 44
 
 
 def write_exec(path: Path, body: str) -> Path:
@@ -353,7 +357,7 @@ class PreflightTest(unittest.TestCase):
         (profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         # The seats root the login groups' Claude Code directories live in (U318, per group since U498), passed as
         # hcom-seat passes its resolved one: the orchestrator profile's group directory, the worker's, and the legacy
-        # shared directory the kit neither reads nor removes.
+        # shared directory the kit neither reads nor removes (U551: none holds a credential the lever reads).
         self.seats = self.temp / "seats"
         self.shared = self.seats / ".state/claude-orchestrator"
         self.shared_worker = self.seats / ".state/claude-worker"
@@ -384,20 +388,9 @@ printf '{{"hostId":"{HOST_ID}","clientId":"oaiapp_fake"}}\\n' > "$agent/openai-s
 : > "$agent/agent.db"
 """,
         )
-        # `claude auth status` (U318): the documented record with the method FAKE_CLAUDE_AUTH_METHOD (`claude.ai` unless
-        # set) or the body FAKE_CLAUDE_AUTH_BODY when set, exit FAKE_CLAUDE_AUTH_STATUS (0 unless set); every call is
-        # recorded with its directory, BROWSER and whether a token name reached it. A login is never run (exit 64).
-        write_exec(
-            self.bin / "claude",
-            f"""#!/bin/sh
-printf 'claude %s CLAUDE_CONFIG_DIR=%s BROWSER=%s token=%s\\n' "$*" "${{CLAUDE_CONFIG_DIR-unset}}" "${{BROWSER-unset}}" "${{{TOKEN_VARIABLE}-unset}}" >> "{self.calls}"
-[ "$1 $2" = "auth status" ] || exit 64
-if [ -n "${{FAKE_CLAUDE_AUTH_BODY-}}" ]; then printf '%s\\n' "${{FAKE_CLAUDE_AUTH_BODY}}"
-else printf '{{"loggedIn": true, "configDirectory": "%s", "authMethod": "%s"}}\\n' "${{CLAUDE_CONFIG_DIR-}}" "${{FAKE_CLAUDE_AUTH_METHOD:-claude.ai}}"
-fi
-exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
-""",
-        )
+        # The seats' Claude token file (U551), `<seats-root>/.state/claude-token`, the Claude route's one input: placed
+        # by place_token as seat-token-place writes it; no `claude` is on PATH, since the lever runs none.
+        self.token_file = self.seats / ".state/claude-token"
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp)
@@ -450,6 +443,34 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
     def bun_calls_text(self) -> str:
         return self.bun_calls.read_text() if self.bun_calls.exists() else ""
 
+    def place_token(self, root: Path | None = None, content: str = FAKE_OAT) -> Path:
+        """Place the fixture token as seat-token-place does: one line, 0600, in the 0700 `.state` of the 0700 root."""
+        root = root or self.seats
+        (root / ".state").mkdir(parents=True, exist_ok=True)
+        for path in (root, root / ".state"):
+            path.chmod(0o700)
+        path = root / ".state/claude-token"
+        path.write_text(content + "\n")
+        path.chmod(0o600)
+        return path
+
+    def token_absent(self, root: Path | None = None) -> str:
+        """The Claude route's state without a token file under `root` (the fixture's seats root unless given)."""
+        return f"token absent (no {(root or self.seats) / '.state/claude-token'})"
+
+    def token_present(self, root: Path | None = None) -> str:
+        return f"token present ({(root or self.seats) / '.state/claude-token'})"
+
+    STEPS = (
+        "the seats' Claude credential is the operator's step: 1) run `claude setup-token` in your own terminal on this"
+        " host (the browser opens; sign in; the token prints once), 2) place it with `seat-token-place`"
+        " (handouts/claude-setup-token-u551.md), then start the seat again"
+    )
+
+    def refusal(self, line: str) -> str:
+        """The profile mode's refusal of an absent token: the state line, then the operator's two steps."""
+        return f"seat-login-preflight: {line}; {self.STEPS}\n"
+
     def register(self, profile: str = "audit", record: str | None = None) -> Path:
         agent = self.home / f".omp/profiles/{profile}/agent"
         (agent / "openai-siwc").mkdir(parents=True)
@@ -467,54 +488,69 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
             lines[0],
             rf"^audit openai-siwc: registered \(host {HOST_ID}, client oaiapp_fake\), agent\.db mtime \d{{4}}-\d\d-\d\dT\d\d:\d\d:\d\dZ$",
         )
-        shared = self.shared
         self.assertEqual(
             lines[1:],
-            [
-                f"orchestrator claude-bridge: absent (no {shared})",
-                f"worker claude-bridge: absent (no {self.shared_worker})",
-            ],
+            [f"orchestrator claude-bridge: {self.token_absent()}", f"worker claude-bridge: {self.token_absent()}"],
         )
 
-    def test_check_reports_the_shared_directorys_method_and_never_a_token(self) -> None:
-        """U318: `--check` names the shared directory and the method of its login from one `claude auth status` call
-        under it; a token variable in the environment is no input (U312) and never reaches the call; an absent
-        directory is absent without a call; `oauth_token`, `api_key` and an exit 1 are absent; any other exit, a
-        non-JSON body, a record without a method and two records are unreadable (exit 1), never absent."""
-        shared = str(self.shared)
-        result = self.run_lever("--check", "orchestrator", **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
-        self.assertEqual((result.returncode, result.stdout), (0, f"orchestrator claude-bridge: absent (no {shared})\n"))
-        self.assertEqual(self.calls_text(), "", "no call without the directory")
-        self.shared.mkdir(parents=True)
+    def test_check_judges_the_token_file_by_its_form_and_never_prints_the_token(self) -> None:
+        """U551: `--check` judges the Claude route by the seats' Claude token file `<seats-root>/.state/claude-token`
+        alone, by its form: absent, a symbolic link (refused before anything resolves it), a directory, a mode other
+        than 0600, a line off the form, two lines, a carriage return, a missing line feed and an empty file are each
+        `token absent (<reason>)` naming the file and the fault (exit 0: absent is a state, not a failure), the
+        token's bytes in no line; a 0600 file holding one line of the form is `token present (<file>)`. No `claude`
+        runs (none is on PATH), no call leaves the host, a token variable in the environment is no input (U312), and
+        `--check` makes nothing."""
+        token = self.token_file
         result = self.run_lever("--check", "orchestrator", **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
         self.assertEqual(
-            (result.returncode, result.stdout),
-            (0, f"orchestrator claude-bridge: login present (claude.ai, {shared})\n"),
+            (result.returncode, result.stdout), (0, f"orchestrator claude-bridge: {self.token_absent()}\n")
         )
+        self.assertEqual(self.calls_text(), "", "no producer of a login runs")
+        self.place_token()
+        result = self.run_lever("--check", "orchestrator", **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
         self.assertEqual(
-            self.calls_text(), f"claude auth status CLAUDE_CONFIG_DIR={shared} BROWSER=unset token=unset\n"
+            (result.returncode, result.stdout), (0, f"orchestrator claude-bridge: {self.token_present()}\n")
         )
-        unreadable = f"unreadable (claude auth status printed no auth status record under {shared})"
-        for extra, expected, status in (
-            ({"FAKE_CLAUDE_AUTH_METHOD": "oauth_token"}, f"absent (authMethod oauth_token under {shared}, not claude.ai)", 0),
-            ({"FAKE_CLAUDE_AUTH_METHOD": "api_key"}, f"absent (authMethod api_key under {shared}, not claude.ai)", 0),
-            ({"FAKE_CLAUDE_AUTH_STATUS": "1"}, f"absent (not logged in under {shared})", 0),
-            ({"FAKE_CLAUDE_AUTH_STATUS": "5"}, f"unreadable (claude auth status exited 5 under {shared})", 1),
-            ({"FAKE_CLAUDE_AUTH_BODY": "not json"}, unreadable, 1),
-            ({"FAKE_CLAUDE_AUTH_BODY": '{"loggedIn": true}'}, unreadable, 1),
-            ({"FAKE_CLAUDE_AUTH_BODY": '{"authMethod": "claude.ai"} {"authMethod": "claude.ai"}'}, unreadable, 1),
-        ):  # fmt: skip
-            with self.subTest(**extra):
-                result = self.run_lever("--check", "orchestrator", **extra)
+        elsewhere = self.temp / "elsewhere-token"
+        elsewhere.write_text(FAKE_OAT + "\n")
+        elsewhere.chmod(0o600)
+        form = "holds no token of the form sk-ant-oat01-<20 to 255 of [A-Za-z0-9_-]>; the content is never printed"
+        one_line = "holds more than its one line: a second line, a carriage return or other bytes beyond the token"
+        no_feed = "holds no line ending in a line feed; the token is one line, as seat-token-place writes it"
+        cases = (
+            ("a link", lambda: token.symlink_to(elsewhere), f"{token} is a symbolic link; the token file must be a regular file of this user"),
+            ("a directory", lambda: token.mkdir(), f"{token} is not a regular file"),
+            ("mode 0644", lambda: (self.place_token(), token.chmod(0o644)), f"{token} has mode 644, not 0600"),
+            ("a key, not a token", lambda: self.place_token(content="sk-ant-api03-" + "NOTATOKEN" + "0" * 40), f"{token} {form}"),
+            ("a short token", lambda: self.place_token(content="sk-ant-oat01-" + "short"), f"{token} {form}"),
+            ("two lines", lambda: self.place_token(content=FAKE_OAT + "\nsecond"), f"{token} {one_line}"),
+            ("a carriage return", lambda: self.place_token(content=FAKE_OAT + "\r"), f"{token} {form}"),
+            ("no line feed", lambda: (self.place_token(), token.write_text(FAKE_OAT)), f"{token} {no_feed}"),
+            ("empty", lambda: (self.place_token(), token.write_text("")), f"{token} {no_feed}"),
+        )  # fmt: skip
+        for label, plant, reason in cases:
+            with self.subTest(case=label):
+                if token.is_symlink() or token.is_file():
+                    token.unlink()
+                elif token.is_dir():
+                    token.rmdir()
+                plant()
+                result = self.run_lever("--check", "orchestrator", **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
                 self.assertEqual(
                     (result.returncode, result.stdout),
-                    (status, f"orchestrator claude-bridge: {expected}\n"),
+                    (0, f"orchestrator claude-bridge: token absent ({reason})\n"),
                     result.stderr,
                 )
+                self.assertNotIn(FAKE_OAT, result.stdout + result.stderr)
+                self.assertNotIn("NOTATOKEN", result.stdout + result.stderr)
+        self.assertEqual(elsewhere.read_text(), FAKE_OAT + "\n", "the link's target is untouched")
+        self.assertEqual(self.calls_text(), "")
         self.assertNotIn(FAKE_OAUTH_VALUE, self.calls_text() + result.stdout + result.stderr)
+        self.assertFalse(self.shared.exists(), "--check makes nothing")
 
     def test_the_seats_root_derives_from_the_checkout_when_none_is_passed(self) -> None:
-        """U318, U498: without REGIME_SEATS_ROOT the group directory is `~/.local/state/omp-seats/<slug>/.state/claude-<group>`
+        """U318, U498, U551: without REGIME_SEATS_ROOT the token file is `~/.local/state/omp-seats/<slug>/.state/claude-token`
         of the checkout the command runs in (regime-env's slug, HOME in physical form); outside a checkout the Claude
         route is unreadable, never absent, and the SIWC route is untouched."""
         env = {key: value for key, value in self.env().items() if key != "REGIME_SEATS_ROOT"}
@@ -526,7 +562,7 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         self.assertEqual(inside.returncode, 0, inside.stderr)
         self.assertRegex(
             inside.stdout,
-            rf"^orchestrator claude-bridge: absent \(no {re.escape(str(home))}/\.local/state/omp-seats/[a-z0-9][a-z0-9_-]{{0,39}}/\.state/claude-orchestrator\)\n$",
+            rf"^orchestrator claude-bridge: token absent \(no {re.escape(str(home))}/\.local/state/omp-seats/[a-z0-9][a-z0-9_-]{{0,39}}/\.state/claude-token\)\n$",
         )
         outside = subprocess.run(
             [str(PREFLIGHT), "--check", "orchestrator", "audit"], env=env, cwd=self.temp,
@@ -540,21 +576,21 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         self.assertTrue(outside.stdout.splitlines()[1].startswith("audit openai-siwc: absent (no "), outside.stdout)
         self.assertEqual(self.calls_text(), "")
 
-    def test_check_names_each_login_groups_directory(self) -> None:
-        """U498: `--check` derives the directory per login group from the one table (`login_group_of_role`): the
-        orchestrator and worker profiles name `.state/claude-orchestrator` and `.state/claude-worker`, a deployed dsh
-        overlay on the claude-bridge route names the router group's `.state/claude-router` (the gateway child is the
-        Router's). U498b (verdict U498-e08ce84c P2 `:525`): the table is run for every profile with a seat login route,
-        the SIWC route included, so a profile outside the table refuses the lever (exit 2) naming the profile, its
-        route and the table, never `absent` (the SIWC overlay read as absent with exit 0 until this head) and never
-        `unreadable`; the lines before it print, no call runs and nothing is made. Each line reads its own group's
-        directory: a worker login present leaves the orchestrator's absent."""
+    def test_check_judges_every_claude_profile_by_the_one_token_file_and_refuses_a_profile_outside_the_table(
+        self,
+    ) -> None:
+        """U498, U551: `--check` runs the login group table (`login_group_of_role`) for every profile with a seat login
+        route, so a profile outside it refuses the lever (exit 2) naming the profile, its route and the table, never
+        `absent` and never `unreadable` (U498b); the lines before it print, no call runs and nothing is made. Every
+        claude-bridge profile (the orchestrator and worker seats, a deployed dsh overlay whose gateway child is the
+        Router's) is judged by the one token file of the seats root, so one placement turns every Claude line present
+        at once, whatever its group directory holds; the legacy shared `.state/claude` is read by no line."""
         profiles = self.home / ".agents/omp/profiles"
         (profiles / "dsh.yml").write_text("modelRoles:\n  default: claude-bridge/claude-haiku-5-5\n")
         before = [
             f"audit openai-siwc: absent (no {self.home}/.omp/profiles/audit/agent/openai-siwc/registration.json)",
-            f"dsh claude-bridge: absent (no {self.seats}/.state/claude-router)",
-            f"orchestrator claude-bridge: absent (no {self.shared})",
+            f"dsh claude-bridge: {self.token_absent()}",
+            f"orchestrator claude-bridge: {self.token_absent()}",
         ]
         for route in ("openai-siwc/gpt-6-astra", "claude-bridge/claude-haiku-5-5"):
             with self.subTest(route=route):
@@ -575,64 +611,20 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         (profiles / "other.yml").unlink()
         result = self.run_lever("--check")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(
-            result.stdout.splitlines(), [*before, f"worker claude-bridge: absent (no {self.shared_worker})"]
-        )
-        self.assertEqual(self.calls_text(), "", "no call without a directory")
-        self.shared_worker.mkdir(parents=True)
+        self.assertEqual(result.stdout.splitlines(), [*before, f"worker claude-bridge: {self.token_absent()}"])
+        self.place_token()
+        self.shared_worker.mkdir(parents=True, exist_ok=True)
         self.legacy.mkdir()
+        (self.legacy / ".credentials.json").write_text("{}")
         result = self.run_lever("--check", "orchestrator", "worker", "dsh")
         self.assertEqual(
             (result.returncode, result.stdout),
-            (
-                0,
-                f"orchestrator claude-bridge: absent (no {self.shared})\n"
-                f"worker claude-bridge: login present (claude.ai, {self.shared_worker})\n"
-                f"dsh claude-bridge: absent (no {self.seats}/.state/claude-router)\n",
-            ),
+            (0, "".join(f"{p} claude-bridge: {self.token_present()}\n" for p in ("orchestrator", "worker", "dsh"))),
             result.stderr,
         )
-        self.assertEqual(
-            self.calls_text(), f"claude auth status CLAUDE_CONFIG_DIR={self.shared_worker} BROWSER=unset token=unset\n"
-        )
+        self.assertEqual(self.calls_text(), "", "no login producer runs")
         self.assertNotIn(f"{self.legacy})", result.stdout, "the legacy shared directory is read by no line")
-
-    def test_the_refusal_names_the_legacy_shared_directory_when_the_groups_is_absent(self) -> None:
-        """U498 (standing order 54): the kit neither reads, copies nor deletes U318's shared `.state/claude`. When it
-        exists and the group's directory did not before this run, the profile mode's refusal prints the group's
-        command and names the legacy directory as the one the operator may remove after logging in per group; the
-        directory and its contents are untouched. With the group's directory present, or no legacy one, the refusal
-        says nothing of it, and `--check` never mentions it."""
-        self.legacy.mkdir(parents=True)
-        (self.legacy / "marker").write_text("")
-        refused = self.run_lever("worker", DISPLAY=":0", FAKE_CLAUDE_AUTH_STATUS="1")
-        self.assertEqual(refused.returncode, 2, refused.stderr)
-        self.assertEqual(
-            refused.stderr,
-            f"seat-login-preflight: worker claude-bridge: absent (not logged in under {self.shared_worker}); log in"
-            f" once: CLAUDE_CONFIG_DIR={self.shared_worker} claude auth login; a login is the operator's step: run that"
-            " command in your own terminal on this host, then start the seat again; the legacy shared directory"
-            f" {self.legacy} (one login per seats root, U318) is read by no seat: remove it once every running group"
-            " is logged in\n",
-        )
-        self.assertEqual(sorted(path.name for path in self.legacy.iterdir()), ["marker"])
-        self.assertTrue(self.shared_worker.is_dir() and not self.shared_worker.is_symlink())
-        self.assertEqual(stat.S_IMODE(os.lstat(self.shared_worker).st_mode), 0o700)
-        # The group's directory exists now (this run made it), so the next refusal names no legacy directory.
-        again = self.run_lever("worker", DISPLAY=":0", FAKE_CLAUDE_AUTH_STATUS="1")
-        self.assertEqual(again.returncode, 2, again.stderr)
-        self.assertNotIn("legacy", again.stderr)
-        self.assertTrue(again.stderr.endswith("then start the seat again\n"), again.stderr)
-        check = self.run_lever("--check", "worker", FAKE_CLAUDE_AUTH_STATUS="1")
-        self.assertEqual(
-            (check.returncode, check.stdout),
-            (0, f"worker claude-bridge: absent (not logged in under {self.shared_worker})\n"),
-        )
-        self.assertNotIn("legacy", check.stdout + check.stderr)
-        self.assertEqual(
-            self.calls_text(),
-            f"claude auth status CLAUDE_CONFIG_DIR={self.shared_worker} BROWSER=unset token=unset\n" * 3,
-        )
+        self.assertNotIn(FAKE_OAT, result.stdout + result.stderr)
 
     def test_the_login_group_table_maps_each_role_and_refuses_any_other(self) -> None:
         """U498: the preflight's `login_group_of_role` is the role table copied from hcom-seat as text
@@ -682,37 +674,27 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         self.assertEqual(self.calls_text() + self.bun_calls_text(), "")
 
     def test_the_claude_rule_holds_on_a_local_host(self) -> None:
-        """U190b, U318: the seat's child logs in by the shared directory's login wherever it runs, so a local host (no
-        SSH session; a display on Linux) without that login refuses with the printed command (no BROWSER prefix
-        there), making the directory 0700 with its parents first; one with a claude.ai login there passes; the
+        """U190b, U551: the seat's child runs on the seats' token wherever it runs, so a local host (no SSH session; a
+        display on Linux) without the token file refuses with the two printed steps and makes nothing (the group's
+        directory is hcom-seat's to make at a launch); one with the token placed passes with the one line; the
         operator's own `~/.claude` is never an input. Round 1 exited 0 there before any check, and a host-only login
         started a seat whose first bridge turn would end `Not logged in`."""
         credentials = self.home / ".claude/.credentials.json"
         credentials.parent.mkdir()
         credentials.write_text("{}")
         credentials.chmod(0o600)
-        shared = str(self.shared)
-        not_logged_in = self.run_lever("orchestrator", DISPLAY=":0", FAKE_CLAUDE_AUTH_STATUS="1")
-        self.assertEqual(not_logged_in.returncode, 2, not_logged_in.stderr)
-        self.assertEqual(
-            not_logged_in.stderr,
-            f"seat-login-preflight: orchestrator claude-bridge: absent (not logged in under {shared}); log in once:"
-            f" CLAUDE_CONFIG_DIR={shared} claude auth login; a login is the operator's step: run that command in your"
-            " own terminal on this host, then start the seat again\n",
-        )
-        for path in (self.seats, self.seats / ".state", self.shared):
-            self.assertTrue(path.is_dir() and not path.is_symlink(), path)
-            self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
+        absent = self.run_lever("orchestrator", DISPLAY=":0")
+        self.assertEqual(absent.returncode, 2, absent.stderr)
+        self.assertEqual(absent.stderr, self.refusal(f"orchestrator claude-bridge: {self.token_absent()}"))
+        self.assertFalse(self.seats.exists(), "nothing made: the chain is hcom-seat's to make")
+        self.place_token()
         ready = self.run_lever("orchestrator", DISPLAY=":0")
         self.assertEqual(ready.returncode, 0, ready.stderr)
-        self.assertEqual(
-            ready.stderr, f"seat-login-preflight: orchestrator claude-bridge: login present (claude.ai, {shared})\n"
-        )
-        self.assertEqual(
-            self.calls_text(), f"claude auth status CLAUDE_CONFIG_DIR={shared} BROWSER=unset token=unset\n" * 2
-        )
-        self.assertEqual(self.bun_calls_text(), "")
+        self.assertEqual(ready.stderr, f"seat-login-preflight: orchestrator claude-bridge: {self.token_present()}\n")
+        self.assertEqual(sorted(path.name for path in (self.seats / ".state").iterdir()), ["claude-token"])
+        self.assertEqual(self.calls_text() + self.bun_calls_text(), "", "no producer of a login runs")
         self.assertEqual(credentials.read_text(), "{}", "the operator's store is untouched")
+        self.assertNotIn(FAKE_OAT, absent.stderr + ready.stderr)
 
     def assert_component_refused(self, result: subprocess.CompletedProcess[str], path: Path | str, kind: str) -> None:
         """U318b, U498: a bad component of the group directory chain refuses the lever (exit 2) naming it and its kind."""
@@ -874,9 +856,9 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
 
     def test_a_plain_root_keeps_one_spelling_whatever_its_trailing_or_dot_components(self) -> None:
         """U318c: the normalisation changes nothing for a plain root. `<root>//`, `<root>/./` and `<root>/x/..` are the
-        root: `--check` prints the one spelling (round 2 printed `<root>//.state/claude` for the first, U318), the profile
-        mode makes the chain 0700 at the root and prints the command with the one spelling, and the one status call
-        runs under it. A relative root is no seats root (unreadable, never a directory relative to the cwd)."""
+        root: `--check` prints the one spelling (round 2 printed `<root>//.state/claude` for the first, U318), the
+        profile mode names the token file with the one spelling and makes nothing (U551). A relative root is no seats
+        root (unreadable, never a directory relative to the cwd)."""
         for spelling in (
             f"{self.seats}//",
             f"{self.seats}/./",
@@ -887,25 +869,14 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
             with self.subTest(spelling=spelling):
                 check = self.run_lever("--check", "orchestrator", REGIME_SEATS_ROOT=spelling)
                 self.assertEqual(
-                    (check.returncode, check.stdout), (0, f"orchestrator claude-bridge: absent (no {self.shared})\n")
+                    (check.returncode, check.stdout), (0, f"orchestrator claude-bridge: {self.token_absent()}\n")
                 )
         self.assertFalse(self.seats.exists(), "--check makes nothing")
-        gate = self.run_lever(
-            "orchestrator", DISPLAY=":0", FAKE_CLAUDE_AUTH_STATUS="1", REGIME_SEATS_ROOT=f"{self.seats}//"
-        )
+        gate = self.run_lever("orchestrator", DISPLAY=":0", REGIME_SEATS_ROOT=f"{self.seats}//")
         self.assertEqual(gate.returncode, 2, gate.stderr)
-        self.assertIn(
-            f"orchestrator claude-bridge: absent (not logged in under {self.shared}); log in once:"
-            f" CLAUDE_CONFIG_DIR={self.shared} claude auth login;",
-            gate.stderr,
-        )
-        for path in (self.seats, self.seats / ".state", self.shared):
-            self.assertTrue(path.is_dir() and not path.is_symlink(), path)
-            self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
-        self.assertEqual(sorted(path.name for path in self.seats.iterdir()), [".state"])
-        self.assertEqual(
-            self.calls_text(), f"claude auth status CLAUDE_CONFIG_DIR={self.shared} BROWSER=unset token=unset\n"
-        )
+        self.assertEqual(gate.stderr, self.refusal(f"orchestrator claude-bridge: {self.token_absent()}"))
+        self.assertFalse(self.seats.exists(), "the profile mode makes nothing either")
+        self.assertEqual(self.calls_text(), "")
         relative = self.run_lever("--check", "orchestrator", REGIME_SEATS_ROOT="seats")
         self.assertEqual(
             (relative.returncode, relative.stdout),
@@ -915,46 +886,29 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
             ),
         )
 
-    def test_a_seats_root_with_a_space_a_quote_and_a_dollar_prints_a_command_whose_eval_sets_the_exact_directory(
-        self,
-    ) -> None:
-        """U318b (verdict U318-e0dd8cc2, P2 at :293): the printed operator command carried the directory unquoted, so a
-        seats root with a space split it into wrong arguments. The assignment is shell-quoted: `eval` of the printed
-        line, on the laptop and in the SSH form, runs `claude auth login` with `CLAUDE_CONFIG_DIR` set to the exact
-        directory, which the profile mode made 0700 first."""
+    def test_a_seats_root_with_a_space_a_quote_and_a_dollar_names_the_token_file_whole(self) -> None:
+        """U318b (verdict U318-e0dd8cc2, P2 at :293) named the printed command's quoting; U551 prints no command: the
+        lines name the token file under a seats root holding a space, a quote and a `$` as one spelling, in both
+        modes and on both host kinds, and a token placed at exactly that file turns the line present."""
         seats = self.temp / "a b'$c"
-        shared = seats / ".state/claude-orchestrator"
-        command_re = re.compile(r"; log in once: (.*); a login is the operator's step")
-        for extra, browser in (({"DISPLAY": ":0"}, "unset"), ({"SSH_CONNECTION": "100.64.0.2 50000 100.64.0.3 22"}, "regime-open-url")):  # fmt: skip
+        token = seats / ".state/claude-token"
+        for extra in ({"DISPLAY": ":0"}, {"SSH_CONNECTION": "100.64.0.2 50000 100.64.0.3 22"}):
             with self.subTest(**extra):
-                refused = self.run_lever(
-                    "orchestrator", FAKE_CLAUDE_AUTH_STATUS="1", REGIME_SEATS_ROOT=str(seats), **extra
-                )
+                refused = self.run_lever("orchestrator", REGIME_SEATS_ROOT=str(seats), **extra)
                 self.assertEqual(refused.returncode, 2, refused.stderr)
-                self.assertIn(
-                    f"orchestrator claude-bridge: absent (not logged in under {shared}); log in once: ", refused.stderr
-                )
-                match = command_re.search(refused.stderr)
-                self.assertIsNotNone(match, refused.stderr)
-                command = match.group(1)
-                self.assertEqual(command.count("\n"), 0, command)
-                self.assertNotIn(f"CLAUDE_CONFIG_DIR={shared} ", command, "the directory is quoted, not pasted raw")
-                self.calls.unlink()
-                pasted = subprocess.run(
-                    ["bash", "-c", 'eval "$1"', "_", command], env=self.env(), check=False, capture_output=True, text=True
-                )  # fmt: skip
-                self.assertEqual(pasted.returncode, 64, "the fake claude saw `auth login`")
-                self.assertEqual(
-                    self.calls_text(), f"claude auth login CLAUDE_CONFIG_DIR={shared} BROWSER={browser} token=unset\n"
-                )
-        for path in (seats, seats / ".state", shared):
-            self.assertTrue(path.is_dir() and not path.is_symlink(), path)
-            self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o700, path)
-        check = self.run_lever("--check", "orchestrator", FAKE_CLAUDE_AUTH_STATUS="1", REGIME_SEATS_ROOT=str(seats))
+                self.assertEqual(refused.stderr, self.refusal(f"orchestrator claude-bridge: token absent (no {token})"))
+        self.assertFalse(seats.exists(), "nothing made")
+        self.place_token(seats)
+        check = self.run_lever("--check", "orchestrator", REGIME_SEATS_ROOT=str(seats))
         self.assertEqual(
-            (check.returncode, check.stdout),
-            (0, f"orchestrator claude-bridge: absent (not logged in under {shared})\n"),
+            (check.returncode, check.stdout), (0, f"orchestrator claude-bridge: token present ({token})\n")
         )
+        ready = self.run_lever("orchestrator", DISPLAY=":0", REGIME_SEATS_ROOT=str(seats))
+        self.assertEqual(
+            (ready.returncode, ready.stderr),
+            (0, f"seat-login-preflight: orchestrator claude-bridge: token present ({token})\n"),
+        )
+        self.assertEqual(self.calls_text(), "")
 
     def lever_functions(self, *names: str) -> str:
         """Functions of the lever, extracted by name as `test_hcom_seat`'s `identity_functions` does, so a test can
@@ -963,42 +917,6 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         return "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
         )
-
-    def test_a_failed_login_command_producer_refuses_naming_it_and_prints_no_empty_command(self) -> None:
-        """U318b (verdict U318-e0dd8cc2, P3 at :331): the `claude_login_command` substitution's status was unread, so an
-        injected exit 9 read as an ordinary absence with an empty command. `claude_login_refuse`, the function the
-        profile mode runs for the Claude route, reads it: a producer that fails, with or without a partial line,
-        refuses (exit 2) naming `claude_login_command`, and no `CLAUDE_CONFIG_DIR=` reaches the operator."""
-        functions = self.lever_functions("die", "claude_login_command", "claude_login_refuse")
-        self.assertIn("step=$(claude_login_command) || die", functions)
-        line = "orchestrator claude-bridge: absent (not logged in under /x/.state/claude)"
-        prefix = f"set -euo pipefail\n{functions}\nclaude_config=/x/.state/claude\n"
-
-        def run(overlay: str) -> subprocess.CompletedProcess[str]:
-            script = f"{prefix}{overlay}\nclaude_login_refuse '{line}'\n"
-            return subprocess.run(["bash", "-c", script], env=self.env(), check=False, capture_output=True, text=True)
-
-        as_written = run("")
-        self.assertEqual(as_written.returncode, 2, as_written.stderr)
-        self.assertEqual(
-            as_written.stderr,
-            f"seat-login-preflight: {line}; log in once: CLAUDE_CONFIG_DIR=/x/.state/claude claude auth login; a login"
-            " is the operator's step: run that command in your own terminal on this host, then start the seat again\n",
-        )
-        for label, overlay in (
-            ("exit 9", "claude_login_command() { return 9; }"),
-            ("partial line then exit 9", "claude_login_command() { printf 'CLAUDE_CONFIG_DIR=/x/.state/claude claude auth login\\n'; return 9; }"),
-        ):  # fmt: skip
-            with self.subTest(label=label):
-                failed = run(overlay)
-                self.assertEqual(failed.returncode, 2, failed.stderr)
-                self.assertEqual(
-                    failed.stderr,
-                    f"seat-login-preflight: {line}; cannot name the operator's login step: claude_login_command failed\n",
-                )
-                self.assertEqual(failed.stdout, "")
-                self.assertNotIn("CLAUDE_CONFIG_DIR=", failed.stdout + failed.stderr)
-                self.assertNotIn("log in once", failed.stdout + failed.stderr)
 
     def test_a_remote_host_with_a_login_passes_with_one_line(self) -> None:
         self.register()
@@ -1013,13 +931,11 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         self.assertIn(
             "a login is the operator's step: run `seat-login-preflight audit` in your own terminal", result.stderr
         )
-        # The Claude route outside a TTY, and inside a seat: the printed command, no login run (U318).
-        status, output = self.run_tty("worker", SSH_CONNECTION=remote, HCOM_LAUNCHED="1", FAKE_CLAUDE_AUTH_STATUS="1")
+        # The Claude route outside a TTY, and inside a seat: the two printed steps, nothing run (U551).
+        status, output = self.run_tty("worker", SSH_CONNECTION=remote, HCOM_LAUNCHED="1")
         self.assertEqual(status, 2, output)
-        self.assertIn(f"BROWSER=regime-open-url CLAUDE_CONFIG_DIR={self.shared_worker} claude auth login", output)
-        self.assertEqual(
-            self.calls_text(), f"claude auth status CLAUDE_CONFIG_DIR={self.shared_worker} BROWSER=unset token=unset\n"
-        )
+        self.assertIn(f"worker claude-bridge: {self.token_absent()}; {self.STEPS}", output)
+        self.assertEqual(self.calls_text(), "")
 
     def test_the_operators_terminal_runs_the_siwc_login_with_the_pinned_port_and_the_laptop_opener(self) -> None:
         status, output = self.run_tty("audit", SSH_CONNECTION="100.64.0.2 50000 100.64.0.3 22")
@@ -1038,22 +954,17 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         )
         self.assertEqual(list(self.temp.glob("seat-login.*")), [], "the scratch opener directory is removed")
 
-    def test_the_operators_terminal_names_the_login_command_for_claude_and_runs_no_login(self) -> None:
-        """U318: the Claude login is the operator's own `claude auth login` under the shared directory, with
-        `BROWSER=regime-open-url` in an SSH session (the laptop's browser, the code-paste flow); the preflight prints
-        it and runs no login, in a TTY too."""
+    def test_the_operators_terminal_names_the_two_steps_for_claude_and_runs_nothing(self) -> None:
+        """U551: the Claude route has nothing to run: with the token file absent the preflight prints the operator's two
+        steps (`claude setup-token` in the operator's own terminal, then `seat-token-place`) and runs no login and no
+        browser, in a TTY too; the operator's `~/.claude` is not touched."""
         remote = "100.64.0.2 50000 100.64.0.3 22"
-        status, output = self.run_tty("orchestrator", SSH_CONNECTION=remote, FAKE_CLAUDE_AUTH_STATUS="1")
+        status, output = self.run_tty("orchestrator", SSH_CONNECTION=remote)
         self.assertEqual(status, 2, output)
-        self.assertIn(
-            f"log in once: BROWSER=regime-open-url CLAUDE_CONFIG_DIR={self.shared} claude auth login; a login is the"
-            " operator's step: run that command in your own terminal on this host",
-            output,
-        )
-        self.assertEqual(
-            self.calls_text(), f"claude auth status CLAUDE_CONFIG_DIR={self.shared} BROWSER=unset token=unset\n"
-        )
+        self.assertIn(f"orchestrator claude-bridge: {self.token_absent()}; {self.STEPS}", output)
+        self.assertEqual(self.calls_text(), "", "no login, no omp, no claude")
         self.assertFalse((self.home / ".claude").exists())
+        self.assertFalse(self.seats.exists(), "nothing made")
 
     def test_a_failed_or_ineffective_login_keeps_the_seat_from_starting(self) -> None:
         remote = "100.64.0.2 50000 100.64.0.3 22"
@@ -1067,24 +978,20 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
 
     def test_a_linux_host_without_a_display_counts_as_remote(self) -> None:
         write_exec(self.bin / "uname", "#!/bin/sh\necho Linux\n")
-        headless = self.run_lever("worker", FAKE_CLAUDE_AUTH_STATUS="1")
+        headless = self.run_lever("worker")
         self.assertEqual(headless.returncode, 2, headless.stderr)
-        self.assertIn(
-            f"worker claude-bridge: absent (not logged in under {self.shared_worker}); log in once:", headless.stderr
-        )
+        self.assertEqual(headless.stderr, self.refusal(f"worker claude-bridge: {self.token_absent()}"))
         for display in ({"DISPLAY": ":0"}, {"WAYLAND_DISPLAY": "wayland-0"}):
             with self.subTest(**display):
                 # With a display the host is local: the SIWC route does nothing there, while the Claude route's rule
-                # holds on every host (U190b): the worker refuses without the shared directory's login, and a token
-                # variable in the environment is no input (U312).
+                # holds on every host (U190b): the worker refuses without the token file, and a token variable in the
+                # environment is no input (U312).
                 local = self.run_lever("audit", **display)
                 self.assertEqual((local.returncode, local.stderr), (0, ""))
                 for extra in ({}, {TOKEN_VARIABLE: FAKE_OAUTH_VALUE}):
-                    refused = self.run_lever("worker", **display, **extra, FAKE_CLAUDE_AUTH_STATUS="1")
+                    refused = self.run_lever("worker", **display, **extra)
                     self.assertEqual(refused.returncode, 2, refused.stderr)
-                    self.assertIn(
-                        f"worker claude-bridge: absent (not logged in under {self.shared_worker})", refused.stderr
-                    )
+                    self.assertIn(f"worker claude-bridge: {self.token_absent()}", refused.stderr)
                     self.assertNotIn(FAKE_OAUTH_VALUE, refused.stderr)
 
     def test_a_profile_without_a_login_route_passes_and_an_unreadable_overlay_does_not(self) -> None:
@@ -1161,28 +1068,29 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
             (result.returncode, result.stdout), (1, f"audit openai-siwc: unreadable (cannot read the mtime of {db})\n")
         )
         (self.bin / "date").unlink()
-        # The login reader (U318): a `claude auth status` that fails, or a jq that cannot read its record, is unreadable
-        # in `--check` and a refusal (exit 1) in the profile mode, never absent.
-        self.shared.mkdir(parents=True)
+        # The token judge (U551) has two states and no third: a `stat` or `wc` that fails on a placed file is `token
+        # absent (cannot read ...)` in `--check` (exit 0) and the two steps in the profile mode (exit 2), never a pass;
+        # a jq that fails touches the Claude route not at all.
+        token = self.place_token()
         remote = "100.64.0.2 50000 100.64.0.3 22"
-        result = self.run_lever("--check", "orchestrator", FAKE_CLAUDE_AUTH_STATUS="3")
-        self.assertEqual(
-            (result.returncode, result.stdout),
-            (1, f"orchestrator claude-bridge: unreadable (claude auth status exited 3 under {self.shared})\n"),
-        )
-        gate = self.run_lever("orchestrator", SSH_CONNECTION=remote, FAKE_CLAUDE_AUTH_STATUS="3")
-        self.assertEqual(gate.returncode, 1, gate.stderr)
-        self.assertIn(f"exited 3 under {self.shared}); fix or move the record aside", gate.stderr)
+        for tool, reason in (("stat", f"cannot read the mode of {token}"), ("wc", f"cannot read the size of {token}")):
+            with self.subTest(tool=tool):
+                write_exec(self.bin / tool, "#!/bin/sh\nexit 1\n")
+                result = self.run_lever("--check", "orchestrator")
+                self.assertEqual(
+                    (result.returncode, result.stdout), (0, f"orchestrator claude-bridge: token absent ({reason})\n")
+                )
+                gate = self.run_lever("orchestrator", SSH_CONNECTION=remote)
+                self.assertEqual(gate.returncode, 2, gate.stderr)
+                self.assertEqual(gate.stderr, self.refusal(f"orchestrator claude-bridge: token absent ({reason})"))
+                (self.bin / tool).unlink()
         write_exec(self.bin / "jq", "#!/bin/sh\nexit 5\n")
         result = self.run_lever("--check", "orchestrator")
         self.assertEqual(
-            (result.returncode, result.stdout),
-            (
-                1,
-                f"orchestrator claude-bridge: unreadable (claude auth status printed no auth status record under {self.shared})\n",
-            ),
+            (result.returncode, result.stdout), (0, f"orchestrator claude-bridge: {self.token_present()}\n")
         )
         (self.bin / "jq").unlink()
+        token.unlink()
         # The overlay enumeration needs no external producer.
         write_exec(self.bin / "basename", "#!/bin/sh\nexit 1\n")
         result = self.run_lever("--check")
@@ -1220,53 +1128,42 @@ exit "${{FAKE_CLAUDE_AUTH_STATUS:-0}}"
         self.assertIn("no openai-siwc login in", output)
         self.assertIn("after the login", output)
 
-    def test_readiness_counts_the_shared_directorys_claude_ai_login_alone(self) -> None:
-        """U318, U498: a seat starts on its login group's claude.ai login alone. A credentials file of the operator's
-        own `~/.claude` and a token variable in the environment are no input (U190, U312); an `oauth_token` or
-        `api_key` method under the directory is absent too, naming the command for that group; in the operator's
-        terminal the same state names the command and runs no login."""
+    def test_readiness_counts_the_token_file_alone(self) -> None:
+        """U551: a seat starts on the seats' Claude token file alone. A credentials file of the operator's own
+        `~/.claude`, a login directory of the group under the seats root and a token variable in the environment are
+        no input (U190, U312, U318): without the file the profile mode refuses naming the two steps, in the operator's
+        terminal too, running nothing; with the file placed it passes whatever the environment holds, and no `claude`
+        process runs."""
         remote = "100.64.0.2 50000 100.64.0.3 22"
-        shared = str(self.shared)
-        command = f"BROWSER=regime-open-url CLAUDE_CONFIG_DIR={shared} claude auth login"
-        worker_command = f"BROWSER=regime-open-url CLAUDE_CONFIG_DIR={self.shared_worker} claude auth login"
         credentials = self.home / ".claude/.credentials.json"
         credentials.parent.mkdir()
         credentials.write_text("{}")
         credentials.chmod(0o600)
-        variable_only = self.run_lever(
-            "orchestrator", SSH_CONNECTION=remote, FAKE_CLAUDE_AUTH_STATUS="1", **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE}
-        )
+        self.shared.mkdir(parents=True)
+        (self.shared / ".credentials.json").write_text("{}")
+        variable_only = self.run_lever("orchestrator", SSH_CONNECTION=remote, **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
         self.assertEqual(variable_only.returncode, 2, variable_only.stderr)
-        self.assertIn(
-            f"orchestrator claude-bridge: absent (not logged in under {shared}); log in once: {command}; a login is the"
-            " operator's step",
-            variable_only.stderr,
-        )
-        self.assertEqual(
-            self.calls_text(), f"claude auth status CLAUDE_CONFIG_DIR={shared} BROWSER=unset token=unset\n"
-        )
-        for method in ("oauth_token", "api_key"):
-            with self.subTest(method=method):
-                other = self.run_lever("worker", SSH_CONNECTION=remote, FAKE_CLAUDE_AUTH_METHOD=method)
-                self.assertEqual(other.returncode, 2, other.stderr)
-                self.assertIn(
-                    f"worker claude-bridge: absent (authMethod {method} under {self.shared_worker}, not claude.ai); log in"
-                    f" once: {worker_command}",
-                    other.stderr,
-                )
+        self.assertEqual(variable_only.stderr, self.refusal(f"orchestrator claude-bridge: {self.token_absent()}"))
+        for profile in ("worker", "orchestrator"):
+            with self.subTest(profile=profile):
+                refused = self.run_lever(profile, SSH_CONNECTION=remote)
+                self.assertEqual(refused.returncode, 2, refused.stderr)
+                self.assertEqual(refused.stderr, self.refusal(f"{profile} claude-bridge: {self.token_absent()}"))
+        status, output = self.run_tty("worker", SSH_CONNECTION=remote)
+        self.assertEqual(status, 2, output)
+        self.assertIn(f"worker claude-bridge: {self.token_absent()}; {self.STEPS}", output)
+        self.place_token()
         present = self.run_lever("orchestrator", SSH_CONNECTION=remote, **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
         self.assertEqual(present.returncode, 0, present.stderr)
-        self.assertEqual(
-            present.stderr, f"seat-login-preflight: orchestrator claude-bridge: login present (claude.ai, {shared})\n"
-        )
-        # In the operator's terminal the same absent state names the command and runs no login.
-        status, output = self.run_tty("worker", SSH_CONNECTION=remote, FAKE_CLAUDE_AUTH_STATUS="1")
-        self.assertEqual(status, 2, output)
-        self.assertIn(f"log in once: {worker_command}; a login is the operator's step", output)
-        self.assertNotIn("auth login", self.calls_text())
-        self.assertEqual(self.calls_text().count("claude auth status"), 5)
-        for text in (variable_only.stderr, other.stderr, present.stderr, output):
+        self.assertEqual(present.stderr, f"seat-login-preflight: orchestrator claude-bridge: {self.token_present()}\n")
+        status, tty = self.run_tty("worker", SSH_CONNECTION=remote)
+        self.assertEqual(status, 0, tty)
+        self.assertIn(f"seat-login-preflight: worker claude-bridge: {self.token_present()}", tty)
+        self.assertEqual(self.calls_text(), "", "no login, no omp, no claude")
+        self.assertEqual(credentials.read_text(), "{}")
+        for text in (variable_only.stderr, refused.stderr, output, present.stderr, tty):
             self.assertNotIn(FAKE_OAUTH_VALUE, text)
+            self.assertNotIn(FAKE_OAT, text)
 
 
 if __name__ == "__main__":

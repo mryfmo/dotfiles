@@ -168,6 +168,28 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         self.assertFalse(self.module.same_modified(source, target, json_target=True))
 
+    def test_a_deleting_modifier_passes_an_absent_target_and_a_placing_one_does_not(self) -> None:
+        """U552: the bridge's modify scripts delete a row and pass everything else through, so a host that never had
+        the profile's file has nothing to apply; a script that would place rows into an empty input still reports
+        its target missing."""
+        deleting = self.write_source(
+            "modify_delete.py", "#!/usr/bin/env python3\nimport sys\nsys.stdout.buffer.write(sys.stdin.buffer.read())\n"
+        )
+        deleting.chmod(0o755)
+        placing = self.write_source(
+            "modify_place.py",
+            "#!/usr/bin/env python3\nimport json, sys\n"
+            "data = json.loads(sys.stdin.read() or '{}'); data['model'] = 'managed'\n"
+            "json.dump(data, sys.stdout)\n",
+        )
+        placing.chmod(0o755)
+        absent = self.temp_dir / "home/.omp/profiles/worker/agent/claude-bridge.json"
+        self.assertFalse(absent.exists())
+
+        self.assertTrue(self.module.same_modified(deleting, absent))
+        self.assertFalse(self.module.same_modified(placing, absent))
+        self.assertFalse(self.module.same_modified(placing, absent, json_target=True))
+
     def write_index(self, outputs: list[dict], scopes: list[dict] | None = None) -> Path:
         path = self.temp_dir / "scripts/generated-agent-outputs.json"
         path.parent.mkdir(parents=True, exist_ok=True)

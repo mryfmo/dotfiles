@@ -95,11 +95,14 @@ CR)。手順 2 をやり直す。`make doctor` の Seat logins も同じ行を�
 
 - 席の起動は `hcom-seat` が同じファイルを毎回判定する(`token_file_check`)。無い、link、0600 で
   ない、形式外、2 行のどれでも起動を拒否し、この handout の手順を名指しする。dry run も同じ。
-- 旧 API key 経路の名残 `.state/anthropic/`(空の `api-key` を含む)はどの lever も読まない。
-  消してよい: `rm -r ~/.local/state/omp-seats/dotfiles/.state/anthropic`
+- 旧 API key 経路の名残 `.state/anthropic/`(空の `api-key` を含む)は hcom-seat、
+  seat-login-preflight、seat-token-place のどれも読まないが、Router の `acp-broker`(main の版)は
+  U553 までこれを読む。消すのは U553(broker が token に移る)の配備後:
+  `rm -r ~/.local/state/omp-seats/dotfiles/.state/anthropic`
 - U510 の modify script を `chezmoi apply` した host では、`~/.omp/profiles/<role>/agent/` の
   `claude-bridge.json` に `provider.pathToClaudeCodeExecutable` 行が残りうる(この laptop には無い、
-  実測 11-15)。この head の modify script が `chezmoi apply` でその行だけを消す(他の key は
-  そのまま、`tests/unit/test_generate_agent_configs.py`)。script が読めない JSON なら stderr に
-  1 行出して素通しするので、その時はその行を手で消す。bridge は同梱の Claude Code binary に戻る。
+  実測 11-15)。この head の modify script が `chezmoi apply` でその行の byte だけを切り取る
+  (他の byte はそのまま。key の綴りが JSON escape でも見つける。
+  `tests/unit/test_generate_agent_configs.py`)。script が読めない JSON なら stderr に 1 行出して
+  素通しするので、その時はその行を手で消す。bridge は同梱の Claude Code binary に戻る。
 - token は 1 年で切れる。切れたら手順 1 と 2 をやり直す。

@@ -171,7 +171,8 @@ class CheckAgentRuntimeTest(unittest.TestCase):
     def test_a_deleting_modifier_passes_an_absent_target_and_a_placing_one_does_not(self) -> None:
         """U552: the bridge's modify scripts delete a row and pass everything else through, so a host that never had
         the profile's file has nothing to apply; a script that would place rows into an empty input still reports
-        its target missing."""
+        its target missing. Round 3 (verdict U552-953af858 P2): absent means no entry at the path; a directory, a
+        dangling symbolic link or a FIFO there is a mismatch for either script, never an absent file."""
         deleting = self.write_source(
             "modify_delete.py", "#!/usr/bin/env python3\nimport sys\nsys.stdout.buffer.write(sys.stdin.buffer.read())\n"
         )
@@ -189,6 +190,21 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertTrue(self.module.same_modified(deleting, absent))
         self.assertFalse(self.module.same_modified(placing, absent))
         self.assertFalse(self.module.same_modified(placing, absent, json_target=True))
+
+        absent.parent.mkdir(parents=True)
+        non_files = {"a directory": absent.mkdir, "a dangling symbolic link": lambda: absent.symlink_to("nowhere")}
+        if hasattr(os, "mkfifo"):
+            non_files["a FIFO"] = lambda: os.mkfifo(absent)
+        for label, make in non_files.items():
+            with self.subTest(target=label):
+                make()
+                self.assertFalse(self.module.same_modified(deleting, absent), label)
+                self.assertFalse(self.module.same_modified(deleting, absent, json_target=True), label)
+                self.assertFalse(self.module.same_modified(placing, absent), label)
+                if absent.is_dir() and not absent.is_symlink():
+                    absent.rmdir()
+                else:
+                    absent.unlink()
 
     def write_index(self, outputs: list[dict], scopes: list[dict] | None = None) -> Path:
         path = self.temp_dir / "scripts/generated-agent-outputs.json"

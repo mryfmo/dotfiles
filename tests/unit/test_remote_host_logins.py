@@ -261,20 +261,24 @@ class TokenExportTest(unittest.TestCase):
                 ]
                 self.assertEqual(lines, [])
 
-    def test_no_lever_or_rc_file_names_the_token_file_or_setup_token(self) -> None:
-        """U318: the token file and `claude setup-token` retire from code: neither lever (source and installed copy)
-        nor an rc file names them."""
-        for path in (
-            ZSHENV,
-            PROFILE,
-            PREFLIGHT,
-            HCOM_SEAT,
-            *(COMMON / f"executable_{lever.name}" for lever in (PREFLIGHT, HCOM_SEAT)),
-        ):
-            with self.subTest(path=str(path.relative_to(ROOT))):
-                text = path.read_text()
-                for needle in ("oauth-token", "setup-token"):
-                    self.assertNotIn(needle, text)
+    def test_the_shim_is_the_one_exporter_and_no_rc_file_names_the_retired_token_file(self) -> None:
+        """U312, U318, U551: the rc files export nothing of a token and name neither the retired `~/.config/claude-code/
+        oauth-token` file nor `claude setup-token`; of the levers (source and installed copy) hcom-seat holds the one
+        `export CLAUDE_CODE_OAUTH_TOKEN`, inside the shim text it writes, which reads the seats' token file, and the
+        preflight and the broker export the name nowhere (the broker passes the value to its workers' omp launch as an
+        `env -i` assignment, and clears the name from its own connection); none names the retired file."""
+        for rc in (ZSHENV, PROFILE):
+            with self.subTest(path=str(rc.relative_to(ROOT))):
+                text = rc.read_text()
+                for needle in ("oauth-token", "setup-token", "CLAUDE_CODE_OAUTH_TOKEN"):
+                    self.assertNotIn(needle, "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#")))
+        levers = {HCOM_SEAT: 1, PREFLIGHT: 0, ROOT / "scripts/orchestrator/acp-broker": 0}
+        for lever, exports in list(levers.items()):
+            for path in (lever, COMMON / f"executable_{lever.name}"):
+                with self.subTest(path=str(path.relative_to(ROOT))):
+                    text = path.read_text()
+                    self.assertEqual(text.count("export CLAUDE_CODE_OAUTH_TOKEN"), exports)
+                    self.assertNotIn("oauth-token", text, "the retired token file is named by no lever")
 
 
 @unittest.skipUnless(CHEZMOI, "chezmoi is not installed")

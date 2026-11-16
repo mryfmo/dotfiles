@@ -31,6 +31,10 @@ BUN = shutil.which("bun")
 # A real executable binary (Mach-O on macOS, ELF on Linux), for tools hcom-seat requires to be no script.
 BINARY_STAND_IN = Path(os.path.realpath("/usr/bin/true"))
 SYSTEM_PATH = "/usr/bin:/bin"
+# The fixture's seats' Claude setup-token (regime-cutover U551): the form hcom-seat holds the token file to (TOKEN_FORM_RE:
+# `sk-ant-oat01-` and 20 to 255 base64url characters), never a real token, built at runtime so no file holds a literal
+# the secret scan matches; the shim exports it to the child and it must appear in no line of any lever.
+FAKE_OAT = "sk-ant-oat01-" + "FAKETOKENFORTEST" + "0" * 44
 # The rows under the shared Claude Code directory that every seat's settings deny for write (U318).
 SHARED_CLAUDE_DENIES = (
     "settings.json",
@@ -143,6 +147,12 @@ class SeatFixture(unittest.TestCase):
         self.calls = root / "calls"
         self.calls.mkdir()
         self.seats = str(root / "seats")
+        # The seats' Claude credential (regime-cutover U551): hcom-seat refuses every launch, dry runs included, without
+        # the token file `<seats-root>/.state/claude-token` (one 0600 line in a 0700 chain, as seat-token-place writes
+        # it), so the fixture places a token of the form, never a real one, before any launch: the seats root and its
+        # `.state` exist from the start, as on a host where the operator placed the token (assert_nothing_made holds
+        # them to that content alone).
+        self.place_token()
         # The hcom store lies outside the scratch tree (a seat write root of its own, beside the seats root) in a
         # directory of this test's own under TMPDIR, so two suites running at once never share it.
         store_parent = Path(tempfile.mkdtemp(prefix="hcom-seat-store-"))
@@ -195,6 +205,27 @@ class SeatFixture(unittest.TestCase):
 
     def settings_of(self, name):
         return json.loads(Path(self.seats, ".sandbox", name, "srt-settings.json").read_text())
+
+    @property
+    def token_file(self):
+        """The seats' Claude token file hcom-seat judges and the shim reads (U551): `<seats-root>/.state/claude-token`."""
+        return Path(self.seats, ".state/claude-token")
+
+    def place_token(self, root=None, content=FAKE_OAT):
+        """Place the fixture token as seat-token-place does: one line, 0600, in the 0700 `.state` of the 0700 root."""
+        root = Path(root or self.seats)
+        (root / ".state").mkdir(parents=True, exist_ok=True)
+        for directory in (root, root / ".state"):
+            directory.chmod(0o700)
+        path = root / ".state/claude-token"
+        path.write_text(content + "\n")
+        path.chmod(0o600)
+        return path
+
+    def assert_nothing_made(self, message="nothing made under the seats root"):
+        """The seats root holds the fixture's token file and nothing else: no slot, no sandbox, no login directory."""
+        self.assertEqual(sorted(p.name for p in Path(self.seats).iterdir()), [".state"], message)
+        self.assertEqual(sorted(p.name for p in Path(self.seats, ".state").iterdir()), ["claude-token"], message)
 
 
 class HcomSeatTest(SeatFixture):
@@ -290,7 +321,7 @@ class HcomSeatTest(SeatFixture):
         # A planted link at `.state` under the fixture's seats root stops the launch with exit 2 as well, by the
         # launcher's own slot check before the preflight runs, in a dry run too; the link is kept and nothing is made.
         seats = Path(self.seats)
-        seats.mkdir()
+        shutil.rmtree(seats / ".state")  # the fixture's token slot gives way to the planted link
         elsewhere = self.home / "elsewhere"
         elsewhere.mkdir()
         (seats / ".state").symlink_to(elsewhere)
@@ -426,7 +457,7 @@ class HcomSeatTest(SeatFixture):
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertEqual(shlex.split(run.stdout), self.launch_line(role, name, directory, *exts))
         self.assertEqual(self.calls_of("hcom"), [])
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
 
     def test_an_absent_optional_extension_is_dropped_and_ext_replaces_the_list(self):
         shutil.rmtree(self.siwc)
@@ -454,7 +485,7 @@ class HcomSeatTest(SeatFixture):
                 self.assertEqual(run.returncode, 2, run.stdout)
                 self.assertIn("is not in the allow-list (claude.levers.extensions)", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         link = self.home / "link-to-bridge"
         run = self.seat("worker", "--seats-root", self.seats, "--ext", str(link), "--dry-run")
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -488,6 +519,7 @@ class HcomSeatTest(SeatFixture):
         bindir.mkdir()
         (bindir / "awk").write_text("#!/bin/sh\nexit 2\n")
         (bindir / "awk").chmod(0o755)
+        self.place_token(self.home / ".local/state/omp-seats/repo")  # the derived root's token (U551)
         run = self.seat("worker", "--dry-run", PATH=f"{bindir}:{self.env['PATH']}")
         self.assertEqual(run.returncode, 0, run.stderr)
 
@@ -518,6 +550,7 @@ class HcomSeatTest(SeatFixture):
     def test_the_store_team_and_seats_root_are_derived_from_the_checkout(self):
         """Without HCOM_DIR, HCOM_TEAM or --seats-root, hcom-seat derives them from the repository (U33)."""
         derived = {"HCOM_DIR": str(self.home / ".local/state/hcom/repo"), "HCOM_TEAM": "repo"}
+        self.place_token(self.home / ".local/state/omp-seats/repo")  # the derived root's token (U551)
         run = self.seat("worker", "--dry-run", HCOM_DIR=None, HCOM_TEAM=None)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("has no origin file binding it", run.stderr, "only regime-init binds a derived store")
@@ -547,6 +580,7 @@ class HcomSeatTest(SeatFixture):
         The launcher half runs everywhere; the gate half runs the real stop-gate.ts under bun, as omp runs it in
         the pane, with the argv and the environment the fake hcom handed to omp.
         """
+        self.place_token(self.home / ".local/state/omp-seats/repo")  # the derived root's token (U551)
         run = self.seat("orchestrator", HCOM_TEAM="custom")  # HCOM_DIR is explicit; the checkout's slug is `repo`
         self.assertEqual(run.returncode, 0, run.stderr)
         (omp,) = self.calls_of("omp")
@@ -621,7 +655,7 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("cannot inspect refs/remotes/origin/main", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
 
     def test_a_derived_store_owned_by_another_checkout_is_refused(self):
         store = self.home / ".local/state/hcom/repo"
@@ -686,7 +720,7 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(f"extension directory absent: {self.gate}", run.stderr, "--ext never drops the gate")
         self.assertEqual([self.calls_of(tool) for tool in ("hcom", "herdr", "omp")], [[], [], []])
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
 
     def test_a_read_grant_that_is_a_regular_file_under_a_read_deny_refuses_the_launch(self):
         """U512i (verdict U512h-4c5ec14e P1, class sandbox-mount-mode): srt 0.0.81's Linux backend mounts a tmpfs over
@@ -854,10 +888,16 @@ class HcomSeatTest(SeatFixture):
                 self.assertEqual(listed.count(path), 1, (key, path, listed))
             self.assertEqual([entry for entry in listed if entry.startswith(str(home / ".claude"))], expected[:2])
 
-    def test_the_shim_exports_the_shared_directory_and_clears_a_callers_token(self):
-        """U318, U498: the bridge child logs in by its login group's claude.ai login, which Claude Code stores and
-        refreshes there; the shim exports that directory and no token. U312: a CLAUDE_CODE_OAUTH_TOKEN in the caller's
-        environment is no input, at a launch whose preflight found the login and when the shim runs directly."""
+    def test_the_shim_exports_the_groups_directory_and_the_token_read_from_the_file_and_a_callers_token_is_no_input(
+        self,
+    ):
+        """U318, U498: the bridge child runs under its login group's Claude Code directory, which the shim exports.
+        U551: the seats' Claude credential is the one line of `<seats-root>/.state/claude-token`, read by the shim
+        outside the sandbox and exported as CLAUDE_CODE_OAUTH_TOKEN into the sandboxed tree, so omp (and the bridge's
+        Claude Code child under it) holds the file's line; the shim text names the file and never the token, and the
+        canary runs before the export. U312: a CLAUDE_CODE_OAUTH_TOKEN in the caller's environment is no input, at a
+        launch and when the shim runs directly: the child holds the file's line, never the caller's value. A shim run
+        after the file is gone starts nothing and names the file."""
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         record = self.plant_claude_env_recorder()
         caller = "fake-" + "caller-value-u190"
@@ -865,17 +905,127 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual(run.returncode, 0, run.stderr)
         shared = str(Path(self.seats, ".state/claude-worker"))
         self.assertIn(f"worker claude-bridge: login present (claude.ai, {shared})", run.stderr)
-        self.assertEqual(self.claude_env_of(record), {"CLAUDE_CONFIG_DIR": shared, "CLAUDE_CODE_OAUTH_TOKEN": "unset"})
+        self.assertEqual(self.claude_env_of(record), {"CLAUDE_CONFIG_DIR": shared, "CLAUDE_CODE_OAUTH_TOKEN": FAKE_OAT})
         # The preflight's one call ran under the group's directory and without the caller's token name.
         self.assertEqual(self.claude_calls.read_text(), f"auth status {shared} token=unset\n")
         shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        text = shim.read_text()
+        self.assertIn(f"token_file={self.token_file}", text, "the shim names the file")
+        self.assertIn('CLAUDE_CODE_OAUTH_TOKEN=$(/usr/bin/head -n 1 -- "${token_file}" && printf .)', text, "and reads its one line")  # fmt: skip
+        self.assertEqual(text.count("export CLAUDE_CODE_OAUTH_TOKEN"), 1, "the one exporter")
+        self.assertNotIn(FAKE_OAT, text, "the shim holds no token")
+        self.assertNotIn("oauth-token", text, "the shim reads no other token file")
+        # The canary ran before the export and the launch srt carried it: test_hcom_seat_dsh's srt fake records the
+        # environment names (this module's records HCOM_* alone); the omp recorder above holds the export itself.
         env = {**self.env, "CLAUDE_CODE_OAUTH_TOKEN": caller}
         direct = subprocess.run([str(shim), "--version"], env=env, capture_output=True, text=True, check=False)
         self.assertEqual(direct.returncode, 0, direct.stderr)
-        self.assertEqual(self.claude_env_of(record), {"CLAUDE_CONFIG_DIR": shared, "CLAUDE_CODE_OAUTH_TOKEN": "unset"})
+        self.assertEqual(self.claude_env_of(record), {"CLAUDE_CONFIG_DIR": shared, "CLAUDE_CODE_OAUTH_TOKEN": FAKE_OAT})
         for text in (run.stdout, run.stderr, direct.stdout, direct.stderr, shim.read_text()):
             self.assertNotIn(caller, text)
-        self.assertNotIn("oauth-token", shim.read_text(), "the shim reads no token file")
+            self.assertNotIn(FAKE_OAT, text)
+        # The file gone, the shim starts nothing and names the file (the launcher's gate refuses a launch earlier).
+        lines = len(record.read_text().splitlines())
+        self.token_file.unlink()
+        gone = subprocess.run([str(shim), "--version"], env=env, capture_output=True, text=True, check=False)
+        self.assertEqual((gone.returncode, gone.stdout), (2, ""), gone.stderr)
+        self.assertEqual(
+            gone.stderr,
+            f"hcom-seat shim: the seats' Claude token file {self.token_file} is absent, a link or no regular file; omp"
+            " not started (handouts/claude-setup-token-u551.md)\n",
+        )
+        self.assertEqual(len(record.read_text().splitlines()), lines, "no omp ran")
+        # A file off the form: the shim names the file and the form, never the content.
+        self.place_token(content="not-a-" + "token-u551")
+        off = subprocess.run([str(shim), "--version"], env=env, capture_output=True, text=True, check=False)
+        self.assertEqual((off.returncode, off.stdout), (2, ""), off.stderr)
+        self.assertIn(f"the seats' Claude token file {self.token_file} holds no token of the form", off.stderr)
+        self.assertNotIn("not-a-" + "token-u551", off.stderr)
+        self.assertEqual(len(record.read_text().splitlines()), lines, "no omp ran")
+
+    def test_a_seat_without_the_token_file_starts_nothing(self):
+        """U551: hcom-seat judges the seats' Claude token file `<seats-root>/.state/claude-token` by its form before
+        anything is made or written, for every role and in a dry run too (there before the launch line prints): an
+        absent file, a symbolic link (refused before anything resolves it, the target never named), a file that is
+        not this user's regular 0600 file, a line off the form, two lines or a carriage return each refuse (exit 2)
+        naming the file and the handout's steps, never the content, with nothing made, no hcom and no omp; the dry
+        run's environment line names the file the shim reads and never the token."""
+        token = self.token_file
+        handout = "handouts/claude-setup-token-u551.md"
+        steps = (
+            "run claude setup-token in your own terminal and place the token with seat-token-place"
+            f" ({handout}, steps 1 and 2), then start the seat again"
+        )
+
+        def launch(*extra_args, **extra):
+            overrides = {"SSH_CONNECTION": "100.64.0.2 50000 100.64.0.3 22", "CLAUDE_CODE_OAUTH_TOKEN": None, **extra}
+            return self.seat("worker", "--seats-root", self.seats, *extra_args, **overrides)
+
+        token.unlink()
+        absent = f"hcom-seat: the seats' Claude token file {token} is absent; {steps}\n"
+        for extra in (["--dry-run"], []):
+            with self.subTest(extra=extra):
+                run = launch(*extra)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertTrue(run.stderr.endswith(absent), run.stderr)
+                self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN" + "=", run.stderr, "no environment line before the gate")
+        # The launch ran the preflight first (no route: nothing judged) and the gate refused after it.
+        self.assertTrue(run.stderr.startswith("seat-login-preflight: worker: no route ("), run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertEqual(sorted(p.name for p in Path(self.seats).iterdir()), [".state"])
+        self.assertEqual(sorted(p.name for p in Path(self.seats, ".state").iterdir()), [])
+        # A link at the path: refused by lstat before anything resolves it; the target is never named or followed.
+        elsewhere = self.home / "elsewhere-token"
+        elsewhere.write_text(FAKE_OAT + "\n")
+        elsewhere.chmod(0o600)
+        token.symlink_to(elsewhere)
+        for extra in (["--dry-run"], []):
+            with self.subTest(link=extra):
+                run = launch(*extra)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"hcom-seat: the seats' Claude token file {token} is a symbolic link", run.stderr)
+                self.assertNotIn(str(elsewhere), run.stderr)
+        self.assertTrue(token.is_symlink(), "the launch neither removed nor replaced the link")
+        token.unlink()
+        cases = (
+            ("a directory", lambda: token.mkdir(), f"is not a regular file; {steps}"),
+            ("mode 0644", lambda: (self.place_token(), token.chmod(0o644)), f"has mode 644, not 0600; {steps}"),
+            ("off the form", lambda: self.place_token(content="sk-ant-api03-" + "NOTATOKEN" + "0" * 40),
+             f"holds no token of the form sk-ant-oat01-<20 to 255 of [A-Za-z0-9_-]> (the content is never printed); {steps}"),
+            ("a short token", lambda: self.place_token(content="sk-ant-oat01-" + "short"), "holds no token of the form"),
+            ("two lines", lambda: self.place_token(content=FAKE_OAT + "\nsecond"),
+             f"holds more than its one line (a second line, a carriage return or other bytes beyond the token); {steps}"),
+            ("a carriage return", lambda: self.place_token(content=FAKE_OAT + "\r"), "holds no token of the form"),
+            ("no line feed", lambda: (self.place_token(), token.write_text(FAKE_OAT)),
+             "holds no line ending in a line feed (the token is one line, as seat-token-place writes it)"),
+            ("empty", lambda: (self.place_token(), token.write_text("")), "holds no line ending in a line feed"),
+        )  # fmt: skip
+        for label, plant, message in cases:
+            with self.subTest(case=label):
+                if token.exists() or token.is_symlink():
+                    (token.rmdir if token.is_dir() else token.unlink)()
+                plant()
+                run = launch("--dry-run")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"hcom-seat: the seats' Claude token file {token} {message}", run.stderr)
+                self.assertNotIn(FAKE_OAT, run.stderr)
+                self.assertNotIn("NOTATOKEN", run.stderr)
+                self.assertEqual(self.calls_of("hcom"), [])
+        (token.rmdir if token.is_dir() else token.unlink)()
+        # The form in place: the dry run names the file in its environment line and never the token; a launch starts.
+        self.place_token()
+        run = launch("--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f" CLAUDE_CODE_OAUTH_TOKEN=<the shim reads {token}> (login group worker)\n", run.stderr)
+        self.assertNotIn(FAKE_OAT, run.stdout + run.stderr)
+        self.assert_nothing_made("a dry run makes nothing")
+        run = launch()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(len(self.calls_of("hcom")), 1)
+        self.assertNotIn(FAKE_OAT, run.stdout + run.stderr)
+        fs = self.settings_of("worker")["filesystem"]
+        self.assertEqual((fs["denyRead"].count(str(token)), fs["denyWrite"].count(str(token))), (1, 1), fs)
+        self.assertNotIn(str(token), fs["allowRead"] + fs["allowWrite"], "the file is in no grant list")
 
     def test_a_callers_token_reaches_no_child_of_the_launcher(self):
         """Codex P2 on PR 712 (review comment 4498955210, `hcom-seat:2210`, a residual on U318): the U312 head cleared
@@ -930,8 +1080,14 @@ class HcomSeatTest(SeatFixture):
                     [row for row in fs["denyRead"] if row == str(legacy) or row.startswith(f"{legacy}/")], [str(legacy)]
                 )
                 env = self.claude_env_of(record)
-                self.assertEqual(env, {"CLAUDE_CONFIG_DIR": str(group_dir), "CLAUDE_CODE_OAUTH_TOKEN": "unset"})
+                self.assertEqual(env, {"CLAUDE_CONFIG_DIR": str(group_dir), "CLAUDE_CODE_OAUTH_TOKEN": FAKE_OAT})
                 self.assertFalse(Path(self.seats, ".state", role, "claude").exists(), "no per-seat directory")
+                # U551: the seats' token file is denied for read and for write to every role and granted to none; the
+                # shim's export is how the child gets the value.
+                token = str(self.token_file)
+                self.assertEqual((fs["denyRead"].count(token), fs["denyWrite"].count(token)), (1, 1), fs)
+                self.assertNotIn(token, fs["allowRead"] + fs["allowWrite"])
+                self.assertEqual(file_rows_under_read_denies(fs), [], f"a {role} allowRead row is a regular file under a denyRead row")  # fmt: skip
         self.assertFalse(legacy.exists() or legacy.is_symlink(), "the legacy shared directory is not made")
         # Two groups, two directories: a worker's child and an orchestrator's child rotate no refresh token together.
         self.assertNotEqual(
@@ -1012,7 +1168,10 @@ class HcomSeatTest(SeatFixture):
                 fs = self.settings_of(role)["filesystem"]
                 own = f"{seats}/.state/claude-{role}"
                 denied = login_read_denies(seats, role)
-                self.assertEqual([row for row in fs["denyRead"] if row.startswith(f"{seats}/.state/claude")], denied)
+                self.assertEqual(
+                    [r for r in fs["denyRead"] if r.startswith(f"{seats}/.state/claude") and r != str(self.token_file)],
+                    denied,
+                )
                 for row in denied:
                     self.assertEqual(fs["denyRead"].count(row), 1, (row, fs["denyRead"]))
                     for key in ("allowRead", "allowWrite", "denyWrite"):
@@ -1040,11 +1199,13 @@ class HcomSeatTest(SeatFixture):
                 self.assertIn(f"HCOM_DIR={self.store} ", line)
                 self.assertTrue(
                     line.endswith(
-                        f" CLAUDE_CONFIG_DIR={Path(self.seats, f'.state/claude-{role}')} (login group {role})"
+                        f" CLAUDE_CONFIG_DIR={Path(self.seats, f'.state/claude-{role}')} CLAUDE_CODE_OAUTH_TOKEN=<the shim"
+                        f" reads {self.token_file}> (login group {role})"
                     ),
                     line,
                 )
-        self.assertFalse(Path(self.seats).exists(), "a dry run makes no seats root")
+                self.assertNotIn(FAKE_OAT, run.stdout + run.stderr, "the dry run names the file, never the token")
+        self.assert_nothing_made("a dry run makes no seats root")
 
     def test_every_launch_makes_every_login_groups_directory_before_its_settings_file_so_each_deny_binds(self):
         """U498d (verdict U498-8f2cca8c P1 `hcom-seat:2713`; the mechanism-change row of 2026-11-12T15:05:20Z, form
@@ -1063,7 +1224,7 @@ class HcomSeatTest(SeatFixture):
         legacy = seats / ".state/claude"
         run = self.seat("worker", "--name", "probe", "--seats-root", self.seats, "--dry-run")
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertFalse(seats.exists(), "a dry run makes no seats root and no login directory")
+        self.assert_nothing_made("a dry run makes no slot and no login directory")
         # The omp fake reads the settings srt was started with (the shim's HCOM_SEAT_SANDBOX names the sandbox) and
         # records, for every denyRead row under the seats root, whether it is a real directory at that moment: on
         # Linux the deny binds only then.
@@ -1096,12 +1257,18 @@ class HcomSeatTest(SeatFixture):
                 )
                 fs = self.settings_of(role)["filesystem"]
                 denied = login_read_denies(str(seats), role)
-                self.assertEqual([row for row in fs["denyRead"] if row.startswith(f"{seats}/.state/claude")], denied)
+                self.assertEqual(
+                    [r for r in fs["denyRead"] if r.startswith(f"{seats}/.state/claude") and r != str(self.token_file)],
+                    denied,
+                )
                 present = json.loads(record.read_text().splitlines()[-1])
                 for row in denied:
                     self.assertEqual(present[row], row != str(legacy), (row, present))
-                # Every denyRead row under the seats root but the legacy directory is a directory when srt reads the file.
-                self.assertEqual([row for row, ok in present.items() if not ok], [str(legacy)], present)
+                # Every denyRead row under the seats root but the legacy directory and the token file (a regular file,
+                # denied by name, U551) is a directory when srt reads the file.
+                self.assertEqual(
+                    {row for row, ok in present.items() if not ok}, {str(legacy), str(self.token_file)}, present
+                )
         # A link or a file at any group's directory, the own group's or another's, refuses before anything is made
         # or started; the entry is neither followed, removed nor replaced.
         launches = len(record.read_text().splitlines())
@@ -1154,7 +1321,11 @@ class HcomSeatTest(SeatFixture):
                 run = make()
                 self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "", ""))
                 self.assertEqual(
-                    sorted(p.name for p in (root / ".state").iterdir()), sorted(f"claude-{g}" for g in LOGIN_GROUPS)
+                    sorted(p.name for p in (root / ".state").iterdir()),
+                    sorted(
+                        [f"claude-{g}" for g in LOGIN_GROUPS]
+                        + (["claude-token"] if (root / ".state/claude-token").exists() else [])
+                    ),
                 )
                 for group in LOGIN_GROUPS:
                     path = root / f".state/claude-{group}"
@@ -1231,7 +1402,7 @@ class HcomSeatTest(SeatFixture):
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("srt not found (mise which, then the caller's PATH)", run.stderr)
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         # An srt whose physical file a seat could rewrite would run the next launch uncontained: a copy inside the
         # checkout (the orchestrator's root), and a link outside every root whose target is in the hcom store.
         planted = self.repo / "tools"
@@ -1291,7 +1462,7 @@ class HcomSeatTest(SeatFixture):
                     self.assertIn(f"srt {version} is not of the 0.0 line hcom-seat encodes", run.stderr)
                 else:
                     self.assertIn("cannot read the srt version", run.stderr)
-                self.assertFalse(Path(self.seats).exists())
+                self.assert_nothing_made()
                 self.assertEqual(self.calls_of("omp"), [])
                 self.assertEqual(self.calls_of("hcom"), [])
                 self.assertEqual([call["argv"] for call in self.calls_of("srt")], [["--version"]])
@@ -1404,7 +1575,7 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(f"mise {other}/bin/mise is or lies under the seat write root {other}", run.stderr)
         self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
 
     def test_a_seat_commits_unsigned_under_a_signing_host_config(self):
         """U85 round 5: the shim turns signing off, so a host commit.gpgsign=true cannot fail the seat's commits."""
@@ -1482,7 +1653,7 @@ class HcomSeatTest(SeatFixture):
                 run = self.seat("worker", "--seats-root", self.seats, cwd=cwd)
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(f"{commondir.resolve()} as one line free of control characters", run.stderr)
-                self.assertFalse(Path(self.seats).exists())
+                self.assert_nothing_made()
         commondir.write_text("../..\n")
         run = self.seat("worker", "--seats-root", self.seats, cwd=linked)
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -1623,7 +1794,7 @@ class HcomSeatTest(SeatFixture):
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertRegex(run.stderr, rf"{tool} \S*/u85interp is or lies under the seat write root")
                 self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
 
     def test_no_host_git_command_runs_a_hook_or_a_worktree_config(self):
         """U85 round 7: hcom-seat's own git runs no hook and reads no `config.worktree`, and the git state is checked
@@ -1686,7 +1857,7 @@ class HcomSeatTest(SeatFixture):
         run = self.seat("worker", "--seats-root", self.seats, HCOM_DIR=str(Path(self.seats, "hcom")))
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(f"write root {self.seats}/hcom lies inside the seats root {self.seats}", run.stderr)
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         Path(self.seats, "hcom").mkdir(parents=True)
         run = self.seat("worker", "--seats-root", self.seats, HCOM_DIR=str(Path(self.seats, "hcom")))
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
@@ -1716,7 +1887,7 @@ class HcomSeatTest(SeatFixture):
                     run = self.seat("worker", *(args or ["--seats-root", self.seats]), *dry_run, **overrides)
                     self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                     self.assertIn(expected, run.stderr)
-                    self.assertFalse(Path(self.seats).exists())
+                    self.assert_nothing_made()
                     self.assertFalse(claude.exists() or (home / "cfg").exists())
                     self.assertEqual(self.calls_of("hcom"), [])
         # The same with the directory present, for both roles (every launch checks the orchestrator's roots too).
@@ -2183,6 +2354,7 @@ class HcomSeatTest(SeatFixture):
                 self.assertFalse((seats / ".sandbox").exists())
                 shutil.rmtree(seats)
         (seats / ".state/worker").mkdir(parents=True)
+        self.place_token()  # the root was removed with the planted links; the token returns as the operator placed it
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
 
@@ -2226,7 +2398,7 @@ class HcomSeatTest(SeatFixture):
         root = Path(self.temp.name).resolve()
         # The seats root is absent too (U85 round 30): both new under one existing directory, decided by their
         # absent components.
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         for role in ("worker", "orchestrator"):
             with self.subTest(role=role):
                 store = root / f"fresh-{role}" / "hcom"
@@ -2702,7 +2874,9 @@ class HcomSeatTest(SeatFixture):
         both directories."""
         state = self.home / ".local/state"
         store, seats = state / "hcom-regime", state / "omp-seats/repo"
-        self.assertFalse(store.exists() or seats.exists())
+        self.place_token(seats)  # the operator placed the token under the derived root first (U551)
+        self.assertFalse(store.exists())
+        self.assertEqual(sorted(p.name for p in seats.iterdir()), [".state"], "the token's chain alone")
         for role in ("worker", "orchestrator"):
             with self.subTest(role=role):
                 run = self.seat(role, HCOM_DIR=str(store), HCOM_TEAM="regime", REGIME_SEATS_ROOT=None)
@@ -2906,7 +3080,7 @@ class HcomSeatTest(SeatFixture):
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn("is not a clean absolute path", run.stderr)
                 self.assertEqual(sorted(str(path) for path in (checkout / ".git").rglob("*")), before)
-                self.assertFalse(Path(self.seats).exists())
+                self.assert_nothing_made()
 
     def test_a_worker_reads_only_the_records_of_a_checkout_outside_workspace(self):
         """U85 round 8: the worker's read deny is the main checkout itself, wherever it lives (here outside
@@ -2961,7 +3135,7 @@ class HcomSeatTest(SeatFixture):
                 run = self.seat("worker", *args, **overrides)
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn("is not a clean absolute path", run.stderr)
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         self.assertFalse((self.repo / "seats").exists())
         self.assertFalse(sibling.exists())
         self.assertEqual(self.calls_of("hcom"), [])
@@ -3043,7 +3217,7 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("the interpreter of git", run.stderr)
         self.assertIn(f"is or lies under the seat write root {self.store.resolve()}", run.stderr)
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         # A git reached through an outside link runs by its physical file: the seat launch still works.
         (outside / "git").unlink()
         (outside / "git").symlink_to(real_git)
@@ -3088,7 +3262,7 @@ class HcomSeatTest(SeatFixture):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(sorted(str(path) for path in git_dir.rglob("*")), before)
         self.assertFalse((git_dir / "config.worktree").exists())
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertTrue((git_dir / "config.worktree").exists(), "the real launch creates it for its deny")
@@ -3114,7 +3288,7 @@ class HcomSeatTest(SeatFixture):
         run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(f"hcom-seat: sandbox {self.seats}/.sandbox/worker", run.stderr)
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
 
     def test_every_omp_launch_makes_the_routers_credential_root_and_denies_it_for_read_and_write(self):
         """U353d (verdict U353-318f268d P1 `:2383` and P2 `:2393`; the mechanism-change row of 2026-11-07T12:55:26Z,
@@ -3371,7 +3545,7 @@ class HcomSeatTest(SeatFixture):
                         f"git {planted}/git is or lies under the seat write root {home}/.local/state/regime-store",
                         run.stderr,
                     )
-                    self.assertFalse(Path(self.seats).exists(), "no seats root, no slot, no settings file")
+                    self.assert_nothing_made("no seats root, no slot, no settings file")
         self.assertEqual(self.calls_of("hcom"), [])
         # The control: the same root, nothing planted on PATH, launches and grants the root as round 1 did.
         run = self.seat("orchestrator", "--seats-root", self.seats)

@@ -55,6 +55,7 @@ def yaml_extensions(text):
 
 SYSTEM_PATH = test_hcom_seat.SYSTEM_PATH
 SHARED_CLAUDE_DENIES = test_hcom_seat.SHARED_CLAUDE_DENIES
+FAKE_OAT = test_hcom_seat.FAKE_OAT
 # Built at runtime like FAKE_OAUTH_VALUE, and named without the word the secret scan's `generic-token` rule keys on.
 CALLER_OAUTH_VALUE = "caller-" + "value-u272"
 # bash itself exports these into every child; the role's list is everything else.
@@ -304,6 +305,16 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             self.assertNotIn(json.dumps(row).encode(), text, row)
         return text
 
+    def without_token_rows(self, settings):
+        """This head's rendered settings (bytes) of any role with exactly the U551 rows removed: the seats' Claude token
+        file `<seats-root>/.state/claude-token` once in denyRead and once in denyWrite, each after another row; nothing
+        else names it (the file is no grant of any role)."""
+        needle = b"," + json.dumps(str(self.token_file)).encode()
+        self.assertEqual(settings.count(needle), 2, settings)
+        text = settings.replace(needle, b"")
+        self.assertNotIn(b"/.state/claude-token", text)
+        return text
+
     def without_credential_rows(self, settings):
         """This head's rendered dsh settings (bytes) with exactly the U353 rows removed: the Router's credential root
         `<DSH_HOME>/router-credentials`, once in denyRead and once in denyWrite, each after another row; nothing else
@@ -463,8 +474,12 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         login_w = test_hcom_seat.login_read_denies(seats_real, "worker")
         login_d = test_hcom_seat.login_read_denies(seats_real, "router")
         prefix = f"{seats_real}/.state/claude"
-        self.assertEqual([e for e in worker["filesystem"]["denyRead"] if e.startswith(prefix)], login_w)
-        self.assertEqual([e for e in dsh["filesystem"]["denyRead"] if e.startswith(prefix)], login_d)
+        self.assertEqual(
+            [e for e in worker["filesystem"]["denyRead"] if e.startswith(prefix) and e != str(self.token_file)], login_w
+        )
+        self.assertEqual(
+            [e for e in dsh["filesystem"]["denyRead"] if e.startswith(prefix) and e != str(self.token_file)], login_d
+        )
         worker_deny_read = [
             e for e in worker["filesystem"]["denyRead"] if e != self.omp_credential_root() and e not in login_w
         ]
@@ -497,7 +512,10 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         checkout = str(self.repo.resolve())
         for role, fs in rendered.items():
             with self.subTest(role=role):
-                self.assertEqual([row for row in fs["denyRead"] if row.startswith(f"{seats}/.state/claude")], denied)
+                self.assertEqual(
+                    [r for r in fs["denyRead"] if r.startswith(f"{seats}/.state/claude") and r != str(self.token_file)],
+                    denied,
+                )
                 for row in denied:
                     self.assertEqual(fs["denyRead"].count(row), 1, (row, fs["denyRead"]))
                     for key in ("allowRead", "allowWrite", "denyWrite"):
@@ -629,7 +647,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     rendered[label] = Path(self.seats, ".sandbox", role, "srt-settings.json").read_bytes()
                 with self.subTest(head=head[:8], role=role):
                     this_head = self.without_store_root_rows(
-                        self.without_omp_credential_rows(self.without_shared_claude_rows(rendered["this head"], role)),
+                        self.without_omp_credential_rows(
+                            self.without_shared_claude_rows(self.without_token_rows(rendered["this head"]), role)
+                        ),
                         role,
                     )
                     self.assertEqual(rendered["earlier head"], this_head)
@@ -679,10 +699,13 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         env = dsh["env"]
         expected = {
             "HOME", "PATH", "DSH_HOME", "OMP_PROFILE", "USER", "LANG", "TERM", "UV_CACHE_DIR", "CLAUDE_CONFIG_DIR",
-            "AWS_SHARED_CREDENTIALS_FILE", "AWS_CONFIG_FILE", "GIT_CONFIG_COUNT",
+            "CLAUDE_CODE_OAUTH_TOKEN", "AWS_SHARED_CREDENTIALS_FILE", "AWS_CONFIG_FILE", "GIT_CONFIG_COUNT",
             "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0", "GIT_CONFIG_KEY_1", "GIT_CONFIG_VALUE_1", "HCOM_SEAT_SANDBOX",
         }  # fmt: skip
         self.assertEqual(set(env) - BASH_OWN_NAMES - interpreter_own_names(), expected)
+        # U551: the seats' token is the shim's export, read from the token file, so the dsh child (the gateway child's
+        # parent) holds the file's line; the canary ran before the export and saw no token name.
+        self.assertEqual(env["CLAUDE_CODE_OAUTH_TOKEN"], FAKE_OAT)
         self.assertEqual(
             {env["USER"], env["LANG"], env["TERM"], env["OMP_PROFILE"], env["DSH_HOME"]},
             {"u272", "C.UTF-8", "xterm", "dsh", str(self.dsh_home)},
@@ -699,14 +722,24 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             self.assertNotIn("SECRET_OF_THE_CALLER", call["env"])
             self.assertNotIn("NODE_OPTIONS", call["env"])
             self.assertNotIn("HCOM_TEAM", call["env"])
+        self.assertNotIn(
+            "CLAUDE_CODE_OAUTH_TOKEN", canary["env"], "the canary runs before the shim's one export (U551)"
+        )
+        self.assertIn(
+            "CLAUDE_CODE_OAUTH_TOKEN", launch["env"], "the launch srt carries the shim's export to dsh (U551)"
+        )
+        self.assertNotIn(FAKE_OAT, run.stdout + run.stderr, "the token reaches no line")
         # U312, U318: a caller's token is no input and no token rides for any role: the name never reaches dsh.
         run = self.launch("--", "--version", CLAUDE_CODE_OAUTH_TOKEN=CALLER_OAUTH_VALUE, USER=None)
         self.assertEqual(run.returncode, 0, run.stderr)
         env = self.dsh_calls()[-1]["env"]
-        self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN", env)
+        self.assertEqual(
+            env["CLAUDE_CODE_OAUTH_TOKEN"], FAKE_OAT, "the file's line, never the caller's value (U312, U551)"
+        )
         self.assertNotIn(CALLER_OAUTH_VALUE, env.values())
         self.assertNotIn("USER", env)
         self.assertNotIn(CALLER_OAUTH_VALUE, run.stdout + run.stderr)
+        self.assertNotIn(FAKE_OAT, run.stdout + run.stderr)
 
     def test_the_command_and_its_home_are_resolved_and_refused_like_a_tool(self):
         """`<DSH_HOME>/bin/dsh` must be an executable regular file under a clean, existing DSH_HOME; the dsh options
@@ -749,7 +782,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 run = self.seat(*argv, "--seats-root", self.seats, **env)
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         self.assertEqual(self.dsh_calls(), [])
         self.assertFalse(marker.exists(), "a planted node or python3 under DSH_HOME never ran")
         # The planted home launches once its bin is off the caller's PATH: the tools come from elsewhere, and the
@@ -813,6 +846,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertRegex(line[8], rf"^{re.escape(self.seats)}/\.sandbox/dsh-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
         self.assertEqual(line[9:], ["--version"])
         self.assertNotIn(CALLER_OAUTH_VALUE, run.stdout + run.stderr)
+        self.assertNotIn(FAKE_OAT, run.stdout + run.stderr, "the dry run's list carries no token (U551)")
+        self.assertIn(f"CLAUDE_CODE_OAUTH_TOKEN=<the shim reads {self.token_file}>", run.stderr)
         self.assertEqual(len(self.calls_of("srt")), before + 1, "the dry run reads the srt version and starts nothing")
         self.assertEqual(len(self.dsh_calls()), 1)
         self.assertEqual(self.slots(), ([], []), "the dry run makes no per-launch slot")
@@ -1162,7 +1197,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 run = self.seat(*args, "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version")
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
 
     def test_a_router_dry_run_prints_the_launch_line_with_the_router_profile_and_makes_no_slot(self):
@@ -1192,7 +1227,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertEqual(
                     len(self.calls_of("srt")), before + 1, "the dry run reads the srt version and starts nothing"
                 )
-        self.assertFalse(Path(self.seats).exists(), "the dry run makes no seats root and no slot")
+        self.assert_nothing_made("the dry run makes no seats root and no slot")
         self.assertEqual(self.dsh_calls(), [])
 
     def test_the_router_canary_refuses_like_the_dsh_roles_and_both_slots_go(self):
@@ -1231,7 +1266,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 settings = Path(self.seats, ".sandbox", name, "srt-settings.json").read_bytes()
                 if label == "this head":
                     settings = self.with_the_legacy_login_path(
-                        self.without_dsh_store_root_row(self.without_credential_rows(settings))
+                        self.without_dsh_store_root_row(self.without_credential_rows(self.without_token_rows(settings)))
                     )
                 rendered[label] = self.without_launch_name(settings, name)
                 ((status, out, err),) = self.release(procs)
@@ -1304,7 +1339,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version")
             self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
             self.assertIn(f"the router role's state root {state_root} exists and is not a directory", run.stderr)
-        self.assertFalse(Path(self.seats).exists(), "no seats root, so no settings file")
+        self.assert_nothing_made("no seats root, so no settings file")
         self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
         state_root.unlink()
         linked_home = Path(self.temp.name).resolve() / "linked-home"
@@ -1350,7 +1385,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                                     "--", "--version", *selector)  # fmt: skip
                     self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                     self.assertIn(message.format(selector[0]), run.stderr)
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
         run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run",
                         "--", "--version", "--flag", "-x", "value")  # fmt: skip
@@ -1513,13 +1548,13 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertFalse(log.exists(), "no host git call")
             state_root.unlink()
         self.assertEqual(sorted(outside.iterdir()), [], "nothing was written at the link's target")
-        self.assertFalse(Path(self.seats).exists(), "no seats root")
+        self.assert_nothing_made("no seats root")
         self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
         run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run",
                         "--", "--version", PATH=path)  # fmt: skip
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertFalse(state_root.exists() or state_root.is_symlink(), "a dry run makes no state root (U321d)")
-        self.assertFalse(Path(self.seats).exists(), "the dry run still makes no seats root and no slot")
+        self.assert_nothing_made("the dry run still makes no seats root and no slot")
         self.assertTrue(log.exists(), "the valid dry run goes on to the host git reads through the logging git")
 
     def test_a_dsh_home_link_retargeted_between_the_hold_and_the_render_grants_the_held_home_alone(self):
@@ -1622,7 +1657,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     sorted(p.name for p in self.tools.parent.iterdir()), ["tools"], "the copy directory is gone"
                 )
                 self.assertEqual(sorted(ssh.iterdir()), [], "nothing is made under the denied home")
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []))
 
     def test_a_router_dry_run_with_an_absent_state_root_makes_nothing_and_prints_the_would_make_line(self):
@@ -1652,7 +1687,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         )
         self.assertFalse(state_root.exists() or state_root.is_symlink(), "the dry run makes no state root")
         self.assertEqual(sorted(self.dsh_home.iterdir()), [self.dsh_home / "bin"], "DSH_HOME keeps its one entry")
-        self.assertFalse(Path(self.seats).exists(), "no seats root and no slot")
+        self.assert_nothing_made("no seats root and no slot")
         self.assertEqual(self.dsh_calls(), [])
         procs = self.held_launch("--", "--version", role="router")
         (name,) = self.slots()[0]
@@ -1840,7 +1875,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         )
         self.assertFalse(cred.exists() or cred.is_symlink(), "the dry run makes no credential root")
         self.assertEqual(sorted(real_home.iterdir()), [real_home / "bin"], "DSH_HOME keeps its one entry")
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         rendered = {}
         for role in ("dsh", "router"):
             procs = self.held_launch("--", "--version", role=role, home=linked_home)
@@ -1885,7 +1920,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                         " inside DSH_HOME, or absent",
                         run.stderr,
                     )
-                    self.assertFalse(Path(self.seats).exists(), "no seats root and no slot")
+                    self.assert_nothing_made("no seats root and no slot")
                     self.assertEqual((self.calls_of("srt"), self.dsh_calls()), ([], []), "no tool was resolved")
                     self.assertEqual(list(outside.iterdir()), [], "nothing written at the link's target")
         cred.unlink()
@@ -1913,7 +1948,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             f"hcom-seat: the dsh role's credential root {cred} does not exist; a launch creates it (0700)", run.stderr
         )
         self.assertFalse(cred.exists() or cred.is_symlink(), "the dsh dry run makes no credential root either")
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         self.assertEqual(self.dsh_calls(), [])
 
     def test_the_dsh_settings_deny_every_git_hcom_and_record_path_for_read_and_write(self):
@@ -2008,7 +2043,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertEqual(
                     sorted(p.name for p in self.tools.parent.iterdir()), ["tools"], "the copy directory is gone"
                 )
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         self.assertFalse((self.home / ".omp").exists())
         self.assertEqual(self.dsh_calls(), [])
 
@@ -2105,7 +2140,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertEqual(
                     sorted(p.name for p in self.tools.parent.iterdir()), ["tools"], "the copy directory is gone"
                 )
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         self.assertFalse((home / ".omp/profiles").exists())
         self.assertEqual(self.dsh_calls(), [])
         # Each path named is a row of the rendered settings of a launch that goes through: the rule's one source.
@@ -2130,7 +2165,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         run = self.launch("--", "--version")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(f"allowRead row {self.dsh_home} is, contains or lies inside {records},", run.stderr)
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         self.assertEqual(self.dsh_calls(), [])
         link.unlink()
         elsewhere = Path(self.temp.name).resolve() / "records-elsewhere"
@@ -2209,7 +2244,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertEqual(
                     sorted(p.name for p in self.tools.parent.iterdir()), ["tools"], "the copy directory is gone"
                 )
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         self.assertTrue(profile.is_symlink(), "the launch neither removed nor replaced the link")
         self.assertEqual(sorted(p.name for p in (home / ".aws").iterdir()), [])
         self.assertEqual(self.dsh_calls(), [])
@@ -2378,7 +2413,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertEqual(
                     sorted(p.name for p in self.tools.parent.iterdir()), ["tools"], "the copy directory is gone"
                 )
-        self.assertFalse(Path(self.seats).exists())
+        self.assert_nothing_made()
         self.assertTrue(run_root.is_symlink(), "the launch neither removed nor replaced the link")
         self.assertEqual(self.dsh_calls(), [])
         # The own profile row, at its own position, passes: the same launch goes through once `~/.omp/run` is a
@@ -2541,7 +2576,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertEqual(mkdirs, [], "a refusal of the profile config row makes nothing")
                 self.assertFalse((self.home / ".local/state").exists(), "the private tool directory is not made")
                 self.assertEqual(sorted(p.name for p in elsewhere.iterdir()), [], "nothing reaches the link's target")
-                self.assertFalse(Path(self.seats).exists())
+                self.assert_nothing_made()
         self.assertEqual(self.dsh_calls(), [])
 
     def test_a_planted_temporary_name_is_never_opened_and_the_config_lands_beside_it(self):
@@ -2737,7 +2772,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 self.assertTrue(helper_runs and all(i > judge_at for i in helper_runs), "the helper follows the judge")
                 self.assertIn("profile_config_compare", commands)
                 self.assertNotIn("profile_config_write", commands)
-                self.assertFalse(Path(self.seats).exists(), "a dry run makes no slot")
+                self.assert_nothing_made("a dry run makes no slot")
         self.assertEqual(self.dsh_calls(), [])
 
     def test_no_shell_step_runs_between_the_temporarys_creation_and_its_rename(self):
@@ -2816,7 +2851,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 after = other.stat()
                 self.assertEqual(before.st_mtime_ns, after.st_mtime_ns, "the linked profile's agent/ is untouched")
                 self.assertEqual((other / "config.yml").read_text(), "modelRoles:\n  default: orchestrator/own\n")
-                self.assertFalse(Path(self.seats).exists())
+                self.assert_nothing_made()
         self.assertEqual(self.dsh_calls(), [])
 
     def test_the_helpers_refusal_and_status_reach_the_launcher_and_no_slot_remains(self):
@@ -3287,7 +3322,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         self.assertEqual([entry for entry in line if entry.startswith("ACP_BROKER_SOCK=")], [])
         self.assertRegex(line[8], rf"^{re.escape(self.seats)}/\.sandbox/dsh-\d{{8}}-\d{{6}}-\d+/bin/dsh$")
         self.assertEqual(self.dsh_calls(), [], "the dry runs start nothing")
-        self.assertFalse(Path(self.seats).exists(), "the dry runs make no seats root and no slot")
+        self.assert_nothing_made("the dry runs make no seats root and no slot")
         run = self.seat("router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version")
         self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
         (router_call,) = self.dsh_calls()

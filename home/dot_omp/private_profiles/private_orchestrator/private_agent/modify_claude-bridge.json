@@ -7,17 +7,20 @@
 #   pi-claude-bridge extension reads provider.pathToClaudeCodeExecutable from this file alone (patch 06;
 #   config.ts:61, :110), and the Agent SDK spawned the lever it named, claude-keyed, in place of its bundled
 #   Claude Code; since U551 the seats' credential is the setup-token the seat shim exports and the bundled
-#   binary reads, so the row must go from every deployed file. When the live file names that key and parses
-#   as a JSON object holding it, the key is deleted and the rest written by json.dumps(indent=2) and a
-#   newline, key order kept (a float's form may change, 1e-7 to 1e-07). Otherwise the input passes through
-#   byte for byte, whatever it is (absent, empty, not JSON, a list), so chezmoi apply never clobbers the
-#   bridge's file and never fails on its content; a file that names the key but is no JSON object this
-#   script can read or write passes through with one stderr line naming this file (the operator deletes the
-#   row by hand, handouts/claude-setup-token-u551.md). A second run on this script's output changes nothing,
-#   which is what the output index's modify comparison measures (check-agent-runtime.py). It runs under the
-#   system `python3 -I` with the standard library alone, the kit's baseline, which the apply container has,
-#   and no other tool (U510b). Without python3 it prints one line on stderr and nothing on stdout and exits
-#   1, so chezmoi apply fails naming this file: fail closed, never the override left in place by silence.
+#   binary reads, so the row must go from every deployed file. When the live file is a JSON object whose
+#   provider member holds that key (under any spelling JSON allows: every key is decoded), the row's own
+#   bytes are cut from the text, with the comma and whitespace that bound it, once per occurrence, and
+#   every other byte is written as it was: the key order, every other value's spelling (1e-7 stays 1e-7),
+#   every escape and every line ending. An empty input (an absent file) and any JSON object without the
+#   row pass through silently; an input that is not UTF-8 or no JSON object this script reads (invalid
+#   JSON, a list, a NaN, a byte order mark) passes through byte for byte with one stderr line naming this
+#   file and the manual step (the operator deletes the row by hand, handouts/claude-setup-token-u551.md),
+#   so chezmoi apply never clobbers the bridge's file and never fails on its content. A second run on this
+#   script's output changes nothing, which is what the output index's modify comparison measures
+#   (check-agent-runtime.py). It runs under the system `python3 -I` with the standard library alone, the
+#   kit's baseline, which the apply container has, and no other tool (U510b). Without python3 it prints one
+#   line on stderr and nothing on stdout and exits 1, so chezmoi apply fails naming this file: fail closed,
+#   never the override left in place by silence.
 set -eu
 
 if ! command -v python3 > /dev/null 2>&1; then
@@ -29,8 +32,12 @@ merge=$(
     cat << 'PY'
 import json
 import sys
+from json.decoder import JSONDecoder, scanstring
 
+PARENT_KEY = "provider"
 MANAGED_KEY = "pathToClaudeCodeExecutable"
+WHITESPACE = " \t\n\r"
+BY_HAND = f"delete {PARENT_KEY}.{MANAGED_KEY} by hand if it is there"
 
 
 def warn(reason):
@@ -41,27 +48,96 @@ def refuse_constant(token):
     raise ValueError(f"the live file holds {token}, which JSON cannot carry")
 
 
-def without_the_row(raw):
-    """The live file without provider.pathToClaudeCodeExecutable, or None when nothing is to be written."""
-    if MANAGED_KEY.encode("utf-8") not in raw:
-        return None
-    try:
-        data = json.loads(raw.decode("utf-8"), parse_constant=refuse_constant)
-    except (UnicodeDecodeError, ValueError, RecursionError):
-        warn("the live file names the row but is no JSON object this script reads")
-        return None
-    provider = data.get("provider") if isinstance(data, dict) else None
-    if not isinstance(provider, dict) or MANAGED_KEY not in provider:
-        return None
-    del provider[MANAGED_KEY]
-    for ensure_ascii in (False, True):
-        try:
-            text = json.dumps(data, indent=2, ensure_ascii=ensure_ascii, allow_nan=False) + "\n"
-            return text.encode("utf-8")
-        except (UnicodeEncodeError, ValueError, RecursionError):
+DECODER = JSONDecoder(parse_constant=refuse_constant)
+
+
+def skip_space(text, at):
+    while at < len(text) and text[at] in WHITESPACE:
+        at += 1
+    return at
+
+
+def members(text, at):
+    """The members of the JSON object whose `{` is at text[at], in order, each as (key_start, key, value_start,
+    value_end) with the key decoded (an escaped spelling names the same key) and the value a span the json module
+    parsed, and the index of the closing `}`. Anything that is not a JSON object there is a ValueError."""
+    if at >= len(text) or text[at] != "{":
+        raise ValueError(f"no object at {at}")
+    rows = []
+    at = skip_space(text, at + 1)
+    if at < len(text) and text[at] == "}":
+        return rows, at
+    while True:
+        key_start = skip_space(text, at)
+        if key_start >= len(text) or text[key_start] != '"':
+            raise ValueError(f"no key at {key_start}")
+        key, at = scanstring(text, key_start + 1)
+        at = skip_space(text, at)
+        if at >= len(text) or text[at] != ":":
+            raise ValueError(f"no colon at {at}")
+        value_start = skip_space(text, at + 1)
+        _, value_end = DECODER.raw_decode(text, value_start)
+        rows.append((key_start, key, value_start, value_end))
+        at = skip_space(text, value_end)
+        if at < len(text) and text[at] == ",":
+            at += 1
             continue
-    warn("the live file holds a value this script cannot write")
+        if at < len(text) and text[at] == "}":
+            return rows, at
+        raise ValueError(f"no comma or closing brace at {at}")
+
+
+def row_span(rows, index, open_at, close_at):
+    """The bytes that go with member `index`: through the next key's first byte when one follows (the comma and the
+    whitespace before that key), from the previous value's last byte when it is the last (its comma and the whitespace
+    before it), everything between the braces when it is alone. Every byte outside the span stays."""
+    key_start, _, _, value_end = rows[index]
+    if index + 1 < len(rows):
+        return key_start, rows[index + 1][0]
+    if index > 0:
+        return rows[index - 1][3], value_end
+    return open_at + 1, close_at
+
+
+def first_row(text):
+    """The span of the first provider.pathToClaudeCodeExecutable member of the top-level object, or None."""
+    rows, close_at = members(text, skip_space(text, 0))
+    if skip_space(text, close_at + 1) != len(text):
+        raise ValueError("bytes after the object")
+    for _, key, value_start, _ in rows:
+        if key != PARENT_KEY or text[value_start] != "{":
+            continue
+        inner, inner_close = members(text, value_start)
+        for index, (_, inner_key, _, _) in enumerate(inner):
+            if inner_key == MANAGED_KEY:
+                return row_span(inner, index, value_start, inner_close)
     return None
+
+
+def without_the_row(raw):
+    """The live file without provider.pathToClaudeCodeExecutable, or None when nothing is to be written: the row's
+    bytes alone are cut, once per occurrence, and every other byte stays as it was."""
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        warn(f"the live file is not UTF-8, so this script does not read it; {BY_HAND}")
+        return None
+    if not text.strip(WHITESPACE):
+        return None
+    changed = False
+    try:
+        while True:
+            span = first_row(text)
+            if span is None:
+                break
+            text = text[: span[0]] + text[span[1] :]
+            changed = True
+        if changed:
+            json.loads(text, parse_constant=refuse_constant)
+    except (ValueError, RecursionError):
+        warn(f"the live file is no JSON object this script reads; {BY_HAND}")
+        return None
+    return text.encode("utf-8") if changed else None
 
 
 def main():

@@ -1224,13 +1224,18 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             [self.module.CLAUDE_BRIDGE_MODIFY_PATH.format(role=role) for role in ("audit", "dsh", "orchestrator")],
         )
 
-    def test_the_claude_bridge_modify_script_deletes_the_row_keeps_the_other_keys_and_is_idempotent(self) -> None:
+    def test_the_claude_bridge_modify_script_cuts_the_rows_bytes_alone_and_is_idempotent(self) -> None:
         """U552: a live file holding U510's row loses that one key and keeps every other key the bridge wrote
         (config.ts:29 records `startupNoticeShown` with `{...existing}`) in its order, `provider` among them with its
-        other keys, as `json.dumps(indent=2)` and a newline; a second run on the output is the identity, so chezmoi
-        apply and the output index's modify comparison see no change. A lone surrogate beside the row is written
-        escaped (strict JSON) rather than left with the row. It runs on the system python3 alone (U510b): a PATH
-        holding python3 and cat and nothing else, no uv, is enough."""
+        other keys. Round 3 (verdict U552-953af858 P2): the change is a cut of the row's bytes, with the comma and
+        whitespace that bound it, and nothing else: json.dumps's layout when the file has it, and otherwise the file's
+        own bytes (a float spelled 1e-7, a `\\/` and a `\\u00e9` escape, tabs, CRLF line endings, spaces around the
+        colons, trailing blanks) stay as they were; the row last, in the middle, first or alone in `provider`, twice
+        in it, under two `provider` members, and under an escaped spelling of either key is found and cut, while the
+        same key elsewhere than under `provider` stays. A second run on the output is the identity, so chezmoi apply
+        and the output index's modify comparison see no change. A lone surrogate escape beside the row stays the
+        escape it was. It runs on the system python3 alone (U510b): a PATH holding python3 and cat and nothing else,
+        no uv, is enough."""
         script = self.write_claude_bridge_modify_script()
         home = self.temp_dir / "target-home"
         home.mkdir()
@@ -1249,47 +1254,55 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stderr), (0, b""), run.stderr)
         merged = json.loads(run.stdout)
         self.assertEqual(merged["provider"], {"plan": "max"})
-        self.assertEqual(merged["startupNoticeShown"], "2026-11-13")
-        self.assertEqual(merged["askClaude"], {"enabled": True})
         self.assertEqual(list(merged), ["startupNoticeShown", "provider", "askClaude"], "the key order stays")
-        self.assertEqual(run.stdout, (json.dumps(merged, indent=2) + "\n").encode())
+        self.assertEqual(run.stdout, (json.dumps(merged, indent=2) + "\n").encode(), "the layout is the file's own")
         self.assertNotIn(b"claude-keyed", run.stdout)
         again = self.run_modify(script, run.stdout, home)
         self.assertEqual((again.returncode, again.stderr, again.stdout), (0, b"", run.stdout))
-        # A provider that held the row alone stays as the empty object the bridge wrote around it.
-        alone = json.dumps({"provider": {"pathToClaudeCodeExecutable": "/old/claude"}}, indent=2) + "\n"
-        run = self.run_modify(script, alone, home)
-        self.assertEqual((run.returncode, run.stderr, run.stdout), (0, b"", b'{\n  "provider": {}\n}\n'))
-        surrogate = '{"startupNoticeShown": "\\ud800", "provider": {"pathToClaudeCodeExecutable": "/old/claude"}}\n'
-        run = self.run_modify(script, surrogate, home)
-        self.assertEqual((run.returncode, run.stderr), (0, b""), run.stderr)
-        self.assertEqual(json.loads(run.stdout), {"startupNoticeShown": "\ud800", "provider": {}})
-        self.assertIn(b"\\ud800", run.stdout, "escaped, so the file stays UTF-8")
+        cases = (
+            ("the row in the middle, a float and an escape beside it",
+             b'{\n  "provider": {\n    "plan": "max",\n    "pathToClaudeCodeExecutable": "/x",\n    "timeout": 1e-7,\n    "name": "caf\\u00e9\\/bar"\n  }\n}\n',
+             b'{\n  "provider": {\n    "plan": "max",\n    "timeout": 1e-7,\n    "name": "caf\\u00e9\\/bar"\n  }\n}\n'),
+            ("the row first, compact", b'{"provider": {"pathToClaudeCodeExecutable": "/x", "plan": "max"}}\n', b'{"provider": {"plan": "max"}}\n'),
+            ("the row alone", b'{\n  "provider": {\n    "pathToClaudeCodeExecutable": "/old/claude"\n  }\n}\n', b'{\n  "provider": {}\n}\n'),
+            ("the file's own bytes: tabs, CRLF, spaces, trailing blanks",
+             b'{\r\n\t"a" :  "\\/\\u00e9" ,\r\n\t"provider" : { "plan":"max" , "pathToClaudeCodeExecutable":"/x" , "t":1e-7 }  \r\n}   \n',
+             b'{\r\n\t"a" :  "\\/\\u00e9" ,\r\n\t"provider" : { "plan":"max" , "t":1e-7 }  \r\n}   \n'),
+            ("an escaped spelling of the key and of provider (round 3)",
+             b'{"provid\\u0065r": {"plan": "max", "pathToClaude\\u0043odeExecutable": "/x"}}\n',
+             b'{"provid\\u0065r": {"plan": "max"}}\n'),
+            ("the row twice in provider", b'{"provider": {"pathToClaudeCodeExecutable": "/x", "plan": "max", "pathToClaudeCodeExecutable": "/y"}}\n', b'{"provider": {"plan": "max"}}\n'),
+            ("two provider members", b'{"provider": {"pathToClaudeCodeExecutable": "/x"}, "provider": {"a": 1, "pathToClaudeCodeExecutable": "/y"}}\n', b'{"provider": {}, "provider": {"a": 1}}\n'),
+            ("the same key elsewhere stays", b'{"other": {"pathToClaudeCodeExecutable": "/x"}, "provider": {"pathToClaudeCodeExecutable": "/y"}}\n', b'{"other": {"pathToClaudeCodeExecutable": "/x"}, "provider": {}}\n'),
+            ("a nested value behind the row", b'{"provider": {"pathToClaudeCodeExecutable": "/x", "deep": {"a": [1, {"b": 2}]}}}\n', b'{"provider": {"deep": {"a": [1, {"b": 2}]}}}\n'),
+            ("a lone surrogate escape beside the row", b'{"startupNoticeShown": "\\ud800", "provider": {"pathToClaudeCodeExecutable": "/old/claude"}}\n', b'{"startupNoticeShown": "\\ud800", "provider": {}}\n'),
+        )  # fmt: skip
+        for label, before, after in cases:
+            with self.subTest(input=label):
+                run = self.run_modify(script, before, home)
+                self.assertEqual((run.returncode, run.stderr, run.stdout), (0, b"", after))
+                json.loads(run.stdout)
+                again = self.run_modify(script, run.stdout, home)
+                self.assertEqual((again.returncode, again.stderr, again.stdout), (0, b"", after), "idempotent")
 
-    def test_the_claude_bridge_modify_script_passes_every_file_without_the_row_through_byte_for_byte(self) -> None:
+    def test_the_claude_bridge_modify_script_passes_every_object_without_the_row_through_byte_for_byte(self) -> None:
         """U552: the script's one change is the row's deletion; a file without the row comes back byte for byte,
         whatever its bytes (U510d: the live file sits in the seat's own write root, so its content is the seat's): an
-        empty or absent file, the bridge's own float form (1e-7, which json.dumps would rewrite as 1e-07), invalid
-        JSON, a list, a provider that is no object, the key elsewhere than under provider, a NaN, a lone surrogate,
-        nesting past the recursion limit, a byte order mark and bytes that are not UTF-8, each with exit 0 and no
-        stderr line, so chezmoi apply never clobbers the bridge's file and the output index's modify comparison is
-        stable."""
+        empty or absent file, one of whitespace alone, the bridge's own float form (1e-7), an empty provider, a
+        provider that is no object, the key elsewhere than under provider and a lone surrogate escape, each with exit
+        0 and no stderr line, so chezmoi apply never clobbers the bridge's file and the output index's modify
+        comparison is stable."""
         script = self.write_claude_bridge_modify_script()
         home = self.temp_dir / "target-home"
         home.mkdir()
         cases = (
             ("empty", b""),
+            ("whitespace alone", b" \n\t\r\n"),
             ("the bridge's float form", b'{\n  "startupNoticeShown": "2026-11-13",\n  "provider": {\n    "plan": "max",\n    "timeout": 1e-7\n  }\n}\n'),
-            ("invalid JSON", b"{not json\n"),
-            ("a JSON list", b"[1, 2]\n"),
+            ("an empty provider", b'{"provider": {}}\n'),
             ("a provider that is no object", b'{"provider": 3}\n'),
             ("the key elsewhere than under provider", b'{"other": {"pathToClaudeCodeExecutable": "/x"}}\n'),
-            ("the key in a list", b'[{"provider": {"pathToClaudeCodeExecutable": "/x"}}]\n'),
-            ("a NaN", b'{"provider": {"plan": NaN}}\n'),
             ("a lone surrogate escape", b'{"startupNoticeShown": "\\ud800"}\n'),
-            ("nesting past the recursion limit", b'{"a":' * 100000 + b"1" + b"}" * 100000 + b"\n"),
-            ("a byte order mark", "\ufeff".encode() + json.dumps({"startupNoticeShown": "2026-11-13"}).encode() + b"\n"),
-            ("bytes that are not UTF-8", b'\xff\xfe{"startupNoticeShown": "2026-11-13"}\n'),
         )  # fmt: skip
         for label, current in cases:
             with self.subTest(input=label):
@@ -1297,31 +1310,44 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual((run.returncode, run.stderr), (0, b""), run.stderr)
                 self.assertEqual(run.stdout, current, "byte for byte")
 
-    def test_the_claude_bridge_modify_script_warns_once_and_passes_through_a_row_it_cannot_read(self) -> None:
-        """U552: a live file that names the row but is no JSON object the script can read (invalid JSON around the row,
-        a NaN beside it, a byte order mark, bytes that are not UTF-8) passes through byte for byte with exit 0 and one
-        stderr line naming claude-bridge.json, never a traceback: chezmoi apply never fails on the file's content, and
-        the row is the operator's to delete by hand (the handout's manual step)."""
+    def test_the_claude_bridge_modify_script_warns_once_and_passes_through_what_it_cannot_read(self) -> None:
+        """U552, round 3 (verdict U552-953af858 P2: a raw-byte search for the key decided whether to warn, and an
+        escaped spelling escaped it): a live file that is not UTF-8 or no JSON object the scanner reads (invalid JSON,
+        with or without the row's spelling in it, a list, the key in a list, a NaN beside the row or alone, nesting
+        past the recursion limit, a byte order mark, bytes after the object, a trailing comma) passes through byte for
+        byte with exit 0 and one stderr line naming claude-bridge.json and the manual step, never a traceback: the
+        script cannot tell whether such a file names the row, chezmoi apply never fails on the file's content, and the
+        row is the operator's to delete by hand (the handout's manual step)."""
         script = self.write_claude_bridge_modify_script()
         home = self.temp_dir / "target-home"
         home.mkdir()
         cases = (
             ("invalid JSON around the row", b'{"provider": {"pathToClaudeCodeExecutable": \n'),
+            ("invalid JSON without the row", b"{not json\n"),
+            ("a JSON list", b"[1, 2]\n"),
+            ("the key in a list", b'[{"provider": {"pathToClaudeCodeExecutable": "/x"}}]\n'),
             ("a NaN beside the row", b'{"provider": {"pathToClaudeCodeExecutable": "/x", "plan": NaN}}\n'),
+            ("a NaN alone", b'{"provider": {"plan": NaN}}\n'),
+            ("nesting past the recursion limit", b'{"a":' * 100000 + b"1" + b"}" * 100000 + b"\n"),
             ("a byte order mark", "\ufeff".encode() + b'{"provider": {"pathToClaudeCodeExecutable": "/x"}}\n'),
             ("bytes that are not UTF-8", b'\xff\xfe{"provider": {"pathToClaudeCodeExecutable": "/x"}}\n'),
-        )
+            ("bytes after the object", b'{"provider": {"pathToClaudeCodeExecutable": "/x"}} x\n'),
+            ("a trailing comma", b'{"provider": {"pathToClaudeCodeExecutable": "/x",}}\n'),
+        )  # fmt: skip
         for label, current in cases:
             with self.subTest(input=label):
                 run = self.run_modify(script, current, home)
                 self.assertEqual(run.returncode, 0, (run.stdout, run.stderr))
                 self.assertEqual(run.stdout, current, "byte for byte")
                 self.assertEqual(len(run.stderr.splitlines()), 1, run.stderr)
-                self.assertIn(b"claude-bridge.json: the live file names the row", run.stderr)
+                self.assertIn(b"claude-bridge.json: the live file is no", run.stderr)
+                self.assertIn(b"delete provider.pathToClaudeCodeExecutable by hand if it is there", run.stderr)
+                self.assertIn(b"the file passes through unchanged", run.stderr)
                 self.assertNotIn(b"Traceback", run.stderr)
         text = script.read_text()
         self.assertIn("parse_constant", text, "a NaN or an Infinity is refused at the parse")
-        self.assertIn("allow_nan=False", text, "and never written")
+        self.assertNotIn("json.dumps", text, "nothing is reserialized: the cut is of the file's own bytes")
+        self.assertIn("scanstring", text, "every key is decoded, so an escaped spelling is the same key")
 
     def test_the_claude_bridge_modify_script_needs_no_uv_and_fails_the_apply_without_python3(self) -> None:
         """regime-cutover U510b: the apply container (Dockerfile) has python3 and no uv, and the first form's

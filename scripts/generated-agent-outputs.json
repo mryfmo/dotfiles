@@ -489,7 +489,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "26fa94906bf58865509e9c5b194d8691fe2b194eca627562799a648ac5a36e58"
+      "sha256": "44a6a9d87fba935ecf15b372cf0514ad34dde54ffa954f0575cabf465710588a"
     },
     {
       "source": "home/dot_local/bin/common/executable_intake-observe.py",
@@ -657,7 +657,7 @@
       "target": ".local/bin/common/seat-login-preflight",
       "kind": "file",
       "executable": true,
-      "sha256": "5dc7dfebbc026ee2e1af42549d2011bd0880c69b4686b58faa8ea96099ec40d0"
+      "sha256": "79355bd8f42c0ee21466f6c2d5eb1a3030f8c490dfa619962be99900bd6abffb"
     },
     {
       "source": "home/dot_local/bin/common/executable_seat-settings-render.sh",
@@ -714,24 +714,6 @@
       "kind": "file",
       "executable": false,
       "sha256": "4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21"
-    },
-    {
-      "source": "home/dot_omp/private_profiles/private_dsh/private_agent/modify_claude-bridge.json",
-      "target": ".omp/profiles/dsh/agent/claude-bridge.json",
-      "kind": "modify",
-      "executable": false
-    },
-    {
-      "source": "home/dot_omp/private_profiles/private_orchestrator/private_agent/modify_claude-bridge.json",
-      "target": ".omp/profiles/orchestrator/agent/claude-bridge.json",
-      "kind": "modify",
-      "executable": false
-    },
-    {
-      "source": "home/dot_omp/private_profiles/private_worker/private_agent/modify_claude-bridge.json",
-      "target": ".omp/profiles/worker/agent/claude-bridge.json",
-      "kind": "modify",
-      "executable": false
     },
     {
       "source": "install/common/aws_cli.sh",

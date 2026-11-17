@@ -3337,6 +3337,39 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertNotIn("unbound variable", err)
         self.assertNotIn("exported-by-the-caller", out + err + json.dumps(self.calls_of("srt")) + json.dumps(launch))
 
+    def test_a_callers_exported_holder_of_a_name_the_launch_reads_aborts_no_launch(self):
+        """U553 round 2, verdict U553-1f397897 P2 :1607: a caller's exported `worker_env` kept its export attribute
+        through the lever's array assignment (and `local` inherits it on bash 3.2), so the launch's scrub listed the
+        holder by `compgen -e`, unset it and read it unbound (`worker_env[@]: unbound variable`): the launch exited 1
+        and no worker started. Now every name worker_launch reads after its scrub is unset before its first
+        assignment. A broker started with all of them exported (`worker_env`, `router_env`, `srt_cmd`, `settings`,
+        `slot`, `lines`, refuse's `connection` and `reaper`, the header's `name`, the function's `names`, `entry`,
+        `unset_args` and `removed`) launches the worker on the fixture token, no holder's name reaches omp or srt, the
+        caller's value is printed nowhere, and no `unbound variable` line appears."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        holders = ("worker_env", "router_env", "srt_cmd", "settings", "slot", "lines", "connection", "reaper", "name",
+                   "names", "entry", "unset_args", "removed")  # fmt: skip
+        through_env = {holder: "exported-by-the-caller" for holder in holders if holder != "name"}
+        # `name` is start_broker's own parameter, so that holder rides on an env wrapper's start line instead.
+        proc, sock = self.start_broker(
+            name, cwd, wrapper=("/usr/bin/env", "name=exported-by-the-caller"), **through_env
+        )
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
+        version, launch = self.calls_of("omp")
+        self.assertEqual(launch["argv"], ["acp", "--profile", "dsh"], "the worker started")
+        self.assertEqual(launch["env"]["CLAUDE_CODE_OAUTH_TOKEN"], FIXTURE_TOKEN)
+        for holder in holders:
+            self.assertNotIn(holder, launch["env"], f"the launch carries the caller's {holder}")
+            self.assertNotIn(holder, version["env"], f"the version read carries the caller's {holder}")
+            for call in self.calls_of("srt"):
+                self.assertNotIn(holder, call["env"], f"an srt run carries the caller's {holder}")
+        self.assertEqual(len(self.log_lines("w1")), 3, self.log_lines("w1"))
+        status, out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertNotIn("unbound variable", err)
+        self.assertNotIn("exported-by-the-caller", out + err + json.dumps(self.calls_of("srt")) + json.dumps(launch))
+
     def test_a_failed_environment_listing_refuses_the_workers_launch_and_starts_nothing(self):
         """U553 round 1, verdict U553-dc83fece P2 (acp-broker:1582): round 1's scrub read `$(compgen -e)` in a `for`
         word, where a failed listing is an empty list and every caller name reaches omp. Now the listing's status is
@@ -3376,6 +3409,47 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         self.assertIn(refusal.rstrip("\n"), err, "the launch's stderr line reaches the broker's stderr")
         self.assertNotIn(TOKEN_MARK, out + err + rest.decode())
 
+    def test_a_failed_environment_read_refuses_the_workers_launch_and_starts_nothing(self):
+        """U553 round 2, verdict U553-1f397897 P2 :1612: the scrub's second listing, the process environment by
+        `/usr/bin/env -0`, had no failure-injection test (round 2 injected the `compgen` failure alone). The listing is
+        now a write into `<slot>/env0`, this connection's slot, whose status is read: a `compgen` of the BASH_ENV route
+        that plants a directory at that name inside worker_launch alone (the builtin runs after it, there and
+        everywhere else, so the first listing is unchanged) fails the write (bash names the path on the launch's
+        stderr), and the launch refuses by name on the stream and on stderr, srt runs for no launch, omp runs for its
+        version alone, the slot (the planted directory with it) is reaped and the record closes with status 2."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        injected = self.bash_env_file(
+            "env0-unwritable.bash",
+            'compgen() { if [[ ${FUNCNAME[1]-} == worker_launch ]]; then /bin/mkdir "${slot}/env0"; fi;'
+            ' builtin compgen "$@"; }\n',
+        )
+        proc, sock = self.start_broker(name, cwd, BASH_ENV=injected)
+        conn = self.connect(sock, repo, "w1")
+        conn.sendall(PING)
+        slot = self.record_line(conn)
+        rest, last = self.finish(conn, slot)
+        refusal = (
+            "acp-broker: refused: cannot read the process environment for the worker's launch (/usr/bin/env -0 failed);"
+            " omp acp not started\n"
+        )
+        self.assertEqual(rest.decode(), refusal, "the refusal is the one line after the record line; no worker byte")
+        self.assertEqual(last, "status=2 push=none")
+        (version,) = self.calls_of("omp")
+        self.assertEqual(version["argv"], ["--version"], "omp ran for its version alone")
+        srt_calls = self.calls_of("srt")
+        self.assertEqual(len(srt_calls), 5, srt_calls)
+        for call in srt_calls:
+            self.assertNotIn("--map-session-cwd", call["argv"], "no launch under srt")
+        self.assertEqual(self.acp_slots(), [], "the slot and the planted directory are reaped")
+        self.assertEqual(len(self.log_lines("w1")), 3, self.log_lines("w1"))
+        self.assertIn("omp acp exit 2", self.log_lines("w1")[2])
+        status, out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertIn(refusal.rstrip("\n"), err, "the launch's stderr line reaches the broker's stderr")
+        self.assertIn(f"/{slot}/env0: ", err, "bash named the planted directory on the launch's stderr")
+        self.assertNotIn(TOKEN_MARK, out + err + rest.decode())
+
     def test_an_exported_name_unset_refuses_is_kept_from_the_workers_environment(self):
         """U553 round 1, verdict U553-dc83fece P2 (acp-broker:1582): round 1's scrub suppressed every `unset` failure,
         so an exported readonly `SHELLOPTS` of the caller's reached omp. Now a name `unset` refuses is removed from
@@ -3385,16 +3459,21 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         child; bash 3.2 lists it by `compgen -e` and refuses the unset, bash 5 keeps it outside its variable table
         and lists it not, so the unset loop alone left it to omp on Linux) and an exported function's entry
         (`BASH_FUNC_caller_fn%%`, bash 5's encoding, which bash 3.2 passes on as a name it cannot unset;
-        `caller_fn=() {…}`, bash 3.2's, a plain variable to bash 5). With all of them and `SHELLOPTS` (bash imports
-        it readonly) in the broker's environment, omp's recorded environment and the launch's srt environment equal
-        exactly worker_env plus the token, as test_srt_and_omp_run_by_their_physical_argv_under_the_listed_environment
-        holds without them."""
+        `caller_fn=() {…}`, bash 3.2's, a plain variable to bash 5). U553 round 2, verdict U553-1f397897 P2 :1612:
+        a name holding a newline (`NEW\\nLINE`: `compgen -e` lists it as two names whose unsets succeed on nothing,
+        and round 2's `tr` turned its newline into another byte, so `-u` named a different entry and the caller's
+        reached omp) and a value holding a newline (`MULTI=a\\nb=c`) are in the environment too; the second listing
+        now reads each entry whole on its NUL from `<slot>/env0`, so both are gone. With all of them and `SHELLOPTS`
+        (bash imports it readonly) in the broker's environment, omp's recorded environment and the launch's srt
+        environment equal exactly worker_env plus the token, as
+        test_srt_and_omp_run_by_their_physical_argv_under_the_listed_environment holds without them."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
         function_body = "() {  echo caller\n}"
         proc, sock = self.start_broker(
             name, cwd, SHELLOPTS="braceexpand:hashall", USER="u553", LANG="C.UTF-8", SECRET_OF_THE_CALLER="x",
-            **{"caller.dotted": "x", "caller_fn": function_body, "BASH_FUNC_caller_fn%%": function_body},
+            MULTI="a\nb=c",
+            **{"caller.dotted": "x", "caller_fn": function_body, "BASH_FUNC_caller_fn%%": function_body, "NEW\nLINE": "x"},
         )  # fmt: skip
         self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
         version, launch = self.calls_of("omp")
@@ -3415,7 +3494,8 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                   "CLAUDE_CODE_OAUTH_TOKEN": FIXTURE_TOKEN, "USER": "u553", "LANG": "C.UTF-8"}  # fmt: skip
         self.assertEqual({k: v for k, v in launch["env"].items() if k not in own}, listed)
         self.assertEqual(set(launch["env"]) - own, set(listed))
-        for unwanted in ("SHELLOPTS", "caller.dotted", "caller_fn", "BASH_FUNC_caller_fn%%", "SECRET_OF_THE_CALLER", "SHLVL"):  # fmt: skip
+        for unwanted in ("SHELLOPTS", "caller.dotted", "caller_fn", "BASH_FUNC_caller_fn%%", "SECRET_OF_THE_CALLER", "SHLVL",
+                         "NEW\nLINE", "NEW", "LINE", "MULTI"):  # fmt: skip
             self.assertNotIn(unwanted, launch["env"], f"{unwanted} reached omp")
         self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN", version["env"])
         *_, launch_call, _head_read = self.calls_of("srt")

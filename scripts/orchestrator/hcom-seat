@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -p
 # @file hcom-seat
 # @brief Start one omp seat for a role in a herdr pane through `hcom omp`, with its profile, policy overlay and extensions wired in.
 # @description
@@ -119,8 +119,9 @@
 #   before the first child and again inside the shim, U552), and `seat_token` is unset before its first assignment so
 #   no caller's export attribute carries the token into a child. Beside that list stands the one of the names bash
 #   itself reads before a script's first statement (BASH_ENV, ENV, SHELLOPTS, BASHOPTS: SHELL_BEHAVIOUR_ENV_NAMES,
-#   regime-cutover U560), which no lever can close for itself: the two files are unset at the same two points, and an
-#   exported SHELLOPTS or BASHOPTS, which bash holds readonly, refuses the launch and the shim by name before any child.
+#   regime-cutover U560): this launcher's and its shim's own shells are closed to them by the interpreter line,
+#   `#!/bin/bash -p` (no start-up file read, no function imported, an imported SHELLOPTS ignored), and the children
+#   by the clearing at the same two points (the two files unset, the two option lists, bash's readonly, unexported).
 #   The seat's Claude Code directory (regime-cutover U318, U314 alternative A; per login group since U498): every
 #   seat's bridge child and the dsh role's gateway child run with `CLAUDE_CONFIG_DIR=<seats-root>/.state/claude-<group>`,
 #   one directory per login group under the seats root, holding the child's `.claude.json`, state and sessions and
@@ -272,38 +273,50 @@ unset "${CREDENTIAL_ENV_NAMES[@]}"
 # BASH_ENV file with the token available, and SHELLOPTS=xtrace printed the fixture token on stderr): BASH_ENV, the file
 # every non-interactive bash sources at start, and ENV, its POSIX-mode name; SHELLOPTS and BASHOPTS, the option lists a
 # bash enables from its environment (`xtrace` traces every statement of a child bash to its stderr, the broker's
-# token-bearing start line included; `allexport` exports every holder a child assigns). A lever cannot close them for
-# itself, so this launcher does, once, for every child, here, before its first one, and its shim does again before the
-# canary (the list rides into the shim text beside the credential list). The two files are unset. The two option lists
-# cannot be: bash holds SHELLOPTS readonly on every version and BASHOPTS since 4.1 (measured on bash 3.2.57: `unset
-# SHELLOPTS` fails, imported or not, and ends a `set -e` shell; BASHOPTS is an ordinary variable there), and `export
-# -n`, which bash accepts on the readonly, would hide them from the children while this shell kept running under the
-# caller's options (measured: an imported `xtrace` traces from the first statement, so `seat_token=${line}` and the
-# broker's start line would reach this launcher's stderr, a supervisor's log; an imported `allexport` exports every
-# later assignment, `seat_token` among them, to hcom, herdr and srt). So an exported SHELLOPTS or BASHOPTS refuses the
-# launch by name before any child, whatever options it carries, the remedy on the line; the environment is listed
-# once, after the credential names went and before these, and the GIT_* sweep below reads the same list.
+# token-bearing start line included; `allexport` exports every holder a child assigns). What bash does before this
+# script's first statement is governed by the interpreter line alone, so that line is `#!/bin/bash -p` (verdict
+# U560-c60013ab P1; the form of pr-audit.sh and router-settings-apply): under -p bash reads no BASH_ENV or ENV file,
+# imports no function from the environment (`BASH_FUNC_<name>%%`, so no caller's function stands in for compgen or any
+# other builtin below) and ignores an imported SHELLOPTS; later versions ignore an imported BASHOPTS, CDPATH and
+# GLOBIGNORE too (bash 5.3's manual, "Invocation"; 3.2.57 never reads BASHOPTS, an ordinary variable there). Measured
+# on this host's bash 3.2.57, one script run under `#!/bin/bash` and the same under `#!/bin/bash -p`, the variable in
+# its environment: a BASH_ENV file holding `touch <marker>`, `set -x` and `set -a` wrote the marker, traced a
+# token-shaped assignment to stderr and exported it to a child without -p, and did none of the three with it;
+# SHELLOPTS=xtrace traced the assignment without -p and nothing with it; SHELLOPTS=noexec ran no statement without -p
+# (exit 0, nothing printed) and every statement with it; `BASH_FUNC_compgen%%=() { echo PATH; }` made `compgen -e`
+# print `PATH` alone without -p and left it the builtin with it. -p changes nothing else this lever relies on: PATH is
+# kept (the restricted shell, -r, is what fixes PATH), the effective uid stays what the kernel gave (this file is not
+# setuid, so it is the real one; `set +p` would reset it to the real one, the same), `$-` gains `p`. So this shell is
+# clean, and what remains is the children: a name -p ignored is still a variable of this shell with its export
+# attribute (measured: SHELLOPTS, BASHOPTS, BASH_ENV and ENV each reached a child's `env` under -p until cleared).
+# The two files are unset. The two option lists cannot be (bash holds SHELLOPTS readonly on every version and BASHOPTS
+# since 4.1; measured on 3.2.57: `unset SHELLOPTS` fails and ends a `set -e` shell), so they lose their export
+# attribute through `export -n`, which bash accepts on the readonly (measured: status 0, the name gone from a child's
+# `env`; status 0 on a SHELLOPTS that was never imported too); a failed unset or `export -n` refuses by name before
+# any child. Here, before the first child, and again in the shim before its canary (the list rides into the shim text
+# beside the credential list). The environment is listed once, after the names went, for the GIT_* sweep below.
 SHELL_BEHAVIOUR_ENV_NAMES=(BASH_ENV ENV SHELLOPTS BASHOPTS)
+for behaviour_name in "${SHELL_BEHAVIOUR_ENV_NAMES[@]}"; do
+    case ${behaviour_name} in
+    SHELLOPTS | BASHOPTS)
+        # shellcheck disable=SC2163 # the word is the list's name; -n takes an attribute off and exports nothing
+        export -n "${behaviour_name}" || {
+            echo "hcom-seat: refused: cannot take the export attribute off ${behaviour_name} (export -n failed), so a child would inherit it" >&2
+            exit 2
+        }
+        ;;
+    *)
+        unset "${behaviour_name}" || {
+            echo "hcom-seat: refused: cannot unset ${behaviour_name}" >&2
+            exit 2
+        }
+        ;;
+    esac
+done
 inherited=$(compgen -e) || {
     echo 'hcom-seat: refused: cannot list the environment' >&2
     exit 2
 }
-for behaviour_name in "${SHELL_BEHAVIOUR_ENV_NAMES[@]}"; do
-    case $'\n'${inherited}$'\n' in
-    *$'\n'"${behaviour_name}"$'\n'*) ;;
-    *) continue ;;
-    esac
-    case ${behaviour_name} in
-    SHELLOPTS | BASHOPTS)
-        echo "hcom-seat: refused: ${behaviour_name} is in the environment; bash read it before this script's first statement, so this shell's options are the caller's, and holds it readonly, so no unset takes it back; start hcom-seat from a shell that does not export it (env -u ${behaviour_name} hcom-seat ...)" >&2
-        exit 2
-        ;;
-    esac
-    unset "${behaviour_name}" || {
-        echo "hcom-seat: refused: cannot unset ${behaviour_name}" >&2
-        exit 2
-    }
-done
 # Git is steered by no inherited environment (regime-cutover U85): every `GIT_*` variable the caller exported
 # (GIT_DIR, GIT_COMMON_DIR, GIT_WORK_TREE, GIT_CONFIG_* and the rest) is removed before the first git command, so host
 # git, and the seat, find the repository from the working directory alone. hcom-seat takes no input that way.
@@ -3492,7 +3505,7 @@ seat_sandbox_write() {
     esac
     shim=${sandbox_real}/bin/${shim_tool}
     {
-        echo '#!/bin/bash'
+        echo '#!/bin/bash -p'
         echo "# Generated by hcom-seat for the ${role} seat ${name} (regime-cutover U85); rewritten on every launch."
         echo '# A canary proves the sandbox holds before the command starts; there is no uncontained fallback.'
         echo 'set -u'
@@ -3504,7 +3517,7 @@ seat_sandbox_write() {
             "${TOKEN_FORM_RE}" "${push_url}" "${sandbox_real}"
         # The shim judges the file as token_file_check does and clears the same credential names (U552) and the same
         # shell-behaviour names (U560): the stat mode arguments of this host and the two lists ride into the shim text,
-        # so the two judges and the two clearings are one text each.
+        # so the two judges and the two clearings are one text each. Its interpreter line is this launcher's, `-p`.
         printf -v names_q '%q ' "${CREDENTIAL_ENV_NAMES[@]}"
         printf -v behaviour_q '%q ' "${SHELL_BEHAVIOUR_ENV_NAMES[@]}"
         printf -v mode_q '%q ' "${mode_args[@]}"
@@ -3520,24 +3533,17 @@ export PATH=${outer_path}
 # the shim's clearing stood after the canary, so a caller's ANTHROPIC_API_KEY rode into that srt child), so nothing of
 # the shim's caller rides beside the file's line into any process the shim starts.
 unset "${credential_names[@]}"
-# The names bash itself read before this shim's first statement go the same way (U560: BASH_ENV and ENV, the start-up
+# The names bash itself reads before this shim's first statement go the same way (U560: BASH_ENV and ENV, the start-up
 # file; SHELLOPTS and BASHOPTS, the option lists; hcom-seat's list, which it cleared before its own first child, so a
-# shim hcom started finds none of them). The two files are unset; the two option lists are bash's readonly, so an
-# exported one refuses by name here, before the canary and before the token read below, which this shell's own
-# `xtrace` would otherwise print.
-shim_inherited=$(compgen -e) || { echo "hcom-seat shim: cannot list the environment; ${tool} not started" >&2; exit 2; }
+# shim hcom started finds none of them). This shell is closed to them by its interpreter line, `#!/bin/bash -p` (no
+# start-up file read, no function imported, an imported SHELLOPTS ignored), and its children by this clearing, before
+# the canary and before the token read below: the two files unset, the two option lists, which bash holds readonly,
+# unexported (`export -n`, accepted on the readonly); a failure refuses by name, nothing started.
 for behaviour_name in "${shell_behaviour_names[@]}"; do
-    case $'\n'${shim_inherited}$'\n' in
-    *$'\n'"${behaviour_name}"$'\n'*) ;;
-    *) continue ;;
-    esac
     case ${behaviour_name} in
-    SHELLOPTS | BASHOPTS)
-        echo "hcom-seat shim: refused: ${behaviour_name} is in the environment; bash read it before this shim's first statement and holds it readonly; start the seat through hcom-seat, which clears it before any child; ${tool} not started" >&2
-        exit 2
-        ;;
+    SHELLOPTS | BASHOPTS) export -n "${behaviour_name}" || { echo "hcom-seat shim: cannot take the export attribute off ${behaviour_name} (export -n failed); ${tool} not started" >&2; exit 2; } ;;
+    *) unset "${behaviour_name}" || { echo "hcom-seat shim: cannot unset ${behaviour_name}; ${tool} not started" >&2; exit 2; } ;;
     esac
-    unset "${behaviour_name}" || { echo "hcom-seat shim: cannot unset ${behaviour_name}; ${tool} not started" >&2; exit 2; }
 done
 /bin/rm -f "${canary}" || { echo "hcom-seat shim: cannot clear ${canary}" >&2; exit 2; }
 # `true`, not `:`: a failed redirection on a special builtin ends a POSIX shell (dash, Ubuntu's /bin/sh).

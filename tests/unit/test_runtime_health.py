@@ -956,6 +956,10 @@ EOF
         self.assertFalse((self.source_clone / "calls").exists())
         self.assertEqual(["pull checkout"], self.pull_sequence.read_text().splitlines())
         self.assertNotIn("Notice: local source not pulled", result.stdout)
+        self.assertIn(
+            "Notice: chezmoi source clone not pulled (chezmoi source-path or its toplevel read failed); only the checkout ",
+            result.stdout,
+        )
 
     def test_make_update_pulls_the_checkout_alone_when_the_source_toplevel_read_fails_after_printing(self) -> None:
         # Round 2 (P2): chezmoi exits 0, but `git -C <source-path> rev-parse --show-toplevel` prints a path and exits
@@ -967,6 +971,10 @@ EOF
         self.assertFalse((self.source_clone / "calls").exists())
         self.assertEqual(["pull checkout"], self.pull_sequence.read_text().splitlines())
         self.assertNotIn("Notice: local source not pulled", result.stdout)
+        self.assertIn(
+            "Notice: chezmoi source clone not pulled (chezmoi source-path or its toplevel read failed); only the checkout ",
+            result.stdout,
+        )
 
     def router_credential_root(self, dsh_home: Path, *, login: bool) -> None:
         """The Router's credential root under a scratch DSH_HOME as the operator's step leaves it: the chain router-gh

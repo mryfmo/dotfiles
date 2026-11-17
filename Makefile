@@ -96,7 +96,8 @@ update:
 	@# One guarded fast-forward pull per clone: the checkout (CURDIR), then the chezmoi source clone when it is another
 	@# clone by identity (`chezmoi source-path` names <clone>/home under .chezmoiroot; the laptop keeps the two apart).
 	@# The source clone is named only when `chezmoi source-path` and the toplevel read both exit 0, whatever either
-	@# prints; a chezmoi that is absent or fails leaves the checkout alone, and the apply then says what is wrong.
+	@# prints; a chezmoi that is absent or fails leaves the checkout alone and says so, since a source clone that is
+	@# neither pulled nor fetched passes the dirty-source guard against its own stale origin/main (Codex P1 on PR 795).
 	@pull() { \
 		git -C "$$1" fetch --quiet origin main || true; \
 		branch="$$(git -C "$$1" branch --show-current 2>/dev/null || true)"; \
@@ -118,7 +119,10 @@ update:
 		fi; \
 	}; \
 	pull "$(CURDIR)"; \
-	if sp="$$(chezmoi source-path 2>/dev/null)" && src="$$(git -C "$$sp" rev-parse --show-toplevel 2>/dev/null)"; then :; else src=""; fi; \
+	if sp="$$(chezmoi source-path 2>/dev/null)" && src="$$(git -C "$$sp" rev-parse --show-toplevel 2>/dev/null)"; then :; else \
+		src=""; \
+		printf 'Notice: chezmoi source clone not pulled (chezmoi source-path or its toplevel read failed); only the checkout %s was pulled.\n' "$(CURDIR)"; \
+	fi; \
 	if [ -n "$$src" ] && ! [ "$$src" -ef "$(CURDIR)" ]; then pull "$$src"; fi
 	@$(MAKE) --no-print-directory update-tree
 

@@ -187,6 +187,7 @@ pull source" ]
     [ ! -e "${UPDATE_FIXTURE}/source/calls" ]
     [ "$(cat "${UPDATE_FIXTURE}/pulls")" = "pull checkout" ]
     [[ "$output" != *"Notice: local source not pulled"* ]]
+    [[ "$output" == *"Notice: chezmoi source clone not pulled (chezmoi source-path or its toplevel read failed); only the checkout ${UPDATE_FIXTURE_PHYSICAL} was pulled."* ]]
 }
 
 @test "[common] update pulls the checkout alone when the source clone's toplevel read prints a path but exits non-zero" {
@@ -197,6 +198,7 @@ pull source" ]
     [ ! -e "${UPDATE_FIXTURE}/source/calls" ]
     [ "$(cat "${UPDATE_FIXTURE}/pulls")" = "pull checkout" ]
     [[ "$output" != *"Notice: local source not pulled"* ]]
+    [[ "$output" == *"Notice: chezmoi source clone not pulled (chezmoi source-path or its toplevel read failed); only the checkout ${UPDATE_FIXTURE_PHYSICAL} was pulled."* ]]
 }
 
 @test "[common] update reloads a running Herdr server exactly once" {

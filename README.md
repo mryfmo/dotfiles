@@ -367,7 +367,10 @@ identity (the toplevel of `chezmoi source-path`, compared with the checkout by
 `-ef`), so `make -C ~/Workspace/dotfiles update` moves `~/Workspace/dotfiles`
 and then `~/.local/share/chezmoi`. Run inside the source clone, it pulls that
 clone alone: the source clone holds no pointer to another checkout, and the
-apply needs none. Each pull runs only when that clone is on `main`, tracks
+apply needs none. When `chezmoi source-path` or the toplevel read fails, the
+source clone is not pulled and a notice says so, since a source clone that is
+neither pulled nor fetched would pass the dirty-source guard against its own
+stale `origin/main`. Each pull runs only when that clone is on `main`, tracks
 `origin/main`, and has no staged or unstaged tracked-file changes. Otherwise it
 prints the reason and the exact manual `git -C <clone> pull` command for that
 clone, then continues with the local source; a failed fast-forward pull also

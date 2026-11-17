@@ -759,12 +759,15 @@ EOF
         upstream: str = "origin/main",
         dirty: bool = False,
         unmerged: bool = False,
+        toplevel_exit: int = 0,
     ) -> None:
         """The fake git's answers for one clone: the stub reads them from the clone `-C` names, logs that clone's pull
-        into its own `calls`, and appends `pull <name>` to the shared sequence, so a second clone answers for itself."""
+        into its own `calls`, and appends `pull <name>` to the shared sequence, so a second clone answers for itself.
+        `toplevel_exit` is what `rev-parse --show-toplevel` on the clone's home/ exits after printing the toplevel."""
         clone.mkdir(parents=True, exist_ok=True)
         (clone / "git-fixture").write_text(
             f"name='{name}'\nbranch='{branch}'\nupstream='{upstream}'\ndirty={int(dirty)}\nunmerged={int(unmerged)}\n"
+            f"toplevel_exit={toplevel_exit}\n"
         )
 
     def update_fixture(
@@ -775,9 +778,11 @@ EOF
         dirty: bool = False,
         unmerged: bool = False,
         source: dict[str, object] | None = None,
+        source_path_exit: int = 0,
     ) -> tuple[subprocess.CompletedProcess[str], Path]:
         """Run make update in a fixture checkout. `source` makes the fake chezmoi's `source-path` name a second clone
-        (its guard state as git_clone_fixture's keywords); otherwise it names the checkout's own home/."""
+        (its guard state as git_clone_fixture's keywords); otherwise it names the checkout's own home/. The fake
+        chezmoi's `source-path` prints that path, then exits `source_path_exit`."""
         repo = self.temp_dir / f"update-{'dirty' if dirty else 'clean'}"
         home = repo / "home"
         bin_dir = repo / "bin"
@@ -795,7 +800,11 @@ EOF
             """
             clone="$PWD"
             if [ "$1" = -C ]; then clone="$2"; shift 2; fi
-            if [ "$*" = "rev-parse --show-toplevel" ]; then printf '%s\\n' "$(dirname "$clone")"; exit 0; fi
+            if [ "$*" = "rev-parse --show-toplevel" ]; then
+                . "$(dirname "$clone")/git-fixture"
+                printf '%s\\n' "$(dirname "$clone")"
+                exit "$toplevel_exit"
+            fi
             . "$clone/git-fixture"
             case "$*" in
                 "branch --show-current") printf '%s\\n' "$branch" ;;
@@ -812,7 +821,7 @@ EOF
         self.executable(
             bin_dir / "chezmoi",
             """
-            if [ "$1" = source-path ]; then printf '%s\\n' "$CHEZMOI_SOURCE_PATH"; exit 0; fi
+            if [ "$1" = source-path ]; then printf '%s\\n' "$CHEZMOI_SOURCE_PATH"; exit "$CHEZMOI_SOURCE_PATH_EXIT"; fi
             printf 'chezmoi %s\\n' "$*" >> "$TEST_LOG"
             """,
         )
@@ -850,6 +859,7 @@ EOF
                 "TEST_LOG": str(log),
                 "TEST_PULLS": str(self.pull_sequence),
                 "CHEZMOI_SOURCE_PATH": str(source_path),
+                "CHEZMOI_SOURCE_PATH_EXIT": str(source_path_exit),
             },
         )
         return result, log
@@ -935,6 +945,28 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertEqual(["pull checkout"], self.pull_sequence.read_text().splitlines())
+
+    def test_make_update_pulls_the_checkout_alone_when_chezmoi_source_path_fails_after_printing(self) -> None:
+        # Round 2 (P2): a chezmoi that prints a valid second clone's path but exits non-zero names no clone; the
+        # discovery reads its status, not only its output, so only the checkout is pulled.
+        result, log = self.update_fixture(source={}, source_path_exit=23)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("git pull --ff-only", log.read_text().splitlines()[0])
+        self.assertFalse((self.source_clone / "calls").exists())
+        self.assertEqual(["pull checkout"], self.pull_sequence.read_text().splitlines())
+        self.assertNotIn("Notice: local source not pulled", result.stdout)
+
+    def test_make_update_pulls_the_checkout_alone_when_the_source_toplevel_read_fails_after_printing(self) -> None:
+        # Round 2 (P2): chezmoi exits 0, but `git -C <source-path> rev-parse --show-toplevel` prints a path and exits
+        # non-zero; that status, too, names no clone, so only the checkout is pulled.
+        result, log = self.update_fixture(source={"toplevel_exit": 128})
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("git pull --ff-only", log.read_text().splitlines()[0])
+        self.assertFalse((self.source_clone / "calls").exists())
+        self.assertEqual(["pull checkout"], self.pull_sequence.read_text().splitlines())
+        self.assertNotIn("Notice: local source not pulled", result.stdout)
 
     def router_credential_root(self, dsh_home: Path, *, login: bool) -> None:
         """The Router's credential root under a scratch DSH_HOME as the operator's step leaves it: the chain router-gh

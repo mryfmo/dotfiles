@@ -29,6 +29,10 @@ function run_update_fixture() {
     # ${16}: the chezmoi source clone the stub's source-path names: empty (the checkout's own home/), clean or dirty
     # (a second clone with its own git state and call log under ${fixture}/source).
     local source_clone="${16:-}"
+    # ${17}: what the stub's source-path exits after printing that path; ${18}: what `rev-parse --show-toplevel` on the
+    # second clone's home/ exits after printing its toplevel (the checkout's own read always exits 0).
+    local source_path_exit="${17:-0}"
+    local toplevel_exit="${18:-0}"
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
     local source_path="${fixture}/home"
 
@@ -39,19 +43,19 @@ function run_update_fixture() {
     cp Makefile "${fixture}/Makefile"
     # The fake git reads a clone's state from the git-fixture file of the clone -C names (name, guards, pull exit),
     # logs its pull into that clone's own calls file and appends `pull <name>` to the shared pulls sequence.
-    printf "name='checkout'\nbranch='%s'\nupstream='%s'\ndirty=%s\nunmerged=%s\npull_exit=%s\n" \
+    printf "name='checkout'\nbranch='%s'\nupstream='%s'\ndirty=%s\nunmerged=%s\npull_exit=%s\ntoplevel_exit=0\n" \
         "${git_branch}" "${git_upstream}" "${git_dirty}" "${git_unmerged}" "${git_pull_exit}" > "${fixture}/git-fixture"
     if [ -n "${source_clone}" ]; then
         mkdir -p "${fixture}/source/home"
         source_path="${fixture}/source/home"
-        printf "name='source'\nbranch='main'\nupstream='origin/main'\ndirty=%s\nunmerged=0\npull_exit=0\n" \
-            "$([ "${source_clone}" = dirty ] && printf 1 || printf 0)" > "${fixture}/source/git-fixture"
+        printf "name='source'\nbranch='main'\nupstream='origin/main'\ndirty=%s\nunmerged=0\npull_exit=0\ntoplevel_exit=%s\n" \
+            "$([ "${source_clone}" = dirty ] && printf 1 || printf 0)" "${toplevel_exit}" > "${fixture}/source/git-fixture"
     fi
     cat > "${fixture}/bin/chezmoi" << EOF
 #!/usr/bin/env bash
 if [[ \$1 == source-path ]]; then
     printf '%s\n' '${source_path}'
-    exit 0
+    exit ${source_path_exit}
 fi
 printf 'chezmoi %s\n' "\$*" >> "${fixture}/calls"
 exit ${apply_exit}
@@ -81,8 +85,9 @@ if [[ \$1 == -C ]]; then
     shift 2
 fi
 if [[ \$* == "rev-parse --show-toplevel" ]]; then
+    . "\$(dirname "\$clone")/git-fixture"
     printf '%s\n' "\$(dirname "\$clone")"
-    exit 0
+    exit "\${toplevel_exit}"
 fi
 . "\${clone}/git-fixture"
 case "\$*" in
@@ -172,6 +177,26 @@ pull source" ]
     run_update_fixture running 0 0 0 0 0 "" main origin/main 0
     [ "$status" -eq 0 ]
     [ "$(cat "${UPDATE_FIXTURE}/pulls")" = "pull checkout" ]
+}
+
+@test "[common] update pulls the checkout alone when chezmoi source-path prints a clone but exits non-zero" {
+    # Round 2 (P2): the discovery reads chezmoi's status, not only its output.
+    run_update_fixture running 0 0 0 0 0 "" main origin/main 0 0 0 "" 0 0 clean 23
+    [ "$status" -eq 0 ]
+    [ "$(head -n 1 "${UPDATE_FIXTURE}/calls")" = "git pull --ff-only" ]
+    [ ! -e "${UPDATE_FIXTURE}/source/calls" ]
+    [ "$(cat "${UPDATE_FIXTURE}/pulls")" = "pull checkout" ]
+    [[ "$output" != *"Notice: local source not pulled"* ]]
+}
+
+@test "[common] update pulls the checkout alone when the source clone's toplevel read prints a path but exits non-zero" {
+    # Round 2 (P2): chezmoi exits 0, and `git -C <source-path> rev-parse --show-toplevel` fails by status.
+    run_update_fixture running 0 0 0 0 0 "" main origin/main 0 0 0 "" 0 0 clean 0 128
+    [ "$status" -eq 0 ]
+    [ "$(head -n 1 "${UPDATE_FIXTURE}/calls")" = "git pull --ff-only" ]
+    [ ! -e "${UPDATE_FIXTURE}/source/calls" ]
+    [ "$(cat "${UPDATE_FIXTURE}/pulls")" = "pull checkout" ]
+    [[ "$output" != *"Notice: local source not pulled"* ]]
 }
 
 @test "[common] update reloads a running Herdr server exactly once" {

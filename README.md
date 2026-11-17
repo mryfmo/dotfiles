@@ -361,15 +361,17 @@ whose upgrade runs an installer package can ask for the sudo password.
 `make update` applies all committed public and private chezmoi state, including
 scripts. Chezmoi records each `run_once` content hash, so new or changed
 one-time installers run once while unchanged installers stay skipped. Before
-applying, `make update` fetches and runs `git pull --ff-only` in the checkout
-it runs from, then in the chezmoi source clone when that is another clone of
-the repository (resolved through `chezmoi source-path` and
-`git rev-parse --show-toplevel`, compared by identity, so `~/Workspace/dotfiles`
-and `~/.local/share/chezmoi` both move). Each pull runs only when that clone is
-on `main`, tracks `origin/main`, and has no staged or unstaged tracked-file
-changes. Otherwise it prints the reason and the exact manual
-`git -C <clone> pull` command for that clone, then continues with the local
-source; a failed fast-forward pull also warns and continues. The
+applying, `make update` fetches and runs `git pull --ff-only` in the clone it
+runs in, then in the chezmoi source clone when that is another clone by
+identity (the toplevel of `chezmoi source-path`, compared with the checkout by
+`-ef`), so `make -C ~/Workspace/dotfiles update` moves `~/Workspace/dotfiles`
+and then `~/.local/share/chezmoi`. Run inside the source clone, it pulls that
+clone alone: the source clone holds no pointer to another checkout, and the
+apply needs none. Each pull runs only when that clone is on `main`, tracks
+`origin/main`, and has no staged or unstaged tracked-file changes. Otherwise it
+prints the reason and the exact manual `git -C <clone> pull` command for that
+clone, then continues with the local source; a failed fast-forward pull also
+warns and continues. The
 pull runs first, in its own step, and a second `make` (`update-tree`) runs the
 rest from the Makefile it fetched, so a recipe change lands in the same run. On
 a host whose clone predates this split, the first `make update` would still run

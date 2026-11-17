@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/deploy-kit.sh"
-KIT_ROOTS = (".local/bin", ".agents", ".dsh", ".omp/profiles")
+KIT_ROOTS = (".local/bin", ".agents", ".dsh")
 # The recorder: every call appends its argv; managed and status answer from fixture files, and MANAGED_AFTER, when
 # set, is the listing every managed call after the first answers (the source changed during the run); FAIL names
 # the one subcommand that exits non-zero (failure injection, FAIL_STATUS the status) from its FAIL_NTH-th call on
@@ -281,7 +281,7 @@ class DeployKitTest(unittest.TestCase):
                 self.assertIn("nothing applied", result.stderr)
                 self.assertEqual([], calls)
 
-    def test_managed_and_status_are_called_with_the_four_roots_and_no_refresh(self):
+    def test_managed_and_status_are_called_with_the_three_roots_and_no_refresh(self):
         result, calls, home = self.run_deploy(["   .local/bin/pr-merge.sh"], dry_run=True)
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertEqual(self.read_calls(home), calls)
@@ -289,10 +289,14 @@ class DeployKitTest(unittest.TestCase):
             self.assertTrue(call.endswith(" -- " + " ".join(str(home / name) for name in KIT_ROOTS)), call)
             self.assertIn(" --refresh-externals=never ", call)
 
-    def test_a_target_under_the_seat_profiles_root_is_applied_and_one_under_the_operators_omp_agent_is_not(self):
-        # The root table's fourth row (regime-cutover U515): `~/.omp/profiles` is the kit's, so a generated per-role
-        # `claude-bridge.json` under a seat profile deploys with the kit; `~/.omp/agent` stays the operator's.
-        self.assertIn("~/.omp/profiles", SCRIPT.read_text())
+    def test_a_target_under_the_seat_profiles_root_and_one_under_the_operators_omp_agent_are_both_outside_the_kit(self):
+        """regime-cutover U563 (the inverse of U515's test): `~/.omp/profiles` was the kit's fourth root for the seats'
+        generated claude-bridge.json; U553 retired the scripts that placed it, chezmoi manages nothing under the root
+        since, and `chezmoi status -- ~/.omp/profiles` answered `not managed`, which refused every deploy (measured
+        2026-11-17 on main d4dbbd72). The row is gone: a status row under `.omp/profiles` is outside the kit set like
+        one under `.omp/agent`, neither applied nor verified, and the roots on every chezmoi call are the three."""
+        roots_line = next(line for line in SCRIPT.read_text().splitlines() if line.startswith("readonly KIT_ROOTS="))
+        self.assertNotIn(".omp/profiles", roots_line)
         rows = [
             " A .omp/profiles/worker/agent/claude-bridge.json",
             " M .omp/agent/claude-bridge.json",
@@ -300,16 +304,19 @@ class DeployKitTest(unittest.TestCase):
         ]
         result, calls, home = self.run_deploy(rows)
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        seat = ".omp/profiles/worker/agent/claude-bridge.json"
         self.assertEqual(
             self.read_calls(home)
-            + [self.apply_call(home, seat, ".local/bin/pr-merge.sh")]
-            + self.verify_calls(home, seat, ".local/bin/pr-merge.sh"),
+            + [self.apply_call(home, ".local/bin/pr-merge.sh")]
+            + self.verify_calls(home, ".local/bin/pr-merge.sh"),
             calls,
         )
-        self.assertIn("deploy-kit: managed kit targets: 2\n", result.stdout)
-        self.assertIn(f"deploy-kit: applied: 2\n  {home / seat}\n  {home / '.local/bin/pr-merge.sh'}\n", result.stdout)
-        self.assertNotIn(".omp/agent", "".join(call for call in calls if call.startswith("chezmoi apply")))
+        self.assertIn("deploy-kit: managed kit targets: 1\n", result.stdout)
+        self.assertIn(f"deploy-kit: applied: 1\n  {home / '.local/bin/pr-merge.sh'}\n", result.stdout)
+        applied = "".join(call for call in calls if call.startswith("chezmoi apply"))
+        self.assertNotIn(".omp/profiles", applied)
+        self.assertNotIn(".omp/agent", applied)
+        for call in calls:
+            self.assertNotIn(str(home / ".omp/profiles"), call)
 
     def test_no_managed_kit_target_refuses(self):
         result, calls, home = self.run_deploy([" M .zshrc"], managed=[".zshrc", ".codex/config.toml"])

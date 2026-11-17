@@ -1189,6 +1189,75 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         )
         return run.stdout.split()
 
+    def test_the_brokers_bash_runs_under_p_with_no_exported_function_or_other_foreign_entry_of_the_caller(self):
+        """U560 round 3 (verdict U560-3ec779bd P1 at hcom-seat:298): round 2's broker_start ran `/bin/bash
+        <copy>/acp-broker` with the launcher's environment, which still carried every entry `-p` had ignored, so a
+        caller's exported `unset` (`BASH_FUNC_unset%%`, printing a marker and CLAUDE_CODE_OAUTH_TOKEN) ran inside the
+        broker's bash with the token available and the fixture token reached the launch's stderr. The launcher now
+        re-execs itself at its entry under `/usr/bin/env -u` per such entry (foreign_env_scrub) and starts the broker
+        as `/bin/bash -p`: the real broker under that caller environment listens and the launch runs to dsh's end with
+        neither the marker nor the fixture token on any stream; a stand-in broker from a scratch tree records its
+        shell's options (`p` among them), the count of such entries in its environment (none), that `unset` is the
+        builtin (no marker) and that the token reached it as a value, never printed; dsh under `env -i` has none and
+        no HCOM_SEAT_ENV_SCRUBBED; a router dry run under the same environment prints its line and stays clean."""
+        marker = "U560-FUNCTION-RAN"
+        caller = {
+            "BASH_FUNC_unset%%": f'() {{ echo "{marker} token=${{CLAUDE_CODE_OAUTH_TOKEN-none}}" >&2; builtin unset "$@"; }}',
+            "a.b": "1",
+        }
+        (proc,) = self.held_launch("--", "--version", role="router", new_session=True, **caller)
+        (name,) = self.slots()[0]
+        sock = Path(self.seats, ".state", name, "broker/sock")
+        self.assertTrue(sock.is_socket(), f"the real broker listens under the caller's environment: {self.slots()}")
+        ((status, out, err),) = self.release([proc])
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        self.assertIn(f"acp-broker: listening on {sock}", err)
+        self.assertNotIn(marker, err, "no shell of the launch, the broker's included, ran the caller's function")
+        self.assertNotIn(test_hcom_seat.FAKE_OAT, out + err, "no token-shaped value on any stream")
+        self.assertEqual(self.slots(), ([], []), err)
+        dsh_env = self.dsh_calls()[-1]["env"]
+        self.assertEqual(
+            [key for key in dsh_env if key.startswith("BASH_FUNC_") or key in ("a.b", "HCOM_SEAT_ENV_SCRUBBED")], []
+        )
+        tree = self.scratch_tree("tree-broker-shell")
+        broker = tree / "scripts/orchestrator/acp-broker"
+        record = self.calls / "broker-shell"
+        broker.write_text(
+            "#!/bin/bash\n"
+            "# A stand-in broker (U560 round 3): records its shell's options, the count of environment entries whose\n"
+            "# names are no identifier and whether the token reached it, runs `unset` (the caller's function would\n"
+            "# print its marker), then reports listening without a socket (the line is the sign, U344c).\n"
+            "unset nothing_u560\n"
+            f"{test_hcom_seat.FOREIGN_ENTRIES_PROBE}\n"
+            'printf \'opts=%s foreign=%s token=%s\\n\' "$-" "$foreign" "${CLAUDE_CODE_OAUTH_TOKEN:+present}"'
+            f" >> {shlex.quote(str(record))}\n"
+            'printf "acp-broker: listening on %s/.state/%s/broker/sock\\n" "$1" "$2"\n'
+            "while :; do sleep 1; done\n"
+        )
+        self.tree_pin(tree, "acp-broker", broker)
+        run = self.tree_router(tree, **caller)
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        self.assertNotIn(marker, run.stderr, "the stand-in's `unset` was the builtin")
+        self.assertNotIn(test_hcom_seat.FAKE_OAT, run.stderr)
+        text = record.read_text()
+        self.assertNotRegex(text, r"=(env|grep)-failed\b", f"a probe's read failed in {record}")
+        self.assertRegex(
+            text,
+            r"^opts=[a-zA-Z]*p[a-zA-Z]* foreign=0 token=present\n$",
+            "the broker's bash: -p, no such entry, the token as a value",
+        )
+        self.assertEqual(self.slots(), ([], []), "the slots go")
+        self.assertEqual(self.helper_copy_directories(), [], "the copy directory went after the broker's end")
+        self.assertEqual(self.relay_processes(), [])
+        dry = self.seat(
+            "router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run", "--", "--version", **caller
+        )
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        self.assertEqual(shlex.split(dry.stdout)[:2], ["/usr/bin/env", "-i"], "the dry run prints its line")
+        self.assertNotIn(marker, dry.stdout + dry.stderr, "the dry run under the caller's environment stays clean")
+        self.assertNotIn(test_hcom_seat.FAKE_OAT, dry.stdout + dry.stderr)
+        self.assertEqual(len(self.dsh_calls()), 2, "the two launches' dsh and no third: the dry run started none")
+
     def test_the_router_role_runs_the_router_profile_alone(self):
         """U321: the router role's grants exist for the Router, so the role accepts the DSH profile `router` alone
         (`--profile router` or none) and refuses any other by name, exit 2, before any tool is resolved or anything is

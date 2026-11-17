@@ -1784,6 +1784,73 @@ for tool in "${required_tools[@]}" "${optional_tools[@]}"; do
         refuse "cannot link ${tool} into ${tools_dir}"
     fi
 done
+# The directory holds exactly the tools of the lists after every launch (regime-cutover U566). An entry named outside
+# them is a retired kit's leftover (the U512 kit's `claude` link, dangling once mise removed its target, refused every
+# launch on 2026-11-17: `cannot read the identity of claude …`; `security` from 2026-11-06) or a same-user plant;
+# neither is an input of this kit, and a refusal on one leaves the host dead until a hand removes it, so it is removed
+# and named with its target, in a dry run too (the directory is state of the launcher, not of a launch). A
+# `.<tool>.<pid>` temporary is kept while its pid is this launch's or a live process's (two launches at once relink
+# the same directory, the dsh role's normal case; a live launch's temporary is between its link and its move, and
+# removing it would fail that move); one whose pid is gone is a leftover of a launch that died there and goes.
+# The listing is this one glob, dot names included, not dir_entries: that reader refuses a directory whose entry
+# count changes between its glob and its `ls -A`, and a concurrent launch's relink loop changes this one by design
+# (measured: `reading it gave 7 entries, the glob 8` in the two-launch test). The directory was held above to a real
+# directory of this user, and is readable and searchable; a listing that reads short removes less, never more, and
+# the next launch sweeps again. The glob reads a directory whose read fails as empty, so one more read whose status
+# is seen (`/bin/ls -A`, its names unused) follows it and refuses that case by name (U566b). Every entry is tested
+# again before its act (a concurrent launch may have taken it).
+kit_tools=("${required_tools[@]}" "${optional_tools[@]}")
+[[ -r ${tools_dir} && -x ${tools_dir} ]] || refuse "the private tool directory ${tools_dir} is not readable"
+tool_entries=()
+if shopt -q dotglob; then tools_dotglob=1; else tools_dotglob=0; fi
+if shopt -q nullglob; then tools_nullglob=1; else tools_nullglob=0; fi
+shopt -s dotglob nullglob
+for entry in "${tools_dir}"/*; do
+    case ${entry##*/} in
+    . | ..) ;;
+    *) tool_entries+=("${entry}") ;;
+    esac
+done
+if ((! tools_dotglob)); then shopt -u dotglob; fi
+if ((! tools_nullglob)); then shopt -u nullglob; fi
+/bin/ls -A -- "${tools_dir}" > /dev/null || refuse "cannot list the private tool directory ${tools_dir}: reading it failed"
+for entry in ${tool_entries[@]+"${tool_entries[@]}"}; do
+    entry_name=${entry##*/}
+    entry_kept=0
+    for tool in "${kit_tools[@]}"; do
+        if [[ ${entry_name} == "${tool}" || ${entry_name} == ".${tool}.$$" ]]; then
+            entry_kept=1
+            break
+        fi
+        # `.<tool>.<digits>` whose digits spell a pid (`^[1-9][0-9]*$`: `kill -0 0` signals the process group and
+        # answers live, and a leading zero is no pid's spelling) and whose pid is live (bash 3.2: no extglob, so the
+        # form is tested by parameter expansion and two patterns).
+        entry_digits=${entry_name#".${tool}."}
+        if [[ ${entry_name} == ".${tool}."* && ${entry_digits} == [1-9]* && ${entry_digits} != *[!0-9]* ]] &&
+            kill -0 "${entry_digits}" 2> /dev/null; then
+            entry_kept=1
+            break
+        fi
+    done
+    ((! entry_kept)) || continue
+    [[ -e ${entry} || -L ${entry} ]] || continue
+    if [[ -L ${entry} ]]; then
+        # `-n` and the '.' sentinel: the target reaches the message whole, a line feed of its own at its end included.
+        if entry_target=$(/usr/bin/readlink -n -- "${entry}" && printf .); then
+            entry_target="it pointed at ${entry_target%.}"
+        elif [[ ! -e ${entry} && ! -L ${entry} ]]; then
+            continue
+        else
+            refuse "cannot read the target of ${entry}, which is not a tool of this kit"
+        fi
+    elif [[ -f ${entry} ]]; then
+        entry_target='it was a regular file'
+    else
+        entry_target='it was neither a link nor a regular file'
+    fi
+    /bin/rm -f -- "${entry}" || refuse "cannot remove ${entry}, which is not a tool of this kit"
+    echo "hcom-seat: removed ${entry_name} from ${tools_dir}: not a tool of this kit (${entry_target})" >&2
+done
 PATH=${tools_dir}:${system_path}
 # The trusted interpreter directories of the optional tools (trusted_interpreter_check), by identity.
 trusted_dirs=(/bin /usr/bin /sbin /usr/sbin)
@@ -1793,13 +1860,14 @@ trusted_ids=$(/usr/bin/stat "${stat_args[@]}" -- "${trusted_dirs[@]}") ||
 trusted_ids=$'\n'${trusted_ids}$'\n'
 # Every linked tool's interpreter chain (`#!/abs/interp`, or `#!/usr/bin/env X` with X looked up on this PATH, as it
 # will be when the tool runs) passes the same identity check before anything runs it; git runs next (regime-env).
-# Plain `*` here: the private tool directory is hcom-seat's own (0700, outside every write root), and its only dot
-# entries are its own `.<tool>.<pid>` link temporaries, which no lookup by name finds.
-for link in "${tools_dir}"/*; do
+# The loop runs over the tool set, never over the directory's entries (regime-cutover U566): an optional tool the host
+# lacks has no link (the relink loop cleared it) and is skipped, and the sweep above left no other entry.
+for tool in "${kit_tools[@]}"; do
+    link=${tools_dir}/${tool}
     [[ -e ${link} || -L ${link} ]] || continue
-    pin_exec "${link##*/}" "${link}"
-    for tool in "${optional_tools[@]}"; do
-        if [[ ${tool} == "${link##*/}" ]]; then trusted_interpreter_check "${tool}"; fi
+    pin_exec "${tool}" "${link}"
+    for optional in "${optional_tools[@]}"; do
+        if [[ ${optional} == "${tool}" ]]; then trusted_interpreter_check "${tool}"; fi
     done
 done
 # Host git runs by the argv pin_exec checked (interpreter first when git is a script), never by a lookup.
@@ -3201,14 +3269,15 @@ done
 add_roots "${roots[@]}"
 if [[ -n ${mise_real} ]]; then PATH=${system_path} pin_exec mise "${mise_real}"; fi
 
-# Every link in the private tool directory, with its interpreter chain, is re-checked against the exact set, and PATH
-# is that directory and the system directories, so hcom's own lookups (`herdr`, `node`) and srt's (`env`, the shell)
-# find nothing a seat writes.
-for link in "${tools_dir}"/*; do
+# Every tool of the set linked in the private tool directory, with its interpreter chain, is re-checked against the
+# exact set, and PATH is that directory and the system directories, so hcom's own lookups (`herdr`, `node`) and srt's
+# (`env`, the shell) find nothing a seat writes. The set, never the directory's entries (regime-cutover U566).
+for tool in "${kit_tools[@]}"; do
+    link=${tools_dir}/${tool}
     [[ -e ${link} || -L ${link} ]] || continue
-    pin_exec "${link##*/}" "${link}"
-    for tool in "${optional_tools[@]}"; do
-        if [[ ${tool} == "${link##*/}" ]]; then trusted_interpreter_check "${tool}"; fi
+    pin_exec "${tool}" "${link}"
+    for optional in "${optional_tools[@]}"; do
+        if [[ ${optional} == "${tool}" ]]; then trusted_interpreter_check "${tool}"; fi
     done
 done
 pin_exec git "${git_path}"

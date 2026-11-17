@@ -3435,6 +3435,250 @@ class HcomSeatTest(SeatFixture):
         self.assertIn(f"hcom-seat: sandbox {self.seats}/.sandbox/worker", run.stderr)
         self.assert_nothing_made()
 
+    # The tools of the running kit's lists (hcom-seat `required_tools`, `optional_tools` and the Linux additions): the
+    # one set of names the private tool directory may hold after a launch (U566).
+    KIT_TOOLS = frozenset(
+        (
+            "git",
+            "hcom",
+            "herdr",
+            "omp",
+            "srt",
+            "node",
+            "bun",
+            "python3",
+            "regime-open-url",
+            "jq",
+            "bwrap",
+            "socat",
+            "rg",
+        )
+    )
+
+    def assert_tool_directory_holds_the_kit_alone(self, message="the tool directory equals the lists"):
+        """Every entry of the private tool directory is a tool of the lists, the required ones among them, and the
+        fixture's fakes are linked to the fixture's bin (relinked, never removed)."""
+        names = sorted(p.name for p in self.tools.iterdir())
+        self.assertEqual([n for n in names if n not in self.KIT_TOOLS], [], message)
+        self.assertLessEqual({"git", "hcom", "herdr", "omp", "srt"}, set(names), message)
+        for name in ("hcom", "herdr", "omp", "srt"):
+            self.assertEqual((self.tools / name).resolve(), (self.bindir / name).resolve(), name)
+
+    def test_a_retired_kits_dangling_link_in_the_tool_directory_is_removed_and_named_never_pinned(self):
+        """U566 (decisions.tsv lesson 2026-11-17T14:40:44Z): the U512 kit linked `claude` into the private tool
+        directory; U551 stopped resolving it, mise's upgrades removed the version the link named, and main's pin loop
+        (over every entry of the directory) refused every launch with `cannot read the identity of claude …`. Now the
+        directory is judged against the lists: a dry run exits 0, the entry is gone, one stderr line names it and its
+        target, and the directory holds the kit's tools alone. The dry run still makes nothing under the seats root."""
+        self.tools.mkdir(parents=True, mode=0o700)
+        target = Path(self.temp.name).resolve() / "mise/installs/npm-anthropic-ai-claude-code/2.1.321/bin/claude.exe"
+        self.assertFalse(target.exists())
+        stale = self.tools / "claude"
+        stale.symlink_to(target)
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotIn("cannot read the identity of claude", run.stderr)
+        self.assertIn(
+            f"hcom-seat: removed claude from {self.tools}: not a tool of this kit (it pointed at {target})\n",
+            run.stderr,
+        )
+        self.assertFalse(stale.is_symlink() or stale.exists(), "the dangling link is gone")
+        self.assert_tool_directory_holds_the_kit_alone()
+        self.assert_nothing_made("a dry run makes no slot and no login directory")
+        self.assertEqual(self.calls_of("hcom"), [])
+        # The next launch finds nothing to remove and says nothing about the directory.
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotIn("not a tool of this kit", run.stderr)
+
+    def test_a_regular_file_of_a_foreign_name_in_the_tool_directory_is_removed_the_same_way(self):
+        """U566: a regular file named outside the lists (a plant, or a retired kit's copy) is removed and named as a
+        regular file; a real launch removes it as a dry run does, and the launch proceeds on the kit's tools."""
+        self.tools.mkdir(parents=True, mode=0o700)
+        foreign = self.tools / "security"
+        shutil.copy(BINARY_STAND_IN, foreign)
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(
+            f"hcom-seat: removed security from {self.tools}: not a tool of this kit (it was a regular file)\n",
+            run.stderr,
+        )
+        self.assertFalse(foreign.exists())
+        self.assert_tool_directory_holds_the_kit_alone()
+        self.assertEqual(len(self.calls_of("omp")), 1, "the launch reached omp on the kit's tools")
+
+    # A pid no host can hold (macOS PID_MAX is 99998; Linux pid_max is at most 4194304), so a `.<tool>.<pid>`
+    # temporary named by it is a dead launch's leftover on every runner.
+    DEAD_PID = 4194305
+
+    def test_a_kit_tool_is_relinked_and_a_dead_launchs_link_temporary_is_removed_but_a_live_ones_kept(self):
+        """U566: a tool of the lists whose link went stale is relinked as before (never removed and named); a
+        `.<tool>.<pid>` temporary of another pid is not this launch's: one whose pid is gone (a launch that died
+        between its link and its move) is removed and named with its target, while one whose pid is live (a launch
+        running at the same time, between its link and its move; the two-launch case of the dsh role) is kept, since
+        removing it would fail that launch's move. This launch's own temporaries never remain."""
+        self.tools.mkdir(parents=True, mode=0o700)
+        stale_target = Path(self.temp.name).resolve() / "gone/omp"
+        (self.tools / "omp").symlink_to(stale_target)
+        dead = self.tools / f".omp.{self.DEAD_PID}"
+        dead.symlink_to(self.bindir / "omp")
+        live = self.tools / f".srt.{os.getpid()}"  # this test process is alive for the launch's whole run
+        live.symlink_to(self.bindir / "srt")
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual((self.tools / "omp").resolve(), (self.bindir / "omp").resolve(), "omp is relinked")
+        self.assertNotIn("removed omp from", run.stderr)
+        self.assertIn(
+            f"hcom-seat: removed .omp.{self.DEAD_PID} from {self.tools}: not a tool of this kit"
+            f" (it pointed at {self.bindir / 'omp'})\n",
+            run.stderr,
+        )
+        self.assertFalse(dead.is_symlink() or dead.exists())
+        self.assertTrue(live.is_symlink(), "a live launch's temporary is kept")
+        self.assertNotIn(f".srt.{os.getpid()}", run.stderr)
+        self.assertEqual([p.name for p in self.tools.iterdir() if p.name.startswith(".")], [live.name])
+        live.unlink()
+        self.assert_tool_directory_holds_the_kit_alone()
+        # A dot name that is no `.<tool>.<digits>` of the kit is foreign whatever follows the dot, and so is a
+        # `.<tool>.<digits>` whose digits spell no pid (U566b, verdict P3 `:1825`): `0` and `0000`, which `kill -0`
+        # would send to the process group and report live, and a leading zero, which is no pid's spelling.
+        for name in (".claude.4242", ".omp.abc", f".security.{os.getpid()}", ".omp.0", ".srt.0000", ".git.00"):
+            with self.subTest(name=name):
+                (self.tools / name).symlink_to(self.bindir / "omp")
+                run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn(
+                    f"hcom-seat: removed {name} from {self.tools}: not a tool of this kit"
+                    f" (it pointed at {self.bindir / 'omp'})\n",
+                    run.stderr,
+                )
+                self.assertFalse((self.tools / name).is_symlink())
+
+    def test_a_foreign_links_target_ending_in_a_line_feed_is_named_whole(self):
+        """U566b (verdict P3 `:1836`): the sweep reads a link's target with `readlink -n` and the `printf .` sentinel,
+        so a target that ends in a line feed reaches the stderr line whole (the line then spans two lines of stderr)."""
+        self.tools.mkdir(parents=True, mode=0o700)
+        target = Path(self.temp.name).resolve() / "gone/claude"
+        stale = self.tools / "claude"
+        stale.symlink_to(f"{target}\n")
+        self.assertEqual(os.readlink(stale), f"{target}\n")
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(
+            f"hcom-seat: removed claude from {self.tools}: not a tool of this kit (it pointed at {target}\n)\n",
+            run.stderr,
+        )
+        self.assertFalse(stale.is_symlink() or stale.exists())
+        self.assert_tool_directory_holds_the_kit_alone()
+
+    def sweep_hook(self, phase_variable, *clauses):
+        """A BASH_ENV file whose DEBUG trap runs `clauses`, each `(phase, pattern, action)`: when the trap's phase
+        variable holds `phase` and `$BASH_COMMAND` matches the bash pattern `pattern` (the command's text before any
+        expansion, so a quoted `"${var}"` is matched as written), it runs `action`, advances the phase and appends
+        `action`'s mark to the file U566_MARK names. No `set -T`: the trap runs in hcom-seat's top-level shell alone,
+        never in the command substitutions it forks, so a fault lands before one named command. The sweep's commands
+        are its own (`for entry in "${tools_dir}"/*`, `entry_target=$(/usr/bin/readlink …)`, `/bin/rm -f -- "${entry}"`;
+        every anchor is the one line of hcom-seat with that text)."""
+        hook = Path(self.temp.name) / f"{phase_variable}-hook.sh"
+        branches = []
+        for index, (pattern, action, mark) in enumerate(clauses):
+            branches.append(
+                f"[[ ${{{phase_variable}}} == {index} && ${{BASH_COMMAND}} == {pattern} ]]; then {action}"
+                f' && {phase_variable}={index + 1} && builtin echo {mark} >> "${{U566_MARK-}}"; '
+            )
+        hook.write_text(f"{phase_variable}=0\ntrap 'if " + "elif ".join(branches) + "fi' DEBUG\n")
+        return hook
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads a mode-000 directory, so the read cannot be made to fail")
+    def test_a_tool_directory_whose_read_fails_after_its_permission_check_refuses_by_name(self):
+        """U566b (verdict P2 `:1806`): the sweep's glob reads a directory whose read fails as an empty listing, so a
+        read whose status is seen (`/bin/ls -A`, as dir_entries reads) follows it and refuses by name. Injected by
+        bash's DEBUG trap (BASH_ENV): the directory becomes mode 000 right before the glob's `for`, after the
+        permission check passed; the launch refuses (exit 2, nothing on stdout) naming the directory, removes nothing
+        (the planted foreign link is still there once the mode is restored) and calls no hcom; the trap's mark proves
+        the fault landed."""
+        self.tools.mkdir(parents=True, mode=0o700)
+        self.addCleanup(lambda: self.tools.chmod(0o700))
+        foreign = self.tools / "claude"
+        foreign.symlink_to(self.bindir / "omp")
+        mark = Path(self.temp.name) / "mark"
+        mark.write_text("")
+        hook = self.sweep_hook(
+            "__u566_read",
+            ('"for entry in \\"\\${tools_dir}\\"/*"', '/bin/chmod 0 "${U566_TOOLS-}"', "unreadable"),
+        )
+        run = self.seat(
+            "worker", "--seats-root", self.seats, "--dry-run",
+            BASH_ENV=str(hook), U566_TOOLS=str(self.tools), U566_MARK=str(mark),
+        )  # fmt: skip
+        self.assertEqual(mark.read_text(), "unreadable\n", "the directory lost its read right before the glob")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(
+            f"hcom-seat: cannot list the private tool directory {self.tools}: reading it failed\n", run.stderr
+        )
+        self.assertNotIn("not a tool of this kit", run.stderr, "an empty read removes nothing and names nothing")
+        self.tools.chmod(0o700)
+        self.assertTrue(foreign.is_symlink(), "the foreign link is untouched")
+        self.assertEqual(self.calls_of("hcom"), [])
+
+    @unittest.skipIf(os.geteuid() == 0, "root searches a mode-400 directory, so readlink cannot be made to fail")
+    def test_a_readlink_that_fails_on_a_foreign_link_that_is_still_there_refuses_by_name(self):
+        """U566b (verdict P2 `:1847`): the sweep's `readlink` of a foreign link fails while the link is still there
+        (the branch for a link a concurrent launch removed is the `continue`, not this): the launch refuses by name
+        (exit 2, nothing on stdout), removes nothing and calls no hcom. Injected by bash's DEBUG trap: the directory
+        loses its search right (mode 400) right before the sweep's `entry_target=$(/usr/bin/readlink …)` command, so
+        the real readlink fails on the path, and gets it back at the next command, so the `-L` test that follows sees
+        the link; the trap's marks prove both landed in that order."""
+        self.tools.mkdir(parents=True, mode=0o700)
+        self.addCleanup(lambda: self.tools.chmod(0o700))
+        foreign = self.tools / "claude"
+        foreign.symlink_to(self.bindir / "omp")
+        mark = Path(self.temp.name) / "mark"
+        mark.write_text("")
+        hook = self.sweep_hook(
+            "__u566_readlink",
+            ('"entry_target=\\$(/usr/bin/readlink "*', '/bin/chmod 0400 "${U566_TOOLS-}"', "held"),
+            ("*", '/bin/chmod 0700 "${U566_TOOLS-}"', "restored"),
+        )
+        run = self.seat(
+            "worker", "--seats-root", self.seats, "--dry-run",
+            BASH_ENV=str(hook), U566_TOOLS=str(self.tools), U566_MARK=str(mark),
+        )  # fmt: skip
+        self.assertEqual(mark.read_text(), "held\nrestored\n", "the fault landed around the one readlink")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"hcom-seat: cannot read the target of {foreign}, which is not a tool of this kit\n", run.stderr)
+        self.assertNotIn("removed claude", run.stderr)
+        self.assertTrue(foreign.is_symlink(), "the foreign link is untouched")
+        self.assertEqual(self.calls_of("hcom"), [])
+
+    @unittest.skipIf(os.geteuid() == 0, "root writes a mode-500 directory, so rm cannot be made to fail")
+    def test_an_rm_that_fails_on_a_foreign_entry_refuses_by_name(self):
+        """U566b (verdict P2 `:1847`): the sweep's `/bin/rm -f` of a foreign entry fails: the launch refuses by name
+        (exit 2, nothing on stdout) instead of reporting a removal that did not happen, and calls no hcom. Injected by
+        bash's DEBUG trap: the directory loses its write right (mode 500) right before the sweep's `/bin/rm -f --
+        "${entry}"`, so the real rm fails; the trap's mark proves it landed."""
+        self.tools.mkdir(parents=True, mode=0o700)
+        self.addCleanup(lambda: self.tools.chmod(0o700))
+        foreign = self.tools / "claude"
+        foreign.symlink_to(self.bindir / "omp")
+        mark = Path(self.temp.name) / "mark"
+        mark.write_text("")
+        hook = self.sweep_hook(
+            "__u566_rm",
+            ('"/bin/rm -f -- \\"\\${entry}\\""', '/bin/chmod 0500 "${U566_TOOLS-}"', "held"),
+        )
+        run = self.seat(
+            "worker", "--seats-root", self.seats, "--dry-run",
+            BASH_ENV=str(hook), U566_TOOLS=str(self.tools), U566_MARK=str(mark),
+        )  # fmt: skip
+        self.assertEqual(mark.read_text(), "held\n", "the fault landed before the one rm")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"hcom-seat: cannot remove {foreign}, which is not a tool of this kit\n", run.stderr)
+        self.assertNotIn("removed claude", run.stderr, "no removal is reported that did not happen")
+        self.tools.chmod(0o700)
+        self.assertTrue(foreign.is_symlink(), "the foreign link is untouched")
+        self.assertEqual(self.calls_of("hcom"), [])
+
     def test_every_omp_launch_makes_the_routers_credential_root_and_denies_it_for_read_and_write(self):
         """U353d (verdict U353-318f268d P1 `:2383` and P2 `:2393`; the mechanism-change row of 2026-11-07T12:55:26Z,
         form remove). srt 0.0.81's Linux backend mounts nothing for a denyRead entry that is not there

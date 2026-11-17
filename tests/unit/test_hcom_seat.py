@@ -3435,6 +3435,119 @@ class HcomSeatTest(SeatFixture):
         self.assertIn(f"hcom-seat: sandbox {self.seats}/.sandbox/worker", run.stderr)
         self.assert_nothing_made()
 
+    # The tools of the running kit's lists (hcom-seat `required_tools`, `optional_tools` and the Linux additions): the
+    # one set of names the private tool directory may hold after a launch (U566).
+    KIT_TOOLS = frozenset(
+        (
+            "git",
+            "hcom",
+            "herdr",
+            "omp",
+            "srt",
+            "node",
+            "bun",
+            "python3",
+            "regime-open-url",
+            "jq",
+            "bwrap",
+            "socat",
+            "rg",
+        )
+    )
+
+    def assert_tool_directory_holds_the_kit_alone(self, message="the tool directory equals the lists"):
+        """Every entry of the private tool directory is a tool of the lists, the required ones among them, and the
+        fixture's fakes are linked to the fixture's bin (relinked, never removed)."""
+        names = sorted(p.name for p in self.tools.iterdir())
+        self.assertEqual([n for n in names if n not in self.KIT_TOOLS], [], message)
+        self.assertLessEqual({"git", "hcom", "herdr", "omp", "srt"}, set(names), message)
+        for name in ("hcom", "herdr", "omp", "srt"):
+            self.assertEqual((self.tools / name).resolve(), (self.bindir / name).resolve(), name)
+
+    def test_a_retired_kits_dangling_link_in_the_tool_directory_is_removed_and_named_never_pinned(self):
+        """U566 (decisions.tsv lesson 2026-11-17T14:40:44Z): the U512 kit linked `claude` into the private tool
+        directory; U551 stopped resolving it, mise's upgrades removed the version the link named, and main's pin loop
+        (over every entry of the directory) refused every launch with `cannot read the identity of claude …`. Now the
+        directory is judged against the lists: a dry run exits 0, the entry is gone, one stderr line names it and its
+        target, and the directory holds the kit's tools alone. The dry run still makes nothing under the seats root."""
+        self.tools.mkdir(parents=True, mode=0o700)
+        target = Path(self.temp.name).resolve() / "mise/installs/npm-anthropic-ai-claude-code/2.1.321/bin/claude.exe"
+        self.assertFalse(target.exists())
+        stale = self.tools / "claude"
+        stale.symlink_to(target)
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotIn("cannot read the identity of claude", run.stderr)
+        self.assertIn(
+            f"hcom-seat: removed claude from {self.tools}: not a tool of this kit (it pointed at {target})\n",
+            run.stderr,
+        )
+        self.assertFalse(stale.is_symlink() or stale.exists(), "the dangling link is gone")
+        self.assert_tool_directory_holds_the_kit_alone()
+        self.assert_nothing_made("a dry run makes no slot and no login directory")
+        self.assertEqual(self.calls_of("hcom"), [])
+        # The next launch finds nothing to remove and says nothing about the directory.
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotIn("not a tool of this kit", run.stderr)
+
+    def test_a_regular_file_of_a_foreign_name_in_the_tool_directory_is_removed_the_same_way(self):
+        """U566: a regular file named outside the lists (a plant, or a retired kit's copy) is removed and named as a
+        regular file; a real launch removes it as a dry run does, and the launch proceeds on the kit's tools."""
+        self.tools.mkdir(parents=True, mode=0o700)
+        foreign = self.tools / "security"
+        shutil.copy(BINARY_STAND_IN, foreign)
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(
+            f"hcom-seat: removed security from {self.tools}: not a tool of this kit (it was a regular file)\n",
+            run.stderr,
+        )
+        self.assertFalse(foreign.exists())
+        self.assert_tool_directory_holds_the_kit_alone()
+        self.assertEqual(len(self.calls_of("omp")), 1, "the launch reached omp on the kit's tools")
+
+    # A pid no host can hold (macOS PID_MAX is 99998; Linux pid_max is at most 4194304), so a `.<tool>.<pid>`
+    # temporary named by it is a dead launch's leftover on every runner.
+    DEAD_PID = 4194305
+
+    def test_a_kit_tool_is_relinked_and_a_dead_launchs_link_temporary_is_removed_but_a_live_ones_kept(self):
+        """U566: a tool of the lists whose link went stale is relinked as before (never removed and named); a
+        `.<tool>.<pid>` temporary of another pid is not this launch's: one whose pid is gone (a launch that died
+        between its link and its move) is removed and named with its target, while one whose pid is live (a launch
+        running at the same time, between its link and its move; the two-launch case of the dsh role) is kept, since
+        removing it would fail that launch's move. This launch's own temporaries never remain."""
+        self.tools.mkdir(parents=True, mode=0o700)
+        stale_target = Path(self.temp.name).resolve() / "gone/omp"
+        (self.tools / "omp").symlink_to(stale_target)
+        dead = self.tools / f".omp.{self.DEAD_PID}"
+        dead.symlink_to(self.bindir / "omp")
+        live = self.tools / f".srt.{os.getpid()}"  # this test process is alive for the launch's whole run
+        live.symlink_to(self.bindir / "srt")
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual((self.tools / "omp").resolve(), (self.bindir / "omp").resolve(), "omp is relinked")
+        self.assertNotIn("removed omp from", run.stderr)
+        self.assertIn(
+            f"hcom-seat: removed .omp.{self.DEAD_PID} from {self.tools}: not a tool of this kit"
+            f" (it pointed at {self.bindir / 'omp'})\n",
+            run.stderr,
+        )
+        self.assertFalse(dead.is_symlink() or dead.exists())
+        self.assertTrue(live.is_symlink(), "a live launch's temporary is kept")
+        self.assertNotIn(f".srt.{os.getpid()}", run.stderr)
+        self.assertEqual([p.name for p in self.tools.iterdir() if p.name.startswith(".")], [live.name])
+        live.unlink()
+        self.assert_tool_directory_holds_the_kit_alone()
+        # A dot name that is no `.<tool>.<digits>` of the kit is foreign whatever follows the dot.
+        for name in (".claude.4242", ".omp.abc", f".security.{os.getpid()}"):
+            with self.subTest(name=name):
+                (self.tools / name).symlink_to(self.bindir / "omp")
+                run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn(f"hcom-seat: removed {name} from {self.tools}: not a tool of this kit", run.stderr)
+                self.assertFalse((self.tools / name).is_symlink())
+
     def test_every_omp_launch_makes_the_routers_credential_root_and_denies_it_for_read_and_write(self):
         """U353d (verdict U353-318f268d P1 `:2383` and P2 `:2393`; the mechanism-change row of 2026-11-07T12:55:26Z,
         form remove). srt 0.0.81's Linux backend mounts nothing for a denyRead entry that is not there

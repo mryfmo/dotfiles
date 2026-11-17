@@ -13,10 +13,27 @@ lever writes into it. The steps that are not git (`mkdir`, `chmod`, `rm`, `uname
 and a failed write is injected with a file-size limit of 0 on the run. A release names the claim time its claim
 printed (U509f), so a same-name successor's record is never removed by its predecessor; the program's read, pin and
 hash refusals run against the installed layout built under the scratch HOME from the checkout's bytes
-(`install_lever`). Nothing reads the real `~/.local/bin` or writes outside the scratch root.
+(`install_lever`). The dispatch-text and return-check tests (U573) run `task` and `verify` against seat checkouts under
+regime-env's seats root for the scratch checkout (`~/.local/state/omp-seats/checkout` under the scratch HOME) and plant
+linked worktrees of the checkout under the roots `verify` judges, the `/private/tmp/dotfiles-wt` one as the
+`.git/worktrees` entry `git worktree add` records, so the test writes nothing there; the round-2 tests (verdict
+U573-32986760) plant the reads the audit found passing as absences: a caller's `GIT_DIR` and `GIT_TRACE`, a mode-000
+parent of the seats root, a seat's `core.fsmonitor`, a tag named like the branch, a worktree path holding a newline
+and a unit holding one; the round-3 tests (verdict U573-5f983ea2 and the Codex threads on the round-2 pull request)
+plant a link and a file above the seats root, a git read failing inside regime-env alone (`FAKE_GIT_FAIL_SKIP` lets
+the lever's own read pass), a seat's clean filter, a case alias of the root and an entry spelled through a link, a
+seat and a HOME holding a newline, a worktree path holding a carriage return, and a branch the checkout held before
+the tree was made; the round-4 tests (verdict U573-5a5aa7fa) plant a stray worktree whose branch holds an unmerged
+commit and a seat with a staged version cancelled by an unstaged edit beside a binary file (no finding names a
+destructive command), a seats root component longer than the system allows and a link chain deeper than the kernel
+follows, an unreadable directory inside a seat, a seat holding a submodule, a root and a brief holding a carriage
+return, a failing `uname`, and a file both staged and changed again. Nothing reads the real `~/.local/bin` or writes
+outside the scratch root.
 """
 
+import errno
 import importlib.util
+import json
 import os
 import re
 import resource
@@ -55,8 +72,14 @@ with open(os.environ["FAKE_GIT_CALLS"], "a", encoding="utf-8") as calls:
 argv = " ".join(sys.argv[1:])
 patterns = [p for p in os.environ.get("FAKE_GIT_FAIL", "").split("\\n") if p]
 statuses = [s for s in os.environ.get("FAKE_GIT_FAIL_STATUS", "").split("\\n") if s] or ["1"]
+skip = int(os.environ.get("FAKE_GIT_FAIL_SKIP", "0"))
 for index, pattern in enumerate(patterns):
     if pattern in argv:
+        if skip:  # the first SKIP matching calls of the run pass; the call just recorded counts
+            with open(os.environ["FAKE_GIT_CALLS"], encoding="utf-8") as calls:
+                seen = sum(1 for line in calls if pattern in " ".join(json.loads(line)))
+            if seen <= skip:
+                continue
         print(f"fake-git: failing {pattern!r} as asked", file=sys.stderr)
         sys.exit(int(statuses[min(index, len(statuses) - 1)]))
 wait_on = os.environ.get("FAKE_GIT_WAIT_ON")
@@ -1885,6 +1908,1118 @@ class WorkerWorktreeTest(unittest.TestCase):
         self.assertEqual(run.stdout, f"claimed U7 owner=W1 claimed={stamp}\n")
         run = self.run_lever("release", "U7", "W1", stamp, lever=lever)
         self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "released U7 owner=W1\n", ""))
+
+    # The dispatch text and the return check (regime-cutover U573): `task` and `verify`, the two subcommands the
+    # coordinator runs around every dispatch. Each test is red at a113750c0, where both verbs are unknown (`task U7
+    # <brief>` is three arguments read as the unit `task`, `verify U7` two arguments: each a refusal, exit 2).
+
+    def seats_root(self):
+        """regime-env's seats root for the scratch checkout: `~/.local/state/omp-seats/<slug>` under the scratch
+        HOME, the slug the checkout's basename."""
+        return self.root / "home/.local/state/omp-seats/checkout"
+
+    def make_seat(self, name, root=None):
+        """A seat checkout NAME under the seats root ROOT (default regime-env's): a clone of the origin, clean."""
+        path = (root or self.seats_root()) / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        git_clone(self.origin, path, env=self.env, cwd=self.root)
+        return path
+
+    def fabricate_worktree(self, name, path):
+        """The `.git/worktrees/<name>` entry of the checkout that `git worktree add PATH` records, written by hand
+        so nothing at PATH is touched: `git worktree list` lists it (prunable), so a root outside the scratch tree
+        (`/private/tmp/dotfiles-wt`) is judged without a write there."""
+        entry = self.checkout / ".git/worktrees" / name
+        entry.mkdir(parents=True)
+        (entry / "gitdir").write_text(f"{path}/.git\n")
+        (entry / "HEAD").write_text("ref: refs/heads/main\n")
+        (entry / "commondir").write_text("../..\n")
+        return entry
+
+    def task_line_1(self, path):
+        """The first line of the task text for the tree PATH, the brief's words: the tree and the first command."""
+        return (
+            f"Tree: {path} (every command runs here; your first command is `cd {path} && pwd -P`, "
+            "and the report's first line is its output)"
+        )
+
+    def assert_refused(self, run, message):
+        """RUN was refused: exit 2, nothing on stdout, one stderr line in the lever's form holding MESSAGE."""
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertTrue(run.stderr.startswith("worker-worktree.sh: refused: "), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertIn(message, run.stderr)
+
+    def dirty_line(self, seat, paths):
+        """The finding for the seat checkout SEAT with PATHS changed, deleted, untracked or staged (in the lever's
+        order, `sort -u` under LC_ALL=C): the seat, the count, every path and the step, which names no command."""
+        return (
+            f"dirty seat checkout {seat} ({len(paths)} paths changed, deleted, untracked or staged: {', '.join(paths)}): "
+            "a worker writes in its own tree alone; move the work out by hand, then restore the seat checkout to its head"
+        )
+
+    def clearing_commands(self, line):
+        """The commands a foreign-worktree finding LINE ends with: the `worktree remove`, and the `branch -d` of the
+        branch that worktree was on, or None when it was detached or on the checkout's own branch."""
+        tail = line.split("; move any work out by hand, then ", 1)[1]
+        remove = tail.split(" (git -C ", 1)[0]
+        delete = None
+        if "), then " in tail:
+            delete = tail.split("), then ", 1)[1].split(", the branch that worktree was on", 1)[0]
+        return remove, delete
+
+    def test_task_renders_the_tree_the_brief_the_branch_the_base_and_the_forbidden_paths_in_their_places(self):
+        """`task <unit> <brief> [--round <text>]` prints the text the coordinator pastes into the worker's Task
+        call: line 1 names the tree and the first command `cd <tree> && pwd -P` in the brief's words, then the
+        brief, the branch the tree is on with the base it was made from (the creation, not where `origin/main` or
+        the head is now), the no-push rule, the forbidden paths (the main checkout and every seat checkout under
+        regime-env's seats root by name, the `.`-directories left out, an absent root holding none) and the round
+        text only when given; an explicit `REGIME_SEATS_ROOT` wins over the derived one; nothing is written in the
+        checkout, the tree or the seats."""
+        path = self.make_tree()
+        brief = self.root / "brief.md"
+        brief.write_text("# U7\n")
+        sweep = self.make_seat("sweep-3")
+        audit = self.make_seat("audit")
+        (self.seats_root() / ".state").mkdir()
+        (self.seats_root() / ".sandbox").mkdir()
+        before = (self.checkout_state(), self.listing(path), self.listing(self.seats_root()))
+        run = self.run_lever("task", "U7", str(brief))
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        lines = run.stdout.splitlines()
+        self.assertEqual(lines[0], self.task_line_1(path))
+        self.assertTrue(lines[1].startswith(f"Brief: {brief} ("), lines[1])
+        self.assertTrue(
+            lines[2].startswith(f"Branch: feat/u7, which the tree is on, made by worker-worktree.sh from {self.main} "),
+            lines[2],
+        )
+        self.assertIn("`git worktree list` in any checkout cannot show it", lines[2])
+        self.assertTrue(
+            lines[3].startswith(f"No push: the tree has no push path (remote.origin.pushurl {PUSHURL}"), lines[3]
+        )
+        self.assertIn("the coordinator fetches it by path and pushes", lines[3])
+        self.assertEqual(
+            lines[4],
+            "Forbidden paths (standing order 27; never run git or edit files there): "
+            f"the main checkout {self.checkout}; the seat checkouts under {self.seats_root()}: {audit}, {sweep}.",
+        )
+        self.assertEqual(len(lines), 5, "no Round line without --round")
+        self.assertNotIn(".state", run.stdout)
+        self.assertNotIn(".sandbox", run.stdout)
+        self.assertEqual((self.checkout_state(), self.listing(path), self.listing(self.seats_root())), before)
+        run = self.run_lever("task", "U7", str(brief), "--round", "round 2: the verdict's P2 at :12")
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertEqual(run.stdout.splitlines(), [*lines, "Round: round 2: the verdict's P2 at :12"])
+        # the base is the one the tree was made from: origin/main moves in the checkout and in the tree, the worker
+        # commits, and the text still names the creation base
+        (self.checkout / "README").write_text("main two\n")
+        self.git("commit", "-q", "-am", "main two")
+        self.git("push", "-q", "origin", "main")
+        self.git("fetch", "-q", "origin", cwd=path)
+        self.commit_work(path)
+        run = self.run_lever("task", "U7", str(brief))
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertIn(f"made by worker-worktree.sh from {self.main} ", run.stdout)
+        other = self.root / "other-seats"
+        other.mkdir()
+        seat = self.make_seat("worker-2", root=other)
+        run = self.run_lever("task", "U7", str(brief), REGIME_SEATS_ROOT=str(other))
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertIn(f"the seat checkouts under {other}: {seat}.", run.stdout)
+        self.assertNotIn(str(sweep), run.stdout)
+        run = self.run_lever("task", "U7", str(brief), REGIME_SEATS_ROOT=str(self.root / "absent"))
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertIn(f"no seat checkout under the seats root {self.root / 'absent'}.", run.stdout)
+
+    def test_task_refuses_a_missing_or_foreign_tree_and_a_brief_that_is_not_there(self):
+        """A task is never rendered for a tree that is not there or not the lever's: a unit with no tree, a bare
+        directory, a `.git` that is a file (a linked worktree of the checkout under the root, the U566 shape) or a
+        symbolic link, a repository with no alternates or with another repository's, one with another origin, one
+        whose push path is open (no pushurl) and a detached tree each refuse with exit 2 and one stderr line naming
+        the tree; so do a brief that is relative, absent or unreadable, a unit outside the grammar, `--round`
+        without a text, a wrong argument count, and a read that fails (the tree's origin, its reflog; standing order
+        21): nothing on stdout, the checkout and every tree unchanged."""
+        path = self.make_tree()
+        brief = self.root / "brief.md"
+        brief.write_text("# U7\n")
+        wt = self.root / "wt"
+        (wt / "U8").mkdir()
+        (wt / "U9").mkdir()
+        (wt / "U9/.git").symlink_to(path / ".git")
+        self.git("worktree", "add", "-q", str(wt / "U10"), "-b", "feat/u10")
+        git_init(wt / "U11", env=self.env, cwd=self.root)
+        other = git_init(wt / "U12", env=self.env, cwd=self.root)
+        (other / ".git/objects/info/alternates").write_text(f"{self.origin}/objects\n")
+        self.git("config", "remote.origin.url", str(self.origin), cwd=other)
+        self.git("config", "remote.origin.pushurl", PUSHURL, cwd=other)
+        self.make_tree("U13")
+        self.git("config", "remote.origin.url", f"{self.root}/elsewhere.git", cwd=wt / "U13")
+        self.make_tree("U14")
+        self.git("config", "--unset", "remote.origin.pushurl", cwd=wt / "U14")
+        self.make_tree("U15")
+        self.git("checkout", "-q", "--detach", cwd=wt / "U15")
+        unreadable = self.root / "unreadable.md"
+        unreadable.write_text("# U7\n")
+        before = (self.checkout_state(), self.listing(wt))
+        cases = [
+            (("task", "U16", str(brief)), {}, f"the tree {wt}/U16 does not exist"),
+            (("task", "U8", str(brief)), {}, f"{wt}/U8 is no worker repository: {wt}/U8/.git is not a directory"),
+            (("task", "U9", str(brief)), {}, f"{wt}/U9/.git is a symbolic link"),
+            (
+                ("task", "U10", str(brief)),
+                {},
+                f"{wt}/U10 is no worker repository: {wt}/U10/.git is not a directory (a linked worktree holds a file",
+            ),
+            (
+                ("task", "U11", str(brief)),
+                {},
+                f"{wt}/U11 is no worker repository of this checkout: cannot read {wt}/U11/.git/objects/info/alternates",
+            ),
+            (
+                ("task", "U12", str(brief)),
+                {},
+                f"{wt}/U12 is no worker repository of this checkout: its alternates {self.origin}/objects is not the "
+                f"objects directory {self.checkout}/.git/objects of {self.checkout}",
+            ),
+            (
+                ("task", "U13", str(brief)),
+                {},
+                f"{wt}/U13 is no worker repository of this checkout: its origin {self.root}/elsewhere.git is not the "
+                f"checkout's {self.origin}",
+            ),
+            (
+                ("task", "U14", str(brief)),
+                {},
+                f"{wt}/U14 is no worker repository: its push path is not removed (no remote.origin.pushurl)",
+            ),
+            (
+                ("task", "U15", str(brief)),
+                {},
+                f"cannot read the branch of {wt}/U15 (HEAD is detached, or the read failed)",
+            ),
+            (
+                ("task", "U7", str(brief)),
+                failing(f"-C {path} config --get remote.origin.url"),
+                f"cannot read remote.origin.url of {path}",
+            ),
+            (
+                ("task", "U7", str(brief)),
+                failing("log -g --format=%H refs/heads/feat/u7"),
+                f"cannot read the reflog of feat/u7 in {path}",
+            ),
+            (("task", "U7", "brief.md"), {}, "the brief brief.md is not an absolute path"),
+            (
+                ("task", "U7", str(self.root / "absent.md")),
+                {},
+                f"the brief {self.root}/absent.md is not a readable file",
+            ),
+            (("task", "7", str(brief)), {}, "the unit 7 is not U<n> or U<n><letter>"),
+            (
+                ("task", "U7", str(brief), "--round"),
+                {},
+                "usage: worker-worktree.sh task <unit> <brief> [--round <text>]",
+            ),
+            (("task", "U7", str(brief), "--round", ""), {}, "--round needs a text"),
+            (("task", "U7", str(brief), "--later", "x"), {}, "usage: worker-worktree.sh task <unit> <brief>"),
+            (("task", "U7"), {}, "usage: worker-worktree.sh task <unit> <brief>"),
+            (("task",), {}, "usage: worker-worktree.sh task <unit> <brief>"),
+        ]
+        if os.geteuid() != 0:
+            unreadable.chmod(0)
+            cases.append((("task", "U7", str(unreadable)), {}, f"the brief {unreadable} is not a readable file"))
+        for argv, env, message in cases:
+            with self.subTest(argv=argv, env=env):
+                self.assert_refused(self.run_lever(*argv, **env), message)
+        self.assertEqual((self.checkout_state(), self.listing(wt)), before)
+
+    def test_verify_passes_on_a_clean_fixture_and_names_a_foreign_worktree_under_each_root(self):
+        """`verify <unit>` exits 0 on a tree the lever made beside a clean seat checkout, one `verified` line; a
+        linked worktree of the main checkout under `$DOTFILES_WT`, under `${TMPDIR}/dotfiles-wt`, under
+        `/private/tmp/dotfiles-wt` (the U566 shape, planted as the `.git/worktrees` entry alone, so nothing outside
+        the scratch root is written) or anywhere else under a `dotfiles-wt` directory is each one stdout line naming
+        the path, the root or the `dotfiles-wt` component, the `git worktree remove` and, for an entry on a branch of
+        its own, the `git branch -d` of that branch after it (the planted entry is on the checkout's own branch,
+        which no stray add made, so it names none), exit 1, all four in one run (the lever spells no temporary
+        directory of its own, so the last two are the component rule's); a linked worktree elsewhere and the main
+        worktree are never named; without TMPDIR the `${TMPDIR}/dotfiles-wt` one is still named, by its component;
+        with the entries gone the fixture verifies again; nothing is written anywhere."""
+        self.make_tree()
+        self.make_seat("sweep-3")
+        tmpdir = self.root / "scratch-tmp"
+        tmpdir.mkdir()
+        run = self.run_lever("verify", "U7", TMPDIR=str(tmpdir))
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        verified = (
+            f"verified U7: no foreign worktree of {self.checkout} under {self.root}/wt or dotfiles-wt under TMPDIR, "
+            f"none with a dotfiles-wt path component; 1 seat checkouts clean under {self.seats_root()}\n"
+        )
+        self.assertEqual(run.stdout, verified)
+        self.git("worktree", "add", "-q", str(self.root / "wt/U8"), "-b", "feat/u8")
+        self.git("worktree", "add", "-q", str(tmpdir / "dotfiles-wt/U9"), "-b", "feat/u9")
+        self.git("worktree", "add", "-q", str(self.root / "elsewhere/U10"), "-b", "feat/u10")
+        self.git("worktree", "add", "-q", str(self.root / "other/dotfiles-wt/U11"), "-b", "feat/u11")
+        entry = self.fabricate_worktree("U566", "/private/tmp/dotfiles-wt/U566")
+        self.assertIn("worktree /private/tmp/dotfiles-wt/U566\n", self.worktrees() + "\n")
+        before = (self.checkout_state(), self.listing(self.root / "wt"), self.listing(self.seats_root()))
+        run = self.run_lever("verify", "U7", TMPDIR=str(tmpdir))
+        self.assertEqual((run.returncode, run.stderr), (1, ""))
+        lines = run.stdout.splitlines()
+        self.assertEqual(len(lines), 4, run.stdout)
+        for foreign, root, branch in (
+            (f"{self.root}/wt/U8", f"{self.root}/wt", "feat/u8"),
+            (f"{tmpdir}/dotfiles-wt/U9", f"{tmpdir}/dotfiles-wt", "feat/u9"),
+            ("/private/tmp/dotfiles-wt/U566", "a dotfiles-wt directory", None),
+            (f"{self.root}/other/dotfiles-wt/U11", "a dotfiles-wt directory", "feat/u11"),
+        ):
+            with self.subTest(foreign=foreign):
+                line = next(line for line in lines if line.startswith(f"foreign worktree {foreign} "))
+                self.assertIn(f"of the main checkout {self.checkout} under {root}:", line)
+                remove, delete = self.clearing_commands(line)
+                self.assertEqual(remove, f"git -C {self.checkout} worktree remove --force {foreign}")
+                self.assertEqual(delete, f"git -C {self.checkout} branch -d {branch}" if branch else None)
+        self.assertNotIn("reset --hard", run.stdout, "no finding names a destructive command")
+        self.assertNotIn("branch -D", run.stdout, "no finding names a destructive command")
+        self.assertNotIn("elsewhere", run.stdout)
+        self.assertNotIn(f"worktree {self.checkout} ", run.stdout)
+        self.assertEqual(
+            (self.checkout_state(), self.listing(self.root / "wt"), self.listing(self.seats_root())), before
+        )
+        # without TMPDIR in the environment the TMPDIR root is not among the roots, and the worktree under it is still
+        # named, by its dotfiles-wt component
+        run = self.run_lever("verify", "U7", TMPDIR=None)
+        self.assertEqual((run.returncode, run.stderr), (1, ""))
+        self.assertEqual(len(run.stdout.splitlines()), 4, run.stdout)
+        self.assertIn(
+            f"foreign worktree {tmpdir}/dotfiles-wt/U9 of the main checkout {self.checkout} under a dotfiles-wt directory:",
+            run.stdout,
+        )
+        for name in ("wt/U8", "scratch-tmp/dotfiles-wt/U9", "elsewhere/U10", "other/dotfiles-wt/U11"):
+            self.git("worktree", "remove", "--force", str(self.root / name))
+        shutil.rmtree(entry)
+        run = self.run_lever("verify", "U7", TMPDIR=str(tmpdir))
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, verified, ""))
+
+    def test_verify_names_a_dirty_seat_checkout_and_a_staged_change(self):
+        """A seat checkout under the seats root with a changed tracked file and an untracked one (the U565 shape) is
+        one stdout line naming the seat, the count and the step that clears it; a seat whose only change is staged
+        (the index against HEAD, which the working-tree read cannot see) is named too; exit 1 with every line
+        printed; a clean seat and a `.`-directory are not named; the read writes nothing in the seat, not even its
+        index; an explicit `REGIME_SEATS_ROOT` is the root judged; a local branch of the main checkout named like the
+        tree's is no finding (round 3, Codex thread 4604357806: the checkout may hold it from before the tree was
+        made); cleared, the fixture verifies."""
+        path = self.make_tree()
+        sweep = self.make_seat("sweep-3")
+        audit = self.make_seat("audit")
+        staged = self.make_seat("staged")
+        (self.seats_root() / ".state").mkdir()
+        (sweep / "README").write_text("dirt\n")
+        (sweep / "stray.txt").write_text("stray\n")
+        (staged / "README").write_text("staged\n")
+        self.git("add", "README", cwd=staged)
+        self.git("branch", "feat/u7", "main")
+        indexes = ((sweep / ".git/index").read_bytes(), (staged / ".git/index").read_bytes())
+        before = (self.checkout_state(), self.listing(path), self.listing(self.seats_root()))
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""))
+        self.assertEqual(
+            run.stdout.splitlines(),
+            [self.dirty_line(staged, ["README"]), self.dirty_line(sweep, ["README", "stray.txt"])],
+        )
+        self.assertNotIn(str(audit), run.stdout)
+        self.assertNotIn("branch -D", run.stdout, "the checkout's branch feat/u7 is no finding")
+        self.assertNotIn("reset --hard", run.stdout, "no finding names a destructive command")
+        self.assertNotIn("diff HEAD", run.stdout, "no finding advises the diff as the backup")
+        self.assertEqual((self.checkout_state(), self.listing(path), self.listing(self.seats_root())), before)
+        self.assertEqual(
+            ((sweep / ".git/index").read_bytes(), (staged / ".git/index").read_bytes()),
+            indexes,
+            "the status read wrote no index",
+        )
+        other = self.root / "other-seats"
+        worker = self.make_seat("worker-2", root=other)
+        (worker / "stray.txt").write_text("stray\n")
+        run = self.run_lever("verify", "U7", REGIME_SEATS_ROOT=str(other))
+        self.assertEqual((run.returncode, run.stderr), (1, ""))
+        self.assertEqual(run.stdout.splitlines(), [self.dirty_line(worker, ["stray.txt"])])
+        self.git("checkout", "--", ".", cwd=sweep)
+        (sweep / "stray.txt").unlink()
+        self.git("reset", "-q", "--hard", "HEAD", cwd=staged)
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertTrue(run.stdout.endswith(f"; 3 seat checkouts clean under {self.seats_root()}\n"), run.stdout)
+        self.assertEqual(self.git("rev-parse", "refs/heads/feat/u7"), self.main, "the checkout's branch stands")
+
+    def test_verify_refuses_a_failed_read_instead_of_passing(self):
+        """Standing order 21 for the return check: a `git worktree list` that fails, a tree whose branch cannot be
+        read, a seat whose toplevel, filter drivers, working-tree listing or index comparison cannot be read (exit
+        128 from the PATH `git`), a seat directory that is no repository, a seats root that cannot be listed (mode
+        000), regime-env refusing (an empty HOME), an absent tree, a tree that is a linked worktree of the checkout,
+        a run from a linked worktree, a unit outside the grammar and a wrong argument count each exit 2 with one
+        stderr line naming the read, nothing on stdout: never exit 0, never a finding."""
+        path = self.make_tree()
+        sweep = self.make_seat("sweep-3")
+        self.git("worktree", "add", "-q", str(self.root / "wt/U9"), "-b", "feat/u9")
+        cases = [
+            (
+                ("verify", "U7"),
+                failing("worktree list --porcelain"),
+                f"cannot read git worktree list of {self.checkout}",
+            ),
+            (("verify", "U7"), failing("symbolic-ref --quiet HEAD"), f"cannot read the branch of {path}"),
+            (
+                ("verify", "U7"),
+                failing(f"-C {sweep} rev-parse --show-toplevel"),
+                f"cannot read the toplevel of the seat checkout {sweep}",
+            ),
+            (
+                ("verify", "U7"),
+                failing("config --name-only --get-regexp"),
+                f"cannot read the filter drivers of the seat checkout {sweep}",
+            ),
+            (("verify", "U7"), failing("ls-files -z -m -d -o"), f"cannot read the status of the seat checkout {sweep}"),
+            (
+                ("verify", "U7"),
+                failing("diff-index --cached --name-only -z HEAD"),
+                f"cannot read the status of the seat checkout {sweep}",
+            ),
+            (("verify", "U7"), {"HOME": ""}, "regime-env: HOME is empty, so no store root can be derived under it"),
+            (("verify", "U8"), {}, f"the tree {self.root}/wt/U8 does not exist"),
+            (
+                ("verify", "U9"),
+                {},
+                f"{self.root}/wt/U9 is no worker repository: {self.root}/wt/U9/.git is not a directory",
+            ),
+            (("verify", "u7"), {}, "the unit u7 is not U<n> or U<n><letter>"),
+            (("verify",), {}, "usage: worker-worktree.sh verify <unit>"),
+            (("verify", "U7", "extra"), {}, "usage: worker-worktree.sh verify <unit>"),
+        ]
+        for argv, env, message in cases:
+            with self.subTest(argv=argv, env=env):
+                self.assert_refused(self.run_lever(*argv, **env), message)
+        run = self.run_lever("verify", "U7", cwd=self.root / "wt/U9")
+        self.assert_refused(run, "is a linked worktree")
+        self.assertIn("run from the main checkout", run.stderr)
+        probe = self.seats_root() / "probe"
+        probe.mkdir()
+        self.assert_refused(self.run_lever("verify", "U7"), f"cannot read the toplevel of the seat checkout {probe}")
+        probe.rmdir()
+        if os.geteuid() != 0:
+            self.seats_root().chmod(0)
+            try:
+                self.assert_refused(self.run_lever("verify", "U7"), f"cannot list the seats root {self.seats_root()}")
+            finally:
+                self.seats_root().chmod(0o755)
+        self.git("worktree", "remove", "--force", str(self.root / "wt/U9"))
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+
+    # Round 2 of U573 (verdicts/U573-32986760.md): each read below passed as an absence in round 1, and each test is
+    # red against that lever.
+
+    def test_a_caller_s_git_environment_does_not_reach_regime_env_s_derivation(self):
+        """regime-env runs git of its own for the toplevel the seats root's slug comes from: with the caller's
+        `GIT_DIR` pointing at the worker tree, round 1 derived the tree's slug, judged no seat and passed over a dirty
+        one, and the caller's `GIT_TRACE` made a file (P1 :526). Every `GIT_*` name is removed before regime-env is
+        sourced now: `verify` still names the dirty seat, `task` still lists it among the forbidden paths, and no
+        trace file appears."""
+        path = self.make_tree()
+        sweep = self.make_seat("sweep-3")
+        (sweep / "stray.txt").write_text("stray\n")
+        brief = self.root / "brief.md"
+        brief.write_text("# U7\n")
+        trace = self.root / "git-trace.log"
+        env = {"GIT_DIR": str(path / ".git"), "GIT_WORK_TREE": str(path), "GIT_TRACE": str(trace)}
+        run = self.run_lever("verify", "U7", **env)
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        lines = run.stdout.splitlines()
+        self.assertEqual(len(lines), 1, run.stdout)
+        self.assertTrue(
+            lines[0].startswith(
+                f"dirty seat checkout {sweep} (1 paths changed, deleted, untracked or staged: stray.txt)"
+            ),
+            lines[0],
+        )
+        self.assertFalse(trace.exists(), "no git the run caused wrote the caller's GIT_TRACE file")
+        run = self.run_lever("task", "U7", str(brief), **env)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertIn(f"the seat checkouts under {self.seats_root()}: {sweep}.", run.stdout)
+        self.assertFalse(trace.exists(), "no git the run caused wrote the caller's GIT_TRACE file")
+
+    def test_an_unsearchable_directory_above_the_seats_root_is_a_failed_read_not_an_absence(self):
+        """A file test below a directory this user cannot search answers false for EACCES as for ENOENT: with the
+        parent of the seats root at mode 000, round 1 read the root as absent and `verify` passed over a dirty seat
+        (P1 :529). The walk from `/` refuses the first directory that cannot be searched, by name, exit 2 with nothing
+        on stdout, for `verify` and `task` alike; searchable again, the dirty seat is named, and a root that is cleanly
+        absent is still no seat."""
+        if os.geteuid() == 0:
+            self.skipTest("root searches every directory")
+        self.make_tree()
+        sweep = self.make_seat("sweep-3")
+        (sweep / "stray.txt").write_text("stray\n")
+        brief = self.root / "brief.md"
+        brief.write_text("# U7\n")
+        parent = self.seats_root().parent
+        parent.chmod(0)
+        try:
+            for argv in (("verify", "U7"), ("task", "U7", str(brief))):
+                with self.subTest(argv=argv):
+                    self.assert_refused(
+                        self.run_lever(*argv),
+                        f"cannot search the directory {parent} (permission denied), so whether the seats root "
+                        f"{self.seats_root()} exists cannot be read",
+                    )
+        finally:
+            parent.chmod(0o755)
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        self.assertIn(f"dirty seat checkout {sweep} (1 paths", run.stdout)
+        run = self.run_lever("verify", "U7", REGIME_SEATS_ROOT=str(self.root / "absent/seats"))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertTrue(run.stdout.endswith(f"; 0 seat checkouts clean under {self.root}/absent/seats\n"), run.stdout)
+
+    def test_a_branch_the_checkout_holds_is_no_finding_and_a_stray_worktree_s_own_branch_is_its_leftover(self):
+        """Codex thread 4604357806 on round 2: `verify` named a local branch of the checkout for being named like the
+        tree's branch, as the `git worktree add` leftover, and advised `git branch -D`; a branch the checkout held
+        before the tree was made is a supported case (the creation subcommand's own
+        `test_a_branch_the_checkout_holds_is_no_conflict_and_the_name_is_the_normalized_one`), so that advice could
+        discard its commits. The checkout holds `feat/u7` with a commit of its own before the tree is made: `verify`
+        exits 0, names no `branch -d` or `-D`, and the branch keeps its commit. A stray linked worktree on a branch of
+        its own is named with that branch's `branch -d` after its `worktree remove`, the leftover of that worktree
+        alone; a detached one with none; the printed commands, run in order, clear the fixture."""
+        self.git("checkout", "-q", "-b", "feat/u7")
+        (self.checkout / "own.txt").write_text("own\n")
+        self.git("add", "own.txt")
+        self.git("commit", "-q", "-m", "own")
+        own = self.git("rev-parse", "HEAD")
+        self.git("checkout", "-q", "main")
+        self.make_tree()
+        self.make_seat("sweep-3")
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertNotIn("branch", run.stdout)
+        self.assertEqual(self.git("rev-parse", "refs/heads/feat/u7"), own)
+        self.git("worktree", "add", "-q", str(self.root / "wt/U8"), "-b", "feat/u8")
+        self.git("worktree", "add", "-q", "--detach", str(self.root / "wt/U9"))
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        lines = run.stdout.splitlines()
+        self.assertEqual(len(lines), 2, run.stdout)
+        self.assertNotIn("feat/u7", run.stdout, "the checkout's branch is not named")
+        on_branch = next(line for line in lines if line.startswith(f"foreign worktree {self.root}/wt/U8 "))
+        detached = next(line for line in lines if line.startswith(f"foreign worktree {self.root}/wt/U9 "))
+        remove, delete = self.clearing_commands(on_branch)
+        self.assertEqual(
+            (remove, delete),
+            (
+                f"git -C {self.checkout} worktree remove --force {self.root}/wt/U8",
+                f"git -C {self.checkout} branch -d feat/u8",
+            ),
+        )
+        self.assertTrue(
+            on_branch.endswith(
+                "(the leftover of its worktree add -b; -d refuses a branch with unmerged commits, inspect it before "
+                "-D; keep a branch the checkout held before the stray add)"
+            ),
+            on_branch,
+        )
+        remove_detached, delete_detached = self.clearing_commands(detached)
+        self.assertEqual(
+            (remove_detached, delete_detached),
+            (f"git -C {self.checkout} worktree remove --force {self.root}/wt/U9", None),
+        )
+        for command in (remove, delete, remove_detached):
+            cleared = subprocess.run(["bash", "-c", command], env=self.env, capture_output=True, text=True, timeout=120)
+            self.assertEqual(cleared.returncode, 0, (command, cleared.stderr))
+        self.assertNotIn("U8", self.worktrees())
+        self.assertNotIn("U9", self.worktrees())
+        status, _, _ = self.git_status("rev-parse", "--verify", "--quiet", "refs/heads/feat/u8")
+        self.assertNotEqual(status, 0, "the stray worktree's own branch is gone")
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(self.git("rev-parse", "refs/heads/feat/u7"), own, "the checkout's branch keeps its commit")
+
+    def test_a_seat_s_fsmonitor_or_hook_runs_nothing_during_the_status_read(self):
+        """`--no-optional-locks` keeps the status from writing the seat's index and does not keep a configured
+        `core.fsmonitor` from running inside it: round 1 ran a seat's fsmonitor program during `verify` (P2 :594). The
+        status runs with `-c core.fsmonitor=false -c core.hooksPath=/dev/null` now: a seat whose config names a
+        marker-writing fsmonitor script leaves no marker, the seat is judged as before (clean, then dirty), and the
+        same script does run under a plain `git status` in the seat, so the fixture is live."""
+        self.make_tree()
+        sweep = self.make_seat("sweep-3")
+        marker = self.root / "fsmonitor-ran"
+        script = self.root / "fsmonitor.sh"
+        script.write_text(f"#!/bin/sh\ntouch {marker}\nprintf '/'\n")
+        script.chmod(0o755)
+        self.git("config", "core.fsmonitor", str(script), cwd=sweep)
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertFalse(marker.exists(), "the seat's fsmonitor program did not run inside the status read")
+        (sweep / "stray.txt").write_text("stray\n")
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        self.assertIn(f"dirty seat checkout {sweep} (1 paths", run.stdout)
+        self.assertFalse(marker.exists(), "the seat's fsmonitor program did not run inside the status read")
+        self.git_status("status", "--porcelain", cwd=sweep)
+        self.assertTrue(marker.exists(), "the fixture's fsmonitor program runs under a plain git status")
+
+    def test_a_tag_named_like_the_branch_changes_nothing(self):
+        """`symbolic-ref --short HEAD` prints `heads/<name>` when a tag shares the branch's name, so round 1 looked for
+        `refs/heads/heads/<name>` and `task` refused the tree's reflog (P2 :511). The branch is the full ref now,
+        `refs/heads/` stripped: with the tag in the tree and in the checkout, and the checkout holding a branch of
+        the same name (no finding since round 3), `task` renders the branch with its base and `verify` passes."""
+        path = self.make_tree()
+        brief = self.root / "brief.md"
+        brief.write_text("# U7\n")
+        self.git("tag", "feat/u7", cwd=path)
+        self.git("tag", "feat/u7")
+        self.git("branch", "feat/u7", "main")
+        run = self.run_lever("task", "U7", str(brief))
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertIn(
+            f"\nBranch: feat/u7, which the tree is on, made by worker-worktree.sh from {self.main} ", run.stdout
+        )
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertTrue(run.stdout.startswith("verified U7: "), run.stdout)
+
+    def test_a_foreign_worktree_whose_path_holds_a_newline_is_named_whole(self):
+        """The line form of `git worktree list --porcelain` split a path holding a newline, so round 1 named a
+        shortened path and printed a remove command for that wrong path (P2 :567). The list is read with `-z` and
+        split on NUL now: the finding names the whole path on one line (its newline shown as `\\n`), and the commands
+        it prints, quoted for the shell, remove that worktree and the branch it was on."""
+        self.make_tree()
+        self.make_seat("sweep-3")
+        wt = self.root / "wt" / "U8\nx"
+        try:
+            wt.mkdir()
+        except OSError as error:
+            self.skipTest(f"the filesystem refuses a name holding a newline: {error}")
+        wt.rmdir()
+        self.git("worktree", "add", "-q", str(wt), "-b", "feat/u8")
+        self.assertIn(f"worktree {wt}\n", self.worktrees() + "\n")
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        lines = run.stdout.splitlines()
+        self.assertEqual(len(lines), 1, run.stdout)
+        shown = str(wt).replace("\n", "\\n")
+        self.assertTrue(
+            lines[0].startswith(
+                f"foreign worktree {shown} of the main checkout {self.checkout} under {self.root}/wt: a worker tree"
+            ),
+            lines[0],
+        )
+        remove, delete = self.clearing_commands(lines[0])
+        self.assertTrue(remove.startswith(f"git -C {self.checkout} worktree remove --force $'"), remove)
+        self.assertEqual(delete, f"git -C {self.checkout} branch -d feat/u8")
+        for command in (remove, delete):
+            cleared = subprocess.run(["bash", "-c", command], env=self.env, capture_output=True, text=True, timeout=120)
+            self.assertEqual(cleared.returncode, 0, (command, cleared.stderr))
+        self.assertNotIn("U8", self.worktrees(), "the printed command removed the worktree it named")
+        self.assertFalse(wt.exists())
+        status, _, _ = self.git_status("rev-parse", "--verify", "--quiet", "refs/heads/feat/u8")
+        self.assertNotEqual(status, 0, "the printed command deleted the branch that worktree was on")
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+
+    def test_a_unit_holding_a_newline_is_one_refusal_line(self):
+        """Every refusal is one stderr line: a unit text holding a newline made two lines in round 1 (P3 :681). Each
+        line boundary in the interpolated text is folded to a space now, for `verify` and `task` alike."""
+        brief = self.root / "brief.md"
+        brief.write_text("# U7\n")
+        for argv in (("verify", "U7\nextra"), ("task", "U7\nextra", str(brief)), ("verify", "U7\rextra")):
+            with self.subTest(argv=argv):
+                self.assert_refused(self.run_lever(*argv), "the unit U7 extra is not U<n> or U<n><letter>")
+
+    # Round 3 of U573 (verdicts/U573-5f983ea2.md and the Codex threads on the round-2 pull request): each test below
+    # is red against the round-2 lever at 5f983ea2f.
+
+    def test_a_link_or_a_file_above_the_seats_root_is_a_failed_read_not_an_absence(self):
+        """The carried P1 (:575, round 2's :529): a symbolic link on the way to the seats root whose target lay under
+        a mode-000 directory read as absent (`-L` saw the link, `-d` could not see through it), and a regular file
+        where a directory should be (ENOTDIR) read as a root holding no seat; each let `verify` pass over a dirty
+        seat. The walk follows a link to its target and judges the target's path by the same rule: a target under an
+        unsearchable directory refuses naming that directory, a mode-000 target refuses naming the target (not the
+        link), and a file on the way refuses naming the file, exit 2 with nothing on stdout, for `verify` and `task`
+        alike; searchable again, the dirty seat is named under the root as given; a dangling link stays a clean
+        absence."""
+        self.make_tree()
+        brief = self.root / "brief.md"
+        brief.write_text("# U7\n")
+        closed = self.root / "closed"
+        seat = self.make_seat("worker-2", root=closed / "target/seats")
+        (seat / "stray.txt").write_text("stray\n")
+        (self.root / "via").symlink_to("closed/target")
+        unsearchable = self.root / "unsearchable"
+        unsearchable.mkdir()
+        (self.root / "via2").symlink_to(unsearchable)
+        afile = self.root / "afile"
+        afile.write_text("")
+        (self.root / "dangling").symlink_to(self.root / "nowhere")
+        cases = [
+            (
+                f"{self.root}/afile/seats",
+                f"{afile}, which the seats root {self.root}/afile/seats lies under, is not a directory, so the seats "
+                f"root {self.root}/afile/seats cannot be read",
+            )
+        ]
+        if os.geteuid() != 0:
+            closed.chmod(0)
+            unsearchable.chmod(0)
+            cases += [
+                (
+                    f"{self.root}/via/seats",
+                    f"cannot search the directory {closed} (permission denied), so whether the seats root "
+                    f"{self.root}/via/seats exists cannot be read",
+                ),
+                (
+                    f"{self.root}/via2/seats",
+                    f"cannot search the directory {unsearchable} (permission denied), so whether the seats root "
+                    f"{self.root}/via2/seats exists cannot be read",
+                ),
+            ]
+        try:
+            for seats_root, message in cases:
+                for argv in (("verify", "U7"), ("task", "U7", str(brief))):
+                    with self.subTest(seats_root=seats_root, argv=argv):
+                        self.assert_refused(self.run_lever(*argv, REGIME_SEATS_ROOT=seats_root), message)
+        finally:
+            closed.chmod(0o755)
+            unsearchable.chmod(0o755)
+        run = self.run_lever("verify", "U7", REGIME_SEATS_ROOT=f"{self.root}/via/seats")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        self.assertEqual(run.stdout.splitlines(), [self.dirty_line(f"{self.root}/via/seats/worker-2", ["stray.txt"])])
+        run = self.run_lever("verify", "U7", REGIME_SEATS_ROOT=f"{self.root}/dangling/seats")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertTrue(run.stdout.endswith(f"; 0 seat checkouts clean under {self.root}/dangling/seats\n"), run.stdout)
+
+    def test_a_failed_git_read_inside_regime_env_is_a_refusal_under_an_explicit_store_and_seats_root(self):
+        """P1 :597: regime_env reads the checkout's toplevel in a substitution and, under an explicit `HCOM_DIR`,
+        returns 0 when that read fails (the explicit store needs no slug); under an explicit `REGIME_SEATS_ROOT` as
+        well, round 2 went on and passed. The lever reads that toplevel through regime-env's own `regime_toplevel`
+        first, its status judged, and hands the value to `regime_env`, which then runs no git: with the second
+        `rev-parse --git-common-dir` of the run (the first is the lever's own checkout read, which
+        `FAKE_GIT_FAIL_SKIP` lets pass) exiting 128, `verify` and `task` refuse with exit 2 naming the read, nothing
+        on stdout; without the injection both pass, and the run holds exactly two such reads, so regime-env's own
+        never ran."""
+        self.make_tree()
+        brief = self.root / "brief.md"
+        brief.write_text("# U7\n")
+        other = self.root / "other-seats"
+        self.make_seat("worker-2", root=other)
+        env = {"HCOM_DIR": str(self.root / "hcom"), "REGIME_SEATS_ROOT": str(other)}
+        injected = {**env, **failing("rev-parse --path-format=absolute --git-common-dir"), "FAKE_GIT_FAIL_SKIP": "1"}
+        for argv in (("verify", "U7"), ("task", "U7", str(brief))):
+            with self.subTest(argv=argv, injected=True):
+                self.assert_refused(
+                    self.run_lever(*argv, **injected),
+                    "cannot read the toplevel regime-env derives the seats root from (git rev-parse or pwd -P in "
+                    f"{self.checkout} failed)",
+                )
+            with self.subTest(argv=argv, injected=False):
+                run = self.run_lever(*argv, **env)
+                self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+                reads = [call for call in self.git_calls.read_text().splitlines() if "--git-common-dir" in call]
+                self.assertEqual(len(reads), 2, reads)
+
+    def test_a_seat_s_clean_filter_runs_nothing_during_the_status_read(self):
+        """P2 :700 and Codex thread 4604459522: round 2's `git status` hashed a changed file of the same length
+        through the seat's clean filter (git decides a same-size change by content, the step a clean filter runs
+        in), so a filter the seat's config names ran during `verify` and wrote a file. The read closes every filter
+        driver the seat's config defines by name (`-c filter.<name>.clean= ... required=false`) and is `ls-files -m
+        -d -o` with `diff-index --cached`, no `status`: a seat whose `.gitattributes` assigns a required filter whose
+        clean command writes a marker, with a same-length change, is named dirty and the marker is not written; the
+        same change under a plain `git status` in the seat does write it, so the fixture is live."""
+        self.make_tree()
+        sweep = self.make_seat("sweep-3")
+        marker = self.root / "clean-filter-ran"
+        script = self.root / "clean.sh"
+        script.write_text(f"#!/bin/sh\ntouch {marker}\nexec cat\n")
+        script.chmod(0o755)
+        (sweep / ".gitattributes").write_text("README filter=marker\n")
+        self.git("add", ".gitattributes", cwd=sweep)
+        self.git("commit", "-q", "-m", "attributes", cwd=sweep)
+        self.git("config", "filter.marker.clean", str(script), cwd=sweep)
+        self.git("config", "filter.marker.required", "true", cwd=sweep)
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertFalse(marker.exists())
+        (sweep / "README").write_text("mane\n")  # the same length as the committed `main\n`
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        self.assertEqual(run.stdout.splitlines(), [self.dirty_line(sweep, ["README"])])
+        self.assertFalse(marker.exists(), "the seat's clean filter did not run inside the read")
+        calls = [json.loads(line) for line in self.git_calls.read_text().splitlines()]
+        self.assertFalse([call for call in calls if "status" in call], "no git status runs in a seat")
+        self.assertTrue([call for call in calls if "filter.marker.clean=" in call and "ls-files" in call], calls)
+        self.git_status("status", "--porcelain", cwd=sweep)
+        self.assertTrue(marker.exists(), "the fixture's clean filter runs under a plain git status")
+
+    def test_containment_under_a_root_is_judged_by_identity_not_spelling(self):
+        """P2 :677: round 2 compared the listed path and the root as strings, as printed and as `pwd -P` resolves
+        them, and `pwd -P` keeps the letter case it was given, so `DOTFILES_WT` spelled in another case on a
+        case-insensitive volume passed over a foreign worktree under the same directory. Each listed path and each
+        directory above it is tested against the roots with `-ef` now: the case alias names the worktree under it
+        (skipped where the volume is case-sensitive), and an entry whose directory is gone, spelled through a
+        symbolic link to the root (so neither spelling matches), is named under the root as well; with the entries
+        gone the fixture verifies."""
+        self.make_tree()
+        self.make_seat("sweep-3")
+        wt = self.root / "wt"
+        alias = self.root / "WT"
+        self.git("worktree", "add", "-q", str(wt / "U8"), "-b", "feat/u8")
+        with self.subTest(spelling="a case alias of the root"):
+            if not (alias.exists() and os.path.samefile(alias, wt)):
+                self.skipTest("the volume is case-sensitive, so WT is no alias of wt")
+            run = self.run_lever("verify", "U7", DOTFILES_WT=str(alias))
+            self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+            lines = run.stdout.splitlines()
+            self.assertEqual(len(lines), 1, run.stdout)
+            self.assertTrue(
+                lines[0].startswith(f"foreign worktree {wt}/U8 of the main checkout {self.checkout} under {alias}:"),
+                lines[0],
+            )
+        self.git("worktree", "remove", "--force", str(wt / "U8"))
+        self.git("branch", "-D", "feat/u8")
+        link = self.root / "link"
+        link.symlink_to(wt)
+        entry = self.fabricate_worktree("U9", link / "U9")
+        self.assertIn(f"worktree {link}/U9\n", self.worktrees() + "\n")
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        lines = run.stdout.splitlines()
+        self.assertEqual(len(lines), 1, run.stdout)
+        self.assertTrue(
+            lines[0].startswith(f"foreign worktree {link}/U9 of the main checkout {self.checkout} under {wt}:"),
+            lines[0],
+        )
+        self.assertNotIn("branch -D", lines[0], "an entry on the checkout's own branch names no branch to delete")
+        shutil.rmtree(entry)
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+
+    def test_a_seat_whose_path_holds_a_newline_is_one_seat(self):
+        """P2 :605: the seats listing was one path per line, so a seat whose name holds a newline was two names, the
+        first no repository (`verify` refused a clean seat) and `task` rendered the forbidden paths in pieces. The
+        listing is NUL-separated now: a dirty seat named so is one finding naming the whole path on one line (its
+        newline shown as `\\n`, the commands quoting it for the shell), and `task` lists it whole on the
+        forbidden-paths line."""
+        self.make_tree()
+        brief = self.root / "brief.md"
+        brief.write_text("# U7\n")
+        other = self.root / "other-seats"
+        other.mkdir()
+        try:
+            (other / "w\n2").mkdir()
+        except OSError as error:
+            self.skipTest(f"the filesystem refuses a name holding a newline: {error}")
+        (other / "w\n2").rmdir()
+        seat = self.make_seat("w\n2", root=other)
+        (seat / "stray.txt").write_text("stray\n")
+        shown = str(seat).replace("\n", "\\n")
+        run = self.run_lever("verify", "U7", REGIME_SEATS_ROOT=str(other))
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        lines = run.stdout.splitlines()
+        self.assertEqual(len(lines), 1, run.stdout)
+        self.assertTrue(lines[0].startswith(f"dirty seat checkout {shown} (1 paths changed"), lines[0])
+        self.assertIn(": stray.txt): a worker writes in its own tree alone", lines[0])
+        run = self.run_lever("task", "U7", str(brief), REGIME_SEATS_ROOT=str(other))
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        lines = run.stdout.splitlines()
+        self.assertEqual(len(lines), 5, run.stdout)
+        self.assertTrue(lines[4].endswith(f"the seat checkouts under {other}: {shown}."), lines[4])
+
+    def test_regime_env_s_refusal_is_one_stderr_line(self):
+        """P3 :597 (round 2's :681 carried): regime-env printed its refusal to stderr itself, past the lever's
+        one-line fold, so a HOME holding a newline with a store root component regime-env refuses (`.local` a
+        symbolic link) made three stderr lines. regime_env runs in a captured substitution now and its words reach
+        stderr through `refuse`: one line, exit 2, nothing on stdout, the newline folded to a space."""
+        self.make_tree()
+        home = self.root / "ho\nme"
+        try:
+            home.mkdir()
+        except OSError as error:
+            self.skipTest(f"the filesystem refuses a name holding a newline: {error}")
+        (self.root / "elsewhere").mkdir()
+        (home / ".local").symlink_to(self.root / "elsewhere")
+        run = self.run_lever("verify", "U7", HOME=str(home))
+        self.assert_refused(
+            run, f"regime-env: the store root component {home}/.local is a symlink; the store root".replace("\n", " ")
+        )
+
+    def test_a_foreign_worktree_path_holding_a_carriage_return_is_one_finding_line(self):
+        """P3 :641: the finding escaped a newline in the path and nothing else, so a path holding a carriage return
+        (or a vertical tab or a form feed, the other characters a text reader ends a line at) split its finding in
+        two for the reader. Each is escaped now (`\\r`, `\\v`, `\\f`): three such worktrees are three lines, each
+        naming the whole path, and the printed commands remove each with its branch."""
+        self.make_tree()
+        self.make_seat("sweep-3")
+        trees = []
+        for unit, char, escaped in (("U8", "\r", "\\r"), ("U9", "\v", "\\v"), ("U10", "\f", "\\f")):
+            wt = self.root / "wt" / f"{unit}{char}x"
+            try:
+                wt.mkdir()
+            except OSError as error:
+                self.skipTest(f"the filesystem refuses a name holding {escaped}: {error}")
+            wt.rmdir()
+            self.git("worktree", "add", "-q", str(wt), "-b", f"feat/{unit.lower()}")
+            trees.append((wt, str(wt).replace(char, escaped), f"feat/{unit.lower()}"))
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        lines = run.stdout.splitlines()
+        self.assertEqual(len(lines), 3, run.stdout)
+        for wt, shown, branch in trees:
+            with self.subTest(path=shown):
+                line = next(line for line in lines if line.startswith(f"foreign worktree {shown} "))
+                remove, delete = self.clearing_commands(line)
+                self.assertEqual(delete, f"git -C {self.checkout} branch -d {branch}")
+                for command in (remove, delete):
+                    cleared = subprocess.run(
+                        ["bash", "-c", command], env=self.env, capture_output=True, text=True, timeout=120
+                    )
+                    self.assertEqual(cleared.returncode, 0, (command, cleared.stderr))
+                self.assertFalse(wt.exists())
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+
+    # Round 4 of U573 (verdicts/U573-5a5aa7fa.md): each test below is red against the round-3 lever at 5a5aa7fa4.
+
+    def test_no_finding_names_a_destructive_command_and_a_stray_branch_s_unmerged_commit_survives_the_printed_steps(
+        self,
+    ):
+        """P1 :875 and P1 :728: the dirty-seat finding advised `git diff HEAD` as the backup and `reset --hard`, and
+        the diff omits binary bytes and a staged version cancelled by an unstaged edit; the foreign-worktree finding
+        ended in `branch -D`, which drops the last reference of a commit the stray worktree made with an empty
+        working-tree diff. No finding names a destructive command now: the dirty seat's line names the seat and
+        every changed path and says to move the work out by hand and then restore the seat checkout to its head
+        (the lever changes nothing: the staged blob and the binary bytes stand), and the foreign worktree's line
+        names `worktree remove --force` after `move any work out by hand` and then `branch -d`, which refuses the
+        branch with the unmerged commit, so the commit keeps its reference after the printed steps are run."""
+        self.make_tree()
+        sweep = self.make_seat("sweep-3")
+        (sweep / "README").write_text("staged\n")
+        self.git("add", "README", cwd=sweep)
+        (sweep / "README").write_text("main\n")  # the working tree cancels the staged version: `git diff HEAD` is empty
+        (sweep / "blob.bin").write_bytes(bytes(range(256)))
+        staged_blob = self.git("rev-parse", ":README", cwd=sweep)
+        self.assertEqual(self.git("diff", "HEAD", "--", "README", cwd=sweep), "", "the fixture's diff is empty")
+        wt = self.root / "wt/U8"
+        self.git("worktree", "add", "-q", str(wt), "-b", "feat/u8")
+        (wt / "work.txt").write_text("work\n")
+        self.git("add", "work.txt", cwd=wt)
+        self.git("commit", "-q", "-m", "stray work", cwd=wt)
+        stray = self.git("rev-parse", "HEAD", cwd=wt)
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        lines = run.stdout.splitlines()
+        self.assertEqual(len(lines), 2, run.stdout)
+        for word in ("reset --hard", "branch -D", "diff HEAD", "clean -"):
+            self.assertNotIn(word, run.stdout, word)
+        self.assertIn(self.dirty_line(sweep, ["README", "blob.bin"]), lines)
+        foreign = next(line for line in lines if line.startswith(f"foreign worktree {wt} "))
+        self.assertIn("; move any work out by hand, then git -C ", foreign)
+        remove, delete = self.clearing_commands(foreign)
+        self.assertEqual(remove, f"git -C {self.checkout} worktree remove --force {wt}")
+        self.assertEqual(delete, f"git -C {self.checkout} branch -d feat/u8")
+        self.assertTrue(
+            foreign.endswith(
+                "(the leftover of its worktree add -b; -d refuses a branch with unmerged commits, inspect it before "
+                "-D; keep a branch the checkout held before the stray add)"
+            ),
+            foreign,
+        )
+        self.assertEqual(self.git("rev-parse", ":README", cwd=sweep), staged_blob, "the read changed nothing")
+        self.assertEqual((sweep / "blob.bin").read_bytes(), bytes(range(256)))
+        removed = subprocess.run(["bash", "-c", remove], env=self.env, capture_output=True, text=True, timeout=120)
+        self.assertEqual(removed.returncode, 0, removed.stderr)
+        deleted = subprocess.run(["bash", "-c", delete], env=self.env, capture_output=True, text=True, timeout=120)
+        self.assertNotEqual(deleted.returncode, 0, "branch -d refuses the branch with the unmerged commit")
+        self.assertIn("not fully merged", deleted.stderr)
+        self.assertEqual(self.git("rev-parse", "refs/heads/feat/u8"), stray, "the stray commit keeps its reference")
+
+    def test_a_name_too_long_or_a_link_chain_too_deep_above_the_seats_root_is_a_failed_read_not_an_absence(self):
+        """P1 :617 (the carried :575): `[[ -e ]]` answers false for ENAMETOOLONG and ELOOP as for ENOENT, so a seats
+        root with a component longer than the system allows, or under a chain of symbolic links deeper than the
+        kernel follows, read as absent and `verify` passed with no seat judged. Where a test answers false the path
+        is read once more with `/usr/bin/stat` now, and only `No such file or directory` is an absence: the long name
+        refuses naming the component and stat's `File name too long`; the chain (40 links, within the walk's own
+        ceiling and deeper than the 32 macOS follows) refuses with `Too many levels of symbolic links` where the
+        kernel refuses it, and where the kernel follows it (Linux follows 40) the dirty seat under it is named; a
+        cleanly absent root is still no seat; `task` refuses alike."""
+        self.make_tree()
+        brief = self.root / "brief.md"
+        brief.write_text("# U7\n")
+        long_name = "x" * 300
+        long_root = f"{self.root}/{long_name}/seats"
+        for argv in (("verify", "U7"), ("task", "U7", str(brief))):
+            with self.subTest(argv=argv, case="ENAMETOOLONG"):
+                run = self.run_lever(*argv, REGIME_SEATS_ROOT=long_root)
+                self.assert_refused(run, f"cannot look up {self.root}/{long_name} (")
+                self.assertIn("File name too long", run.stderr)
+                self.assertIn(f"so whether the seats root {long_root} exists cannot be read", run.stderr)
+        target = self.root / "target"
+        seat = self.make_seat("worker-2", root=target / "seats")
+        (seat / "stray.txt").write_text("stray\n")
+        links = [self.root / f"l{index}" for index in range(1, 41)]
+        for link, following in zip(links, [*links[1:], target]):
+            link.symlink_to(following)
+        chained_root = f"{links[0]}/seats"
+        try:
+            os.stat(chained_root)
+            kernel_refuses = False
+        except OSError as error:
+            if error.errno != errno.ELOOP:
+                raise
+            kernel_refuses = True
+        for argv in (("verify", "U7"), ("task", "U7", str(brief))):
+            with self.subTest(argv=argv, case="ELOOP", kernel_refuses=kernel_refuses):
+                run = self.run_lever(*argv, REGIME_SEATS_ROOT=chained_root)
+                if kernel_refuses:
+                    self.assert_refused(run, "Too many levels of symbolic links")
+                    self.assertIn(f"so whether the seats root {chained_root} exists cannot be read", run.stderr)
+                elif argv[0] == "verify":
+                    self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+                    self.assertEqual(
+                        run.stdout.splitlines(), [self.dirty_line(f"{chained_root}/worker-2", ["stray.txt"])]
+                    )
+                else:
+                    self.assertEqual((run.returncode, run.stderr), (0, ""))
+                    self.assertIn(f"the seat checkouts under {chained_root}: {chained_root}/worker-2.", run.stdout)
+        run = self.run_lever("verify", "U7", REGIME_SEATS_ROOT=f"{self.root}/absent/seats")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertTrue(run.stdout.endswith(f"; 0 seat checkouts clean under {self.root}/absent/seats\n"), run.stdout)
+
+    def test_a_seat_status_read_that_warns_is_a_failed_read_not_a_finding(self):
+        """P2 :868 (the first): `git ls-files -o` warns `could not open directory` and exits 0 for a directory inside
+        the seat it cannot read (the status-blind producer table), and round 3 merged that warning into the path
+        data, so an incomplete read was a dirty finding instead of a refusal. The producer's stderr is captured
+        apart from its paths now: a seat holding an untracked directory of mode 000 refuses with exit 2 naming the
+        seat and git's words, nothing on stdout; readable again, the directory's file is the one path named."""
+        if os.geteuid() == 0:
+            self.skipTest("root reads every directory")
+        self.make_tree()
+        sweep = self.make_seat("sweep-3")
+        locked = sweep / "locked"
+        locked.mkdir()
+        (locked / "note.txt").write_text("note\n")
+        locked.chmod(0)
+        self.addCleanup(locked.chmod, 0o755)
+        run = self.run_lever("verify", "U7")
+        self.assert_refused(run, f"cannot read the status of the seat checkout {sweep}")
+        self.assertIn("Permission denied", run.stderr)
+        locked.chmod(0o755)
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        self.assertEqual(run.stdout.splitlines(), [self.dirty_line(sweep, ["locked/note.txt"])])
+
+    def test_a_seat_holding_a_submodule_is_refused_by_name(self):
+        """P2 :868 (the second): `ls-files -m` and `diff-index --cached` cannot see a change inside a submodule, so
+        round 3 judged a seat clean while `git status --porcelain` reported its dirty submodule. A seat holding a
+        submodule is refused by name now, before its status is read: one with a committed submodule (`.gitmodules`
+        and a gitlink), one with a gitlink in its index alone, and one with a `.gitmodules` file alone each refuse
+        with exit 2 naming the seat, nothing on stdout; a seat without one is judged as before."""
+        self.make_tree()
+        sweep = self.make_seat("sweep-3")
+        sub = self.make_seat("with-sub")
+        self.git("-c", "protocol.file.allow=always", "submodule", "add", "-q", str(self.origin), "lib", cwd=sub)
+        self.git("commit", "-q", "-m", "submodule", cwd=sub)
+        (sub / "lib/README").write_text("inner dirt\n")
+        self.assertIn("lib", self.git("status", "--porcelain", cwd=sub), "the fixture's submodule is dirty to git")
+        run = self.run_lever("verify", "U7")
+        self.assert_refused(run, f"the seat checkout {sub} holds a submodule (.gitmodules is present)")
+        shutil.rmtree(sub)
+        gitlink = self.make_seat("gitlink")
+        self.git("update-index", "--add", "--cacheinfo", f"160000,{self.main},lib", cwd=gitlink)
+        run = self.run_lever("verify", "U7")
+        self.assert_refused(run, f"the seat checkout {gitlink} holds a submodule (the gitlink lib in its index)")
+        shutil.rmtree(gitlink)
+        modules = self.make_seat("modules")
+        (modules / ".gitmodules").write_text("")
+        run = self.run_lever("verify", "U7")
+        self.assert_refused(run, f"the seat checkout {modules} holds a submodule (.gitmodules is present)")
+        shutil.rmtree(modules)
+        (sweep / "stray.txt").write_text("stray\n")
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        self.assertEqual(run.stdout.splitlines(), [self.dirty_line(sweep, ["stray.txt"])])
+
+    def test_the_task_text_and_the_verified_line_show_a_root_or_a_brief_holding_a_carriage_return_on_one_line(self):
+        """P3 :927: `task` printed the tree's path raw, so a `DOTFILES_WT` holding a carriage return (which the root
+        checks allow: a newline alone is refused) split the mandatory first line for a reader, and the brief's and
+        the checkout's paths bypassed `display` too, as did the `verified` line's. Each goes through `display` now:
+        with the root and the brief holding a carriage return, the task text is five lines, line 1 names the tree
+        with `\\r` and the `cd` quotes the path for the shell, the brief line names the brief with `\\r`, and
+        `verify`'s one line names the root with `\\r`; no raw carriage return is printed."""
+        wt = self.root / "w\rt"
+        try:
+            wt.mkdir()
+        except OSError as error:
+            self.skipTest(f"the filesystem refuses a name holding a carriage return: {error}")
+        run = self.run_lever("U7", "feat/u7", "origin/main", DOTFILES_WT=str(wt))
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        path = wt / "U7"
+        brief = self.root / "br\rief.md"
+        brief.write_text("# U7\n")
+        self.make_seat("sweep-3")
+        shown_path = str(path).replace("\r", "\\r")
+        shown_brief = str(brief).replace("\r", "\\r")
+        shown_root = str(wt).replace("\r", "\\r")
+        run = self.run_lever("task", "U7", str(brief), DOTFILES_WT=str(wt))
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assertNotIn("\r", run.stdout)
+        lines = run.stdout.splitlines()
+        self.assertEqual(len(lines), 5, run.stdout)
+        self.assertEqual(
+            lines[0],
+            f"Tree: {shown_path} (every command runs here; your first command is `cd $'{shown_path}' && pwd -P`, "
+            "and the report's first line is its output)",
+        )
+        self.assertTrue(lines[1].startswith(f"Brief: {shown_brief} ("), lines[1])
+        self.assertTrue(
+            lines[4].startswith(
+                "Forbidden paths (standing order 27; never run git or edit files there): "
+                f"the main checkout {self.checkout}; "
+            ),
+            lines[4],
+        )
+        run = self.run_lever("verify", "U7", DOTFILES_WT=str(wt))
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertNotIn("\r", run.stdout)
+        self.assertEqual(
+            run.stdout,
+            f"verified U7: no foreign worktree of {self.checkout} under {shown_root} or dotfiles-wt under TMPDIR, "
+            f"none with a dotfiles-wt path component; 1 seat checkouts clean under {self.seats_root()}\n",
+        )
+
+    def test_a_failing_uname_is_one_refusal_line_for_task_and_verify(self):
+        """P3 :509: `stat_format_read` ran `uname -s` with its stderr uncaptured, so a failing uname printed its own
+        line before the refusal, two stderr lines against the one-line contract. Its stderr is captured and folded
+        into the refusal now: a PATH `uname` that prints a diagnostic and exits 1 is one stderr line naming the read
+        and the words, exit 2, nothing on stdout, for `verify` and `task` alike."""
+        self.make_tree()
+        brief = self.root / "brief.md"
+        brief.write_text("# U7\n")
+        path = self.shim("uname", "-s", 'echo "fake-uname: no system name today" >&2; exit 1')
+        for argv in (("verify", "U7"), ("task", "U7", str(brief))):
+            with self.subTest(argv=argv):
+                self.assert_refused(
+                    self.run_lever(*argv, PATH=path),
+                    "cannot read the operating system name (uname -s): fake-uname: no system name today",
+                )
+
+    def test_a_path_both_staged_and_changed_again_is_one_path(self):
+        """P3 :873: the working-tree listing and the cached listing were concatenated, so a file with a staged change
+        and another change in the working tree was counted twice. The two are deduplicated across each other now:
+        such a file is one path, named once, beside an untracked file."""
+        self.make_tree()
+        sweep = self.make_seat("sweep-3")
+        (sweep / "README").write_text("staged\n")
+        self.git("add", "README", cwd=sweep)
+        (sweep / "README").write_text("changed again\n")
+        (sweep / "stray.txt").write_text("stray\n")
+        self.assertEqual(self.git("status", "--porcelain", cwd=sweep).splitlines()[0], "MM README")
+        run = self.run_lever("verify", "U7")
+        self.assertEqual((run.returncode, run.stderr), (1, ""), run.stdout)
+        self.assertEqual(run.stdout.splitlines(), [self.dirty_line(sweep, ["README", "stray.txt"])])
 
 
 if __name__ == "__main__":

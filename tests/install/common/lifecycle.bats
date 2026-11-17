@@ -26,15 +26,33 @@ function run_update_fixture() {
     local reload_output="${13:-}"
     local prefetch_exit="${14:-0}"
     local check_exit="${15:-0}"
+    # ${16}: the chezmoi source clone the stub's source-path names: empty (the checkout's own home/), clean or dirty
+    # (a second clone with its own git state and call log under ${fixture}/source).
+    local source_clone="${16:-}"
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
+    local source_path="${fixture}/home"
 
     mkdir -p "${fixture}/bin" "${fixture}/scripts/lib" \
         "${fixture}/home/.local/share/chezmoi-private" \
         "${fixture}/home/.config/chezmoi-private"
     touch "${fixture}/home/.config/chezmoi-private/chezmoi.yaml"
     cp Makefile "${fixture}/Makefile"
+    # The fake git reads a clone's state from the git-fixture file of the clone -C names (name, guards, pull exit),
+    # logs its pull into that clone's own calls file and appends `pull <name>` to the shared pulls sequence.
+    printf "name='checkout'\nbranch='%s'\nupstream='%s'\ndirty=%s\nunmerged=%s\npull_exit=%s\n" \
+        "${git_branch}" "${git_upstream}" "${git_dirty}" "${git_unmerged}" "${git_pull_exit}" > "${fixture}/git-fixture"
+    if [ -n "${source_clone}" ]; then
+        mkdir -p "${fixture}/source/home"
+        source_path="${fixture}/source/home"
+        printf "name='source'\nbranch='main'\nupstream='origin/main'\ndirty=%s\nunmerged=0\npull_exit=0\n" \
+            "$([ "${source_clone}" = dirty ] && printf 1 || printf 0)" > "${fixture}/source/git-fixture"
+    fi
     cat > "${fixture}/bin/chezmoi" << EOF
 #!/usr/bin/env bash
+if [[ \$1 == source-path ]]; then
+    printf '%s\n' '${source_path}'
+    exit 0
+fi
 printf 'chezmoi %s\n' "\$*" >> "${fixture}/calls"
 exit ${apply_exit}
 EOF
@@ -57,12 +75,26 @@ assert_chezmoi_externals_cached() {
 EOF
     cat > "${fixture}/bin/git" << EOF
 #!/usr/bin/env bash
+clone="\$PWD"
+if [[ \$1 == -C ]]; then
+    clone="\$2"
+    shift 2
+fi
+if [[ \$* == "rev-parse --show-toplevel" ]]; then
+    printf '%s\n' "\$(dirname "\$clone")"
+    exit 0
+fi
+. "\${clone}/git-fixture"
 case "\$*" in
-    "branch --show-current") printf '%s\n' '${git_branch}' ;;
-    "rev-parse --abbrev-ref --symbolic-full-name @{upstream}") printf '%s\n' '${git_upstream}' ;;
-    "diff --quiet"|"diff --cached --quiet") exit ${git_dirty} ;;
-    "ls-files -u") if [ ${git_unmerged} -eq 1 ]; then printf '100644 conflict 1\\tfile\\n'; fi ;;
-    "pull --ff-only") printf 'git pull --ff-only\n' >> "${fixture}/calls"; exit ${git_pull_exit} ;;
+    "branch --show-current") printf '%s\n' "\${branch}" ;;
+    "rev-parse --abbrev-ref --symbolic-full-name @{upstream}") printf '%s\n' "\${upstream}" ;;
+    "diff --quiet"|"diff --cached --quiet") exit "\${dirty}" ;;
+    "ls-files -u") if [ "\${unmerged}" -eq 1 ]; then printf '100644 conflict 1\\tfile\\n'; fi ;;
+    "pull --ff-only")
+        printf 'git pull --ff-only\n' >> "\${clone}/calls"
+        printf 'pull %s\n' "\${name}" >> "${fixture}/pulls"
+        exit "\${pull_exit}"
+        ;;
 esac
 EOF
     cat > "${fixture}/scripts/update-agent-assets.sh" << EOF
@@ -115,6 +147,31 @@ EOF
     [[ "$output" != *"tracked files have staged or unstaged changes"* ]]
     # Last: `run` replaces $output, which the assertions above read.
     run ! grep -q '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls"
+}
+
+@test "[common] update pulls the checkout, then the chezmoi source clone when it is another clone" {
+    run_update_fixture running 0 0 0 0 0 "" main origin/main 0 0 0 "" 0 0 clean
+    [ "$status" -eq 0 ]
+    [ "$(head -n 1 "${UPDATE_FIXTURE}/calls")" = "git pull --ff-only" ]
+    [ "$(cat "${UPDATE_FIXTURE}/source/calls")" = "git pull --ff-only" ]
+    [ "$(cat "${UPDATE_FIXTURE}/pulls")" = "pull checkout
+pull source" ]
+    [[ "$output" != *"Notice: local source not pulled"* ]]
+}
+
+@test "[common] update pulls the checkout and names the source clone in the notice when its guard holds" {
+    run_update_fixture running 0 0 0 0 0 "" main origin/main 0 0 0 "" 0 0 dirty
+    [ "$status" -eq 0 ]
+    [ "$(grep -c '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
+    [ ! -e "${UPDATE_FIXTURE}/source/calls" ]
+    [ "$(cat "${UPDATE_FIXTURE}/pulls")" = "pull checkout" ]
+    [[ "$output" == *"Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C ${UPDATE_FIXTURE}/source pull' to fetch remote updates."* ]]
+}
+
+@test "[common] update pulls the checkout alone when the source clone is the checkout" {
+    run_update_fixture running 0 0 0 0 0 "" main origin/main 0
+    [ "$status" -eq 0 ]
+    [ "$(cat "${UPDATE_FIXTURE}/pulls")" = "pull checkout" ]
 }
 
 @test "[common] update reloads a running Herdr server exactly once" {

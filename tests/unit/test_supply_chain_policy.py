@@ -468,10 +468,14 @@ main
             self.assertNotIn("--locked", (ROOT / relative).read_text(), relative)
         makefile = (ROOT / "Makefile").read_text()
         self.assertNotRegex(makefile, r"(?m)^upgrade:")
-        # The pull runs alone, then a second make reads the Makefile it fetched.
+        # The pulls run alone (the checkout, then the chezmoi source clone when it is another clone by identity), then a
+        # second make reads the Makefile they fetched.
         update = makefile.split("\nupdate:\n", 1)[1].split("\n.PHONY:", 1)[0]
         self.assertTrue(update.rstrip("\n").endswith("\t@$(MAKE) --no-print-directory update-tree"), update)
-        self.assertLess(update.index("git pull --ff-only"), update.index("update-tree"))
+        self.assertLess(update.index('pull "$(CURDIR)"'), update.index('pull "$$src"'))
+        self.assertLess(update.index('pull "$$src"'), update.index("update-tree"))
+        self.assertIn('[ "$$src" -ef "$(CURDIR)" ]', update)
+        self.assertEqual(1, update.count("pull --ff-only;"), update)
         self.assertNotIn("chezmoi apply", update)
         tree = makefile.split("\nupdate-tree:\n", 1)[1].split("\n.PHONY:", 1)[0]
         upgrade = tree.index("\t./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)\n")

@@ -750,6 +750,23 @@ EOF
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertFalse((home / ".local/bin/crit").exists())
 
+    def git_clone_fixture(
+        self,
+        clone: Path,
+        *,
+        name: str,
+        branch: str = "main",
+        upstream: str = "origin/main",
+        dirty: bool = False,
+        unmerged: bool = False,
+    ) -> None:
+        """The fake git's answers for one clone: the stub reads them from the clone `-C` names, logs that clone's pull
+        into its own `calls`, and appends `pull <name>` to the shared sequence, so a second clone answers for itself."""
+        clone.mkdir(parents=True, exist_ok=True)
+        (clone / "git-fixture").write_text(
+            f"name='{name}'\nbranch='{branch}'\nupstream='{upstream}'\ndirty={int(dirty)}\nunmerged={int(unmerged)}\n"
+        )
+
     def update_fixture(
         self,
         *,
@@ -757,26 +774,48 @@ EOF
         upstream: str = "origin/main",
         dirty: bool = False,
         unmerged: bool = False,
+        source: dict[str, object] | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], Path]:
+        """Run make update in a fixture checkout. `source` makes the fake chezmoi's `source-path` name a second clone
+        (its guard state as git_clone_fixture's keywords); otherwise it names the checkout's own home/."""
         repo = self.temp_dir / f"update-{'dirty' if dirty else 'clean'}"
         home = repo / "home"
         bin_dir = repo / "bin"
         (repo / "scripts").mkdir(parents=True)
         home.mkdir()
         shutil.copy(ROOT / "Makefile", repo / "Makefile")
+        self.git_clone_fixture(repo, name="checkout", branch=branch, upstream=upstream, dirty=dirty, unmerged=unmerged)
+        source_path = home
+        if source is not None:
+            self.git_clone_fixture(self.source_clone, name="source", **source)
+            source_path = self.source_clone / "home"
+            source_path.mkdir()
         self.executable(
             bin_dir / "git",
-            f"""
+            """
+            clone="$PWD"
+            if [ "$1" = -C ]; then clone="$2"; shift 2; fi
+            if [ "$*" = "rev-parse --show-toplevel" ]; then printf '%s\\n' "$(dirname "$clone")"; exit 0; fi
+            . "$clone/git-fixture"
             case "$*" in
-                "branch --show-current") printf '{branch}\\n' ;;
-                "rev-parse --abbrev-ref --symbolic-full-name @{{upstream}}") printf '{upstream}\\n' ;;
-                "diff --quiet"|"diff --cached --quiet") exit {int(dirty)} ;;
-                "ls-files -u") if [ {int(unmerged)} -eq 1 ]; then printf '100644 conflict 1\\tfile\\n'; fi ;;
-                "pull --ff-only") printf 'git pull --ff-only\\n' >> "$TEST_LOG" ;;
+                "branch --show-current") printf '%s\\n' "$branch" ;;
+                "rev-parse --abbrev-ref --symbolic-full-name @{upstream}") printf '%s\\n' "$upstream" ;;
+                "diff --quiet"|"diff --cached --quiet") exit "$dirty" ;;
+                "ls-files -u") if [ "$unmerged" -eq 1 ]; then printf '100644 conflict 1\\tfile\\n'; fi ;;
+                "pull --ff-only")
+                    printf 'git pull --ff-only\\n' >> "$clone/calls"
+                    printf 'pull %s\\n' "$name" >> "$TEST_PULLS"
+                    ;;
             esac
             """,
         )
-        self.executable(bin_dir / "chezmoi", 'printf \'chezmoi %s\\n\' "$*" >> "$TEST_LOG"\n')
+        self.executable(
+            bin_dir / "chezmoi",
+            """
+            if [ "$1" = source-path ]; then printf '%s\\n' "$CHEZMOI_SOURCE_PATH"; exit 0; fi
+            printf 'chezmoi %s\\n' "$*" >> "$TEST_LOG"
+            """,
+        )
         self.executable(bin_dir / "mise", 'printf \'mise %s\\n\' "$*" >> "$TEST_LOG"\n')
         self.executable(
             bin_dir / "herdr",
@@ -809,9 +848,21 @@ EOF
                 "HOME": str(home),
                 "PATH": f"{bin_dir}:/usr/bin:/bin",
                 "TEST_LOG": str(log),
+                "TEST_PULLS": str(self.pull_sequence),
+                "CHEZMOI_SOURCE_PATH": str(source_path),
             },
         )
         return result, log
+
+    @property
+    def source_clone(self) -> Path:
+        """The second clone of update_fixture(source=...), the one the fake chezmoi's source-path names."""
+        return self.temp_dir / "update-source"
+
+    @property
+    def pull_sequence(self) -> Path:
+        """The fake git's shared record of pulls, one `pull <clone name>` line each, in order."""
+        return self.temp_dir / "pulls"
 
     def test_make_update_pulls_clean_main_before_apply(self) -> None:
         result, log = self.update_fixture()
@@ -854,6 +905,36 @@ EOF
         self.assertNotIn("git pull --ff-only", log.read_text())
         self.assertIn("index has unmerged files", result.stdout)
         self.assertNotIn("current branch is", result.stdout)
+
+    def test_make_update_pulls_the_checkout_then_the_chezmoi_source_clone(self) -> None:
+        # The laptop's shape: the checkout and the chezmoi source are two clones, so both are pulled, the checkout first.
+        result, log = self.update_fixture(source={})
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("git pull --ff-only", log.read_text().splitlines()[0])
+        self.assertEqual(["git pull --ff-only"], (self.source_clone / "calls").read_text().splitlines())
+        self.assertEqual(["pull checkout", "pull source"], self.pull_sequence.read_text().splitlines())
+        self.assertNotIn("Notice: local source not pulled", result.stdout)
+
+    def test_make_update_pulls_the_checkout_and_names_the_source_clone_whose_guard_holds(self) -> None:
+        result, log = self.update_fixture(source={"dirty": True})
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("git pull --ff-only", log.read_text().splitlines()[0])
+        self.assertFalse((self.source_clone / "calls").exists())
+        self.assertEqual(["pull checkout"], self.pull_sequence.read_text().splitlines())
+        self.assertIn(
+            "Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C ",
+            result.stdout,
+        )
+        self.assertIn(f"{self.source_clone} pull' to fetch remote updates.", result.stdout)
+
+    def test_make_update_pulls_the_checkout_alone_when_the_source_clone_is_the_checkout(self) -> None:
+        # The default: source-path names <checkout>/home, whose toplevel is the checkout itself, so one pull.
+        result, _log = self.update_fixture()
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(["pull checkout"], self.pull_sequence.read_text().splitlines())
 
     def router_credential_root(self, dsh_home: Path, *, login: bool) -> None:
         """The Router's credential root under a scratch DSH_HOME as the operator's step leaves it: the chain router-gh

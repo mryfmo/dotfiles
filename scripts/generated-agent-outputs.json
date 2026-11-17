@@ -699,7 +699,7 @@
       "target": ".local/bin/common/worker-worktree.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "7da9134b486915b6936fb60a137e96e84fc7e971f85e1ba3fd5579adbf79891e"
+      "sha256": "233bc60f35ee49ffdad5b396524977c5cdf9c4c626c0f241f4344a609132bd0f"
     },
     {
       "source": "home/dot_local/bin/common/executable_worktree-gc.sh",

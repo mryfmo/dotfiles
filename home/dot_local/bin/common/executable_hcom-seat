@@ -1796,7 +1796,9 @@ done
 # count changes between its glob and its `ls -A`, and a concurrent launch's relink loop changes this one by design
 # (measured: `reading it gave 7 entries, the glob 8` in the two-launch test). The directory was held above to a real
 # directory of this user, and is readable and searchable; a listing that reads short removes less, never more, and
-# the next launch sweeps again. Every entry is tested again before its act (a concurrent launch may have taken it).
+# the next launch sweeps again. The glob reads a directory whose read fails as empty, so one more read whose status
+# is seen (`/bin/ls -A`, its names unused) follows it and refuses that case by name (U566b). Every entry is tested
+# again before its act (a concurrent launch may have taken it).
 kit_tools=("${required_tools[@]}" "${optional_tools[@]}")
 [[ -r ${tools_dir} && -x ${tools_dir} ]] || refuse "the private tool directory ${tools_dir} is not readable"
 tool_entries=()
@@ -1811,6 +1813,7 @@ for entry in "${tools_dir}"/*; do
 done
 if ((! tools_dotglob)); then shopt -u dotglob; fi
 if ((! tools_nullglob)); then shopt -u nullglob; fi
+/bin/ls -A -- "${tools_dir}" > /dev/null || refuse "cannot list the private tool directory ${tools_dir}: reading it failed"
 for entry in ${tool_entries[@]+"${tool_entries[@]}"}; do
     entry_name=${entry##*/}
     entry_kept=0
@@ -1819,9 +1822,11 @@ for entry in ${tool_entries[@]+"${tool_entries[@]}"}; do
             entry_kept=1
             break
         fi
-        # `.<tool>.<digits>` with a live pid (bash 3.2: no extglob, so the digits are tested by parameter expansion).
+        # `.<tool>.<digits>` whose digits spell a pid (`^[1-9][0-9]*$`: `kill -0 0` signals the process group and
+        # answers live, and a leading zero is no pid's spelling) and whose pid is live (bash 3.2: no extglob, so the
+        # form is tested by parameter expansion and two patterns).
         entry_digits=${entry_name#".${tool}."}
-        if [[ ${entry_name} == ".${tool}."* && -n ${entry_digits} && ${entry_digits} != *[!0-9]* ]] &&
+        if [[ ${entry_name} == ".${tool}."* && ${entry_digits} == [1-9]* && ${entry_digits} != *[!0-9]* ]] &&
             kill -0 "${entry_digits}" 2> /dev/null; then
             entry_kept=1
             break
@@ -1830,10 +1835,9 @@ for entry in ${tool_entries[@]+"${tool_entries[@]}"}; do
     ((! entry_kept)) || continue
     [[ -e ${entry} || -L ${entry} ]] || continue
     if [[ -L ${entry} ]]; then
-        # The '.' keeps a target's own trailing newlines from the command substitution.
-        if entry_target=$(/usr/bin/readlink -- "${entry}" && printf .); then
-            entry_target=${entry_target%.}
-            entry_target="it pointed at ${entry_target%$'\n'}"
+        # `-n` and the '.' sentinel: the target reaches the message whole, a line feed of its own at its end included.
+        if entry_target=$(/usr/bin/readlink -n -- "${entry}" && printf .); then
+            entry_target="it pointed at ${entry_target%.}"
         elif [[ ! -e ${entry} && ! -L ${entry} ]]; then
             continue
         else

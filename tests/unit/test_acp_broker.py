@@ -3243,6 +3243,180 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                 if override:
                     self.assertNotIn(override, out + err + data, "the refused value is printed nowhere")
 
+    # The lever's fixed PATH (`system_path`): no caller PATH entry runs anything (U85), so a recorder in front of the
+    # utility children the broker runs by name (sed, the hash tool) stands in `BASH_ENV`, the file every
+    # non-interactive bash reads before its script, which the broker (`#!/bin/bash`, not `-p`) reads at both entries
+    # and the relay passes through to each handler with the rest of its environment.
+    LEVER_SYSTEM_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
+
+    def bash_env_file(self, name, text):
+        path = Path(self.temp.name).resolve() / name
+        path.write_text(text)
+        return str(path)
+
+    def test_no_utility_child_of_the_listener_or_the_handler_inherits_the_seats_token(self):
+        """U553 round 1, verdict U553-dc83fece P1 (acp-broker:326): until round 2 the listener kept
+        CLAUDE_CODE_OAUTH_TOKEN exported for the relay's handlers, so sed, the hash tool and every other utility child
+        of the self-check and the pin checks inherited it, in the listener and in each handler. Now both entries move
+        the value into `seat_token` and clear the name before their first child, and the listener re-exports it on
+        the relay's start line alone. A recorder in front of sed and the hash tool (shasum, and sha256sum where the
+        system has one) writes the names of the environment a child of that call gets, keyed by the calling shell's
+        pid: the listener's records (its pid) and the handlers' (any other) both hold sed and the hash tool, and none
+        holds the token's name or the holder's; the worker's omp launch still carries the value."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        records = Path(self.temp.name).resolve() / "utility-records"
+        records.mkdir()
+        tools = {t: shutil.which(t, path=self.LEVER_SYSTEM_PATH) for t in ("sed", "shasum", "sha256sum")}
+        tools = {t: real for t, real in tools.items() if real}
+        self.assertIn("sed", tools)
+        hash_tools = {"shasum", "sha256sum"} & set(tools)
+        self.assertTrue(hash_tools, "a hash tool on the lever's PATH")
+        recorder = "".join(
+            f'{tool}() {{ /usr/bin/env | /usr/bin/cut -d= -f1 > "{records}/{tool}.$$.$RANDOM$RANDOM"; "{real}" "$@"; }}\n'
+            for tool, real in tools.items()
+        )
+        proc, sock = self.start_broker(name, cwd, BASH_ENV=self.bash_env_file("recorder.bash", recorder))
+
+        def recorded(by_listener):
+            return sorted(
+                {
+                    p.name.split(".")[0]
+                    for p in records.iterdir()
+                    if (p.name.split(".")[1] == str(proc.pid)) == by_listener
+                }
+            )
+
+        self.assertIn("sed", recorded(True), "the listener's self-check ran sed through the recorder")
+        self.assertTrue(
+            hash_tools & set(recorded(True)), f"the listener hashed itself through the recorder: {recorded(True)}"
+        )
+        self.assertEqual(recorded(False), [], "no handler before the first connection")
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
+        self.assertIn("sed", recorded(False), "the handler's self-check ran sed through the recorder")
+        self.assertTrue(
+            hash_tools & set(recorded(False)), f"the handler hashed itself through the recorder: {recorded(False)}"
+        )
+        _version, launch = self.calls_of("omp")
+        self.assertEqual(
+            launch["env"]["CLAUDE_CODE_OAUTH_TOKEN"], FIXTURE_TOKEN, "the worker's launch still carries it"
+        )
+        for record in sorted(records.iterdir()):
+            names = record.read_text().split()
+            self.assertTrue(names, record.name)
+            self.assertNotIn(
+                "CLAUDE_CODE_OAUTH_TOKEN", names, f"a utility child inherited the token's name: {record.name}"
+            )
+            self.assertNotIn("seat_" + "token", names, f"a utility child inherited the holder: {record.name}")
+        status, out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertNotIn(TOKEN_MARK, out + err)
+
+    def test_a_callers_exported_seat_token_does_not_abort_the_workers_launch(self):
+        """U553 round 1, verdict U553-dc83fece P2 (acp-broker:326): an exported `seat_token` in the broker's
+        environment kept its export attribute through round 1's plain assignment, so the launch's scrub unset the
+        holder and `${seat_token}` aborted the subshell under `set -u` (`seat_token: unbound variable`): omp's version
+        was read and no worker started. Now the holder is unset before the value is moved into it, at both entries,
+        so the caller's attribute is gone: the worker launches on the token, the holder's name reaches no recorded
+        environment, and no `unbound variable` line appears."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        holder = "seat_" + "token"
+        proc, sock = self.start_broker(name, cwd, **{holder: "exported-by-the-caller"})
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
+        version, launch = self.calls_of("omp")
+        self.assertEqual(launch["argv"], ["acp", "--profile", "dsh"], "the worker started")
+        self.assertEqual(launch["env"]["CLAUDE_CODE_OAUTH_TOKEN"], FIXTURE_TOKEN)
+        for label, call in (("the version read", version), ("the launch", launch)):
+            self.assertNotIn(holder, call["env"], f"{label} carries the caller's holder")
+        for call in self.calls_of("srt"):
+            self.assertNotIn(holder, call["env"])
+        self.assertEqual(len(self.log_lines("w1")), 3, self.log_lines("w1"))
+        status, out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertNotIn("unbound variable", err)
+        self.assertNotIn("exported-by-the-caller", out + err + json.dumps(self.calls_of("srt")) + json.dumps(launch))
+
+    def test_a_failed_environment_listing_refuses_the_workers_launch_and_starts_nothing(self):
+        """U553 round 1, verdict U553-dc83fece P2 (acp-broker:1582): round 1's scrub read `$(compgen -e)` in a `for`
+        word, where a failed listing is an empty list and every caller name reaches omp. Now the listing's status is
+        read (standing order 21): a `compgen` that fails inside worker_launch alone (a BASH_ENV function returning 7
+        there and the builtin everywhere else, the auditor's injection) refuses the launch by name on the stream and
+        on stderr, srt runs for no launch, omp runs for its version alone, the slot is reaped and the record closes
+        with status 2; the connection's other srt runs (the clone, the canary, the version, the head read) are
+        unchanged."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        injected = self.bash_env_file(
+            "compgen-fails.bash",
+            'compgen() { if [[ ${FUNCNAME[1]-} == worker_launch ]]; then return 7; fi; builtin compgen "$@"; }\n',
+        )
+        proc, sock = self.start_broker(name, cwd, BASH_ENV=injected)
+        conn = self.connect(sock, repo, "w1")
+        conn.sendall(PING)
+        slot = self.record_line(conn)
+        rest, last = self.finish(conn, slot)
+        refusal = (
+            "acp-broker: refused: cannot list the environment for the worker's launch (compgen -e failed);"
+            " omp acp not started\n"
+        )
+        self.assertEqual(rest.decode(), refusal, "the refusal is the one line after the record line; no worker byte")
+        self.assertEqual(last, "status=2 push=none")
+        (version,) = self.calls_of("omp")
+        self.assertEqual(version["argv"], ["--version"], "omp ran for its version alone")
+        srt_calls = self.calls_of("srt")
+        self.assertEqual(len(srt_calls), 5, srt_calls)
+        for call in srt_calls:
+            self.assertNotIn("--map-session-cwd", call["argv"], "no launch under srt")
+        self.assertEqual(self.acp_slots(), [])
+        self.assertEqual(len(self.log_lines("w1")), 3, self.log_lines("w1"))
+        self.assertIn("omp acp exit 2", self.log_lines("w1")[2])
+        status, out, err = self.stop_broker(proc)
+        self.assertEqual(status, -signal.SIGTERM, err)
+        self.assertIn(refusal.rstrip("\n"), err, "the launch's stderr line reaches the broker's stderr")
+        self.assertNotIn(TOKEN_MARK, out + err + rest.decode())
+
+    def test_an_exported_name_unset_refuses_is_kept_from_the_workers_environment(self):
+        """U553 round 1, verdict U553-dc83fece P2 (acp-broker:1582): round 1's scrub suppressed every `unset` failure,
+        so an exported readonly `SHELLOPTS` of the caller's reached omp. Now a name `unset` refuses is removed from
+        the exec'd environment by `/usr/bin/env -u <name>` beside `-u SHLVL` (a name on the argument list, never a
+        value): with `SHELLOPTS` exported (bash imports it readonly) and a name that is no identifier (`caller.dotted`,
+        which bash imports and passes on but cannot unset) in the broker's environment, omp's recorded environment
+        and the launch's srt environment equal exactly worker_env plus the token, as
+        test_srt_and_omp_run_by_their_physical_argv_under_the_listed_environment holds without them."""
+        name, cwd = self.make_router()
+        repo, _base = self.make_repo(cwd / "repo")
+        proc, sock = self.start_broker(
+            name, cwd, SHELLOPTS="braceexpand:hashall", USER="u553", LANG="C.UTF-8", SECRET_OF_THE_CALLER="x",
+            **{"caller.dotted": "x"},
+        )  # fmt: skip
+        self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
+        version, launch = self.calls_of("omp")
+        self.assertEqual(launch["argv"], ["acp", "--profile", "dsh"])
+        slots = {
+            Path(c["argv"][1]).parent.name for c in self.calls_of("srt") if c["argv"][1].endswith("/settings.json")
+        }
+        (slot,) = slots
+        seat_path = f"{SYSTEM_PATH.split(':')[0]}:/bin:/usr/sbin:/sbin:{self.env['PATH']}"
+        probe = subprocess.run(
+            ["/usr/bin/env", "-i", f"PATH={SYSTEM_PATH}", str(self.python), "-c", "import json, os; print(json.dumps(sorted(os.environ)))"],
+            capture_output=True, text=True, check=True,
+        )  # fmt: skip
+        own = set(json.loads(probe.stdout)) - {"PATH"}
+        listed = {"HOME": str(self.home), "PATH": seat_path, "OMP_PROFILE": "dsh",
+                  "CLAUDE_CONFIG_DIR": str(self.seats_path / ".state/claude-router"), "AWS_SHARED_CREDENTIALS_FILE": "/dev/null",
+                  "AWS_CONFIG_FILE": "/dev/null", "HCOM_SEAT_SANDBOX": str(self.seats_path / ".state" / slot),
+                  "CLAUDE_CODE_OAUTH_TOKEN": FIXTURE_TOKEN, "USER": "u553", "LANG": "C.UTF-8"}  # fmt: skip
+        self.assertEqual({k: v for k, v in launch["env"].items() if k not in own}, listed)
+        self.assertEqual(set(launch["env"]) - own, set(listed))
+        for unwanted in ("SHELLOPTS", "caller.dotted", "SECRET_OF_THE_CALLER", "SHLVL"):
+            self.assertNotIn(unwanted, launch["env"], f"{unwanted} reached omp")
+        self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN", version["env"])
+        *_, launch_call, _head_read = self.calls_of("srt")
+        self.assertIn("--map-session-cwd", launch_call["argv"])
+        self.assertEqual(set(launch_call["env"]) - own, set(listed), "the launch's srt environment is the list too")
+        self.assertEqual(self.stop_broker(proc)[0], -signal.SIGTERM)
+
     def test_the_worker_settings_are_the_dsh_row_but_the_named_rows(self):
         """The byte-identical compare (U343 ACCEPTANCE 6): the Router's settings come from a real held `hcom-seat
         router` launch on the fixture, the dsh row's from a real held `hcom-seat dsh` launch, and the worker's from

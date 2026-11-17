@@ -6059,7 +6059,7 @@
 
 
 <h1 id="installubuntuclientghosttysh">install/ubuntu/client/ghostty.sh<a class="headerlink" href="#installubuntuclientghosttysh" title="Permanent link">&para;</a></h1>
-<p>Adds the community-maintained Ghostty Ubuntu PPA recommended by mkasberg/ghostty-ubuntu and installs the <code>ghostty</code> package through apt. When a Launchpad host the remaining steps need gives no answer, Ghostty is skipped with a retry line before any apt call. Once the hosts answer the probe, every failure is fatal, a later failed index or package fetch (such as a 503 between the probe and apt) included: the probe is the only network evidence, so a local, permission, lock or resolution fault is never masked as an outage, and the next make update retries.</p>
+<p>Adds the community-maintained Ghostty Ubuntu PPA recommended by mkasberg/ghostty-ubuntu and installs the <code>ghostty</code> package through apt. When a Launchpad host the remaining steps need gives no answer, Ghostty is skipped with a retry line before any apt call. The network evidence is the probe and apt's own report of the PPA: a 5xx that apt's output attributes to the PPA's URL (a failed index or package fetch, such as a 503 between the probe and apt) is the same outage one step later and is skipped with the same retry line. Every other failure after the probe is fatal, so a local, permission, lock or resolution fault is never masked as an outage, and the next make update retries.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/ubuntu/client/ghostty.sh</code></li>
@@ -6069,6 +6069,9 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>add_ghostty_ppa</code></li>
+<li><code>ghostty_apt</code></li>
+<li><code>ghostty_ppa_outage_code</code></li>
+<li><code>ghostty_skipped_after_probe</code></li>
 <li><code>ghostty_source_file</code></li>
 <li><code>ghostty_unreachable_url</code></li>
 <li><code>install_ghostty</code></li>
@@ -6085,11 +6088,13 @@
 <span class="c1">#   Adds the community-maintained Ghostty Ubuntu PPA recommended by</span>
 <span class="c1">#   mkasberg/ghostty-ubuntu and installs the `ghostty` package through apt.</span>
 <span class="c1">#   When a Launchpad host the remaining steps need gives no answer, Ghostty is</span>
-<span class="c1">#   skipped with a retry line before any apt call. Once the hosts answer the</span>
-<span class="c1">#   probe, every failure is fatal, a later failed index or package fetch (such</span>
-<span class="c1">#   as a 503 between the probe and apt) included: the probe is the only</span>
-<span class="c1">#   network evidence, so a local, permission, lock or resolution fault is never</span>
-<span class="c1">#   masked as an outage, and the next make update retries.</span>
+<span class="c1">#   skipped with a retry line before any apt call. The network evidence is the</span>
+<span class="c1">#   probe and apt's own report of the PPA: a 5xx that apt's output attributes</span>
+<span class="c1">#   to the PPA's URL (a failed index or package fetch, such as a 503 between</span>
+<span class="c1">#   the probe and apt) is the same outage one step later and is skipped with</span>
+<span class="c1">#   the same retry line. Every other failure after the probe is fatal, so a</span>
+<span class="c1">#   local, permission, lock or resolution fault is never masked as an outage,</span>
+<span class="c1">#   and the next make update retries.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -6190,13 +6195,101 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Print the 5xx code a line of apt's output attributes to the Ghostty PPA.</span>
+<span class="c1"># @arg $1 string apt-get's output, stdout and stderr.</span>
+<span class="c1"># @stdout The code of the first line naming GHOSTTY_PPA_URL with a 5xx code between blanks, as apt writes</span>
+<span class="c1">#   `W: Failed to fetch https://ppa.launchpadcontent.net/mkasberg/ghostty-ubuntu/ubuntu/dists/noble/InRelease  503</span>
+<span class="c1">#   Service Unavailable [IP: ...]` (an index, exit 0) or the same `E:` line for a .deb under pool/ (exit 100);</span>
+<span class="c1">#   nothing when no line does. Another PPA on the same host is not this PPA's outage, so the host alone never matches.</span>
+<span class="c1"># @exitcode 0 The output was read to its end: the code is printed, or nothing when no line qualifies.</span>
+<span class="c1"># @exitcode * grep's status when it could not read the output (2, or 128 plus a signal): no judgement was made. The</span>
+<span class="c1">#   output reaches grep over a pipe and grep says how its read ended (0 a line names the PPA, 1 none does, 2 a read</span>
+<span class="c1">#   error); a `read` loop over a here-string returns 1 at the end of the input and on a read error alike, and bash</span>
+<span class="c1">#   stages a here-string in a temporary file whose failure the loop never reports, so that form's failure was unseen.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>ghostty_ppa_outage_code<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>lines<span class="w"> </span>line<span class="w"> </span><span class="nv">code</span><span class="o">=</span><span class="s1">'[[:space:]](5[0-9][0-9])([[:space:]]|$)'</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nv">lines</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-F<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">GHOSTTY_PPA_URL</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="c1"># The PPA's lines are walked by parameter expansion: no second read whose failure could go unseen.</span>
+<span class="w">    </span><span class="nv">lines</span><span class="o">+=</span><span class="s1">$'\n'</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lines</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">line</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">lines</span><span class="p">%%</span><span class="s1">$'\n'</span><span class="p">*</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">lines</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">lines</span><span class="p">#*</span><span class="s1">$'\n'</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_REMATCH</span><span class="p">[1]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Run one apt-get step under sudo with its output kept, and judge the output for the PPA's outage.</span>
+<span class="c1"># @arg $@ string apt-get's arguments.</span>
+<span class="c1"># @stderr apt-get's stdout and stderr, line by line as it writes them, so the operator keeps apt's lines. tee writes</span>
+<span class="c1">#   to a file and copies to the inherited stderr: `tee /dev/stderr` would reopen a stderr that is a file and</span>
+<span class="c1">#   truncate it. One line naming the step (and the file, for tee and cat) when the output could not be kept, read</span>
+<span class="c1">#   or judged.</span>
+<span class="c1"># @stdout The 5xx code of ghostty_ppa_outage_code over the step's output, or nothing.</span>
+<span class="c1"># @exitcode 0 apt-get exited 0, or its output attributed a 5xx to the PPA (the code is printed, whatever apt's status).</span>
+<span class="c1"># @exitcode 1 The output could not be kept (tee failed, whatever the file holds), read (cat failed) or judged</span>
+<span class="c1">#   (ghostty_ppa_outage_code failed), so no judgement was made and neither apt's status nor the output is read as a</span>
+<span class="c1">#   pass or as the outage (standing order 21). The file is removed after the message names it.</span>
+<span class="c1"># @exitcode * apt-get's own status otherwise.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>ghostty_apt<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>log<span class="w"> </span>output<span class="w"> </span>code<span class="w"> </span>status
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">statuses</span><span class="o">=(</span><span class="m">0</span><span class="w"> </span><span class="m">0</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">log</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="c1"># apt's status and tee's are read apart, from PIPESTATUS right after the pipeline: the pipeline's one status under</span>
+<span class="w">    </span><span class="c1"># pipefail is the rightmost failure, so apt's 100 would hide a failed tee, and a failed tee would pass for apt's.</span>
+<span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tee<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">statuses</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">PIPESTATUS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">status</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">statuses</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">statuses</span><span class="p">[1]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"ghostty: cannot keep apt-get %s's output in %s; the outage judgement needs it\n"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$*</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>cat<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"ghostty: cannot read apt-get %s's output from %s\n"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$*</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">code</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>ghostty_ppa_outage_code<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"ghostty: cannot judge apt-get %s's output for the PPA's outage: its reader exited %s\n"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$*</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$?</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print the retry line for a 5xx the PPA answered to apt after it answered the probe.</span>
+<span class="c1"># @arg $1 string The HTTP code.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>ghostty_skipped_after_probe<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ghostty not installed: its PPA answered %s after the probe; the next make update retries\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Install Ghostty from apt, registering the PPA when no source names it.</span>
-<span class="c1"># @exitcode 0 Ghostty is installed, or a Launchpad host it needs gave no answer and Ghostty was skipped.</span>
-<span class="c1"># @exitcode 1 add-apt-repository succeeded but no apt source names the PPA.</span>
+<span class="c1"># @exitcode 0 Ghostty is installed, or it was skipped: a Launchpad host it needs gave no answer to the probe, or the</span>
+<span class="c1">#   PPA answered a 5xx to apt's index or package fetch after the probe.</span>
+<span class="c1"># @exitcode 1 add-apt-repository succeeded but no apt source names the PPA; or an apt step's output could not be kept,</span>
+<span class="c1">#   read or judged, so no outage judgement was made.</span>
 <span class="c1"># @exitcode * Otherwise the status of the failed probe, dependency, registration, refresh or install command.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_ghostty<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>sources_file<span class="w"> </span>unreachable
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>sources_file<span class="w"> </span>unreachable<span class="w"> </span>code<span class="w"> </span>status
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">probes</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">GHOSTTY_ARCHIVE_PROBE</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">    </span>installed<span class="w"> </span>ghostty<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="nv">sources_file</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>ghostty_source_file<span class="k">)</span><span class="s2">"</span>
@@ -6215,8 +6308,21 @@
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>update
-<span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="c1"># An index 5xx is a warning to apt (exit 0, old lists kept), so the output decides, not the status alone.</span>
+<span class="w">    </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nv">code</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>ghostty_apt<span class="w"> </span>update<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>ghostty_skipped_after_probe<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nv">code</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>ghostty_apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>ghostty_skipped_after_probe<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

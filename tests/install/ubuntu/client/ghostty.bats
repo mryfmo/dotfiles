@@ -18,7 +18,12 @@ readonly ANSWERED="ghostty not installed: its PPA answered "
 # fetch (the ghostty .deb answers 503, `E: Failed to fetch`, exit 100), missing (the .deb answers 404), permission
 # (the install cannot open dpkg's lock), resolve (held broken packages), or archive
 # (the dependency install). SPC and STATUS are the dpkg status of software-properties-common (default installed;
-# empty is absent) and of ghostty (default absent). Every curl, add-apt-repository and apt-get call is logged, an
+# empty is absent) and of ghostty (default absent). TEE, GREP and CAT fail the three readers of an apt step's output
+# in ghostty_apt, which calls each by name: TEE=nothing is a tee that writes nothing and exits 1, TEE=kept one that
+# writes every line to its file and exits 1 (the copy to stderr failed); GREP=fail answers the detector's own call,
+# `grep -F -- <PPA URL>` (ghostty_ppa_outage_code's read of the output), with a read error and GNU grep's exit 2, and
+# runs every other grep; CAT=fail is a cat that exits 1 with a read error. Every curl, add-apt-repository and apt-get
+# call is logged, so is each injected failure with the file it names (`tee <file>`, `grep read error`, `cat <file>`), an
 # install that completes is logged as installed, and the ERR trap logs ERR when it fires in the script's own shell
 # (a fake that returns non-zero inside a command substitution is not a script failure).
 readonly APT_FAKES='
@@ -85,6 +90,31 @@ readonly APT_FAKES='
             *:"install "*) printf "installed %s\n" "${*: -1}" >> "${HOME}/calls.log" ;;
         esac
     }
+    tee() {
+        case "${TEE-}" in
+            nothing)
+                printf "tee %s\n" "${*: -1}" >> "${HOME}/calls.log"
+                command cat > /dev/null; echo "tee: ${*: -1}: No space left on device" >&2; return 1 ;;
+            kept)
+                printf "tee %s\n" "${*: -1}" >> "${HOME}/calls.log"
+                command cat > "${*: -1}"; echo "tee: standard output: Input/output error" >&2; return 1 ;;
+            *) command tee "$@" ;;
+        esac
+    }
+    grep() {
+        if [ "${GREP-}" = fail ] && [ "$1" = -F ] && [ "$2" = -- ]; then
+            echo "grep read error" >> "${HOME}/calls.log"
+            echo "grep: (standard input): Input/output error" >&2; return 2
+        fi
+        command grep "$@"
+    }
+    cat() {
+        if [ "${CAT-}" = fail ]; then
+            printf "cat %s\n" "$1" >> "${HOME}/calls.log"
+            echo "cat: $1: Input/output error" >&2; return 1
+        fi
+        command cat "$@"
+    }
 '
 
 load "../../helpers/apt_record"
@@ -101,7 +131,7 @@ function teardown() {
 
 # @description Run main under the fakes with a fresh HOME.
 # @arg $1 string The directory name under BATS_TEST_TMPDIR.
-# @arg $@ string Environment assignments for the fakes (PROBE, FAIL, SPC, STATUS).
+# @arg $@ string Environment assignments for the fakes (PROBE, FAIL, SPC, STATUS, TEE, GREP, CAT).
 function run_fakes() {
     local home="${BATS_TEST_TMPDIR}/$1"
     shift
@@ -264,6 +294,60 @@ function run_fakes() {
         [[ "${output}" != *"${RETRY}"* ]]
         grep -qx 'apt-get install -y ghostty' "${BATS_TEST_TMPDIR}/${fail}/calls.log"
     done
+}
+
+# The three cases below assert on the output with grep, a plain command, not with `[[`: bash 3.2 (macOS) runs on past a
+# failing `[[` under set -e inside a function (measured), so a `[[` in the middle of a case is no assertion there. The
+# retry line's absence is asserted on a copy of the output, since `run` replaces it.
+@test "[ubuntu-client] a tee that fails to keep apt's output after a PPA 503 is fatal by name, whatever its file holds; no judgement is made from the file" {
+    # The three readers of an apt step's output are producers whose failure is never a pass (standing order 21). Here
+    # the fixture's tee fails after the index 503: writing nothing, or every line with its stderr copy failed. Round
+    # 1 folded tee's status into apt's under pipefail and judged the file anyway: with the lines kept it printed the
+    # retry line and exited 0; with nothing kept it exited 1 without a word.
+    local mode log out
+    for mode in nothing kept; do
+        run_fakes "${mode}" FAIL=index TEE="${mode}"
+        out="${output}"
+        [ "${status}" -eq 1 ]
+        log="$(sed -n 's/^tee //p' "${BATS_TEST_TMPDIR}/${mode}/calls.log")"
+        [ -n "${log}" ]
+        grep -qF -- "ghostty: cannot keep apt-get update's output in ${log}; the outage judgement needs it" <<< "${out}"
+        [ ! -e "${log}" ]
+        grep -qx ERR "${BATS_TEST_TMPDIR}/${mode}/calls.log"
+        run ! grep -qF -- "${RETRY}" <<< "${out}"
+        run ! grep -q -e '^apt-get install' -e '^installed ghostty' "${BATS_TEST_TMPDIR}/${mode}/calls.log"
+    done
+}
+
+@test "[ubuntu-client] a detector that cannot read apt's output is fatal by name: a failed read is not no outage and not apt's status" {
+    # ghostty_ppa_outage_code reads the output through `grep -F -- <PPA URL>` over a pipe, so grep's exit 2 is the read
+    # failure; the fixture's grep answers that one call with it. Round 1 read the output with a `read` loop over a
+    # here-string, whose failure it never saw, and ghostty_apt never read the detector's status: the index 503 case
+    # printed the retry line and exited 0.
+    local out
+    run_fakes home FAIL=index GREP=fail
+    out="${output}"
+    [ "${status}" -eq 1 ]
+    grep -qx 'grep read error' "${BATS_TEST_TMPDIR}/home/calls.log"
+    grep -qF -- "ghostty: cannot judge apt-get update's output for the PPA's outage: its reader exited 2" <<< "${out}"
+    grep -qx ERR "${BATS_TEST_TMPDIR}/home/calls.log"
+    run ! grep -qF -- "${RETRY}" <<< "${out}"
+    run ! grep -q -e '^apt-get install' -e '^installed ghostty' "${BATS_TEST_TMPDIR}/home/calls.log"
+}
+
+@test "[ubuntu-client] a cat that cannot read the kept output is fatal naming the file, which is then removed" {
+    # Round 1 exited 1 here too, but said nothing: the operator had no file name and no step to look at.
+    local log out
+    run_fakes home FAIL=index CAT=fail
+    out="${output}"
+    [ "${status}" -eq 1 ]
+    log="$(sed -n 's/^cat //p' "${BATS_TEST_TMPDIR}/home/calls.log")"
+    [ -n "${log}" ]
+    grep -qF -- "ghostty: cannot read apt-get update's output from ${log}" <<< "${out}"
+    [ ! -e "${log}" ]
+    grep -qx ERR "${BATS_TEST_TMPDIR}/home/calls.log"
+    run ! grep -qF -- "${RETRY}" <<< "${out}"
+    run ! grep -q -e '^apt-get install' -e '^installed ghostty' "${BATS_TEST_TMPDIR}/home/calls.log"
 }
 
 @test "[ubuntu-client] the ghostty step is a guarded run_after_ script and the misc run_once_ script no longer includes it" {

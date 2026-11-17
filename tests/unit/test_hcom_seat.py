@@ -35,6 +35,15 @@ SYSTEM_PATH = "/usr/bin:/bin"
 # `sk-ant-oat01-` and 20 to 255 base64url characters), never a real token, built at runtime so no file holds a literal
 # the secret scan matches; the shim exports it to the child and it must appear in no line of any lever.
 FAKE_OAT = "sk-ant-oat01-" + "FAKETOKENFORTEST" + "0" * 44
+# A sh statement setting `foreign` to the count of process-environment entries whose names are no identifier of bash, as
+# the tests plant them (an exported function's `BASH_FUNC_<name>%%`, `a.b`; U560 round 3), read from `/usr/bin/env` and
+# never from the shell's own table, which holds no such name; each read's status is seen as in environment_probe
+# (`env-failed`, `grep-failed`; a `-failed` reading fails the test through probe_record or an explicit check).
+FOREIGN_ENTRIES_PROBE = (
+    "foreign=$(e=$(/usr/bin/env) || { echo env-failed; exit; };"
+    " n=$(printf '%s\\n' \"$e\" | /usr/bin/grep -c -e '^BASH_FUNC_' -e '^a\\.b='); s=$?;"
+    ' if [ "$s" -le 1 ]; then echo "$n"; else echo grep-failed; fi)'
+)
 # The rows under the shared Claude Code directory that every seat's settings deny for write (U318).
 SHARED_CLAUDE_DENIES = (
     "settings.json",
@@ -181,13 +190,17 @@ class SeatFixture(unittest.TestCase):
             ["git", *args], cwd=cwd or self.repo, env=self.env, capture_output=True, text=True, check=True
         ).stdout.strip()
 
-    def seat(self, *args, cwd=None, **overrides):
+    def seat(self, *args, cwd=None, privileged=True, **overrides):
+        """Run the launcher as the operator does, by its path, so its interpreter line `#!/bin/bash -p` governs its
+        start-up (U560: bash reads no BASH_ENV or ENV file, imports no function and ignores an imported SHELLOPTS).
+        `privileged=False` runs it as `/bin/bash <file>`, without -p: the one way a test's BASH_ENV hook, the suite's
+        DEBUG-trap injection form, is read by the launcher's shell; such a test measures the launcher's handling of the
+        injected fault, never its own start-up, which the launches by path measure."""
         env = {**self.env, **{key: value for key, value in overrides.items() if value is not None}}
         for key in (key for key, value in overrides.items() if value is None):
             env.pop(key, None)
-        return subprocess.run(
-            [str(SEAT), *args], cwd=cwd or self.repo, env=env, capture_output=True, text=True, check=False
-        )
+        argv = [str(SEAT), *args] if privileged else ["/bin/bash", str(SEAT), *args]
+        return subprocess.run(argv, cwd=cwd or self.repo, env=env, capture_output=True, text=True, check=False)
 
     def calls_of(self, tool):
         path = self.calls / tool
@@ -1045,6 +1058,45 @@ class HcomSeatTest(SeatFixture):
         self.assertFalse(self.claude_calls.exists(), "no claude runs")
         self.assertNotIn(caller, run.stdout + run.stderr)
 
+    @staticmethod
+    def bash_array(text, name):
+        """The words of the bash array `name=( ... )` in `text`, one or many lines, as the shell would split them."""
+        start = text.index(f"{name}=(") + len(name) + 2
+        return shlex.split(text[start : text.index(")", start)])
+
+    @staticmethod
+    def environment_probe(names, env_tool="/usr/bin/env", grep_tool="/usr/bin/grep"):
+        """A sh fragment printing `NAME=present` or `NAME=unset` per name as the process environment has it
+        (`/usr/bin/env`), never the shell's own variable table: a bash holds a SHELLOPTS of its own whether or not one
+        was in its environment, and only an imported one is exported to its children. Each read's status is seen
+        (U560 round 2, verdict U560-c60013ab P2: `env | grep -q` read `unset` when either tool failed): a failing env
+        prints `NAME=env-failed`, whatever it wrote, and a grep status above 1 `NAME=grep-failed`; `probe_record`
+        raises on either, so a failed read is the test's failure and never a reading."""
+        return " ".join(
+            f"{name}=$(e=$({env_tool}) || {{ echo env-failed; exit; }}; printf '%s\\n' \"$e\" | {grep_tool} -q '^{name}=';"
+            " s=$?; if [ $s -eq 0 ]; then echo present; elif [ $s -eq 1 ]; then echo unset; else echo grep-failed; fi)"
+            for name in names
+        )
+
+    def probe_record(self, path):
+        """The text a fake wrote with environment_probe's fragment; a `-failed` reading in it fails the test by name."""
+        text = path.read_text()
+        self.assertNotRegex(text, r"=(env|grep)-failed\b", f"a probe's read failed in {path}")
+        return text
+
+    def shell_behaviour_hook(self):
+        """A BASH_ENV file that appends `$$` to a marker in every bash that sources it (`$0` is still `/bin/bash` when
+        bash reads the file, before a script's first statement). Since U560 round 2 the launcher and the shim run under
+        `#!/bin/bash -p`, which reads no such file, so the marker stays empty through a launch (round 1's launcher
+        sourced it and recorded its own pid); a shell invoked as sh reads neither BASH_ENV nor ENV when
+        non-interactive (bash 3.2.57 measured; the manual's "Invoking Bash"), so the canary's `/bin/sh -c` is no
+        detector and the recorder tests read its environment instead."""
+        hook = Path(self.temp.name, "behaviour-hook")
+        marker = Path(self.temp.name, "behaviour-marker")
+        hook.write_text(f"printf '%s\\n' \"$$\" >> {shlex.quote(str(marker))}\n")
+        marker.write_text("")
+        return hook, marker
+
     def test_a_callers_credential_names_and_an_exported_seat_token_reach_no_child(self):
         """U552 (verdict U552-484346a3 P1 x2): the launcher clears every name that outranks the token in Claude Code's
         credential precedence or redirects the request (ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL,
@@ -1054,14 +1106,21 @@ class HcomSeatTest(SeatFixture):
         child), so neither the canary nor a worker's omp holds any of them and omp holds the file's token (round 1
         kept them, and an inherited key or gateway URL outranked the token); and `seat_token` is unset before its
         first assignment, so a caller's exported variable of that name (its export attribute survives a plain
-        assignment) carries the token into neither hcom nor the shim's child."""
+        assignment) carries the token into neither hcom nor the shim's child. U560 (verdict U553-1f397897 P2): the
+        names bash itself reads before a script's first statement (BASH_ENV, ENV, SHELLOPTS, BASHOPTS:
+        SHELL_BEHAVIOUR_ENV_NAMES) go the same way at both points; a caller's BASH_ENV and ENV are in the launch's
+        environment here and reach no child of the launcher and no child of the shim, and neither SHELLOPTS nor
+        BASHOPTS is in any child's environment; the caller's file is sourced by no shell of the launch, the launcher's
+        and the shim's included (round 2, `#!/bin/bash -p`)."""
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
+        hook, marker = self.shell_behaviour_hook()
         names = (
             "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL", "CLAUDE_CODE_USE_BEDROCK",
             "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY", "CLAUDE_CODE_USE_MANTLE",
             "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD", "ANTHROPIC_PROFILE", "ANTHROPIC_FEDERATION_RULE_ID",
             "ANTHROPIC_ORGANIZATION_ID", "ANTHROPIC_WORKSPACE_ID",
         )  # fmt: skip
+        behaviour_names = ("BASH_ENV", "ENV", "SHELLOPTS", "BASHOPTS")
         text = SEAT.read_text()
         start = text.index("CREDENTIAL_ENV_NAMES=(")
         listed = text[start : text.index("\n)\n", start)].replace("\n", " ")
@@ -1069,8 +1128,9 @@ class HcomSeatTest(SeatFixture):
             self.assertIn(f" {name}", listed, "the one list names it")
         probed = (*names, "seat_token")
         caller = {name: f"caller-{name.lower()}" for name in probed}
-        probe = " ".join(f"{name}=${{{name}-unset}}" for name in probed)
-        unset = " ".join(f"{name}=unset" for name in probed)
+        caller.update(BASH_ENV=str(hook), ENV=str(hook))
+        probe = " ".join(f"{name}=${{{name}-unset}}" for name in probed) + " " + self.environment_probe(behaviour_names)
+        unset = " ".join(f"{name}=unset" for name in (*probed, *behaviour_names))
         hcom_record = self.calls / "hcom-credential-env"
         (self.bindir / "hcom").write_text(f"#!/bin/sh\nprintf '%s\\n' \"{probe}\" >> {shlex.quote(str(hcom_record))}\n")
         # The omp recorder is planted before the launch, which pins the fake's interpreter line into the shim.
@@ -1081,7 +1141,9 @@ class HcomSeatTest(SeatFixture):
         )
         run = self.seat("worker", "--seats-root", self.seats, **caller)
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(hcom_record.read_text(), unset + "\n", "nothing of the list reaches the launcher's child")
+        self.assertEqual(
+            self.probe_record(hcom_record), unset + "\n", "nothing of the list reaches the launcher's child"
+        )
         # The shim, run directly with the same caller environment: the child holds the file's token and none of them.
         shim = Path(self.seats, ".sandbox/worker/bin/omp")
         shim_text = shim.read_text()
@@ -1089,6 +1151,13 @@ class HcomSeatTest(SeatFixture):
         self.assertIn('unset "${credential_names[@]}"', shim_text)
         for name in names:
             self.assertIn(name, shim_text)
+        self.assertIn("shell_behaviour_names=(", shim_text, "the shell-behaviour list rides into the shim too (U560)")
+        self.assertEqual(self.bash_array(shim_text, "shell_behaviour_names"), list(behaviour_names))
+        self.assertLess(
+            shim_text.index('for behaviour_name in "${shell_behaviour_names[@]}"'),
+            shim_text.index("probe=$("),
+            "the shell-behaviour clearing precedes the canary",
+        )
         # Round 3: the clearing precedes the shim's first child. In the text it stands before the canary's srt line,
         # and a recorder put in front of srt's argv sees every name unset in both srt runs, the canary (no token
         # yet: the export follows the judge) and the launch (the file's token).
@@ -1115,18 +1184,471 @@ class HcomSeatTest(SeatFixture):
         # The shim clears the credential list, not every caller variable: `seat_token` means nothing to it and rides
         # as any other name would; its clearing is the launcher's, measured through hcom above.
         names_unset = " ".join(f"{name}=unset" for name in names)
+        behaviour_unset = " ".join(f"{name}=unset" for name in behaviour_names)
         self.assertEqual(
-            omp_record.read_text(),
-            f"{names_unset} seat_token={caller['seat_token']} CLAUDE_CODE_OAUTH_TOKEN={FAKE_OAT}\n",
+            self.probe_record(omp_record),
+            f"{names_unset} seat_token={caller['seat_token']} {behaviour_unset} CLAUDE_CODE_OAUTH_TOKEN={FAKE_OAT}\n",
         )
         self.assertEqual(
-            srt_record.read_text(),
-            f"{names_unset} seat_token={caller['seat_token']} CLAUDE_CODE_OAUTH_TOKEN=unset\n"
-            f"{names_unset} seat_token={caller['seat_token']} CLAUDE_CODE_OAUTH_TOKEN={FAKE_OAT}\n",
+            self.probe_record(srt_record),
+            f"{names_unset} seat_token={caller['seat_token']} {behaviour_unset} CLAUDE_CODE_OAUTH_TOKEN=unset\n"
+            f"{names_unset} seat_token={caller['seat_token']} {behaviour_unset} CLAUDE_CODE_OAUTH_TOKEN={FAKE_OAT}\n",
             "the canary's srt holds no credential name and no token; the launch's holds the file's token alone",
         )
         for value in (*caller.values(), "caller-" + "oauth-value"):
             self.assertNotIn(value, run.stdout + run.stderr + direct.stdout + direct.stderr + shim_text)
+        # The hook ran nowhere: the launcher's and the recording shim's shells run under `#!/bin/bash -p` (U560 round
+        # 2) and read no BASH_ENV, and no child of either had the name (the omp fake and the srt fake are python; a
+        # bash among the children is the next test's detector).
+        self.assertEqual(marker.read_text(), "", "no shell of the launch sourced the caller's file")
+
+    def test_the_shim_carries_the_launchers_credential_and_shell_behaviour_lists_unchanged(self):
+        """U560 (the brief's table test): the two lists the launcher clears before its first child,
+        CREDENTIAL_ENV_NAMES (U552) and SHELL_BEHAVIOUR_ENV_NAMES (BASH_ENV, ENV, SHELLOPTS, BASHOPTS), ride into the
+        shim text as `credential_names` and `shell_behaviour_names`, word for word and in order, so the shim's clearing
+        before its canary is the launcher's clearing and neither list can drift from the other."""
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        seat_text = SEAT.read_text()
+        shim_text = Path(self.seats, ".sandbox/worker/bin/omp").read_text()
+        for launcher_list, shim_list, fixed in (
+            ("CREDENTIAL_ENV_NAMES", "credential_names", None),
+            ("SHELL_BEHAVIOUR_ENV_NAMES", "shell_behaviour_names", ["BASH_ENV", "ENV", "SHELLOPTS", "BASHOPTS"]),
+        ):
+            with self.subTest(list=launcher_list):
+                launcher = self.bash_array(seat_text, launcher_list)
+                self.assertTrue(launcher, "the launcher's list is not empty")
+                self.assertEqual(self.bash_array(shim_text, shim_list), launcher, "the shim's list is the launcher's")
+                if fixed is not None:
+                    self.assertEqual(launcher, fixed, "the brief's four names, in its order")
+        self.assertLess(
+            seat_text.index('for behaviour_name in "${SHELL_BEHAVIOUR_ENV_NAMES[@]}"'),
+            seat_text.index("lever_self_check() {"),
+            "the launcher clears the list in its prologue, before the self-check and every child",
+        )
+
+    def test_a_callers_bash_env_file_runs_in_no_shell_of_the_launch(self):
+        """U560 round 2 (verdict U560-c60013ab P1): what bash does before a script's first statement is the interpreter
+        line's alone, so the launcher's and the shim's is `#!/bin/bash -p`, under which bash reads no BASH_ENV or ENV
+        file (round 1 unset the two for the children and let the launcher's own shell source the caller's file, the
+        brief's TRUST then; closed now). A caller's hook recording `$$` runs in no shell at all: not the launcher's
+        (the pid round 1 recorded), not hcom's (a bash here, which runs the shim as the real hcom's herdr pane does),
+        not the shim's, started directly with the caller's environment, and not the bash recorder's in front of srt's
+        argv in either of its two runs (the canary's and the launch's). The whole chain ran: the fake omp recorded both
+        launches. A bash run without -p with the same file sources it, so the detector is live on this host."""
+        hook, marker = self.shell_behaviour_hook()
+        (self.bindir / "hcom").write_text("#!/bin/bash\nexec omp --version\n")  # the launch's PATH holds the shim first
+        run = self.seat("worker", "--seats-root", self.seats, BASH_ENV=str(hook), ENV=str(hook))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(len(self.calls_of("omp")), 1, "the shim ran its command under the fake srt")
+        self.assertEqual(marker.read_text(), "", "no shell of the launch, the launcher's included, sourced the file")
+        self.assertEqual(SEAT.read_text().split("\n", 1)[0], "#!/bin/bash -p", "the launcher's interpreter line")
+        shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        shim_text = shim.read_text()
+        self.assertEqual(shim_text.split("\n", 1)[0], "#!/bin/bash -p", "the shim's interpreter line is the launcher's")
+        self.assertEqual(shim_text.count("srt_cmd=("), 1, shim_text)
+        recorder = self.bindir / "srt-bash-recorder"
+        recorder.write_text('#!/bin/bash\nexec "$@"\n')
+        recorder.chmod(0o755)
+        recording = shim.with_name("omp-bash-recorded")
+        recording.write_text(shim_text.replace("srt_cmd=(", f"srt_cmd=({shlex.quote(str(recorder))} ", 1))
+        recording.chmod(0o755)
+        direct = subprocess.run(
+            [str(recording), "--version"],
+            env={**self.env, "BASH_ENV": str(hook), "ENV": str(hook)},
+            capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        self.assertEqual(direct.returncode, 0, direct.stderr)
+        self.assertEqual(len(self.calls_of("omp")), 2, "the recording shim ran its command under the fake srt")
+        self.assertEqual(
+            len(self.calls_of("srt")), 5, "the launcher's version read, then the canary and the launch, twice"
+        )
+        self.assertEqual(marker.read_text(), "", "neither the shim's shell nor either srt run sourced the file")
+        control = subprocess.run(
+            ["/bin/bash", "-c", ":"],
+            env={**self.env, "BASH_ENV": str(hook)},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(control.returncode, 0, control.stderr)
+        self.assertEqual(
+            len(marker.read_text().split()), 1, "a bash without -p sources the same file: the detector is live"
+        )
+
+    def test_a_callers_exported_shellopts_or_bashopts_governs_no_shell_of_the_launch_and_reaches_no_child(self):
+        """U560 round 2 (verdict U560-c60013ab P1, P2): under `#!/bin/bash -p` bash ignores an imported SHELLOPTS (and
+        bash 4.1 and later an imported BASHOPTS, which 3.2.57 never reads), so the launcher's and the shim's own shells
+        run under their own options whatever the caller exported; round 1 refused by name instead, since the shell
+        that had imported `xtrace` was tracing already (`seat_token=` and the broker's start line would have reached
+        its stderr) and one with `allexport` exporting, and nothing of that is left to refuse. The two names, which
+        bash holds readonly, lose their export attribute at both points (`export -n`, its status read), so no child
+        inherits them. With SHELLOPTS=xtrace the dry run, the launch and the shim run directly proceed with no trace
+        line on any stderr and no token there; with SHELLOPTS=noexec, which a shell that honoured it would run no
+        statement of, the dry run prints its launch line (exit 0) and the launch runs its chain; with
+        BASHOPTS=nocaseglob the same; and every child (hcom, the canary's srt, the launch's srt, omp) has neither name,
+        nor BASH_ENV nor ENV, in its environment."""
+        behaviour_names = ("BASH_ENV", "ENV", "SHELLOPTS", "BASHOPTS")
+        probe = self.environment_probe(behaviour_names)
+        unset = " ".join(f"{name}=unset" for name in behaviour_names)
+        hcom_record = self.calls / "hcom-behaviour-env"
+        (self.bindir / "hcom").write_text(f"#!/bin/sh\nprintf '%s\\n' \"{probe}\" >> {shlex.quote(str(hcom_record))}\n")
+        omp_record = self.calls / "omp-behaviour-env"
+        (self.bindir / "omp").write_text(f"#!/bin/sh\nprintf '%s\\n' \"{probe}\" >> {shlex.quote(str(omp_record))}\n")
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        shim_text = shim.read_text()
+        self.assertEqual(shim_text.count("srt_cmd=("), 1, shim_text)
+        srt_record = self.calls / "srt-behaviour-env"
+        recorder = self.bindir / "srt-behaviour-recorder"
+        recorder.write_text(f'#!/bin/sh\nprintf \'%s\\n\' "{probe}" >> {shlex.quote(str(srt_record))}\nexec "$@"\n')
+        recorder.chmod(0o755)
+        recording = shim.with_name("omp-srt-recorded")
+        recording.write_text(shim_text.replace("srt_cmd=(", f"srt_cmd=({shlex.quote(str(recorder))} ", 1))
+        recording.chmod(0o755)
+        for name, value in (("SHELLOPTS", "xtrace"), ("SHELLOPTS", "noexec"), ("BASHOPTS", "nocaseglob")):
+            with self.subTest(name=name, value=value):
+                for record in (hcom_record, omp_record, srt_record):
+                    record.unlink(missing_ok=True)
+                dry = self.seat("worker", "--seats-root", self.seats, "--dry-run", **{name: value})
+                self.assertEqual(dry.returncode, 0, dry.stderr)
+                self.assertEqual(
+                    shlex.split(dry.stdout)[:4], ["hcom", "omp", "--tag", "worker"], "the launch line printed"
+                )
+                run = self.seat("worker", "--seats-root", self.seats, **{name: value})
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(
+                    self.probe_record(hcom_record), unset + "\n", "the launcher's child has none of the four"
+                )
+                self.assertNotIn("\n+ ", "\n" + dry.stderr + "\n" + run.stderr, "the caller's option governs no shell")
+                self.assertNotIn(FAKE_OAT, dry.stdout + dry.stderr + run.stdout + run.stderr)
+                direct = subprocess.run(
+                    [str(recording), "--version"],
+                    env={**self.env, name: value},
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(direct.returncode, 0, direct.stderr)
+                self.assertEqual(
+                    self.probe_record(srt_record),
+                    f"{unset}\n{unset}\n",
+                    "neither srt run, the canary's nor the launch's",
+                )
+                self.assertEqual(self.probe_record(omp_record), unset + "\n", "the shim's omp has none of the four")
+                self.assertNotIn("\n+ ", "\n" + direct.stderr, "the caller's option governs the shim's shell no more")
+                self.assertNotIn(FAKE_OAT, direct.stdout + direct.stderr)
+
+    def test_a_callers_bash_env_file_setting_xtrace_and_allexport_traces_and_exports_nothing(self):
+        """U560 round 2 (verdict U560-c60013ab P1): a caller's BASH_ENV file holding `set -x`, `set -a` and a
+        token-shaped value of its own is read by neither the launcher nor the shim (`#!/bin/bash -p`): no statement of
+        either is traced to stderr (round 1's launcher traced its whole run, the token judge's `seat_token=<the file's
+        line>` among the lines), the fixture token is on no stderr, the hook's value reaches no child, and
+        `seat_token`, which `allexport` would have exported at its assignment, is unset in hcom's environment as U552
+        holds it. The same file, sourced by a bash without -p, traces and exports: the detector is live."""
+        hook = Path(self.temp.name, "xtrace-allexport-hook")
+        fixture = "sk-ant-oat01-" + "HOOKFIXTUREVALUE" + "1" * 44
+        hook.write_text(f"set -x\nset -a\nu560_hook_value={fixture}\n")
+        probe = "seat_token=${seat_token-unset} u560_hook_value=${u560_hook_value-unset} " + self.environment_probe(
+            ("BASH_ENV", "ENV")
+        )
+        expected = "seat_token=unset u560_hook_value=unset BASH_ENV=unset ENV=unset\n"
+        hcom_record = self.calls / "hcom-xtrace-env"
+        (self.bindir / "hcom").write_text(f"#!/bin/sh\nprintf '%s\\n' \"{probe}\" >> {shlex.quote(str(hcom_record))}\n")
+        omp_record = self.calls / "omp-xtrace-env"
+        (self.bindir / "omp").write_text(f"#!/bin/sh\nprintf '%s\\n' \"{probe}\" >> {shlex.quote(str(omp_record))}\n")
+        run = self.seat("worker", "--seats-root", self.seats, BASH_ENV=str(hook), ENV=str(hook))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            self.probe_record(hcom_record), expected, "nothing of the hook, and no seat_token, reaches hcom"
+        )
+        self.assertNotIn("\n+ ", "\n" + run.stderr, "no statement of the launcher is traced")
+        for value in (FAKE_OAT, fixture):
+            self.assertNotIn(value, run.stdout + run.stderr)
+        shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        direct = subprocess.run(
+            [str(shim), "--version"],
+            env={**self.env, "BASH_ENV": str(hook), "ENV": str(hook)},
+            capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        self.assertEqual(direct.returncode, 0, direct.stderr)
+        self.assertEqual(self.probe_record(omp_record), expected, "nothing of the hook reaches the shim's child")
+        self.assertNotIn("\n+ ", "\n" + direct.stderr, "no statement of the shim is traced")
+        for value in (FAKE_OAT, fixture):
+            self.assertNotIn(value, direct.stdout + direct.stderr)
+        control = subprocess.run(
+            ["/bin/bash", "-c", f"x=1; /usr/bin/env | /usr/bin/grep -c '^u560_hook_value={fixture}$'"],
+            env={**self.env, "BASH_ENV": str(hook)}, capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        self.assertEqual(
+            (control.stdout, "+ x=1" in control.stderr), ("1\n", True), "a bash without -p traces and exports"
+        )
+
+    def test_an_exported_shell_function_reaches_no_builtin_of_the_launcher_or_the_shim(self):
+        """U560 round 2 (verdict U560-c60013ab P1): bash imports an exported function (`BASH_FUNC_<name>%%`, the form
+        this host's 3.2.57 exports and imports, measured) before a script's first statement, so a caller's `compgen`
+        printing `PATH` alone would have emptied round 1's environment list and left the four names, and every GIT_*
+        name, in every child; under `#!/bin/bash -p` no function is imported: the launch proceeds (its own git runs
+        with the caller's GIT_DIR swept), the four names and GIT_DIR are in hcom's environment no more, and the shim
+        run directly with the same environment leaves the four to neither srt run nor omp. The function's entry itself
+        rode on as any other environment string at round 2; round 3 removes it from every child (foreign_env_scrub,
+        the next test). A bash without -p imports it: the detector is live."""
+        behaviour_names = ("BASH_ENV", "ENV", "SHELLOPTS", "BASHOPTS")
+        hook, marker = self.shell_behaviour_hook()
+        caller = {
+            "BASH_FUNC_compgen%%": "() { echo PATH; }",
+            "BASH_ENV": str(hook),
+            "ENV": str(hook),
+            "GIT_DIR": str(Path(self.temp.name, "nonexistent-git-dir")),
+        }
+        probe = self.environment_probe(behaviour_names)
+        unset = " ".join(f"{name}=unset" for name in behaviour_names)
+        hcom_record = self.calls / "hcom-function-env"
+        (self.bindir / "hcom").write_text(
+            f"#!/bin/sh\nprintf '%s\\n' \"{probe} GIT_DIR=${{GIT_DIR-unset}}\" >> {shlex.quote(str(hcom_record))}\n"
+        )
+        omp_record = self.calls / "omp-function-env"
+        (self.bindir / "omp").write_text(f"#!/bin/sh\nprintf '%s\\n' \"{probe}\" >> {shlex.quote(str(omp_record))}\n")
+        run = self.seat("worker", "--seats-root", self.seats, **caller)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.probe_record(hcom_record), f"{unset} GIT_DIR=unset\n", "the real environment was listed")
+        self.assertEqual(marker.read_text(), "", "the file ran in no shell")
+        shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        shim_text = shim.read_text()
+        self.assertEqual(shim_text.count("srt_cmd=("), 1, shim_text)
+        srt_record = self.calls / "srt-function-env"
+        recorder = self.bindir / "srt-function-recorder"
+        recorder.write_text(f'#!/bin/sh\nprintf \'%s\\n\' "{probe}" >> {shlex.quote(str(srt_record))}\nexec "$@"\n')
+        recorder.chmod(0o755)
+        recording = shim.with_name("omp-srt-recorded")
+        recording.write_text(shim_text.replace("srt_cmd=(", f"srt_cmd=({shlex.quote(str(recorder))} ", 1))
+        recording.chmod(0o755)
+        direct = subprocess.run(
+            [str(recording), "--version"], env={**self.env, **caller}, capture_output=True, text=True, check=False
+        )
+        self.assertEqual(direct.returncode, 0, direct.stderr)
+        self.assertEqual(self.probe_record(srt_record), f"{unset}\n{unset}\n", "the canary's and the launch's srt")
+        self.assertEqual(self.probe_record(omp_record), unset + "\n")
+        self.assertEqual(marker.read_text(), "", "the file ran in no shell of the shim's either")
+        control = subprocess.run(
+            ["/bin/bash", "-c", "compgen -e"], env={**self.env, **caller}, capture_output=True, text=True, check=False
+        )
+        self.assertEqual(control.stdout, "PATH\n", "a bash without -p imports the function: the detector is live")
+
+    def test_an_exported_functions_entry_or_a_non_identifier_name_reaches_no_child_of_the_launcher_or_the_shim(self):
+        """U560 round 3 (verdict U560-3ec779bd P1 at the clearing point): `-p` keeps the launcher's and the shim's own
+        shells from importing an exported function, and nothing more: its entry (`BASH_FUNC_<name>%%`, this host's
+        form) and any other entry whose name is no identifier (`a.b`) are no variables of the shell, so no unset
+        reaches them and bash hands each on to every child, where a bash without -p imports the function before its
+        first statement (round 2: a caller's `unset` ran inside the broker's bash with the token available). The
+        launcher now re-execs itself once at its entry under `/usr/bin/env -u <name>` per such entry
+        (foreign_env_scrub), so every child, and every child of those, inherits none: hcom, a bash without -p here as
+        herdr's wrappers are, runs the builtin `unset` (the caller's function would print its marker and
+        CLAUDE_CODE_OAUTH_TOKEN on stderr) and lists no such entry, and omp at the end of the chain lists none. The
+        shim carries the function's own text and scrubs at its entry (its environment is its pane's, not the
+        launcher's): run directly with the caller's environment, a recorder before srt sees no such entry in the
+        canary's run or the launch's, and omp none. A marker variable guards the re-exec: with it preset by the caller
+        and the entries present, the launcher and the shim refuse by name with nothing started; with it alone the
+        launch proceeds; it reaches no child. A bash without -p under the same environment runs the function: the
+        detector is live."""
+        marker = "U560-FUNCTION-RAN"
+        caller = {
+            "BASH_FUNC_unset%%": f'() {{ echo "{marker} token=${{CLAUDE_CODE_OAUTH_TOKEN-none}}" >&2; builtin unset "$@"; }}',
+            "a.b": "1",
+            "CLAUDE_CODE_OAUTH_TOKEN": "caller-" + "oauth-value-u560",
+        }
+        hcom_record = self.calls / "hcom-foreign-env"
+        (self.bindir / "hcom").write_text(
+            "#!/bin/bash\n"  # no -p, as herdr's wrappers and the real hcom's shell children run
+            "unset nothing_u560\n"
+            f"{FOREIGN_ENTRIES_PROBE}\n"
+            f'printf \'opts=%s foreign=%s\\n\' "$-" "$foreign" >> {shlex.quote(str(hcom_record))}\n'
+            "exec omp --version\n"  # the launch's PATH holds the shim first
+        )
+        omp_record = self.calls / "omp-foreign-env"
+        (self.bindir / "omp").write_text(
+            f"#!/bin/sh\n{FOREIGN_ENTRIES_PROBE}\nprintf 'foreign=%s\\n' \"$foreign\" >> {shlex.quote(str(omp_record))}\n"
+        )
+        run = self.seat("worker", "--seats-root", self.seats, **caller)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotIn(marker, run.stdout + run.stderr, "no shell of the launch ran the caller's function")
+        for value in (FAKE_OAT, caller["CLAUDE_CODE_OAUTH_TOKEN"]):
+            self.assertNotIn(value, run.stdout + run.stderr)
+        hcom_text = self.probe_record(hcom_record)
+        self.assertRegex(hcom_text, r"^opts=[a-zA-Z]* foreign=0\n$", "hcom holds no such entry")
+        self.assertNotIn(
+            "p",
+            hcom_text.split()[0].split("=", 1)[1],
+            "hcom's bash runs without -p, so it would have imported the function",
+        )
+        self.assertEqual(self.probe_record(omp_record), "foreign=0\n", "the end of the chain holds none")
+        self.assertNotIn(
+            "HCOM_SEAT_ENV_SCRUBBED",
+            {key for call in self.calls_of("srt") for key in call["env"]},
+            "the marker is unset before the first child",
+        )
+        shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        shim_text = shim.read_text()
+        self.assertIn(
+            "foreign_env_scrub () ", shim_text, "the launcher's function text rides into the shim (declare -f)"
+        )
+        self.assertLess(
+            shim_text.index("\nforeign_env_scrub 'hcom-seat shim'"),
+            shim_text.index("probe=$("),
+            "scrubbed before the canary",
+        )
+        self.assertEqual(shim_text.count("srt_cmd=("), 1, shim_text)
+        srt_record = self.calls / "srt-foreign-env"
+        recorder = self.bindir / "srt-foreign-recorder"
+        recorder.write_text(
+            f"#!/bin/sh\n{FOREIGN_ENTRIES_PROBE}\nprintf 'foreign=%s\\n' \"$foreign\" >> {shlex.quote(str(srt_record))}\n"
+            'exec "$@"\n'
+        )
+        recorder.chmod(0o755)
+        recording = shim.with_name("omp-srt-recorded")
+        recording.write_text(shim_text.replace("srt_cmd=(", f"srt_cmd=({shlex.quote(str(recorder))} ", 1))
+        recording.chmod(0o755)
+        omp_record.unlink()
+        direct = subprocess.run(
+            [str(recording), "--version"], env={**self.env, **caller}, capture_output=True, text=True, check=False
+        )
+        self.assertEqual(direct.returncode, 0, direct.stderr)
+        self.assertNotIn(marker, direct.stdout + direct.stderr, "no shell of the shim's ran the caller's function")
+        self.assertEqual(self.probe_record(srt_record), "foreign=0\nforeign=0\n", "the canary's srt and the launch's")
+        self.assertEqual(self.probe_record(omp_record), "foreign=0\n", "the shim's omp holds none")
+        for label, argv, prefix, tail in (
+            ("the launcher", [str(SEAT), "worker", "--seats-root", self.seats, "--dry-run"], "hcom-seat", "nothing started"),
+            ("the shim", [str(recording), "--version"], "hcom-seat shim", "omp not started"),
+        ):  # fmt: skip
+            with self.subTest(marker_preset_for=label):
+                before = {tool: len(self.calls_of(tool)) for tool in ("srt", "omp")}
+                srt_record.unlink(missing_ok=True)
+                preset = subprocess.run(
+                    argv, cwd=self.repo, env={**self.env, **caller, "HCOM_SEAT_ENV_SCRUBBED": "1"},
+                    capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual((preset.returncode, preset.stdout), (2, ""), preset.stderr)
+                self.assertIn(
+                    f"{prefix}: refused: 2 environment entries whose names are no identifier survive the scrub "
+                    f"(/usr/bin/env -u did not remove them); {tail}\n",
+                    preset.stderr,
+                )
+                self.assertNotIn(marker, preset.stderr)
+                self.assertEqual({tool: len(self.calls_of(tool)) for tool in before}, before, "nothing started")
+                self.assertFalse(srt_record.exists(), "no srt child, so no canary, ran")
+        proceeds = self.seat("worker", "--seats-root", self.seats, "--dry-run", HCOM_SEAT_ENV_SCRUBBED="1")
+        self.assertEqual(proceeds.returncode, 0, proceeds.stderr)
+        self.assertEqual(shlex.split(proceeds.stdout)[:2], ["hcom", "omp"], "the marker alone refuses nothing")
+        control = subprocess.run(
+            ["/bin/bash", "-c", "unset x"], env={**self.env, **caller}, capture_output=True, text=True, check=False
+        )
+        self.assertEqual(
+            control.stderr,
+            f"{marker} token={caller['CLAUDE_CODE_OAUTH_TOKEN']}\n",
+            "a bash without -p runs the function",
+        )
+
+    def test_the_environment_probe_reports_a_failed_read_as_a_failure_never_as_unset(self):
+        """U560 round 2 (verdict U560-c60013ab P2 at the probe helper): the helper's `env | grep -q` read `unset`
+        whenever either tool failed, so a fixture whose env could not run would have passed every "absent in the
+        child" assertion. The status of each is read: a failing env, whatever it printed, yields `env-failed`, a grep
+        status above 1 `grep-failed`, and `probe_record` raises on either; the readings themselves are `present` and
+        `unset` as before, measured through /bin/sh with the name in and out of its environment."""
+        fakes = Path(self.temp.name, "probe-fakes")
+        fakes.mkdir()
+
+        def fake(name, body):
+            path = fakes / name
+            path.write_text(f"#!/bin/sh\n{body}\n")
+            path.chmod(0o755)
+            return str(path)
+
+        failing_env = fake("env", "printf 'BASH_ENV=/x\\nPATH=/usr/bin\\n'\nexit 1")  # a plausible listing, status 1
+        failing_grep = fake("grep", "exit 2")
+        record = Path(self.temp.name, "probe-record")
+
+        def reading(env_tool, grep_tool, **env):
+            record.write_text("")
+            probe = self.environment_probe(("BASH_ENV",), env_tool=env_tool, grep_tool=grep_tool)
+            run = subprocess.run(
+                ["/bin/sh", "-c", f"printf '%s\\n' \"{probe}\" >> {shlex.quote(str(record))}"],
+                env={"PATH": SYSTEM_PATH, **env}, capture_output=True, text=True, check=False,
+            )  # fmt: skip
+            self.assertEqual((run.returncode, run.stderr), (0, ""))
+            return record.read_text()
+
+        self.assertEqual(reading("/usr/bin/env", "/usr/bin/grep", BASH_ENV="/x"), "BASH_ENV=present\n")
+        self.assertEqual(self.probe_record(record), "BASH_ENV=present\n")
+        self.assertEqual(reading("/usr/bin/env", "/usr/bin/grep"), "BASH_ENV=unset\n")
+        self.assertEqual(self.probe_record(record), "BASH_ENV=unset\n")
+        self.assertEqual(reading(failing_env, "/usr/bin/grep", BASH_ENV="/x"), "BASH_ENV=env-failed\n", "no reading")
+        with self.assertRaises(AssertionError):
+            self.probe_record(record)
+        silent_env = fake(
+            "env-silent", "exit 1"
+        )  # round 1's form read this one as `unset`, the plausible one as `present`
+        self.assertEqual(reading(silent_env, "/usr/bin/grep", BASH_ENV="/x"), "BASH_ENV=env-failed\n", "no reading")
+        with self.assertRaises(AssertionError):
+            self.probe_record(record)
+        self.assertEqual(reading("/usr/bin/env", failing_grep, BASH_ENV="/x"), "BASH_ENV=grep-failed\n", "no reading")
+        with self.assertRaises(AssertionError):
+            self.probe_record(record)
+
+    def test_a_failing_builtin_in_the_shell_behaviour_clearing_refuses_before_any_child(self):
+        """U560 round 2 (verdict U560-c60013ab P2 at the shim's environment read): every statement of the clearing has
+        its status read, in the launcher and in the shim: `export -n` on SHELLOPTS and BASHOPTS, `unset` on BASH_ENV
+        and ENV, and the launcher's `compgen -e` for the GIT_* sweep (the shim lists the environment no more: it unsets
+        and unexports the four unconditionally, so the read the verdict named is gone from it). One that fails refuses
+        by name with exit 2, nothing on stdout, no child (no hcom, no srt, so no canary; under the shim no omp) and no
+        token on stderr. Injected as a shell function shadowing the builtin, selective so every other call passes
+        through, installed by a BASH_ENV file: bash reads that file without -p alone, so each file is run as
+        `/bin/bash <file>` (the suite's DEBUG-trap form, `privileged=False`), and the fault, not the start-up, is what
+        is measured. No cleaner injection exists: a readonly SHELLOPTS cannot be made unexportable, and -p ignores
+        every start-up hook. Against round 1's lever the `export -n` case is the red one (it ran no `export -n`, so
+        the launch proceeded); the `unset` and `compgen` cases held there too."""
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        shim_text = shim.read_text()
+        self.assertEqual(shim_text.count("srt_cmd=("), 1, shim_text)
+        srt_record = self.calls / "srt-ran"
+        recorder = self.bindir / "srt-ran-recorder"
+        recorder.write_text(f"#!/bin/sh\nprintf 'ran\\n' >> {shlex.quote(str(srt_record))}\nexec \"$@\"\n")
+        recorder.chmod(0o755)
+        recording = shim.with_name("omp-srt-recorded")
+        recording.write_text(shim_text.replace("srt_cmd=(", f"srt_cmd=({shlex.quote(str(recorder))} ", 1))
+        recording.chmod(0o755)
+        tools = ("hcom", "srt", "omp")
+        cases = (
+            ("export", 'export() { case $1 in -n) return 1 ;; esac; builtin export "$@"; }',
+             "cannot take the export attribute off SHELLOPTS"),
+            ("unset", 'unset() { case " $* " in *" BASH_ENV "*) return 1 ;; esac; builtin unset "$@"; }',
+             "cannot unset BASH_ENV"),
+            ("compgen", "compgen() { return 1; }", "cannot list the environment"),
+        )  # fmt: skip
+        for builtin, function, message in cases:
+            with self.subTest(builtin=builtin):
+                hook = Path(self.temp.name, f"failing-{builtin}.bash")
+                hook.write_text(function + "\n")
+                children = {tool: len(self.calls_of(tool)) for tool in tools}
+                run = self.seat("worker", "--seats-root", self.seats, BASH_ENV=str(hook), privileged=False)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"hcom-seat: refused: {message}", run.stderr)
+                self.assertEqual({tool: len(self.calls_of(tool)) for tool in children}, children, "no child started")
+                self.assertNotIn(FAKE_OAT, run.stderr)
+                if builtin == "compgen":
+                    continue  # the shim lists no environment
+                direct = subprocess.run(
+                    ["/bin/bash", str(recording), "--version"],
+                    env={**self.env, "BASH_ENV": str(hook)}, capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual((direct.returncode, direct.stdout), (2, ""), direct.stderr)
+                self.assertIn(f"hcom-seat shim: {message}", direct.stderr)
+                self.assertIn("omp not started", direct.stderr)
+                self.assertFalse(srt_record.exists(), "no srt child, so no canary, ran")
+                self.assertEqual(len(self.calls_of("omp")), children["omp"], "no omp ran")
+                self.assertNotIn(FAKE_OAT, direct.stderr)
 
     def test_a_failing_producer_in_the_token_judge_or_the_shim_refuses_instead_of_deciding(self):
         """U552 (verdict U552-484346a3 P2; standing order 21): the three producers of token_file_check (stat for the
@@ -2868,7 +3390,7 @@ class HcomSeatTest(SeatFixture):
         trace = Path(self.temp.name) / "count-trace"
         trace.write_text("")
         env = {**self.env, "BASH_ENV": str(hook), "U95_TRACE": str(trace)}
-        run = self.seat("worker", "--seats-root", self.seats, "--dry-run", **env)
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run", privileged=False, **env)
         self.assertEqual(run.returncode, 0, run.stderr)
         assignment = re.compile(r"""^[A-Za-z_]\w*(\[[^]]*\])?\+?=("[^"]*"|'[^']*'|\$\([^)]*\)|[^\s"'])*(\s+|$)""")
         programs, subshells = collections.Counter(), 0
@@ -3609,7 +4131,7 @@ class HcomSeatTest(SeatFixture):
         )
         run = self.seat(
             "worker", "--seats-root", self.seats, "--dry-run",
-            BASH_ENV=str(hook), U566_TOOLS=str(self.tools), U566_MARK=str(mark),
+            BASH_ENV=str(hook), U566_TOOLS=str(self.tools), U566_MARK=str(mark), privileged=False,
         )  # fmt: skip
         self.assertEqual(mark.read_text(), "unreadable\n", "the directory lost its read right before the glob")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
@@ -3642,7 +4164,7 @@ class HcomSeatTest(SeatFixture):
         )
         run = self.seat(
             "worker", "--seats-root", self.seats, "--dry-run",
-            BASH_ENV=str(hook), U566_TOOLS=str(self.tools), U566_MARK=str(mark),
+            BASH_ENV=str(hook), U566_TOOLS=str(self.tools), U566_MARK=str(mark), privileged=False,
         )  # fmt: skip
         self.assertEqual(mark.read_text(), "held\nrestored\n", "the fault landed around the one readlink")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
@@ -3669,7 +4191,7 @@ class HcomSeatTest(SeatFixture):
         )
         run = self.seat(
             "worker", "--seats-root", self.seats, "--dry-run",
-            BASH_ENV=str(hook), U566_TOOLS=str(self.tools), U566_MARK=str(mark),
+            BASH_ENV=str(hook), U566_TOOLS=str(self.tools), U566_MARK=str(mark), privileged=False,
         )  # fmt: skip
         self.assertEqual(mark.read_text(), "held\n", "the fault landed before the one rm")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
@@ -4018,7 +4540,7 @@ class HcomSeatTest(SeatFixture):
         )
         run = self.seat(
             "orchestrator", "--seats-root", self.seats,
-            BASH_ENV=str(hook), U219_ROOT=str(root), U219_OUTSIDE=str(outside), U219_MARK=str(mark),
+            BASH_ENV=str(hook), U219_ROOT=str(root), U219_OUTSIDE=str(outside), U219_MARK=str(mark), privileged=False,
         )  # fmt: skip
         self.assertEqual(mark.read_text(), "swapped\nrestored\n", "the swap ran around seat_roots_out")
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -4055,7 +4577,9 @@ class HcomSeatTest(SeatFixture):
             with self.subTest(case="a launch makes it", role=role):
                 try:
                     trace.write_text("")
-                    run = self.seat(role, "--seats-root", self.seats, BASH_ENV=str(hook), U219_TRACE=str(trace))
+                    run = self.seat(
+                        role, "--seats-root", self.seats, BASH_ENV=str(hook), U219_TRACE=str(trace), privileged=False
+                    )
                     self.assertEqual(run.returncode, 0, run.stderr)
                     self.assertEqual(self.store_root_modes(root), [(0o700, True, True)] * 2)
                     commands = trace.read_text().split("\0")[:-1]

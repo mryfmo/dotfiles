@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -p
 # @file hcom-seat
 # @brief Start one omp seat for a role in a herdr pane through `hcom omp`, with its profile, policy overlay and extensions wired in.
 # @description
@@ -117,7 +117,16 @@
 #   credential precedence or redirects the request (ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, the
 #   cloud provider selectors, the Anthropic profile and federation names: CREDENTIAL_ENV_NAMES, one list cleared
 #   before the first child and again inside the shim, U552), and `seat_token` is unset before its first assignment so
-#   no caller's export attribute carries the token into a child.
+#   no caller's export attribute carries the token into a child. Beside that list stands the one of the names bash
+#   itself reads before a script's first statement (BASH_ENV, ENV, SHELLOPTS, BASHOPTS: SHELL_BEHAVIOUR_ENV_NAMES,
+#   regime-cutover U560): this launcher's and its shim's own shells are closed to them by the interpreter line,
+#   `#!/bin/bash -p` (no start-up file read, no function imported, an imported SHELLOPTS ignored), and the children
+#   by the clearing at the same two points (the two files unset, the two option lists, bash's readonly, unexported).
+#   Before either clearing, every environment entry whose name is no identifier of bash (an exported function's
+#   `BASH_FUNC_<name>%%`, a name such as `a.b`), which -p ignores but hands on to every child and no unset reaches,
+#   goes by one re-exec of the script under `/usr/bin/env -u <name> ...` (foreign_env_scrub, U560 round 3), so no
+#   child of the launcher or of the shim, the broker's `/bin/bash -p` and the canary's `/bin/sh` included, imports a
+#   caller's function or carries such an entry further.
 #   The seat's Claude Code directory (regime-cutover U318, U314 alternative A; per login group since U498): every
 #   seat's bridge child and the dsh role's gateway child run with `CLAUDE_CONFIG_DIR=<seats-root>/.state/claude-<group>`,
 #   one directory per login group under the seats root, holding the child's `.claude.json`, state and sessions and
@@ -242,6 +251,84 @@
 #   scripts/orchestrator/hcom-seat dsh --profile thak -- --version
 #   scripts/orchestrator/hcom-seat router --home ~/.dsh --dry-run -- --version
 set -euo pipefail
+# Every environment entry whose name is no identifier of bash goes first, for every child of this launcher at once
+# (regime-cutover U560 round 3, verdict U560-3ec779bd P1 :298): an exported function's entry (`BASH_FUNC_<name>%%=()
+# {...}`, the form this host's bash 3.2.57 exports and imports) and a name such as `a.b`. -p keeps this shell from
+# importing them and nothing more: bash holds them outside its variable table (bash 5) or as variables it refuses to
+# unset (3.2) and hands each on to every child, where a bash without -p imports the function before its first
+# statement. Measured on this host (2026-11-17, /tmp/u560-r3): under round 2's launcher a caller's `BASH_FUNC_unset%%`
+# printing a marker and CLAUDE_CODE_OAUTH_TOKEN ran inside the broker's `/bin/bash <copy>/acp-broker` with the token
+# available (the verdict's reproduction), and a `/bin/bash -p` child kept the entry for its own children. Two shapes
+# were measured. (A) Once, at the entry: the listing read whole on NUL (`/usr/bin/env -0`, acp-broker's worker_launch
+# form, U553), one `-u <name>` per entry whose name is outside `^[A-Za-z_][A-Za-z0-9_]*$`, and this script re-exec'd
+# under `/usr/bin/env -u ... /bin/bash -p "$0" "$@"`, guarded by a marker variable the re-exec'd shell unsets; every
+# later child, and every child of those (the broker's relay and connection handlers, hcom's herdr wrappers, the shim
+# and its canary's `/bin/sh`), inherits the scrubbed environment: a plain bash child, a -p child and a bash started by
+# an intermediary tool each held zero such entries and ran no caller code. (B) The same list on the start line of each
+# child this script names (the broker, the preflight, hcom, srt, the shim): the named children were clean, and a bash
+# started by an intermediary tool on an unlisted start line ran the caller's function; the list would have to be
+# carried to every external command, since any of them may start a shell. (A) is the shape: one place, nothing to
+# enumerate, no re-exec at all in the ordinary case (an environment of identifiers alone returns from the function),
+# and `hcom-seat router --dry-run` under the poison stays clean (the tests). The function's own text rides into the
+# shim (seat_sandbox_write, `declare -f`), whose environment is its pane's (herdr's), not this launcher's, so a shim
+# run from a poisoned pane scrubs the same way before its canary.
+# @description Re-run this script, once, under an environment with every entry whose name is no identifier removed,
+#   or return when there is none. The listing is `/usr/bin/env -0` read whole on NUL through a process substitution;
+#   bash 3.2 reads no process substitution's status, so the status is read as a sentinel entry printed after a
+#   successful listing alone, and a listing that ends without it refuses (no file: at the entry no private directory
+#   exists, and a file under the caller's TMPDIR would hold a copy of the caller's environment). An entry without a
+#   name (`=value`, which `env -u` cannot remove) refuses. Names alone go on the argument list, never a value. The
+#   marker HCOM_SEAT_ENV_SCRUBBED is set on the re-exec and read at the next entry: a marker with such entries still
+#   present refuses (the scrub did not take; no loop), and the caller unsets it after the call so no child sees it.
+#   The function's own names are unset first (a caller's exported variable of one of them keeps its export attribute
+#   through `local` on bash 3.2, acp-broker's measurement). A failed exec is named (`execfail`, set for this one exec).
+# @arg $1 string The program label of a refusal (`hcom-seat`, `hcom-seat shim`).
+# @arg $2 string The tail of a refusal (`nothing started`, `<tool> not started`).
+# @arg $@ string The script's own arguments, handed to the re-exec whole.
+# @exitcode 0 The environment holds no such entry (the function returns); else the function does not return.
+# @exitcode 2 A refusal, named on stderr.
+foreign_env_scrub() {
+    unset scrub_label scrub_tail entry name scrub_args sentinel listed count
+    local scrub_label=$1 scrub_tail=$2 entry name sentinel listed=0 count=0
+    local -a scrub_args=()
+    shift 2
+    sentinel="hcom-seat environment listing end ${RANDOM}${RANDOM}${RANDOM}"
+    # shellcheck disable=SC2312 # the listing's status is read as the sentinel entry, printed after a successful listing alone
+    while IFS= read -r -d '' entry || [[ -n ${entry} ]]; do
+        if [[ ${entry} == "${sentinel}" ]]; then # lint-comparisons: allow the listing's own end mark, no path
+            listed=1
+            break
+        fi
+        name=${entry%%=*}
+        [[ -n ${name} ]] || {
+            echo "${scrub_label}: refused: the process environment holds an entry without a name, which /usr/bin/env -u cannot remove; ${scrub_tail}" >&2
+            exit 2
+        }
+        [[ ${name} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
+            scrub_args+=(-u "${name}")
+            count=$((count + 1))
+        }
+    done < <(/usr/bin/env -0 && printf '%s\0' "${sentinel}")
+    ((listed)) || {
+        echo "${scrub_label}: refused: cannot list the process environment (/usr/bin/env -0 failed or ended short); ${scrub_tail}" >&2
+        exit 2
+    }
+    ((count > 0)) || return 0
+    [[ -z ${HCOM_SEAT_ENV_SCRUBBED-} ]] || {
+        echo "${scrub_label}: refused: ${count} environment entries whose names are no identifier survive the scrub (/usr/bin/env -u did not remove them); ${scrub_tail}" >&2
+        exit 2
+    }
+    shopt -s execfail
+    exec /usr/bin/env "${scrub_args[@]}" HCOM_SEAT_ENV_SCRUBBED=1 /bin/bash -p "$0" "$@" || {
+        echo "${scrub_label}: refused: cannot re-run this script under /usr/bin/env -u to remove ${count} environment entries whose names are no identifier (exec failed); ${scrub_tail}" >&2
+        exit 2
+    }
+}
+foreign_env_scrub hcom-seat 'nothing started' "$@"
+unset HCOM_SEAT_ENV_SCRUBBED || {
+    echo 'hcom-seat: refused: cannot unset HCOM_SEAT_ENV_SCRUBBED' >&2
+    exit 2
+}
 # No caller PATH entry runs anything (regime-cutover U85): before the first external command PATH holds the fixed
 # system directories only, and the tools hcom-seat needs beyond them are resolved below into a private directory.
 caller_path=${PATH:-}
@@ -264,13 +351,61 @@ CREDENTIAL_ENV_NAMES=(
     ANTHROPIC_WORKSPACE_ID
 )
 unset "${CREDENTIAL_ENV_NAMES[@]}"
-# Git is steered by no inherited environment (regime-cutover U85): every `GIT_*` variable the caller exported
-# (GIT_DIR, GIT_COMMON_DIR, GIT_WORK_TREE, GIT_CONFIG_* and the rest) is removed before the first git command, so host
-# git, and the seat, find the repository from the working directory alone. hcom-seat takes no input that way.
+# The names bash itself reads before a script's first statement go with them (regime-cutover U560; verdict
+# U553-1f397897 P2 at acp-broker:336 and :1464, measured against the broker: a fixture router launch ran a caller's
+# BASH_ENV file with the token available, and SHELLOPTS=xtrace printed the fixture token on stderr): BASH_ENV, the file
+# every non-interactive bash sources at start, and ENV, its POSIX-mode name; SHELLOPTS and BASHOPTS, the option lists a
+# bash enables from its environment (`xtrace` traces every statement of a child bash to its stderr, the broker's
+# token-bearing start line included; `allexport` exports every holder a child assigns). What bash does before this
+# script's first statement is governed by the interpreter line alone, so that line is `#!/bin/bash -p` (verdict
+# U560-c60013ab P1; the form of pr-audit.sh and router-settings-apply): under -p bash reads no BASH_ENV or ENV file,
+# imports no function from the environment (`BASH_FUNC_<name>%%`, so no caller's function stands in for compgen or any
+# other builtin below) and ignores an imported SHELLOPTS; later versions ignore an imported BASHOPTS, CDPATH and
+# GLOBIGNORE too (bash 5.3's manual, "Invocation"; 3.2.57 never reads BASHOPTS, an ordinary variable there). Measured
+# on this host's bash 3.2.57, one script run under `#!/bin/bash` and the same under `#!/bin/bash -p`, the variable in
+# its environment: a BASH_ENV file holding `touch <marker>`, `set -x` and `set -a` wrote the marker, traced a
+# token-shaped assignment to stderr and exported it to a child without -p, and did none of the three with it;
+# SHELLOPTS=xtrace traced the assignment without -p and nothing with it; SHELLOPTS=noexec ran no statement without -p
+# (exit 0, nothing printed) and every statement with it; `BASH_FUNC_compgen%%=() { echo PATH; }` made `compgen -e`
+# print `PATH` alone without -p and left it the builtin with it. -p changes nothing else this lever relies on: PATH is
+# kept (the restricted shell, -r, is what fixes PATH), the effective uid stays what the kernel gave (this file is not
+# setuid, so it is the real one; `set +p` would reset it to the real one, the same), `$-` gains `p`. So this shell is
+# clean, and what remains is the children: a name -p ignored is still a variable of this shell with its export
+# attribute (measured: SHELLOPTS, BASHOPTS, BASH_ENV and ENV each reached a child's `env` under -p until cleared).
+# The two files are unset. The two option lists cannot be (bash holds SHELLOPTS readonly on every version and BASHOPTS
+# since 4.1; measured on 3.2.57: `unset SHELLOPTS` fails and ends a `set -e` shell), so they lose their export
+# attribute through `export -n`, which bash accepts on the readonly (measured: status 0, the name gone from a child's
+# `env`; status 0 on a SHELLOPTS that was never imported too); a failed unset or `export -n` refuses by name before
+# any child. Here, before the first child, and again in the shim before its canary (the list rides into the shim text
+# beside the credential list). The environment is listed once, after the names went, for the GIT_* sweep below.
+# An exported function's entry (`BASH_FUNC_<name>%%`) and any other entry whose name is no identifier is no variable of
+# this shell, so no unset reaches it: foreign_env_scrub above removed every such entry by one re-exec through
+# `/usr/bin/env -u` before this point (round 3, verdict U560-3ec779bd P1).
+SHELL_BEHAVIOUR_ENV_NAMES=(BASH_ENV ENV SHELLOPTS BASHOPTS)
+for behaviour_name in "${SHELL_BEHAVIOUR_ENV_NAMES[@]}"; do
+    case ${behaviour_name} in
+    SHELLOPTS | BASHOPTS)
+        # shellcheck disable=SC2163 # the word is the list's name; -n takes an attribute off and exports nothing
+        export -n "${behaviour_name}" || {
+            echo "hcom-seat: refused: cannot take the export attribute off ${behaviour_name} (export -n failed), so a child would inherit it" >&2
+            exit 2
+        }
+        ;;
+    *)
+        unset "${behaviour_name}" || {
+            echo "hcom-seat: refused: cannot unset ${behaviour_name}" >&2
+            exit 2
+        }
+        ;;
+    esac
+done
 inherited=$(compgen -e) || {
     echo 'hcom-seat: refused: cannot list the environment' >&2
     exit 2
 }
+# Git is steered by no inherited environment (regime-cutover U85): every `GIT_*` variable the caller exported
+# (GIT_DIR, GIT_COMMON_DIR, GIT_WORK_TREE, GIT_CONFIG_* and the rest) is removed before the first git command, so host
+# git, and the seat, find the repository from the working directory alone. hcom-seat takes no input that way.
 while IFS= read -r inherited_name; do
     case ${inherited_name} in
     GIT_*) unset "${inherited_name}" ;;
@@ -3456,7 +3591,7 @@ seat_sandbox_write() {
     esac
     shim=${sandbox_real}/bin/${shim_tool}
     {
-        echo '#!/bin/bash'
+        echo '#!/bin/bash -p'
         echo "# Generated by hcom-seat for the ${role} seat ${name} (regime-cutover U85); rewritten on every launch."
         echo '# A canary proves the sandbox holds before the command starts; there is no uncontained fallback.'
         echo 'set -u'
@@ -3466,23 +3601,46 @@ seat_sandbox_write() {
         printf 'settings=%q canary=%q state=%q claude_config=%q token_file=%q token_form=%q push_url=%q sandbox=%q\n' \
             "${settings}" "${sandbox_real}/canary" "${sandbox_state}" "${claude_config_real}" "${token_file_real}" \
             "${TOKEN_FORM_RE}" "${push_url}" "${sandbox_real}"
-        # The shim judges the file as token_file_check does and clears the same credential names (U552): the stat mode
-        # arguments of this host and the one list ride into the shim text, so the two judges and the two clearings are
-        # one text each.
+        # The shim judges the file as token_file_check does and clears the same credential names (U552) and the same
+        # shell-behaviour names (U560): the stat mode arguments of this host and the two lists ride into the shim text,
+        # so the two judges and the two clearings are one text each. Its interpreter line is this launcher's, `-p`.
+        # The scrub of every entry whose name is no identifier rides in as the function's own text (`declare -f`,
+        # U560 round 3), so the two scrubs are one text too; the shim calls it before its first child.
         printf -v names_q '%q ' "${CREDENTIAL_ENV_NAMES[@]}"
+        printf -v behaviour_q '%q ' "${SHELL_BEHAVIOUR_ENV_NAMES[@]}"
         printf -v mode_q '%q ' "${mode_args[@]}"
-        echo "credential_names=(${names_q}) mode_args=(${mode_q})"
+        echo "credential_names=(${names_q}) shell_behaviour_names=(${behaviour_q}) mode_args=(${mode_q})"
         printf 'debug_canary=%q\n' "${h}/.claude/debug/hcom-seat-canary"
         # Outside the sandbox the shim and srt look up only in the private tool directory and the system directories;
         # inside it omp gets the seat's working PATH, applied by /usr/bin/env under srt.
         printf 'outer_path=%q seat_path=%q\n' "${sandbox_real}/bin:${PATH}" "${seat_path}"
+        declare -f foreign_env_scrub || refuse "cannot render foreign_env_scrub into ${shim}.tmp"
         cat << 'SHIM'
+# Every entry whose name is no identifier (an exported function's `BASH_FUNC_<name>%%`, a name such as `a.b`) goes
+# before this shim's first child (U560 round 3): hcom-seat's foreign_env_scrub above, one re-exec of this shim through
+# `/usr/bin/env -u <name> ... /bin/bash -p` when there is one, none otherwise. This shell's -p ignores such an entry
+# but hands it to every child, where a bash without -p (the canary's /bin/sh under srt among them) imports the
+# function before its first statement; and this shim's environment is its pane's, not the launcher's.
+foreign_env_scrub 'hcom-seat shim' "${tool} not started" "$@"
+unset HCOM_SEAT_ENV_SCRUBBED || { echo "hcom-seat shim: cannot unset HCOM_SEAT_ENV_SCRUBBED; ${tool} not started" >&2; exit 2; }
 export PATH=${outer_path}
 # Every name that outranks the token or redirects the request is cleared before the shim's first child, the canary
 # (U552: the list hcom-seat holds, which cleared it before its own first child; U552 round 3, verdict U552-953af858 P2:
 # the shim's clearing stood after the canary, so a caller's ANTHROPIC_API_KEY rode into that srt child), so nothing of
 # the shim's caller rides beside the file's line into any process the shim starts.
 unset "${credential_names[@]}"
+# The names bash itself reads before this shim's first statement go the same way (U560: BASH_ENV and ENV, the start-up
+# file; SHELLOPTS and BASHOPTS, the option lists; hcom-seat's list, which it cleared before its own first child, so a
+# shim hcom started finds none of them). This shell is closed to them by its interpreter line, `#!/bin/bash -p` (no
+# start-up file read, no function imported, an imported SHELLOPTS ignored), and its children by this clearing, before
+# the canary and before the token read below: the two files unset, the two option lists, which bash holds readonly,
+# unexported (`export -n`, accepted on the readonly); a failure refuses by name, nothing started.
+for behaviour_name in "${shell_behaviour_names[@]}"; do
+    case ${behaviour_name} in
+    SHELLOPTS | BASHOPTS) export -n "${behaviour_name}" || { echo "hcom-seat shim: cannot take the export attribute off ${behaviour_name} (export -n failed); ${tool} not started" >&2; exit 2; } ;;
+    *) unset "${behaviour_name}" || { echo "hcom-seat shim: cannot unset ${behaviour_name}; ${tool} not started" >&2; exit 2; } ;;
+    esac
+done
 /bin/rm -f "${canary}" || { echo "hcom-seat shim: cannot clear ${canary}" >&2; exit 2; }
 # `true`, not `:`: a failed redirection on a special builtin ends a POSIX shell (dash, Ubuntu's /bin/sh).
 # The fourth probe (regime-cutover U190b) opens a file under the operator's ~/.claude/debug, which srt 0.0.81 grants on
@@ -3913,11 +4071,14 @@ broker_fifo_close() {
 
 # @description Start `acp-broker` beside the Router (regime-cutover U344, M-24 part 2; U344c): the broker's lever set
 #   copied into a private per-launch directory and each copy hashed against its pin (broker_copy_make), then
-#   `/bin/bash <copy>/acp-broker` run with the seats root, this launch's seat name and its scratch cwd, the held
+#   `/bin/bash -p <copy>/acp-broker` run with the seats root, this launch's seat name and its scratch cwd, the held
 #   physical DSH_HOME in its environment (the broker holds the credential root from it, U343l) and the seats' Claude
 #   token beside it (regime-cutover U551: token_file_check's one read, an assignment on the start line, no argument
 #   and no file, which the relay hands to each connection handler and the broker to its workers' omp launch alone;
-#   the value appears in no line of either lever), its stdin /dev/null
+#   the value appears in no line of either lever), under -p (U560 round 3, verdict U560-3ec779bd P1) so the broker's
+#   own shell reads no BASH_ENV file, imports no function and ignores SHELLOPTS whatever its environment holds (the
+#   environment is this launcher's, scrubbed of every entry whose name is no identifier at the entry,
+#   foreign_env_scrub, so the relay and the connection handlers it starts inherit none either), its stdin /dev/null
 #   and its stdout the readiness pipe, as a background child of this launch, so a signal to the process group reaches
 #   it too and broker_stop can read its status. Readiness is the broker's own message, never a path's existence
 #   (U343o's form; verdict U344-a8adad11 P2 `hcom-seat:3416`: a Unix socket path exists after `bind` and before
@@ -3954,7 +4115,7 @@ broker_start() {
         return 2
     }
     broker_fifo_open=1
-    CLAUDE_CODE_OAUTH_TOKEN=${seat_token} DSH_HOME=${dsh_home_phys} /bin/bash "${broker_copy_lever}" "${seats_root}" "${name}" "${dir}" < /dev/null > "${fifo}" 7>&- &
+    CLAUDE_CODE_OAUTH_TOKEN=${seat_token} DSH_HOME=${dsh_home_phys} /bin/bash -p "${broker_copy_lever}" "${seats_root}" "${name}" "${dir}" < /dev/null > "${fifo}" 7>&- &
     broker_pid=$!
     while :; do
         line=''

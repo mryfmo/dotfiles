@@ -224,18 +224,25 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
     def dsh_calls(self):
         return self.calls_of("dsh")
 
-    def launch(self, *args, **overrides):
+    def launch(self, *args, privileged=True, **overrides):
+        """A dsh launch by the lever's path (`#!/bin/bash -p` governs, U560); `privileged=False` runs it as `/bin/bash
+        <file>`, the one way a test's BASH_ENV hook (the suite's DEBUG-trap injection form) is read, as SeatFixture.seat."""
         env = {**self.env, **{key: value for key, value in overrides.items() if value is not None}}
         for key in (key for key, value in overrides.items() if value is None):
             env.pop(key, None)
         argv = [str(self.lever), "dsh", "--seats-root", self.seats, "--home", str(self.dsh_home), *args]
+        if not privileged:
+            argv.insert(0, "/bin/bash")
         return subprocess.run(argv, cwd=self.repo, env=env, capture_output=True, text=True, check=False)
 
-    def held_launch(self, *args, count=1, new_session=False, role="dsh", seat=None, home=None, **overrides):
+    def held_launch(
+        self, *args, count=1, new_session=False, role="dsh", seat=None, home=None, privileged=True, **overrides
+    ):
         """Start `count` launches of `role` (dsh, or router, U321) by the lever `seat` (this head's by default) under the
         DSH_HOME `home` (the fixture's by default) whose dsh waits for `release`, and return them once every dsh has
         recorded itself, so the per-launch slots can be read while they exist; `new_session` makes each launcher its
-        own process group, the target of a signal to the group."""
+        own process group, the target of a signal to the group. `privileged=False` runs the lever as `/bin/bash <file>`,
+        the one way a BASH_ENV hook is read under its `#!/bin/bash -p` line (U560), as `launch` and SeatFixture.seat."""
         (self.calls / "hold").touch()
         env = {**self.env, **overrides}
         argv = [
@@ -247,6 +254,8 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             str(home or self.dsh_home),
             *args,
         ]
+        if not privileged:
+            argv.insert(0, "/bin/bash")
         before = len(self.dsh_calls())
         procs = [
             subprocess.Popen(
@@ -1180,6 +1189,75 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         )
         return run.stdout.split()
 
+    def test_the_brokers_bash_runs_under_p_with_no_exported_function_or_other_foreign_entry_of_the_caller(self):
+        """U560 round 3 (verdict U560-3ec779bd P1 at hcom-seat:298): round 2's broker_start ran `/bin/bash
+        <copy>/acp-broker` with the launcher's environment, which still carried every entry `-p` had ignored, so a
+        caller's exported `unset` (`BASH_FUNC_unset%%`, printing a marker and CLAUDE_CODE_OAUTH_TOKEN) ran inside the
+        broker's bash with the token available and the fixture token reached the launch's stderr. The launcher now
+        re-execs itself at its entry under `/usr/bin/env -u` per such entry (foreign_env_scrub) and starts the broker
+        as `/bin/bash -p`: the real broker under that caller environment listens and the launch runs to dsh's end with
+        neither the marker nor the fixture token on any stream; a stand-in broker from a scratch tree records its
+        shell's options (`p` among them), the count of such entries in its environment (none), that `unset` is the
+        builtin (no marker) and that the token reached it as a value, never printed; dsh under `env -i` has none and
+        no HCOM_SEAT_ENV_SCRUBBED; a router dry run under the same environment prints its line and stays clean."""
+        marker = "U560-FUNCTION-RAN"
+        caller = {
+            "BASH_FUNC_unset%%": f'() {{ echo "{marker} token=${{CLAUDE_CODE_OAUTH_TOKEN-none}}" >&2; builtin unset "$@"; }}',
+            "a.b": "1",
+        }
+        (proc,) = self.held_launch("--", "--version", role="router", new_session=True, **caller)
+        (name,) = self.slots()[0]
+        sock = Path(self.seats, ".state", name, "broker/sock")
+        self.assertTrue(sock.is_socket(), f"the real broker listens under the caller's environment: {self.slots()}")
+        ((status, out, err),) = self.release([proc])
+        self.assertEqual((status, out), (0, "0.2.1-rc.5\n"), err)
+        self.assertIn(f"acp-broker: listening on {sock}", err)
+        self.assertNotIn(marker, err, "no shell of the launch, the broker's included, ran the caller's function")
+        self.assertNotIn(test_hcom_seat.FAKE_OAT, out + err, "no token-shaped value on any stream")
+        self.assertEqual(self.slots(), ([], []), err)
+        dsh_env = self.dsh_calls()[-1]["env"]
+        self.assertEqual(
+            [key for key in dsh_env if key.startswith("BASH_FUNC_") or key in ("a.b", "HCOM_SEAT_ENV_SCRUBBED")], []
+        )
+        tree = self.scratch_tree("tree-broker-shell")
+        broker = tree / "scripts/orchestrator/acp-broker"
+        record = self.calls / "broker-shell"
+        broker.write_text(
+            "#!/bin/bash\n"
+            "# A stand-in broker (U560 round 3): records its shell's options, the count of environment entries whose\n"
+            "# names are no identifier and whether the token reached it, runs `unset` (the caller's function would\n"
+            "# print its marker), then reports listening without a socket (the line is the sign, U344c).\n"
+            "unset nothing_u560\n"
+            f"{test_hcom_seat.FOREIGN_ENTRIES_PROBE}\n"
+            'printf \'opts=%s foreign=%s token=%s\\n\' "$-" "$foreign" "${CLAUDE_CODE_OAUTH_TOKEN:+present}"'
+            f" >> {shlex.quote(str(record))}\n"
+            'printf "acp-broker: listening on %s/.state/%s/broker/sock\\n" "$1" "$2"\n'
+            "while :; do sleep 1; done\n"
+        )
+        self.tree_pin(tree, "acp-broker", broker)
+        run = self.tree_router(tree, **caller)
+        self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
+        self.assertNotIn(marker, run.stderr, "the stand-in's `unset` was the builtin")
+        self.assertNotIn(test_hcom_seat.FAKE_OAT, run.stderr)
+        text = record.read_text()
+        self.assertNotRegex(text, r"=(env|grep)-failed\b", f"a probe's read failed in {record}")
+        self.assertRegex(
+            text,
+            r"^opts=[a-zA-Z]*p[a-zA-Z]* foreign=0 token=present\n$",
+            "the broker's bash: -p, no such entry, the token as a value",
+        )
+        self.assertEqual(self.slots(), ([], []), "the slots go")
+        self.assertEqual(self.helper_copy_directories(), [], "the copy directory went after the broker's end")
+        self.assertEqual(self.relay_processes(), [])
+        dry = self.seat(
+            "router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--dry-run", "--", "--version", **caller
+        )
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        self.assertEqual(shlex.split(dry.stdout)[:2], ["/usr/bin/env", "-i"], "the dry run prints its line")
+        self.assertNotIn(marker, dry.stdout + dry.stderr, "the dry run under the caller's environment stays clean")
+        self.assertNotIn(test_hcom_seat.FAKE_OAT, dry.stdout + dry.stderr)
+        self.assertEqual(len(self.dsh_calls()), 2, "the two launches' dsh and no third: the dry run started none")
+
     def test_the_router_role_runs_the_router_profile_alone(self):
         """U321: the router role's grants exist for the Router, so the role accepts the DSH profile `router` alone
         (`--profile router` or none) and refuses any other by name, exit 2, before any tool is resolved or anything is
@@ -1452,7 +1530,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             ),
         )
         overrides.update(U321C_ROOT=str(state_root), U321C_OUTSIDE=str(outside))
-        procs = self.held_launch("--", "--version", role="router", **overrides)
+        procs = self.held_launch("--", "--version", role="router", privileged=False, **overrides)
         (name,) = self.slots()[0]
         settings = self.settings_of(name)
         ((status, out, err),) = self.release(procs)
@@ -1501,7 +1579,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         )
         run = self.seat(
             "router", "--seats-root", self.seats, "--home", str(self.dsh_home), "--", "--version",
-            U321C_ROOT=str(state_root), **overrides,
+            U321C_ROOT=str(state_root), privileged=False, **overrides,
         )  # fmt: skip
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(f"the router role's state root {state_root} is not a real directory of this user", run.stderr)
@@ -1596,7 +1674,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             ),
         )
         overrides.update(U321D_LINK=str(linked_home), U321D_OUTSIDE=str(outside), U321D_HOME=str(self.dsh_home))
-        procs = self.held_launch("--", "--version", role="router", home=linked_home, **overrides)
+        procs = self.held_launch("--", "--version", role="router", home=linked_home, privileged=False, **overrides)
         (name,) = self.slots()[0]
         settings = self.settings_of(name)
         ((status, out, err),) = self.release(procs)
@@ -1644,7 +1722,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             with self.subTest(role=role, args=args):
                 trace.write_text("")
                 run = self.seat(role, "--seats-root", self.seats, "--home", str(ssh), *args, "--", "--version",
-                                BASH_ENV=str(hook), U272_TRACE=str(trace))  # fmt: skip
+                                BASH_ENV=str(hook), U272_TRACE=str(trace), privileged=False)  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(
                     f"allowRead row {ssh} is, contains or lies inside {ssh}, a row of its denyRead list", run.stderr
@@ -2033,7 +2111,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             with self.subTest(case=label):
                 trace.write_text("")
                 run = self.seat("dsh", "--seats-root", self.seats, "--home", str(home), *args, "--", "--version",
-                                BASH_ENV=str(hook), U272_TRACE=str(trace))  # fmt: skip
+                                BASH_ENV=str(hook), U272_TRACE=str(trace), privileged=False)  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
                 commands = trace.read_text().split("\0")[:-1]
@@ -2129,7 +2207,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             with self.subTest(case=label):
                 trace.write_text("")
                 run = self.seat("dsh", "--seats-root", self.seats, "--home", str(dsh_home), *args, "--", "--version",
-                                BASH_ENV=str(hook), U272_TRACE=str(trace))  # fmt: skip
+                                BASH_ENV=str(hook), U272_TRACE=str(trace), privileged=False)  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
                 self.assertIn("a row of its denyRead list; the launch is refused before anything is made", run.stderr)
@@ -2234,7 +2312,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     profile.unlink()
                 profile.symlink_to(target)
                 trace.write_text("")
-                run = self.launch(*args, "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace))
+                run = self.launch(*args, "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace), privileged=False)
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
                 commands = trace.read_text().split("\0")[:-1]
@@ -2402,7 +2480,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                     run_root.symlink_to(profiles)
                 trace.write_text("")
                 run = self.seat("dsh", "--seats-root", self.seats, "--home", str(dsh_home), *([option] if option else []),
-                                "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace))  # fmt: skip
+                                "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace), privileged=False)  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
                 self.assertIn("the launch is refused before anything is made", run.stderr)
@@ -2502,7 +2580,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         hook.write_text('set -T\ntrap \'builtin printf "%s\\0" "$BASH_COMMAND" >> "$U272_TRACE"\' DEBUG\n')
         trace = Path(self.temp.name) / "trace"
         trace.write_text("")
-        run = self.launch("--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace))
+        run = self.launch("--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace), privileged=False)
         self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
         self.assertIn(f"{self.profile_config} equals {overlay}; the launch leaves it", run.stderr)
         commands = trace.read_text().split("\0")[:-1]
@@ -2568,7 +2646,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 overlay.write_text(DSH_OVERLAY.format(extension=self.bridge))
                 arrange()
                 trace.write_text("")
-                run = self.launch(*args, "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace))
+                run = self.launch(*args, "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace), privileged=False)
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(message, run.stderr)
                 commands = trace.read_text().split("\0")[:-1]
@@ -2759,7 +2837,9 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 before = self.profile_config.stat()
                 agent.chmod(0o500)
                 trace.write_text("")
-                run = self.launch("--dry-run", "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace))
+                run = self.launch(
+                    "--dry-run", "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace), privileged=False
+                )
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertIn(f"hcom-seat: the dsh profile config {self.profile_config} {line} {overlay}", run.stderr)
                 after = self.profile_config.stat()
@@ -2805,7 +2885,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 if config is not None:
                     self.profile_config.write_text(config)
                 run = self.launch("--", "--version", BASH_ENV=str(hook), U310_AGENT=str(agent),
-                                  U310_VICTIM=str(victim), U310_SEEN=str(seen))  # fmt: skip
+                                  U310_VICTIM=str(victim), U310_SEEN=str(seen), privileged=False)  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
                 self.assertEqual(seen.read_text(), "", "no shell command ran while a temporary existed")
                 self.assertEqual(self.profile_config.read_text(), expected)
@@ -2837,7 +2917,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         for args in (["--dry-run"], []):
             with self.subTest(args=args):
                 trace.write_text("")
-                run = self.launch(*args, "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace))
+                run = self.launch(*args, "--", "--version", BASH_ENV=str(hook), U272_TRACE=str(trace), privileged=False)
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(
                     f"allowRead row {home / '.omp/profiles/dsh'} ({home / '.omp/profiles/orchestrator'}) is, contains"
@@ -2970,7 +3050,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 if config is not None:
                     self.profile_config.write_text(config)
                 run = self.launch("--", "--version", BASH_ENV=str(hook), U310_TARGET=str(self.profile_config),
-                                  U310_OTHER=str(other))  # fmt: skip
+                                  U310_OTHER=str(other), privileged=False)  # fmt: skip
                 self.assertIn("hook: swapped", run.stderr, "the swap happened before the act")
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(
@@ -3013,7 +3093,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             ' /bin/rm -f -- "${e}" && printf "%s\\n" "${U310_ATTACK}" > "${e}" && echo "hook: swapped the temporary ${e}" >&2; done;'
         )
         run = self.launch("--", "--version", BASH_ENV=str(hook), U310_TARGET=str(self.profile_config),
-                          U310_OTHER=str(other), U310_AGENT=str(agent), U310_ATTACK=attacker)  # fmt: skip
+                          U310_OTHER=str(other), U310_AGENT=str(agent), U310_ATTACK=attacker, privileged=False)  # fmt: skip
         self.assertIn("hook: swapped", run.stderr, "the destination swap happened before the act")
         self.assertNotIn("hook: swapped the temporary", run.stderr, "no temporary was ever visible to the shell")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
@@ -3036,7 +3116,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
             with self.subTest(config="absent" if config is None else "stale"):
                 if config is not None:
                     self.profile_config.write_text(config)
-                run = self.launch("--", "--version", BASH_ENV=str(hook))
+                run = self.launch("--", "--version", BASH_ENV=str(hook), privileged=False)
                 self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
                 self.assertEqual(self.profile_config.read_text(), expected)
                 self.assertEqual(stat.S_IMODE(self.profile_config.stat().st_mode), 0o600)
@@ -3105,7 +3185,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
                 hook.write_text(hook_texts[name])
                 try:
                     run = self.launch("--", "--version", BASH_ENV=str(hook), U310_HASH_TMP=str(hooks),
-                                      U310_HELPER_PATH=str(helper_copy), U310_PROFILE=str(profile))  # fmt: skip
+                                      U310_HELPER_PATH=str(helper_copy), U310_PROFILE=str(profile), privileged=False)  # fmt: skip
                 finally:
                     if profile.is_dir():
                         profile.chmod(0o700)
@@ -3228,7 +3308,7 @@ class HcomSeatDshTest(test_hcom_seat.SeatFixture):
         hook = scratch / "swap-after-hash.bash"
         hook.write_text(helper_hash_hook('/bin/mv -f -- "${U310_SWAP_IN}" "${U310_HELPER_PATH}"'))
         run = self.launch("--", "--version", BASH_ENV=str(hook), U310_HASH_TMP=str(scratch),
-                          U310_HELPER_PATH=str(helper), U310_SWAP_IN=str(swap_in))  # fmt: skip
+                          U310_HELPER_PATH=str(helper), U310_SWAP_IN=str(swap_in), privileged=False)  # fmt: skip
         self.assertEqual((run.returncode, run.stdout), (0, "0.2.1-rc.5\n"), run.stderr)
         self.assertEqual(
             helper.read_text(), swap_text, "the path was rewritten right after the helper's digest was read"

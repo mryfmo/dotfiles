@@ -808,8 +808,11 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertIn('chezmoi apply --force "${targets[@]}"', refresh)
         self.assertIn("pattern='/\\.codex/([a-z0-9_]+\\.)?config\\.toml$'", refresh)
         makefile = (ROOT / "Makefile").read_text()
-        # make update pulls, then runs everything else in update-tree, the second make.
-        self.assertIn("update-tree", makefile.split("\nupdate:\n", 1)[1].split("\n\n", 1)[0])
+        # make update pulls the checkout and the chezmoi source clone, then runs everything else in update-tree, the
+        # second make.
+        update = makefile.split("\nupdate:\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("update-tree", update)
+        self.assertIn('pull "$$src"', update)
         update = makefile.split("\nupdate-tree:\n", 1)[1].split("\n\n", 1)[0]
         self.assertIn("./scripts/update-agent-assets.sh", update)
         self.assertIn("refresh_codex_hook_trust", makefile.split("\ncodex-hook-trust:\n", 1)[1].split("\n\n", 1)[0])

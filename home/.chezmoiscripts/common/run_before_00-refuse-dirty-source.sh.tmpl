@@ -71,7 +71,7 @@ function refuse_dirty_source() {
     if [ -z "${changes}" ]; then
         changes="$(git -C "${repo}" diff --name-only "${ref}" -- home install scripts | head -n 5)" || true
     fi
-    printf 'chezmoi apply refused: the source tree %s differs from %s (%s); land the change through a pull request and run make update (which also pulls a stale tree), or set CHEZMOI_ALLOW_DIRTY_SOURCE=1 to apply anyway\n' \
+    printf 'chezmoi apply refused: the source tree %s differs from %s (%s); land the change through a pull request and run make update from your checkout (it pulls this source clone too), or set CHEZMOI_ALLOW_DIRTY_SOURCE=1 to apply anyway\n' \
         "${repo}" "${ref}" "$(printf '%s' "${changes}" | paste -sd ';' -)" >&2
     exit 1
 }

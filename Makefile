@@ -93,24 +93,37 @@ init:
 # diff touches install/** or .chezmoiscripts/**, and with SYSTEM=1.
 # Unattended `make update`: never prompts, except a Homebrew cask whose upgrade runs sudo.
 update:
-	@git fetch --quiet origin main || true
-	@branch="$$(git branch --show-current 2>/dev/null || true)"; \
-	upstream="$$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"; \
-	reason=""; \
-	if [ -n "$$(git ls-files -u)" ]; then \
-		reason="index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"; \
-	elif [ "$$branch" != main ]; then \
-		reason="current branch is $${branch:-detached}, not main"; \
-	elif [ "$$upstream" != origin/main ]; then \
-		reason="upstream is $${upstream:-unset}, not origin/main"; \
-	elif ! git diff --quiet || ! git diff --cached --quiet; then \
-		reason="tracked files have staged or unstaged changes"; \
+	@# One guarded fast-forward pull per clone: the checkout (CURDIR), then the chezmoi source clone when it is another
+	@# clone by identity (`chezmoi source-path` names <clone>/home under .chezmoiroot; the laptop keeps the two apart).
+	@# The source clone is named only when `chezmoi source-path` and the toplevel read both exit 0, whatever either
+	@# prints; a chezmoi that is absent or fails leaves the checkout alone and says so, since a source clone that is
+	@# neither pulled nor fetched passes the dirty-source guard against its own stale origin/main (Codex P1 on PR 795).
+	@pull() { \
+		git -C "$$1" fetch --quiet origin main || true; \
+		branch="$$(git -C "$$1" branch --show-current 2>/dev/null || true)"; \
+		upstream="$$(git -C "$$1" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"; \
+		reason=""; \
+		if [ -n "$$(git -C "$$1" ls-files -u)" ]; then \
+			reason="index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"; \
+		elif [ "$$branch" != main ]; then \
+			reason="current branch is $${branch:-detached}, not main"; \
+		elif [ "$$upstream" != origin/main ]; then \
+			reason="upstream is $${upstream:-unset}, not origin/main"; \
+		elif ! git -C "$$1" diff --quiet || ! git -C "$$1" diff --cached --quiet; then \
+			reason="tracked files have staged or unstaged changes"; \
+		fi; \
+		if [ -n "$$reason" ]; then \
+			printf "Notice: local source not pulled (%s); run 'git -C %s pull' to fetch remote updates.\n" "$$reason" "$$1"; \
+		elif ! git -C "$$1" pull --ff-only; then \
+			printf 'Warning: git pull --ff-only failed; continuing with local source.\n' >&2; \
+		fi; \
+	}; \
+	pull "$(CURDIR)"; \
+	if sp="$$(chezmoi source-path 2>/dev/null)" && src="$$(git -C "$$sp" rev-parse --show-toplevel 2>/dev/null)"; then :; else \
+		src=""; \
+		printf 'Notice: chezmoi source clone not pulled (chezmoi source-path or its toplevel read failed); only the checkout %s was pulled.\n' "$(CURDIR)"; \
 	fi; \
-	if [ -n "$$reason" ]; then \
-		printf "Notice: local source not pulled (%s); run 'git -C %s pull' to fetch remote updates.\n" "$$reason" "$(CURDIR)"; \
-	elif ! git pull --ff-only; then \
-		printf 'Warning: git pull --ff-only failed; continuing with local source.\n' >&2; \
-	fi
+	if [ -n "$$src" ] && ! [ "$$src" -ef "$(CURDIR)" ]; then pull "$$src"; fi
 	@$(MAKE) --no-print-directory update-tree
 
 .PHONY: update-tree

@@ -137,12 +137,13 @@
 #   cannot be appended refuses by name. The three lines of one launch are in that order; between the start and the
 #   exit line the reaper appends one `session cwd <original> mapped to <task>` line per mapped request (the
 #   paragraph below).
-#   The launch. The worker's omp runs through worker_launch: a subshell clears every exported name, exports `HOME
+#   The launch. The worker's omp runs through worker_launch: a subshell unsets every name of its process environment
+#   (the listing `/usr/bin/env -0` writes into `<slot>/env0`, never `compgen -e`), exports `HOME
 #   PATH OMP_PROFILE=dsh CLAUDE_CONFIG_DIR AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null
 #   HCOM_SEAT_SANDBOX=<slot> [USER LANG when this process has them]` and `CLAUDE_CODE_OAUTH_TOKEN` (the seats'
 #   setup-token, U551, this one command's alone) by assignment, and execs `/usr/bin/env -u SHLVL [-u <name> per
-#   entry of the process environment that bash could not unset or list, read whole from `<slot>/env0`, a listing
-#   written and removed inside the subshell] <srt> --settings <slot>/settings.json -- /usr/bin/env PATH=<seat path> <python3> -I -S
+#   entry still in the listing after the unsets, read whole from `<slot>/env0`, written twice and removed inside
+#   the subshell] <srt> --settings <slot>/settings.json -- /usr/bin/env PATH=<seat path> <python3> -I -S
 #   <acp-relay.py> --map-session-cwd <task> -- <omp> acp --profile dsh`, in the slot's task, its stdin and stdout the
 #   connection, its stderr the file
 #   `<slot>/stderr`, in a process group of its own (job control on for the one start), so the reaper ends the mapper,
@@ -492,12 +493,12 @@ renderer_source() {
 usage='usage: acp-broker [--connection] <seats-root> <router-seat-name> <router-scratch-cwd>'
 # The names worker_launch reads after its scrub, unset before their first assignment (regime-cutover U553 round 3,
 # verdict U553-1f397897 P2 :1607): bash keeps a caller's export attribute through a plain assignment and an array
-# assignment, and `local` inherits it on bash 3.2, so a caller's exported variable of such a name would be listed by
-# the scrub's `compgen -e`, unset as the holder itself and read unbound (`worker_env[@]: unbound variable`, the launch
-# exiting 1 with no worker). `connection` and `reaper` are refuse's; `slot` names the listing file; `lines` is
-# split_lines' result; the rest are unset at their own declarations (srt_cmd, worker_env, settings) or at the entry
-# (seat_token). Measured 2026-11-17 on bash 3.2.57 (/tmp/u553-r6/measure.sh, measure2.sh).
-unset connection slot reaper lines
+# assignment, so a caller's exported variable of such a name would be in the scrub's listing, unset as the holder
+# itself and read unbound (`worker_env[@]: unbound variable`, the launch exiting 1 with no worker). `connection` and
+# `reaper` are refuse's; `slot` names the listing file; the rest are unset at their own declarations (srt_cmd,
+# worker_env, router_env, settings), at the entry (seat_token) or inside the function (its own names, since `local`
+# inherits the attribute on bash 3.2). Measured 2026-11-17 on bash 3.2.57 (/tmp/u553-r6/measure.sh, measure2.sh, m1.sh).
+unset connection slot reaper
 connection=0
 slot=''
 slot_made=0
@@ -1493,7 +1494,6 @@ fi
 
 repo=${f3#repo=}
 ref=${f4#ref=}
-unset name # read by worker_launch after its scrub as its loop variable (the unset block before `connection=0`)
 name=${f5#name=}
 require_clean_path "the header repo" "${repo}"
 [[ ${ref} =~ ^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$ && ${ref} != *..* ]] || # lint-comparisons: allow a grammar test on one revision word, no path compare
@@ -1580,10 +1580,10 @@ json=${settings_json}
 # The worker's environment, built and never inherited (hcom-seat's dsh launch): HOME, the outer PATH, the profile,
 # the router group's Claude Code directory, the AWS file names omp's Bedrock discovery stats (an EPERM there ends omp), the
 # seat marker, and USER and LANG when this process's caller exported them. The Router-side git runs get HOME and the
-# outer PATH alone. Both arrays and worker_launch's own names are unset first (the unset block before `connection=0`):
-# a caller's exported variable of any of these names keeps its export attribute through the array assignment and
-# through `local` on bash 3.2, and the scrub would unset the holder (verdict U553-1f397897 P2 :1607).
-unset worker_env router_env names entry unset_args removed
+# outer PATH alone. Both arrays are unset first (the unset block before `connection=0`): a caller's exported variable
+# of either name keeps its export attribute through the array assignment, and the scrub would unset the holder
+# (verdict U553-1f397897 P2 :1607).
+unset worker_env router_env
 worker_env=("HOME=${HOME}" "PATH=${outer_path}" OMP_PROFILE=dsh "CLAUDE_CONFIG_DIR=${claude_real}"
     AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null "HCOM_SEAT_SANDBOX=${slot}")
 router_env=("HOME=${HOME}" "PATH=${outer_path}")
@@ -1597,44 +1597,53 @@ done
 # subshell (worker_launch), never as a word of `/usr/bin/env -i`'s argument list, which any process of this user can read.
 
 # @description Run the worker's omp under srt with the environment reduced to worker_env plus the seats' token
-#   (regime-cutover U551; U553): a subshell lists every exported name (compgen's status read: a list that cannot be
-#   read refuses the launch and starts nothing, verdict U553-dc83fece P2 :1582), unsets each, and every name
-#   `unset` refuses (a readonly the caller exported, SHELLOPTS or BASHOPTS) is removed from the exec'd environment
-#   by `/usr/bin/env -u <name>`, a name and never a value on the argument list, beside `-u SHLVL` (bash re-exports
-#   SHLVL on every exec, the one name it adds; measured 2026-11-15 on bash 3.2 and 5). Then the process environment
-#   itself is read: `/usr/bin/env -0` writes it, each entry NUL-ended, into `<slot>/env0` (this connection's slot,
-#   0700; a file, since bash 3.2 reads no process substitution's status), its status is read, `read -d ''` takes
-#   each entry whole, and the file is removed before the exec. So a newline inside a name or a value splits
-#   nothing and `-u` receives the name as the child would see it (verdict U553-1f397897 P2 :1612: round 2's `tr`
-#   turned a name's newline into another character and `-u` received a different name, so the entry survived into
-#   omp; a name holding `=` is impossible, the first `=` ends the name). Every entry still in the listing is
-#   removed the same way: what bash could not list or unset, a caller's name that is no identifier (`a.b`: bash 5
-#   keeps it outside its variable table, where `compgen -e` does not see it, and passes it on to every child, while
-#   bash 3.2 lists it and refuses the unset; bash-5.2 variables.c, bind_invalid_envvar and maybe_make_export_env),
-#   an exported function's entry (`BASH_FUNC_<name>%%`) and `_`. Then it exports the list and the token by
-#   assignment and execs srt through env, so the environment equals exactly worker_env plus the token whatever the
-#   caller exported, on either bash, and the token is in no argv (`env -i NAME=value` puts the value in env's
-#   argument list, readable by `ps` from every process of this user, the sandboxed worker included). Every name
-#   this function reads after its scrub (worker_env, srt_cmd, settings, seat_token, slot, its locals, refuse's
-#   connection and reaper) is unset by this lever before its first assignment, so the scrub finds no caller's
+#   (regime-cutover U551; U553): a subshell reads the process environment itself, `/usr/bin/env -0` written, each
+#   entry NUL-ended, into `<slot>/env0` (this connection's slot, 0700; a file, since bash 3.2 reads no process
+#   substitution's status), the write's status read (a listing that cannot be written or read refuses the launch
+#   and starts nothing, verdict U553-dc83fece P2 :1582), and `read -d ''` taking each entry whole, so a newline
+#   inside a name or a value splits nothing (verdict U553-1f397897 P2 :1612: round 2's `tr` turned a name's newline
+#   into another character and `-u` received a different name, so the entry survived into omp; a name holding `=`
+#   is impossible, the first `=` ends the name). The listing, not `compgen -e`, names what is unset: bash 3.2
+#   imports a name holding a newline and `compgen -e` prints it as two names, so a loop over that output ran
+#   `unset` on whatever the second line named, a holder of this function among them (measured 2026-11-17,
+#   /tmp/u553-r6/b/hole.py). Every entry whose name is an identifier is unset (the failures ignored: a readonly the
+#   caller exported, SHELLOPTS or BASHOPTS, stays); then the listing is written again and every entry still in it
+#   is removed from the exec'd environment by `/usr/bin/env -u <name>`, a name and never a value on the argument
+#   list, beside `-u SHLVL` (bash re-exports SHLVL on every exec, the one name it adds; measured 2026-11-15 on bash
+#   3.2 and 5): what bash could not unset, a caller's name that is no identifier (`a.b`: bash 5 keeps it outside
+#   its variable table and passes it on to every child, bash 3.2 imports it and refuses the unset; bash-5.2
+#   variables.c, bind_invalid_envvar and maybe_make_export_env), an exported function's entry (`BASH_FUNC_<name>%%`)
+#   and `_`. No name is matched against a list of the first pass (round 3's first shape kept one, and a name made
+#   of two refused names joined by a newline, `a.b<newline>SHELLOPTS`, matched it and reached omp; `env -u` takes a
+#   name twice). An entry without a name (`=value`, which `env -u` cannot remove) refuses the launch. The file is
+#   removed before the exec. Then it exports the list and the token by assignment and execs srt through env, so
+#   the environment equals exactly worker_env plus the token whatever the caller exported, on either bash, and the
+#   token is in no argv (`env -i NAME=value` puts the value in env's argument list, readable by `ps` from every
+#   process of this user, the sandboxed worker included). Every name this function reads after its scrub
+#   (worker_env, srt_cmd, settings, seat_token, slot, refuse's connection and reaper) is unset by this lever before
+#   its first assignment, and its own names here before they are declared local, so the scrub finds no caller's
 #   export attribute on a holder (verdict U553-1f397897 P2 :1607; the unset block before `connection=0`). The exec
 #   keeps the subshell's pid, so `$!` names srt for the reaper.
 # @arg $@ string The command srt runs, after `--settings <file> --`.
 worker_launch() {
-    local names name entry removed=''
+    # The function's own names first: a caller's exported variable of one of them keeps its export attribute through
+    # `local` on bash 3.2, and the scrub would unset the local itself (measured 2026-11-17, /tmp/u553-r6/m1.sh).
+    unset name entry unset_args
+    local name entry
     local -a unset_args=()
-    names=$(compgen -e) || refuse "cannot list the environment for the worker's launch (compgen -e failed); omp acp not started"
-    split_lines "${names}"
-    for name in ${lines[@]+"${lines[@]}"}; do
-        if ! unset "${name}" 2> /dev/null; then unset_args+=(-u "${name}") removed+=${name}$'\n'; fi
-    done
-    # The entries that remain, by name, each read whole on its NUL from the listing file (the block above). The
-    # readonly names above are already in the list; the rest is what bash could neither list nor unset.
-    /usr/bin/env -0 > "${slot}/env0" || refuse "cannot read the process environment for the worker's launch (/usr/bin/env -0 failed); omp acp not started"
-    while IFS= read -r -d '' entry; do
+    /usr/bin/env -0 > "${slot}/env0" || refuse "cannot list the process environment for the worker's launch (/usr/bin/env -0 into ${slot}/env0 failed); omp acp not started"
+    while IFS= read -r -d '' entry || [[ -n ${entry} ]]; do
         name=${entry%%=*}
-        [[ $'\n'${removed} == *$'\n'"${name}"$'\n'* ]] || unset_args+=(-u "${name}")
-    done < "${slot}/env0"
+        [[ ${name} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+        unset "${name}" 2> /dev/null || :
+    done < "${slot}/env0" || refuse "cannot read the process environment listing ${slot}/env0 for the worker's launch; omp acp not started"
+    # The entries that remain, each read whole on its NUL: what bash could not unset. Every one gets `-u`.
+    /usr/bin/env -0 > "${slot}/env0" || refuse "cannot list the process environment after the unsets for the worker's launch (/usr/bin/env -0 into ${slot}/env0 failed); omp acp not started"
+    while IFS= read -r -d '' entry || [[ -n ${entry} ]]; do
+        name=${entry%%=*}
+        [[ -n ${name} ]] || refuse "the process environment holds an entry without a name, which /usr/bin/env -u cannot remove; omp acp not started"
+        unset_args+=(-u "${name}")
+    done < "${slot}/env0" || refuse "cannot read the process environment listing ${slot}/env0 after the unsets for the worker's launch; omp acp not started"
     /bin/rm -f -- "${slot}/env0" || refuse "cannot remove the environment listing ${slot}/env0; omp acp not started"
     export "${worker_env[@]}" "CLAUDE_CODE_OAUTH_TOKEN=${seat_token}"
     exec /usr/bin/env -u SHLVL ${unset_args[@]+"${unset_args[@]}"} "${srt_cmd[@]}" --settings "${settings}" -- "$@"

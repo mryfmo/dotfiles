@@ -220,145 +220,6 @@ DSH_GATEWAY_PROVIDER = "claude-bridge"
 DSH_GATEWAY_COMMAND = ("omp", "auth-gateway", "stdio")
 DSH_GATEWAY_PLUGIN = "dsh-omp-gateway"
 DSH_GATEWAY_LINK = "link:../../plugins/omp-gateway"
-# The bridge's Claude Code executable row (regime-cutover U510, handoff/47; U551, U552): under the API key route every
-# role whose bridge child runs (a seat role whose omp model route is claude-bridge, and every gateway role, whose child
-# the bridge serves) had `provider.pathToClaudeCodeExecutable` of `~/.omp/profiles/<role>/agent/claude-bridge.json`
-# set to the pinned `claude-keyed` lever by a chezmoi modify script per role. The bridge reads that key from this file
-# alone (patch 06; config.ts:61, :110), so a deployed row outlives the route: since U551 the seats' credential is the
-# setup-token the seat shim exports and the bundled Claude Code reads, and the same three scripts now delete that one
-# key from the live file and leave every other byte as it is, so the override goes on `chezmoi apply` (U552, verdict
-# U552-484346a3 P2: deleting the scripts left the deployed override in place). The deletion is a cut of the row's own
-# bytes from the file's text, found by a scanner that decodes every key (U552 round 3, verdict U552-953af858 P2 x2: a
-# raw-byte search missed an escaped spelling of the key, and `json.dumps` of the whole object rewrote unrelated
-# whitespace, escapes and float forms). The scripts run on the system python3 alone (U510b: the apply container has
-# python3 and no uv; without python3 the script exits 1 and the apply fails naming the file). The directories carry
-# chezmoi's private_ attribute so an apply keeps the 0700 modes hcom-seat gives the profile directories it makes. No
-# GENERATED_SCOPES row: the deployed glob would read the bridge's own claude-bridge.json of a role on another route as
-# an orphan. `claude-keyed` itself retires with these scripts (U553).
-CLAUDE_BRIDGE_MODIFY_PATH = "home/dot_omp/private_profiles/private_{role}/private_agent/modify_claude-bridge.json"
-CLAUDE_BRIDGE_PARENT_KEY = "provider"
-CLAUDE_BRIDGE_MANAGED_KEY = "pathToClaudeCodeExecutable"
-# The Python the modify script runs (render_claude_bridge_modify_script): raw, so its `\t\n\r` reach the script as the
-# escapes they are; the two key placeholders are filled by the renderer from the constants above.
-CLAUDE_BRIDGE_MERGE_BODY = r'''import json
-import sys
-from json.decoder import JSONDecoder, scanstring
-
-PARENT_KEY = "@PARENT_KEY@"
-MANAGED_KEY = "@MANAGED_KEY@"
-WHITESPACE = " \t\n\r"
-BY_HAND = f"delete {PARENT_KEY}.{MANAGED_KEY} by hand if it is there"
-
-
-def warn(reason):
-    print(f"claude-bridge.json: {reason}; the file passes through unchanged", file=sys.stderr)
-
-
-def refuse_constant(token):
-    raise ValueError(f"the live file holds {token}, which JSON cannot carry")
-
-
-DECODER = JSONDecoder(parse_constant=refuse_constant)
-
-
-def skip_space(text, at):
-    while at < len(text) and text[at] in WHITESPACE:
-        at += 1
-    return at
-
-
-def members(text, at):
-    """The members of the JSON object whose `{` is at text[at], in order, each as (key_start, key, value_start,
-    value_end) with the key decoded (an escaped spelling names the same key) and the value a span the json module
-    parsed, and the index of the closing `}`. Anything that is not a JSON object there is a ValueError."""
-    if at >= len(text) or text[at] != "{":
-        raise ValueError(f"no object at {at}")
-    rows = []
-    at = skip_space(text, at + 1)
-    if at < len(text) and text[at] == "}":
-        return rows, at
-    while True:
-        key_start = skip_space(text, at)
-        if key_start >= len(text) or text[key_start] != '"':
-            raise ValueError(f"no key at {key_start}")
-        key, at = scanstring(text, key_start + 1)
-        at = skip_space(text, at)
-        if at >= len(text) or text[at] != ":":
-            raise ValueError(f"no colon at {at}")
-        value_start = skip_space(text, at + 1)
-        _, value_end = DECODER.raw_decode(text, value_start)
-        rows.append((key_start, key, value_start, value_end))
-        at = skip_space(text, value_end)
-        if at < len(text) and text[at] == ",":
-            at += 1
-            continue
-        if at < len(text) and text[at] == "}":
-            return rows, at
-        raise ValueError(f"no comma or closing brace at {at}")
-
-
-def row_span(rows, index, open_at, close_at):
-    """The bytes that go with member `index`: through the next key's first byte when one follows (the comma and the
-    whitespace before that key), from the previous value's last byte when it is the last (its comma and the whitespace
-    before it), everything between the braces when it is alone. Every byte outside the span stays."""
-    key_start, _, _, value_end = rows[index]
-    if index + 1 < len(rows):
-        return key_start, rows[index + 1][0]
-    if index > 0:
-        return rows[index - 1][3], value_end
-    return open_at + 1, close_at
-
-
-def first_row(text):
-    """The span of the first provider.pathToClaudeCodeExecutable member of the top-level object, or None."""
-    rows, close_at = members(text, skip_space(text, 0))
-    if skip_space(text, close_at + 1) != len(text):
-        raise ValueError("bytes after the object")
-    for _, key, value_start, _ in rows:
-        if key != PARENT_KEY or text[value_start] != "{":
-            continue
-        inner, inner_close = members(text, value_start)
-        for index, (_, inner_key, _, _) in enumerate(inner):
-            if inner_key == MANAGED_KEY:
-                return row_span(inner, index, value_start, inner_close)
-    return None
-
-
-def without_the_row(raw):
-    """The live file without provider.pathToClaudeCodeExecutable, or None when nothing is to be written: the row's
-    bytes alone are cut, once per occurrence, and every other byte stays as it was."""
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        warn(f"the live file is not UTF-8, so this script does not read it; {BY_HAND}")
-        return None
-    if not text.strip(WHITESPACE):
-        return None
-    changed = False
-    try:
-        while True:
-            span = first_row(text)
-            if span is None:
-                break
-            text = text[: span[0]] + text[span[1] :]
-            changed = True
-        if changed:
-            json.loads(text, parse_constant=refuse_constant)
-    except (ValueError, RecursionError):
-        warn(f"the live file is no JSON object this script reads; {BY_HAND}")
-        return None
-    return text.encode("utf-8") if changed else None
-
-
-def main():
-    raw = sys.stdin.buffer.read()
-    out = without_the_row(raw)
-    sys.stdout.buffer.write(raw if out is None else out)
-    return 0
-
-
-sys.exit(main())
-'''
 # The Router's subagent provider (regime-cutover U434, M-22 Part B, table row s21): the pinned tree's out-of-process
 # ACP backend (`packages/subagent/subagent-acp`: `Config {providerName, command, args, permission, env}`, the child
 # spawned per request in the request's cwd), whose command is `acp-seat`, the broker's thin client installed and
@@ -2602,97 +2463,6 @@ def render_omp_gateway_overlay(manifest: dict[str, Any], role: str) -> str:
     return overlay + "setupVersion: 2\n" + omp_startup_yaml(manifest, "setupWizard: false")
 
 
-def claude_bridge_roles(manifest: dict[str, Any]) -> list[str]:
-    """Every role whose bridge child runs Claude Code (U510): the seat roles whose omp model route is the bridge's
-    provider, and every gateway role (its `modelRoles.default` is `claude-bridge/<dsh model>` by construction); sorted."""
-    profiles = model_profiles(manifest)
-    roles = [
-        role
-        for role, profile in omp_roles(manifest).items()
-        if profiles[profile]["omp"]["model"].split("/", 1)[0] == DSH_GATEWAY_PROVIDER
-    ]
-    roles += list(omp_gateway_roles(manifest))
-    return sorted(roles)
-
-
-def render_claude_bridge_modify_script() -> str:
-    """The chezmoi modify script that deletes the retired `claude-keyed` row from a role's claude-bridge.json (U552).
-
-    One text for every role. `#!/bin/sh`, `set -eu`, the system `python3 -I` and the standard library alone (json),
-    the kit's baseline, which the apply container has (Dockerfile; check-agent-runtime.py runs there): no uv, which
-    that container lacks (U510b). Without python3 it prints one stderr line naming the file and python3, nothing on
-    stdout, and exits 1, so chezmoi fails the apply naming the file: fail closed, never the override left in place by
-    silence. The live file sits in the seat's own write root, so its content is an input of the seat's choosing
-    (U510d): the script changes the file only when it is a JSON object whose `provider` member is an object holding
-    the one key `pathToClaudeCodeExecutable` (U510's row, the pinned `claude-keyed`; the bundled Claude Code runs when
-    the key is absent). The change is a cut of that row's bytes from the file's text and nothing else (U552 round 3,
-    verdict U552-953af858 P2 x2: round 2 searched the raw bytes for the key's spelling, so `pathToClaude\\u0043ode…`
-    stayed, and wrote the rest back as `json.dumps(indent=2)`, which rewrote whitespace, escapes and `1e-7` to
-    `1e-07`): a scanner walks the object with the json module (`scanstring` decodes every key, so an escaped spelling
-    is the same key; `raw_decode` bounds every value), and the row's span goes with the comma and whitespace that
-    bound it (through the next key when one follows, from the previous value when it is last, everything between the
-    braces when it is alone), once per occurrence. Every byte outside the span, the key order, every other value's
-    spelling, every escape and every line ending stay as the bridge wrote them (CLAUDE_BRIDGE_MERGE_BODY). An empty
-    or whitespace-only input (an absent file) passes through silently; so does any JSON object without the row,
-    whatever its values (a float form, a lone surrogate escape, the key elsewhere than under `provider`). An input
-    that is not UTF-8 or not a JSON object the scanner reads (invalid JSON, a list, a NaN, nesting past the recursion
-    limit, a byte order mark, bytes after the object) passes through byte for byte with one stderr line naming
-    claude-bridge.json and the manual step, since the script cannot tell whether such a file names the row: chezmoi
-    apply never clobbers the bridge's file, never writes one the bridge cannot parse and never fails on the file's
-    content, and the handout's manual step covers the residual. The output index's modify comparison
-    (check-agent-runtime.py runs the script on the live file and compares the bytes) is therefore stable once the key
-    is gone: a second run on the script's own output, or on any file without the key, is the identity.
-    """
-    body = CLAUDE_BRIDGE_MERGE_BODY.replace("@PARENT_KEY@", CLAUDE_BRIDGE_PARENT_KEY).replace(
-        "@MANAGED_KEY@", CLAUDE_BRIDGE_MANAGED_KEY
-    )
-    return (
-        "#!/bin/sh\n"
-        f"# {GENERATED_HEADER}\n"
-        "# @file home/dot_omp/private_profiles/private_<role>/private_agent/modify_claude-bridge.json\n"
-        "# @brief Delete the retired claude-keyed row, provider.pathToClaudeCodeExecutable, from ~/.omp/profiles/<role>/agent/claude-bridge.json and keep every other byte.\n"
-        "# @description\n"
-        "#   regime-cutover U510 placed the row; U551 and U552 retire it. chezmoi passes the live file on stdin. The\n"
-        "#   pi-claude-bridge extension reads provider.pathToClaudeCodeExecutable from this file alone (patch 06;\n"
-        "#   config.ts:61, :110), and the Agent SDK spawned the lever it named, claude-keyed, in place of its bundled\n"
-        "#   Claude Code; since U551 the seats' credential is the setup-token the seat shim exports and the bundled\n"
-        "#   binary reads, so the row must go from every deployed file. When the live file is a JSON object whose\n"
-        "#   provider member holds that key (under any spelling JSON allows: every key is decoded), the row's own\n"
-        "#   bytes are cut from the text, with the comma and whitespace that bound it, once per occurrence, and\n"
-        "#   every other byte is written as it was: the key order, every other value's spelling (1e-7 stays 1e-7),\n"
-        "#   every escape and every line ending. An empty input (an absent file) and any JSON object without the\n"
-        "#   row pass through silently; an input that is not UTF-8 or no JSON object this script reads (invalid\n"
-        "#   JSON, a list, a NaN, a byte order mark) passes through byte for byte with one stderr line naming this\n"
-        "#   file and the manual step (the operator deletes the row by hand, handouts/claude-setup-token-u551.md),\n"
-        "#   so chezmoi apply never clobbers the bridge's file and never fails on its content. A second run on this\n"
-        "#   script's output changes nothing, which is what the output index's modify comparison measures\n"
-        "#   (check-agent-runtime.py). It runs under the system `python3 -I` with the standard library alone, the\n"
-        "#   kit's baseline, which the apply container has, and no other tool (U510b). Without python3 it prints one\n"
-        "#   line on stderr and nothing on stdout and exits 1, so chezmoi apply fails naming this file: fail closed,\n"
-        "#   never the override left in place by silence.\n"
-        "set -eu\n"
-        "\n"
-        "if ! command -v python3 > /dev/null 2>&1; then\n"
-        '    echo "claude-bridge.json: python3 is not on PATH; the apply of this profile\'s claude-bridge.json fails rather than leave the claude-keyed row in place" >&2\n'
-        "    exit 1\n"
-        "fi\n"
-        "\n"
-        "merge=$(\n"
-        "    cat << 'PY'\n"
-        f"{body}"
-        "PY\n"
-        ")\n"
-        "\n"
-        'exec python3 -I -c "$merge"\n'
-    )
-
-
-def render_claude_bridge_modify(manifest: dict[str, Any]) -> dict[Path, str]:
-    """One claude-bridge.json modify script per role of claude_bridge_roles; none for a role on another route."""
-    script = render_claude_bridge_modify_script()
-    return {ROOT / CLAUDE_BRIDGE_MODIFY_PATH.format(role=role): script for role in claude_bridge_roles(manifest)}
-
-
 def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
     """The kit's DeepSeek harness profile (U172, U227b): its package.json and the cordis patch over the base bundles.
 
@@ -3315,7 +3085,6 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         outputs[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"] = render_omp_role_overlay(manifest, role)
     for role in omp_gateway_roles(manifest):
         outputs[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"] = render_omp_gateway_overlay(manifest, role)
-    outputs.update(render_claude_bridge_modify(manifest))
     outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
     outputs[ROOT / "home/dot_claude/agents/project-map.md"] = render_claude_project_map_agent(manifest)
     outputs[ROOT / CODEX_COMMAND_RULES] = render_codex_command_rules(manifest)
@@ -3426,11 +3195,9 @@ def stale_standing_rule_outputs(outputs: dict[Path, str]) -> list[Path]:
     Every file under the Claude rules, omp seat rules and retired omp profile roots, and the Codex AGENTS.md template,
     is the generator's. One no output names is stale when its name is one the generator emits (GENERATED_RULE_TARGETS,
     so its target is known); a file with any other name (a chezmoi attribute such as readonly_ or empty_, a hand-added
-    file) fails the run, check or not, before anything is written or removed. The omp profile root also holds the
-    claude-bridge.json modify scripts (U510, render_claude_bridge_modify; since U552 they delete the retired row), no
-    standing rule: one the expected outputs render is the generator's and passes here; one they do not (a role left
-    the bridge route) is refused by name like any other file, so its removal, and the host file's, is the operator's
-    own step.
+    file) fails the run, check or not, before anything is written or removed. The omp profile root held the
+    claude-bridge.json modify scripts of the API key route (U510) until regime-cutover U551 retired them; a file
+    there is refused by name like any other.
     """
     candidates: list[Path] = []
     for root in (ROOT / CLAUDE_RULES_DIR, ROOT / OMP_RULES_DIR, ROOT / OMP_PROFILES_DIR):
@@ -3651,10 +3418,8 @@ def write_outputs(outputs: dict[Path, str]) -> None:
     for path, content in outputs.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         write_exact(path, content)
-        if (
-            (path.parent == ROOT / "home/dot_codex" and path.name.startswith("modify_"))
-            or (path.parent == ROOT / LEVER_INSTALL_DIR and path.name.startswith("executable_"))
-            or path.name == "modify_claude-bridge.json"
+        if (path.parent == ROOT / "home/dot_codex" and path.name.startswith("modify_")) or (
+            path.parent == ROOT / LEVER_INSTALL_DIR and path.name.startswith("executable_")
         ):
             path.chmod(path.stat().st_mode | 0o111)
 

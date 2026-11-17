@@ -945,17 +945,6 @@ claude:
   # stall-check.py's progress column when that lever is beside it. Installed and
   # pinned the same way, run as `python3 -I` by the coordinator and allowed by the
   # orchestrator policy alone; it reads the store's tables and writes nothing.
-  # claude-keyed (U510, handoff/47) was the pi-claude-bridge's
-  # `provider.pathToClaudeCodeExecutable` in every claude-bridge role's
-  # ~/.omp/profiles/<role>/agent/claude-bridge.json (placed by the generated
-  # modify_claude-bridge.json of home/dot_omp/private_profiles, which since U552
-  # delete that row instead; the lever retires in U553): the Agent SDK
-  # spawns it in place of Claude Code, and it execs the bridge package's one
-  # Claude Code binary with ANTHROPIC_API_KEY read from the file
-  # REGIME_ANTHROPIC_KEY_FILE names (0600, one line, this user's) and the login
-  # names unset, or refuses with nothing started; the seats' shared claude.ai
-  # login is no longer any seat's model credential. Installed and pinned the
-  # same way, run by the SDK child alone, so no allow rule and no seat policy row.
   # ticket-unit.py binds the Router's pull request to one program unit from its
   # ticket (U493): it reads the ticket whose `follows` names the pull request from
   # the Router's sqlite read-only, renders the request text into a brief as data,
@@ -1010,7 +999,7 @@ claude:
       ledger.py: 4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
-      acp-broker: 9b85951d01b3364f9f8c30b2214194ab92b3046fa387f35672c8136ed7b20edc
+      acp-broker: 70d1e3cbe87fae92fc675399b2c0ba8688a7f7759adc4b6356f6e0b63b6f241a
       acp-relay.py: 20f2aac43796339246df45b0e4a2e0eb42314802966ac7094cd3743f964fe269
       acp-seat: 7b8f5c930f0b5d16702cb8e3a392047c522a7aaaac12ee28b089be9a80c25fa9
       acp-record-place.py: 814f91c2f120a45731a6adbf585e0360cd1c5e054b7baa9a02f0eb06f83c5431
@@ -1020,7 +1009,6 @@ claude:
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: bab47be7273025518efab995f6bd4f444d9f9f8a7447f8d315ef8a984b316b50
       program-status.py: 28d4e82370463863eb63f4726c4fee4be1eaeb53dd30ef20e64b03271f5e7c76
-      claude-keyed: 4066e144cb2d9e9d5ed7443a7dec477331196cdbe1f5cee2e4a25484eb43db77
       ticket-unit.py: 38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1
       units-row.py: 6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e
       stall-check.py: 35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d

@@ -1461,11 +1461,11 @@ class SeatTokenPlaceTest(unittest.TestCase):
             self.assertNotIn(FAKE_OAT, result.stdout + result.stderr)
         self.assertNotIn("token" + ": ", outside.stderr + usage.stderr, "refused before the prompt")
 
-    def test_the_token_form_is_one_text_across_the_three_levers(self) -> None:
-        """The token's form (`TOKEN_FORM_RE`) is one text in hcom-seat, seat-login-preflight and seat-token-place, so
-        no lever admits a line another refuses (U551b adds acp-broker, which hands the token to its workers)."""
+    def test_the_token_form_is_one_text_across_the_four_levers(self) -> None:
+        """The token's form (`TOKEN_FORM_RE`) is one text in hcom-seat, seat-login-preflight, seat-token-place and
+        acp-broker, so no lever admits a line another refuses."""
         forms = {}
-        for lever in (HCOM_SEAT, PREFLIGHT, PLACER):
+        for lever in (HCOM_SEAT, PREFLIGHT, PLACER, ROOT / "scripts/orchestrator/acp-broker"):
             (line,) = [l for l in lever.read_text().splitlines() if l.startswith("TOKEN_FORM_RE=")]
             forms[lever.name] = line
         self.assertEqual(len(set(forms.values())), 1, forms)

@@ -3380,15 +3380,21 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
         """U553 round 1, verdict U553-dc83fece P2 (acp-broker:1582): round 1's scrub suppressed every `unset` failure,
         so an exported readonly `SHELLOPTS` of the caller's reached omp. Now a name `unset` refuses is removed from
         the exec'd environment by `/usr/bin/env -u <name>` beside `-u SHLVL` (a name on the argument list, never a
-        value): with `SHELLOPTS` exported (bash imports it readonly) and a name that is no identifier (`caller.dotted`,
-        which bash imports and passes on but cannot unset) in the broker's environment, omp's recorded environment
-        and the launch's srt environment equal exactly worker_env plus the token, as
-        test_srt_and_omp_run_by_their_physical_argv_under_the_listed_environment holds without them."""
+        value), and so is every entry the process environment still holds after the unsets, read by `/usr/bin/env
+        -0` (round 2's verification): a name that is no identifier (`caller.dotted`, which bash passes on to every
+        child; bash 3.2 lists it by `compgen -e` and refuses the unset, bash 5 keeps it outside its variable table
+        and lists it not, so the unset loop alone left it to omp on Linux) and an exported function's entry
+        (`BASH_FUNC_caller_fn%%`, bash 5's encoding, which bash 3.2 passes on as a name it cannot unset;
+        `caller_fn=() {…}`, bash 3.2's, a plain variable to bash 5). With all of them and `SHELLOPTS` (bash imports
+        it readonly) in the broker's environment, omp's recorded environment and the launch's srt environment equal
+        exactly worker_env plus the token, as test_srt_and_omp_run_by_their_physical_argv_under_the_listed_environment
+        holds without them."""
         name, cwd = self.make_router()
         repo, _base = self.make_repo(cwd / "repo")
+        function_body = "() {  echo caller\n}"
         proc, sock = self.start_broker(
             name, cwd, SHELLOPTS="braceexpand:hashall", USER="u553", LANG="C.UTF-8", SECRET_OF_THE_CALLER="x",
-            **{"caller.dotted": "x"},
+            **{"caller.dotted": "x", "caller_fn": function_body, "BASH_FUNC_caller_fn%%": function_body},
         )  # fmt: skip
         self.assertEqual(self.exchange_record(sock, repo, "w1", PING), (PING, "status=0 push=none"))
         version, launch = self.calls_of("omp")
@@ -3409,7 +3415,7 @@ class AcpBrokerTest(test_hcom_seat.SeatFixture):
                   "CLAUDE_CODE_OAUTH_TOKEN": FIXTURE_TOKEN, "USER": "u553", "LANG": "C.UTF-8"}  # fmt: skip
         self.assertEqual({k: v for k, v in launch["env"].items() if k not in own}, listed)
         self.assertEqual(set(launch["env"]) - own, set(listed))
-        for unwanted in ("SHELLOPTS", "caller.dotted", "SECRET_OF_THE_CALLER", "SHLVL"):
+        for unwanted in ("SHELLOPTS", "caller.dotted", "caller_fn", "BASH_FUNC_caller_fn%%", "SECRET_OF_THE_CALLER", "SHLVL"):  # fmt: skip
             self.assertNotIn(unwanted, launch["env"], f"{unwanted} reached omp")
         self.assertNotIn("CLAUDE_CODE_OAUTH_TOKEN", version["env"])
         *_, launch_call, _head_read = self.calls_of("srt")

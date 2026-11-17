@@ -141,7 +141,7 @@
 #   PATH OMP_PROFILE=dsh CLAUDE_CONFIG_DIR AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null
 #   HCOM_SEAT_SANDBOX=<slot> [USER LANG when this process has them]` and `CLAUDE_CODE_OAUTH_TOKEN` (the seats'
 #   setup-token, U551, this one command's alone) by assignment, and execs `/usr/bin/env -u SHLVL [-u <name> per
-#   exported name unset refused] <srt> --settings <slot>/settings.json -- /usr/bin/env PATH=<seat path> <python3> -I -S
+#   entry of the process environment that bash could not unset or list] <srt> --settings <slot>/settings.json -- /usr/bin/env PATH=<seat path> <python3> -I -S
 #   <acp-relay.py> --map-session-cwd <task> -- <omp> acp --profile dsh`, in the slot's task, its stdin and stdout the
 #   connection, its stderr the file
 #   `<slot>/stderr`, in a process group of its own (job control on for the one start), so the reaper ends the mapper,
@@ -1585,22 +1585,35 @@ done
 # @description Run the worker's omp under srt with the environment reduced to worker_env plus the seats' token
 #   (regime-cutover U551; U553): a subshell lists every exported name (compgen's status read: a list that cannot be
 #   read refuses the launch and starts nothing, verdict U553-dc83fece P2 :1582), unsets each, and every name
-#   `unset` refuses (a readonly the caller exported, SHELLOPTS or BASHOPTS; a name that is no identifier, which bash
-#   imports and passes on) is removed from the exec'd environment by `/usr/bin/env -u <name>`, a name and never a
-#   value on the argument list, beside `-u SHLVL` (bash re-exports SHLVL on every exec, the one name it adds;
-#   measured 2026-11-15 on bash 3.2 and 5); then it exports the list and the token by assignment and execs srt
-#   through env, so the environment equals exactly worker_env plus the token whatever the caller exported, and the
-#   token is in no argv (`env -i NAME=value` puts the value in env's argument list, readable by `ps` from every
-#   process of this user, the sandboxed worker included). The exec keeps the subshell's pid, so `$!` names srt for
-#   the reaper.
+#   `unset` refuses (a readonly the caller exported, SHELLOPTS or BASHOPTS) is removed from the exec'd environment
+#   by `/usr/bin/env -u <name>`, a name and never a value on the argument list, beside `-u SHLVL` (bash re-exports
+#   SHLVL on every exec, the one name it adds; measured 2026-11-15 on bash 3.2 and 5). Then the process environment
+#   itself is read (`/usr/bin/env -0`, each entry NUL-ended, so a value's newline splits nothing; the status read)
+#   and every entry still in it is removed the same way: what bash could not list or unset, a caller's name that is
+#   no identifier (`a.b`: bash 5 keeps it outside its variable table, where `compgen -e` does not see it, and passes
+#   it on to every child, while bash 3.2 lists it and refuses the unset; bash-5.2 variables.c, bind_invalid_envvar
+#   and maybe_make_export_env), an exported function's entry (`BASH_FUNC_<name>%%`) and `_`. Then it exports the
+#   list and the token by assignment and execs srt through env, so the environment equals exactly worker_env plus
+#   the token whatever the caller exported, on either bash, and the token is in no argv (`env -i NAME=value` puts
+#   the value in env's argument list, readable by `ps` from every process of this user, the sandboxed worker
+#   included). The exec keeps the subshell's pid, so `$!` names srt for the reaper.
 # @arg $@ string The command srt runs, after `--settings <file> --`.
 worker_launch() {
-    local names name
+    local names name entries entry removed=''
     local -a unset_args=()
     names=$(compgen -e) || refuse "cannot list the environment for the worker's launch (compgen -e failed); omp acp not started"
     split_lines "${names}"
     for name in ${lines[@]+"${lines[@]}"}; do
-        if ! unset "${name}" 2> /dev/null; then unset_args+=(-u "${name}"); fi
+        if ! unset "${name}" 2> /dev/null; then unset_args+=(-u "${name}") removed+=${name}$'\n'; fi
+    done
+    # The entries that remain, by name: `/usr/bin/env -0` lists the real environment, and `tr` makes each NUL-ended
+    # entry one line and a newline inside a value a \001, so no value reads as a name. The readonly names above are
+    # already in the list; the rest is what bash could neither list nor unset.
+    entries=$(/usr/bin/env -0 | /usr/bin/tr '\n\0' '\001\n') || refuse "cannot read the process environment for the worker's launch (/usr/bin/env -0 failed); omp acp not started"
+    split_lines "${entries}"
+    for entry in ${lines[@]+"${lines[@]}"}; do
+        name=${entry%%=*}
+        [[ $'\n'${removed} == *$'\n'"${name}"$'\n'* ]] || unset_args+=(-u "${name}")
     done
     export "${worker_env[@]}" "CLAUDE_CODE_OAUTH_TOKEN=${seat_token}"
     exec /usr/bin/env -u SHLVL ${unset_args[@]+"${unset_args[@]}"} "${srt_cmd[@]}" --settings "${settings}" -- "$@"

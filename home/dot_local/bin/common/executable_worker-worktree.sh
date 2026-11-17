@@ -116,30 +116,43 @@
 #   rendered text, and the return is checked by one command. `task <unit> <brief> [--round <text>]` prints the task
 #   text the coordinator pastes into the worker's Task call: line 1 `Tree: <root>/<unit> (every command runs here;
 #   your first command is \`cd <tree> && pwd -P\`, and the report's first line is its output)`, then the brief (an
-#   absolute path to a readable file), the branch the tree is on (`symbolic-ref HEAD` in the tree) with the base it
-#   was made from (the oldest reflog entry of that branch, the commit `checkout -b` made it at, which `git fetch
-#   origin` in the tree never moves), the no-push rule, the forbidden paths (the main checkout by its physical path
-#   and every seat checkout under `regime-env`'s seats root, the directories there not beginning with `.`, each by
-#   name), the note that the tree is a repository of its own that `git worktree list` cannot show, and the round text
-#   when given. The tree must exist and be this lever's: `.git` a directory and no symbolic link (a linked worktree
-#   holds a file there), `objects/info/alternates` naming the checkout's objects directory by identity (device and
-#   inode), `remote.origin.url` the checkout's and `remote.origin.pushurl` the refusal, else the refusal names the
-#   tree (exit 2), so a task is never rendered for a tree that is not there. `verify <unit>` is the coordinator's
-#   check after the worker's return: exit 0 when (a) the main checkout's `git worktree list --porcelain` names no
-#   worktree at or under `$DOTFILES_WT` as placed, `/private/tmp/dotfiles-wt`, `/tmp/dotfiles-wt` or
-#   `${TMPDIR}/dotfiles-wt`, each as given and as `pwd -P` resolves it (a lever-made tree is a repository of its own
-#   and never appears in that list, so every entry under those roots is foreign; the main worktree, listed first, is
-#   the checkout itself and is not judged), (b) every seat checkout under the seats root prints nothing for `git
-#   --no-optional-locks status --porcelain` (the read writes nothing in the seat, not even its index), and (c) the
-#   main checkout has no local branch named like the tree's branch (this lever makes the branch in the tree alone, so
-#   a same-named local branch is the `git worktree add` leftover). Each failure is one stdout line naming the path and
-#   the step that clears it (`git worktree remove`, `git checkout -- .` after the diff is moved out, `git branch -D`),
-#   every finding printed once every read is done (a refusal leaves nothing on stdout), exit 1; a read that fails (the worktree list, a seats root that cannot be listed,
-#   a seat whose status cannot be read, a seat directory that is no repository, the tree's branch or its reflog, the
-#   branch lookup in the checkout) is a refusal with exit 2 naming it, never an absence (standing order 21). Both
-#   subcommands run from the main checkout, source `regime-env` beside this file for the seats root
-#   (`REGIME_SEATS_ROOT` when set, else `~/.local/state/omp-seats/<slug>`; an absent root holds no seat), run every
-#   git through `git_run`, and write nothing anywhere.
+#   absolute path to a readable file), the branch the tree is on (the full ref `symbolic-ref HEAD` prints in the tree,
+#   `refs/heads/` stripped: `--short` would print `heads/<name>` beside a tag of the same name, and the lookups below
+#   would miss the branch) with the base it was made from (the oldest reflog entry of that branch, the commit
+#   `checkout -b` made it at, which `git fetch origin` in the tree never moves), the no-push rule, the forbidden paths
+#   (the main checkout by its physical path and every seat checkout under `regime-env`'s seats root, the directories
+#   there not beginning with `.`, each by name), the note that the tree is a repository of its own that `git worktree
+#   list` cannot show, and the round text when given. The tree must exist and be this lever's: `.git` a directory and
+#   no symbolic link (a linked worktree holds a file there), `objects/info/alternates` naming the checkout's objects
+#   directory by identity (device and inode), `remote.origin.url` the checkout's and `remote.origin.pushurl` the
+#   refusal, else the refusal names the tree (exit 2), so a task is never rendered for a tree that is not there.
+#   `verify <unit>` is the coordinator's check after the worker's return: exit 0 when (a) the main checkout's `git
+#   worktree list --porcelain -z`, read NUL-separated so a path holding a newline is one entry, names no worktree at
+#   or under `$DOTFILES_WT` as placed or `${TMPDIR}/dotfiles-wt`, each as given and as `pwd -P` resolves it, and none
+#   whose path, in either form, has a `dotfiles-wt` component: the default root under any other TMPDIR (the system's
+#   temporary directory, where U566's stray worktree stood) is covered so, and the lever spells no temporary directory
+#   of its own, which the repository's sandbox-portability guard refuses in a tracked script (a lever-made tree is a
+#   repository of its own and never appears in that list, so every such entry is foreign; the main worktree, listed
+#   first, is the checkout itself and is not judged), (b) every seat checkout under the seats root prints nothing for
+#   `git -c core.fsmonitor=false -c core.hooksPath=/dev/null --no-optional-locks status --porcelain` (the read writes
+#   nothing in the seat, not even its index, and runs no fsmonitor or hook the seat's config names), and (c) the main
+#   checkout has no local branch
+#   named like the tree's branch (`for-each-ref --format=%(refname) refs/heads/<branch>`, its status and every line it
+#   prints judged: a corrupt or unreadable ref is a warning there, not an absence; this lever makes the branch in the
+#   tree alone, so a same-named local branch is the `git worktree add` leftover). Each failure is one stdout line
+#   naming the path and the step that clears it (`git worktree remove`, `git checkout -- .` after the diff is moved
+#   out, `git branch -D`), every finding printed once every read is done (a refusal leaves nothing on stdout), exit 1;
+#   a read that fails (the worktree list, a seats root or a directory above it that cannot be searched or listed, a
+#   seat whose status cannot be read, a seat directory that is no repository, the tree's branch or its reflog, a ref
+#   of the checkout that is corrupt or unreadable or a `refs/heads` directory that cannot be read) is a refusal with
+#   exit 2 naming it, never an absence: only a clean ENOENT is one (standing order 21; round 2 of U573,
+#   verdicts/U573-32986760.md, found each of these read as an absence). Both subcommands run from the main checkout,
+#   source `regime-env` beside this file for the seats root (`REGIME_SEATS_ROOT` when set, else
+#   `~/.local/state/omp-seats/<slug>`; an absent root holds no seat) after the scrub every git of this lever runs under
+#   (`git_env_scrub`: every `GIT_*` name removed, the global and system configuration closed), since regime-env runs
+#   git of its own and a caller's `GIT_DIR` would otherwise derive the seats root from another repository and its
+#   `GIT_TRACE` would write a file, run every other git through `git_run`, print every refusal as one stderr line (a
+#   line boundary in interpolated text folded to a space), and write nothing anywhere.
 # @arg $1 string The unit, `U<n>` or `U<n><letter>` (`U7`, `U7b`); the repository is `<root>/<unit>`.
 # @arg $2 string The branch to create: a name `git check-ref-format --branch` accepts (its normalized output is the
 #   name made, so `@{-1}` names the checkout's previous branch), over `[A-Za-z0-9._/-]`.
@@ -190,8 +203,9 @@
 #   readable file, `--round` without a text, a working directory that is not the main checkout, a tree absent or not
 #   this lever's (`.git` a link or no directory, the alternates not the checkout's objects directory by identity, the
 #   origin not the checkout's, the push url not the refusal), a detached tree, `regime-env` unreadable beside this
-#   file or refusing, or a read that failed (the worktree list, the seats root's listing, a seat's status, the tree's
-#   branch or reflog, the checkout's branch lookup, `uname -s`, `stat`); nothing written.
+#   file or refusing, or a read that failed (the worktree list, the seats root's listing or a directory above the root
+#   that cannot be searched, a seat's status, the tree's branch or reflog, the checkout's branch lookup, a ref there
+#   that is corrupt or unreadable or a `refs/heads` directory that cannot be read, `uname -s`, `stat`); nothing written.
 # @example
 #   ~/.local/bin/common/worker-worktree.sh U123 feat/refusals-not-sentences origin/main
 #   ~/.local/bin/common/worker-worktree.sh claim U123 U123Worker
@@ -263,43 +277,58 @@ pushurl='refused://never-push-from-a-worker-worktree'
 hook_message='standing order 29: the coordinator pushes'
 path=''
 
-# @description Print a refusal on stderr and exit 2; nothing was made.
+# @description Print a refusal on stderr and exit 2; nothing was made. The refusal is one line: a line boundary (a
+#   newline, a carriage return, a vertical tab or a form feed) in the interpolated text (a unit, a path, a producer's
+#   words) is folded to a space, so a unit holding a newline is one stderr line and not two (round 2 of U573).
 # @arg $@ string The reason.
 refuse() {
-    echo "${lever}: refused: $*" >&2
+    local reason=$*
+    echo "${lever}: refused: ${reason//[$'\n\r\v\f']/ }" >&2
     exit 2
 }
 
-# @description Print a failed step on stderr and exit 2; the EXIT trap removes the directory this run reserved.
+# @description Print a failed step on stderr and exit 2, one line as `refuse` prints it; the EXIT trap removes the
+#   directory this run reserved.
 # @arg $@ string The reason.
 fail() {
-    echo "${lever}: refused: $*; the repository ${path} this run made is removed again" >&2
+    local reason="$*; the repository ${path} this run made is removed again"
+    echo "${lever}: refused: ${reason//[$'\n\r\v\f']/ }" >&2
     exit 2
 }
 
-# @description Run git with every `GIT_*` name removed from its environment and the global and system configuration
-#   closed (`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`). The names are subtracted by prefix, not listed:
-#   round 4 listed `GIT_CONFIG`, `GIT_CONFIG_PARAMETERS`, `GIT_CONFIG_COUNT`, `GIT_DIR`, `GIT_WORK_TREE` and
-#   `GIT_COMMON_DIR`, and the audit of that round found `GIT_INDEX_FILE` (the fresh repository's index written into
-#   the checkout, or the checkout's index reused, so the tree had no README) and `GIT_OBJECT_DIRECTORY` (another
-#   objects directory named by `rev-parse --git-path objects`, so the alternates pointed elsewhere); every other
-#   `GIT_*` name steers a read or a write too. `${!GIT_@}` is the shell's own list of the names, so no producer's
-#   status is at stake, and the unset runs in a subshell that execs git, so the caller's environment stays as it was.
-#   The closed configuration holds for the reads in the checkout as well: none of them needs the operator's global
-#   config, and no `core.hooksPath`, `hook.<name>.event` or `filter.<name>.smudge` of it is read by any git this
-#   lever runs.
+# @description Remove every `GIT_*` name from this shell's environment and close the global and system configuration
+#   (`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`): the environment every git this lever causes runs in.
+#   The names are subtracted by prefix, not listed: round 4 listed `GIT_CONFIG`, `GIT_CONFIG_PARAMETERS`,
+#   `GIT_CONFIG_COUNT`, `GIT_DIR`, `GIT_WORK_TREE` and `GIT_COMMON_DIR`, and the audit of that round found
+#   `GIT_INDEX_FILE` (the fresh repository's index written into the checkout, or the checkout's index reused, so the
+#   tree had no README) and `GIT_OBJECT_DIRECTORY` (another objects directory named by `rev-parse --git-path
+#   objects`, so the alternates pointed elsewhere); every other `GIT_*` name steers a read or a write too (`GIT_TRACE`
+#   writes a file). `${!GIT_@}` is the shell's own list of the names, so no producer's status is at stake. `git_run`
+#   calls this in the subshell that execs git, so the caller's environment stays as it was; `seats_read` calls it in
+#   the lever's own shell before `regime-env` is sourced, since regime-env runs git of its own outside `git_run`
+#   (round 2 of U573: a caller's `GIT_DIR` pointing at the worker tree derived the seats root from the tree's slug,
+#   so no seat was judged, and its `GIT_TRACE` made a file). The closed configuration holds for the reads in the
+#   checkout as well: none of them needs the operator's global config, and no `core.hooksPath`, `hook.<name>.event`
+#   or `filter.<name>.smudge` of it is read by any git this lever runs.
+# @exitcode 2 A name cannot be removed (readonly).
+git_env_scrub() {
+    local name
+    for name in "${!GIT_@}"; do
+        unset -v "${name}" || {
+            echo "${lever}: refused: cannot remove ${name} from git's environment" >&2
+            exit 2
+        }
+    done
+    export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+}
+
+# @description Run git under `git_env_scrub` in a subshell that execs it, so the caller's environment stays as it was.
 # @arg $@ string git's arguments.
 # @exitcode 2 A name cannot be removed (readonly).
 # @exitcode * git's own status.
 git_run() {
     (
-        for name in "${!GIT_@}"; do
-            unset -v "${name}" || {
-                echo "${lever}: refused: cannot remove ${name} from git's environment" >&2
-                exit 2
-            }
-        done
-        export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+        git_env_scrub
         exec git "$@"
     )
 }
@@ -508,42 +537,91 @@ tree_read() {
     esac
     [[ ${value} == "${pushurl}" ]] || # lint-comparisons: allow the refusal URL the creation subcommand wrote, read back
         refuse "${path} is no worker repository: its remote.origin.pushurl is ${value}, not ${pushurl}"
-    tree_branch=$(git_run -C "${path}" symbolic-ref --quiet --short HEAD 2>&1) || refuse "cannot read the branch of ${path} (HEAD is detached, or the read failed): ${tree_branch//$'\n'/ }"
-    [[ ${tree_branch} =~ ^[A-Za-z0-9._/-]+$ ]] || refuse "the branch ${tree_branch//$'\n'/\\n} of ${path} has a character outside [A-Za-z0-9._/-]"
+    # The full ref, not `--short`: beside a tag of the same name `--short` prints `heads/<name>`, and the reflog and
+    # the branch lookup would then look for `refs/heads/heads/<name>` (round 2 of U573).
+    tree_branch=$(git_run -C "${path}" symbolic-ref --quiet HEAD 2>&1) || refuse "cannot read the branch of ${path} (HEAD is detached, or the read failed): ${tree_branch}"
+    [[ ${tree_branch} == refs/heads/?* ]] || # lint-comparisons: allow a shape test (a ref under refs/heads/), no path identity is compared
+        refuse "HEAD of ${path} is ${tree_branch}, not a branch under refs/heads/"
+    tree_branch=${tree_branch#refs/heads/}
+    [[ ${tree_branch} =~ ^[A-Za-z0-9._/-]+$ ]] || refuse "the branch ${tree_branch} of ${path} has a character outside [A-Za-z0-9._/-]"
+}
+
+# @description Hold that a file test on the path $2 under the directory $1 answers for the path and not for a failed
+#   look: walk its components and refuse (exit 2) when a directory on the way exists but cannot be searched (or, with
+#   $3 `--listed`, read: git enumerates the directories of `refs/heads` and is silent when one cannot be opened), since
+#   `-e` below such a directory answers false for EACCES as it does for ENOENT, and round 2 of U573 found the seats root
+#   under a mode-000 parent and a branch under an unreadable `refs/heads` each read as absent (verdicts/U573-32986760.md
+#   P1 :529 and :616; standing order 21). The walk ends at the first component that is absent or not a directory
+#   (everything below it is absent, or the path itself is a file) and returns 0; the caller's own tests on the path
+#   then mean what they say. A symbolic link on the way is followed, as the tests follow it. Nothing is written.
+# @arg $1 string A directory that exists (`/`, or the git directory git itself read).
+# @arg $2 string The path under it, relative, its components as given.
+# @arg $3 string `--listed` when every directory entered below $1 must be readable as well as searchable, else empty.
+# @arg $4 string What the path is, for the refusal.
+path_read_check() {
+    local dir=$1 rest=$2 mode=${3:-} what=${4:-} comp next depth=0
+    while [[ -n ${rest} ]]; do
+        comp=${rest%%/*}
+        if [[ ${rest} == */* ]]; then # lint-comparisons: allow a shape test (a slash left in the remaining path), no path identity is compared
+            rest=${rest#*/}
+        else
+            rest=''
+        fi
+        [[ -n ${comp} ]] || continue
+        [[ -x ${dir} ]] || refuse "cannot search the directory ${dir} (permission denied), so whether ${what} exists cannot be read"
+        [[ ${mode} != --listed || ${depth} == 0 || -r ${dir} ]] || refuse "cannot read the directory ${dir} (permission denied), so ${what} cannot be read"
+        next=${dir%/}/${comp}
+        [[ -e ${next} || -L ${next} ]] || return 0
+        [[ -d ${next} ]] || return 0
+        dir=${next}
+        depth=$((depth + 1))
+    done
 }
 
 # @description Source `regime-env` beside this file, derive the seats root and list the seat checkouts under it: the
 #   directories not beginning with `.`, sorted (`find`, one level). An absent root holds no seat; a root that cannot
-#   be listed is a refusal (exit 2), never an empty list (standing order 21). regime-env's own refusal (outside a
-#   checkout, a slug, a store root component, a store bound to another checkout) is exit 2 with its line.
+#   be listed, or a directory above it that cannot be searched (`path_read_check`), is a refusal (exit 2), never an
+#   empty list: only a clean ENOENT is an absence (standing order 21). regime-env runs git of its own (`rev-parse`
+#   for the toplevel the slug comes from) outside `git_run`, so `git_env_scrub` runs first in this shell: a caller's
+#   `GIT_DIR` cannot point that read at another repository, and so at another seats root, and its `GIT_TRACE` writes
+#   no file; every `git_run` after it scrubs again. regime-env's own refusal (outside a checkout, a slug, a store root
+#   component, a store bound to another checkout) is exit 2 with its line.
 # @set seats_root The seats root.
 # @set seats The seat checkouts, an array of paths, possibly empty.
 seats_read() {
     local listing line
     [[ -r ${LEVER_DIR}/regime-env ]] || refuse "regime-env unreadable beside this script: ${LEVER_DIR}/regime-env"
+    git_env_scrub
     # shellcheck source=scripts/orchestrator/regime-env
     . "${LEVER_DIR}/regime-env"
     regime_env "${lever}" --unbound-ok || exit 2
     seats_root=${REGIME_SEATS_ROOT}
     seats=()
+    [[ ${seats_root} == /* ]] || # lint-comparisons: allow a shape test (absolute or not), no path identity is compared
+        refuse "the seats root ${seats_root} is not an absolute path"
+    path_read_check / "${seats_root#/}" '' "the seats root ${seats_root}"
     [[ -e ${seats_root} || -L ${seats_root} ]] || return 0
     [[ ! -L ${seats_root} && -d ${seats_root} ]] || refuse "the seats root ${seats_root} is not a directory"
-    listing=$(find "${seats_root}" -mindepth 1 -maxdepth 1 -type d ! -name '.*' 2>&1 | LC_ALL=C sort) || refuse "cannot list the seats root ${seats_root}: ${listing//$'\n'/ }"
+    listing=$(find "${seats_root}" -mindepth 1 -maxdepth 1 -type d ! -name '.*' 2>&1 | LC_ALL=C sort) || refuse "cannot list the seats root ${seats_root}: ${listing}"
     [[ -n ${listing} ]] || return 0
     while IFS= read -r line; do
         seats+=("${line}")
     done <<< "${listing}"
 }
 
-# @description The roots a foreign worktree is judged under: `$DOTFILES_WT` as `place_root` placed it,
-#   `/private/tmp/dotfiles-wt`, `/tmp/dotfiles-wt` and `${TMPDIR}/dotfiles-wt` when `TMPDIR` is absolute, each as
-#   given and as `resolve_root` resolves it through its longest existing directory (so `/tmp` and `/private/tmp` name
-#   one root on macOS); a root whose existing prefix cannot be entered refuses.
+# @description The explicit roots a foreign worktree is judged under: `$DOTFILES_WT` as `place_root` placed it and
+#   `${TMPDIR}/dotfiles-wt` when `TMPDIR` is absolute, each as given and as `resolve_root` resolves it through its
+#   longest existing directory; a root whose existing prefix cannot be entered refuses. The default root under any
+#   other TMPDIR (the system's temporary directory included, where U566's stray worktree stood) is covered by the
+#   component rule of `worktrees_judge` (a `dotfiles-wt` directory anywhere in the path), so no temporary directory is
+#   spelled here: the repository's sandbox-portability guard (tests/unit/test_sandbox_portability.py) refuses a
+#   tracked script that names one, since the sandbox's writable temporary directory is `$TMPDIR` alone, and round 1
+#   of U573 named two.
 # @set roots The array.
 roots_read() {
     local candidate
     roots=()
-    for candidate in "${root}" /private/tmp/dotfiles-wt /tmp/dotfiles-wt ${TMPDIR:+"${TMPDIR%/}/dotfiles-wt"}; do
+    for candidate in "${root}" ${TMPDIR:+"${TMPDIR%/}/dotfiles-wt"}; do
         [[ ${candidate} == /* && ${candidate} != *$'\n'* ]] || continue # lint-comparisons: allow a shape test (absolute, no newline), no path identity is compared
         roots+=("${candidate%/}")
         resolve_root "${candidate}" || refuse "cannot resolve ${candidate}; its longest existing directory cannot be entered"
@@ -551,47 +629,75 @@ roots_read() {
     done
 }
 
-# @description Judge the main checkout's `git worktree list --porcelain` against the roots: every `worktree <path>`
-#   stanza after the first (the main worktree, the checkout itself, which git lists first) whose path, as printed or
+# @description Append the foreign-worktree finding for the path $1, judged $2 (`under <root>`, or `under a dotfiles-wt
+#   directory` for the component rule): the path is named with a newline shown as `\n` and quoted for the shell
+#   (`printf %q`) in the remove command, so the line is one line and the command names the path exactly.
+# @arg $1 string The worktree path, as git printed it.
+# @arg $2 string Why it is foreign.
+# @set findings One line appended.
+worktree_finding() {
+    local finding
+    printf -v finding 'foreign worktree %s of the main checkout %s %s: a worker tree is a repository of its own and never in this list, so this entry is a stray git worktree add; move any diff out, then git -C %q worktree remove --force %q (git -C %q worktree prune when the directory is gone)' \
+        "${1//$'\n'/\\n}" "${toplevel}" "$2" "${toplevel}" "$1" "${toplevel}"
+    findings+=("${finding}")
+}
+
+# @description Judge the main checkout's `git worktree list --porcelain -z` against the roots: every `worktree <path>`
+#   field after the first (the main worktree, the checkout itself, which git lists first) whose path, as printed or
 #   as `pwd -P` resolves it when the directory exists, is a root or lies under one is a foreign worktree, one stdout
-#   line each (a lever-made tree is a repository of its own and never in this list). A failed listing or resolution is
-#   a refusal (exit 2).
+#   line each (a lever-made tree is a repository of its own and never in this list). The list is read NUL-separated,
+#   in hcom-seat's form: `$(…)` drops NULs, and the line form split a path holding a newline, so round 2 of U573
+#   found the finding naming a shortened path and the remove command targeting it. `tr` turns each NUL into a
+#   newline, each newline into \001 and each \001 into \002 before the substitution, a sentinel `.` keeps the trailing
+#   newlines, and a path field is turned back (\001 to a newline) once it is seen to hold no \002, which would stand
+#   for a \001 or a \002 of the path itself and is refused by name, since after the mapping the two cannot be told
+#   apart. The producer's status is the pipeline's (`pipefail`), its stderr in the same text. A failed listing or
+#   resolution is a refusal (exit 2). In the finding the path is named with a newline shown as `\n` and quoted for
+#   the shell (`printf %q`) in the remove command, so the line is one line and the command names the path exactly.
 # @set findings One line appended per finding.
 worktrees_judge() {
-    local listing line wt form candidate index=0 forms finding
-    listing=$(git_run worktree list --porcelain 2>&1) || refuse "cannot read git worktree list of ${toplevel}: ${listing//$'\n'/ }"
-    while IFS= read -r line; do
-        [[ ${line} == 'worktree '* ]] || continue
+    local listing field wt form candidate index=0 forms finding
+    listing=$({ git_run worktree list --porcelain -z 2>&1 | LC_ALL=C tr '\0\n\001' '\n\001\002'; } && printf .) ||
+        refuse "cannot read git worktree list of ${toplevel}: ${listing//[$'\001\002']/ }"
+    listing=${listing%.}
+    while IFS= read -r field; do
+        [[ ${field} == 'worktree '* ]] || continue
         index=$((index + 1))
         ((index > 1)) || continue
-        wt=${line#worktree }
+        [[ ${field} != *$'\002'* ]] || refuse "the worktree list of ${toplevel} names a path holding a \\001 or \\002 byte, which this read cannot tell apart: ${field//[$'\001\002']/ }"
+        wt=${field#worktree }
+        wt=${wt//$'\001'/$'\n'}
         forms=("${wt}")
         if [[ -d ${wt} ]]; then
-            exact_line physical_path "${wt}" || refuse "cannot resolve the worktree ${wt} of ${toplevel}"
+            exact_line physical_path "${wt}" || refuse "cannot resolve the worktree ${wt//$'\n'/\\n} of ${toplevel}"
             forms+=("${exact}")
         fi
         for form in "${forms[@]}"; do
             for candidate in "${roots[@]}"; do
                 if [[ ${form} == "${candidate}" || ${form} == "${candidate}"/* ]]; then # lint-comparisons: allow the listed path and the root are each compared as printed and in their pwd -P forms
-                    printf -v finding 'foreign worktree %s of the main checkout %s under %s: a worker tree is a repository of its own and never in this list, so this entry is a stray git worktree add; move any diff out, then git -C %q worktree remove --force %q (git -C %q worktree prune when the directory is gone)' \
-                        "${wt}" "${toplevel}" "${candidate}" "${toplevel}" "${wt}" "${toplevel}"
-                    findings+=("${finding}")
+                    worktree_finding "${wt}" "under ${candidate}"
                     continue 3
                 fi
             done
+            if [[ /${form}/ == */dotfiles-wt/* ]]; then # lint-comparisons: allow a component test (a dotfiles-wt directory anywhere in the path), no path identity is compared
+                worktree_finding "${wt}" 'under a dotfiles-wt directory'
+                continue 2
+            fi
         done
     done <<< "${listing}"
 }
 
-# @description Judge every seat checkout: `git --no-optional-locks status --porcelain` there (the read writes nothing,
-#   not even the index: the seat is another writer's) must print nothing; a non-empty status is one stdout line naming
-#   the seat, the count and the step that clears it. A status that cannot be read (a directory that is no repository
-#   included) is a refusal (exit 2).
+# @description Judge every seat checkout: `git -c core.fsmonitor=false -c core.hooksPath=/dev/null --no-optional-locks
+#   status --porcelain` there (the read writes nothing, not even the index: the seat is another writer's; and it runs
+#   nothing the seat's config names: `--no-optional-locks` alone left a configured `core.fsmonitor` running inside the
+#   status, round 2 of U573) must print nothing; a non-empty status is one stdout line naming the seat, the count and
+#   the step that clears it. A status that cannot be read (a directory that is no repository included) is a refusal
+#   (exit 2).
 # @set findings One line appended per finding.
 seats_judge() {
     local seat out newlines finding
     for seat in ${seats[@]+"${seats[@]}"}; do
-        out=$(git_run --no-optional-locks -C "${seat}" status --porcelain 2>&1) || refuse "cannot read git status of the seat checkout ${seat}: ${out//$'\n'/ }"
+        out=$(git_run -c core.fsmonitor=false -c core.hooksPath=/dev/null --no-optional-locks -C "${seat}" status --porcelain 2>&1) || refuse "cannot read git status of the seat checkout ${seat}: ${out}"
         [[ -n ${out} ]] || continue
         newlines=${out//[^$'\n']/}
         printf -v finding 'dirty seat checkout %s (%s paths in git status --porcelain): a worker writes in its own tree alone; move the diff out (git -C %q diff, the untracked paths by hand), then git -C %q checkout -- . and remove the untracked paths' \
@@ -602,20 +708,30 @@ seats_judge() {
 
 # @description Judge the main checkout's local branches: one named like the tree's branch is the `git worktree add`
 #   leftover (this lever makes the branch in the tree alone and never writes a ref of the checkout), one stdout line.
-#   `rev-parse --verify --quiet` exits 1 for an absent ref and otherwise for a read that failed: only 1 is absence.
+#   The read is `for-each-ref --format=%(refname) refs/heads/<branch>`, whose status and every printed line are
+#   judged: a line that is the ref is the finding, a line below it (`refs/heads/<branch>/…`) another branch, and any
+#   other line (`warning: ignoring broken ref …`, which git prints for a corrupt or unreadable ref file while exiting
+#   0) a failed read; `rev-parse --verify --quiet` exited 1 for those as for an absent ref (round 2 of U573). git is
+#   silent when a directory of `refs/heads` cannot be read, so `path_read_check --listed` walks the ref's path under
+#   the git directory first, and a ref file that exists but cannot be read is refused by name. Nothing is written.
 # @set findings One line appended per finding.
 branch_judge() {
-    local out status=0 finding
-    out=$(git_run rev-parse --verify --quiet "refs/heads/${tree_branch}" 2>&1) || status=$?
-    case ${status} in
-    0)
-        printf -v finding 'leftover branch %s in the main checkout %s (the git worktree add leftover; this lever makes the branch in the tree alone): git -C %q branch -D %s' \
-            "${tree_branch}" "${toplevel}" "${toplevel}" "${tree_branch}"
-        findings+=("${finding}")
-        ;;
-    1) ;;
-    *) refuse "cannot read refs/heads/${tree_branch} in ${toplevel}: ${out//$'\n'/ }" ;;
-    esac
+    local out status=0 line finding ref
+    path_read_check "${git_dir}" "refs/heads/${tree_branch}" --listed "the ref refs/heads/${tree_branch} of ${toplevel}"
+    ref=${git_dir}/refs/heads/${tree_branch}
+    [[ ! -f ${ref} || -r ${ref} ]] || refuse "cannot read the ref file ${ref} of ${toplevel} (permission denied)"
+    out=$(git_run for-each-ref --format='%(refname)' "refs/heads/${tree_branch}" 2>&1) || status=$?
+    ((status == 0)) || refuse "cannot read refs/heads/${tree_branch} in ${toplevel}: git for-each-ref exited ${status}: ${out}"
+    [[ -n ${out} ]] || return 0
+    while IFS= read -r line; do
+        if [[ ${line} == "refs/heads/${tree_branch}" ]]; then # lint-comparisons: allow a ref name against the one asked for, no path identity is compared
+            printf -v finding 'leftover branch %s in the main checkout %s (the git worktree add leftover; this lever makes the branch in the tree alone): git -C %q branch -D %s' \
+                "${tree_branch}" "${toplevel}" "${toplevel}" "${tree_branch}"
+            findings+=("${finding}")
+        elif [[ ${line} != "refs/heads/${tree_branch}/"* ]]; then # lint-comparisons: allow a ref name against the one asked for, no path identity is compared
+            refuse "cannot read refs/heads/${tree_branch} in ${toplevel}: git for-each-ref printed: ${line}"
+        fi
+    done <<< "${out}"
 }
 
 # @description `task <unit> <brief> [--round <text>]`: the dispatch text (U573), printed once every input and the tree
@@ -694,7 +810,7 @@ verify_subcommand() {
         printf '%s\n' "${findings[@]}"
         exit 1
     fi
-    printf 'verified %s: no foreign worktree of %s under %s, /private/tmp/dotfiles-wt, /tmp/dotfiles-wt or dotfiles-wt under TMPDIR; %s seat checkouts clean under %s; no branch %s in the checkout\n' \
+    printf 'verified %s: no foreign worktree of %s under %s or dotfiles-wt under TMPDIR, none with a dotfiles-wt path component; %s seat checkouts clean under %s; no branch %s in the checkout\n' \
         "${unit}" "${toplevel}" "${root}" "${#seats[@]}" "${seats_root}" "${tree_branch}"
     exit 0
 }

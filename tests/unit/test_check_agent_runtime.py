@@ -367,6 +367,10 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             ("scope missing glob", index(scopes=[{"source": "home/d", "target": ".d"}])),
             ("scope glob not a string", index(scopes=[{**good_scope, "glob": ["*"]}])),
             ("absolute scope target", index(scopes=[{**good_scope, "target": "/tmp"}])),
+            ("scope foreign not a list", index(scopes=[{**good_scope, "foreign": "headless"}])),
+            ("scope foreign with a path", index(scopes=[{**good_scope, "foreign": ["a/b"]}])),
+            ("scope foreign with an empty name", index(scopes=[{**good_scope, "foreign": [""]}])),
+            ("scope foreign with a NUL", index(scopes=[{**good_scope, "foreign": ["head\x00less"]}])),
             ("sha256 not hex", index([{**good_output, "sha256": "Z" * 64}])),
             ("sha256 on a template", index([{**good_output, "kind": "template", "sha256": "0" * 64}])),
             ("no skills section", {key: value for key, value in index().items() if key != "skills"}),
@@ -519,6 +523,63 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.assertEqual(
                 [f"generated directory holds a file no manifest entry renders: {leftover}; remove it"],
                 self.module.generated_target_findings(index, "/tree"),
+            )
+
+    def test_a_dsh_shipped_profile_the_launcher_initialized_is_no_orphan_and_a_retired_kit_profile_is(self) -> None:
+        """U586: `dsh --profile headless` initializes dsh's own shipped template under the deployed profiles root (the
+        generator's DSH_SHIPPED_PROFILES, the scope's foreign names), so its files are dsh's and no orphans; a profile
+        directory the kit once rendered and no longer does is still reported, and without the foreign names it all is."""
+        spec = importlib.util.spec_from_file_location(
+            "generate_agent_configs", ROOT / "scripts/generate-agent-configs.py"
+        )
+        assert spec and spec.loader
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        shipped = list(generator.DSH_SHIPPED_PROFILES)
+        self.assertEqual(["acp", "web", "headless", "sdk", "sdk-minimal"], shipped)
+        self.assertEqual({"home/dot_dsh/profiles": generator.DSH_SHIPPED_PROFILES}, generator.FOREIGN_SCOPE_DIRS)
+        self.assertNotIn(generator.DSH_PROFILE, shipped, "the kit's profile names are not dsh's")
+        self.assertNotIn(generator.DSH_ROUTER_PROFILE, shipped)
+        globs = [pattern for directory, pattern in generator.GENERATED_SCOPES if directory == "home/dot_dsh/profiles"]
+        scopes = [
+            {"source": "home/dot_dsh/profiles", "target": ".dsh/profiles", "glob": pattern, "foreign": shipped}
+            for pattern in globs
+        ]
+        committed = json.loads((ROOT / "scripts/generated-agent-outputs.json").read_text())
+        self.assertEqual(scopes, [scope for scope in committed["scopes"] if scope["source"] == "home/dot_dsh/profiles"])
+        self.write_source("dot_dsh/profiles/thak/package.json", '{"name": "thak"}\n')
+        self.write_target(".dsh/profiles/thak/package.json", '{"name": "thak"}\n')
+        for name in ("package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"):
+            self.write_target(f".dsh/profiles/headless/{name}", "dsh's own template\n")
+        self.write_target(".dsh/profiles/sdk-minimal/package.json", "dsh's own template\n")
+        retired = [
+            self.write_target(f".dsh/profiles/retired/{name}", "once rendered\n")
+            for name in ("package.json", "cordis.patch.yml")
+        ]
+        index = {
+            "outputs": [
+                {
+                    "source": "source/dot_dsh/profiles/thak/package.json",
+                    "target": ".dsh/profiles/thak/package.json",
+                    "kind": "file",
+                    "executable": False,
+                }
+            ],
+            "scopes": scopes,
+        }
+        with mock.patch.multiple(self.module, SOURCE_ROOT=self.source_root, HOME=self.target_root):
+            self.assertEqual(
+                [f"generated directory holds a file no manifest entry renders: {path}; remove it" for path in retired],
+                self.module.generated_target_findings(index, "/tree"),
+            )
+            without = {
+                **index,
+                "scopes": [{key: value for key, value in scope.items() if key != "foreign"} for scope in scopes],
+            }
+            findings = self.module.generated_target_findings(without, "/tree")
+            self.assertEqual(5, len(findings), findings)
+            self.assertEqual(
+                3, len([finding for finding in findings if "/headless/" in finding or "/sdk-minimal/" in finding])
             )
 
     def test_a_skill_an_agent_lists_outside_its_audience_is_an_error(self) -> None:

@@ -248,6 +248,8 @@ def output_index_path() -> Path:
 
 OUTPUT_KINDS = frozenset({"file", "template", "modify", "create", "symlink"})
 SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+# One directory name: no separator, no NUL, neither `.` nor `..`; the form a scope's `foreign` entries take.
+DIRECTORY_NAME = re.compile(r"(?!\.\.?\Z)[^/\x00]+")
 
 
 def output_index_error(index: object) -> str | None:
@@ -255,8 +257,9 @@ def output_index_error(index: object) -> str | None:
 
     The shape is generate-agent-configs.py render_output_index's: exactly generated_by, outputs, scopes and skills; an
     output is {source, target: null} for a file chezmoi does not deploy by itself, else {source, target, kind,
-    executable} with a known kind; a scope is {source, target, glob}; skills is skill_index's. Every path is a
-    non-empty relative string.
+    executable} with a known kind; a scope is {source, target, glob}, with an optional `foreign` list of the
+    first-level directory names another program owns; skills is skill_index's. Every path is a non-empty relative
+    string.
     """
 
     def relative(value: object) -> bool:
@@ -266,6 +269,9 @@ def output_index_error(index: object) -> str | None:
 
     def names(value: object) -> bool:
         return isinstance(value, list) and all(isinstance(item, str) and item for item in value)
+
+    def directory_names(value: object) -> bool:
+        return names(value) and all(DIRECTORY_NAME.fullmatch(item) for item in value)
 
     if not isinstance(index, dict) or set(index) != {"generated_by", "outputs", "scopes", "skills"}:
         return "the top level must hold exactly generated_by, outputs, scopes and skills"
@@ -318,10 +324,14 @@ def output_index_error(index: object) -> str | None:
     for number, scope in enumerate(index["scopes"]):
         if (
             not isinstance(scope, dict)
-            or set(scope) != {"source", "target", "glob"}
+            or set(scope) - {"foreign"} != {"source", "target", "glob"}
             or not all(relative(scope[key]) for key in ("source", "target", "glob"))
+            or ("foreign" in scope and not directory_names(scope["foreign"]))
         ):
-            return f"scopes[{number}] must be {{source, target, glob}} of relative strings: {scope!r}"
+            return (
+                f"scopes[{number}] must be {{source, target, glob}} of relative strings, foreign a list of directory "
+                f"names: {scope!r}"
+            )
     return None
 
 
@@ -370,10 +380,16 @@ def render_chezmoi_template(source: Path) -> tuple[bytes | None, str | None]:
     return result.stdout, None
 
 
-def scope_files(root: Path, pattern: str) -> set[Path]:
+def scope_files(root: Path, pattern: str, foreign: object = ()) -> set[Path]:
+    """The files the glob matches under root, outside the first-level directories `foreign` names (another program's)."""
     if not root.is_dir():
         return set()
-    return {path for path in root.glob(pattern) if path.is_file() or path.is_symlink()}
+    owned = {str(name) for name in foreign} if isinstance(foreign, (list, tuple)) else set()
+    return {
+        path
+        for path in root.glob(pattern)
+        if (path.is_file() or path.is_symlink()) and path.relative_to(root).parts[0] not in owned
+    }
 
 
 def generated_target_findings(index: dict[str, list[dict[str, object]]], working_tree: str | None) -> list[str]:
@@ -382,7 +398,9 @@ def generated_target_findings(index: dict[str, list[dict[str, object]]], working
     A file target matches the source bytes (and its execute bit), a template target chezmoi's rendering, a modify
     target the result of its script, and a create target, which chezmoi never rewrites, at least exists. Claude's
     skill links are compare_claude_skills'. A file in a generated directory on the host that no output deploys is an
-    orphan: an ERROR naming the file, which only the operator removes.
+    orphan: an ERROR naming the file, which only the operator removes. A file under a first-level directory the scope's
+    `foreign` list names is another program's (dsh initializes its shipped profiles under the profiles root) and no
+    orphan.
     """
     failures: list[str] = []
     targets: set[Path] = set()
@@ -422,7 +440,7 @@ def generated_target_findings(index: dict[str, list[dict[str, object]]], working
     for scope in index["scopes"]:
         if Path(str(scope["target"])).parts == (".claude", "skills"):
             continue
-        for path in sorted(scope_files(HOME / str(scope["target"]), str(scope["glob"]))):
+        for path in sorted(scope_files(HOME / str(scope["target"]), str(scope["glob"]), scope.get("foreign", ()))):
             if normalized_path(path) not in targets:
                 failures.append(f"generated directory holds a file no manifest entry renders: {path}; remove it")
     return failures

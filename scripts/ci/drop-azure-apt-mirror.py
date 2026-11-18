@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Remove azure.archive.ubuntu.com from a GitHub-hosted Ubuntu runner's apt mirror list (regime-cutover U102).
+"""Remove the cloud mirrors from a GitHub-hosted Ubuntu runner's apt mirror list (regime-cutover U102, U593).
 
 actions/runner-images#14823 (open since 2026-09-30, ubuntu-24.04 and ubuntu-26.04): the runner image lists
 azure.archive.ubuntu.com first in /etc/apt/apt-mirrors.txt and sets `Acquire::http::Timeout "15"` and
@@ -7,6 +7,13 @@ azure.archive.ubuntu.com first in /etc/apt/apt-mirrors.txt and sets `Acquire::ht
 keeps sending archives slowly (61.5 kB/s for 20 minutes in the issue's run) never trips it, and apt never moves on to
 the next entry; apt has no minimum-throughput setting. The issue's workaround is this script's: delete the Azure line,
 so apt fetches from the next mirror in the list (archive.ubuntu.com).
+
+The AWS-placed runners list a regional EC2 mirror (`<region>.ec2.archive.ubuntu.com`) the same way, and it trickles
+the same way (regime-cutover U593, 2026-11-18: four attempts of `public-bootstrap (ubuntu-24.04, client)` on PR 803
+fetched 34 to 60 packages from us-east-2.ec2.archive.ubuntu.com in 29 minutes each and were cancelled by the job's
+30-minute bound, while the runs of the same hour that resolved to archive.ubuntu.com finished the step in 8 minutes).
+Every line naming a cloud mirror (CLOUD_MIRRORS) is deleted, so apt fetches from archive.ubuntu.com whatever cloud
+the runner sits in.
 
 Every workflow job that runs apt on a Ubuntu runner calls `/usr/bin/python3 -I -S scripts/ci/drop-azure-apt-mirror.py`
 before its first apt use (tests/unit/test_apt_mirror.py checks the order); the system python3 is used, so no setup
@@ -31,7 +38,8 @@ import subprocess
 import sys
 
 DEFAULT = "/etc/apt/apt-mirrors.txt"
-AZURE = b"azure.archive.ubuntu.com"
+# Host marks of the cloud mirrors: Azure's, and every regional EC2 one (`<region>.ec2.archive.ubuntu.com`).
+CLOUD_MIRRORS = (b"azure.archive.ubuntu.com", b".ec2.archive.ubuntu.com")
 # sudo tee writes a few hundred bytes; a hung sudo (a password prompt cannot appear with -n) ends here.
 WRITE_TIMEOUT = 60
 
@@ -89,9 +97,11 @@ def main(argv):
         return 0
     show(f"{path} before", before)
     lines = before.splitlines(keepends=True)
-    kept = [line for line in lines if AZURE not in line]
+    kept = [line for line in lines if not any(mark in line for mark in CLOUD_MIRRORS)]
     if len(kept) == len(lines):
-        print(f"no azure.archive.ubuntu.com entry in {path}; nothing to change")
+        print(
+            f"no cloud mirror entry (azure.archive.ubuntu.com, *.ec2.archive.ubuntu.com) in {path}; nothing to change"
+        )
         return 0
     if not any(b"priority:" in line for line in kept):
         raise Refused(f"no apt mirror would be left in {path}; it is unchanged")

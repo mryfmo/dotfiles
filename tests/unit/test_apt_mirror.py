@@ -1,4 +1,4 @@
-"""The Azure apt mirror is dropped before every CI apt use, every apt call a workflow runs ends inside its step, and
+"""The cloud apt mirrors (Azure, regional EC2) are dropped before every CI apt use, every apt call a workflow runs ends inside its step, and
 the Bats bounds name a stall before the step stops (regime-cutover U102, U109).
 
 actions/runner-images#14823: a slow azure.archive.ubuntu.com node keeps sending data, so apt's 15 s timeout never
@@ -1876,6 +1876,24 @@ class MirrorScriptTest(unittest.TestCase):
         self.assertEqual(MIRRORS.split("\n", 1)[1], self.list.read_text())
         self.assertIn("before:", result.stdout)
         self.assertIn("after:", result.stdout)
+
+    def test_an_ec2_regional_mirror_is_removed_like_the_azure_one(self) -> None:
+        # U593, 2026-11-18: AWS-placed runners list <region>.ec2.archive.ubuntu.com, which trickled four bootstrap
+        # attempts into the 30-minute bound; archive.ubuntu.com alone remains ahead of security.ubuntu.com.
+        cloud = (
+            "http://us-east-2.ec2.archive.ubuntu.com/ubuntu/\tpriority:1\n"
+            "http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\n"
+            "https://archive.ubuntu.com/ubuntu/\tpriority:2\n"
+            "https://security.ubuntu.com/ubuntu/\tpriority:3\n"
+        )
+        self.list.write_text(cloud)
+        result = self.run_script(str(self.list))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(cloud.split("\n", 2)[2], self.list.read_text())
+        only_cloud = "".join(cloud.splitlines(keepends=True)[:2])
+        self.list.write_text(only_cloud)
+        self.assert_refused(self.run_script(str(self.list)), "no apt mirror would be left")
+        self.assertEqual(only_cloud, self.list.read_text())
 
     def test_a_list_without_the_entry_or_no_list_is_left_alone(self) -> None:
         kept = MIRRORS.split("\n", 1)[1]

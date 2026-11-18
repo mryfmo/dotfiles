@@ -370,6 +370,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             ("scope foreign not a list", index(scopes=[{**good_scope, "foreign": "headless"}])),
             ("scope foreign with a path", index(scopes=[{**good_scope, "foreign": ["a/b"]}])),
             ("scope foreign with an empty name", index(scopes=[{**good_scope, "foreign": [""]}])),
+            ("scope foreign with a NUL", index(scopes=[{**good_scope, "foreign": ["head\x00less"]}])),
             ("sha256 not hex", index([{**good_output, "sha256": "Z" * 64}])),
             ("sha256 on a template", index([{**good_output, "kind": "template", "sha256": "0" * 64}])),
             ("no skills section", {key: value for key, value in index().items() if key != "skills"}),

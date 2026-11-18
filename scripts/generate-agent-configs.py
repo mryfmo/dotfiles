@@ -3360,8 +3360,9 @@ def render_output_index(
         assert root is not None and target is not None
         host_root = root["target"].removesuffix("/x")
         scope = {"source": directory, "target": host_root, "glob": target["target"].removeprefix(host_root + "/")}
-        if directory in FOREIGN_SCOPE_DIRS:
-            scope["foreign"] = list(FOREIGN_SCOPE_DIRS[directory])
+        foreign = FOREIGN_SCOPE_DIRS.get(directory)
+        if foreign:
+            scope["foreign"] = list(foreign)
         scopes.append(scope)
     index: dict[str, Any] = {"generated_by": GENERATED_HEADER, "outputs": entries, "scopes": scopes}
     if skills is not None:

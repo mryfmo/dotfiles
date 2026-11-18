@@ -248,6 +248,8 @@ def output_index_path() -> Path:
 
 OUTPUT_KINDS = frozenset({"file", "template", "modify", "create", "symlink"})
 SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+# One directory name: no separator, no NUL, neither `.` nor `..`; the form a scope's `foreign` entries take.
+DIRECTORY_NAME = re.compile(r"(?!\.\.?\Z)[^/\x00]+")
 
 
 def output_index_error(index: object) -> str | None:
@@ -269,7 +271,7 @@ def output_index_error(index: object) -> str | None:
         return isinstance(value, list) and all(isinstance(item, str) and item for item in value)
 
     def directory_names(value: object) -> bool:
-        return names(value) and all("/" not in item and item not in (".", "..") for item in value)
+        return names(value) and all(DIRECTORY_NAME.fullmatch(item) for item in value)
 
     if not isinstance(index, dict) or set(index) != {"generated_by", "outputs", "scopes", "skills"}:
         return "the top level must hold exactly generated_by, outputs, scopes and skills"

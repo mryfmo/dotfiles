@@ -623,11 +623,12 @@ adapterTest('f1', async t => {
   assert.deepEqual([...config.env], [...DEFAULT_ENV_NAMES])
   // srt's injected names include the lower-case proxy forms (`http_proxy`, `no_proxy`), so the shape admits both cases.
   assert.equal(config.env.every(name => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)), true)
-  // The plugin's own rows carry no credential-shaped name. Of srt's injected names (U364) exactly one has the shape,
-  // `CLOUDSDK_PROXY_PASSWORD`: its value is the per-process proxy token srt mints for this child, the same token
-  // inside `HTTPS_PROXY`, never an operator credential.
+  // The plugin's own rows carry one credential-shaped name, `CLAUDE_CODE_OAUTH_TOKEN`: the seats' own credential since
+  // U551, exported by the hcom-seat shim into the tree the gateway child belongs to (U590). Of srt's injected names
+  // (U364) exactly one has the shape, `CLOUDSDK_PROXY_PASSWORD`: its value is the per-process proxy token srt mints
+  // for this child, the same token inside `HTTPS_PROXY`, never an operator credential.
   const own = config.env.filter(name => !SRT_INJECTED_ENV_NAMES.includes(name))
-  assert.equal(own.some(name => /KEY|TOKEN|SECRET|OAUTH|PASSWORD/i.test(name)), false)
+  assert.deepEqual(own.filter(name => /KEY|TOKEN|SECRET|OAUTH|PASSWORD/i.test(name)), ['CLAUDE_CODE_OAUTH_TOKEN'])
   assert.deepEqual(SRT_INJECTED_ENV_NAMES.filter(name => /KEY|TOKEN|SECRET|OAUTH|PASSWORD/i.test(name)), ['CLOUDSDK_PROXY_PASSWORD'])
   t.diagnostic(`f1 observed: ${JSON.stringify({ ...DEFAULT_CONFIG, env: [...DEFAULT_ENV_NAMES] })}`)
 })
@@ -763,12 +764,17 @@ function pluginFiles() {
 test('g1', async t => {
   const credentialShape = /(ANTHROPIC|OPENAI|OLLAMA|DEEPSEEK|CLAUDE_CODE)_[A-Z_]*(KEY|TOKEN)|apiKeyEnv|Authorization|Bearer |sk-ant-|setup-token/
   const self = fileURLToPath(import.meta.url)
-  const hits = pluginFiles().filter(file => file !== self).flatMap(file => readFileSync(file, 'utf8').split('\n').flatMap((line, index) => (credentialShape.test(line) ? [`${file}:${index + 1}`] : [])))
-  assert.deepEqual(hits, [])
-  // The same split as f1: the plugin's own rows carry no credential-shaped name; srt's one such name is pinned there.
+  // The one credential-shaped text the plugin's own files may hold is the environment name of the seats' token
+  // (U551, U590): every such line names it and no line holds a value shape (`sk-ant-`, `Bearer `, `setup-token`).
+  const tokenName = /\bCLAUDE_CODE_OAUTH_TOKEN\b/
+  const valueShape = /apiKeyEnv|Authorization|Bearer |sk-ant-|setup-token/
+  const hits = pluginFiles().filter(file => file !== self).flatMap(file => readFileSync(file, 'utf8').split('\n').flatMap((line, index) => (credentialShape.test(line) ? [{ at: `${file}:${index + 1}`, line }] : [])))
+  assert.ok(hits.length > 0, 'config.mjs names the token row')
+  assert.deepEqual(hits.filter(hit => !tokenName.test(hit.line) || valueShape.test(hit.line)), [])
+  // The same split as f1: the plugin's own rows carry the token name and no other credential-shaped name.
   const names = [...DEFAULT_ENV_NAMES].filter(name => !SRT_INJECTED_ENV_NAMES.includes(name))
-  assert.equal(names.some(name => /KEY|TOKEN|SECRET|OAUTH|PASSWORD/i.test(name)), false)
-  t.diagnostic(`g1 observed: ${pluginFiles().length} files, 0 credential-shaped lines; default env names ${JSON.stringify(names)}`)
+  assert.deepEqual(names.filter(name => /KEY|TOKEN|SECRET|OAUTH|PASSWORD/i.test(name)), ['CLAUDE_CODE_OAUTH_TOKEN'])
+  t.diagnostic(`g1 observed: ${pluginFiles().length} files, ${hits.length} lines naming the token and none a value; default env names ${JSON.stringify(names)}`)
 })
 
 adapterTest('g2', async t => {

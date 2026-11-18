@@ -24,10 +24,14 @@ export const SRT_INJECTED_ENV_NAMES = Object.freeze([
  * (measured 2026-11-06: without it the login answers 502). `OMP_PROFILE` rides when the launcher sets it, so the
  * child lives in the profile the launcher names (the hcom-seat dsh role: `~/.omp/profiles/dsh`, U272) instead of the
  * default `~/.omp/agent`, which that role denies (U306, the g6 failure `SQLITE_AUTH: authorization denied`).
- * `CLAUDE_CONFIG_DIR` rides for the same reason: hcom-seat hands the dsh role the shared seat login
- * `<seats-root>/.state/claude` under that name and denies the operator's `~/.claude` (U318), so without it the
- * bridge's Claude child looks for a login it cannot read and never answers (U355, the g6 failure `request aborted`).
- * The name carries a path, never a token. `SRT_INJECTED_ENV_NAMES` ride because the dsh role runs under srt, whose
+ * `CLAUDE_CONFIG_DIR` rides for the same reason: hcom-seat hands the role its own Claude state directory under that
+ * name and denies the operator's `~/.claude` (U318), so without it the bridge's Claude child looks for a state it
+ * cannot read and never answers (U355, the g6 failure `request aborted`). `CLAUDE_CODE_OAUTH_TOKEN` rides because
+ * since U551 the seats' credential is the long-lived Claude token the hcom-seat shim reads from `<seats-root>/.state/claude-token`
+ * and exports to the seat's process tree; the gateway child is that tree's omp, inside the same srt sandbox, and the
+ * bridge's Claude child reads the token from its environment (no login lives under the state directory any more),
+ * so without the name every turn of the Router answered `HTTP 502: Not logged in` (U590, measured 2026-11-18: the
+ * accept inference on probe PR 802 failed five retries twice). `SRT_INJECTED_ENV_NAMES` ride because the dsh role runs under srt, whose
  * sandbox reaches the network only through the proxy srt starts and tells its child so through these names; a
  * gateway child without them resolves DNS directly, which the sandbox denies (U364, the g6 failure
  * `network-outbound /private/var/run/mDNSResponder`). They carry a loopback proxy URL with a per-process auth token
@@ -36,6 +40,7 @@ export const SRT_INJECTED_ENV_NAMES = Object.freeze([
 export const DEFAULT_ENV_NAMES = Object.freeze([
   'HOME', 'PATH', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'TERM', 'TMPDIR',
   'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_STATE_HOME', 'OMP_PROFILE', 'CLAUDE_CONFIG_DIR',
+  'CLAUDE_CODE_OAUTH_TOKEN',
   ...SRT_INJECTED_ENV_NAMES,
 ])
 

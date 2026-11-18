@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# @file home/.chezmoiscripts/macos/run_onchange_after_60-reload-usage-snapshot-agent.sh.tmpl
+# @brief Reload the usage-snapshot LaunchAgent when its rendered plist changes.
+# @description
+#   chezmoi writes ~/Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist, but launchd keeps the job it
+#   loaded, so a plist that names a new working tree (the one-clone move of 2026-11-18) ran make in the old tree
+#   until the operator reloaded it by hand. chezmoi runs this script when its rendered content changes, and the
+#   content embeds what the plist renders from, so a change to either re-triggers the reload. A GitHub Actions
+#   runner (is_ci_runner from scripts/lib/ci-runner.sh) and a host without a user launchd domain are skipped with
+#   one line, as the systemd twin home/.chezmoiscripts/ubuntu/run_onchange_after_60-enable-usage-snapshot-timer.sh.tmpl
+#   skips a host without a user manager.
+
+set -Eeuo pipefail
+
+{{ if eq .chezmoi.os "darwin" -}}
+{{ include "../scripts/lib/ci-runner.sh" }}
+# com.mryfmo.dotfiles.usage-snapshot.plist.tmpl sha256sum: {{ include "Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist.tmpl" | sha256sum }}
+# working tree the plist names: {{ .chezmoi.workingTree }}
+
+label="com.mryfmo.dotfiles.usage-snapshot"
+plist="${HOME}/Library/LaunchAgents/${label}.plist"
+
+# @description Unload the agent launchd holds and load the plist chezmoi just wrote.
+function reload_usage_snapshot_agent() {
+    local domain
+    if is_ci_runner; then
+        return 0
+    fi
+    domain="gui/$(id -u)"
+    if ! launchctl print "${domain}" > /dev/null 2>&1; then
+        echo "No user launchd domain ${domain}; skipping ${label} reload." >&2
+        return 0
+    fi
+    if [ ! -f "${plist}" ]; then
+        echo "${plist} not visible (temp destDir apply?); skipping ${label} reload." >&2
+        return 0
+    fi
+    launchctl bootout "${domain}/${label}" > /dev/null 2>&1 || true
+    launchctl bootstrap "${domain}" "${plist}"
+    echo "${label} reloaded from ${plist}."
+}
+
+reload_usage_snapshot_agent
+{{ end -}}

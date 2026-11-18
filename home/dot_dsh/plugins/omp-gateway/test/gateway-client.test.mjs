@@ -282,11 +282,13 @@ test('the child carries OMP_PROFILE when the plugin has it and not when it is un
   assert.deepEqual(await recordedChildEnv(t, launcher), ['HOME', 'PATH', 'USER'])
 })
 
-test('the child carries CLAUDE_CONFIG_DIR when the launcher exported it and not when config.env omits it', async t => {
-  // hcom-seat hands the dsh role CLAUDE_CONFIG_DIR=<seats-root>/.state/claude (U318) and denies ~/.claude; the bridge's
-  // Claude child finds the seat login only through this name (U355, row g6). A config.env row that omits it still wins.
-  const launcher = { HOME: '/Users/operator', PATH: process.env.PATH, USER: 'operator', CLAUDE_CONFIG_DIR: '/scratch/login', NOT_A_ROW: 'x' }
-  assert.deepEqual(await recordedChildEnv(t, launcher), ['CLAUDE_CONFIG_DIR', 'HOME', 'PATH', 'USER'])
+test('the child carries CLAUDE_CONFIG_DIR and CLAUDE_CODE_OAUTH_TOKEN when the launcher exported them and not when config.env omits them', async t => {
+  // hcom-seat hands the role its Claude state directory as CLAUDE_CONFIG_DIR (U318) and denies ~/.claude, and since
+  // U551 the seats' credential is the long-lived Claude token its shim exports as CLAUDE_CODE_OAUTH_TOKEN; the bridge's Claude
+  // child logs in through the token alone (U590: without it every Router turn answered 502 Not logged in). A
+  // config.env row that omits them still wins.
+  const launcher = { HOME: '/Users/operator', PATH: process.env.PATH, USER: 'operator', CLAUDE_CONFIG_DIR: '/scratch/state', CLAUDE_CODE_OAUTH_TOKEN: 'fixture-token', NOT_A_ROW: 'x' }
+  assert.deepEqual(await recordedChildEnv(t, launcher), ['CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CONFIG_DIR', 'HOME', 'PATH', 'USER'])
   const narrowed = resolveConfig({ env: ['HOME', 'PATH', 'USER'] })
   assert.deepEqual(await recordedChildEnv(t, launcher, narrowed.env), ['HOME', 'PATH', 'USER'])
 })

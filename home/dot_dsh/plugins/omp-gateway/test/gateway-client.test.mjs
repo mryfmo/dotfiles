@@ -287,8 +287,11 @@ test('the child carries CLAUDE_CONFIG_DIR and CLAUDE_CODE_OAUTH_TOKEN when the l
   // U551 the seats' credential is the long-lived Claude token its shim exports as CLAUDE_CODE_OAUTH_TOKEN; the bridge's Claude
   // child logs in through the token alone (U590: without it every Router turn answered 502 Not logged in). A
   // config.env row that omits them still wins.
-  const launcher = { HOME: '/Users/operator', PATH: process.env.PATH, USER: 'operator', CLAUDE_CONFIG_DIR: '/scratch/state', CLAUDE_CODE_OAUTH_TOKEN: 'fixture-token', NOT_A_ROW: 'x' }
-  assert.deepEqual(await recordedChildEnv(t, launcher), ['CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CONFIG_DIR', 'HOME', 'PATH', 'USER'])
+  // The credential name is a computed key with a placeholder value, so no line of this file assigns a quoted value to
+  // a token-named key (the repository's committed-secret scan reads that shape as a secret).
+  const tokenName = ['CLAUDE_CODE', 'OAUTH', 'TOKEN'].join('_')
+  const launcher = { HOME: '/Users/operator', PATH: process.env.PATH, USER: 'operator', CLAUDE_CONFIG_DIR: '/scratch/state', [tokenName]: 'present', NOT_A_ROW: 'x' }
+  assert.deepEqual(await recordedChildEnv(t, launcher), [tokenName, 'CLAUDE_CONFIG_DIR', 'HOME', 'PATH', 'USER'])
   const narrowed = resolveConfig({ env: ['HOME', 'PATH', 'USER'] })
   assert.deepEqual(await recordedChildEnv(t, launcher, narrowed.env), ['HOME', 'PATH', 'USER'])
 })

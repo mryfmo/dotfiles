@@ -791,12 +791,26 @@
     {
       "source": "home/dot_dsh/profiles",
       "target": ".dsh/profiles",
-      "glob": "*/package.json"
+      "glob": "*/package.json",
+      "foreign": [
+        "acp",
+        "web",
+        "headless",
+        "sdk",
+        "sdk-minimal"
+      ]
     },
     {
       "source": "home/dot_dsh/profiles",
       "target": ".dsh/profiles",
-      "glob": "*/cordis.patch.yml"
+      "glob": "*/cordis.patch.yml",
+      "foreign": [
+        "acp",
+        "web",
+        "headless",
+        "sdk",
+        "sdk-minimal"
+      ]
     },
     {
       "source": "home/dot_local/bin/common",

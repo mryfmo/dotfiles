@@ -301,6 +301,9 @@ DSH_LADDER_ROW_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 DSH_SENDER_ID_RE = re.compile(r"^[A-Za-z0-9-]+$")
 # The plan's base profile: the shipped bundle whose patch already turns the HMR, credentials and account rows off.
 DSH_BASE_PROFILE = "headless"
+# dsh's shipped profile templates (packages/boot/app-boot PROFILE_TEMPLATES): `dsh --profile <name>` initializes one
+# under $DSH_HOME/profiles/<name> on first use, so such a directory on a host is dsh's, never a retired kit profile.
+DSH_SHIPPED_PROFILES = ("acp", "web", "headless", "sdk", "sdk-minimal")
 OMP_RETIRED_ROUTES = ("openai-codex",)
 # The routes omp itself provides; every other model route exists only while the extension that registers it is loaded,
 # so omp.extension_providers must name exactly the remaining routes.
@@ -3254,6 +3257,9 @@ GENERATED_SCOPES = (
     ("home/dot_dsh/profiles", "*/package.json"),
     ("home/dot_dsh/profiles", "*/cordis.patch.yml"),
 )
+# First-level directories inside a generated scope that another installed program creates on the host: the doctor
+# reads a file under one as that program's, not as an orphan. The source tree never holds them.
+FOREIGN_SCOPE_DIRS: dict[str, tuple[str, ...]] = {"home/dot_dsh/profiles": DSH_SHIPPED_PROFILES}
 # chezmoi source-state attributes, in the order chezmoi reads them (chezmoi.io reference/source-state-attributes);
 # a generated output uses no other attribute, and chezmoi_target refuses one it does not know.
 CHEZMOI_DIR_PREFIXES = ("exact_", "private_", "readonly_")
@@ -3331,7 +3337,8 @@ def render_output_index(
 
     `outputs` lists every generated file with its deployed target (none for one chezmoi does not deploy by itself),
     and a lever copy also with the sha256 it is pinned to; `scopes` lists each generated directory's deployed
-    directory and glob, where a file no output deploys is an orphan on the host; `skills` is skill_index's.
+    directory and glob, where a file no output deploys is an orphan on the host unless it lies under a first-level
+    directory the scope's `foreign` names (another program's); `skills` is skill_index's.
     """
     pins = pins or {}
     entries = []
@@ -3352,9 +3359,10 @@ def render_output_index(
         target = chezmoi_target(ROOT / directory / pattern)
         assert root is not None and target is not None
         host_root = root["target"].removesuffix("/x")
-        scopes.append(
-            {"source": directory, "target": host_root, "glob": target["target"].removeprefix(host_root + "/")}
-        )
+        scope = {"source": directory, "target": host_root, "glob": target["target"].removeprefix(host_root + "/")}
+        if directory in FOREIGN_SCOPE_DIRS:
+            scope["foreign"] = list(FOREIGN_SCOPE_DIRS[directory])
+        scopes.append(scope)
     index: dict[str, Any] = {"generated_by": GENERATED_HEADER, "outputs": entries, "scopes": scopes}
     if skills is not None:
         index["skills"] = skills

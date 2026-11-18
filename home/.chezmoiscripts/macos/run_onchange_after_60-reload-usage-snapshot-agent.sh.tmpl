@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+# @file home/.chezmoiscripts/macos/run_onchange_after_60-reload-usage-snapshot-agent.sh.tmpl
+# @brief Reload the usage-snapshot LaunchAgent when its rendered plist changes.
+# @description
+#   chezmoi writes ~/Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist, but launchd keeps the job it
+#   loaded, so a plist that names a new working tree (the one-clone move of 2026-11-18) ran make in the old tree
+#   until the operator reloaded it by hand. chezmoi runs this script when its rendered content changes, and the
+#   content embeds the sha256 of the plist as rendered for this host (its working tree and home directory
+#   included), so any change to what launchd would load re-triggers the reload; no path of the host is written
+#   into this script. A GitHub Actions runner (is_ci_runner from scripts/lib/ci-runner.sh), a destination other
+#   than the home directory (a temporary destDir apply) and a host without a user launchd domain are skipped with
+#   one line, as the systemd twin home/.chezmoiscripts/ubuntu/run_onchange_after_60-enable-usage-snapshot-timer.sh.tmpl
+#   skips a host without a user manager; a launchctl probe that fails for any other reason is a failure, never
+#   an absence.
+
+set -Eeuo pipefail
+
+{{ if eq .chezmoi.os "darwin" -}}
+{{ include "../scripts/lib/ci-runner.sh" }}
+# rendered com.mryfmo.dotfiles.usage-snapshot.plist sha256sum: {{ includeTemplate "Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist.tmpl" . | sha256sum }}
+
+label="com.mryfmo.dotfiles.usage-snapshot"
+plist="${HOME}/Library/LaunchAgents/${label}.plist"
+
+# @description Unload the agent launchd holds and load the plist chezmoi just wrote.
+function reload_usage_snapshot_agent() {
+    local domain probe status=0
+    if is_ci_runner; then
+        echo "GitHub Actions runner; skipping ${label} reload." >&2
+        return 0
+    fi
+    if ! [ '{{ .chezmoi.destDir | replace "'" "'\\''" }}' -ef "${HOME}" ]; then
+        echo "The destination is not the home directory (temp destDir apply?); skipping ${label} reload." >&2
+        return 0
+    fi
+    domain="gui/$(id -u)"
+    probe="$(launchctl print "${domain}" 2>&1 > /dev/null)" || status=$?
+    if [ "${status}" -ne 0 ]; then
+        case ${probe} in
+            *"Could not find domain"*)
+                echo "No user launchd domain ${domain}; skipping ${label} reload." >&2
+                return 0
+                ;;
+            *)
+                printf 'launchctl print %s failed with status %s: %s\n' "${domain}" "${status}" "${probe}" >&2
+                return "${status}"
+                ;;
+        esac
+    fi
+    if [ ! -f "${plist}" ]; then
+        echo "${plist} not visible (temp destDir apply?); skipping ${label} reload." >&2
+        return 0
+    fi
+    launchctl bootout "${domain}/${label}" > /dev/null 2>&1 || true
+    launchctl bootstrap "${domain}" "${plist}"
+    echo "${label} reloaded from ${plist}."
+}
+
+reload_usage_snapshot_agent
+{{ end -}}

@@ -12,8 +12,9 @@ The AWS-placed runners list a regional EC2 mirror (`<region>.ec2.archive.ubuntu.
 the same way (regime-cutover U593, 2026-11-18: four attempts of `public-bootstrap (ubuntu-24.04, client)` on PR 803
 fetched 34 to 60 packages from us-east-2.ec2.archive.ubuntu.com in 29 minutes each and were cancelled by the job's
 30-minute bound, while the runs of the same hour that resolved to archive.ubuntu.com finished the step in 8 minutes).
-Every line naming a cloud mirror (CLOUD_MIRRORS) is deleted, so apt fetches from archive.ubuntu.com whatever cloud
-the runner sits in.
+Every line whose URL host is a cloud mirror (cloud_mirror) is deleted, so apt fetches from archive.ubuntu.com whatever
+cloud the runner sits in; the host is read from the line's URL, so a host that merely contains one of those names, or a
+mention elsewhere on the line, is never a match.
 
 Every workflow job that runs apt on a Ubuntu runner calls `/usr/bin/python3 -I -S scripts/ci/drop-azure-apt-mirror.py`
 before its first apt use (tests/unit/test_apt_mirror.py checks the order); the system python3 is used, so no setup
@@ -36,10 +37,12 @@ a silent archive.ubuntu.com (runner-images#15040) ends inside its step.
 import os
 import subprocess
 import sys
+from urllib.parse import urlsplit
 
 DEFAULT = "/etc/apt/apt-mirrors.txt"
-# Host marks of the cloud mirrors: Azure's, and every regional EC2 one (`<region>.ec2.archive.ubuntu.com`).
-CLOUD_MIRRORS = (b"azure.archive.ubuntu.com", b".ec2.archive.ubuntu.com")
+# The cloud mirrors by URL host: Azure's, and every regional EC2 one (`<region>.ec2.archive.ubuntu.com`).
+AZURE_HOST = "azure.archive.ubuntu.com"
+EC2_HOST_SUFFIX = ".ec2.archive.ubuntu.com"
 # sudo tee writes a few hundred bytes; a hung sudo (a password prompt cannot appear with -n) ends here.
 WRITE_TIMEOUT = 60
 
@@ -84,6 +87,15 @@ def write(path, data):
         raise Refused(f"could not write {path}: cannot run sudo: {error.strerror or error}") from error
 
 
+def cloud_mirror(line):
+    """True when the list line's URL host is a cloud mirror: Azure's, or a regional EC2 one."""
+    fields = line.split()
+    if not fields:
+        return False
+    host = urlsplit(fields[0].decode(errors="replace")).hostname or ""
+    return host == AZURE_HOST or host.endswith(EC2_HOST_SUFFIX)
+
+
 def show(label, data):
     print(f"{label}:\n{data.decode(errors='replace')}", end="" if data.endswith(b"\n") or not data else "\n")
 
@@ -97,7 +109,7 @@ def main(argv):
         return 0
     show(f"{path} before", before)
     lines = before.splitlines(keepends=True)
-    kept = [line for line in lines if not any(mark in line for mark in CLOUD_MIRRORS)]
+    kept = [line for line in lines if not cloud_mirror(line)]
     if len(kept) == len(lines):
         print(
             f"no cloud mirror entry (azure.archive.ubuntu.com, *.ec2.archive.ubuntu.com) in {path}; nothing to change"

@@ -1890,6 +1890,16 @@ class MirrorScriptTest(unittest.TestCase):
         result = self.run_script(str(self.list))
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(cloud.split("\n", 2)[2], self.list.read_text())
+        # The host is read from the URL: a host that merely contains a cloud name, or a mention after the URL, stays.
+        lookalike = (
+            "http://us-east-2.ec2.archive.ubuntu.com.example.org/ubuntu/\tpriority:1\n"
+            "https://archive.ubuntu.com/ubuntu/\tpriority:2 # not azure.archive.ubuntu.com\n"
+            "http://azure.archive.ubuntu.com/ubuntu/\tpriority:3\n"
+        )
+        self.list.write_text(lookalike)
+        result = self.run_script(str(self.list))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(lookalike.rsplit("\n", 2)[0] + "\n", self.list.read_text())
         only_cloud = "".join(cloud.splitlines(keepends=True)[:2])
         self.list.write_text(only_cloud)
         self.assert_refused(self.run_script(str(self.list)), "no apt mirror would be left")

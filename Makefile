@@ -247,6 +247,9 @@ format:
 # `uv run --offline --with pyyaml` against the real uv cache found PyYAML there only because an
 # earlier module of the serial order had fetched it; the shards keep no such order, so the cache gets it first.
 UNIT_TEST_JOBS ?= 0
+# UNIT_TEST_SHARD_SECONDS=N plans the shards by the measured duration table (scripts/ci/unittest-durations.tsv), N
+# seconds a shard, longest first (regime-cutover U598); 0, the default, keeps the count order.
+UNIT_TEST_SHARD_SECONDS ?= 0
 
 .PHONY: unit-test
 unit-test:
@@ -254,7 +257,7 @@ ifeq ($(UNIT_TEST_JOBS),1)
 	uv run python -m unittest discover -s tests/unit -v
 else
 	$(UV_PYYAML) python -c 'import yaml'
-	uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs $(UNIT_TEST_JOBS)
+	uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs $(UNIT_TEST_JOBS) --shard-seconds $(UNIT_TEST_SHARD_SECONDS)
 endif
 
 # The index form fails inside the Claude sandbox even while the uv cache holds PyYAML, so a probe picks the cache first.

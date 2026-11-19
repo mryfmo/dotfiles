@@ -527,7 +527,7 @@ jobs:
           # the tests wait on their subprocesses, and on PR #493 that took the step from 215 s to 170 s on
           # macos-14 (3 CPUs, the macOS image of that time) and from 111 s to 92 s on ubuntu-24.04 (4 CPUs) (U39).
           cpus="$(getconf _NPROCESSORS_ONLN)"
-          UNIT_TEST_JOBS="$(( 2 * cpus ))" make unit-test
+          UNIT_TEST_JOBS="$(( 2 * cpus ))" UNIT_TEST_SHARD_SECONDS=90 make unit-test
 
       - name: Prepare public dotfiles fixture
         if: ${{ steps.decide.outputs.should_test == 'true' }}

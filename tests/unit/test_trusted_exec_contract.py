@@ -531,6 +531,62 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         shutil.rmtree(holder)
         self.assertEqual("by no process whose descriptors this user can read (1 unreadable)", self.holder_scan(probe))
 
+    def test_an_open_no_process_this_user_can_read_holds_is_unattributed_and_does_not_fail(self):
+        """U625: nine Unit test jobs on GitHub's Ubuntu runners (2026-10-28 to 2026-11-19, both flavours) failed the
+        compliant consumer of test_metadata_reads_and_other_files_are_not_reads_of_the_input with `opened for
+        reading by no process whose descriptors this user can read (146 to 159 unreadable)`: the probe counted an
+        open it could attribute to nobody as the consumer's read. The scan's tree here is a scratch PROC_ROOT with
+        one pid whose descriptor table is unreadable (mode 0000, as the runner's root-owned tables are), and the
+        real holder, this process's own thread, is absent from that tree, so the open has no nameable holder: it
+        goes to `unattributed` with the count and the time, is printed, and assert_untouched passes. A second probe
+        on the same tree with a readable holder named still fails naming its pid; a third whose tree does not exist
+        keeps the no-/proc rule (every detected open fails), so each side of the rule is proven on every host."""
+        import contextlib
+        import io
+        import re
+
+        probe = self.worker_root_probe()
+        proc = probe.base / "proc"
+        probe.PROC_ROOT = str(proc)
+        blocked = proc / "4343" / "fd"
+        blocked.mkdir(parents=True)
+        blocked.chmod(0o000)
+        self.addCleanup(blocked.chmod, 0o700)
+        with self.assertRaises(PermissionError):  # root could list it, and the count below would be 0 instead
+            os.listdir(blocked)
+        with contextlib.redirect_stderr(io.StringIO()) as printed:
+            self.assertEqual(b"", probe.consume(lambda: in_thread(lambda: Path(probe.input).read_bytes())))
+        probe.assert_untouched()
+        self.assertEqual(([], []), (probe.reads, probe.errors))
+        self.assertGreaterEqual(len(probe.unattributed), 1, printed.getvalue())  # the reader's close may span a poll
+        form = r" opened for reading by no process whose descriptors this user can read \(1 unreadable\) at "
+        form += r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ \(attempt \d+, scanned for 0\.2 s\)$"
+        form = re.escape(str(probe.input)) + form
+        for entry in probe.unattributed:
+            self.assertRegex(entry, form)
+            self.assertIn(f"worker root: unattributed open: {entry}\n", printed.getvalue())
+        named = self.worker_root_probe()
+        named.PROC_ROOT = str(proc)
+        holder = proc / "4242"
+        (holder / "fd").mkdir(parents=True)
+        os.symlink(named.input, holder / "fd" / "7")
+        (holder / "comm").write_text("cat\n")
+        (holder / "status").write_text("Name:\tcat\nPPid:\t77\n")
+        (holder / "cmdline").write_bytes(b"/bin/cat\0" + os.fsencode(named.input) + b"\0")
+        self.assertEqual(b"", named.consume(lambda: in_thread(lambda: Path(named.input).read_bytes())))
+        with self.assertRaisesRegex(AssertionError, "worker root: read ") as by_pid:
+            named.assert_untouched()
+        record = f"{named.input} opened for reading by pid 4242 (cat, ppid 77: /bin/cat {named.input} )"
+        self.assertIn(record, str(by_pid.exception))
+        self.assertEqual([], named.unattributed)
+        no_tree = self.worker_root_probe()
+        no_tree.PROC_ROOT = str(no_tree.base / "no-proc")
+        self.assertEqual(b"", no_tree.consume(lambda: in_thread(lambda: Path(no_tree.input).read_bytes())))
+        with self.assertRaisesRegex(AssertionError, "worker root: read ") as unnamed:
+            no_tree.assert_untouched()
+        self.assertIn(f"opened for reading reader not identified (no {no_tree.PROC_ROOT})", str(unnamed.exception))
+        self.assertEqual([], no_tree.unattributed)
+
     def test_the_holder_scan_tolerates_a_pid_that_exits_mid_scan(self):
         # Round 1 finding f1 s4: a pid that exits between its fd listing and its field reads answers ESRCH, which
         # escaped the scan and aborted the attempt, losing the read it had already detected. The three fields fail

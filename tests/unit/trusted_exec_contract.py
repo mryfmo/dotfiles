@@ -147,6 +147,22 @@ class WorkerRoot:
     comm, parent pid, command line) before the probe closes its writer, because two 2026-11-04 runs on the
     ubuntu-24.04 server cell saw a reader outside the consumer step and the record could not say which.
 
+    Attribution (U625). A detected open is the consumer's read when the scan names a holder: every process whose
+    descriptor table this user can read is this user's (the consumer step's thread, a subprocess it started, or any
+    other process of this user), and the lever under test and its descendants run as this user, so a read the lever
+    makes always has a nameable holder. An open that still has no nameable holder after HOLDER_WAIT_S, on a host
+    whose PROC_ROOT lists this user's processes, is not the lever's: it goes to `unattributed` with the count of
+    descriptor tables the scan could not read and the UTC time, is printed on stderr so a recurrence is diagnosable
+    from the job log, and does not fail assert_untouched. Nine Unit test jobs on GitHub's Ubuntu runners between
+    2026-10-28 and 2026-11-19 (both flavours, never a macOS leg) saw such an open of the compliant consumer's
+    sentinel with 146 to 159 unreadable tables; the base directory is 0700 (tempfile.mkdtemp), so the holder was
+    root's or otherwise unreadable to this user, and no place for the FIFO keeps such a process out. On a host
+    without /proc (macOS) nothing can name a holder, so every detected open stays a read of the consumer's, as
+    before (the record ends `reader not identified (no /proc)`). The rule does not cover a lever that handed the
+    input to a process of another user, which trusted_exec has no way to do (the lever runs as this user, with no
+    privilege step), nor a reader of this user whose open had not returned, or that closed again, within
+    HOLDER_WAIT_S (the residual below).
+
     Scope. The probe detects a blocking read open of the input by the consumer step, and a replacement or removal of
     the input that is present at any poll or at the check. The consumer under test is repository code reviewed in
     the same PR, and the probe guards against an accidental read, not against an adversary inside the test process.
@@ -165,6 +181,7 @@ class WorkerRoot:
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
         self.reads, self.errors, self.replaced, self.attempts = [], [], [], 0
+        self.unattributed = []  # detected opens no process this user can read holds (U625): recorded, never a failure
         os.mkfifo(self.input, 0o600)
         self.output.write_text(LEGIT)
         os.utime(self.output, ns=(BASELINE_NS, BASELINE_NS))
@@ -231,6 +248,12 @@ class WorkerRoot:
         gone is still named by its pid. A scan that names nobody is repeated every POLL_S for HOLDER_WAIT_S before
         its answer stands, because a reader the write-open just woke has no descriptor until its `open()` returns
         (the kernel counts it as a reader before that), so the first scan can look before the entry exists."""
+        return self._attribution(writer)[0]
+
+    def _attribution(self, writer):
+        """The record of _holders and, beside it, the number of descriptor tables the scan could not read when the
+        tree was listed and no holder is named (the open is then unattributed), or None when a holder is named or
+        the tree itself cannot be listed (the open then stays the consumer's read)."""
         root = self.PROC_ROOT
         me = str(os.getpid())
 
@@ -242,11 +265,12 @@ class WorkerRoot:
                 return "?"
 
         def scan():
-            """One pass over the tree: the record when it names a holder, else the no-holder or no-root record."""
+            """One pass over the tree: the record when it names a holder, else the no-holder or no-root record, and
+            the unreadable count of a listed tree that names nobody."""
             try:
                 entries = os.listdir(root)
             except OSError:
-                return None, f"reader not identified (no {root})"
+                return None, f"reader not identified (no {root})", None
             holders, unreadable = [], 0
             for pid in entries:
                 if not pid.isdigit():
@@ -273,17 +297,32 @@ class WorkerRoot:
                     holders.append(f"by pid {pid} ({field(pid, 'comm').strip()}, ppid {ppid}: {cmdline})")
                     break
             if holders:
-                return ", ".join(holders), None
-            return None, f"by no process whose descriptors this user can read ({unreadable} unreadable)"
+                return ", ".join(holders), None, None
+            return None, f"by no process whose descriptors this user can read ({unreadable} unreadable)", unreadable
 
         settle = time.monotonic() + self.HOLDER_WAIT_S
         while True:
-            named, none_named = scan()
+            named, none_named, unreadable = scan()
             if named is not None:
-                return named
+                return named, None
             if time.monotonic() >= settle:
-                return none_named
+                return none_named, unreadable
             time.sleep(self.POLL_S)
+
+    def _record_read(self, writer):
+        """One detected open of the sentinel, attributed: the consumer's read when a holder is named or when no tree
+        can name one; unattributed when the tree listed this user's processes and none holds the sentinel after
+        HOLDER_WAIT_S (the class docstring says why that is not the lever's read). The unattributed record carries
+        the unreadable count, the UTC time and the attempt, and is printed at once so the job log keeps it."""
+        record, unreadable = self._attribution(writer)
+        entry = f"{self.input} opened for reading {record}"
+        if unreadable is None:
+            self.reads.append(entry)
+            return
+        when = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        entry = f"{entry} at {when} (attempt {self.attempts}, scanned for {self.HOLDER_WAIT_S} s)"
+        self.unattributed.append(entry)
+        print(f"worker root: unattributed open: {entry}", file=sys.stderr, flush=True)
 
     def _attempt(self):
         """One attempt while the consumer runs: record a reader, then release any writer waiting for a reader."""
@@ -299,7 +338,7 @@ class WorkerRoot:
         if fd is not None:
             try:
                 if not self._not_sentinel(fd=fd):
-                    self.reads.append(f"{self.input} opened for reading {self._holders(fd)}")
+                    self._record_read(fd)
             finally:
                 os.close(fd)  # the reader now sees EOF
         try:
@@ -346,7 +385,8 @@ class WorkerRoot:
     def assert_untouched(self):
         """Nothing opened the input for reading during consume(), or replaced or removed it; nothing wrote, replaced
         or removed the output, or created the new output's directory. The output's content is compared too, since a
-        write in place can keep the inode, the size and a coarse clock's mtime."""
+        write in place can keep the inode, the size and a coarse clock's mtime. An open in `unattributed` is no
+        failure (the class docstring's attribution rule); it stays readable there and was printed when detected."""
         found = []
         for path, identity in self._identity.items():
             if not os.path.lexists(path):

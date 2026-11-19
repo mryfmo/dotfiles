@@ -115,20 +115,27 @@ CHECKOUT_GUARD = (
     "`~/.local/bin/common/checkout-guard.sh check <checkout>` reports it), so a worker that reaches for the "
     "checkout is sent to the worker-tree lever by the tool, not by a sentence (U129)."
 )
-# U621 (standing orders 57 and 59): step 1 states the delegated worker's progress-file contract, the convention
-# stall-check.py reads, and the coordinator's use of the stall watcher: the lever detects and records, the coordinator
-# stops the worker and dispatches a fresh one with the same consolidated brief.
+# U621 (standing orders 57 and 59; round 2 after verdict U621-942e9a16): step 1 states the delegated worker's
+# progress-file contract, the convention stall-check.py reads, and the coordinator's use of the stall watcher as a
+# background job under `--until-stall` whose exit is the wake (a background job's output reaches the coordinator only
+# when the job exits, so no printed line wakes anything); on that exit the coordinator stops the worker, resets the
+# unit's markers, dispatches a fresh worker with the same consolidated brief and starts the lever again.
 WORKER_CONTRACT = (
     "A delegated worker (a Task subagent dispatched into a worker tree) writes `<store>/progress/<unit>-progress.txt`: "
     "one `YYYY-MM-DDTHH:MM:SSZ <text>` line after each item of its brief and the bare `done, head=<sha>` line at the "
     "end, the convention `stall-check.py` reads; the coordinator sets the unit's `units.tsv` state `in-flight` at "
-    "dispatch and runs `~/.local/bin/common/stall-watch.sh <store>` in the background for the program (every 60 "
-    "seconds it runs `stall-check.py` with a 25-minute deadline over that directory, records each new `stalled` or "
-    "`no-file` unit once as a `decisions.tsv` row of phase `stall` and prints the row, the line your `wait` wakes on)."
+    "dispatch and runs `~/.local/bin/common/stall-watch.sh <store> --until-stall` as a background job for the program "
+    "(every 60 seconds it runs `stall-check.py` with a 25-minute deadline over that directory, counts a unit without a "
+    "file from the first tick that saw it in flight, and exits 1 the moment it records a new `stalled` or `no-file` "
+    "unit as a `decisions.tsv` row of phase `stall`, or 3 when the checker or the record failed): the job's exit is "
+    "the wake, not a printed line, since a background job's output reaches you only when the job exits; the line is "
+    "on its stdout."
 )
 STALL_ACTION = (
-    "On a stall line, stop the worker and start a fresh one with the same consolidated brief; the lever itself kills "
-    "and restarts nothing (standing orders 57 and 59; U621)."
+    "On that exit, stop the worker, run the lever's `reset <unit>` (it removes the unit's `seen` and `stalled` markers "
+    "and prints what it removed, so the replacement's own silence is a new stall), start a fresh worker with the same "
+    "consolidated brief, and start the lever again; the lever itself kills and restarts nothing (standing orders 57 "
+    "and 59; U621)."
 )
 
 # U120 (standing order 36): the Gates paragraph names the thresholds rounds-check.py counts (the third audit free, the
@@ -260,6 +267,13 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertIn(WORKER_CONTRACT, brief)
         self.assertIn(STALL_ACTION, brief)
         self.assertEqual(brief.count("stall-watch.sh"), 1)
+        # Round 2: the wake is the background job's exit, the row on its stdout; no sentence says a printed line wakes
+        # the coordinator's wait (verdict U621-942e9a16, f5 s7), and the re-dispatch sentence names `reset <unit>`.
+        self.assertIn("the job's exit is the wake, not a printed line", brief)
+        self.assertIn("the line is on its stdout.", brief)
+        self.assertNotIn("wakes on", brief)
+        self.assertEqual(brief.count("`reset <unit>`"), 1)
+        self.assertEqual(brief.count("--until-stall"), 1)
         # after the release of the worker's tree, before the checkout guard
         release = "run it before any successor is dispatched on the same tree."
         self.assertLess(brief.index(release), brief.index(WORKER_CONTRACT))

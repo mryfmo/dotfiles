@@ -46,14 +46,14 @@ standing_rules:
   # from its claude model and effort, or inherit-parent / auto (the parent chat model); a list is a panel.
   # setup-pstack's own write to that file is replaced at the next chezmoi apply: change the roles here.
   pstack_models:
-    budget: large (xhigh)
+    budget: standard (medium; the deep preset for the hardest tenth)
     roles:
       feature, refactoring: inherit-parent
       bug-fix: inherit-parent
       perf-issue: inherit-parent
       hillclimb: inherit-parent
       judgment and prose: standard
-      hardest tasks: standard
+      hardest tasks: deep
       how explorer: inherit-parent
       how explainer: standard
       why investigators: inherit-parent
@@ -205,7 +205,7 @@ omp:
   # modelRoles.default and skills_directories as skills.customDirectories; the
   # seat launcher passes it as a second --config (docs/omp-skills.md).
   roles:
-    orchestrator: deep
+    orchestrator: standard
     worker: standard
     audit: audit
   # The gateway role (regime-cutover U310). The dsh role of hcom-seat runs no omp session: its omp is
@@ -219,7 +219,7 @@ omp:
   # places it as ~/.omp/profiles/<role>/agent/config.yml before the launch, the extension entry
   # rewritten to the canonical claude.levers.extensions path, left alone when already equal.
   gateway_roles:
-    dsh: deep
+    dsh: standard
 
 # The dangerous GitHub-write and destructive commands no agent runs on its own (regime-cutover U76).
 # One list, rendered by scripts/generate-agent-configs.py to three consumers:
@@ -559,58 +559,67 @@ command_policy:
 # omp.effort is the seat's thinking level, rendered as defaultThinkingLevel into each role overlay
 # (~/.agents/omp/profiles/<role>.yml); it follows the effort of the vendor the omp model routes to.
 model_profiles:
+  # The recommended pattern of handoff/41 (operator decision 2026-11-18: ChatGPT Pro, Claude Code Enterprise,
+  # OAuth routes only): Opus 5.5 at medium for the orchestrator and the workers (Anthropic: start agent workloads
+  # at medium; xhigh is for runs over 30 minutes), Fable 5.2 at high in the deep preset alone (the hardest tenth;
+  # Anthropic: Fable starts at high, xhigh only where measured), the cross-vendor audit at high (OpenAI: high for
+  # reviewer and security agents, xhigh only where evals show a benefit), Haiku 5.5 as the dsh Router everywhere
+  # (classification and routing). The omp rows of security and audit stay on gpt-6-astra until the omp pin and the
+  # openai-siwc extension carry the GPT-6.2 models (U596b); the codex rows take them now (codex-cli 0.169).
   express:
     claude: { model: haiku, effort: low }
     codex: { model: gpt-6-luna, model_reasoning_effort: low }
     omp: { model: "claude-bridge/claude-haiku-5-5", effort: low }
     dsh: { model: claude-haiku-5-5, route: omp-gateway }
   standard:
-    claude: { model: claude-opus-5-5, effort: xhigh, advisor: fable }
+    claude: { model: claude-opus-5-5, effort: medium }
     codex:
-      model: gpt-6.1-sol
-      model_reasoning_effort: xhigh
+      model: gpt-6.2-sol
+      model_reasoning_effort: medium
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
-    omp: { model: "claude-bridge/claude-opus-5-5", effort: xhigh }
+    omp: { model: "claude-bridge/claude-opus-5-5", effort: medium }
     dsh: { model: claude-haiku-5-5, route: omp-gateway }
   review:
     # Review independence rests on a fresh context, not a stronger model (operator decision 2026-10-13, plan 007 T717);
     # INV-7: the Claude review profile is the same model and effort as deep.
-    claude: { model: claude-fable-5-2, effort: xhigh }
-    codex: { model: gpt-6.1-sol, model_reasoning_effort: xhigh }
-    omp: { model: "claude-bridge/claude-fable-5-2", effort: xhigh }
-    dsh: { model: claude-opus-5-5, route: omp-gateway }
+    claude: { model: claude-fable-5-2, effort: high }
+    codex: { model: gpt-6.2-sol, model_reasoning_effort: high }
+    omp: { model: "claude-bridge/claude-fable-5-2", effort: high }
+    dsh: { model: claude-haiku-5-5, route: omp-gateway }
   deep:
-    claude: { model: claude-fable-5-2, effort: xhigh, advisor: fable }
+    # The hardest-tenth preset: Fable 5.2 with the Fable advisor (Claude Code's advisor must rank at or above the
+    # main model); on an Enterprise standard seat Fable bills usage credits, on a premium seat it is included.
+    claude: { model: claude-fable-5-2, effort: high, advisor: fable }
     codex:
-      model: gpt-6.1-sol
+      model: gpt-6.2-astra
       model_reasoning_effort: xhigh
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
-    omp: { model: "claude-bridge/claude-fable-5-2", effort: xhigh }
-    dsh: { model: claude-opus-5-5, route: omp-gateway }
+    omp: { model: "claude-bridge/claude-fable-5-2", effort: high }
+    dsh: { model: claude-haiku-5-5, route: omp-gateway }
   security:
-    # Security-audit tier: specialist model for auditing pending changes. An audit reads
-    # the changes and reports; it never edits, so it runs read-only like the audit tier.
-    claude: { model: claude-fable-5, effort: high }
+    # Security-audit tier: a security review reads the changes and reports; it never edits, so it runs read-only
+    # like the audit tier. The Codex side is the cross-vendor reviewer at high (operator decision 2026-11-18).
+    claude: { model: claude-opus-5-5, effort: high }
     codex:
       # gpt-daybreak-blue-latest requires API-key auth (rejected under ChatGPT login).
-      model: gpt-6-astra
+      model: gpt-6.2-astra
       model_reasoning_effort: high
       sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
     omp: { model: "openai-siwc/gpt-6-astra", effort: high }
-    dsh: { model: claude-opus-5-5, route: omp-gateway }
+    dsh: { model: claude-haiku-5-5, route: omp-gateway }
   audit:
-    # Auditor tier (監査役): cross-vendor read-only audit of worker changesets
-    # at xhigh reasoning effort (operator pin 2026-10-09, T115).
-    claude: { model: claude-fable-5-2, effort: high }
+    # Auditor tier (監査役): cross-vendor read-only audit of worker changesets at high reasoning effort
+    # (operator decision 2026-11-18, replacing the xhigh pin of 2026-10-09, T115).
+    claude: { model: claude-opus-5-5, effort: high }
     codex:
-      model: gpt-6-astra
-      model_reasoning_effort: xhigh
+      model: gpt-6.2-sol
+      model_reasoning_effort: high
       sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
-    omp: { model: "openai-siwc/gpt-6-astra", effort: xhigh }
-    dsh: { model: claude-opus-5-5, route: omp-gateway }
-interactive_profile: deep
+    omp: { model: "openai-siwc/gpt-6-astra", effort: high }
+    dsh: { model: claude-haiku-5-5, route: omp-gateway }
+interactive_profile: standard
 
 codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml

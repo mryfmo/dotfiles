@@ -2625,7 +2625,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest = load_manifest_fixture(self.temp_dir)
         self.module.ROOT = ROOT
         roles = self.module.omp_gateway_roles(manifest)
-        self.assertEqual(roles, {"dsh": "deep"})
+        self.assertEqual(roles, {"dsh": "standard"})
         self.assertEqual(roles["dsh"], manifest["interactive_profile"])
         expected = self.module.expected_outputs(manifest)
         path = ROOT / "home/dot_agents/omp/profiles/dsh.yml.tmpl"

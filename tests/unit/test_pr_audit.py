@@ -871,7 +871,7 @@ class PrAuditTest(unittest.TestCase):
                     calls[2]["config"], calls[0]["config"], "the override rides on argv, not in the config"
                 )
                 self.assertIn(
-                    'model = "gpt-6.1-sol"', calls[2]["config"], "the scratch config keeps the template's pin"
+                    'model = "gpt-6.2-sol"', calls[2]["config"], "the scratch config keeps the template's pin (U596)"
                 )
 
     def test_a_cyber_program_outside_the_two_words_or_without_a_value_is_refused_before_any_call(self):

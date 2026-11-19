@@ -20,7 +20,7 @@
 - id: agent-default-model
   config:
     provider: claude-bridge
-    model: claude-opus-5-5
+    model: claude-haiku-5-5
 - id: webserver
   config:
     host: 127.0.0.1
@@ -142,7 +142,6 @@
           - claude-bridge
         models:
           - claude-bridge/claude-haiku-5-5
-          - claude-bridge/claude-opus-5-5
     - id: subagent-acp
       name: '@deepseek-ai/dsh-subagent-acp'
       config:

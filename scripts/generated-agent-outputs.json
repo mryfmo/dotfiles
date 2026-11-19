@@ -496,7 +496,7 @@
       "target": ".local/bin/common/ledger-row.py",
       "kind": "file",
       "executable": true,
-      "sha256": "8eb2d306b9b4b7708a5ee23d8a7fa00116787b1efebe1d5824357b005f182f2c"
+      "sha256": "e78ff46f057ef7e7e748ca757dcf83506478722c78f94e22a93df57602c9fe08"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
@@ -531,7 +531,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "6c7f3ff20bbaad62855e177afe38499547aba5519d164f9a0a9faf579f3a3028"
+      "sha256": "acebc450d965b2a054d48d00a5ab335890b3786d577e7b525a32f5c0f45766a5"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -720,7 +720,14 @@
       "target": ".local/bin/common/ledger.py",
       "kind": "file",
       "executable": false,
-      "sha256": "4714a7a7bbffa8c3a24466221082ce463c6117f547bfa3cc4a8c8adfba34ea21"
+      "sha256": "c9e13988b6dc1e5ce934964cacd48d538c542402cd9d0154fc713d21562e4431"
+    },
+    {
+      "source": "home/dot_local/bin/common/sweep-scope.py",
+      "target": ".local/bin/common/sweep-scope.py",
+      "kind": "file",
+      "executable": false,
+      "sha256": "8c74ade57c6dfe1f977fa77735a30a2933deff449eeafbb5a4ed6044401839be"
     },
     {
       "source": "install/common/aws_cli.sh",
@@ -1043,6 +1050,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "stall-watch.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "sweep-scope.py"
     },
     {
       "source": "home/dot_local/bin/common",

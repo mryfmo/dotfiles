@@ -280,6 +280,7 @@ LEVERS = (
     "seat-token-place",
     "stall-check.py",
     "stall-watch.sh",
+    "sweep-scope.py",
     "ticket-unit.py",
     "units-row.py",
     "worker-worktree-owner.py",
@@ -1139,6 +1140,30 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(manifest["claude"]["levers"]["sha256"].get("ledger.py"), pin)
         self.assertIn(f"\n      ledger.py: {pin}\n", (ROOT / "home/dot_agents/agent-config.yaml").read_text())
         self.assertEqual(installed, next(path for path in self.module.lever_pins(manifest) if path.name == "ledger.py"))
+
+    def test_the_sweep_scope_reader_installs_as_a_pinned_module_like_the_ledger_reader(self) -> None:
+        """U597 round 8: `pr-merge.sh` runs `scripts/orchestrator/sweep-scope.py` from a private copy it hashes
+        against `claude.levers.sha256.sweep-scope.py` first, so the reader gets the ledger reader's form: a twin
+        `home/dot_local/bin/common/sweep-scope.py` byte-identical to the checkout's reader, no `executable_` prefix
+        (chezmoi installs it at mode 0644; nothing runs it by path), and the pin the generator refreshes."""
+        self.module.ROOT = ROOT
+        source = ROOT / "scripts/orchestrator/sweep-scope.py"
+        installed = ROOT / "home/dot_local/bin/common/sweep-scope.py"
+        self.assertIn("sweep-scope.py", self.module.LEVER_MODULES)
+        self.assertEqual(self.module.lever_install_name("sweep-scope.py"), "sweep-scope.py")
+        self.assertTrue(
+            installed.is_file(), f"{installed.relative_to(ROOT)} is missing: the lever's copy is hashed against its pin"
+        )
+        self.assertEqual(installed.read_bytes(), source.read_bytes())
+        self.assertFalse((ROOT / "home/dot_local/bin/common/executable_sweep-scope.py").exists())
+        self.assertFalse(os.access(installed, os.X_OK), "the reader is run from a copy, never by path")
+        manifest = load_manifest_fixture(self.temp_dir)
+        pin = hashlib.sha256(source.read_bytes()).hexdigest()
+        self.assertEqual(manifest["claude"]["levers"]["sha256"].get("sweep-scope.py"), pin)
+        self.assertIn(f"\n      sweep-scope.py: {pin}\n", (ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        self.assertEqual(
+            installed, next(path for path in self.module.lever_pins(manifest) if path.name == "sweep-scope.py")
+        )
 
     def test_check_reports_a_stale_lever_pin_and_a_run_refreshes_it(self) -> None:
         (self.temp_dir / "scripts/orchestrator").mkdir(parents=True)

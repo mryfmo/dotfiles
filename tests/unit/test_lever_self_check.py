@@ -8,6 +8,7 @@ from the checkout's own bytes; nothing reads the real `~/.agents` or `~/.local/b
 
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -53,6 +54,11 @@ LEVERS = (
 # body of the settings writer, U353, U465d: the entry `router-settings-apply` is bash since U465d and reads PATH's tools
 # like every shell lever).
 PYTHON_LEVERS = ("brief-check.py", "router-settings-apply.py")
+# The pinned modules (regime-cutover U418, U597 round 8): files no seat runs by path, installed under their bare
+# names (mode 0644, no `executable_` prefix) and pinned like every lever; `ledger.py` is imported by ledger-row.py
+# from beside it, and both are run by pr-merge.sh from private copies it hashes against these pins first, so they
+# carry no self-check of their own and the pin is the whole hold.
+MODULES = ("ledger.py", "sweep-scope.py")
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 
 
@@ -109,6 +115,27 @@ class LeverSelfCheckTest(unittest.TestCase):
                 self.assertNotIn("refused: sha256", run.stderr)
                 self.assertNotIn("refused: manifest", run.stderr)
                 self.assertNotIn("refused: no single sha256 pin", run.stderr)
+
+    def test_the_pinned_modules_install_byte_identical_and_hash_to_their_pins(self):
+        """U597 round 8: the two modules pr-merge.sh runs from pinned copies, `ledger.py` and `sweep-scope.py`, are
+        installed byte-identical under their bare names (no `executable_` twin), and the manifest holds exactly one
+        `claude.levers.sha256.<name>` line for each, equal to the sha256 of the checkout's file: the digest the lever's
+        reader_copy holds the copy to, so a drift between the source, the twin and the pin fails here, not a merge."""
+        text = MANIFEST.read_text()
+        for name in MODULES:
+            with self.subTest(module=name):
+                source = ROOT / "scripts/orchestrator" / name
+                installed = ROOT / "home/dot_local/bin/common" / name
+                self.assertTrue(installed.is_file(), f"{installed.relative_to(ROOT)} is missing")
+                self.assertEqual(installed.read_bytes(), source.read_bytes())
+                self.assertFalse((ROOT / "home/dot_local/bin/common" / f"executable_{name}").exists())
+                self.assertFalse(os.access(installed, os.X_OK), "a module, never run by path")
+                pins = re.findall(rf"^      {re.escape(name)}: ([0-9a-f]{{64}})$", text, re.MULTILINE)
+                self.assertEqual(
+                    pins, [hashlib.sha256(source.read_bytes()).hexdigest()], "one pin, the source's digest"
+                )
+                # the installed copy of the deployed manifest carries the same line
+                self.assertIn(f"\n      {name}: {pins[0]}\n", (self.home / ".agents/agent-config.yaml").read_text())
 
     def test_a_rewritten_installed_lever_refuses_to_run(self):
         for name in LEVERS:

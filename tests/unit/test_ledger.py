@@ -5,13 +5,33 @@ three audit questions, a sweep row with a short head is a malformed store naming
 `ledger.py <store> sweep <unit> <head>` prints `<ts>\\t<unit>\\t<verifier>\\t<evidence>` or `none`. Since round 4
 (Codex thread 4457544811) only the exact row of the rule answers: pr `-`, verifier `security-audit-skill <pin>` (the pin
 8 or more lowercase hex), evidence whose first `;`-field is a relative `sweeps/<path>.json` without `..`; any other
-`sweep` row of the unit is a malformed store naming the line and the field, never "no sweep row"."""
+`sweep` row of the unit is a malformed store naming the line and the field, never "no sweep row". The daily question
+(U597 round 4): `read_daily` and `Daily.newest_within(now, max_age)` over the store's `daily-sweeps.tsv` with the
+ledger's strictness (a missing file None, a malformed row naming the line and the field), and the CLI form `ledger.py
+<store> daily <max-age-seconds>` printing `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of the newest row within the
+window against the clock, or `none`; round 5: the window is bounded above by 60 seconds, so a row dated further in
+the future does not count (and is not refused as malformed); round 7: a cell holding a control byte is Malformed to
+both parsers, naming the line and the field; round 8: a carriage return is such a byte wherever it stands in a cell;
+round 10: one row reader for both files, whose carriage-return tolerance is a parameter, so the ledger drops exactly
+one trailing CR per line as the base of U597 did (a CR LF ledger parses, a CR CR LF line is Malformed) and the daily
+file drops none (a CR LF daily row is Malformed); round 9: the daily row has its own grammar, the exact fields
+`ledger-row.py daily` writes (the verifier's seat, run and daily task, the evidence's seven fields with the validators'
+PASS words, the three validator digest prefixes, the two artifact digest prefixes (round 10) and the recording time),
+so a row of a unit's sweep shape is Malformed naming the field. Round 11: `newest_sweep_any(head)` and the `sweep-any
+<head>` form (the newest sweep row of any unit at the head, every sweep row of the ledger held to the rule) and
+`merge_of(commit)` and the `merge-of <commit>` form (the head the squash at the commit came from, the newest
+`pr-merge.sh` receipt row naming `commit=<sha>`; a `pr-merge.sh` row of another evidence shape is no merge row), the
+merge gate's two questions about main's tip. Round 13: `carried_from(head)` and the `carried-from <head>` form (the
+earlier head the newest `carried` row at the head names, the tip gate's route to a carried head's sweep) and the merge
+row's pr cell held to a decimal number."""
 
 import importlib.util
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -269,4 +289,1054 @@ class LedgerSweepTest(unittest.TestCase):
         run = self.cli("-h")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("sweep", run.stdout)
-        self.assertIn("{verdict,carry-source,sweep}", run.stdout)
+        self.assertIn("{verdict,carry-source,sweep,sweep-any,merge-of,carried-from,daily}", run.stdout)
+
+    def test_merge_of_admits_only_a_consistent_pr_merge_row(self):
+        """U597 round 12 (verdict U597-097d1615 P2 at ledger.py:362): `merge_of` admitted an audit verdict with a
+        `pr-merge.sh` verifier and a receipt whose pull request disagreed with the row, so an inconsistent record could
+        supply the tip gate's provenance. A merge row is the row `ledger-row.py merged` composes and nothing else: the
+        verdict cell `-`, the verifier exactly `pr-merge.sh`, the receipt's `pr=` the row's pr cell and its `head=`
+        the row's head cell (or its first 8, the writer's own form); a `correct` verdict, a `merged` verdict, a receipt
+        naming another pull request and a receipt naming another head are each Malformed naming the field, to the
+        reader and to the `merge-of` CLI (exit 2 naming the line), whatever commit is asked; the writer's own row
+        answers."""
+        merged = "e" * 40
+
+        def merge_row(ts, unit, pr, head, commit, verdict="-", receipt_pr=None, receipt_head=None):
+            return row(
+                ts,
+                unit,
+                pr,
+                head,
+                verdict,
+                "pr-merge.sh",
+                f"merged pr={receipt_pr or pr} head={receipt_head or head} commit={commit} verdict=2026-10-30T01:00:00Z",
+            )
+
+        read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged))
+        self.assertEqual(read.merge_of(merged), A, "the writer's own row answers")
+        read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged, receipt_head=A[:8]))
+        self.assertEqual(read.merge_of(merged), A, "the receipt's head may be the first 8 of the head cell")
+        for name, kwargs, fault in (
+            (
+                "a correct verdict carrying a receipt",
+                {"verdict": "correct (findings=0)"},
+                "the verdict of a merge row is not '-': 'correct (findings=0)'",
+            ),
+            ("a merged verdict", {"verdict": "merged"}, "the verdict of a merge row is not '-': 'merged'"),
+            (
+                "a receipt naming another pull request",
+                {"receipt_pr": "9"},
+                "the receipt of a merge row names pr=9, not its pr cell '7'",
+            ),
+            (
+                "a receipt naming another head",
+                {"receipt_head": B},
+                f"the receipt of a merge row names head={B}, neither its head_sha {A} nor its first 8",
+            ),
+            (
+                "a receipt naming a short other head",
+                {"receipt_head": B[:8]},
+                f"the receipt of a merge row names head={B[:8]}, neither its head_sha {A} nor its first 8",
+            ),
+        ):
+            with self.subTest(name):
+                read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged, **kwargs))  # line 2
+                for commit in (merged, "f" * 40):
+                    with self.assertRaises(self.reader.Malformed) as caught:
+                        read.merge_of(commit)
+                    self.assertEqual(str(caught.exception), f"{self.ledger_file}:2: {fault}")
+                run = self.cli("merge-of", merged)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, f"ledger: {self.ledger_file}:2: {fault}\n")
+        # the verdict is read whole: a `-` with a note is not the writer's cell
+        read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged, verdict="- (note)"))
+        with self.assertRaises(self.reader.Malformed) as caught:
+            read.merge_of(merged)
+        self.assertIn("the verdict of a merge row is not '-': '- (note)'", str(caught.exception))
+        # round 13 (the round-12 P3 at :371): the pr cell must be a decimal number, as the writer requires; a receipt
+        # that agrees with a non-decimal cell changes nothing, and the fault comes after the verdict's, before the head's
+        for pr in ("x", "-", "07", "7a"):
+            with self.subTest(pr=pr):
+                read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", pr, A, merged))  # line 2
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    read.merge_of(merged)
+                self.assertEqual(
+                    str(caught.exception),
+                    f"{self.ledger_file}:2: the pr of a merge row is not a decimal number: {pr!r}",
+                )
+                run = self.cli("merge-of", merged)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", "x", A[:8], merged))
+        with self.assertRaises(self.reader.Malformed) as caught:
+            read.merge_of(merged)
+        self.assertIn("the pr of a merge row is not a decimal number: 'x'", str(caught.exception))
+        # the order of the faults: the verdict first, then the head cell, then the receipt's pr, then its head
+        read = self.ledger(
+            merge_row("2026-10-30T07:00:00Z", "U7", "7", A[:8], merged, verdict="correct", receipt_pr="9")
+        )
+        with self.assertRaises(self.reader.Malformed) as caught:
+            read.merge_of(merged)
+        self.assertIn("the verdict of a merge row is not '-'", str(caught.exception))
+        self.assertEqual(self.reader.MERGE_VERDICT, "-")
+
+    def test_carried_from_answers_the_earlier_head_a_carried_row_names(self):
+        """U597 round 13 (verdict U597-30d381ab P2 at pr-merge.sh:1201): a head merged under a `carried` row was swept
+        at the earlier head its row names, so the tip gate, finding main's tip squashed from a head with no sweep row
+        of its own, follows the carried relation. `carried_from(head)` is the earlier head the newest carried row at
+        the head names (`carried <earlier> <head> <sha256>` in its evidence, pr-merge.sh's `carried_evidence_re`
+        grammar: the line at the start or after whitespace, the digest a whole word before the end or a separator),
+        None at a head without one; `carried (note)` and `carried;` are carried rows, `carrier` is not; a carried row
+        at the head whose evidence names no such line for that head (another head's line, a 65th hex character, a short
+        digest, no line) or names the head itself is Malformed naming the line and the field, to the reader and to the
+        `carried-from` CLI (exit 2 naming the line), while a row at another head is not read; the CLI prints
+        `<earlier>` or `none` and refuses a sha that is not 40 hex."""
+        digest = "d" * 64
+
+        def carried(ts, head, earlier, unit="U7", evidence=None, verdict="carried"):
+            if evidence is None:
+                evidence = f"carried {earlier} {head} {digest}; verdicts/{unit}-{earlier[:8]}.md"
+            return row(ts, unit, "7", head, verdict, "audit-carry.py (equal digests)", evidence)
+
+        read = self.ledger(
+            row("2026-10-30T01:00:00Z", "U7", "7", B, "correct (findings=0)"),  # line 2
+            carried("2026-10-30T02:00:00Z", A, B),  # line 3
+            carried("2026-10-30T03:00:00Z", A, C, unit="U8"),  # line 4: the newest at A, another unit
+            carried("2026-10-30T02:30:00Z", B, C),  # line 5: at another head
+            sweep("2026-10-30T04:00:00Z", B),  # line 6
+        )
+        self.assertEqual(read.carried_from(A), C, "the newest carried row at A by ts, whatever its unit")
+        self.assertEqual(read.carried_from(B), C)
+        self.assertIsNone(read.carried_from(C))
+        self.assertEqual([r.carried for r in read.rows], [False, True, True, True, False])
+        self.assertEqual(read.rows[1].carried_source, B)
+        self.assertIsNone(read.rows[0].carried_source)
+        # the word boundary: `carried (note)` and `carried;` are carried rows, `carrier` is not
+        read = self.ledger(
+            carried("2026-10-30T02:00:00Z", A, B, verdict="carried (digest equal)"),
+            carried("2026-10-30T02:10:00Z", A, C, verdict="carrier"),
+        )
+        self.assertEqual(read.carried_from(A), B)
+        read = self.ledger(carried("2026-10-30T02:00:00Z", A, B, verdict="carried; note"))
+        self.assertEqual(read.carried_from(A), B)
+        # the evidence's grammar: the digest a whole word before the end or a separator, the line at the start or after
+        # whitespace
+        for evidence in (
+            f"carried {B} {A} {digest}",
+            f"carried {B} {A} {digest}; a note",
+            f"carried {B} {A} {digest}.",
+            f"carried {B} {A} {digest}, then",
+            f"note: carried {B} {A} {digest})",
+        ):
+            with self.subTest(evidence=evidence):
+                read = self.ledger(carried("2026-10-30T02:00:00Z", A, B, evidence=evidence))
+                self.assertEqual(read.carried_from(A), B)
+        # Malformed: a carried row at the head whose evidence names no line for it, or names the head itself
+        no_line = f"the evidence of a carried row at {A} holds no 'carried <earlier> {A} <sha256>' line for that head: "
+        for name, evidence, fault in (
+            ("another head's line", f"carried {B} {C} {digest}", no_line + repr(f"carried {B} {C} {digest}")),
+            ("a 65th hex character", f"carried {B} {A} {digest}e", no_line + repr(f"carried {B} {A} {digest}e")),
+            ("a short digest", f"carried {B} {A} {digest[:63]}", no_line + repr(f"carried {B} {A} {digest[:63]}")),
+            ("no line", "equal digests", no_line + repr("equal digests")),
+            ("a line glued to a word", f"xcarried {B} {A} {digest}", no_line + repr(f"xcarried {B} {A} {digest}")),
+            (
+                "the head itself",
+                f"carried {A} {A} {digest}",
+                f"the evidence of a carried row at {A} names the head itself as the earlier head",
+            ),
+        ):
+            with self.subTest(name):
+                read = self.ledger(carried("2026-10-30T02:00:00Z", A, B, evidence=evidence))  # line 2
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    read.carried_from(A)
+                self.assertEqual(str(caught.exception), f"{self.ledger_file}:2: {fault}")
+                self.assertIsNone(read.carried_from(B), "a row at another head is not read")
+                run = self.cli("carried-from", A)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, f"ledger: {self.ledger_file}:2: {fault}\n")
+        # the CLI form
+        self.ledger(carried("2026-10-30T02:00:00Z", A, B))
+        run = self.cli("carried-from", A)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, f"{B}\n", ""))
+        run = self.cli("carried-from", B)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""))
+        for args in (("carried-from", A[:8]), ("carried-from",), ("carried-from", "U7", A)):
+            with self.subTest(args=args):
+                run = self.cli(*args)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("error:", run.stderr)
+
+    def test_sweep_any_and_merge_of_answer_the_merge_gate_s_questions_about_main_s_tip(self):
+        """U597 round 11 (gate one of pr-merge.sh: main's tip swept or exempt before the next merge lands on it):
+        `newest_sweep_any(head)` is the newest sweep row of any unit at the head by `(ts, line)`, a fix unit's and
+        another unit's alike, None at a head without one, and every sweep row of the ledger is held to the rule (a
+        hand-written sweep row of any unit at any head is Malformed naming the line and the field, never "no sweep");
+        `merge_of(commit)` is the `head_sha` of the newest merge row whose receipt names `commit=<commit>` (verifier
+        exactly `pr-merge.sh`, the evidence starting with `merged pr=<n> head=<sha> commit=<40 hex>`), None when no
+        such row names the commit, a `pr-merge.sh` row of the pre-U222 shape (`merged as <sha> (squash) ...`) or a
+        refusal recorded as a row being no merge row to the question, and a receipt row whose head_sha is not 40 hex
+        or whose receipt names another head than its head_sha Malformed naming the line; the CLI forms `sweep-any
+        <head>` and `merge-of <commit>` print the four columns or `<head>`, or `none`, exit 2 naming the line on a
+        malformed store, and refuse a sha that is not 40 hex."""
+        merged = "e" * 40
+        other = "f" * 40
+
+        def merge_row(ts, unit, pr, head, commit, note=""):
+            return row(ts, unit, pr, head, "-", "pr-merge.sh", f"merged pr={pr} head={head} commit={commit}{note}")
+
+        read = self.ledger(
+            row("2026-10-30T01:00:00Z", "U7", "7", A, "correct (findings=0)"),  # line 2
+            sweep("2026-10-30T03:00:00Z", A),  # line 3: U7 at A
+            sweep("2026-10-30T05:00:00Z", A, unit="U8"),  # line 4: another unit, the latest ts at A
+            sweep("2026-10-30T04:00:00Z", A, unit="U7b"),  # line 5: a fix unit
+            sweep("2026-10-30T06:00:00Z", B, unit="U9"),  # line 6: another head
+            merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged, " verdict=2026-10-30T01:00:00Z"),  # line 7
+        )
+        self.assertEqual(read.newest_sweep_any(A).line, 4, "the newest sweep row of any unit at A")
+        self.assertEqual(read.newest_sweep_any(A).unit, "U8")
+        self.assertEqual(read.newest_sweep_any(B).line, 6)
+        self.assertIsNone(read.newest_sweep_any("c" * 40))
+        self.assertEqual(read.newest_sweep("U7", A).line, 5, "the unit's own question still sees its fix unit alone")
+        self.assertEqual(read.merge_of(merged), A)
+        self.assertIsNone(read.merge_of(other))
+        # a receipt row whose head_sha is 8 hex is Malformed to merge_of once it is read, whatever commit is asked
+        read = self.ledger(merge_row("2026-10-30T07:30:00Z", "U9", "9", B[:8], other))  # line 2
+        for commit in (other, merged):
+            with self.assertRaises(self.reader.Malformed) as caught:
+                read.merge_of(commit)
+            self.assertEqual(
+                str(caught.exception), f"{self.ledger_file}:2: the head_sha of a merge row is not 40 hex: {B[:8]!r}"
+            )
+        # the newest receipt row for the commit decides, by ts then line; a receipt whose head word is the first 8 of
+        # the head_sha is the writer's own form; the pre-U222 shape and a refusal recorded as a row are no merge rows
+        read = self.ledger(
+            merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged),  # line 2
+            merge_row("2026-10-30T07:10:00Z", "U8", "8", B, merged, "; a note"),  # line 3: the newest for the commit
+            row(
+                "2026-10-30T07:20:00Z", "U9", "9", A, "-", "pr-merge.sh", f"merged as {merged} (squash) on the row"
+            ),  # line 4
+            row("2026-10-30T07:30:00Z", "U9", "9", A, "-", "pr-merge.sh", "refused, exit 2: the carried row"),  # line 5
+            row(
+                "2026-10-30T07:40:00Z",
+                "U9",
+                "9",
+                B,
+                "merged",
+                f"pr-merge.sh (installed copy)",
+                f"merged pr=9 head={B[:8]} commit={merged}",
+            ),  # line 6: another verifier
+            merge_row("2026-10-30T07:50:00Z", "U9", "9", B, other),  # line 7: another commit
+        )
+        self.assertEqual(read.merge_of(merged), B, "the newest receipt row naming the commit, line 3")
+        self.assertEqual(read.merge_of(other), B)
+        self.assertIsNone(read.merge_of("c" * 40))
+        self.assertEqual([r.merge_commit for r in read.rows], [merged, merged, None, None, None, other])
+        read = self.ledger(
+            row("2026-10-30T07:00:00Z", "U7", "7", A, "-", "pr-merge.sh", f"merged pr=7 head={B[:8]} commit={merged}")
+        )
+        with self.assertRaises(self.reader.Malformed) as caught:
+            read.merge_of(merged)
+        self.assertEqual(
+            str(caught.exception),
+            f"{self.ledger_file}:2: the receipt of a merge row names head={B[:8]}, neither its head_sha {A} nor its first 8",
+        )
+        # a hand-written sweep row of another unit is Malformed to sweep-any, never "no sweep"
+        read = self.ledger(
+            sweep("2026-10-30T03:00:00Z", A),
+            row("2026-10-30T04:00:00Z", "U8", "-", B, "sweep", "coordinator", "sweeps/U8-x.json"),  # line 3
+        )
+        self.assertEqual(read.newest_sweep("U7", A).line, 2, "the unit's own question reads its rows alone")
+        with self.assertRaises(self.reader.Malformed) as caught:
+            read.newest_sweep_any(A)
+        self.assertIn(f"{self.ledger_file}:3: the verifier of a sweep row does not begin with", str(caught.exception))
+        # the CLI forms
+        self.ledger(
+            row("2026-10-30T01:00:00Z", "U7", "7", A, "correct (findings=0)"),
+            sweep("2026-10-30T03:00:00Z", A),
+            sweep("2026-10-30T05:00:00Z", A, unit="U8"),
+            merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged),
+        )
+        run = self.cli("sweep-any", A)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(run.stdout, f"2026-10-30T05:00:00Z\tU8\t{SKILL}\tsweeps/U8-{A[:8]}.json\n")
+        run = self.cli("sweep-any", B)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""))
+        run = self.cli("merge-of", merged)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, f"{A}\n", ""))
+        run = self.cli("merge-of", other)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""))
+        for args in (("sweep-any", A[:8]), ("merge-of", merged[:8]), ("merge-of",), ("sweep-any", "U7", A)):
+            with self.subTest(args=args):
+                run = self.cli(*args)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("error:", run.stderr)
+        self.ledger(
+            row(
+                "2026-10-30T07:00:00Z",
+                "U7",
+                "7",
+                A[:7],
+                "-",
+                "pr-merge.sh",
+                f"merged pr=7 head={A[:7]} commit={merged}",
+            )
+        )
+        run = self.cli("merge-of", merged)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr, f"ledger: {self.ledger_file}:2: the head_sha of a merge row is not 40 hex: {A[:7]!r}\n"
+        )
+        run = self.cli("sweep-any", A)
+        self.assertEqual(
+            (run.returncode, run.stdout, run.stderr),
+            (0, "none\n", ""),
+            "no sweep row: the merge row is read by the other question alone",
+        )
+
+
+DAILY_HEADER = "ts\thead_sha\tverifier\tevidence\n"
+C = "c" * 40
+
+
+# The daily row's own grammar (U597 round 9): the fixture rows are the writer's shape, the verifier naming the seat,
+# the run and the task of the ts's day, the evidence its seven fields (round 10); the three validator digest prefixes
+# are the manifest's of round 9 (any 8 hex is the reader's; pr-merge.sh compares them with the manifest's pins), the
+# two artifact digest prefixes any 8 hex (the lever holds them by shape alone).
+DAILY_DIGESTS = "e85f232e 2eb280bd 6575c9de"
+DAILY_ARTIFACTS = "0a1b2c3d 4e5f6a7b"
+DAILY_FINDINGS = "sweeps/daily-2026-11-19/findings.json"
+
+
+def daily_verifier(day, seat="sweep-3", run="170"):
+    """The verifier of a daily row as ledger-row.py daily composes it, the task the daily id of `day`."""
+    return f"{SKILL} (full audit mode on the srt worker seat {seat}, run-{run}; TASK daily-{day})"
+
+
+def daily_evidence(
+    path=DAILY_FINDINGS, count=0, digests=DAILY_DIGESTS, artifacts=DAILY_ARTIFACTS, recorded="2026-11-19T10:05:00Z"
+):
+    """The evidence of a daily row as ledger-row.py daily writes it: its seven `; `-separated fields (round 10)."""
+    return (
+        f"{path}; {count} findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; "
+        f"validators sha256 {digests}; artifacts sha256 {artifacts}; recorded {recorded}"
+    )
+
+
+def daily(ts, head, verifier=None, evidence=None):
+    """One row of `daily-sweeps.tsv` as ledger-row.py daily writes it (round 9: the task of the ts's day)."""
+    if verifier is None:
+        verifier = daily_verifier(ts[:10])
+    if evidence is None:
+        evidence = daily_evidence()
+    return "\t".join((ts, head, verifier, evidence)) + "\n"
+
+
+def ago(seconds):
+    """A ts `seconds` before now, in the store's form."""
+    return (datetime.now(timezone.utc) - timedelta(seconds=seconds)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+class LedgerDailyTest(unittest.TestCase):
+    """U597 round 4: the daily sweep of main's head, the standing control a head outside every sweep class rests on,
+    read from the store's `daily-sweeps.tsv` with the ledger's strictness and chosen by its ts against the window."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.store = Path(self.temp.name) / "regime-cutover"
+        self.store.mkdir()
+        self.daily_file = self.store / "daily-sweeps.tsv"
+        self.reader = load_reader()
+
+    def write(self, *rows, header=DAILY_HEADER):
+        self.daily_file.write_text(header + "".join(rows))
+        return self.reader.read_daily(str(self.daily_file))
+
+    def cli(self, *args):
+        return subprocess.run(
+            [sys.executable, "-I", "-S", str(READER), str(self.store), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+
+    def test_newest_within_is_the_newest_row_by_ts_within_the_window_and_a_missing_file_is_none(self):
+        now = datetime(2026, 11, 19, 12, 0, 0)
+        read = self.write(
+            daily("2026-11-18T11:00:00Z", A),  # line 2: 25 hours before now
+            daily("2026-11-19T10:00:00Z", B),  # line 3: 2 hours
+            daily("2026-11-19T09:00:00Z", A),  # line 4: 3 hours
+            daily("2026-11-19T10:00:00Z", C),  # line 5: 2 hours, the later line at the equal ts
+        )
+        self.assertEqual(read.name, str(self.daily_file))
+        self.assertEqual([row.line for row in read.rows], [2, 3, 4, 5])
+        self.assertEqual((read.rows[0].ts_text, read.rows[0].head_sha), ("2026-11-18T11:00:00Z", A))
+        self.assertEqual(read.rows[0].sweep_pin, "c1c8a8c1")
+        self.assertEqual(read.rows[0].sweep_evidence_path, "sweeps/daily-2026-11-19/findings.json")
+        newest = read.newest_within(now, 86400)
+        self.assertEqual((newest.line, newest.head_sha), (5, C), "the later line at an equal ts")
+        self.assertEqual(read.newest_within(now, 7200).line, 5, "a row at the window's edge is within it")
+        self.assertIsNone(read.newest_within(now, 7199), "a row one second older than the window is not")
+        self.assertIsNone(read.newest_within(now, 3600))
+        self.assertEqual(
+            read.newest_within(datetime(2026, 11, 18, 12, 0, 0), 3600).line,
+            2,
+            "the rows dated 22 hours ahead of the clock are not within the window (round 5); the past row at its edge is",
+        )
+        only_past = self.write(daily("2026-11-18T11:00:00Z", A), daily("2026-11-17T11:00:00Z", B))
+        self.assertEqual(only_past.newest_within(datetime(2026, 11, 18, 12, 0, 0), 3600).line, 2, "the window moves")
+        self.assertIsNone(only_past.newest_within(datetime(2026, 11, 18, 12, 0, 1), 3600), "one second past it")
+        read = self.write(
+            daily("2026-11-18T11:00:00Z", A),
+            daily("2026-11-19T10:00:00Z", B),
+            daily("2026-11-19T09:00:00Z", A),
+            daily("2026-11-19T10:00:00Z", C),
+        )
+        self.assertIsNone(self.reader.read_daily(str(self.store / "absent.tsv")), "no file is None, not a refusal")
+        header_alone = self.write()
+        self.assertEqual(header_alone.rows, ())
+        self.assertIsNone(header_alone.newest_within(now, 86400))
+        # round 8: a file with CR LF ends is Malformed at its header; the CR is never stripped
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.write(
+                daily("2026-11-19T10:00:00Z", B).replace("\n", "\r\n"), header=DAILY_HEADER.replace("\n", "\r\n")
+            )
+        self.assertTrue(str(caught.exception).startswith(f"{self.daily_file}:1: the header is "), caught.exception)
+
+    def test_a_row_dated_more_than_60_seconds_ahead_is_not_within_the_window(self):
+        """Round 5 (verdict U597-1b3c4b1d P2 at ledger.py:316): round 4's window had a floor alone, so a row dated in
+        the future waived per-head sweeps until a day after its ts. The window is `now - max_age <= ts <= now + 60 s`:
+        a row 60 seconds ahead counts, one 61 seconds ahead does not, and such a row is not malformed (the file still
+        parses, an older row within the window still answers); the CLI agrees against the clock."""
+        self.assertEqual(self.reader.DAILY_FUTURE_SLACK, 60)
+        now = datetime(2026, 11, 19, 12, 0, 0)
+        read = self.write(
+            daily("2026-11-19T11:00:00Z", A),  # line 2: an hour before now
+            daily("2026-11-19T12:01:00Z", B),  # line 3: 60 seconds ahead, within
+            daily("2026-11-19T12:01:01Z", C),  # line 4: 61 seconds ahead, not within
+            daily("2026-11-20T12:00:00Z", C),  # line 5: a day ahead, not within
+        )
+        self.assertEqual([row.line for row in read.rows], [2, 3, 4, 5], "a future row is data, not malformed")
+        self.assertEqual((read.newest_within(now, 86400).line, read.newest_within(now, 86400).head_sha), (3, B))
+        self.assertEqual(read.newest_within(now, 86400).ts_text, "2026-11-19T12:01:00Z")
+        future_only = self.write(daily("2026-11-19T12:01:01Z", C), daily("2026-11-20T12:00:00Z", C))
+        self.assertIsNone(future_only.newest_within(now, 86400), "future rows alone count for nothing")
+        self.assertEqual(future_only.newest_within(datetime(2026, 11, 19, 12, 0, 1), 86400).line, 2, "the clock moves")
+        self.assertEqual(future_only.newest_within(datetime(2026, 11, 20, 12, 0, 0), 86400).line, 3)
+        # the CLI against the clock: a row a day ahead is none, a row 30 seconds ahead stands, an hour-old row beside
+        # a day-ahead row is the answer
+        day_ahead = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.write(daily(day_ahead, C))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""), "a day ahead is not within")
+        soon = (datetime.now(timezone.utc) + timedelta(seconds=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.write(daily(soon, B))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, daily(soon, B), ""), "30 seconds ahead stands")
+        hour_old = ago(3600)
+        self.write(daily(hour_old, A), daily(day_ahead, C))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, daily(hour_old, A), ""))
+
+    def test_an_unpadded_ts_is_malformed_to_the_daily_reader_and_the_ledger_alike(self):
+        """U597 round 6 (verdict U597-10d46fe0 P3 at ledger.py:343): `strptime` under `%m`, `%d`, `%H`, `%M` and `%S`
+        reads one digit as well as two, so the daily reader accepted `2026-11-9T4:5:6Z` under a grammar that spells
+        two digits in every field. `timestamp` holds the cell to `TS_SHAPE` first, the one grammar of both files: an
+        unpadded field in a daily row or in a ledger row is Malformed naming the line and the form, the padded ts
+        still parses, and the CLI exits 2 naming the line."""
+        name = str(self.daily_file)
+        self.assertEqual(self.reader.TS_SHAPE.pattern, r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+        self.assertEqual(self.reader.timestamp("2026-11-09T04:05:06Z"), datetime(2026, 11, 9, 4, 5, 6))
+        for value in (
+            "2026-11-9T4:5:6Z",
+            "2026-1-09T04:05:06Z",
+            "2026-11-9T04:05:06Z",
+            "2026-11-09T4:05:06Z",
+            "2026-11-09T04:5:06Z",
+            "2026-11-09T04:05:6Z",
+            "026-11-09T04:05:06Z",
+            "2026-11-09T04:05:06",
+            "2026-11-09t04:05:06Z",
+            "２０２６-11-09T04:05:06Z",
+        ):
+            with self.subTest(value):
+                self.assertIsNone(self.reader.timestamp(value))
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.write(daily(value, A))
+                self.assertEqual(str(caught.exception), f"{name}:2: the ts {value!r} is not YYYY-MM-DDThh:mm:ssZ")
+                ledger_text = HEADER + "\t".join((value, "U7", "7", A, "pushed", "coordinator", "x")) + "\n"
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.reader.parse_ledger("ledger.tsv", ledger_text)
+                self.assertEqual(str(caught.exception), f"ledger.tsv:2: the ts {value!r} is not YYYY-MM-DDThh:mm:ssZ")
+        # the CLI: a malformed store naming the line, never "none" and never the padded row beside it
+        self.daily_file.write_text(DAILY_HEADER + daily(ago(3600), A) + daily("2026-11-9T4:5:6Z", B))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"{name}:3: the ts '2026-11-9T4:5:6Z' is not YYYY-MM-DDThh:mm:ssZ", run.stderr)
+
+    def test_a_cell_holding_a_control_byte_is_malformed_to_both_parsers_naming_the_line_and_the_field(self):
+        """U597 round 7 (verdict U597-301eba2e P2 at ledger.py:361): a NUL in a daily row's evidence path was data to the
+        reader, and bash's `$(...)` drops a NUL when pr-merge.sh captures the row, so the lever would have checked
+        another file than the one the row names. `CONTROL` (`\\x00` to `\\x1f`, `\\x7f`) in any cell of either file is
+        Malformed naming the line, the column and the character: a NUL in the evidence path, a `\\x01` in the verifier,
+        a DEL in the head, a carriage return inside the ts (and a trailing one too, round 8), an escape in a
+        ledger row's unit; the same text without the byte parses; the CLI exits 2 naming the line, never `none` and
+        never the row beside it; and the writer's test holds its own rule to this one."""
+        name = str(self.daily_file)
+        self.assertEqual(self.reader.CONTROL.pattern, r"[\x00-\x1f\x7f]")
+        ts = "2026-11-19T10:00:00Z"
+        for case, text, message in (
+            (
+                "a NUL in the evidence path",
+                daily(ts, A, evidence="sweeps/daily-2026-11-19/find\x00ings.json; 0 findings"),
+                f"{name}:2: column 4 (evidence) holds a control character U+0000; no cell holds one",
+            ),
+            (
+                "a \\x01 in the verifier",
+                daily(ts, A, verifier=SKILL + " (\x01)"),
+                f"{name}:2: column 3 (verifier) holds a control character U+0001; no cell holds one",
+            ),
+            (
+                "a DEL in the head",
+                daily(ts, A[:-1] + "\x7f"),
+                f"{name}:2: column 2 (head_sha) holds a control character U+007F",
+            ),
+            (
+                "a carriage return inside the ts",
+                daily(ts + "\r", A),
+                f"{name}:2: column 1 (ts) holds a control character U+000D",
+            ),
+            (
+                "a NUL in a second row",
+                daily(ts, A) + daily(ts, B, evidence="sweeps/x/y.json\x00"),
+                f"{name}:3: column 4 (evidence) holds a control character U+0000",
+            ),
+        ):
+            with self.subTest(case):
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.write(text)
+                self.assertEqual(str(caught.exception)[: len(message)], message)
+        # round 8: a trailing carriage return is a control byte of the last cell, never the line's end
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.write(daily(ts, A).rstrip("\n") + "\r\n")
+        self.assertTrue(
+            str(caught.exception).startswith(f"{name}:2: column 4 (evidence) holds a control character U+000D"),
+            caught.exception,
+        )
+        # the ledger's parser, the same rule
+        for case, line, message in (
+            (
+                "a NUL in the evidence",
+                "\t".join((ts, "U7", "7", A, "pushed", "coordinator", "x\x00y")) + "\n",
+                "ledger.tsv:2: column 7 (evidence) holds a control character U+0000; no cell holds one",
+            ),
+            (
+                "an escape in the unit",
+                "\t".join((ts, "U7\x1b", "7", A, "pushed", "coordinator", "x")) + "\n",
+                "ledger.tsv:2: column 2 (unit) holds a control character U+001B; no cell holds one",
+            ),
+            (
+                "a vertical tab in the verdict",
+                "\t".join((ts, "U7", "7", A, "correct\x0b", "pr-audit.sh", "x")) + "\n",
+                "ledger.tsv:2: column 5 (verdict) holds a control character U+000B; no cell holds one",
+            ),
+        ):
+            with self.subTest(case):
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.reader.parse_ledger("ledger.tsv", HEADER + line)
+                self.assertEqual(str(caught.exception), message)
+        self.assertEqual(
+            len(
+                self.reader.parse_ledger(
+                    "ledger.tsv", HEADER + "\t".join((ts, "U7", "7", A, "pushed", "c", "x")) + "\n"
+                ).rows
+            ),
+            1,
+        )
+        # the CLI: a malformed store naming the line, never `none` and never the clean row beside it
+        self.daily_file.write_text(
+            DAILY_HEADER
+            + daily(ago(3600), A)
+            + daily(ago(600), B, evidence="sweeps/daily-2026-11-19/find\x00ings.json")
+        )
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"{name}:3: column 4 (evidence) holds a control character U+0000", run.stderr)
+
+    def test_the_ledger_keeps_one_trailing_carriage_return_and_the_daily_file_none(self):
+        """U597 round 8 (verdict U597-a28e4793 P3 at ledger.py:373): round 7's parsers stripped every trailing
+        carriage return before the cells were checked, so a row ending in CR CR LF carried an extra control byte
+        before a valid-looking terminator and parsed; round 8 then stripped none, and round 10 (verdict U597-67e1eea8
+        P2 at ledger.py:381) found that a CR LF ledger the base of this unit read was now refused, blocking the audit
+        and merge reads of an otherwise valid installed store. One row reader serves both files (`parse_rows`), its
+        carriage-return tolerance a parameter: the ledger drops exactly one trailing CR per line, the header's
+        included, so a CR LF ledger parses as before the unit (to the parser and to the CLI) while a line ending in CR
+        CR LF is Malformed naming the last column and U+000D; the daily file drops none, so a daily row ending in CR
+        LF or CR CR LF is Malformed naming line 2, the evidence column and U+000D, to the parser and to the CLI (exit
+        2, never `none`), and a daily header ending in CR LF is Malformed at line 1; the same rows ending in LF alone
+        parse."""
+        ts = "2026-11-19T10:00:00Z"
+        name = str(self.daily_file)
+        plain = daily(ts, A)
+        for case, ending in (("CR CR LF", "\r\r\n"), ("CR LF", "\r\n")):
+            with self.subTest(case):
+                text = plain.rstrip("\n") + ending
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.reader.parse_daily(name, DAILY_HEADER + text)
+                self.assertEqual(
+                    str(caught.exception),
+                    f"{name}:2: column 4 (evidence) holds a control character U+000D; no cell holds one",
+                )
+                self.daily_file.write_text(DAILY_HEADER + text, newline="")
+                run = self.cli("daily", "86400")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"{name}:2: column 4 (evidence) holds a control character U+000D", run.stderr)
+                self.assertNotIn("none", run.stdout)
+        # a daily header ending in CR LF is Malformed at line 1, before any row
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.reader.parse_daily(name, DAILY_HEADER.rstrip("\n") + "\r\n" + plain)
+        self.assertTrue(str(caught.exception).startswith(f"{name}:1: the header is "), caught.exception)
+        # the daily rows ending in LF alone parse
+        self.assertEqual(len(self.reader.parse_daily(name, DAILY_HEADER + plain).rows), 1)
+        # the ledger: a CR LF file, header and rows, parses as the base read it, with the cells as written
+        ledger_rows = row(ts, "U7", "7", A, "pushed", "coordinator", "x") + sweep("2026-11-19T11:00:00Z", A)
+        crlf = (HEADER + ledger_rows).replace("\n", "\r\n")
+        read = self.reader.parse_ledger("ledger.tsv", crlf)
+        self.assertEqual(len(read.rows), 2)
+        self.assertEqual((read.rows[0].verifier, read.rows[0].evidence), ("coordinator", "x"))
+        self.assertEqual(read.rows[1].evidence, f"sweeps/U7-{A[:8]}.json", "the CR is gone from the last cell")
+        self.assertEqual(read.newest_sweep("U7", A).line, 3)
+        ledger_file = self.store / "ledger.tsv"
+        ledger_file.write_text(crlf, newline="")
+        run = self.cli("sweep", "U7", A)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(run.stdout, f"2026-11-19T11:00:00Z\tU7\t{SKILL}\tsweeps/U7-{A[:8]}.json\n")
+        # a CR LF header over LF rows, and LF alone, parse too; a ledger line ending in CR CR LF is Malformed
+        self.assertEqual(
+            len(self.reader.parse_ledger("ledger.tsv", HEADER.rstrip("\n") + "\r\n" + ledger_rows).rows), 2
+        )
+        self.assertEqual(len(self.reader.parse_ledger("ledger.tsv", HEADER + ledger_rows).rows), 2)
+        ledger_line = row(ts, "U7", "7", A, "pushed", "coordinator", "x").rstrip("\n") + "\r\r\n"
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.reader.parse_ledger("ledger.tsv", HEADER + ledger_line)
+        self.assertEqual(
+            str(caught.exception),
+            "ledger.tsv:2: column 7 (evidence) holds a control character U+000D; no cell holds one",
+        )
+        ledger_file.write_text(HEADER + ledger_line, newline="")
+        run = self.cli("sweep", "U7", A)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("ledger.tsv:2: column 7 (evidence) holds a control character U+000D", run.stderr)
+        # a carriage return anywhere but the line's end is a control character of its cell for the ledger too
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.reader.parse_ledger("ledger.tsv", HEADER + row(ts + "\r", "U7", "7", A, "pushed", "c", "x"))
+        self.assertEqual(
+            str(caught.exception), "ledger.tsv:2: column 1 (ts) holds a control character U+000D; no cell holds one"
+        )
+        # one row reader, the difference one parameter, stated where it is used
+        source = READER.read_text()
+        self.assertNotIn('rstrip("\\r")', source, "no reader strips every carriage return (round 8)")
+        self.assertEqual(source.count('fields = line.split("\\t")'), 1, "one row reader splits the line")
+        self.assertIn("def parse_rows(name, text, header, required, trailing_cr):", source)
+        self.assertIn('        lines = [line[:-1] if line.endswith("\\r") else line for line in lines]', source)
+        self.assertIn("parse_rows(name, text, HEADER, REQUIRED, True)", source)
+        self.assertIn("parse_rows(name, text, DAILY_HEADER, DAILY_REQUIRED, False)", source)
+        self.assertIn("the ledger has installed", source, "the docstring says why the two files differ")
+
+    def test_a_malformed_daily_file_is_malformed_naming_the_line_and_the_field(self):
+        ts = "2026-11-19T10:00:00Z"
+        name = str(self.daily_file)
+        verifier_text = (
+            "the verifier of a daily sweep row does not begin with 'security-audit-skill <pin>' "
+            "(the pin 8 or more lowercase hex): {!r}"
+        )
+        evidence_text = (
+            "the evidence of a daily sweep row does not name a findings file sweeps/<path>.json under the store "
+            "(no '..' or empty component): {!r}"
+        )
+        for case, header, rows, message in (
+            (
+                "a wrong header",
+                "ts\thead\n",
+                (daily(ts, A),),
+                f"{name}:1: the header is 'ts\\thead', not 'ts\\thead_sha\\tverifier\\tevidence'",
+            ),
+            ("the ledger's header", HEADER, (daily(ts, A),), f"{name}:1: the header is"),
+            ("an empty file", "", (), f"{name}:1: the header is '', not"),
+            ("three columns", DAILY_HEADER, ("\t".join((ts, A, SKILL)) + "\n",), f"{name}:2: 3 columns, not 4"),
+            ("five columns", DAILY_HEADER, (daily(ts, A).rstrip("\n") + "\tx\n",), f"{name}:2: 5 columns, not 4"),
+            (
+                "hour 25",
+                DAILY_HEADER,
+                (daily("2026-11-19T25:00:00Z", A),),
+                f"{name}:2: the ts '2026-11-19T25:00:00Z' is not YYYY-MM-DDThh:mm:ssZ",
+            ),
+            (
+                "a date without its time",
+                DAILY_HEADER,
+                (daily("2026-11-19", A),),
+                f"{name}:2: the ts '2026-11-19' is not",
+            ),
+            ("an empty ts", DAILY_HEADER, (daily("", A),), f"{name}:2: the ts '' is not"),
+            ("an empty head", DAILY_HEADER, (daily(ts, ""),), f"{name}:2: column 2 (head_sha) is empty"),
+            (
+                "an empty verifier",
+                DAILY_HEADER,
+                (daily(ts, A, verifier=""),),
+                f"{name}:2: column 3 (verifier) is empty",
+            ),
+            (
+                "an empty evidence",
+                DAILY_HEADER,
+                (daily(ts, A, evidence=""),),
+                f"{name}:2: column 4 (evidence) is empty",
+            ),
+            (
+                "a short head",
+                DAILY_HEADER,
+                (daily(ts, A[:8]),),
+                f"{name}:2: the head_sha of a daily sweep row is not 40 hex: {A[:8]!r}",
+            ),
+            (
+                "verifier coordinator",
+                DAILY_HEADER,
+                (daily(ts, A, verifier="coordinator"),),
+                f"{name}:2: {verifier_text.format('coordinator')}",
+            ),
+            (
+                "a short pin",
+                DAILY_HEADER,
+                (daily(ts, A, verifier="security-audit-skill c1c8a8"),),
+                f"{name}:2: {verifier_text.format('security-audit-skill c1c8a8')}",
+            ),
+            (
+                "evidence under verdicts/",
+                DAILY_HEADER,
+                (daily(ts, A, evidence="verdicts/x.md"),),
+                f"{name}:2: {evidence_text.format('verdicts/x.md')}",
+            ),
+            (
+                "evidence with ..",
+                DAILY_HEADER,
+                (daily(ts, A, evidence="sweeps/../x.json"),),
+                f"{name}:2: {evidence_text.format('sweeps/../x.json')}",
+            ),
+            (
+                "a malformed third row",
+                DAILY_HEADER,
+                (daily(ts, A), daily(ts, B), "garbage\n"),
+                f"{name}:4: 1 columns, not 4",
+            ),
+        ):
+            with self.subTest(case):
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.write(*rows, header=header)
+                self.assertIn(message, str(caught.exception))
+        self.daily_file.write_bytes(
+            DAILY_HEADER.encode() + b"2026-11-19T10:00:00Z\t" + A.encode() + b"\t\xff\tsweeps/x.json\n"
+        )
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.reader.read_daily(str(self.daily_file))
+        self.assertIn(f"{name}: not UTF-8", str(caught.exception))
+        if os.geteuid() != 0:
+            self.write(daily(ts, A))
+            self.daily_file.chmod(0)
+            with self.assertRaises(self.reader.Malformed) as caught:
+                self.reader.read_daily(str(self.daily_file))
+            self.assertIn(f"{name}: cannot read:", str(caught.exception))
+            self.daily_file.chmod(0o600)
+        # the writer's own row is the exact row (round 9: a note after the pin word or a padded path no longer is;
+        # test_a_row_of_a_unit_s_sweep_shape_is_malformed_to_the_daily_reader_and_the_writer_s_row_parses)
+        read = self.write(daily(ts, A, evidence=daily_evidence("sweeps/d/findings.json", count=2)))
+        self.assertEqual(
+            (read.rows[0].sweep_pin, read.rows[0].sweep_evidence_path), ("c1c8a8c1", "sweeps/d/findings.json")
+        )
+
+    def test_a_row_of_a_unit_s_sweep_shape_is_malformed_to_the_daily_reader_and_the_writer_s_row_parses(self):
+        """U597 round 9 (verdict U597-c37800e3 P2 at ledger.py:393): the daily reader applied the sweep row's grammar
+        alone, so a recent row of a unit's shape, `TASK U9` with a pinned verifier and an existing findings path,
+        qualified as the day's sweep of main's head with no daily task and no validator result. The daily row has its
+        own grammar, the exact fields `ledger-row.py daily` writes: the verifier's seat, run and `TASK
+        daily-<YYYY-MM-DD>` (its day the ts's UTC day or the day before it), and the evidence's seven `; `-separated
+        fields (round 10), the findings file unpadded, `<n> findings`, the two validators' PASS words, `validators
+        sha256 <8 hex> <8 hex> <8 hex>` (round 10: the schema's third), `artifacts sha256 <8 hex> <8 hex>` (round 10)
+        and `recorded <ts>`. A `TASK U9` row, the pinned skill alone, a note after the pin, a seat of two words, a
+        task day two days before or after the ts or no calendar day, two, six or eight evidence fields, a padded path,
+        a count that is no number, another word than PASS, the two validators swapped, the round-8 `validators pass`
+        word, a digest of seven, upper-case or one hex, the round-9 two digests, an artifacts field of another word,
+        of one digest or of seven hex, and a recorded time off the form are each Malformed naming the line and the
+        field, to the parser and to the CLI (exit 2, never `none` and never the row beside it); the writer's row
+        parses and exposes its fields, under the ts's day and under the day before."""
+        name = str(self.daily_file)
+        ts = "2026-11-19T10:00:00Z"
+        verifier_form = "security-audit-skill <pin> (full audit mode on the srt worker seat <seat>, run-<n>; TASK daily-<YYYY-MM-DD>)"
+        unit_shaped = f"{SKILL} (full audit mode on the srt worker seat sweep-3, run-170; TASK U9)"
+        evidence_form = (
+            "sweeps/<path>.json; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; "
+            "validators sha256 <8 hex> <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>"
+        )
+        good = daily_evidence()
+        for case, text, message in (
+            (
+                "TASK U9",
+                daily(ts, A, verifier=unit_shaped),
+                f"{name}:2: the verifier of a daily sweep row is not {verifier_form!r} (the daily dispatch's task alone,"
+                f" a unit id never): {unit_shaped!r}",
+            ),
+            (
+                "the pinned skill alone",
+                daily(ts, A, verifier=SKILL),
+                f"{name}:2: the verifier of a daily sweep row is not",
+            ),
+            (
+                "a note after the pin",
+                daily(ts, A, verifier=f"{SKILL} (seat sweep-3, run-170)"),
+                f"{name}:2: the verifier of a daily sweep row is not",
+            ),
+            (
+                "a seat of two words",
+                daily(ts, A, verifier=daily_verifier("2026-11-19", seat="sweep 3")),
+                f"{name}:2: the verifier of a daily sweep row is not",
+            ),
+            (
+                "a task day two days before the ts",
+                daily(ts, A, verifier=daily_verifier("2026-11-17")),
+                f"{name}:2: the TASK day daily-2026-11-17 of a daily sweep row is neither the UTC day of its ts {ts} nor"
+                " the day before it",
+            ),
+            (
+                "a task day after the ts",
+                daily(ts, A, verifier=daily_verifier("2026-11-20")),
+                f"{name}:2: the TASK day daily-2026-11-20 of a daily sweep row is neither the UTC day of its ts",
+            ),
+            (
+                "a task day no calendar holds",
+                daily(ts, A, verifier=daily_verifier("2026-13-45")),
+                f"{name}:2: the TASK day of a daily sweep row is no calendar day: daily-2026-13-45",
+            ),
+            (
+                "two evidence fields",
+                daily(ts, A, evidence=f"{DAILY_FINDINGS}; 0 findings"),
+                f"{name}:2: the evidence of a daily sweep row has 2 '; '-separated fields, not 7 ({evidence_form!r}):"
+                f" '{DAILY_FINDINGS}; 0 findings'",
+            ),
+            (
+                "the round-9 six fields, no artifacts",
+                daily(ts, A, evidence=good.replace(f"; artifacts sha256 {DAILY_ARTIFACTS}", "")),
+                f"{name}:2: the evidence of a daily sweep row has 6 '; '-separated fields, not 7",
+            ),
+            (
+                "eight evidence fields",
+                daily(ts, A, evidence=good + "; note"),
+                f"{name}:2: the evidence of a daily sweep row has 8 '; '-separated fields, not 7",
+            ),
+            (
+                "a padded path",
+                daily(ts, A, evidence=" " + good),
+                f"{name}:2: field 1 of the evidence of a daily sweep row, the findings file, is padded with spaces:"
+                f" ' {DAILY_FINDINGS}'",
+            ),
+            (
+                "a count that is no number",
+                daily(ts, A, evidence=good.replace("0 findings", "no findings")),
+                f"{name}:2: field 2 of the evidence of a daily sweep row is not '<n> findings': 'no findings'",
+            ),
+            (
+                "a count with a leading zero",
+                daily(ts, A, evidence=good.replace("0 findings", "01 findings")),
+                f"{name}:2: field 2 of the evidence of a daily sweep row is not '<n> findings': '01 findings'",
+            ),
+            (
+                "another word than PASS",
+                daily(ts, A, evidence=good.replace("validate-findings.cjs PASS", "validate-findings.cjs FAIL")),
+                f"{name}:2: field 3 of the evidence of a daily sweep row is not 'validate-findings.cjs PASS':"
+                " 'validate-findings.cjs FAIL'",
+            ),
+            (
+                "the validators swapped",
+                daily(
+                    ts,
+                    A,
+                    evidence=good.replace(
+                        "validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS",
+                        "validate-coverage-ledger.cjs PASS; validate-findings.cjs PASS",
+                    ),
+                ),
+                f"{name}:2: field 3 of the evidence of a daily sweep row is not 'validate-findings.cjs PASS':"
+                " 'validate-coverage-ledger.cjs PASS'",
+            ),
+            (
+                "the coverage word lower-case",
+                daily(
+                    ts,
+                    A,
+                    evidence=good.replace("validate-coverage-ledger.cjs PASS", "validate-coverage-ledger.cjs pass"),
+                ),
+                f"{name}:2: field 4 of the evidence of a daily sweep row is not 'validate-coverage-ledger.cjs PASS'",
+            ),
+            (
+                "the round-8 validators pass word",
+                daily(ts, A, evidence=good.replace(f"validators sha256 {DAILY_DIGESTS}", "validators pass")),
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex> <8 hex>'",
+            ),
+            (
+                "a digest of seven hex",
+                daily(ts, A, evidence=daily_evidence(digests="e85f232 2eb280bd 6575c9de")),
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex> <8 hex>'",
+            ),
+            (
+                "a digest of upper-case hex",
+                daily(ts, A, evidence=daily_evidence(digests="E85F232E 2eb280bd 6575c9de")),
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not",
+            ),
+            (
+                "one digest",
+                daily(ts, A, evidence=daily_evidence(digests="e85f232e")),
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not",
+            ),
+            (
+                "the round-9 two digests, no schema digest",
+                daily(ts, A, evidence=daily_evidence(digests="e85f232e 2eb280bd")),
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex> <8 hex>'"
+                " (the first 8 hex of the three pins the writer held its copies of validate-findings.cjs,"
+                " validate-coverage-ledger.cjs and report-schema.json to): 'validators sha256 e85f232e 2eb280bd'",
+            ),
+            (
+                "an artifacts field of another word",
+                daily(ts, A, evidence=good.replace("artifacts sha256", "files sha256")),
+                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'artifacts sha256 <8 hex> <8 hex>' (the"
+                " first 8 hex of the sha256 of the writer's copies of the findings file and the coverage ledger it"
+                f" validated): 'files sha256 {DAILY_ARTIFACTS}'",
+            ),
+            (
+                "one artifact digest",
+                daily(ts, A, evidence=daily_evidence(artifacts="0a1b2c3d")),
+                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'artifacts sha256 <8 hex> <8 hex>'",
+            ),
+            (
+                "an artifact digest of seven hex",
+                daily(ts, A, evidence=daily_evidence(artifacts="0a1b2c3 4e5f6a7b")),
+                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'artifacts sha256 <8 hex> <8 hex>'",
+            ),
+            (
+                "an artifact digest of upper-case hex",
+                daily(ts, A, evidence=daily_evidence(artifacts="0A1B2C3D 4e5f6a7b")),
+                f"{name}:2: field 6 of the evidence of a daily sweep row is not",
+            ),
+            (
+                "a recorded time off the form",
+                daily(ts, A, evidence=daily_evidence(recorded="2026-11-19 10:05:00")),
+                f"{name}:2: field 7 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>':"
+                " 'recorded 2026-11-19 10:05:00'",
+            ),
+            (
+                "a recorded time of hour 25",
+                daily(ts, A, evidence=daily_evidence(recorded="2026-11-19T25:00:00Z")),
+                f"{name}:2: field 7 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>'",
+            ),
+            (
+                "another word than recorded",
+                daily(ts, A, evidence=good.replace("recorded 2026-11-19T10:05:00Z", "written 2026-11-19T10:05:00Z")),
+                f"{name}:2: field 7 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>':"
+                " 'written 2026-11-19T10:05:00Z'",
+            ),
+            (
+                "a unit-shaped third row beside two good ones",
+                daily(ts, A) + daily(ts, B) + daily(ts, A, verifier=unit_shaped),
+                f"{name}:4: the verifier of a daily sweep row is not",
+            ),
+        ):
+            with self.subTest(case):
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.write(text)
+                self.assertIn(message, str(caught.exception))
+        # the CLI: a unit-shaped row beside a good one is exit 2 naming the line, never `none` and never the good row
+        self.daily_file.write_text(DAILY_HEADER + daily(ago(3600), A) + daily(ago(600), B, verifier=unit_shaped))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"ledger: {name}:3: the verifier of a daily sweep row is not", run.stderr)
+        # the writer's row parses and exposes its fields, under the ts's day and under the day before (a sweep that
+        # crossed midnight keeps the id it was dispatched under)
+        for day in ("2026-11-19", "2026-11-18"):
+            with self.subTest(day=day):
+                read = self.write(
+                    daily(
+                        ts,
+                        A,
+                        verifier=daily_verifier(day, seat="sweep-3", run="170"),
+                        evidence=daily_evidence(count=3, recorded="2026-11-19T10:07:00Z"),
+                    )
+                )
+                row = read.rows[0]
+                self.assertEqual((row.sweep_pin, row.sweep_evidence_path), ("c1c8a8c1", DAILY_FINDINGS))
+                self.assertEqual((row.seat, row.run, row.task_day), ("sweep-3", "170", day))
+                self.assertEqual(row.validator_digests, ("e85f232e", "2eb280bd", "6575c9de"))
+                self.assertEqual(row.artifact_digests, ("0a1b2c3d", "4e5f6a7b"))
+                self.assertEqual(row.recorded, datetime(2026, 11, 19, 10, 7, 0))
+                self.assertEqual(read.newest_within(datetime(2026, 11, 19, 12, 0, 0), 86400).line, 2)
+        # a row of another shape exposes None for the fields it lacks, so no caller reads a field that is not there
+        row = self.reader.DailyRow(datetime(2026, 11, 19, 10, 0, 0), A, SKILL, "sweeps/x.json", 2, ts)
+        self.assertEqual(
+            (row.seat, row.run, row.task_day, row.validator_digests, row.artifact_digests, row.recorded), (None,) * 6
+        )
+        # the grammar is stated once in the reader
+        self.assertEqual(self.reader.DAILY_FIELDS, 7)
+        self.assertEqual(self.reader.DAILY_SEPARATOR, "; ")
+        self.assertEqual(self.reader.DAILY_PASSES, ("validate-findings.cjs PASS", "validate-coverage-ledger.cjs PASS"))
+        self.assertEqual(
+            self.reader.DAILY_VERIFIER.pattern,
+            r"^security-audit-skill ([0-9a-f]{8,}) \(full audit mode on the srt worker seat (\S+), run-(0|[1-9][0-9]*); "
+            r"TASK daily-([0-9]{4}-[0-9]{2}-[0-9]{2})\)$",
+        )
+        self.assertEqual(
+            self.reader.DAILY_DIGESTS.pattern, r"^validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8}) ([0-9a-f]{8})$"
+        )
+        self.assertEqual(self.reader.DAILY_ARTIFACTS.pattern, r"^artifacts sha256 ([0-9a-f]{8}) ([0-9a-f]{8})$")
+        source = READER.read_text()
+        self.assertIn("            fault = daily_fields_fault(fields[2], fields[3], at)\n", source)
+
+    def test_the_cli_prints_the_newest_row_within_the_window_or_none_and_exits_2_on_a_malformed_file(self):
+        one_hour, two_hours, day_and_more = ago(3600), ago(7200), ago(25 * 3600)
+        self.write(daily(day_and_more, A), daily(two_hours, B), daily(one_hour, C))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(run.stdout, daily(one_hour, C))
+        run = self.cli("daily", "5400")
+        self.assertEqual(run.stdout, daily(one_hour, C), "the two-hour row is outside a 90-minute window")
+        run = self.cli("daily", "1800")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""), "no row within 30 minutes")
+        self.write(daily(day_and_more, A))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""), "25 hours is outside one day")
+        self.daily_file.unlink()
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""), "no file is none")
+        self.daily_file.write_text(DAILY_HEADER + daily(one_hour, A) + "garbage\n")
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(run.stderr, f"ledger: {self.daily_file}:3: 1 columns, not 4\n")
+        self.daily_file.write_text(DAILY_HEADER + daily(one_hour, A, verifier="coordinator"))
+        run = self.cli("daily", "86400")
+        self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+        self.assertIn(f"ledger: {self.daily_file}:2: the verifier of a daily sweep row does not begin with", run.stderr)
+        # the ledger's own questions never read the daily file, and the daily question never reads the ledger
+        (self.store / "ledger.tsv").write_text(HEADER + row("2026-10-30T01:00:00Z", "U7", "7", A, "correct"))
+        run = self.cli("sweep", "U7", A)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""))
+        (self.store / "ledger.tsv").write_text("ts\tunit\n")
+        self.write(daily(one_hour, A))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, daily(one_hour, A), ""))
+        for args in (
+            ("daily",),
+            ("daily", "0"),
+            ("daily", "-1"),
+            ("daily", "x"),
+            ("daily", "86400", "x"),
+            ("daily", "1.5"),
+        ):
+            with self.subTest(args=args):
+                run = self.cli(*args)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("error:", run.stderr)

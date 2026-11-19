@@ -8,6 +8,11 @@ selecting its own tests with exact `-k` patterns. The run fails when any shard f
 prints no unittest summary, or when a shard ran a different number of tests than discovery found
 for it in this process: a shard that dies or stops early cannot read as a pass.
 
+`--shard K/N` (regime-cutover U622) runs one of N equal parts of the plan: the shards are ordered biggest first (the
+plan, deterministic from discovery), and part K is every N-th shard from the K-th, so the N parts partition the plan
+without overlap and each gets its share of the long shards. CI runs the parts as matrix rows. `--dry-run` prints the
+plan (one line per shard, `  <name>: <n> tests`) and exits 0 without running anything.
+
 Every shard runs with tests/unit/scratch_git.py's settings in its environment (regime-cutover U100), so no git a test
 runs in a scratch repository starts background maintenance (`git maintenance run --auto`, detached and holding
 maintenance.lock since git 2.55), however the test made the repository.
@@ -120,6 +125,26 @@ def discover(start: Path, pattern: str, split: int) -> list[Shard]:
     return shards
 
 
+def shard_part(text: str) -> tuple[int, int]:
+    """`K/N` as (K, N) with 1 <= K <= N; anything else is an argparse usage error (exit 2)."""
+    match = re.fullmatch(r"([0-9]+)/([0-9]+)", text)
+    if match is None:
+        raise argparse.ArgumentTypeError(f"{text!r} is not K/N")
+    part, parts = int(match.group(1)), int(match.group(2))
+    if not 1 <= part <= parts:
+        raise argparse.ArgumentTypeError(f"{text!r}: K must be in 1..N")
+    return part, parts
+
+
+def plan(shards: list[Shard], part: tuple[int, int] | None) -> list[Shard]:
+    """The shards in run order, biggest first so a long one does not begin last and set the wall time alone; with
+    `part` (K, N), every N-th of that order from the K-th, so the N parts together list every shard once."""
+    order = sorted(shards, key=lambda shard: (-shard.expected, shard.name))
+    if part is None:
+        return order
+    return order[part[0] - 1 :: part[1]]
+
+
 def run_shard(start: Path, shard: Shard) -> Result:
     result = Result(shard=shard)
     command = [sys.executable, "-m", "unittest", "discover", "-s", str(start), "-p", shard.file, "-v"]
@@ -154,6 +179,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--pattern", default="test*.py", help="discovery file pattern")
     parser.add_argument("--jobs", default=0, type=int, help="shards at a time; 0 is the CPU count")
     parser.add_argument("--split", default=50, type=int, help="split a module of more tests; 0 never splits")
+    parser.add_argument("--shard", type=shard_part, metavar="K/N", help="run part K of N of the plan (K in 1..N)")
+    parser.add_argument("--dry-run", action="store_true", help="print the plan and exit 0 without running a test")
     args = parser.parse_args(argv)
     jobs = args.jobs or os.cpu_count() or 1
 
@@ -162,23 +189,32 @@ def main(argv: list[str]) -> int:
     # gets its own directory; discovery here imports the same way, so `from tests.unit.x import y` resolves.
     sys.path[0] = os.getcwd()
     try:
-        shards = discover(args.start, args.pattern, args.split)
+        found = discover(args.start, args.pattern, args.split)
     except ValueError as error:
         print(f"unittest-shards: {error}", file=sys.stderr)
         return 1
-    if not shards:
+    if not found:
         print(f"unittest-shards: discovery found no test modules under {args.start}", file=sys.stderr)
         return 1
-    total = sum(shard.expected for shard in shards)
-    modules = len({shard.file for shard in shards})
+    # The biggest shards start first, so a long one does not begin last and set the wall time alone; with --shard,
+    # this process's part of that order (shard_part, plan).
+    order = plan(found, args.shard)
+    if not order:
+        print(f"unittest-shards: shard {args.shard[0]}/{args.shard[1]} of {len(found)} is empty", file=sys.stderr)
+        return 1
+    part = f", shard {args.shard[0]}/{args.shard[1]} of {len(found)}" if args.shard else ""
+    total = sum(shard.expected for shard in order)
+    modules = len({shard.file for shard in order})
     print(
-        f"unittest-shards: {total} tests in {modules} modules, {len(shards)} shards under {args.start}, "
+        f"unittest-shards: {total} tests in {modules} modules, {len(order)} shards under {args.start}{part}, "
         f"{jobs} at a time",
         flush=True,
     )
+    if args.dry_run:
+        for shard in order:
+            print(f"  {shard.name}: {shard.expected} tests")
+        return 0
 
-    # The biggest shards start first, so a long one does not begin last and set the wall time alone.
-    order = sorted(shards, key=lambda shard: (-shard.expected, shard.name))
     lock = threading.Lock()
     results: list[Result] = []
 

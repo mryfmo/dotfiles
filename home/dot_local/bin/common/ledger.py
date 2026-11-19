@@ -12,11 +12,21 @@ the required cells and the choice of a newest row are each stated once.
 `read_ledger(path)` (or `parse_ledger(name, text)` for a text read elsewhere, as `rounds-check.py --head` reads a
 git blob) returns a `Ledger` of `Row`s or raises `Malformed` naming the file and line: the first line must be the
 header `ts unit pr head_sha verdict verifier evidence`; every other line is split on the tab alone (an empty field
-is still a field; U119 round 3), must have the header's column count, a ts `datetime.strptime` reads under
-`%Y-%m-%dT%H:%M:%SZ` and nothing else (no shape pattern stands beside it: hour 25 is a ValueError, so a malformed
-row), and no empty `ts`, `unit`, `pr`, `head_sha` or `verdict` cell (round 2: an empty cell matched no pull request
-and read as "no row"). A `Row` carries its ts parsed (`ts`, a datetime, the order every choice of a newest row is
-made in) and as written (`ts_text`, for the lines that name the row), its seven cells and its line number.
+is still a field; U119 round 3), must have the header's column count, a ts of the one shape `YYYY-MM-DDThh:mm:ssZ`
+(`TS_SHAPE`: four digits, then two in every other field; U597 round 6, where `strptime` alone read `2026-11-9T4:5:6Z`
+under a form that spells two digits) that `datetime.strptime` then reads under `%Y-%m-%dT%H:%M:%SZ` (hour 25 is a
+ValueError, so a malformed row), no cell holding a control character (`CONTROL`, `\\x00` to `\\x1f` and `\\x7f`; U597
+round 7, where a NUL in a daily row's evidence path was data to the reader and dropped by the lever's `$(...)`), and
+no empty `ts`, `unit`, `pr`, `head_sha` or `verdict` cell (round 2: an empty cell matched no pull request and read as
+"no row"). The rows are split on the line feed; the ledger's reader then drops exactly one trailing carriage return
+from each line, the header's included, before the cells are checked (`parse_rows(..., trailing_cr=True)`; U597 round
+10, verdict U597-67e1eea8 P2 at :381: the base of this unit read a CR LF ledger, and installed stores written that way
+must keep reading, so a CR LF ledger parses as before the unit, while a second carriage return, CR CR LF, is a control
+character in the last cell and Malformed naming the line and the field as round 8 made it), where the daily file's
+reader drops none (the file is new to this unit, so no store holds a CR LF one; a daily row ends in LF alone). A `Row`
+carries its ts parsed (`ts`, a datetime, the order every
+choice of a newest row is made in) and as written (`ts_text`, for the lines that name the row), its seven cells and
+its line number.
 
 The four questions, each the newest row by `(ts, line)` (the later line at an equal ts, the file position deciding
 nothing else; round 5): `newest_for_head(pr, head)` is the newest row of the pull request at the full sha, whatever
@@ -43,6 +53,69 @@ verdict file and disposition rows; U125 for the U122 round 6 residual), or `none
 head (`pr-merge.sh`'s sweep gate for a trust-boundary unit, U147), or `none`. Each exits 2 with one stderr line
 naming the file and line when the store cannot
 be read as data (standing order 21: a failed read is never "no row").
+
+Two more questions since regime-cutover U597 round 11, for the merge lever's first gate (main's tip swept or exempt
+before the next merge lands on it, read from immutable commits and store rows alone): `newest_sweep_any(head)` is the
+newest sweep row of any unit at the head (the sweep of main's tip may be the merged unit's or the coordinator's sweep
+of a merge commit), with the strictness of `newest_sweep` over every sweep row of the ledger (one of another shape, of
+any unit, is Malformed naming the line and the field); `merge_of(commit)` is the head the squash at `commit` came
+from, the `head_sha` of the newest merge row whose receipt names `commit=<commit>`, a merge row being the row
+`ledger-row.py merged` writes (verifier exactly `pr-merge.sh`, `MERGE_VERIFIER`, the word rounds-check.py reads a merge
+row by since U222; evidence starting with the lever's receipt `merged pr=<n> head=<sha> commit=<40 hex>`,
+`MERGE_RECEIPT`), whose verdict cell must be `-`, whose pr cell must be a decimal number (`PULL_REQUEST`; round 13,
+the round-12 P3 at :371: the writer, `ledger-row.py merged`, refuses a non-decimal pr, so a row carrying one was
+written by hand), whose `head_sha` must be 40 hex, whose receipt's `pr=` must be that decimal pr cell and whose
+receipt's `head=` must be the row's head cell or its first 8 (round 12, the round-11 P2 at :362: an audit verdict
+with a `pr-merge.sh` verifier and a receipt naming another pull request supplied the tip gate's provenance; each
+inconsistency is Malformed naming the line and the field); a `pr-merge.sh` row of another evidence shape (the rows
+written by hand before U222, `merged as <sha> (squash) ...`, and a refusal recorded as a row) is no merge row to this
+question, so the installed ledgers that hold them keep reading. `ledger.py <store> sweep-any <head>` prints the sweep
+row's four columns or `none`; `ledger.py <store> merge-of <commit>` prints `<head>` or `none`.
+
+A third question since round 13 (the round-12 P2 at pr-merge.sh:1201), for the same gate: `carried_from(head)` is the
+earlier head a `carried` row at `head` names, a carried row being one whose verdict starts with the word `carried`
+(`CARRIED_VERDICT`, standing order 38: the row the coordinator writes from `audit-carry.py`'s line when the head's diff
+against its merge base equals the earlier head's) and whose evidence holds that line, `carried <earlier> <head>
+<sha256>` (`CARRIED_EVIDENCE`, the grammar of pr-merge.sh's `carried_evidence_re`: the digest a whole word before the
+end or a space, `;`, `,`, `.` or `)`), the newest such row at the head by `(ts, line)`, or None when none is there.
+The relation means the two heads' diffs are one, so the merge lever, having found main's tip squashed from a head with
+no sweep row of its own, follows it to the earlier head and reads the sweep row there. A carried row at the head whose
+evidence names no such line for that head, or names the head itself as the earlier head, is Malformed naming the line
+and the field (the merge lever refuses the same row at its own gate; standing order 21). `ledger.py <store>
+carried-from <head>` prints `<earlier>` or `none`.
+
+The daily sweep (regime-cutover U597 round 4; the operator's sweep rule C of 2026-11-18): main's head gets one full
+sweep of the `security-audit` skill per UTC day, the standing control a head outside every sweep class rests on, and
+its rows live in the store's own file `daily-sweeps.tsv` (header `ts head_sha verifier evidence`), written by
+`ledger-row.py daily` and read here alone. `read_daily(path)` returns a `Daily` of `DailyRow`s, or None when no file
+exists at the path (the day's first sweep is not yet recorded: `none` to the lever, never a refusal), or raises
+Malformed with the ledger's strictness: the header exact, four cells per row split on the tab alone, a ts of the one
+shape `timestamp` reads (`TS_SHAPE`, then `strptime`; round 6: `2026-11-9T4:5:6Z` is Malformed naming the line, where
+round 5's `strptime` alone read it), no cell holding a control character (round 7; a carriage return included and
+never stripped from a daily row, round 8 and round 10, so a daily row ends in LF alone), no empty cell, a `head_sha`
+of 40 hex, the verifier and the evidence the exact fields of the sweep rule (`security-audit-skill <pin>`, a findings
+file `sweeps/<path>.json`), and, since round 9 (verdict U597-c37800e3 P2 at :393, where the daily reader applied the
+sweep row's grammar alone and a recent row of a unit's shape, `TASK U9` with a pinned verifier and an existing
+findings path, read back as the day's sweep of main's head), the daily row's own grammar, the exact fields
+`ledger-row.py daily` writes: the verifier `security-audit-skill <pin> (full audit mode on the srt worker seat <seat>,
+run-<n>; TASK daily-<YYYY-MM-DD>)` (`DAILY_VERIFIER`, the task the daily dispatch's id alone, its day the ts's UTC day
+or the day before, a sweep that crosses midnight) and the evidence's seven `; `-separated fields in the writer's order,
+`<findings>; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex>
+<8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>` (`daily_fields_fault`: the count, the two
+validators' PASS words, the first 8 hex of the three pins the writer held its private copies of validate-findings.cjs,
+validate-coverage-ledger.cjs and report-schema.json to (round 10: the schema's pin too, verdict U597-67e1eea8 P2 at
+ledger-row.py:575), the first 8 hex of the sha256 of the writer's private copies of the findings file and the coverage
+ledger beside it, the bytes the count and the PASS words were earned over (round 10, the P2 at ledger-row.py:574), and
+the recording time under the one ts form), each fault naming the line and the field, so a row shaped like a unit's
+sweep row is Malformed, never a daily row. `DailyRow` exposes the parsed fields (`seat`, `run`, `task_day`,
+`validator_digests`, `artifact_digests`, `recorded`). `Daily.newest_within(now, max_age)` is the newest row by `(ts,
+line)` whose ts lies within the window `now - max_age <= ts <= now + DAILY_FUTURE_SLACK` (60 seconds, the reader's
+allowance for a row another host's clock wrote; the writer refuses a ts after its own clock, round 7; round 5: a row
+dated further in the future is not within the window, so it does not count and is not refused as malformed, where
+round 4's floor alone let a future-dated row waive per-head sweeps until a day after its ts). `ledger.py <store> daily
+<max-age-seconds>` prints `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of that row against the clock (UTC), or `none`
+(no file, or no row within the window); `pr-merge.sh` asks it with 86400 and skips a head's own sweep row only on a
+row, so the exemption of rule C is bound to the control it rests on.
 """
 
 from __future__ import annotations
@@ -52,12 +125,23 @@ import os
 import re
 import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 HEADER = ("ts", "unit", "pr", "head_sha", "verdict", "verifier", "evidence")
 REQUIRED = range(1, 6)  # ts unit pr head_sha verdict: an empty cell is a malformed row, never "no row"
 TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"  # the one timestamp form of the store, read by strptime alone
 TS_FORM = "YYYY-MM-DDThh:mm:ssZ"  # the same form as the refusals spell it
+# The shape every ts cell has before the calendar check (U597 round 6): four ASCII digits, then two in each of the five
+# other fields, the literals in their places; `strptime` alone accepts one digit where the form spells two.
+TS_SHAPE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+# No cell of either file holds a control character (U597 round 7: `\x00` to `\x1f` and `\x7f`; a tab is the separator
+# and a line feed the row's end, so neither is in a cell, and a NUL in an evidence path is dropped by bash's `$(...)`
+# when pr-merge.sh captures the row, so the lever would check another file than the one the row names). A cell that
+# holds one is Malformed naming the line and the field. A carriage return is one of them wherever it stands in a cell
+# (round 8, verdict U597-a28e4793 P3 at :373: the parsers stripped every trailing CR before the cells were checked, so
+# a row ending in CR CR LF carried an extra control byte and passed); which reader drops one trailing CR from a line
+# before the cells are read is parse_rows's `trailing_cr` (round 10: the ledger's does, the daily file's does not).
+CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 # A verdict column that starts with the word `correct` or `incorrect` (pr-merge.sh's correct_re, both words).
 AUDIT_VERDICT = re.compile(r"^(correct|incorrect)(?:$|[\s(;,])")
 # A verdict column that starts with the word `sweep` (the security-audit skill's advisory row, AGENTS.md Audit sweep
@@ -70,10 +154,160 @@ SWEEP_VERIFIER = re.compile(r"^security-audit-skill ([0-9a-f]{8,})(?:$|\s)")
 SWEEP_PR = "-"
 SWEEP_EVIDENCE_DIR = "sweeps"
 SWEEP_EVIDENCE_SUFFIX = ".json"
+# A merge row (regime-cutover U597 round 11): the row `ledger-row.py merged` writes, verifier exactly `pr-merge.sh`
+# (rounds-check.py's merge row since U222) and evidence starting with the lever's receipt `merged pr=<n> head=<sha>
+# commit=<40 hex>` (the writer's MERGE_RECEIPT, whose head word is the row's head_sha or its first 8). `merge_of`
+# answers the head the squash at a commit came from. A `pr-merge.sh` row of another evidence shape (the rows written by
+# hand before U222, `merged as <sha> (squash) ...`, and a refusal recorded as a row) is no merge row to this question,
+# so the installed ledgers that hold them keep reading; a receipt row whose verdict is not `-`, whose head_sha is not
+# 40 hex, whose receipt names another pull request than its pr cell or another head than its head_sha is Malformed
+# naming the line and the field (standing order 21; round 12, the round-11 P2 at :362).
+MERGE_VERDICT = "-"
+MERGE_VERIFIER = "pr-merge.sh"
+MERGE_RECEIPT = re.compile(r"^merged pr=(\S+) head=(\S+) commit=([0-9a-f]{40})(?:$|[\s;,.)])")
+# A carried row (regime-cutover U122, standing order 38; U597 round 13 reads it here for the merge lever's tip gate):
+# a verdict starting with the word `carried` (AUDIT_VERDICT's boundary) and an evidence holding the line audit-carry.py
+# printed, `carried <earlier> <head> <sha256>`, as pr-merge.sh's carried_evidence_re reads it: the line starts the
+# column or follows whitespace, and the digest is a whole word before the end, whitespace or one of `;`, `,`, `.` and
+# `)` (U180: a note may follow). The two shas are the earlier head and the row's own head.
+CARRIED_VERDICT = re.compile(r"^carried(?:$|[\s(;,])")
+CARRIED_EVIDENCE = re.compile(r"(?:^|\s)carried ([0-9a-f]{40}) ([0-9a-f]{40}) ([0-9a-f]{64})(?:$|[\s;,.)])")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 UNIT = re.compile(r"^U[0-9]+$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
 NONE = "none"
+# The daily sweep file of the store (U597 round 4): main's head, one full sweep per UTC day, each run one row.
+DAILY_FILE = "daily-sweeps.tsv"
+DAILY_HEADER = ("ts", "head_sha", "verifier", "evidence")
+DAILY_REQUIRED = range(1, 5)  # every cell: a row without a verifier or an evidence is no sweep
+# The window's upper bound (round 5): a daily row may be dated this many seconds after now and no further; a row dated
+# later is not within the window. The allowance is the reader's alone, for a row another host's clock wrote and this
+# host reads (the clocks' skew): the writer, `ledger-row.py daily`, refuses a `--swept-at` after its own clock (round
+# 7), so a row this host wrote is never dated ahead.
+DAILY_FUTURE_SLACK = 60
+MAX_AGE = re.compile(r"^[1-9][0-9]*$")
+# The daily row's own grammar (U597 round 9; verdict U597-c37800e3 P2 at :393): the verifier as `ledger-row.py daily`
+# composes it, the skill, its pin word (8 or more lowercase hex, SWEEP_VERIFIER's group), the seat (one word), the run
+# and the task `daily-<YYYY-MM-DD>`, the daily dispatch's id alone (a unit id is a `sweep` row's task, never a daily
+# row's), whose day is the ts's UTC day or the day before it (the writer's rule: a sweep that crosses midnight keeps
+# the id it was dispatched under); and the evidence's seven `; `-separated fields in the writer's order: the findings
+# file (the sweep rule's field, no whitespace around it), `<n> findings`, the two validators' PASS words, `validators
+# sha256 <8 hex> <8 hex> <8 hex>` (the first 8 hex of the pins the writer held its private copies of
+# validate-findings.cjs, validate-coverage-ledger.cjs and report-schema.json to, in that order; round 10 added the
+# schema's, verdict U597-67e1eea8 P2 at ledger-row.py:575; pr-merge.sh compares each with the manifest's
+# `validators_sha256` pins), `artifacts sha256 <8 hex> <8 hex>` (the first 8 hex of the sha256 of the writer's private
+# copies of the findings file and the coverage ledger beside it, the one set of bytes the count and the PASS words
+# attest; round 10, the P2 at ledger-row.py:574; pr-merge.sh requires the field by shape and never opens the files) and
+# `recorded <ts>` (the clock at the write, the one ts form). A row of another shape is Malformed naming the field.
+DAILY_VERIFIER = re.compile(
+    r"^security-audit-skill ([0-9a-f]{8,}) \(full audit mode on the srt worker seat (\S+), run-(0|[1-9][0-9]*); "
+    r"TASK daily-([0-9]{4}-[0-9]{2}-[0-9]{2})\)$"
+)
+DAILY_VERIFIER_FORM = (
+    "security-audit-skill <pin> (full audit mode on the srt worker seat <seat>, run-<n>; TASK daily-<YYYY-MM-DD>)"
+)
+DAILY_EVIDENCE_FORM = (
+    "sweeps/<path>.json; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; "
+    "validators sha256 <8 hex> <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>"
+)
+DAILY_SEPARATOR = "; "
+DAILY_FIELDS = 7
+DAILY_COUNT = re.compile(r"^(0|[1-9][0-9]*) findings$")
+DAILY_PASSES = ("validate-findings.cjs PASS", "validate-coverage-ledger.cjs PASS")
+DAILY_DIGESTS = re.compile(r"^validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8}) ([0-9a-f]{8})$")
+DAILY_DIGESTS_FORM = "validators sha256 <8 hex> <8 hex> <8 hex>"
+DAILY_ARTIFACTS = re.compile(r"^artifacts sha256 ([0-9a-f]{8}) ([0-9a-f]{8})$")
+DAILY_ARTIFACTS_FORM = "artifacts sha256 <8 hex> <8 hex>"
+DAILY_RECORDED = "recorded "
+DAY_FORMAT = "%Y-%m-%d"
+
+
+def sweep_pin_of(verifier):
+    """The pin word of a sweep verifier (`security-audit-skill <pin>`), or None when the verifier is not of that form."""
+    match = SWEEP_VERIFIER.match(verifier)
+    return match.group(1) if match else None
+
+
+def sweep_evidence_path_of(evidence):
+    """The findings file a sweep evidence names: the first `;`-separated field, stripped."""
+    return evidence.split(";", 1)[0].strip()
+
+
+def sweep_fields_fault(verifier, evidence, kind):
+    """Why a verifier and an evidence are not those of the row the AGENTS.md Audit sweep rule defines, naming the
+    field, or None: the verifier begins with `security-audit-skill <pin>`, the pin 8 or more lowercase hex, and the
+    evidence's first `;`-field is a relative `sweeps/<path>.json` with no `..` or empty component. `kind` names the
+    row in the message (`a sweep row`, `a daily sweep row`); one rule for the ledger's sweep rows and the daily file's
+    (U147 round 4; U597 round 4)."""
+    if sweep_pin_of(verifier) is None:
+        return (
+            f"the verifier of {kind} does not begin with 'security-audit-skill <pin>' "
+            f"(the pin 8 or more lowercase hex): {verifier!r}"
+        )
+    parts = sweep_evidence_path_of(evidence).split("/")
+    if (
+        parts[0] != SWEEP_EVIDENCE_DIR  # lint-comparisons: allow the row's store-relative path is judged as text
+        or len(parts) < 2
+        or not parts[-1].endswith(SWEEP_EVIDENCE_SUFFIX)
+        or any(part in ("", "..") for part in parts[1:])
+    ):
+        return (
+            f"the evidence of {kind} does not name a findings file {SWEEP_EVIDENCE_DIR}/<path>"
+            f"{SWEEP_EVIDENCE_SUFFIX} under the store (no '..' or empty component): {evidence!r}"
+        )
+    return None
+
+
+def daily_fields_fault(verifier, evidence, at):
+    """Why a verifier and an evidence are not those of the daily row `ledger-row.py daily` writes (U597 round 9),
+    naming the field, or None, after sweep_fields_fault held the fields the sweep rule's rows share: the verifier
+    matches DAILY_VERIFIER with a task day that is the ts `at`'s UTC day or the day before it, and the evidence has
+    exactly DAILY_FIELDS `; `-separated fields, the findings file unpadded, `<n> findings`, the two PASS words, the
+    three 8-hex validator digests, the two 8-hex artifact digests (round 10) and `recorded <ts>` under the one ts
+    form."""
+    match = DAILY_VERIFIER.match(verifier)
+    if match is None:
+        return (
+            f"the verifier of a daily sweep row is not {DAILY_VERIFIER_FORM!r} (the daily dispatch's task alone, a "
+            f"unit id never): {verifier!r}"
+        )
+    try:
+        task_day = datetime.strptime(match.group(4), DAY_FORMAT)
+    except ValueError:
+        return f"the TASK day of a daily sweep row is no calendar day: daily-{match.group(4)}"
+    behind = (datetime(at.year, at.month, at.day) - task_day).days
+    if behind not in (0, 1):
+        return (
+            f"the TASK day daily-{match.group(4)} of a daily sweep row is neither the UTC day of its ts "
+            f"{at.strftime(TS_FORMAT)} nor the day before it"
+        )
+    fields = evidence.split(DAILY_SEPARATOR)
+    if len(fields) != DAILY_FIELDS:
+        return (
+            f"the evidence of a daily sweep row has {len(fields)} '; '-separated fields, not {DAILY_FIELDS} "
+            f"({DAILY_EVIDENCE_FORM!r}): {evidence!r}"
+        )
+    if fields[0] != fields[0].strip():
+        return f"field 1 of the evidence of a daily sweep row, the findings file, is padded with spaces: {fields[0]!r}"
+    if DAILY_COUNT.match(fields[1]) is None:
+        return f"field 2 of the evidence of a daily sweep row is not '<n> findings': {fields[1]!r}"
+    for number, expected in enumerate(DAILY_PASSES, 3):
+        if fields[number - 1] != expected:
+            return f"field {number} of the evidence of a daily sweep row is not {expected!r}: {fields[number - 1]!r}"
+    if DAILY_DIGESTS.match(fields[4]) is None:
+        return (
+            f"field 5 of the evidence of a daily sweep row is not {DAILY_DIGESTS_FORM!r} (the first 8 hex of the "
+            "three pins the writer held its copies of validate-findings.cjs, validate-coverage-ledger.cjs and "
+            f"report-schema.json to): {fields[4]!r}"
+        )
+    if DAILY_ARTIFACTS.match(fields[5]) is None:
+        return (
+            f"field 6 of the evidence of a daily sweep row is not {DAILY_ARTIFACTS_FORM!r} (the first 8 hex of the "
+            f"sha256 of the writer's copies of the findings file and the coverage ledger it validated): {fields[5]!r}"
+        )
+    if not fields[6].startswith(DAILY_RECORDED) or timestamp(fields[6][len(DAILY_RECORDED) :]) is None:
+        return f"field 7 of the evidence of a daily sweep row is not 'recorded <{TS_FORM}>': {fields[6]!r}"
+    return None
 
 
 class Malformed(Exception):
@@ -81,8 +315,12 @@ class Malformed(Exception):
 
 
 def timestamp(text):
-    """The ts cell as a time, or None: `datetime.strptime` under TS_FORMAT and nothing else, so a text outside the
-    form and a time no calendar holds (hour 25, month 13) are both None, a malformed row to every reader."""
+    """The ts cell as a time, or None: the shape TS_SHAPE first (U597 round 6: `strptime` reads one digit as well as
+    two under `%m`, `%d`, `%H`, `%M` and `%S`, so `2026-11-9T4:5:6Z` passed a form that spells two), then
+    `datetime.strptime` under TS_FORMAT, so a text outside the form and a time no calendar holds (hour 25, month 13)
+    are both None, a malformed row to every reader."""
+    if TS_SHAPE.match(text) is None:
+        return None
     try:
         return datetime.strptime(text, TS_FORMAT)
     except ValueError:
@@ -118,35 +356,64 @@ class Row:
     def sweep_pin(self):
         """The pin word of a sweep row's verifier (`security-audit-skill <pin>`), or None when the verifier is not of
         that form."""
-        match = SWEEP_VERIFIER.match(self.verifier)
-        return match.group(1) if match else None
+        return sweep_pin_of(self.verifier)
 
     @property
     def sweep_evidence_path(self):
         """The findings file a sweep row names: the first `;`-separated field of the evidence, stripped."""
-        return self.evidence.split(";", 1)[0].strip()
+        return sweep_evidence_path_of(self.evidence)
 
     def sweep_fault(self):
         """Why this sweep row is not the row the AGENTS.md Audit sweep rule defines, naming the field, or None (U147
         round 4). The head is judged by the caller, as an audit row's is."""
         if self.pr != SWEEP_PR:
             return f"the pr of a sweep row is not {SWEEP_PR!r}: {self.pr!r}"
-        if self.sweep_pin is None:
+        return sweep_fields_fault(self.verifier, self.evidence, "a sweep row")
+
+    @property
+    def merge_commit(self):
+        """The 40-hex commit a merge row's receipt names (`commit=<sha>`), or None when this is no merge row (U597
+        round 11): the verifier MERGE_VERIFIER and an evidence starting with MERGE_RECEIPT."""
+        if self.verifier != MERGE_VERIFIER:
+            return None
+        match = MERGE_RECEIPT.match(self.evidence)
+        return None if match is None else match.group(3)
+
+    def merge_fault(self):
+        """Why this merge row is not the row `ledger-row.py merged` composes, naming the field, or None: the verdict
+        cell `-`, a decimal pr cell (round 13, the round-12 P3 at :371: the writer refuses a non-decimal pr, and the
+        reader accepted one when the receipt agreed with it), a 40-hex head_sha, a receipt whose pr word is that pr
+        cell and whose head word is that sha or its first 8 (the writer's own refusals; round 12 added the verdict
+        and the pr, the round-11 P2 at :362, where an audit verdict carrying a receipt of another pull request
+        answered `merge_of`)."""
+        if self.verdict != MERGE_VERDICT:
+            return f"the verdict of a merge row is not {MERGE_VERDICT!r}: {self.verdict!r}"
+        if not PULL_REQUEST.match(self.pr):
+            return f"the pr of a merge row is not a decimal number: {self.pr!r}"
+        if not SHA.match(self.head_sha):
+            return f"the head_sha of a merge row is not 40 hex: {self.head_sha!r}"
+        match = MERGE_RECEIPT.match(self.evidence)
+        if match.group(1) != self.pr:
+            return f"the receipt of a merge row names pr={match.group(1)}, not its pr cell {self.pr!r}"
+        if match.group(2) not in (self.head_sha, self.head_sha[:8]):
             return (
-                "the verifier of a sweep row does not begin with 'security-audit-skill <pin>' "
-                f"(the pin 8 or more lowercase hex): {self.verifier!r}"
+                f"the receipt of a merge row names head={match.group(2)}, neither its head_sha {self.head_sha} nor "
+                "its first 8"
             )
-        parts = self.sweep_evidence_path.split("/")
-        if (
-            parts[0] != SWEEP_EVIDENCE_DIR  # lint-comparisons: allow the row's store-relative path is judged as text
-            or len(parts) < 2
-            or not parts[-1].endswith(SWEEP_EVIDENCE_SUFFIX)
-            or any(part in ("", "..") for part in parts[1:])
-        ):
-            return (
-                f"the evidence of a sweep row does not name a findings file {SWEEP_EVIDENCE_DIR}/<path>"
-                f"{SWEEP_EVIDENCE_SUFFIX} under the store (no '..' or empty component): {self.evidence!r}"
-            )
+        return None
+
+    @property
+    def carried(self):
+        """True when the verdict starts with the word `carried` (a carried row, standing order 38; U597 round 13)."""
+        return CARRIED_VERDICT.match(self.verdict) is not None
+
+    @property
+    def carried_source(self):
+        """The earlier head a carried row's evidence names for this row's head (`carried <earlier> <head> <sha256>`
+        with `<head>` the row's head_sha), or None when the evidence holds no such line for it (U597 round 13)."""
+        for match in CARRIED_EVIDENCE.finditer(self.evidence):
+            if match.group(2) == self.head_sha:
+                return match.group(1)
         return None
 
 
@@ -187,48 +454,134 @@ class Ledger:
         ledger judged is never carried)."""
         return newest(row for row in self.audits(unit, pr) if row.head_sha == head)
 
-    def newest_sweep(self, unit, head):
-        """The newest sweep row of `unit` or a fix unit of it (`U<n>[a-z]`) at `head`, or None (U147: the merge gate's
-        sweep row for a trust-boundary unit); a sweep row of those units whose head_sha is not 40 hex, or that is not
-        the exact row the AGENTS.md Audit sweep rule defines (pr `-`, verifier `security-audit-skill <pin>`, evidence
-        a findings file under `sweeps/`; round 4), is Malformed naming the line and the field, as an audit row is, so
-        neither a short sha nor a hand-written row is ever read as "no sweep" (standing order 21)."""
-        own = re.compile(rf"^{re.escape(unit)}[a-z]?$")
+    def sweep_rows(self, own=None):
+        """Every sweep row of the units `own` matches (a compiled pattern), or of every unit when None, in file order,
+        each held to a 40-hex head and to the exact row the AGENTS.md Audit sweep rule defines (pr `-`, verifier
+        `security-audit-skill <pin>`, evidence a findings file under `sweeps/`; round 4) and Malformed naming the line
+        and the field otherwise, as an audit row is, so neither a short sha nor a hand-written row is ever read as "no
+        sweep" (standing order 21)."""
         found = []
         for row in self.rows:
-            if not row.sweep or not own.match(row.unit):
+            if not row.sweep or (own is not None and not own.match(row.unit)):
                 continue
             if not SHA.match(row.head_sha):
                 raise Malformed(f"{self.name}:{row.line}: the head_sha of a sweep row is not 40 hex: {row.head_sha!r}")
             fault = row.sweep_fault()
             if fault is not None:
                 raise Malformed(f"{self.name}:{row.line}: {fault}")
-            if row.head_sha == head:
+            found.append(row)
+        return found
+
+    def newest_sweep(self, unit, head):
+        """The newest sweep row of `unit` or a fix unit of it (`U<n>[a-z]`) at `head`, or None (U147: the merge gate's
+        sweep row for a trust-boundary unit); the units' sweep rows are held by sweep_rows."""
+        own = re.compile(rf"^{re.escape(unit)}[a-z]?$")
+        return newest(row for row in self.sweep_rows(own) if row.head_sha == head)
+
+    def newest_sweep_any(self, head):
+        """The newest sweep row of any unit at `head`, or None (U597 round 11: the merge gate's question about main's
+        tip, whose sweep may be the merged unit's or the coordinator's sweep of a merge commit); every sweep row of the
+        ledger is held by sweep_rows, so a hand-written sweep row of any unit is Malformed, never "no sweep"."""
+        return newest(row for row in self.sweep_rows() if row.head_sha == head)
+
+    def merge_of(self, commit):
+        """The head the squash at `commit` came from, the `head_sha` of the newest merge row (`Row.merge_commit`: the
+        row `ledger-row.py merged` writes) whose receipt names `commit=<commit>`, or None (U597 round 11); a merge row
+        whose verdict is not `-`, whose head_sha is not 40 hex or whose receipt names another pull request or another
+        head than its cells is Malformed naming the line and the field (round 12)."""
+        found = []
+        for row in self.rows:
+            if row.merge_commit is None:
+                continue
+            fault = row.merge_fault()
+            if fault is not None:
+                raise Malformed(f"{self.name}:{row.line}: {fault}")
+            if row.merge_commit == commit:
                 found.append(row)
-        return newest(found)
+        row = newest(found)
+        return None if row is None else row.head_sha
+
+    def carried_from(self, head):
+        """The earlier head the newest `carried` row at `head` names (U597 round 13, the round-12 P2 at
+        pr-merge.sh:1201): a carried row (`Row.carried`) at the head whose evidence holds `carried <earlier> <head>
+        <sha256>` (`Row.carried_source`), the newest by `(ts, line)`, or None when no carried row is at the head; a
+        carried row at the head whose evidence names no such line for it, or names the head itself as the earlier
+        head, is Malformed naming the line and the field (the merge lever refuses the same row at its own gate)."""
+        found = []
+        for row in self.rows:
+            if not row.carried or row.head_sha != head:
+                continue
+            earlier = row.carried_source
+            if earlier is None:
+                raise Malformed(
+                    f"{self.name}:{row.line}: the evidence of a carried row at {head} holds no 'carried <earlier> "
+                    f"{head} <sha256>' line for that head: {row.evidence!r}"
+                )
+            if earlier == head:
+                raise Malformed(
+                    f"{self.name}:{row.line}: the evidence of a carried row at {head} names the head itself as the "
+                    "earlier head"
+                )
+            found.append(row)
+        row = newest(found)
+        return None if row is None else row.carried_source
 
 
-def parse_ledger(name, text):
-    """The Ledger of one `ledger.tsv` text, or Malformed naming `name` and the line."""
+def control_check(name, number, header, fields):
+    """Malformed naming the line, the column and the character when a cell holds a control character (U597 round 7;
+    CONTROL): one rule for the ledger's rows and the daily file's."""
+    for column, field in enumerate(fields, 1):
+        found = CONTROL.search(field)
+        if found is not None:
+            raise Malformed(
+                f"{name}:{number}: column {column} ({header[column - 1]}) holds a control character "
+                f"U+{ord(found.group()):04X}; no cell holds one"
+            )
+
+
+def parse_rows(name, text, header, required, trailing_cr):
+    """The data rows of one tab-separated store file as `(number, ts, fields)` tuples, or Malformed naming `name` and
+    the line: the one row reader of `ledger.tsv` and `daily-sweeps.tsv` (U597 round 10), stating once how a line
+    becomes cells. The text is split on the line feed (a trailing one closes the last row); when `trailing_cr` is
+    true exactly one carriage return is dropped from the end of each line, the header's included, before anything is
+    read, else none. Why the two files differ (round 10, verdict U597-67e1eea8 P2 at :381): the ledger has installed
+    stores to keep reading, and the base of this unit read a CR LF `ledger.tsv` (its readers stripped the trailing
+    carriage returns), so a CR LF ledger must parse as before the unit; the daily file is new to this unit, no store
+    holds a CR LF one, and its rows end in LF alone. Either way the cells are then held to CONTROL (round 7), so a
+    second carriage return, CR CR LF (round 8, the P3 at :373), is a control character in the last cell and
+    Malformed naming the line and the field. Then the header must be `header` exactly, every other line must split
+    on the tab into `header`'s column count, hold no control character in a cell, carry a ts of the one form in its
+    first cell and no empty cell among `required` (1-based column numbers)."""
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
-    expected = "\t".join(HEADER)
-    if not lines or lines[0].rstrip("\r") != expected:
+    if trailing_cr:
+        lines = [line[:-1] if line.endswith("\r") else line for line in lines]
+    expected = "\t".join(header)
+    if not lines or lines[0] != expected:
         found = lines[0] if lines else ""
         raise Malformed(f"{name}:1: the header is {found!r}, not {expected!r}")
-    rows = []
     for number, line in enumerate(lines[1:], 2):
-        fields = line.rstrip("\r").split("\t")
-        if len(fields) != len(HEADER):
-            raise Malformed(f"{name}:{number}: {len(fields)} columns, not {len(HEADER)}")
+        fields = line.split("\t")
+        if len(fields) != len(header):
+            raise Malformed(f"{name}:{number}: {len(fields)} columns, not {len(header)}")
+        control_check(name, number, header, fields)
         at = timestamp(fields[0])
         if at is None:
             raise Malformed(f"{name}:{number}: the ts {fields[0]!r} is not {TS_FORM}")
-        for column in REQUIRED:
+        for column in required:
             if fields[column - 1] == "":
-                raise Malformed(f"{name}:{number}: column {column} ({HEADER[column - 1]}) is empty")
-        rows.append(Row(at, *fields[1:], number, fields[0]))
+                raise Malformed(f"{name}:{number}: column {column} ({header[column - 1]}) is empty")
+        yield number, at, fields
+
+
+def parse_ledger(name, text):
+    """The Ledger of one `ledger.tsv` text, or Malformed naming `name` and the line (parse_rows with the ledger's
+    header and required cells, one trailing carriage return per line dropped: the base's tolerance of a CR LF ledger,
+    kept for the installed stores; round 10)."""
+    rows = [
+        Row(at, *fields[1:], number, fields[0]) for number, at, fields in parse_rows(name, text, HEADER, REQUIRED, True)
+    ]
     return Ledger(name, tuple(rows))
 
 
@@ -245,6 +598,122 @@ def read_text(path):
 def read_ledger(path):
     """The Ledger of the file at `path`, or Malformed (a file that cannot be read or is not UTF-8 included)."""
     return parse_ledger(path, read_text(path))
+
+
+@dataclass(frozen=True)
+class DailyRow:
+    """One data row of `daily-sweeps.tsv`: the ts parsed and as written, the four cells, and the line number."""
+
+    ts: datetime
+    head_sha: str
+    verifier: str
+    evidence: str
+    line: int
+    ts_text: str
+
+    @property
+    def sweep_pin(self):
+        return sweep_pin_of(self.verifier)
+
+    @property
+    def sweep_evidence_path(self):
+        return sweep_evidence_path_of(self.evidence)
+
+    @property
+    def seat(self):
+        """The srt worker seat the verifier names (DAILY_VERIFIER), or None for a verifier of another shape."""
+        match = DAILY_VERIFIER.match(self.verifier)
+        return None if match is None else match.group(2)
+
+    @property
+    def run(self):
+        """The run number the verifier names, as written, or None."""
+        match = DAILY_VERIFIER.match(self.verifier)
+        return None if match is None else match.group(3)
+
+    @property
+    def task_day(self):
+        """The `YYYY-MM-DD` of the verifier's `TASK daily-<day>`, or None."""
+        match = DAILY_VERIFIER.match(self.verifier)
+        return None if match is None else match.group(4)
+
+    @property
+    def validator_digests(self):
+        """The three 8-hex digest prefixes of the evidence's `validators sha256` field (validate-findings.cjs,
+        validate-coverage-ledger.cjs, report-schema.json; round 10 added the schema's), or None."""
+        fields = self.evidence.split(DAILY_SEPARATOR)
+        match = DAILY_DIGESTS.match(fields[4]) if len(fields) == DAILY_FIELDS else None
+        return None if match is None else (match.group(1), match.group(2), match.group(3))
+
+    @property
+    def artifact_digests(self):
+        """The two 8-hex digest prefixes of the evidence's `artifacts sha256` field (the findings file, the coverage
+        ledger; round 10), or None."""
+        fields = self.evidence.split(DAILY_SEPARATOR)
+        match = DAILY_ARTIFACTS.match(fields[5]) if len(fields) == DAILY_FIELDS else None
+        return None if match is None else (match.group(1), match.group(2))
+
+    @property
+    def recorded(self):
+        """The recording time of the evidence's `recorded <ts>` field as a datetime, or None."""
+        fields = self.evidence.split(DAILY_SEPARATOR)
+        if len(fields) != DAILY_FIELDS or not fields[6].startswith(DAILY_RECORDED):
+            return None
+        return timestamp(fields[6][len(DAILY_RECORDED) :])
+
+
+@dataclass(frozen=True)
+class Daily:
+    name: str
+    rows: tuple
+
+    def newest_within(self, now, max_age):
+        """The newest row by `(ts, line)` whose ts lies within `now - max_age <= ts <= now + DAILY_FUTURE_SLACK`
+        (`now` a naive UTC datetime, as the rows' ts are), or None: the daily sweep a head outside every class rests
+        on. A row dated more than DAILY_FUTURE_SLACK seconds after now is not within the window (round 5)."""
+        floor = now - timedelta(seconds=max_age)
+        ceiling = now + timedelta(seconds=DAILY_FUTURE_SLACK)
+        return newest(row for row in self.rows if floor <= row.ts <= ceiling)
+
+
+def parse_daily(name, text):
+    """The Daily of one `daily-sweeps.tsv` text, or Malformed naming `name`, the line and the field, with the
+    ledger's strictness (parse_rows with the daily header, every cell required and no trailing carriage return
+    dropped: a daily row ends in LF alone, round 8 and round 10), a 40-hex head, the verifier and the evidence the
+    exact fields of the sweep rule (U597 round 4) and the daily row's own grammar (round 9: daily_fields_fault, so a
+    row of a unit's sweep shape is Malformed, never a daily row)."""
+    rows = []
+    for number, at, fields in parse_rows(name, text, DAILY_HEADER, DAILY_REQUIRED, False):
+        if not SHA.match(fields[1]):
+            raise Malformed(f"{name}:{number}: the head_sha of a daily sweep row is not 40 hex: {fields[1]!r}")
+        fault = sweep_fields_fault(fields[2], fields[3], "a daily sweep row")
+        if fault is None:
+            fault = daily_fields_fault(fields[2], fields[3], at)
+        if fault is not None:
+            raise Malformed(f"{name}:{number}: {fault}")
+        rows.append(DailyRow(at, *fields[1:], number, fields[0]))
+    return Daily(name, tuple(rows))
+
+
+def read_daily(path):
+    """The Daily of the file at `path`, None when no file exists there (FileNotFoundError alone: the day's first
+    sweep is not yet recorded), or Malformed (a file that exists and cannot be read, or is not UTF-8, included:
+    standing order 21)."""
+    try:
+        with open(path, encoding="utf-8", newline="") as handle:
+            text = handle.read()
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        raise Malformed(f"{path}: cannot read: {error.strerror}") from None
+    except UnicodeDecodeError as error:
+        raise Malformed(f"{path}: not UTF-8: {error.reason}") from None
+    return parse_daily(path, text)
+
+
+def utc_now():
+    """The clock as a naive UTC datetime, the form the rows' ts parse to."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def main(argv=None):
@@ -269,8 +738,41 @@ def main(argv=None):
     )
     sweep.add_argument("unit", help="the body's unit, U<n>; its fix units U<n>[a-z] count with it")
     sweep.add_argument("head", help="the audited head, 40 hex")
+    sweep_any = forms.add_parser(
+        "sweep-any",
+        help="the newest sweep row of any unit at the head: <ts>\\t<unit>\\t<verifier>\\t<evidence>, or none",
+    )
+    sweep_any.add_argument(
+        "head", help="the head, 40 hex (main's tip, the merge gate's first question since U597 round 11)"
+    )
+    merge_of = forms.add_parser(
+        "merge-of",
+        help="the head the squash at the commit came from (the newest pr-merge.sh receipt row naming commit=<sha>): <head>, or none",
+    )
+    merge_of.add_argument("commit", help="the merge commit, 40 hex (main's tip)")
+    carried_from = forms.add_parser(
+        "carried-from",
+        help=(
+            "the earlier head the newest carried row at the head names (carried <earlier> <head> <sha256>, standing"
+            " order 38): <earlier>, or none"
+        ),
+    )
+    carried_from.add_argument(
+        "head",
+        help="the head, 40 hex (the head main's tip was squashed from, the merge gate's question since U597 round 13)",
+    )
+    daily = forms.add_parser(
+        "daily",
+        help=(
+            "the newest daily sweep of main's head within the window, from daily-sweeps.tsv: "
+            "<ts>\\t<head_sha>\\t<verifier>\\t<evidence>, or none"
+        ),
+    )
+    daily.add_argument("max_age", help="the window in seconds before now; a row older than it is not within")
     args = parser.parse_args(argv)
-    if not SHA.match(args.head):
+    if args.form == "merge-of" and not SHA.match(args.commit):
+        parser.error(f"the commit {args.commit!r} is not 40 hex")
+    if args.form not in ("daily", "merge-of") and not SHA.match(args.head):
         parser.error(f"the head {args.head!r} is not 40 hex")
     if args.form == "verdict" and not PULL_REQUEST.match(args.pr):
         parser.error(f"the pull request {args.pr!r} is not a decimal number")
@@ -278,8 +780,15 @@ def main(argv=None):
         parser.error(f"the unit {args.unit!r} is not U<n>")
     if args.form == "carry-source" and args.pr is not None and not PULL_REQUEST.match(args.pr):
         parser.error(f"the pull request {args.pr!r} is not a decimal number")
+    if args.form == "daily" and not MAX_AGE.match(args.max_age):
+        parser.error(f"the window {args.max_age!r} is not a positive number of seconds")
     store = args.store.rstrip("/") or args.store
     try:
+        if args.form == "daily":
+            read = read_daily(os.path.join(store, DAILY_FILE))
+            row = None if read is None else read.newest_within(utc_now(), int(args.max_age))
+            print(NONE if row is None else "\t".join((row.ts_text, row.head_sha, row.verifier, row.evidence)))
+            return 0
         ledger = read_ledger(os.path.join(store, "ledger.tsv"))
         if args.form == "verdict":
             row = ledger.newest_for_head(args.pr, args.head)
@@ -287,6 +796,15 @@ def main(argv=None):
         elif args.form == "sweep":
             row = ledger.newest_sweep(args.unit, args.head)
             print(NONE if row is None else "\t".join((row.ts_text, row.unit, row.verifier, row.evidence)))
+        elif args.form == "sweep-any":
+            row = ledger.newest_sweep_any(args.head)
+            print(NONE if row is None else "\t".join((row.ts_text, row.unit, row.verifier, row.evidence)))
+        elif args.form == "merge-of":
+            head = ledger.merge_of(args.commit)
+            print(NONE if head is None else head)
+        elif args.form == "carried-from":
+            earlier = ledger.carried_from(args.head)
+            print(NONE if earlier is None else earlier)
         else:
             row = ledger.newest_audit_at_another_head(args.unit, args.head, args.pr)
             print(NONE if row is None else "\t".join((row.head_sha, row.verdict, row.unit)))

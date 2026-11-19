@@ -1,5 +1,6 @@
 """Exercise the sweep gate and the CI gate of scripts/orchestrator/pr-merge.sh. The sweep gate (regime-cutover U147,
-every unit since U244): a pull request merges only with a `sweep` ledger row of its unit or a fix unit of it at the
+every unit since U244, since U597 a head whose changed paths touch a sweep class, the fixture listing a lever path so
+the gate stands): a pull request merges only with a `sweep` ledger row of its unit or a fix unit of it at the
 audited head, read through scripts/orchestrator/ledger.py and read by its shape, whatever the unit's brief says; the
 lever reads no brief and no brief checker. The admitted row is the exact row of the AGENTS.md Audit sweep rule alone
 (pr `-`, verifier `security-audit-skill <pin>` with the pin word a prefix of the manifest's
@@ -19,6 +20,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from test_pr_levers import (  # noqa: E402
+    BASE_TIP,
+    COMPARE_MATCH,
+    COMPARE_OTHER_MATCH,
     FOOTER,
     GREEN_CHECKS,
     LEDGER_HEADER,
@@ -28,8 +32,19 @@ from test_pr_levers import (  # noqa: E402
     RULESET_REQUIRED_CHECKS,
     SHA_A,
     SHA_B,
+    TEST_MERGE,
+    TEST_MERGE_COMPARE_MATCH,
+    TIP_COMPARE_MATCH,
+    TIP_PARENT,
+    TREE_HEAD,
+    TREE_TIP,
     PrLeverTestCase,
+    compare_response,
+    git_commit_answer,
     ledger_row,
+    mergeable_answer,
+    pull_answer,
+    ref_answer,
     sweep_row,
 )
 
@@ -38,8 +53,21 @@ DIGEST = "d" * 64
 # brief, so this unit needs its row like every other.
 PLAIN_BRIEF = "GOAL\nfixture\n"
 RULE = (
-    "every unit and every program milestone gets one sweep of the security-audit skill before its pull request merges"
+    "a head whose changed paths touch a lever, a policy, credential handling or a deployed executable gets one sweep "
+    "of the security-audit skill before its pull request merges"
 )
+# The files the fake `gh api repos/{owner}/{repo}/compare/<main tip>...<head>` lists (U597 round 4: the compare API
+# keyed by the head's sha, run through the lever's `--jq` by the fake; round 3: status, filename and previous_filename
+# as one array per file; round 5: one call, no count of the pull request read; round 7: keyed by main's tip, read once
+# through the refs API, with the response's merge base the tip itself): a lever path, so the sweep is required (U597).
+LEVER_FILES = [{"status": "modified", "filename": "scripts/orchestrator/pr-merge.sh"}]
+# The store's `units.tsv` with the unit's row (U597 round 13: the lever reads the body's unit's track from it and
+# refuses a store without the register); track `R`, so no test here meets the milestone rule.
+UNITS_ROW = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote\nU71\tR\tgate\t\t\t\t\t-\n"
+# The landed diff of main's tip (round 11, gate one): docs only, so the tip needs no sweep row and the sweep gate under
+# test is the head's own.
+DOCS_FILES = [{"status": "modified", "filename": "docs/changelog.md"}]
+COMPARE_OTHER = {"match": COMPARE_OTHER_MATCH, "exit": 1, "stderr": "HTTP 404: No commit found for the basehead\n"}
 RECEIPT = f"merged pr=7 head={SHA_A} commit={SHA_B} verdict={{ts}}\n"
 MERGE_CALL = ["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]
 CHECKS_CALL = ["pr", "checks", "7", "--json", "bucket,name"]
@@ -73,7 +101,11 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.reader = self.repo / "scripts/orchestrator/ledger.py"
         self.reader.parent.mkdir(parents=True)
         shutil.copy2(LEVERS / "ledger.py", self.reader)
+        shutil.copy2(LEVERS / "sweep-scope.py", self.reader.parent / "sweep-scope.py")
         (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
+        # The lever runs from a copy with a manifest of its own (round 8): a test that replaces the reader re-pins
+        # it there (pin_reader), since the lever hashes the reader against the manifest before it runs its copy.
+        self.lever_checkout("pr-merge.sh", "git-isolated.sh", "read-lib.sh", "regime-env")
         self.briefs = self.records / "briefs"
         self.briefs.mkdir()
         self.brief = self.briefs / "U71-fixture.md"
@@ -86,6 +118,8 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.ledger(ledger_row(SHA_A))
         self.verdict()
         self.body = f"## Summary\n\nProgram-Unit: regime-cutover/U71\n\n{FOOTER}\n"
+        # The register the lever reads for the body's unit's track (U597 round 13): the unit's row, track `R`.
+        (self.records / "units.tsv").write_text(UNITS_ROW)
 
     def findings(self, unit="U71", head=SHA_A):
         path = self.sweeps / f"{unit}-{head[:8]}.json"
@@ -108,6 +142,18 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
+            ref_answer(),
+            # main's tip and its line (round 11, gate one): the tip's parents and its docs-only landed diff
+            git_commit_answer(BASE_TIP, TREE_TIP, [TIP_PARENT]),
+            {"match": TIP_COMPARE_MATCH, "json": compare_response(DOCS_FILES, TIP_PARENT)},
+            {"match": COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
+            # GitHub's test merge of the head against the tip (round 12): mergeable, its sha, its tree and parents, and
+            # its listing, the head's own (the squash of an up-to-date head)
+            mergeable_answer(),
+            pull_answer(),
+            git_commit_answer(TEST_MERGE, TREE_HEAD, [BASE_TIP, head]),
+            {"match": TEST_MERGE_COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
+            COMPARE_OTHER,
             {"match": r"^pr checks 7 --json bucket,name$", "json": GREEN_CHECKS},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",
@@ -118,6 +164,9 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "match": r"^pr view 7 --json state,mergeCommit,baseRefName,headRefOid$",
                 "json": {"state": "MERGED", "mergeCommit": {"oid": SHA_B}, "baseRefName": "main", "headRefOid": head},
             },
+            # the landed tree (round 11, gate three; round 12 holds it to the test merge's tree): the merge commit
+            # carries the head's tree, a squash onto an unmoved tip
+            git_commit_answer(SHA_B, TREE_HEAD, [BASE_TIP]),
         )
 
     def merge(self):
@@ -198,6 +247,7 @@ class PrMergeSweepGateTest(PrLeverTestCase):
     def test_a_reader_that_fails_on_the_sweep_question_is_a_failure_with_no_write(self):
         self.ledger(ledger_row(SHA_A), sweep_row())
         self.reader.write_text(FAILING_SWEEP_READER.format(real=str(LEVERS / "ledger.py")))
+        self.pin_reader("ledger.py", self.reader)  # round 8: the lever holds the reader to its pin
         run = self.merge()
         self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
         self.assertIn("exited 3 reading", run.stderr)
@@ -221,11 +271,13 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         ):
             with self.subTest(name):
                 self.reader.write_text(ANSWERING_SWEEP_READER.format(answer=answer, real=str(LEVERS / "ledger.py")))
+                self.pin_reader("ledger.py", self.reader)
                 run = self.merge()
                 self.assert_refused_before_ci(run, f"answered the sweep question for U71 at {SHA_A}")
                 self.assertIn(f"{self.reader}", run.stderr)
                 self.assertIn(answer.strip() or "nothing", run.stderr)
         self.reader.write_text(ANSWERING_SWEEP_READER.format(answer=answer_row + "\n", real=str(LEVERS / "ledger.py")))
+        self.pin_reader("ledger.py", self.reader)
         self.assert_merged(self.merge())
 
     def test_a_carried_head_needs_the_sweep_row_at_the_earlier_head(self):
@@ -362,6 +414,7 @@ class PrMergeSweepGateTest(PrLeverTestCase):
             with self.subTest(name):
                 answer = f"{ts}\tU71\t{verifier}\t{evidence}\n"
                 self.reader.write_text(ANSWERING_SWEEP_READER.format(answer=answer, real=str(LEVERS / "ledger.py")))
+                self.pin_reader("ledger.py", self.reader)
                 run = self.merge()
                 self.assert_refused_before_ci(run, message)
                 self.assertEqual(run.stdout, "", "no receipt")
@@ -442,8 +495,11 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
         reader = self.repo / "scripts/orchestrator/ledger.py"
         reader.parent.mkdir(parents=True)
         shutil.copy2(LEVERS / "ledger.py", reader)
+        shutil.copy2(LEVERS / "sweep-scope.py", reader.parent / "sweep-scope.py")
         (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
         (self.records / "sweeps").mkdir()
+        # The register the lever reads for the body's unit's track (U597 round 13): the unit's row, track `R`.
+        (self.records / "units.tsv").write_text(UNITS_ROW)
         (self.records / f"sweeps/U71-{SHA_A[:8]}.json").write_text("{}\n")
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A) + sweep_row())
         (self.records / "verdicts").mkdir()
@@ -459,6 +515,17 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": SHA_A, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
+            ref_answer(),
+            # main's tip and its line (round 11, gate one): the tip's parents and its docs-only landed diff
+            git_commit_answer(BASE_TIP, TREE_TIP, [TIP_PARENT]),
+            {"match": TIP_COMPARE_MATCH, "json": compare_response(DOCS_FILES, TIP_PARENT)},
+            {"match": COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
+            # GitHub's test merge of the head against the tip (round 12), its listing the head's own
+            mergeable_answer(),
+            pull_answer(),
+            git_commit_answer(TEST_MERGE, TREE_HEAD, [BASE_TIP, SHA_A]),
+            {"match": TEST_MERGE_COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
+            COMPARE_OTHER,
             {"match": r"^pr checks 7 --json bucket,name$", "json": checks},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",
@@ -469,6 +536,9 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
                 "match": r"^pr view 7 --json state,mergeCommit,baseRefName,headRefOid$",
                 "json": {"state": "MERGED", "mergeCommit": {"oid": SHA_B}, "baseRefName": "main", "headRefOid": SHA_A},
             },
+            # the landed tree (round 11, gate three; round 12 holds it to the test merge's tree): the merge commit
+            # carries the head's tree, a squash onto an unmoved tip
+            git_commit_answer(SHA_B, TREE_HEAD, [BASE_TIP]),
         )
         return self.run_lever("pr-merge.sh", "7", "--records", str(self.records))
 

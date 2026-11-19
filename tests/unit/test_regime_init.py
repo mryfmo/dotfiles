@@ -8,6 +8,7 @@ templates come from the checkout's home/dot_agents/regime (the directory beside 
 """
 
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -45,6 +46,323 @@ class AuditSectionTest(unittest.TestCase):
         end = text.find("\n## ", start)
         section = text[start : end if end != -1 else len(text)]
         self.assertEqual(section, (TEMPLATES / "AGENTS-audit-section.md").read_text())
+
+
+class DailySweepBriefTemplateTest(unittest.TestCase):
+    """U597 round 4: the kit carries the brief template of the daily sweep of main's head, the standing control the
+    sweep rule C rests on (the shape of the store's sweep briefs, with `<head>`, `<run>` and `<prev>` placeholders and
+    the task id `daily-<YYYY-MM-DD>`); the coordinator fills it once per UTC day (hcom-orchestration SKILL step 4) and
+    writes the day's row with `ledger-row.py daily`, the row `pr-merge.sh` reads."""
+
+    def test_the_template_has_a_sweep_brief_s_shape_its_placeholders_and_passes_brief_check_filled(self):
+        text = (TEMPLATES / "daily-sweep-brief.md").read_text()
+        self.assertTrue(
+            text.startswith("# daily-<YYYY-MM-DD> the daily security-audit sweep of main's head"), text[:80]
+        )
+        for placeholder in ("<head>", "<run>", "<prev>", "daily-<YYYY-MM-DD>", "<seat>", "<repository>"):
+            with self.subTest(placeholder):
+                self.assertIn(placeholder, text)
+        for section in (
+            "GOAL",
+            "SCOPE",
+            "CONTEXT",
+            "CHANGE",
+            "ACCEPTANCE",
+            "VERIFY",
+            "CLOSURE",
+            "TRUST",
+            "TIMEBOX",
+            "FORBIDDEN",
+            "REPORT",
+            "STANDING",
+        ):
+            with self.subTest(section):
+                self.assertEqual(text.count(f"\n{section}\n"), 1, f"one {section} heading")
+        self.assertIn("\nCLOSURE\nremove\n", text)
+        self.assertIn("RESULT v1 task_id=daily-<YYYY-MM-DD> status=ready_for_review pr=none head=<head>", text)
+        # round 5 (verdict U597-1b3c4b1d P2 at :38): the timeout path sends `status=partial`, not the full sweep's
+        # RESULT, and the recording step writes the daily row for `status=ready_for_review` alone
+        self.assertIn("RESULT v1 task_id=daily-<YYYY-MM-DD> status=partial pr=none head=<head>", text)
+        self.assertIn("The coordinator writes the day's row only for a RESULT with `status=ready_for_review`", text)
+        self.assertIn("A `status=partial` RESULT (the TIMEBOX path) gets no daily row", text)
+        timebox = text[text.index("\nTIMEBOX\n") : text.index("\nFORBIDDEN\n")]
+        self.assertIn("status=partial", timebox)
+        self.assertNotIn("status=ready_for_review", timebox, "the timeout path never sends the full sweep's RESULT")
+        # round 6 (verdict U597-10d46fe0 P2 at :44 and P2 at ledger-row.py:416-417): the recording step copies the
+        # findings into a run-keyed directory behind a `test ! -e` guard, so a same-day retry never lands over the
+        # earlier row's evidence, passes the RESULT's timestamp as `--swept-at`, and passes no count: the writer reads
+        # the findings file itself; round 11 (verdict U597-2bebb5ae P1 at :44): the copy follows no symbolic link
+        # (`cp -R -P`, the form macOS and GNU cp share, with the why) and comes only after both validators exit 0 over
+        # the seat's output files, so a refused run leaves nothing in the store
+        self.assertIn(
+            "`test ! -e <store>/sweeps/daily-<YYYY-MM-DD>-run-<n> && mkdir <store>/sweeps/daily-<YYYY-MM-DD>-run-<n> "
+            "&& cp -R -P <output-dir>/findings.json <store>/sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json && cp -R -P "
+            "<output-dir>/coverage-ledger.json <store>/sweeps/daily-<YYYY-MM-DD>-run-<n>/coverage-ledger.json`",
+            text,
+        )
+        self.assertNotIn("&& cp <output-dir>", text, "no plain cp: it follows a planted link (round 11)")
+        self.assertIn(
+            "in this order: the output directory held to the seat's scratch root first, then the validation, then the"
+            " copy, then the row",
+            text,
+        )
+        self.assertIn(
+            "It runs both validators itself over the files at that physical path, `node"
+            " ~/.agents/skills/security-audit/validate-findings.cjs <output-dir>/findings.json && node"
+            " ~/.agents/skills/security-audit/validate-coverage-ledger.cjs <output-dir>/coverage-ledger.json`"
+            " (`<output-dir>` the physical path from here on), and copies nothing unless both exit 0 (validation before"
+            " the copy, so a refused run leaves nothing in the store)",
+            text,
+        )
+        self.assertIn(
+            "(`cp -R -P`, the form macOS and GNU cp share, copies a symbolic link as a link and never the file it"
+            " points at: the output directory is worker-controlled, so a plain `cp` could follow a planted link and"
+            " deposit coordinator-readable bytes from outside the directory into the store as a regular file;",
+            text,
+        )
+        self.assertIn("the writer then refuses a copy that is a link", text)
+        self.assertLess(
+            text.index("copies nothing unless both exit 0"), text.index("`test ! -e"), "the validation comes first"
+        )
+        # round 11 (verdict U597-2bebb5ae P2 at :25): the final head check reads `git rev-parse HEAD` with its exit
+        # status and compares the one line with the TASK's head; a grep count of generated metadata attests nothing
+        self.assertIn(
+            "`git -C ~/.local/state/omp-seats/<repository>/<seat> rev-parse HEAD` exits 0 and prints exactly `<head>`"
+            " (its exit status read and its one line compared whole with the TASK's `<head>`; no grep count:",
+            text,
+        )
+        self.assertNotIn("grep -c <head>", text, "the grep count is gone (round 11)")
+        self.assertNotIn("run-metadata.json` prints 1 or more", text)
+        # round 11: the GOAL names no server policy and no U613; the row stands for the day's sweep alone
+        for word in ("strict_required_status_checks_policy", "U613", "ruleset"):
+            self.assertNotIn(word, text, f"the template names no {word} (round 11)")
+        self.assertIn("a day without its sweep keeps the per-head rule for every head", text)
+        # round 7 (verdict U597-301eba2e P2 at :26 and P2 at ledger-row.py:435): the clean-checkout acceptance reads
+        # `git status --porcelain`'s exit status, so a failed read is a refusal to start and never a clean checkout;
+        # the recording step copies the coverage ledger beside the findings, since the writer runs both validators
+        porcelain = (
+            "`git -C ~/.local/state/omp-seats/<repository>/<seat> status --porcelain` exits 0 and prints nothing"
+        )
+        self.assertEqual(text.count(porcelain), 3, "SCOPE, step 1 and ACCEPTANCE 5 each read the exit status")
+        self.assertNotIn("status --porcelain` prints nothing", text, "no sentence accepts empty output alone")
+        self.assertIn("a failed read is a refusal to start, never a clean checkout", text)
+        self.assertIn("A failed read is never read as a clean checkout.", text)
+        self.assertIn("and so is a status read that exits non-zero, or prints anything", text)
+        self.assertIn("status=partial pr=none head=<head> note=preflight refused: git status exited <n>", text)
+        # round 8 (verdict U597-a28e4793 P2 at :14): the head read requires its exit status too, so a failed read is
+        # a refusal to start with a `status=partial` RESULT, never a full sweep of a head the seat never confirmed
+        head_read = (
+            "`git -C ~/.local/state/omp-seats/<repository>/<seat> log -1 --format=%H` exits 0 and prints `<head>`"
+        )
+        self.assertIn(head_read, text)
+        self.assertNotIn("log -1 --format=%H` prints `<head>`", text, "no sentence accepts the output alone")
+        self.assertIn("A head read that exits non-zero, or prints anything but `<head>`, is a refusal to start", text)
+        self.assertIn("status=partial pr=none head=<head> note=preflight refused: git log exited <n>", text)
+        self.assertIn("note=preflight refused: git log printed <sha>, not <head>", text)
+        self.assertIn("A failed head read is never read as the checkout at `<head>`.", text)
+        step_one = text[text.index("\n1. `mkdir -p") : text.index("\n2. Read")]
+        self.assertIn(head_read, step_one)
+        self.assertIn("status=partial", step_one)
+        # the recording step names the validators' pins and the task's day (round 8; round 9: the copies, the one
+        # manifest, the day before, the row's own fields)
+        self.assertIn(
+            "copied into a private directory of the writer and the copy hashed against its"
+            " `assets.security-audit-skill.validators_sha256` pin in `~/.agents/agent-config.yaml`, the one manifest the"
+            " writer reads for a daily row, before `node` runs the copies",
+            text,
+        )
+        self.assertIn("with the `report-schema.json` the first loads", text)
+        self.assertIn("whose UTC day, or the day before it, the task id `daily-<YYYY-MM-DD>` must name", text)
+        self.assertIn("the id is fixed at dispatch and a sweep that crosses midnight keeps it", text)
+        self.assertNotIn("--manifest", text, "the writer reads the deployed manifest alone (round 9)")
+        acceptance = text[text.index("\nACCEPTANCE\n") : text.index("\nVERIFY\n")]
+        self.assertIn(porcelain, acceptance)
+        self.assertIn(
+            "the writer copies the two files into a private directory of its own and hashes the copies, reads the"
+            " findings copy for the count (a JSON list of objects, else refused), then runs the installed skill's two"
+            " validators itself over those copies",
+            text,
+        )
+        self.assertIn(
+            "so the row's `validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex>"
+            " <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>` fields are the writer's own result over the bytes it"
+            " copied, not this RESULT's word",
+            text,
+        )
+        self.assertNotIn("validators sha256 <8 hex> <8 hex>`", text, "the round-9 two-digest field is gone (round 10)")
+        self.assertNotIn("`validators pass`", text, "the round-6 word is gone from the template (round 9)")
+        self.assertIn(
+            "`~/.local/bin/common/ledger-row.py <store> daily --head <head> --seat <seat> --run <n> --task "
+            "daily-<YYYY-MM-DD> --findings sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json --swept-at <ts>`",
+            text,
+        )
+        self.assertIn("the RESULT message's bus timestamp", text)
+        self.assertNotIn("--count", text, "the writer reads the count from the findings file (round 6)")
+        self.assertNotIn("sweeps/daily-<YYYY-MM-DD>/findings.json", text, "the destination is keyed by the run")
+        self.assertNotIn("` and runs", text.split("`test ! -e")[0][-50:], "the guard comes before the copy")
+        self.assertIn("`daily-sweeps.tsv`", text)
+        self.assertIn("`ledger.py daily 86400`", text)
+        self.assertIn("validate-findings.cjs", text)
+        self.assertIn("validate-coverage-ledger.cjs", text)
+        self.assertNotIn("U605", text, "a template, not one unit's brief")
+        self.assertNotIn("/Users/", text)
+        # filled in as the coordinator fills it, the brief passes brief-check.py, the gate every TASK's brief passes
+        filled = (
+            text.replace("<head>", "a" * 40)
+            .replace("<run>", "run-170")
+            .replace("<prev>", "run-164")
+            .replace("daily-<YYYY-MM-DD>", "daily-2026-11-19")
+            .replace("<seat>", "sweep-3")
+            .replace("<repository>", "dotfiles")
+        )
+        self.assertNotIn("<YYYY", filled)
+        with tempfile.TemporaryDirectory() as temp:
+            brief = Path(temp) / "briefs/daily-2026-11-19.md"
+            brief.parent.mkdir()
+            brief.write_text(filled)
+            run = subprocess.run(
+                [sys.executable, "-I", str(ROOT / "scripts/orchestrator/brief-check.py"), str(brief)],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=60,
+            )
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "", ""))
+
+    def test_the_template_s_partial_result_sentence_names_the_head_read_failure(self):
+        """U597 round 9 (verdict U597-c37800e3 P3 at daily-sweep-brief.md:14): the template is prose the seat follows,
+        so its failure path is tested by its text. Step 1's sentence makes a head read that exits non-zero, or prints
+        anything but `<head>`, a refusal to start whose RESULT is `status=partial` with a note naming the exit status
+        or the printed sha, and the same for the status read, with nothing of steps 2 to 5 run; the REPORT paragraph
+        writes no daily row and copies nothing for a `status=partial` RESULT and writes the row for
+        `status=ready_for_review` alone; the TIMEBOX path sends `status=partial` too; and the GOAL names the day's
+        sweep as what a head outside every class merges on, with no server policy and no U613 (round 11)."""
+        text = (TEMPLATES / "daily-sweep-brief.md").read_text()
+        step_one = text[text.index("\n1. `mkdir -p") : text.index("\n2. Read")]
+        self.assertIn(
+            "A head read that exits non-zero, or prints anything but `<head>`, is a refusal to start, and so is a status"
+            " read that exits non-zero, or prints anything: nothing of steps 2 to 5 runs, and the RESULT is `RESULT v1"
+            " task_id=daily-<YYYY-MM-DD> status=partial pr=none head=<head> note=preflight refused: git log exited <n>`",
+            step_one,
+        )
+        self.assertIn("note=preflight refused: git log printed <sha>, not <head>", step_one)
+        self.assertIn("status=partial pr=none head=<head> note=preflight refused: git status exited <n>", step_one)
+        self.assertIn("A failed head read is never read as the checkout at `<head>`.", step_one)
+        self.assertNotIn("status=ready_for_review", step_one, "a refused preflight never sends the full sweep's RESULT")
+        self.assertEqual(step_one.count("status=partial"), 3, "the head read's two failures and the status read's")
+        report = text[text.index("\nREPORT\n") : text.index("\nSTANDING\n")]
+        self.assertIn("A `status=partial` RESULT (the TIMEBOX path) gets no daily row and no copy", report)
+        self.assertIn("The coordinator writes the day's row only for a RESULT with `status=ready_for_review`", report)
+        timebox = text[text.index("\nTIMEBOX\n") : text.index("\nFORBIDDEN\n")]
+        self.assertIn("RESULT v1 task_id=daily-<YYYY-MM-DD> status=partial pr=none head=<head>", timebox)
+        self.assertIn(
+            "A partial sweep is no daily sweep of main's head: the coordinator writes no daily row for it", timebox
+        )
+        goal = text[text.index("\nGOAL\n") : text.index("\nSCOPE\n")]
+        self.assertIn(
+            "a head whose changed paths touch no lever, policy, credential handling or deployed executable merges on its"
+            " Codex audit, CI and the day's sweep of main, and `pr-merge.sh` reads the day's row from the store's"
+            " `daily-sweeps.tsv` before it skips such a head's own sweep row; a day without its sweep keeps the"
+            " per-head rule for every head",
+            goal,
+        )
+        for word in ("ruleset", "strict_required_status_checks_policy", "U613"):
+            self.assertNotIn(word, goal, f"the GOAL names no {word} (round 11)")
+
+    def test_the_recording_step_resolves_the_output_directory_under_the_seat_s_scratch_root_first(self):
+        """U597 round 12 (verdict U597-097d1615 P1 at daily-sweep-brief.md:44): the validators and the `cp -R -P` of the
+        recording step followed a symlinked ancestor in the worker-controlled output directory, so coordinator-readable
+        files outside the seat could be validated and copied into the store before the writer checked them. The REPORT
+        now resolves the directory physically first (`cd <dir> && pwd -P`, its exit read), requires the physical path
+        under a root resolved the same way, refuses any symlinked component below the root with a per-component
+        `test -L`, and validates and copies from the physical path; the order sentence names the hold before the
+        validation. Round 13 (verdict U597-30d381ab P1 at :44): round 12's root was the worker-writable
+        `security-audit/` directory, so a symlink planted at that root was resolved as the root and the checks started
+        below it; the root is now the seat's state directory the coordinator owns, `~/.local/state/omp-seats/
+        <repository>/.state/`, which the worker cannot write, every component from there down to the run directory is
+        tested with `test -L` (the seat directory, the `security-audit/` root and the run directory, then each deeper
+        component), the resolved run directory must be exactly the resolved state directory followed by
+        `/<seat>/security-audit/<run>`, and the template says why the root is included (a worker can plant a symlink
+        at the root of its writable tree). Finding 9 (P3): the bus timestamp (`+00:00`, as bus-history.sh prints
+        hcom's rows) is converted to the writer's `YYYY-MM-DDTHH:MM:SSZ` with the one-line python form the kit's
+        readers use, which the test runs over the fixtures' bus form."""
+        text = (TEMPLATES / "daily-sweep-brief.md").read_text()
+        report = text[text.index("\nREPORT\n") : text.index("\nSTANDING\n")]
+        self.assertIn(
+            "in this order: the output directory held to the seat's scratch root first, then the validation, then the"
+            " copy, then the row.",
+            report,
+        )
+        self.assertIn(
+            "It first resolves the worker's output directory physically, `cd <output-dir> && pwd -P` (its exit status"
+            " read: a directory that cannot be entered is a refusal of the run), and requires the physical path to lie"
+            " under the seat's state directory `~/.local/state/omp-seats/<repository>/.state/`, the directory the"
+            " coordinator owns and the worker cannot write (the seat's containment grants the worker its own"
+            " `.state/<seat>` and nothing above it), itself resolved with `cd ~/.local/state/omp-seats/<repository>/.state"
+            " && pwd -P` (its exit status read; the physical output directory must be exactly that directory followed by"
+            " `/<seat>/security-audit/<run>`, else the run is refused and nothing is validated or copied), and refuses"
+            " when any component of `<output-dir>` below that directory is a symbolic link: `test -L` on each component"
+            " in turn, `~/.local/state/omp-seats/<repository>/.state/<seat>` first, then"
+            " `~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit`, then"
+            " `~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit/<run>` and each deeper component after"
+            " it, every test false.",
+            report,
+        )
+        self.assertIn(
+            "The `security-audit/` root is included because a worker can plant a symlink at the root of its writable"
+            " tree: the worker writes everything under `.state/<seat>`, so a check that resolved `security-audit/` itself"
+            " as its root and tested the components below it alone started inside a path the worker could have replaced"
+            " with a link, and the resolved root then lay wherever the link pointed",
+            report,
+        )
+        self.assertNotIn(
+            "cd ~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit && pwd -P",
+            report,
+            "the worker-writable root is resolved no more (round 13)",
+        )
+        self.assertIn("the physical path is what the validators and the copy below read", report)
+        self.assertIn(
+            "It runs both validators itself over the files at that physical path, `node"
+            " ~/.agents/skills/security-audit/validate-findings.cjs <output-dir>/findings.json && node"
+            " ~/.agents/skills/security-audit/validate-coverage-ledger.cjs <output-dir>/coverage-ledger.json`"
+            " (`<output-dir>` the physical path from here on), and copies nothing unless both exit 0",
+            report,
+        )
+        self.assertLess(report.index("cd <output-dir> && pwd -P"), report.index("It runs both validators itself"))
+        self.assertLess(report.index("`test -L` on each component"), report.index("`test ! -e <store>/sweeps/"))
+        self.assertLess(
+            report.index("`~/.local/state/omp-seats/<repository>/.state/<seat>` first"),
+            report.index("`~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit`, then"),
+        )
+        self.assertLess(
+            report.index("`~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit`, then"),
+            report.index("`~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit/<run>` and each deeper"),
+        )
+        # the bus timestamp conversion, the one-line form, run over the bus fixtures' form
+        self.assertIn(
+            "with `<ts>` the RESULT message's bus timestamp converted to the writer's form `YYYY-MM-DDTHH:MM:SSZ`"
+            " (`bus-history.sh` prints hcom's `+00:00` form, `2026-11-19T01:05:00.123456+00:00`, which the writer"
+            " refuses; one line converts it: `python3 -I -c 'import datetime, sys;"
+            " print(datetime.datetime.fromisoformat(sys.argv[1]).astimezone(datetime.timezone.utc)"
+            ".strftime(\"%Y-%m-%dT%H:%M:%SZ\"))' '<bus ts>'`",
+            report,
+        )
+        command = re.search(r"one line converts it: `(python3 -I -c '[^`]*' )'<bus ts>'`", report).group(1)
+        program = re.search(r"python3 -I -c '(.*)' $", command).group(1)
+        for bus_ts, expected in (
+            ("2026-11-19T01:05:00.123456+00:00", "2026-11-19T01:05:00Z"),
+            ("2026-10-23T05:00:00+00:00", "2026-10-23T05:00:00Z"),
+            ("2026-11-19T10:05:00+09:00", "2026-11-19T01:05:00Z"),
+        ):
+            with self.subTest(bus_ts):
+                run = subprocess.run(
+                    [sys.executable, "-I", "-c", program, bus_ts],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=60,
+                )
+                self.assertEqual((run.returncode, run.stdout, run.stderr), (0, expected + "\n", ""))
 
 
 class RegimeInitTest(unittest.TestCase):

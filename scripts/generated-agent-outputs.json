@@ -415,6 +415,13 @@
       "executable": false
     },
     {
+      "source": "home/dot_local/bin/common/body-check.py",
+      "target": ".local/bin/common/body-check.py",
+      "kind": "file",
+      "executable": false,
+      "sha256": "ec8ccde229353fb48abc7c28130e995c034f5f85596be086c64428a0b24b4268"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_acp-broker",
       "target": ".local/bin/common/acp-broker",
       "kind": "file",
@@ -848,6 +855,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "audit-carry.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "body-check.py"
     },
     {
       "source": "home/dot_local/bin/common",

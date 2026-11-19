@@ -53,11 +53,12 @@ LEVERS = (
 # body of the settings writer, U353, U465d: the entry `router-settings-apply` is bash since U465d and reads PATH's tools
 # like every shell lever).
 PYTHON_LEVERS = ("brief-check.py", "router-settings-apply.py")
-# The pinned modules (regime-cutover U418, U597 round 8): files no seat runs by path, installed under their bare
+# The pinned modules (regime-cutover U418, U597 round 8, U619): files no seat runs by path, installed under their bare
 # names (mode 0644, no `executable_` prefix) and pinned like every lever; `ledger.py` is imported by ledger-row.py
-# from beside it, and both are run by pr-merge.sh from private copies it hashes against these pins first, so they
-# carry no self-check of their own and the pin is the whole hold.
-MODULES = ("ledger.py", "sweep-scope.py")
+# from beside it, both are run by pr-merge.sh from private copies it hashes against these pins first, and
+# `body-check.py` is run by the coordinator as `python3 -I -S` on the body file before `gh pr create` and `gh pr edit`,
+# so they carry no self-check of their own and the pin is the whole hold.
+MODULES = ("ledger.py", "sweep-scope.py", "body-check.py")
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 
 

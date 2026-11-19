@@ -1007,6 +1007,7 @@ claude:
       ledger-row.py: e78ff46f057ef7e7e748ca757dcf83506478722c78f94e22a93df57602c9fe08
       ledger.py: c9e13988b6dc1e5ce934964cacd48d538c542402cd9d0154fc713d21562e4431
       sweep-scope.py: 8c74ade57c6dfe1f977fa77735a30a2933deff449eeafbb5a4ed6044401839be
+      body-check.py: ec8ccde229353fb48abc7c28130e995c034f5f85596be086c64428a0b24b4268
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       acp-broker: 70d1e3cbe87fae92fc675399b2c0ba8688a7f7759adc4b6356f6e0b63b6f241a

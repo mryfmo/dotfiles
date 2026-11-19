@@ -16,14 +16,21 @@ CONTAINER_ENGINE ?= $(shell for engine in docker podman; do command -v "$$engine
 
 # The shell docker-image and docker-build-args start with, one logical line: the engine, the Dockerfile's git blob
 # id, the chezmoi release to build (the tag stays in a shell variable: fetched text never becomes Make or shell
-# source) and a reachable daemon. Each statement ends in `;`, so a recipe continues the same shell line after it.
+# source) and a reachable daemon. Each read checks its producer's exit status and tells a failed read from an empty
+# one (AGENTS.md, Audit; tests/unit/test_github_release.py injects the failures). Each statement ends in `;`, so a
+# recipe continues the same shell line after it.
 DOCKER_IMAGE_PREPARE = engine="$(CONTAINER_ENGINE)"; \
 	[ -n "$${engine}" ] || { echo "no container engine: install docker or podman (neither is on PATH)" >&2; exit 1; }; \
 	dockerfile_id="$$(git hash-object Dockerfile)" || { echo "git hash-object Dockerfile failed; the image's Dockerfile is unknown" >&2; exit 1; }; \
-	chezmoi_version="$$(bash -c 'source scripts/lib/github-release.sh && github_release_tag twpayne/chezmoi')"; \
+	chezmoi_version="$$(bash -c 'source scripts/lib/github-release.sh && github_release_tag twpayne/chezmoi')" || { echo "github_release_tag twpayne/chezmoi failed; the chezmoi release for the image is unknown" >&2; exit 1; }; \
 	chezmoi_version="$${chezmoi_version\#v}"; \
-	[ -n "$${chezmoi_version}" ] || { echo "could not resolve a twpayne/chezmoi release" >&2; exit 1; }; \
+	[ -n "$${chezmoi_version}" ] || { echo "github_release_tag twpayne/chezmoi printed no tag; the chezmoi release for the image is unknown" >&2; exit 1; }; \
 	"$${engine}" info > /dev/null 2>&1 || { echo "$${engine} is installed but not reachable: start its daemon or machine (Docker Desktop, colima, podman machine start)" >&2; exit 1; };
+# The two build arguments resolved on the host without a fetch, read only where an image is built or its arguments
+# printed (a reused image needs neither): the user the image runs as, and the ISO week (`YYYY-Www`) that keys the
+# image's apt layer (Dockerfile ARG APT_WEEK, U610), so a local build and the workflow's key the layer the same way.
+DOCKER_BUILD_IDENTITY = username="$$(whoami)" || { echo "whoami failed; the user the image runs as is unknown" >&2; exit 1; }; \
+	apt_week="$$(date -u +%G-W%V)" || { echo "date -u +%G-W%V failed; the apt layer's week is unknown" >&2; exit 1; };
 # The chezmoi archive for the engine's architecture, verified on the host, as chezmoi_sha256. A build has no gh, so
 # the archive's checksum and release attestation are checked here (scripts/lib/github-release.sh), and the Dockerfile
 # checks its download against the verified sha256; a failure ends the recipe before anything is built or printed.
@@ -42,29 +49,31 @@ DOCKER_CHEZMOI_VERIFY = case "$${engine\#\#*/}" in \
 
 .PHONY: docker-image
 # The chezmoi release setup.sh bootstraps, built into the image with the host-verified sha256 (DOCKER_IMAGE_PREPARE,
-# DOCKER_CHEZMOI_VERIFY). An existing image is reused only when this recipe built it from this Dockerfile: its
-# chezmoi.sha256 label marks a host-verified archive and its dotfiles.dockerfile label the Dockerfile's git blob id;
-# an image missing either, or built from another Dockerfile, is rebuilt.
+# DOCKER_BUILD_IDENTITY, DOCKER_CHEZMOI_VERIFY). An existing image is reused only when this recipe built it from this
+# Dockerfile: its chezmoi.sha256 label marks a host-verified archive and its dotfiles.dockerfile label the Dockerfile's
+# git blob id; an image missing either, or built from another Dockerfile, is rebuilt.
 docker-image:
 	@$(DOCKER_IMAGE_PREPARE) \
 	image_version="$$("$${engine}" inspect -f '{{ index .Config.Labels "chezmoi.version" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)"; \
 	image_sha256="$$("$${engine}" inspect -f '{{ index .Config.Labels "chezmoi.sha256" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)"; \
 	image_dockerfile="$$("$${engine}" inspect -f '{{ index .Config.Labels "dotfiles.dockerfile" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)"; \
 	if [ "$${image_version}" != "$${chezmoi_version}" ] || [ "$${#image_sha256}" -ne 64 ] || [ "$${image_dockerfile}" != "$${dockerfile_id}" ]; then \
+		$(DOCKER_BUILD_IDENTITY) \
 		$(DOCKER_CHEZMOI_VERIFY) \
-		"$${engine}" build -t $(DOCKER_IMAGE_NAME) . --build-arg USERNAME="$$(whoami)" --build-arg DOCKERFILE_ID="$${dockerfile_id}" --build-arg CHEZMOI_VERSION="$${chezmoi_version}" --build-arg CHEZMOI_SHA256="$${chezmoi_sha256}"; \
+		"$${engine}" build -t $(DOCKER_IMAGE_NAME) . --build-arg USERNAME="$${username}" --build-arg APT_WEEK="$${apt_week}" --build-arg DOCKERFILE_ID="$${dockerfile_id}" --build-arg CHEZMOI_VERSION="$${chezmoi_version}" --build-arg CHEZMOI_SHA256="$${chezmoi_sha256}"; \
 	fi
 
 .PHONY: docker-build-args
 # The build arguments of docker-image, one `NAME=value` line each, after the same checks and the same host-side
-# verification: the user the image runs as, the Dockerfile's git blob id, the chezmoi release and its verified
-# sha256. The apply-container job of .github/workflows/apply-check.yml appends them to GITHUB_OUTPUT and builds the
-# image with buildx against the Actions cache (U610); that image carries the labels docker-image reuses, so the
-# make apply-check after it builds nothing.
+# verification: the user the image runs as, the ISO week that keys the apt layer, the Dockerfile's git blob id, the
+# chezmoi release and its verified sha256. The apply-container job of .github/workflows/apply-check.yml appends them
+# to GITHUB_OUTPUT and builds the image with buildx against the Actions cache (U610); that image carries the labels
+# docker-image reuses, so the make apply-check after it builds nothing.
 docker-build-args:
 	@$(DOCKER_IMAGE_PREPARE) \
+	$(DOCKER_BUILD_IDENTITY) \
 	$(DOCKER_CHEZMOI_VERIFY) \
-	printf 'USERNAME=%s\nDOCKERFILE_ID=%s\nCHEZMOI_VERSION=%s\nCHEZMOI_SHA256=%s\n' "$$(whoami)" "$${dockerfile_id}" "$${chezmoi_version}" "$${chezmoi_sha256}"
+	printf 'USERNAME=%s\nAPT_WEEK=%s\nDOCKERFILE_ID=%s\nCHEZMOI_VERSION=%s\nCHEZMOI_SHA256=%s\n' "$${username}" "$${apt_week}" "$${dockerfile_id}" "$${chezmoi_version}" "$${chezmoi_sha256}"
 
 .PHONY: docker
 docker: docker-image

@@ -34,7 +34,12 @@ APT_BOUNDS = "-o Acquire::http::Timeout=15 -o Acquire::Retries=3"
 DOCKER_OWNER_ID = 5429470
 BUILDX_ACTIONS = {"docker/setup-buildx-action": 288485773, "docker/build-push-action": 241092383}
 # The build arguments make docker-image passes, in its order; make docker-build-args prints each as `NAME=value`.
-BUILD_ARGS = ("USERNAME", "DOCKERFILE_ID", "CHEZMOI_VERSION", "CHEZMOI_SHA256")
+# APT_WEEK (round 3, verdict of 1c416678 P2): the ISO week of the build, `date -u +%G-W%V`, the apt layer's cache key.
+BUILD_ARGS = ("USERNAME", "APT_WEEK", "DOCKERFILE_ID", "CHEZMOI_VERSION", "CHEZMOI_SHA256")
+# make docker-build-args prints the five in that order; the two resolved on the host without a fetch come first.
+PRINTED = "printf 'USERNAME=%s\\nAPT_WEEK=%s\\nDOCKERFILE_ID=%s\\nCHEZMOI_VERSION=%s\\nCHEZMOI_SHA256=%s\\n'"
+# The ISO week as the Makefile reads it, checked (a `$(…)` read without its status is a defect, AGENTS.md Audit).
+WEEK_READ = 'apt_week="$(date -u +%G-W%V)" || {'
 # The three required status contexts of the main ruleset (read 2026-11-19 through the rulesets API; the constant
 # scripts/orchestrator/pr-merge.sh REQUIRED_CHECKS holds the same names), kept by the aggregator jobs of test.yaml
 # since U622 split each pair into shard rows.
@@ -956,9 +961,9 @@ class ApplyCheckImageCacheTest(unittest.TestCase):
         self.assertEqual(["GITHUB_TOKEN"], list(resolve["env"]))
         self.assertNotIn("env", build)
         text = MAKEFILE.read_text()
-        # The target prints exactly the names the workflow reads, and make docker-image passes the same four.
-        printed = "printf 'USERNAME=%s\\nDOCKERFILE_ID=%s\\nCHEZMOI_VERSION=%s\\nCHEZMOI_SHA256=%s\\n'"
-        self.assertIn(printed, text)
+        # The target prints exactly the names the workflow reads, and make docker-image passes the same five.
+        self.assertIn(PRINTED, text)
+        self.assertIn(f'{PRINTED} "$${{username}}" "$${{apt_week}}"', text)
         (build_line,) = [line for line in text.splitlines() if '" build -t $(DOCKER_IMAGE_NAME)' in line]
         self.assertEqual(list(BUILD_ARGS), re.findall(r"--build-arg ([A-Z0-9_]+)=", build_line))
 
@@ -978,7 +983,8 @@ class ApplyCheckImageCacheTest(unittest.TestCase):
         for needle in (
             "github_release_tag twpayne/chezmoi",
             "github_release_verified_sha256 twpayne/chezmoi",
-            "printf 'USERNAME=%s\\nDOCKERFILE_ID=%s\\nCHEZMOI_VERSION=%s\\nCHEZMOI_SHA256=%s\\n' \"$(whoami)\"",
+            WEEK_READ,
+            f'{PRINTED} "${{username}}" "${{apt_week}}"',
         ):
             self.assertIn(needle, shell)
         self.assertNotIn(" build ", shell)
@@ -1021,6 +1027,54 @@ class ApplyCheckImageCacheTest(unittest.TestCase):
         calls = re.findall(r"\bapt-get\b[^&|;]*", before.replace("\\\n", " "))
         self.assertEqual(2, len(calls))
         self.assertFalse([call for call in calls if call.split()[1:5] == APT_BOUNDS.split()])
+
+    def dockerfile_instructions(self) -> tuple[list[str], int]:
+        """The Dockerfile's instructions on their logical lines (continuations joined as the parser joins them,
+        comments and blank lines left out), and the index of the one RUN that calls apt-get."""
+        logical = DOCKERFILE.read_text().replace("\\\n", " ")
+        instructions = [line.strip() for line in logical.splitlines() if line.strip() and not line.startswith("#")]
+        (index,) = [i for i, line in enumerate(instructions) if re.search(r"\bapt-get\b", line)]
+        return instructions, index
+
+    def test_the_apt_step_ends_under_a_wall_clock_bound_inside_the_jobs_timeout(self) -> None:
+        # Round 3 (verdict of 1c416678, P1 at Dockerfile:15): Acquire::http::Timeout bounds the silence between bytes,
+        # not the transfer, so a mirror trickling 105 MB at under 100 KB/s ran the layer past the job's 15 minutes.
+        # coreutils timeout (in ubuntu:24.04) bounds the whole step, under the job's timeout-minutes; both numbers
+        # are read from their files, none copied here.
+        instructions, index = self.dockerfile_instructions()
+        match = re.fullmatch(r"RUN timeout (\d+) sh -c '([^']*)'", instructions[index])
+        self.assertIsNotNone(match, instructions[index])
+        seconds, command = int(match.group(1)), match.group(2)
+        self.assertLess(seconds, self.job["timeout-minutes"] * 60)
+        # Both calls, the update and the install, run inside the bounded command, nothing after it on the line.
+        self.assertEqual(2, len(re.findall(r"\bapt-get\b", command)))
+        self.assertRegex(command, r"\Aapt-get .* update &&\s+apt-get .* install -y --no-install-recommends\s.*\S\Z")
+
+    def test_the_scan_sees_the_apt_step_without_the_wall_clock_bound(self) -> None:
+        # The instrument shows the failure it detects: the Dockerfile of round 1 (1c416678), apt's idle bounds alone.
+        instructions, index = self.dockerfile_instructions()
+        before = re.sub(r"\ARUN timeout \d+ sh -c '([^']*)'\Z", r"RUN \1", instructions[index])
+        self.assertTrue(before.startswith("RUN apt-get "), before)
+        self.assertIsNone(re.fullmatch(r"RUN timeout (\d+) sh -c '([^']*)'", before))
+
+    def test_the_apt_layer_is_keyed_by_the_iso_week(self) -> None:
+        # Round 3 (verdict of 1c416678, P2 at apply-check.yml:64): a cached apt layer kept its build day's packages for
+        # as long as the Dockerfile was unchanged. ARG APT_WEEK right before the apt RUN puts the week into the
+        # layer's cache key (every RUN after an ARG uses it implicitly); the workflow passes it from make
+        # docker-build-args, and make docker-image passes the same value, so a local build keys the same way.
+        instructions, index = self.dockerfile_instructions()
+        self.assertEqual("ARG APT_WEEK", instructions[index - 1])
+        self.assertEqual([index - 1], [i for i, line in enumerate(instructions) if "APT_WEEK" in line])
+        build = self.step_using("docker/build-push-action")["with"]
+        self.assertIn("APT_WEEK=${{ steps.image.outputs.APT_WEEK }}", build["build-args"].splitlines())
+        text = MAKEFILE.read_text()
+        self.assertIn(WEEK_READ.replace("$", "$$"), text)
+        (build_line,) = [line for line in text.splitlines() if '" build -t $(DOCKER_IMAGE_NAME)' in line]
+        self.assertIn('--build-arg APT_WEEK="$${apt_week}"', build_line)
+        self.assertIn("APT_WEEK=%s\\n", text)
+        # The format is the ISO week: the ISO year, a W, the two-digit week (2026-W47 on the day of this round).
+        week = subprocess.run(["date", "-u", "+%G-W%V"], text=True, capture_output=True, check=True).stdout.strip()
+        self.assertRegex(week, r"\A\d{4}-W(0[1-9]|[1-4]\d|5[0-3])\Z")
 
 
 if __name__ == "__main__":

@@ -23,7 +23,9 @@ jobs:
   apply-container:
     runs-on: ubuntu-24.04
     # The image build installs build-essential: about five minutes cold, and the bound is three times that. With the
-    # apt layer restored from the Actions cache the build takes well under a minute (U610).
+    # apt layer restored from the Actions cache the build takes well under a minute (U610). The Dockerfile's apt step
+    # ends under its own coreutils timeout, inside this bound, so a trickling mirror fails the layer and this job
+    # reports the failure instead of being cancelled.
     timeout-minutes: 15
 
     steps:
@@ -34,10 +36,11 @@ jobs:
       # U610 (runs 44475635634 and 44497689181: the job cancelled twice at its timeout inside the image's apt step, at
       # under 100 KB/s from archive.ubuntu.com). The image is built with buildx and its layers are kept in the Actions
       # cache (type=gha; GitHub Docs, dependency caching: 10 GB per repository, an entry unused for 7 days evicted),
-      # so the apt layer is restored while the Dockerfile up to it is unchanged. The build arguments come from
-      # make docker-build-args, the host-side resolution and verification make docker-image does; the image carries
-      # the labels make docker-image reuses, so make apply-check builds nothing itself. Locally, without the cache,
-      # make apply-check builds the image as before.
+      # so the apt layer is restored while the Dockerfile up to it and APT_WEEK, the ISO week of the build, are
+      # unchanged: a cached apt layer is at most a week older than a cold build's packages. The build arguments come
+      # from make docker-build-args, the host-side resolution and verification make docker-image does; the image
+      # carries the labels make docker-image reuses, so make apply-check builds nothing itself. Locally, without the
+      # cache, make apply-check builds the image as before, keyed by the same week.
       - name: Resolve the image's build arguments
         id: image
         env:
@@ -58,6 +61,7 @@ jobs:
           provenance: false
           build-args: |
             USERNAME=${{ steps.image.outputs.USERNAME }}
+            APT_WEEK=${{ steps.image.outputs.APT_WEEK }}
             DOCKERFILE_ID=${{ steps.image.outputs.DOCKERFILE_ID }}
             CHEZMOI_VERSION=${{ steps.image.outputs.CHEZMOI_VERSION }}
             CHEZMOI_SHA256=${{ steps.image.outputs.CHEZMOI_SHA256 }}

@@ -201,7 +201,12 @@ class ApplyCheckWorkflowTest(unittest.TestCase):
         for key in ("if:", "- if:", "needs:", "continue-on-error:"):
             with self.subTest(key=key):
                 self.assertFalse([line for line in lines if line.startswith(key)])
-        self.assertEqual(["run: make apply-check"], [line for line in lines if line.startswith("run:")])
+        # U610: the build arguments of the cached image build come from make first (test_ci_workflows.py holds the
+        # build steps); make apply-check is the last command, unconditional.
+        self.assertEqual(
+            ['run: make docker-build-args >> "${GITHUB_OUTPUT}"', "run: make apply-check"],
+            [line for line in lines if line.startswith("run:")],
+        )
 
 
 if __name__ == "__main__":

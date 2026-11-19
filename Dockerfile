@@ -8,9 +8,11 @@ ENV TZ=Asia/Tokyo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # python3 runs the chezmoi modify scripts of the Codex and Claude configs and scripts/check-agent-runtime.py
-# (make apply-check).
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+# (make apply-check). The apt calls carry the bounds the runner's own apt gets (scripts/ci/drop-azure-apt-mirror.py,
+# tests/unit/test_apt_mirror.py): a connection or read silent for 15 s is given up and retried three times, so a
+# stalled archive.ubuntu.com fails this layer fast instead of holding the build to the job's timeout (U610).
+RUN apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update && \
+    apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y --no-install-recommends \
     curl \
     git \
     sudo \

@@ -8,6 +8,7 @@ import datetime
 import hashlib
 import json
 import os
+import pwd
 import shutil
 import subprocess
 import tarfile
@@ -541,6 +542,83 @@ class GithubReleaseTest(unittest.TestCase):
                     self.assertIn("failed its checksum or release attestation; nothing was built", result.stderr)
         # The downloads lived in a private directory that is gone afterwards.
         self.assertEqual([], list(self.temp_dir.glob("github-release.*")))
+
+    def test_make_docker_build_args_prints_the_verified_arguments_and_builds_nothing(self) -> None:
+        # U610: apply-check.yml appends these lines to GITHUB_OUTPUT for its cached buildx build. The target runs the
+        # same host-side verification as make docker; a refused attestation prints nothing and fails.
+        archive = "chezmoi_2.73.0_linux_amd64.tar.gz"
+        payload = b"chezmoi archive\n"
+        digest = hashlib.sha256(payload).hexdigest()
+        page = self.temp_dir / "releases.json"
+        page.write_text(json.dumps([release("v2.73.0", hours_ago(100))], indent=2) + "\n")
+        (self.temp_dir / "payload").write_bytes(payload)
+        self.executable(
+            "curl",
+            f"""
+            printf 'curl %s\\n' "$*" >> "{self.log}"
+            out=""; url=""
+            while [ "$#" -gt 0 ]; do case "$1" in -o) out="$2"; shift ;; https://*) url="$1" ;; esac; shift; done
+            case "$url" in
+                https://api.github.com/*) cat "{page}" ;;
+                */{archive}) cp "{self.temp_dir}/payload" "$out" ;;
+                */chezmoi_2.73.0_checksums.txt) printf '%s  {archive}\\n' "{digest}" > "$out" ;;
+                *) exit 22 ;;
+            esac
+            """,
+        )
+        self.executable(
+            "gh",
+            f"""
+            [ "$1" = --version ] && {{ printf 'gh version 2.93.0 (2026-10-01)\\n'; exit 0; }}
+            [ "$*" = "auth status --hostname github.com" ] && exit 0
+            if [ "$1 $2" = "release verify-asset" ]; then
+                printf 'Calculated digest for %s: sha256:%s\\n' "$(basename "$4")" "{digest}"
+                [ "${{GH_VERIFY:-0}}" -ne 0 ] || printf '✓ Verification succeeded! %s is present in release %s\\n' "$(basename "$4")" "$3"
+                exit "${{GH_VERIFY:-0}}"
+            fi
+            exit 1
+            """,
+        )
+        self.executable(
+            "docker",
+            f"""
+            printf 'docker %s\\n' "$*" >> "{self.log}"
+            case "$1" in version) printf 'amd64\\n' ;; esac
+            exit 0
+            """,
+        )
+        dockerfile_id = subprocess.run(
+            ["git", "hash-object", "Dockerfile"], cwd=ROOT, text=True, capture_output=True, check=True
+        ).stdout.strip()
+        self.link("mktemp", "rm", "cp", "sha256sum", "shasum", "basename", "whoami", "git", "bash", "make")
+        env = {"PATH": f"{self.bin_dir}:/usr/bin:/bin", "HOME": str(self.temp_dir), "TMPDIR": str(self.temp_dir)}
+        for case, extra, verified in (("verified", {}, True), ("attestation refused", {"GH_VERIFY": "1"}, False)):
+            with self.subTest(case=case):
+                self.log.unlink(missing_ok=True)
+
+                result = subprocess.run(
+                    ["make", "docker-build-args"],
+                    cwd=ROOT,
+                    env=env | extra,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+
+                log = self.log.read_text()
+                self.assertNotIn("docker build", log)
+                self.assertNotIn("docker inspect", log)
+                if verified:
+                    self.assertEqual(0, result.returncode, result.stderr)
+                    self.assertEqual(
+                        f"USERNAME={pwd.getpwuid(os.getuid()).pw_name}\nDOCKERFILE_ID={dockerfile_id}\n"
+                        f"CHEZMOI_VERSION=2.73.0\nCHEZMOI_SHA256={digest}\n",
+                        result.stdout,
+                    )
+                else:
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertEqual("", result.stdout)
+                    self.assertIn("failed its checksum or release attestation; nothing was built", result.stderr)
 
     def mise_bootstrap(
         self,

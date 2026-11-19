@@ -22,7 +22,8 @@ permissions:
 jobs:
   apply-container:
     runs-on: ubuntu-24.04
-    # The image build installs build-essential; three times a normal run of about five minutes.
+    # The image build installs build-essential: about five minutes cold, and the bound is three times that. With the
+    # apt layer restored from the Actions cache the build takes well under a minute (U610).
     timeout-minutes: 15
 
     steps:
@@ -30,9 +31,42 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run make apply-check
+      # U610 (runs 44475635634 and 44497689181: the job cancelled twice at its timeout inside the image's apt step, at
+      # under 100 KB/s from archive.ubuntu.com). The image is built with buildx and its layers are kept in the Actions
+      # cache (type=gha; GitHub Docs, dependency caching: 10 GB per repository, an entry unused for 7 days evicted),
+      # so the apt layer is restored while the Dockerfile up to it is unchanged. The build arguments come from
+      # make docker-build-args, the host-side resolution and verification make docker-image does; the image carries
+      # the labels make docker-image reuses, so make apply-check builds nothing itself. Locally, without the cache,
+      # make apply-check builds the image as before.
+      - name: Resolve the image's build arguments
+        id: image
         env:
           # For the host side of the image build only: github-release.sh resolves the chezmoi release, and gh
-          # verifies its attestation. make apply-check passes no variable of this step into the container.
+          # verifies its attestation. No variable of this step reaches the container.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make docker-build-args >> "${GITHUB_OUTPUT}"
+
+      - uses: docker/setup-buildx-action@v4.4.1
+
+      - name: Build the image against the Actions cache
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: Dockerfile
+          load: true
+          tags: dotfiles
+          provenance: false
+          build-args: |
+            USERNAME=${{ steps.image.outputs.USERNAME }}
+            DOCKERFILE_ID=${{ steps.image.outputs.DOCKERFILE_ID }}
+            CHEZMOI_VERSION=${{ steps.image.outputs.CHEZMOI_VERSION }}
+            CHEZMOI_SHA256=${{ steps.image.outputs.CHEZMOI_SHA256 }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run make apply-check
+        env:
+          # make docker-image resolves the chezmoi release again to compare it with the image's label. make
+          # apply-check passes no variable of this step into the container.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: make apply-check

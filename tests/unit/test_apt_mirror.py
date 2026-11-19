@@ -5049,6 +5049,36 @@ class ReaderCensusTest(unittest.TestCase):
                     self.assertIsNotNone(error)
 
 
+class DockerfileAptBoundTest(unittest.TestCase):
+    """U610: the image `make apply-check` builds (Dockerfile) runs apt against its own sources, never the runner's
+    mirror list, so the drop and the GNU timeout of the form do not apply there; apt's own bounds of the form do.
+    Every apt-get of the Dockerfile carries the form's two Acquire options, in the form's order, before its verb."""
+
+    OPTIONS = FORM_WORDS[5:]  # -o Acquire::http::Timeout=15 -o Acquire::Retries=3
+
+    @staticmethod
+    def calls(text: str) -> list[list[str]]:
+        """Each apt-get call of a Dockerfile as its words, from `apt-get` to the next operator, on the logical line."""
+        return [call.split() for call in re.findall(r"\bapt-get\b[^&|;]*", text.replace("\\\n", " "))]
+
+    def test_every_apt_get_of_the_dockerfile_carries_the_forms_acquire_options(self) -> None:
+        calls = self.calls((ROOT / "Dockerfile").read_text())
+        self.assertEqual(2, len(calls), calls)
+        for words in calls:
+            with self.subTest(call=" ".join(words[:6])):
+                self.assertEqual(["apt-get", *self.OPTIONS], words[:5])
+                self.assertIn(words[5], VERBS)
+                reopened = [word for word in words[6:] if word.lower().startswith(tuple(APT_REOPEN_PREFIXES))]
+                self.assertEqual([], reopened)
+
+    def test_the_scan_sees_the_dockerfile_before_the_bounds(self) -> None:
+        calls = self.calls("RUN apt-get update && \\\n    apt-get install -y --no-install-recommends \\\n    curl\n")
+        self.assertEqual(
+            [["apt-get", "update"], ["apt-get", "install", "-y", "--no-install-recommends", "curl"]], calls
+        )
+        self.assertFalse([words for words in calls if words[1:5] == list(self.OPTIONS)])
+
+
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--script"]:  # the walker's own entry, as the other walkers over shfmt's JSON have one
         sys.exit(tree_main(sys.argv[1:]))

@@ -13,7 +13,8 @@ name, re-reads the ledger plus the new line through `ledger.parse_ledger` before
 the one line. It states no grammar of its own: `ledger.py` beside it is the one reader, imported from that path alone
 (as `audit-carry.py` imports it), and a row the reader would refuse is never written.
 
-`ledger-row.py <store> <kind> ...`, one subcommand per kind; `ts` is now in UTC under the reader's `TS_FORMAT`:
+`ledger-row.py <store> <kind> ...`, one subcommand per kind; `ts` is now in UTC under the reader's `TS_FORMAT` (the
+`daily` kind's is its `--swept-at`, the sweep's own time; round 6):
 - `merged --pr <pr> --head <sha> --unit <unit> --receipt <line> [--note <text>]`: verdict `-`, verifier exactly
   `pr-merge.sh`, evidence the `pr-merge.sh` receipt (`merged pr=<pr> head=<sha8 or sha40> commit=<40 hex>`, whose pr
   and head must equal the arguments) then `; <note>`.
@@ -24,10 +25,13 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
 - `sweep --head --unit --seat <seat> --run <n> --task <U<n>> --findings sweeps/<dir>/findings.json --count <n>
   [--pr <pr>]`: pr cell `-`, verdict `sweep`, verifier `security-audit-skill <pin8> (full audit mode on the srt worker
   seat <seat>, run-<n>; TASK <U<n>>)` with `<pin8>` the first 8 characters of the manifest's
-  `assets.security-audit-skill.pin` (`~/.agents/agent-config.yaml` when it exists, else the checkout's
-  `home/dot_agents/agent-config.yaml` two levels above this file, read as text by `pr-merge.sh`'s `sweep_pin_probe`
-  reads it: no PyYAML under `-S`), evidence `<findings>; pr <pr or none>; <count> findings; validate-findings.cjs PASS;
-  validate-coverage-ledger.cjs PASS`; the findings path must be a regular file under the store.
+  `assets.security-audit-skill.pin` (`~/.agents/agent-config.yaml`, the deployed manifest, else for this kind alone the
+  checkout's `home/dot_agents/agent-config.yaml` two directories above this file when the deployed one is missing:
+  U597 round 11, the base's fall-through restored, since the row carries the skill's pin word alone and the merge lever
+  compares it with its own manifest; read as text by `pr-merge.sh`'s `sweep_pin_probe` reads it: no PyYAML under
+  `-S`), evidence `<findings>; pr <pr or
+  none>; <count> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS`; the findings path must be a
+  regular file under the store.
 - `audit --pr --head --unit --verdict-file verdicts/<unit>-<sha8>.md --verifier <text> [--class <word>]`: the verdict
   word is the file's last line (`Verdict: correct` or `Verdict: incorrect`), never an argument; the file is named by
   the row's unit and the head's first 8, is a regular file under the store and is scored (one `Filed: <n>` line,
@@ -38,23 +42,92 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
 - `receipt --pr <pr> --head <sha or -> --unit --lever <name> --receipt <line> [--note <text>]`: verdict `-`, verifier
   the lever name alone, one of `pr-update-branch.sh`, `pr-close.sh`, `records-sync.sh`; evidence the receipt then `;
   <note>`.
+- `daily --head <40 hex> --seat <seat> --run <n> --task daily-<YYYY-MM-DD> --findings
+  sweeps/<dir>/findings.json --swept-at <YYYY-MM-DDTHH:MM:SSZ>` (regime-cutover U597 round 4): not a ledger row but
+  the one row of the store's `daily-sweeps.tsv` (header `ts head_sha verifier evidence`, the file `ledger.py daily`
+  reads and `pr-merge.sh` requires within 24 hours before a head outside every sweep class skips its own sweep row),
+  ts the sweep's own time (round 6, verdicts/U597-10d46fe0.md: `--swept-at`, the RESULT message's bus timestamp the
+  coordinator passes, under the reader's strict form, refused when later than the clock at the write (round 7: no
+  future slack in the writer; the reader's 60-second allowance is for rows written by another host's clock) or more
+  than 24 hours before it, since such a row would be born stale; round 5 dated the row by the clock, so a delayed
+  recording granted a fresh window), head main's head the sweep ran at, verifier as the `sweep` kind composes it
+  (`security-audit-skill <pin8> (full audit mode on the srt worker seat <seat>, run-<n>; TASK <task>)`), evidence the
+  daily row's own seven fields in this order (round 9, the grammar `ledger.parse_daily` requires field by field, so a
+  row of a unit's sweep shape is a malformed store, never a daily row; round 10 added the schema's digest and the
+  artifacts field): `<findings>; <count> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS;
+  validators sha256 <8 hex> <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>`, with the findings path
+  a regular file of this user under the store and the `coverage-ledger.json` beside it the same, both of which the
+  writer opens itself (round 6: `O_NOFOLLOW`, `fstat` a regular file of this uid; round 10, verdict U597-67e1eea8 P2
+  at :574: round 9 counted the findings from one read, then had node reopen the two files by pathname and recorded no
+  digest of them, so a concurrent replacement left the count and the PASS words attesting other bytes than the
+  evidence named) and copies into the same private directory as the validators, hashes each copy (sha256), counts the
+  findings from the copy (strict UTF-8, JSON, a list whose every element is an object, else a refusal naming the
+  file; `<count>` is that list's length and `--count` is gone from this kind) and runs the validators over the
+  copies, so the count, the PASS words and `artifacts sha256 <8 hex> <8 hex>` (the first 8 hex of the findings copy's
+  and the coverage ledger copy's digests, in that order) attest one set of bytes; the two PASS words earned (round 7)
+  by running the installed skill's two validators itself, `validate-findings.cjs` over the findings copy and
+  `validate-coverage-ledger.cjs` over the coverage ledger copy: since round 9 each validator and the
+  `report-schema.json` that `validate-findings.cjs` loads from its own directory is read from the manifest's
+  `assets.security-audit-skill` install `~/.agents/skills/security-audit` alone (round 8: `--skill-dir` is gone; each
+  file is reached from `HOME` through real directories, no component a symlink, opened with no link followed, a
+  regular file of this user), copied into a private directory the writer makes under TMPDIR (`tempfile.mkdtemp`,
+  mode 0700, removed on every exit), the copy hashed against the manifest's
+  `assets.security-audit-skill.validators_sha256.<file>` pin (three pins: the two validators and the schema), the
+  validator copies scanned for a sibling they load (`require("./…")`, `path.join(__dirname, "…")`) that has no pin,
+  and `node` run on the copies, so what is hashed is what runs and a concurrent skill update changes nothing the
+  row records (round 8 ran node on the installed path after the hash, and loaded the schema from the installation
+  directory unhashed); a differing digest, a missing or doubled pin, a missing file, an unpinned sibling, a copy that
+  cannot be made or hashed is a refusal naming the file and, for a digest, both digests, with nothing written; each
+  validator runs from `/` with the environment reduced to PATH, stdin closed and a timeout, its status read, and no
+  `node` on PATH, a missing coverage ledger or a validator exiting non-zero is a refusal naming the validator's first
+  stderr line with nothing written; `validators sha256 <8 hex> <8 hex> <8 hex>` the first 8 hex of the three pins the
+  copies were held to, in the order validate-findings.cjs, validate-coverage-ledger.cjs, report-schema.json (round 9:
+  `pr-merge.sh` compares them with the manifest's pins, so a row whose validators were checked against other digests
+  admits no exemption; round 10, verdict U597-67e1eea8 P2 at :575: the schema's pin too, since a row validated under
+  another schema still authorised an exemption while the validator scripts were unchanged); `recorded <ts>` the
+  clock at the write). The task is the coordinator's daily dispatch id alone,
+  `daily-<YYYY-MM-DD>` (round 8, verdict U597-a28e4793 P2 at :468: a unit id was accepted, so an ordinary unit's sweep
+  could stand as the day's full sweep of main's head; a unit's sweep is a `sweep` row of the ledger, never a daily
+  row), whose day is the UTC day `--swept-at` falls on or the day before it (round 9, verdict U597-c37800e3 P2 at
+  :543: the id is fixed at dispatch, and a full sweep that crosses midnight finishes under the id it was dispatched
+  with; any other day is refused naming both days). The manifest is `~/.agents/agent-config.yaml` alone for this kind
+  (round 9: `--manifest <path>` is gone from the interface, since a caller-selected manifest let the row carry the
+  expected skill pin while its validators were checked against other digests, and round 11 kept the deployed-only rule
+  here while restoring the `sweep` kind's fall-through to the checkout's copy: a daily row attests validator pins,
+  which a checkout-selected manifest would choose, where a sweep row carries the skill's pin word alone; the tests set
+  `HOME` to a scratch home holding a manifest). Round 5 (verdicts/U597-1b3c4b1d.md): the
+  day's first file, the header and the first row, is written whole through a temporary file of the store directory
+  and `os.replace` under the ledger's lock (so two first writers serialise and the second appends), and appears whole
+  or not at all, where round 4's `O_CREAT | O_EXCL` header write left a malformed file after a short write that no
+  retry repaired; a later row is read, checked through `ledger.parse_daily` and appended as one write under the daily
+  file's own lock as the ledger is; a file whose header is malformed is refused naming the line, never repaired; and a
+  `--findings` path an existing daily row already names (the evidence's first `;`-separated field) or a `(seat, run)`
+  one already carries (the verifier's `seat <seat>, run-<n>;` fields; round 6, since the same run's findings copied
+  to another path refreshed the window) is refused naming that row's ts and line, so a finished run is not
+  re-recorded.
 
 Two refusals cross rows, before any write (standing order 21): a `pushed` or `receipt` row whose head is 40 hex while
 `ledger.already_audited` names an audit row of the same pull request at that head is refused naming that row's ts (the
 `merged` kind is exempt: the merge is the last row of a head); and any cell holding a tab, a newline or a carriage
-return is refused naming the cell, the store argument included. A store whose ledger does not parse is exit 2 naming
+return, or any other control character (round 7, with the reader), is refused naming the cell, the store argument
+included. A store whose ledger does not parse is exit 2 naming
 the line. Exit 0 prints one line, `appended <ts> line <n>`; every refusal is exit 2 with one stderr line; a write that
 fails is exit 1 naming the file. Round 2 (U222b, verdicts/U222-9187830e.md): every file read under the store
 (`ledger.tsv`, the verdict file, the findings file) follows one path rule, its `os.path.realpath` under the realpath of
 the store, each component `os.lstat`ed and no link, a regular file at the end; the findings directory name is
-`[A-Za-z0-9._-]` alone (the sweep reader splits the evidence on `;`); the deployed manifest is opened, ENOENT alone
-falling through to the checkout's and any other failure a refusal naming the file; the carried separator class is the
+`[A-Za-z0-9._-]` alone (the sweep reader splits the evidence on `;`); the manifest is opened, and any failure to open
+or read it is a refusal naming the file (round 9: no `--manifest`; round 11: the `sweep` kind falls through to the
+checkout's copy when the deployed one is missing and the `daily` kind never does, `manifest_lines`); the carried
+separator class is the
 gate's literal set under `re.ASCII`; and the import of `ledger.py` writes no bytecode (`sys.dont_write_bytecode`).
 Round 3 (U222c, verdicts/U222-0fc41a81.md): the read, the check and the write run under one exclusive lock, so two
 levers writing at once never lose each other's row, and every argument round-trips through strict UTF-8 before
 anything is read (Python decodes argv with surrogateescape). Round 4 (U222d, verdicts/U222-238f0f55.md): the lever
 makes no file but the ledger (rounds 2 and 3 each wrote a helper file in the store, a temporary and a lock file, and
-the store's own walks refuse a name beginning with `.`). One descriptor, `os.open(ledger, O_RDWR | O_APPEND)`,
+the store's own walks refuse a name beginning with `.`), and since U597 round 4 the `daily-sweeps.tsv` the `daily`
+kind writes, on the first daily row whole through a temporary file `daily-sweeps.tsv.<random>.tmp` of the store
+directory that `os.replace` renames onto the name (U597 round 5; a failed first write removes it, so no partial file
+and no temporary stays). One descriptor, `os.open(<file>, O_RDWR | O_APPEND)`,
 carries the lock, the read and the write: `fcntl.flock(LOCK_EX | LOCK_NB)` tried every 0.1 s for `--lock-wait`
 seconds (default 30), expiry a refusal naming the ledger (advisory: the readers, `ledger.py` and `pr-merge.sh`, open
 the file without a lock and are unaffected); under it `os.fstat` gives the length n0, `os.pread` from 0 until n0 bytes
@@ -76,14 +149,19 @@ from __future__ import annotations
 import argparse
 import errno
 import fcntl
+import hashlib
 import importlib.util
+import json
 import math
 import os
 import re
+import shutil
 import stat
+import subprocess
 import sys
+import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 # `python3 -I -S` still writes `__pycache__` beside an imported module: `ledger.tsv` is the one file this lever writes.
 sys.dont_write_bytecode = True
@@ -95,8 +173,23 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 # for LOCK_WAIT seconds (`--lock-wait` sets the wait); advisory, so the readers, which take no lock, are unaffected.
 LOCK_WAIT = 30.0
 LOCK_POLL = 0.1
-# The three characters no cell and no argument holds: the ledger is tab-separated lines.
+# The characters no cell and no argument holds: a tab or a line break (the ledger is tab-separated lines) and, since
+# U597 round 7, every other control character (`\x00` to `\x1f`, `\x7f`: a NUL in a cell is dropped by bash's `$(...)`
+# when a lever captures the row, so the lever would read another text than the file holds), the reader's CONTROL rule.
 CONTROL = (("\t", "a tab"), ("\n", "a newline"), ("\r", "a carriage return"))
+CONTROL_CHARACTER = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def control_label(value):
+    """How a refusal names the first control character of `value`, or None when it holds none: the three named
+    characters by their names, any other as `a control character U+00xx`."""
+    for character, label in CONTROL:
+        if character in value:
+            return label
+    found = CONTROL_CHARACTER.search(value)
+    if found is None:
+        return None
+    return f"a control character U+{ord(found.group()):04X}"
 
 
 def refuse(reason):
@@ -145,42 +238,115 @@ CLASS_WORD = re.compile(r"^[A-Za-z0-9_-]+$")
 # so the directory name is `[A-Za-z0-9._-]` alone (round 2 finding 3).
 SWEEP_FINDINGS = re.compile(r"^sweeps/([A-Za-z0-9._-]+)/findings\.json$")
 SWEEP_SEAT = re.compile(r"^\S+$")
+# The task id of the coordinator's daily dispatch (U597 round 4), the kit's `daily-sweep-brief.md` template: one per
+# UTC day, and the only task a daily row records (round 8: a unit id, which round 4 accepted beside it, is a `sweep`
+# row's task, never a daily row's); its day is the UTC day `--swept-at` falls on or the day before it (round 9: the id
+# is fixed at dispatch, and a full sweep that crosses midnight finishes under it).
+DAILY_TASK = re.compile(r"^daily-([0-9]{4}-[0-9]{2}-[0-9]{2})$")
+DAILY_TASK_FORM = "daily-<YYYY-MM-DD>"
+# The oldest `--swept-at` the daily kind records (round 6): the window pr-merge.sh reads with (its DAILY_SWEEP_MAX_AGE,
+# 86400 seconds); a row dated earlier would be born stale and stand for no head.
+SWEPT_AT_MAX_AGE = 86400
+# The installed `security-audit` skill (round 7): the manifest's `assets.security-audit-skill` install path, written
+# by scripts/update-agent-assets.sh's update_security_audit_skill as `${HOME}/.agents/skills/security-audit`, the one
+# place the validators are read from (round 8: `--skill-dir` named any directory, so a passing exit proved nothing of
+# the pinned validators). Round 9 (verdict U597-c37800e3 P2 at :654: node reopened each validator by pathname after
+# the hash and loaded the schema from the installation directory, so a concurrent skill update could make the writer
+# record a pass for bytes outside the checked installation): the two validators and `report-schema.json`, the one
+# file `validate-findings.cjs` loads from its own directory (`path.join(__dirname, "report-schema.json")`; both
+# validators `require` node's builtins alone besides), are each copied into a private directory of this writer,
+# hashed as the copy against the manifest pin `assets.security-audit-skill.validators_sha256.<file>`, and node runs
+# the copies, so what is hashed is what runs. VALIDATOR_FILES names the pinned set; VALIDATORS pairs each validator
+# with the file it runs over, the findings file the row names and the coverage ledger beside it; ARTIFACTS names those
+# two in the order the row's `artifacts sha256` field spells them (round 10, verdict U597-67e1eea8 P2 at :574: the
+# writer copies them into the same private directory, hashes the copies, counts from the findings copy and runs the
+# validators over the copies, so the count, the PASS words and the digests attest one set of bytes).
+SKILL_DIR = "~/.agents/skills/security-audit"
+SKILL_PARTS = (".agents", "skills", "security-audit")
+VALIDATORS_KEY = "validators_sha256"
+COVERAGE_LEDGER = "coverage-ledger.json"
+SCHEMA = "report-schema.json"
+VALIDATORS = (("validate-findings.cjs", "findings.json"), ("validate-coverage-ledger.cjs", COVERAGE_LEDGER))
+VALIDATOR_FILES = ("validate-findings.cjs", "validate-coverage-ledger.cjs", SCHEMA)
+ARTIFACTS = (("findings.json", "the findings file"), (COVERAGE_LEDGER, "the coverage ledger"))
+# A sibling a validator loads from its own directory (round 9): a relative `require("./x")` or a `path.join(__dirname,
+# "x")`; every such file must be one of VALIDATOR_FILES, pinned and copied beside the validator, else the copy would
+# load a file no pin holds (or find none) and the writer refuses by name.
+SIBLING_REFERENCE = re.compile(rb"""(?:require\(\s*["']\.{1,2}/([^"']+)["']\s*\)|__dirname\s*,\s*["']([^"']+)["'])""")
+PRIVATE_PREFIX = "ledger-row.validators."
+# Seconds one validator may run; the skill's own tests finish in well under one.
+VALIDATOR_TIMEOUT = 120
+# The one directory the validators run from, and the one variable they get: neither the store nor the checkout, and
+# none of the caller's `NODE_OPTIONS`, `NODE_PATH` or other environment (the `-I` of a python run, for node).
+VALIDATOR_CWD = "/"
 # The manifest, read as text by one indentation rule (pr-merge.sh `sweep_pin_probe`, brief-check.py `manifest_levers`):
 # a bare `<key>:` line opens a mapping, a line indented no deeper closes it, and the pin is the one `pin: <40 hex>`
 # line at the indentation of the `security-audit-skill` asset's first field under the top-level `assets:`.
+MANIFEST_PARTS = (".agents", "agent-config.yaml")
+# The checkout's copy of the manifest, two directories above this file (`scripts/orchestrator/` and
+# `home/dot_local/bin/common/` both lie two below the root that holds `home/dot_agents/`), the `sweep` kind's
+# fall-through when no deployed manifest exists (U597 round 11, verdict U597-2bebb5ae P2 at :302: round 9's
+# deployed-only rule stopped a source checkout with a valid manifest from recording the required sweep from a fresh
+# home, the base's behaviour this restores for the one kind whose row carries no digest a checkout could choose).
+CHECKOUT_MANIFEST_PARTS = ("..", "..", "home", "dot_agents", "agent-config.yaml")
 MAPPING_KEY = re.compile(r"^(\S+):$")
 PIN_LINE = re.compile(r"^pin: ([0-9a-f]{40})$")
+# One line of the asset's `validators_sha256:` mapping (round 8): `<file>: <64 hex>`, the file's name as the installed
+# file is named.
+DIGEST_LINE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*): ([0-9a-f]{64})$")
 ASSET_KEYS = ["assets", "security-audit-skill"]
 
 
-def manifest_lines():
-    """The deployed manifest `~/.agents/agent-config.yaml` as (path, lines), else the checkout's
-    `home/dot_agents/agent-config.yaml` two levels above this file. Each is opened, never stat-ed first: ENOENT on the
-    deployed one alone falls through to the checkout's; any other failure to open or read is a refusal naming the file
-    (standing order 21; round 2 finding 4)."""
+def manifest_lines(fallback):
+    """The manifest as (path, lines): the deployed `~/.agents/agent-config.yaml` (round 9: `--manifest <path>` is gone,
+    since a caller-selected manifest let a row carry the expected skill pin while its validators were checked against
+    other digests), and, for the `sweep` kind alone (`fallback` true), the checkout's copy at CHECKOUT_MANIFEST_PARTS
+    beside this file when the deployed one does not exist (ENOENT of the open itself and nothing else: an unreadable
+    deployed manifest is a refusal naming it, never a fall-through), the base's rule restored in round 11 (verdict
+    U597-2bebb5ae P2 at :302), since a source checkout with a valid manifest must record the required sweep from a
+    fresh home, and a sweep row carries the skill's pin word alone, which the merge lever compares with its own
+    manifest again, so the checkout's copy decides nothing the lever does not check. The `daily` kind reads the
+    deployed manifest alone (`fallback` false): its row carries the validator pins the copies were held to, and a
+    checkout-selected manifest would choose them (round 9's reason, kept). HOME must be an absolute path, and any
+    failure to open or read the file chosen is a refusal naming it (standing order 21); a writer copied away from a
+    checkout, with no manifest in either place, is refused naming the checkout's path."""
     home = os.environ.get("HOME", "")
-    checkout = os.path.normpath(os.path.join(HERE, "../../home/dot_agents/agent-config.yaml"))
-    manifests = [os.path.join(home, ".agents/agent-config.yaml"), checkout] if home else [checkout]
-    for manifest in manifests:
-        try:
-            with open(manifest, encoding="utf-8") as handle:
-                return manifest, handle.read().splitlines()
-        except FileNotFoundError as error:
-            if manifest != checkout:
-                continue
-            refuse(f"cannot read the manifest {manifest}: {error.strerror}")
-        except OSError as error:
-            refuse(f"cannot read the manifest {manifest}: {error.strerror}")
-        except UnicodeDecodeError as error:
-            refuse(f"cannot read the manifest {manifest}: not UTF-8: {error.reason}")
+    if not home or not os.path.isabs(home):
+        refuse(f"HOME {home!r} is not an absolute path; the manifest ~/{'/'.join(MANIFEST_PARTS)} is read under it")
+    manifest = os.path.join(home, *MANIFEST_PARTS)
+    try:
+        with open(manifest, encoding="utf-8") as handle:
+            return manifest, handle.read().splitlines()
+    except FileNotFoundError:
+        if not fallback:
+            refuse(f"cannot read the manifest {manifest}: No such file or directory")
+    except OSError as error:
+        refuse(f"cannot read the manifest {manifest}: {error.strerror}")
+    except UnicodeDecodeError as error:
+        refuse(f"cannot read the manifest {manifest}: not UTF-8: {error.reason}")
+    manifest = os.path.normpath(os.path.join(HERE, *CHECKOUT_MANIFEST_PARTS))
+    try:
+        with open(manifest, encoding="utf-8") as handle:
+            return manifest, handle.read().splitlines()
+    except OSError as error:
+        refuse(f"cannot read the manifest {manifest}: {error.strerror} (no deployed manifest under HOME either)")
+    except UnicodeDecodeError as error:
+        refuse(f"cannot read the manifest {manifest}: not UTF-8: {error.reason}")
 
 
-def manifest_pin(manifest, lines):
-    """The one `assets.security-audit-skill.pin` of the manifest's lines, 40 hex, or a refusal naming the file."""
+def manifest_asset(lines):
+    """The `assets.security-audit-skill` block of the manifest's lines as (pins, digests): every `pin: <40 hex>` line
+    at the indentation of the asset's fields, and, under the asset's `validators_sha256:` key, every `<validator>:
+    <64 hex>` line at the indentation of that mapping's fields as `{validator: [digest, ...]}` (round 8). Read as
+    text by the one indentation rule (no PyYAML under `-S`): a bare `<key>:` line opens a mapping, a line indented no
+    deeper closes it; nothing else of YAML is read."""
     keys = []  # the open mapping keys as (indentation, key), outermost first
     asset = None  # the indentation of the `security-audit-skill:` key while its block is open
     fields = None  # the indentation of the asset's fields, fixed by the first
+    digests_open = False  # inside the asset's `validators_sha256:` mapping
+    digest_fields = None  # the indentation of that mapping's fields, fixed by the first
     pins = []
+    digests = {}
     for line in lines:
         text = line.lstrip(" ")
         if not text or text.startswith("#"):
@@ -191,12 +357,22 @@ def manifest_pin(manifest, lines):
                 if fields is None:
                     fields = indent
                 if indent == fields:
+                    digests_open = text == f"{VALIDATORS_KEY}:"
+                    digest_fields = None
                     match = PIN_LINE.match(text)
                     if match:
                         pins.append(match.group(1))
+                elif digests_open and indent > fields:
+                    if digest_fields is None:
+                        digest_fields = indent
+                    if indent == digest_fields:
+                        match = DIGEST_LINE.match(text)
+                        if match:
+                            digests.setdefault(match.group(1), []).append(match.group(2))
                 continue
             asset = None
             fields = None
+            digests_open = False
         while keys and indent <= keys[-1][0]:
             keys.pop()
         match = MAPPING_KEY.match(text)
@@ -204,6 +380,12 @@ def manifest_pin(manifest, lines):
             keys.append((indent, match.group(1)))
             if [key for _, key in keys] == ASSET_KEYS:
                 asset = indent
+    return pins, digests
+
+
+def manifest_pin(manifest, lines):
+    """The one `assets.security-audit-skill.pin` of the manifest's lines, 40 hex, or a refusal naming the file."""
+    pins, _ = manifest_asset(lines)
     if len(pins) != 1:
         refuse(
             f"{manifest} holds {len(pins)} assets.security-audit-skill.pin lines of 40 hex, not one; the sweep "
@@ -212,11 +394,31 @@ def manifest_pin(manifest, lines):
     return pins[0]
 
 
+def manifest_validator_pins(manifest, lines):
+    """The sha256 pin of each file of VALIDATOR_FILES, `assets.security-audit-skill.validators_sha256.<file>` of the
+    manifest's lines, exactly one 64-hex line each, as `{file: digest}`, or a refusal naming the file and the key
+    (round 8: the installed validator's bytes are held to it before `node` runs it; round 9: the schema too, and the
+    copies are what is hashed and run)."""
+    _, digests = manifest_asset(lines)
+    pins = {}
+    for name in VALIDATOR_FILES:
+        found = digests.get(name, [])
+        if len(found) != 1:
+            refuse(
+                f"{manifest} holds {len(found)} assets.security-audit-skill.{VALIDATORS_KEY}.{name} lines of 64 hex, "
+                "not one; the installed file's copy is compared with it before the validators run, so a manifest "
+                "without it earns no PASS"
+            )
+        pins[name] = found[0]
+    return pins
+
+
 def cell_check(name, value):
-    """A cell holds neither a tab nor a line break: the ledger is tab-separated lines."""
-    for character, label in CONTROL:
-        if character in value:
-            refuse(f"the {name} holds {label}; a cell holds neither a tab nor a newline")
+    """A cell holds neither a tab, a line break nor any other control character (round 7): the ledger is
+    tab-separated lines, and the reader refuses a control character in any cell."""
+    label = control_label(value)
+    if label is not None:
+        refuse(f"the {name} holds {label}; a cell holds neither a tab, a newline nor a control character")
 
 
 def check_unit(unit):
@@ -287,28 +489,14 @@ def carried_row(args):
 def sweep_row(args, store):
     """`sweep`: the exact row the AGENTS.md Audit sweep rule defines, the pin word from the manifest."""
     check_head(args.head)
-    if not DIGITS.match(args.run):
-        refuse(f"the run {args.run!r} is not a decimal number")
-    if not DIGITS.match(args.count):
-        refuse(f"the count {args.count!r} is not a decimal number")
     if not UNIT.match(args.task):
         refuse(f"the task unit {args.task!r} is not U<n> or U<n><letter>")
-    if not SWEEP_SEAT.match(args.seat):
-        refuse(f"the seat {args.seat!r} is not one word")
     if args.pr is not None:
         check_pr(args.pr)
-    match = SWEEP_FINDINGS.match(args.findings)
-    if match is None or match.group(1) in (".", ".."):
-        refuse(
-            f"the findings path {args.findings!r} is not sweeps/<dir>/findings.json under the store with <dir> of "
-            "[A-Za-z0-9._-] alone (the sweep reader splits the evidence on ';')"
-        )
+    if not DIGITS.match(args.count):
+        refuse(f"the count {args.count!r} is not a decimal number")
+    verifier = sweep_verifier(args, True)
     store_file(store, args.findings, "findings path")
-    pin = manifest_pin(*manifest_lines())[:8]
-    verifier = (
-        f"security-audit-skill {pin} (full audit mode on the srt worker seat {args.seat}, run-{args.run}; "
-        f"TASK {args.task})"
-    )
     evidence = (
         f"{args.findings}; pr {'none' if args.pr is None else args.pr}; {args.count} findings; "
         "validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS"
@@ -376,6 +564,393 @@ def receipt_row(args):
     return compose(now(), args.unit, args.pr, args.head, "-", args.lever, with_note(args.receipt, args.note))
 
 
+def sweep_verifier(args, fallback):
+    """The verifier of a `sweep` or `daily` row: the skill, its pin word from the manifest (manifest_lines; `fallback`
+    true for the `sweep` kind, whose pin may come from the checkout's copy, false for the `daily` kind, round 11), the
+    seat, the run and the task, after the run, the seat and the findings path are checked (the `sweep` kind's count is
+    its own check; the `daily` kind reads its count from the file, round 6)."""
+    if not DIGITS.match(args.run):
+        refuse(f"the run {args.run!r} is not a decimal number")
+    if not SWEEP_SEAT.match(args.seat):
+        refuse(f"the seat {args.seat!r} is not one word")
+    match = SWEEP_FINDINGS.match(args.findings)
+    if match is None or match.group(1) in (".", ".."):
+        refuse(
+            f"the findings path {args.findings!r} is not sweeps/<dir>/findings.json under the store with <dir> of "
+            "[A-Za-z0-9._-] alone (the sweep reader splits the evidence on ';')"
+        )
+    pin = manifest_pin(*manifest_lines(fallback))[:8]
+    return (
+        f"security-audit-skill {pin} (full audit mode on the srt worker seat {args.seat}, run-{args.run}; "
+        f"TASK {args.task})"
+    )
+
+
+def daily_row(args, store):
+    """`daily` (U597 round 4): the one row of `daily-sweeps.tsv`, main's head the sweep ran at, the verifier of the
+    `sweep` kind, the evidence the daily row's own seven fields (round 9, round 10; `ledger.parse_daily` requires
+    each): the findings file (a regular file under the store), the count read from the writer's private copy of it
+    (round 6, round 10), the two validators' PASS words earned by running the installed skill's two validators from
+    private copies held to their manifest pins (round 7, round 8, round 9) over the private copies of the findings
+    file and the coverage ledger beside it (round 10), the first 8 hex of the three pins the validator copies were
+    held to, the first 8 hex of the two artifact copies' digests, and the recording time; the ts the sweep's own,
+    `--swept-at` (round 6); the task the coordinator's daily id `daily-<YYYY-MM-DD>` alone, its day the UTC day
+    `--swept-at` falls on or the day before it (round 8: a unit id is refused naming the grammar; round 9: the id is
+    fixed at dispatch and a sweep that crosses midnight keeps it, so another day is refused naming both days)."""
+    check_head(args.head)
+    match = DAILY_TASK.match(args.task)
+    if match is None:
+        refuse(
+            f"the task {args.task!r} is not {DAILY_TASK_FORM}, the coordinator's daily dispatch id; a daily row records "
+            "the day's full sweep of main's head alone, and a unit's sweep is a sweep row of the ledger (the sweep kind)"
+        )
+    swept_at = check_swept_at(args.swept_at)
+    day = swept_at.strftime(ledger.DAY_FORMAT)
+    days = (day, (swept_at - timedelta(days=1)).strftime(ledger.DAY_FORMAT))
+    if match.group(1) not in days:  # lint-comparisons: allow named-text: the two days the RESULT may fall under
+        refuse(
+            f"the task {args.task} names neither the UTC day of --swept-at {args.swept_at} ({days[0]}) nor the day "
+            f"before it ({days[1]}); the daily id is fixed at dispatch and a sweep that crosses midnight keeps it, so "
+            f"daily-{days[0]} or daily-{days[1]} alone records this RESULT"
+        )
+    verifier = sweep_verifier(args, False)
+    findings_path = store_file(store, args.findings, "findings path")
+    count, pins, artifacts = run_validators(args, store, findings_path)
+    validator_digests = " ".join(pins[name][:8] for name in VALIDATOR_FILES)
+    artifact_digests = " ".join(artifacts[name][:8] for name, _ in ARTIFACTS)
+    evidence = ledger.DAILY_SEPARATOR.join(
+        (
+            args.findings,
+            f"{count} findings",
+            *ledger.DAILY_PASSES,
+            f"validators sha256 {validator_digests}",
+            f"artifacts sha256 {artifact_digests}",
+            f"recorded {now()}",
+        )
+    )
+    return ledger.DailyRow(swept_at, args.head, verifier, evidence, 0, args.swept_at)
+
+
+def skill_file(home, name):
+    """The installed skill file `~/.agents/skills/security-audit/<name>` as (path, bytes) (round 8): `HOME` must be
+    an absolute path; every component below it (`.agents`, `skills`, `security-audit`, the file) is `os.lstat`ed and
+    none is a symbolic link; the file is opened `O_RDONLY | O_NOFOLLOW`, its descriptor `fstat`ed a regular file of
+    this user, and read whole. Any other outcome is a refusal naming the file: the validator that earns its PASS is
+    the installed one, read through real directories alone and never from another place."""
+    path = os.path.join(home, *SKILL_PARTS, name)
+    if not home or not os.path.isabs(home):
+        refuse(f"HOME {home!r} is not an absolute path; the installed skill's validator {path} is read under it")
+    current = home
+    for part in (*SKILL_PARTS, name):
+        current = os.path.join(current, part)
+        try:
+            status = os.lstat(current)
+        except OSError as error:
+            refuse(
+                f"the validator file {path} is not a regular file of this user under the installed skill "
+                f"({current}: {error.strerror}); the daily row states a validator's PASS only after the pinned validator ran"
+            )
+        if stat.S_ISLNK(status.st_mode):
+            refuse(
+                f"{current}, a component of the validator file path {path}, is a symbolic link; the installed skill is read "
+                "through real directories alone"
+            )
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as error:
+        refuse(f"cannot open the validator file {path}: {error.strerror}")
+    chunks = []
+    try:
+        status = os.fstat(descriptor)
+        if not stat.S_ISREG(status.st_mode):
+            refuse(f"the validator file {path} is not a regular file")
+        if status.st_uid != os.geteuid():
+            refuse(f"the validator file {path} is not this user's (owned by uid {status.st_uid}); it is not run")
+        while True:
+            chunk = os.read(descriptor, 1 << 16)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    except OSError as error:
+        refuse(f"cannot read the validator file {path}: {error.strerror}")
+    finally:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+    return path, b"".join(chunks)
+
+
+def private_directory():
+    """A private directory for the validators' copies (round 9) and the artifacts' (round 10): `tempfile.mkdtemp`
+    under `TMPDIR` (the system temporary directory when unset or empty, as pr-merge.sh's reader_copies_make chooses
+    it; the directory is named, so tempfile probes no candidate of its own), mode 0700 (mkdtemp's own, set again), a
+    directory of this user; a failure is a refusal naming the place, and the caller removes the directory on every
+    exit."""
+    base = os.environ.get("TMPDIR") or "/tmp"
+    try:
+        directory = tempfile.mkdtemp(prefix=PRIVATE_PREFIX, dir=base)
+        os.chmod(directory, 0o700)
+    except OSError as error:
+        refuse(
+            f"cannot make the private directory for the validators' copies under {base}: {error.strerror}; the "
+            "validators run from copies held to their pins alone, so nothing is written"
+        )
+    return directory
+
+
+def private_copy(directory, name, data, what, why):
+    """`data` written into the private `directory` as the new file `name` of mode 0600 (`O_EXCL`, no link followed),
+    whole, then read back: the bytes read back are what is hashed and what node reads (round 9; round 10 for the
+    artifacts). A copy that cannot be made, written whole or read back is a refusal naming `what` (the file as the
+    refusals name it) and ending in `why`, with nothing written. Returns (copy, bytes read back)."""
+    copy = os.path.join(directory, name)
+    try:
+        descriptor = os.open(copy, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        try:
+            # `os.write` may land fewer bytes than given; the copy is written whole or the write is a failure.
+            view = memoryview(data)
+            while view:
+                written = os.write(descriptor, view)
+                if written <= 0:
+                    raise OSError(errno.EIO, f"a write of {written} bytes with {len(view)} to go")
+                view = view[written:]
+        finally:
+            os.close(descriptor)
+        with open(copy, "rb") as handle:
+            copied = handle.read()
+    except OSError as error:
+        refuse(f"cannot copy {what} into {directory}: {error.strerror or error}; {why}")
+    return copy, copied
+
+
+def pinned_copy(home, name, pins, manifest, directory):
+    """The installed skill file `name` (skill_file) copied into the private `directory` (private_copy), the copy
+    hashed, and its sha256 held to the manifest pin `validators_sha256.<name>` (round 9): what is hashed is what node
+    runs. A copy that cannot be made, written whole or hashed is a refusal naming the file; a differing digest is a
+    refusal naming the file and both digests. Returns (copy, bytes)."""
+    path, data = skill_file(home, name)
+    copy, copied = private_copy(
+        directory,
+        name,
+        data,
+        f"the validator file {path}",
+        "the validators run from copies held to their pins alone, so nothing is written",
+    )
+    digest = hashlib.sha256(copied).hexdigest()
+    if digest != pins[name]:
+        refuse(
+            f"sha256 {digest} of the validator file {path} (hashed as its copy {copy}) differs from the pin "
+            f"{pins[name]} of assets.security-audit-skill.{VALIDATORS_KEY}.{name} in {manifest}; the installed skill is "
+            "not the pinned one, so nothing is written"
+        )
+    return copy, copied
+
+
+def artifact_copy(path, relative, label, directory, name):
+    """The findings file or the coverage ledger `relative` (`path` under the store, already held by store_file's path
+    rule; `label` names it in the refusals) read whole as artifact_bytes reads it, copied into the private
+    `directory` as `name` (private_copy) and the copy hashed (round 10, verdict U597-67e1eea8 P2 at :574: the count,
+    the PASS words and the digests the row records are all of the copy's bytes, so a file replaced under the store
+    after the read changes nothing the row attests). Returns (copy, bytes read back, sha256 hex)."""
+    data = artifact_bytes(path, relative, label)
+    copy, copied = private_copy(
+        directory,
+        name,
+        data,
+        f"{label} {relative}",
+        "the row attests the bytes of the copies alone, so nothing is written",
+    )
+    return copy, copied, hashlib.sha256(copied).hexdigest()
+
+
+def sibling_check(path, data):
+    """Every file the validator at `path` loads from its own directory (SIBLING_REFERENCE over its bytes) is one of
+    VALIDATOR_FILES, pinned and copied beside it (round 9); another is a refusal naming it."""
+    for match in SIBLING_REFERENCE.finditer(data):
+        sibling = (match.group(1) or match.group(2)).decode("utf-8", "replace")
+        if sibling not in VALIDATOR_FILES:  # lint-comparisons: allow named-text: the sibling as the validator spells it
+            refuse(
+                f"{path} loads {sibling!r} from its own directory, a file with no assets.security-audit-skill."
+                f"{VALIDATORS_KEY} pin; every file a validator loads beside itself is pinned and copied with it, so "
+                "nothing is written"
+            )
+
+
+def run_validators(args, store, findings_path):
+    """The installed skill's two validators, run by this writer before it states their PASS (round 7; the round-6 P2
+    at daily_row: the statement was the coordinator's word after a JSON-shape check, so a findings set without the
+    skill's required fields backed a daily exemption), each held to its pin first (round 8; the round-7 P2 at :489:
+    `--skill-dir` took the validators from any directory, so a passing exit established nothing of the pinned
+    validators), since round 9 run from private copies (the round-8 P2 at :654: node reopened the installed path
+    after the hash and loaded `report-schema.json` from the installation directory unhashed, so a concurrent skill
+    update could make the writer record a pass for bytes outside the checked installation), and since round 10 over
+    private copies of the files they validate (the round-9 P2 at :574: the count came from one read and node reopened
+    the two files by pathname, so a concurrent replacement left the count and the PASS words attesting other bytes
+    than the evidence named). The manifest's three `assets.security-audit-skill.validators_sha256` pins are read
+    (manifest_validator_pins); `node` is the first on PATH (`shutil.which`); the coverage ledger is
+    `coverage-ledger.json` beside the findings file, under the store's path rule; then, in a private directory of this
+    writer (private_directory, removed on every exit), the findings file and the coverage ledger are each read,
+    copied and the copy hashed (artifact_copy), the findings are counted from the findings copy (findings_count),
+    each file of VALIDATOR_FILES is read from the installed skill alone (skill_file), copied, and the copy hashed
+    against its pin (pinned_copy), each validator copy is scanned for a sibling it loads that has no pin
+    (sibling_check), and each validator then runs as `node <validator copy> <artifact copy>` from VALIDATOR_CWD with
+    the environment reduced to PATH, stdin closed and a VALIDATOR_TIMEOUT, its status read: a node that cannot run, a
+    run that expires, or an exit other than 0 is a refusal naming the validator, the file (by its store path) and the
+    validator's first stderr line, and nothing is written. Returns (the count, the pins the validator copies were
+    held to as `{file: digest}` over VALIDATOR_FILES, the artifact copies' digests as `{name: digest}` over
+    ARTIFACTS), which the row records as `<n> findings`, `validators sha256 <8> <8> <8>` and `artifacts sha256 <8>
+    <8>`."""
+    manifest, lines = manifest_lines(False)  # the daily kind: the deployed manifest alone
+    pins = manifest_validator_pins(manifest, lines)
+    home = os.environ.get("HOME", "")
+    node = shutil.which("node", path=os.environ.get("PATH", ""))
+    if node is None:
+        refuse(
+            "no node on PATH; the skill's validators run under it, and the daily row states a validator's PASS only after it ran"
+        )
+    directory = args.findings.rsplit("/", 1)[0]
+    sources = {
+        "findings.json": (findings_path, args.findings),
+        COVERAGE_LEDGER: (
+            store_file(store, f"{directory}/{COVERAGE_LEDGER}", "coverage ledger path"),
+            f"{directory}/{COVERAGE_LEDGER}",
+        ),
+    }
+    private = private_directory()
+    try:
+        artifacts = {name: artifact_copy(*sources[name], label, private, name) for name, label in ARTIFACTS}
+        count = findings_count(artifacts["findings.json"][1], args.findings)
+        copies = {name: pinned_copy(home, name, pins, manifest, private) for name in VALIDATOR_FILES}
+        for validator, _ in VALIDATORS:
+            sibling_check(os.path.join(home, *SKILL_PARTS, validator), copies[validator][1])
+        for validator, target in VALIDATORS:
+            relative = sources[target][1]
+            try:
+                run = subprocess.run(
+                    [node, copies[validator][0], artifacts[target][0]],
+                    cwd=VALIDATOR_CWD,
+                    env={"PATH": os.environ.get("PATH", "")},
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    timeout=VALIDATOR_TIMEOUT,
+                    check=False,
+                )
+            except OSError as error:
+                refuse(f"cannot run {node} {copies[validator][0]} {relative}: {error.strerror}; nothing is written")
+            except subprocess.TimeoutExpired:
+                refuse(f"{validator} did not finish within {VALIDATOR_TIMEOUT} seconds on {relative}; nothing written")
+            if run.returncode != 0:
+                first = run.stderr.decode("utf-8", "replace").splitlines()
+                reason = first[0] if first else "no stderr"
+                refuse(f"{validator} exited {run.returncode} on {relative}: {reason}; nothing is written")
+    finally:
+        shutil.rmtree(private, ignore_errors=True)
+    return count, {name: pins[name] for name in VALIDATOR_FILES}, {name: artifacts[name][2] for name, _ in ARTIFACTS}
+
+
+def check_swept_at(text):
+    """`--swept-at` as a time (round 6): the RESULT message's bus timestamp under the reader's one form
+    (`ledger.timestamp`: the shape, two digits in every field, then the calendar), no later than the clock at the
+    write (round 7: no future slack here; a sweep's RESULT is never ahead of its recording, and the reader's
+    `DAILY_FUTURE_SLACK` of 60 seconds is for rows another host's clock wrote, read on this one) and no earlier than
+    the clock minus SWEPT_AT_MAX_AGE (24 hours, the window `pr-merge.sh` reads with: a row dated earlier would be born
+    stale and stand for no head). Any other value is a refusal naming it and the clock."""
+    at = ledger.timestamp(text)
+    if at is None:
+        refuse(
+            f"--swept-at {text!r} is not {ledger.TS_FORM} (the RESULT message's bus timestamp in UTC, two digits in "
+            "every field)"
+        )
+    clock = ledger.utc_now()
+    clock_text = clock.strftime(ledger.TS_FORMAT)
+    if at > clock:
+        refuse(
+            f"--swept-at {text} is in the future: later than the clock {clock_text}; a sweep's RESULT time is never "
+            "ahead of its recording, and a row dated ahead would stand longer than its sweep (the reader's 60-second "
+            "allowance is for rows written by another host's clock, not for this writer)"
+        )
+    if at < clock - timedelta(seconds=SWEPT_AT_MAX_AGE):
+        refuse(
+            f"--swept-at {text} is more than {SWEPT_AT_MAX_AGE} seconds (24 hours) before the clock {clock_text}; the "
+            "row would be born stale, outside the window pr-merge.sh reads with, and stand for no head"
+        )
+    return at
+
+
+def json_kind(value):
+    """A JSON value's kind in the refusals' words."""
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "a boolean"
+    if isinstance(value, (int, float)):
+        return "a number"
+    if isinstance(value, str):
+        return "a string"
+    if isinstance(value, list):
+        return "a list"
+    return "an object"
+
+
+def artifact_bytes(path, relative, label):
+    """The bytes of the findings file or the coverage ledger a daily row names (round 6 for the findings file; round
+    10 for both, the copies): `path`, already held by store_file's path rule, is opened `O_RDONLY | O_NOFOLLOW` (the
+    open itself follows no link at the end), its descriptor `fstat`ed a regular file of this user, and read whole.
+    Any other outcome is a refusal naming the file by `label` and `relative`: the writer states nothing of bytes it
+    did not read."""
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as error:
+        refuse(f"cannot open {label} {relative}: {error.strerror}")
+    chunks = []
+    try:
+        status = os.fstat(descriptor)
+        if not stat.S_ISREG(status.st_mode):
+            refuse(f"{label} {relative} is not a regular file")
+        if status.st_uid != os.geteuid():
+            refuse(f"{label} {relative} is not this user's (owned by uid {status.st_uid}); it is not read")
+        while True:
+            chunk = os.read(descriptor, 1 << 16)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    except OSError as error:
+        refuse(f"cannot read {label} {relative}: {error.strerror}")
+    finally:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+    return b"".join(chunks)
+
+
+def findings_count(data, relative):
+    """The count of the findings file a daily row names, from the bytes of the writer's copy of it (round 6; the
+    round-5 P2 at daily_row: the writer stated `<count> findings` and two validator passes after checking that the
+    file existed, so invalid or truncated JSON backed a daily exemption; round 10: the bytes are the copy's, the same
+    the validators read): decoded as strict UTF-8, parsed as JSON, and held to a list whose every element is an
+    object (the skill's findings set); the list's length is the count the evidence states. Any other outcome is a
+    refusal naming the file: the writer states no count it did not read."""
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        refuse(f"the findings file {relative} is not UTF-8: {error.reason}")
+    try:
+        findings = json.loads(text)
+    except ValueError as error:
+        refuse(f"the findings file {relative} is not JSON: {error}")
+    if not isinstance(findings, list):
+        refuse(f"the findings file {relative} is not a JSON list of findings but {json_kind(findings)}")
+    for index, finding in enumerate(findings):
+        if not isinstance(finding, dict):
+            refuse(
+                f"the findings file {relative} holds {json_kind(finding)} at index {index}, not an object; a findings "
+                "set is a list of objects"
+            )
+    return len(findings)
+
+
 def refuse_if_audited(read, kind, row):
     """A `pushed` or `receipt` row at a 40-hex head that already has an audit row of the same pull request would
     become the newest row of an audited head and void every later carry from it (the 23:53:08Z lesson)."""
@@ -408,14 +983,21 @@ def parser():
     )
     kinds = top.add_subparsers(dest="kind", required=True)
 
-    def kind(name, help_text, pr=True, head=True):
+    def kind(name, help_text, pr=True, head=True, unit=True):
         sub = kinds.add_parser(name, help=help_text)
         if pr:
             sub.add_argument("--pr", required=True, help="the pull request's decimal number")
         if head:
             sub.add_argument("--head", required=True, help="the head, 40 hex")
-        sub.add_argument("--unit", required=True, help="the row's unit, U<n> or U<n><letter>")
+        if unit:
+            sub.add_argument("--unit", required=True, help="the row's unit, U<n> or U<n><letter>")
         return sub
+
+    def sweep_arguments(sub, task_help):
+        sub.add_argument("--seat", required=True, help="the srt worker seat the sweep ran on")
+        sub.add_argument("--run", required=True, help="the run number")
+        sub.add_argument("--task", required=True, help=task_help)
+        sub.add_argument("--findings", required=True, help="sweeps/<dir>/findings.json, a regular file under the store")
 
     merged = kind("merged", "the merge receipt: verdict -, verifier pr-merge.sh")
     merged.add_argument("--receipt", required=True, help="the line pr-merge.sh printed")
@@ -425,12 +1007,33 @@ def parser():
     carried.add_argument("--note", required=True, help="the verifier's note in parentheses")
     carried.add_argument("--evidence-note", help="appended to the evidence after '; '")
     sweep = kind("sweep", "the security-audit skill's row: pr -, verdict sweep", pr=False)
-    sweep.add_argument("--seat", required=True, help="the srt worker seat the sweep ran on")
-    sweep.add_argument("--run", required=True, help="the run number")
-    sweep.add_argument("--task", required=True, help="the sweep's own unit, U<n>")
-    sweep.add_argument("--findings", required=True, help="sweeps/<dir>/findings.json, a regular file under the store")
+    sweep_arguments(sweep, "the sweep's own unit, U<n>")
     sweep.add_argument("--count", required=True, help="the findings count")
     sweep.add_argument("--pr", help="the pull request swept; the pr cell stays '-'")
+    daily = kind(
+        "daily",
+        "the daily sweep of main's head: one row of daily-sweeps.tsv, not of the ledger; its ts is --swept-at; the "
+        "findings file and the coverage ledger beside it are copied into a private directory, the copies hashed and "
+        "the count read from the findings copy, and the installed skill's validators and report-schema.json "
+        "(~/.agents/skills/security-audit, each copied beside them and the copy hashed against its "
+        "assets.security-audit-skill.validators_sha256 pin of ~/.agents/agent-config.yaml) must pass over the two "
+        "copies; the row records the three validator digests and the two artifact digests",
+        pr=False,
+        unit=False,
+    )
+    sweep_arguments(
+        daily,
+        "the daily dispatch's task id alone, daily-<YYYY-MM-DD> with the UTC day --swept-at falls on or the day before it",
+    )
+    daily.add_argument(
+        "--swept-at",
+        required=True,
+        metavar="TS",
+        help=(
+            "the sweep's RESULT timestamp, YYYY-MM-DDTHH:MM:SSZ in UTC, written as the row's ts; refused later than "
+            f"the clock or more than {SWEPT_AT_MAX_AGE} seconds (24 hours) before it"
+        ),
+    )
     audit = kind("audit", "the audit verdict: the word read from the verdict file's last line")
     audit.add_argument("--verdict-file", required=True, help="verdicts/<unit>-<sha8>.md")
     audit.add_argument("--verifier", required=True, help="the verifier text, starting with pr-audit.sh")
@@ -443,6 +1046,90 @@ def parser():
     receipt.add_argument("--receipt", required=True, help="the line the lever printed")
     receipt.add_argument("--note", help="appended to the evidence after '; '")
     return top
+
+
+def daily_absent(path):
+    """True when no entry of any kind exists at `path` (`os.lstat` ENOENT alone, so a symlink or another entry at the
+    name is present and left to the path rule of store_file); any other failure to look is a refusal naming it
+    (standing order 21)."""
+    try:
+        os.lstat(path)
+    except FileNotFoundError:
+        return True
+    except OSError as error:
+        refuse(f"cannot look for the daily sweeps file {path}: {error.strerror}")
+    return False
+
+
+def write_daily_file(store, path, line):
+    """The day's first `daily-sweeps.tsv` (U597 round 5): the header and the first row as one byte string into a
+    temporary file of the store directory (`tempfile.mkstemp`, `daily-sweeps.tsv.<random>.tmp`, mode 0644 as the
+    round-4 file was), one `os.write` compared with the length, `os.fsync`, the close, then `os.replace` onto the
+    name, so the file appears whole or not at all. A write that fails or returns short, a fsync, a close or a replace
+    that fails removes the temporary file and returns the failure text naming the file (exit 1 is the caller's); the
+    store then holds no `daily-sweeps.tsv` and the rerun writes it again (round 4 wrote the header through `O_EXCL`
+    first, so a short write left a malformed file no retry repaired). Returns None or the failure text."""
+    data = ("\t".join(ledger.DAILY_HEADER) + "\n" + line).encode("utf-8")
+    try:
+        descriptor, temporary = tempfile.mkstemp(prefix=f"{ledger.DAILY_FILE}.", suffix=".tmp", dir=store)
+    except OSError as error:
+        return f"cannot make a temporary file in {store} for {path}: {error.strerror}"
+    try:
+        os.fchmod(descriptor, 0o644)
+        written = os.write(descriptor, data)
+        if written != len(data):
+            raise OSError(errno.EIO, f"short write, {written} of {len(data)} bytes")
+        os.fsync(descriptor)
+        os.close(descriptor)
+        descriptor = None
+        os.replace(temporary, path)
+    except OSError as error:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        try:
+            os.unlink(temporary)
+            left = f"the temporary file is removed and no {ledger.DAILY_FILE} exists; the rerun writes it again"
+        except OSError as unlink_error:
+            left = f"the temporary file {temporary} could not be removed: {unlink_error.strerror}"
+        return f"cannot write {path}: {error.strerror or error}; {left}"
+    return None
+
+
+def first_daily_row(args, store, path, row):
+    """The day's first daily row (U597 round 5), when no entry exists at `path`: under the ledger's own lock
+    (`open_ledger` on `ledger.tsv`, the lock every writer of the store takes, so two first writers serialise and the
+    second finds the file and appends under the daily file's lock), the absence looked for again, the row's cells
+    checked, the header plus the row parsed by the reader's grammar, then write_daily_file. Returns None when the
+    file appeared meanwhile (the caller appends), else (code, text) as write_row returns it."""
+    lock = open_ledger(store_file(store, "ledger.tsv", "ledger"), args.lock_wait)
+    try:
+        if not daily_absent(path):
+            return None
+        line = daily_line(row)
+        try:
+            ledger.parse_daily(path, "\t".join(ledger.DAILY_HEADER) + "\n" + line)
+        except ledger.Malformed as error:
+            refuse(f"the reader refuses the composed row: {error}")
+        failure = write_daily_file(store, path, line)
+    finally:
+        try:
+            os.close(lock)
+        except OSError:
+            pass
+    if failure is not None:
+        return 1, failure
+    return 0, f"appended {row.ts_text} line 2"
+
+
+def daily_line(row):
+    """The daily row's line, its four cells checked for a tab or a line break first."""
+    cells = (row.ts_text, row.head_sha, row.verifier, row.evidence)
+    for name, value in zip(ledger.DAILY_HEADER, cells):
+        cell_check(f"{name} cell", value)
+    return "\t".join(cells) + "\n"
 
 
 def store_file(store, relative, label):
@@ -472,8 +1159,9 @@ def store_file(store, relative, label):
 def argument_rule(argv):
     """The one rule every element of argv passes before argparse runs (round 3 finding 2, round 4 finding 4): the
     element round-trips through strict UTF-8 (Python decodes argv with surrogateescape, so a byte that is not UTF-8
-    arrives as a lone surrogate that would fail only at the write) and holds neither a tab, a newline nor a carriage
-    return (a check of the parsed strings alone let `--lock-wait`, which argparse converts to a float, escape it). The
+    arrives as a lone surrogate that would fail only at the write) and holds neither a tab, a newline, a carriage
+    return nor any other control character (round 7; a check of the parsed strings alone let `--lock-wait`, which
+    argparse converts to a float, escape it). The
     refusal names the element's position and the option before it, or the store and the kind for the first two
     positional elements."""
     positional = 0
@@ -489,9 +1177,9 @@ def argument_rule(argv):
             value.encode("utf-8")
         except UnicodeEncodeError as error:
             refuse(f"{where} holds a byte that is not UTF-8 at offset {error.start}: {value!r}")
-        for character, label in CONTROL:
-            if character in value:
-                refuse(f"{where} holds {label}; a cell holds neither a tab nor a newline")
+        label = control_label(value)
+        if label is not None:
+            refuse(f"{where} holds {label}; a cell holds neither a tab, a newline nor a control character")
 
 
 def open_ledger(ledger_path, wait):
@@ -589,14 +1277,29 @@ def main(argv=None):
     args = parser().parse_args(argv)
     if not 0 <= args.lock_wait < math.inf:
         refuse(f"--lock-wait {args.lock_wait!r} is not a non-negative number of seconds")
-    check_unit(args.unit)
+    daily = args.kind == "daily"
+    if not daily:
+        check_unit(args.unit)
     store = os.path.realpath(args.store)
-    # The ledger first (standing order 21): its path by the store's file rule, its descriptor opened and locked
-    # before it is read, before the row is composed and before any file of the store is read for it.
-    ledger_path = store_file(store, "ledger.tsv", "ledger")
-    descriptor = open_ledger(ledger_path, args.lock_wait)
+    # The record file first (standing order 21): its path by the store's file rule, its descriptor opened and locked
+    # before it is read, before the row is composed and before any file of the store is read for it. The daily kind
+    # composes and checks its row first, since the row reads nothing from the daily file, so a refusal makes no file;
+    # the day's first row makes the file whole (first_daily_row, round 5) and a later one appends; the ledger is
+    # never made.
+    composed = None
+    if daily:
+        composed = daily_row(args, store)
+        daily_path = os.path.join(store, ledger.DAILY_FILE)
+        if daily_absent(daily_path):
+            outcome = first_daily_row(args, store, daily_path, composed)
+            if outcome is not None:
+                return report(*outcome)
+        record_path = store_file(store, ledger.DAILY_FILE, "daily sweeps file")
+    else:
+        record_path = store_file(store, "ledger.tsv", "ledger")
+    descriptor = open_ledger(record_path, args.lock_wait)
     try:
-        code, text = write_row(args, store, ledger_path, descriptor)
+        code, text = write_row(args, store, record_path, descriptor, composed)
     except BaseException:  # a refusal (SystemExit) or an unexpected error: the close releases the lock
         try:
             os.close(descriptor)
@@ -607,10 +1310,15 @@ def main(argv=None):
         os.close(descriptor)
     except OSError as error:
         if code == 0:
-            text = f"the ledger {ledger_path} was appended ({text}) but its close failed: {error.strerror}"
+            text = f"the ledger {record_path} was appended ({text}) but its close failed: {error.strerror}"
         else:
             text = f"{text}; the close failed too: {error.strerror}"
         code = 1
+    return report(code, text)
+
+
+def report(code, text):
+    """The receipt on stdout (exit 0) or the failure as one stderr line (exit 1); returns `code`."""
     if code == 0:
         print(text)
     else:
@@ -618,35 +1326,60 @@ def main(argv=None):
     return code
 
 
-def write_row(args, store, ledger_path, descriptor):
-    """The critical section, under the lock the descriptor holds: the ledger read through it, the row composed and
-    checked, the whole re-read, the one line appended. Returns (0, the stdout receipt) or (1, the failure text)."""
+def write_row(args, store, ledger_path, descriptor, composed=None):
+    """The critical section, under the lock the descriptor holds: the record file read through it (the ledger, or
+    `daily-sweeps.tsv` for the `daily` kind, whose row `composed` arrives checked), the row composed and checked, the
+    whole re-read through the reader's grammar for that file, the one line appended. Returns (0, the stdout receipt)
+    or (1, the failure text)."""
     length, text = read_ledger(descriptor, ledger_path)
+    parse = ledger.parse_daily if args.kind == "daily" else ledger.parse_ledger
     try:
-        read = ledger.parse_ledger(ledger_path, text)
+        read = parse(ledger_path, text)
     except ledger.Malformed as error:
         refuse(str(error))
-    if args.kind == "merged":
-        row = merged_row(args)
-    elif args.kind == "carried":
-        row = carried_row(args)
-    elif args.kind == "sweep":
-        row = sweep_row(args, store)
-    elif args.kind == "audit":
-        row = audit_row(args, store)
-    elif args.kind == "pushed":
-        row = pushed_row(args)
+    if args.kind == "daily":
+        row = composed
+        # A findings path an earlier daily row names is a finished run (round 5), and so is a (seat, run) one carries
+        # (round 6: the same run's findings copied to another path): recording either again would date a new row
+        # and refresh the window without a new sweep.
+        for existing in read.rows:
+            if existing.sweep_evidence_path == args.findings:  # lint-comparisons: allow named-text: a recorded path
+                refuse(
+                    f"the findings file {args.findings} is already recorded by the daily sweep row of"
+                    f" {existing.ts_text} ({ledger_path}:{existing.line}); a finished run is not re-recorded to"
+                    " refresh the window"
+                )
+            if (existing.seat, existing.run) == (args.seat, args.run):
+                refuse(
+                    f"run-{args.run} of the seat {args.seat} is already recorded by the daily sweep row of"
+                    f" {existing.ts_text} ({ledger_path}:{existing.line}); a finished run is not re-recorded under"
+                    " another findings path to refresh the window"
+                )
+        header = ledger.DAILY_HEADER
+        cells = (row.ts_text, row.head_sha, row.verifier, row.evidence)
     else:
-        row = receipt_row(args)
-    if args.kind in ("pushed", "receipt"):
-        refuse_if_audited(read, args.kind, row)
-    cells = (row.ts_text, row.unit, row.pr, row.head_sha, row.verdict, row.verifier, row.evidence)
-    for name, value in zip(ledger.HEADER, cells):
+        if args.kind == "merged":
+            row = merged_row(args)
+        elif args.kind == "carried":
+            row = carried_row(args)
+        elif args.kind == "sweep":
+            row = sweep_row(args, store)
+        elif args.kind == "audit":
+            row = audit_row(args, store)
+        elif args.kind == "pushed":
+            row = pushed_row(args)
+        else:
+            row = receipt_row(args)
+        if args.kind in ("pushed", "receipt"):
+            refuse_if_audited(read, args.kind, row)
+        header = ledger.HEADER
+        cells = (row.ts_text, row.unit, row.pr, row.head_sha, row.verdict, row.verifier, row.evidence)
+    for name, value in zip(header, cells):
         cell_check(f"{name} cell", value)
     line = "\t".join(cells) + "\n"
     lead = "" if text == "" or text.endswith("\n") else "\n"
     try:
-        whole = ledger.parse_ledger(ledger_path, text + lead + line)
+        whole = parse(ledger_path, text + lead + line)
     except ledger.Malformed as error:
         refuse(f"the reader refuses the composed row: {error}")
     number = whole.rows[-1].line

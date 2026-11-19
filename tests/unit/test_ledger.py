@@ -17,7 +17,11 @@ one trailing CR per line as the base of U597 did (a CR LF ledger parses, a CR CR
 file drops none (a CR LF daily row is Malformed); round 9: the daily row has its own grammar, the exact fields
 `ledger-row.py daily` writes (the verifier's seat, run and daily task, the evidence's seven fields with the validators'
 PASS words, the three validator digest prefixes, the two artifact digest prefixes (round 10) and the recording time),
-so a row of a unit's sweep shape is Malformed naming the field."""
+so a row of a unit's sweep shape is Malformed naming the field. Round 11: `newest_sweep_any(head)` and the `sweep-any
+<head>` form (the newest sweep row of any unit at the head, every sweep row of the ledger held to the rule) and
+`merge_of(commit)` and the `merge-of <commit>` form (the head the squash at the commit came from, the newest
+`pr-merge.sh` receipt row naming `commit=<sha>`; a `pr-merge.sh` row of another evidence shape is no merge row), the
+merge gate's two questions about main's tip."""
 
 import importlib.util
 import os
@@ -283,7 +287,134 @@ class LedgerSweepTest(unittest.TestCase):
         run = self.cli("-h")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("sweep", run.stdout)
-        self.assertIn("{verdict,carry-source,sweep,daily}", run.stdout)
+        self.assertIn("{verdict,carry-source,sweep,sweep-any,merge-of,daily}", run.stdout)
+
+    def test_sweep_any_and_merge_of_answer_the_merge_gate_s_questions_about_main_s_tip(self):
+        """U597 round 11 (gate one of pr-merge.sh: main's tip swept or exempt before the next merge lands on it):
+        `newest_sweep_any(head)` is the newest sweep row of any unit at the head by `(ts, line)`, a fix unit's and
+        another unit's alike, None at a head without one, and every sweep row of the ledger is held to the rule (a
+        hand-written sweep row of any unit at any head is Malformed naming the line and the field, never "no sweep");
+        `merge_of(commit)` is the `head_sha` of the newest merge row whose receipt names `commit=<commit>` (verifier
+        exactly `pr-merge.sh`, the evidence starting with `merged pr=<n> head=<sha> commit=<40 hex>`), None when no
+        such row names the commit, a `pr-merge.sh` row of the pre-U222 shape (`merged as <sha> (squash) ...`) or a
+        refusal recorded as a row being no merge row to the question, and a receipt row whose head_sha is not 40 hex
+        or whose receipt names another head than its head_sha Malformed naming the line; the CLI forms `sweep-any
+        <head>` and `merge-of <commit>` print the four columns or `<head>`, or `none`, exit 2 naming the line on a
+        malformed store, and refuse a sha that is not 40 hex."""
+        merged = "e" * 40
+        other = "f" * 40
+
+        def merge_row(ts, unit, pr, head, commit, note=""):
+            return row(ts, unit, pr, head, "-", "pr-merge.sh", f"merged pr={pr} head={head} commit={commit}{note}")
+
+        read = self.ledger(
+            row("2026-10-30T01:00:00Z", "U7", "7", A, "correct (findings=0)"),  # line 2
+            sweep("2026-10-30T03:00:00Z", A),  # line 3: U7 at A
+            sweep("2026-10-30T05:00:00Z", A, unit="U8"),  # line 4: another unit, the latest ts at A
+            sweep("2026-10-30T04:00:00Z", A, unit="U7b"),  # line 5: a fix unit
+            sweep("2026-10-30T06:00:00Z", B, unit="U9"),  # line 6: another head
+            merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged, " verdict=2026-10-30T01:00:00Z"),  # line 7
+        )
+        self.assertEqual(read.newest_sweep_any(A).line, 4, "the newest sweep row of any unit at A")
+        self.assertEqual(read.newest_sweep_any(A).unit, "U8")
+        self.assertEqual(read.newest_sweep_any(B).line, 6)
+        self.assertIsNone(read.newest_sweep_any("c" * 40))
+        self.assertEqual(read.newest_sweep("U7", A).line, 5, "the unit's own question still sees its fix unit alone")
+        self.assertEqual(read.merge_of(merged), A)
+        self.assertIsNone(read.merge_of(other))
+        # a receipt row whose head_sha is 8 hex is Malformed to merge_of once it is read, whatever commit is asked
+        read = self.ledger(merge_row("2026-10-30T07:30:00Z", "U9", "9", B[:8], other))  # line 2
+        for commit in (other, merged):
+            with self.assertRaises(self.reader.Malformed) as caught:
+                read.merge_of(commit)
+            self.assertEqual(
+                str(caught.exception), f"{self.ledger_file}:2: the head_sha of a merge row is not 40 hex: {B[:8]!r}"
+            )
+        # the newest receipt row for the commit decides, by ts then line; a receipt whose head word is the first 8 of
+        # the head_sha is the writer's own form; the pre-U222 shape and a refusal recorded as a row are no merge rows
+        read = self.ledger(
+            merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged),  # line 2
+            merge_row("2026-10-30T07:10:00Z", "U8", "8", B, merged, "; a note"),  # line 3: the newest for the commit
+            row(
+                "2026-10-30T07:20:00Z", "U9", "9", A, "-", "pr-merge.sh", f"merged as {merged} (squash) on the row"
+            ),  # line 4
+            row("2026-10-30T07:30:00Z", "U9", "9", A, "-", "pr-merge.sh", "refused, exit 2: the carried row"),  # line 5
+            row(
+                "2026-10-30T07:40:00Z",
+                "U9",
+                "9",
+                B,
+                "merged",
+                f"pr-merge.sh (installed copy)",
+                f"merged pr=9 head={B[:8]} commit={merged}",
+            ),  # line 6: another verifier
+            merge_row("2026-10-30T07:50:00Z", "U9", "9", B, other),  # line 7: another commit
+        )
+        self.assertEqual(read.merge_of(merged), B, "the newest receipt row naming the commit, line 3")
+        self.assertEqual(read.merge_of(other), B)
+        self.assertIsNone(read.merge_of("c" * 40))
+        self.assertEqual([r.merge_commit for r in read.rows], [merged, merged, None, None, None, other])
+        read = self.ledger(
+            row("2026-10-30T07:00:00Z", "U7", "7", A, "-", "pr-merge.sh", f"merged pr=7 head={B[:8]} commit={merged}")
+        )
+        with self.assertRaises(self.reader.Malformed) as caught:
+            read.merge_of(merged)
+        self.assertEqual(
+            str(caught.exception),
+            f"{self.ledger_file}:2: the receipt of a merge row names head={B[:8]}, neither its head_sha {A} nor its first 8",
+        )
+        # a hand-written sweep row of another unit is Malformed to sweep-any, never "no sweep"
+        read = self.ledger(
+            sweep("2026-10-30T03:00:00Z", A),
+            row("2026-10-30T04:00:00Z", "U8", "-", B, "sweep", "coordinator", "sweeps/U8-x.json"),  # line 3
+        )
+        self.assertEqual(read.newest_sweep("U7", A).line, 2, "the unit's own question reads its rows alone")
+        with self.assertRaises(self.reader.Malformed) as caught:
+            read.newest_sweep_any(A)
+        self.assertIn(f"{self.ledger_file}:3: the verifier of a sweep row does not begin with", str(caught.exception))
+        # the CLI forms
+        self.ledger(
+            row("2026-10-30T01:00:00Z", "U7", "7", A, "correct (findings=0)"),
+            sweep("2026-10-30T03:00:00Z", A),
+            sweep("2026-10-30T05:00:00Z", A, unit="U8"),
+            merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged),
+        )
+        run = self.cli("sweep-any", A)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(run.stdout, f"2026-10-30T05:00:00Z\tU8\t{SKILL}\tsweeps/U8-{A[:8]}.json\n")
+        run = self.cli("sweep-any", B)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""))
+        run = self.cli("merge-of", merged)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, f"{A}\n", ""))
+        run = self.cli("merge-of", other)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""))
+        for args in (("sweep-any", A[:8]), ("merge-of", merged[:8]), ("merge-of",), ("sweep-any", "U7", A)):
+            with self.subTest(args=args):
+                run = self.cli(*args)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("error:", run.stderr)
+        self.ledger(
+            row(
+                "2026-10-30T07:00:00Z",
+                "U7",
+                "7",
+                A[:7],
+                "-",
+                "pr-merge.sh",
+                f"merged pr=7 head={A[:7]} commit={merged}",
+            )
+        )
+        run = self.cli("merge-of", merged)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr, f"ledger: {self.ledger_file}:2: the head_sha of a merge row is not 40 hex: {A[:7]!r}\n"
+        )
+        run = self.cli("sweep-any", A)
+        self.assertEqual(
+            (run.returncode, run.stdout, run.stderr),
+            (0, "none\n", ""),
+            "no sweep row: the merge row is read by the other question alone",
+        )
 
 
 DAILY_HEADER = "ts\thead_sha\tverifier\tevidence\n"

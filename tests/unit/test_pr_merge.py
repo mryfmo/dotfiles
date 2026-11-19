@@ -20,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from test_pr_levers import (  # noqa: E402
+    BASE_TIP,
     COMPARE_MATCH,
     COMPARE_OTHER_MATCH,
     FOOTER,
@@ -31,13 +32,16 @@ from test_pr_levers import (  # noqa: E402
     RULESET_REQUIRED_CHECKS,
     SHA_A,
     SHA_B,
+    TIP_COMPARE_MATCH,
+    TIP_PARENT,
+    TREE_HEAD,
+    TREE_TIP,
     PrLeverTestCase,
     commit_answer,
     compare_response,
+    git_commit_answer,
     ledger_row,
     ref_answer,
-    ruleset_answer,
-    rulesets_answer,
     sweep_row,
 )
 
@@ -54,6 +58,9 @@ RULE = (
 # as one array per file; round 5: one call, no count of the pull request read; round 7: keyed by main's tip, read once
 # through the refs API, with the response's merge base the tip itself): a lever path, so the sweep is required (U597).
 LEVER_FILES = [{"status": "modified", "filename": "scripts/orchestrator/pr-merge.sh"}]
+# The landed diff of main's tip (round 11, gate one): docs only, so the tip needs no sweep row and the sweep gate under
+# test is the head's own.
+DOCS_FILES = [{"status": "modified", "filename": "docs/changelog.md"}]
 COMPARE_OTHER = {"match": COMPARE_OTHER_MATCH, "exit": 1, "stderr": "HTTP 404: No commit found for the basehead\n"}
 RECEIPT = f"merged pr=7 head={SHA_A} commit={SHA_B} verdict={{ts}}\n"
 MERGE_CALL = ["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]
@@ -127,11 +134,10 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
-            # the main ruleset's up-to-date policy (round 9), true so the existing cases keep their shape: these are
-            # required heads, whose row the policy never decides
-            rulesets_answer(),
-            ruleset_answer(strict=True),
             ref_answer(),
+            # main's tip and its line (round 11, gate one): the tip's parents and its docs-only landed diff
+            git_commit_answer(BASE_TIP, TREE_TIP, [TIP_PARENT]),
+            {"match": TIP_COMPARE_MATCH, "json": compare_response(DOCS_FILES, TIP_PARENT)},
             {"match": COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
             COMPARE_OTHER,
             {"match": r"^pr checks 7 --json bucket,name$", "json": GREEN_CHECKS},
@@ -145,6 +151,9 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "json": {"state": "MERGED", "mergeCommit": {"oid": SHA_B}, "baseRefName": "main", "headRefOid": head},
             },
             commit_answer(),
+            # the trees (round 11, gate three): the merge commit carries the head's tree, a squash onto an unmoved tip
+            git_commit_answer(SHA_B, TREE_HEAD, [BASE_TIP]),
+            git_commit_answer(SHA_A, TREE_HEAD, [TIP_PARENT]),
         )
 
     def merge(self):
@@ -491,11 +500,10 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": SHA_A, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
-            # the main ruleset's up-to-date policy (round 9), true so the existing cases keep their shape: these are
-            # required heads, whose row the policy never decides
-            rulesets_answer(),
-            ruleset_answer(strict=True),
             ref_answer(),
+            # main's tip and its line (round 11, gate one): the tip's parents and its docs-only landed diff
+            git_commit_answer(BASE_TIP, TREE_TIP, [TIP_PARENT]),
+            {"match": TIP_COMPARE_MATCH, "json": compare_response(DOCS_FILES, TIP_PARENT)},
             {"match": COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
             COMPARE_OTHER,
             {"match": r"^pr checks 7 --json bucket,name$", "json": checks},
@@ -509,6 +517,9 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
                 "json": {"state": "MERGED", "mergeCommit": {"oid": SHA_B}, "baseRefName": "main", "headRefOid": SHA_A},
             },
             commit_answer(),
+            # the trees (round 11, gate three): the merge commit carries the head's tree, a squash onto an unmoved tip
+            git_commit_answer(SHA_B, TREE_HEAD, [BASE_TIP]),
+            git_commit_answer(SHA_A, TREE_HEAD, [TIP_PARENT]),
         )
         return self.run_lever("pr-merge.sh", "7", "--records", str(self.records))
 

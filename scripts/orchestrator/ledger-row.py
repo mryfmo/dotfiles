@@ -25,8 +25,11 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
 - `sweep --head --unit --seat <seat> --run <n> --task <U<n>> --findings sweeps/<dir>/findings.json --count <n>
   [--pr <pr>]`: pr cell `-`, verdict `sweep`, verifier `security-audit-skill <pin8> (full audit mode on the srt worker
   seat <seat>, run-<n>; TASK <U<n>>)` with `<pin8>` the first 8 characters of the manifest's
-  `assets.security-audit-skill.pin` (`~/.agents/agent-config.yaml`, the deployed manifest alone since U597 round 9,
-  read as text by `pr-merge.sh`'s `sweep_pin_probe` reads it: no PyYAML under `-S`), evidence `<findings>; pr <pr or
+  `assets.security-audit-skill.pin` (`~/.agents/agent-config.yaml`, the deployed manifest, else for this kind alone the
+  checkout's `home/dot_agents/agent-config.yaml` two directories above this file when the deployed one is missing:
+  U597 round 11, the base's fall-through restored, since the row carries the skill's pin word alone and the merge lever
+  compares it with its own manifest; read as text by `pr-merge.sh`'s `sweep_pin_probe` reads it: no PyYAML under
+  `-S`), evidence `<findings>; pr <pr or
   none>; <count> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS`; the findings path must be a
   regular file under the store.
 - `audit --pr --head --unit --verdict-file verdicts/<unit>-<sha8>.md --verifier <text> [--class <word>]`: the verdict
@@ -87,10 +90,12 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
   could stand as the day's full sweep of main's head; a unit's sweep is a `sweep` row of the ledger, never a daily
   row), whose day is the UTC day `--swept-at` falls on or the day before it (round 9, verdict U597-c37800e3 P2 at
   :543: the id is fixed at dispatch, and a full sweep that crosses midnight finishes under the id it was dispatched
-  with; any other day is refused naming both days). The manifest is `~/.agents/agent-config.yaml` alone (round 9:
-  `--manifest <path>` is gone from the interface, since a caller-selected manifest let the row carry the expected
-  skill pin while its validators were checked against other digests; the tests set `HOME` to a scratch home holding
-  a manifest). Round 5 (verdicts/U597-1b3c4b1d.md): the
+  with; any other day is refused naming both days). The manifest is `~/.agents/agent-config.yaml` alone for this kind
+  (round 9: `--manifest <path>` is gone from the interface, since a caller-selected manifest let the row carry the
+  expected skill pin while its validators were checked against other digests, and round 11 kept the deployed-only rule
+  here while restoring the `sweep` kind's fall-through to the checkout's copy: a daily row attests validator pins,
+  which a checkout-selected manifest would choose, where a sweep row carries the skill's pin word alone; the tests set
+  `HOME` to a scratch home holding a manifest). Round 5 (verdicts/U597-1b3c4b1d.md): the
   day's first file, the header and the first row, is written whole through a temporary file of the store directory
   and `os.replace` under the ledger's lock (so two first writers serialise and the second appends), and appears whole
   or not at all, where round 4's `O_CREAT | O_EXCL` header write left a malformed file after a short write that no
@@ -110,9 +115,10 @@ the line. Exit 0 prints one line, `appended <ts> line <n>`; every refusal is exi
 fails is exit 1 naming the file. Round 2 (U222b, verdicts/U222-9187830e.md): every file read under the store
 (`ledger.tsv`, the verdict file, the findings file) follows one path rule, its `os.path.realpath` under the realpath of
 the store, each component `os.lstat`ed and no link, a regular file at the end; the findings directory name is
-`[A-Za-z0-9._-]` alone (the sweep reader splits the evidence on `;`); the deployed manifest is opened, and any failure
-to open or read it is a refusal naming the file (round 9: a missing one too, with no fall-through to the checkout's
-copy and no `--manifest`); the carried separator class is the
+`[A-Za-z0-9._-]` alone (the sweep reader splits the evidence on `;`); the manifest is opened, and any failure to open
+or read it is a refusal naming the file (round 9: no `--manifest`; round 11: the `sweep` kind falls through to the
+checkout's copy when the deployed one is missing and the `daily` kind never does, `manifest_lines`); the carried
+separator class is the
 gate's literal set under `re.ASCII`; and the import of `ledger.py` writes no bytecode (`sys.dont_write_bytecode`).
 Round 3 (U222c, verdicts/U222-0fc41a81.md): the read, the check and the write run under one exclusive lock, so two
 levers writing at once never lose each other's row, and every argument round-trips through strict UTF-8 before
@@ -277,6 +283,12 @@ VALIDATOR_CWD = "/"
 # a bare `<key>:` line opens a mapping, a line indented no deeper closes it, and the pin is the one `pin: <40 hex>`
 # line at the indentation of the `security-audit-skill` asset's first field under the top-level `assets:`.
 MANIFEST_PARTS = (".agents", "agent-config.yaml")
+# The checkout's copy of the manifest, two directories above this file (`scripts/orchestrator/` and
+# `home/dot_local/bin/common/` both lie two below the root that holds `home/dot_agents/`), the `sweep` kind's
+# fall-through when no deployed manifest exists (U597 round 11, verdict U597-2bebb5ae P2 at :302: round 9's
+# deployed-only rule stopped a source checkout with a valid manifest from recording the required sweep from a fresh
+# home, the base's behaviour this restores for the one kind whose row carries no digest a checkout could choose).
+CHECKOUT_MANIFEST_PARTS = ("..", "..", "home", "dot_agents", "agent-config.yaml")
 MAPPING_KEY = re.compile(r"^(\S+):$")
 PIN_LINE = re.compile(r"^pin: ([0-9a-f]{40})$")
 # One line of the asset's `validators_sha256:` mapping (round 8): `<file>: <64 hex>`, the file's name as the installed
@@ -285,12 +297,19 @@ DIGEST_LINE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*): ([0-9a-f]{64})$")
 ASSET_KEYS = ["assets", "security-audit-skill"]
 
 
-def manifest_lines():
-    """The deployed manifest `~/.agents/agent-config.yaml` as (path, lines), the one manifest this writer reads
-    (round 9: `--manifest <path>` is gone, since a caller-selected manifest let a row carry the expected skill pin
-    while its validators were checked against other digests, and round 8's fall-through to the checkout's copy is
-    gone with it, since the deployed writer has no checkout beside it): HOME must be an absolute path, and any
-    failure to open or read the file, a missing one included, is a refusal naming it (standing order 21)."""
+def manifest_lines(fallback):
+    """The manifest as (path, lines): the deployed `~/.agents/agent-config.yaml` (round 9: `--manifest <path>` is gone,
+    since a caller-selected manifest let a row carry the expected skill pin while its validators were checked against
+    other digests), and, for the `sweep` kind alone (`fallback` true), the checkout's copy at CHECKOUT_MANIFEST_PARTS
+    beside this file when the deployed one does not exist (ENOENT of the open itself and nothing else: an unreadable
+    deployed manifest is a refusal naming it, never a fall-through), the base's rule restored in round 11 (verdict
+    U597-2bebb5ae P2 at :302), since a source checkout with a valid manifest must record the required sweep from a
+    fresh home, and a sweep row carries the skill's pin word alone, which the merge lever compares with its own
+    manifest again, so the checkout's copy decides nothing the lever does not check. The `daily` kind reads the
+    deployed manifest alone (`fallback` false): its row carries the validator pins the copies were held to, and a
+    checkout-selected manifest would choose them (round 9's reason, kept). HOME must be an absolute path, and any
+    failure to open or read the file chosen is a refusal naming it (standing order 21); a writer copied away from a
+    checkout, with no manifest in either place, is refused naming the checkout's path."""
     home = os.environ.get("HOME", "")
     if not home or not os.path.isabs(home):
         refuse(f"HOME {home!r} is not an absolute path; the manifest ~/{'/'.join(MANIFEST_PARTS)} is read under it")
@@ -298,8 +317,19 @@ def manifest_lines():
     try:
         with open(manifest, encoding="utf-8") as handle:
             return manifest, handle.read().splitlines()
+    except FileNotFoundError:
+        if not fallback:
+            refuse(f"cannot read the manifest {manifest}: No such file or directory")
     except OSError as error:
         refuse(f"cannot read the manifest {manifest}: {error.strerror}")
+    except UnicodeDecodeError as error:
+        refuse(f"cannot read the manifest {manifest}: not UTF-8: {error.reason}")
+    manifest = os.path.normpath(os.path.join(HERE, *CHECKOUT_MANIFEST_PARTS))
+    try:
+        with open(manifest, encoding="utf-8") as handle:
+            return manifest, handle.read().splitlines()
+    except OSError as error:
+        refuse(f"cannot read the manifest {manifest}: {error.strerror} (no deployed manifest under HOME either)")
     except UnicodeDecodeError as error:
         refuse(f"cannot read the manifest {manifest}: not UTF-8: {error.reason}")
 
@@ -465,7 +495,7 @@ def sweep_row(args, store):
         check_pr(args.pr)
     if not DIGITS.match(args.count):
         refuse(f"the count {args.count!r} is not a decimal number")
-    verifier = sweep_verifier(args)
+    verifier = sweep_verifier(args, True)
     store_file(store, args.findings, "findings path")
     evidence = (
         f"{args.findings}; pr {'none' if args.pr is None else args.pr}; {args.count} findings; "
@@ -534,10 +564,11 @@ def receipt_row(args):
     return compose(now(), args.unit, args.pr, args.head, "-", args.lever, with_note(args.receipt, args.note))
 
 
-def sweep_verifier(args):
-    """The verifier of a `sweep` or `daily` row: the skill, its pin word from the manifest, the seat, the run and the
-    task, after the run, the seat and the findings path are checked (the `sweep` kind's count is its own check; the
-    `daily` kind reads its count from the file, round 6)."""
+def sweep_verifier(args, fallback):
+    """The verifier of a `sweep` or `daily` row: the skill, its pin word from the manifest (manifest_lines; `fallback`
+    true for the `sweep` kind, whose pin may come from the checkout's copy, false for the `daily` kind, round 11), the
+    seat, the run and the task, after the run, the seat and the findings path are checked (the `sweep` kind's count is
+    its own check; the `daily` kind reads its count from the file, round 6)."""
     if not DIGITS.match(args.run):
         refuse(f"the run {args.run!r} is not a decimal number")
     if not SWEEP_SEAT.match(args.seat):
@@ -548,7 +579,7 @@ def sweep_verifier(args):
             f"the findings path {args.findings!r} is not sweeps/<dir>/findings.json under the store with <dir> of "
             "[A-Za-z0-9._-] alone (the sweep reader splits the evidence on ';')"
         )
-    pin = manifest_pin(*manifest_lines())[:8]
+    pin = manifest_pin(*manifest_lines(fallback))[:8]
     return (
         f"security-audit-skill {pin} (full audit mode on the srt worker seat {args.seat}, run-{args.run}; "
         f"TASK {args.task})"
@@ -582,7 +613,7 @@ def daily_row(args, store):
             f"before it ({days[1]}); the daily id is fixed at dispatch and a sweep that crosses midnight keeps it, so "
             f"daily-{days[0]} or daily-{days[1]} alone records this RESULT"
         )
-    verifier = sweep_verifier(args)
+    verifier = sweep_verifier(args, False)
     findings_path = store_file(store, args.findings, "findings path")
     count, pins, artifacts = run_validators(args, store, findings_path)
     validator_digests = " ".join(pins[name][:8] for name in VALIDATOR_FILES)
@@ -770,7 +801,7 @@ def run_validators(args, store, findings_path):
     held to as `{file: digest}` over VALIDATOR_FILES, the artifact copies' digests as `{name: digest}` over
     ARTIFACTS), which the row records as `<n> findings`, `validators sha256 <8> <8> <8>` and `artifacts sha256 <8>
     <8>`."""
-    manifest, lines = manifest_lines()
+    manifest, lines = manifest_lines(False)  # the daily kind: the deployed manifest alone
     pins = manifest_validator_pins(manifest, lines)
     home = os.environ.get("HOME", "")
     node = shutil.which("node", path=os.environ.get("PATH", ""))

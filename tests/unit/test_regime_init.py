@@ -90,13 +90,48 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         # round 6 (verdict U597-10d46fe0 P2 at :44 and P2 at ledger-row.py:416-417): the recording step copies the
         # findings into a run-keyed directory behind a `test ! -e` guard, so a same-day retry never lands over the
         # earlier row's evidence, passes the RESULT's timestamp as `--swept-at`, and passes no count: the writer reads
-        # the findings file itself
+        # the findings file itself; round 11 (verdict U597-2bebb5ae P1 at :44): the copy follows no symbolic link
+        # (`cp -R -P`, the form macOS and GNU cp share, with the why) and comes only after both validators exit 0 over
+        # the seat's output files, so a refused run leaves nothing in the store
         self.assertIn(
             "`test ! -e <store>/sweeps/daily-<YYYY-MM-DD>-run-<n> && mkdir <store>/sweeps/daily-<YYYY-MM-DD>-run-<n> "
-            "&& cp <output-dir>/findings.json <store>/sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json && cp "
+            "&& cp -R -P <output-dir>/findings.json <store>/sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json && cp -R -P "
             "<output-dir>/coverage-ledger.json <store>/sweeps/daily-<YYYY-MM-DD>-run-<n>/coverage-ledger.json`",
             text,
         )
+        self.assertNotIn("&& cp <output-dir>", text, "no plain cp: it follows a planted link (round 11)")
+        self.assertIn("in this order: validation first, then the copy, then the row", text)
+        self.assertIn(
+            "It runs both validators itself over the files in the seat's output directory, `node"
+            " ~/.agents/skills/security-audit/validate-findings.cjs <output-dir>/findings.json && node"
+            " ~/.agents/skills/security-audit/validate-coverage-ledger.cjs <output-dir>/coverage-ledger.json`, and"
+            " copies nothing unless both exit 0 (validation before the copy, so a refused run leaves nothing in the"
+            " store)",
+            text,
+        )
+        self.assertIn(
+            "(`cp -R -P`, the form macOS and GNU cp share, copies a symbolic link as a link and never the file it"
+            " points at: the output directory is worker-controlled, so a plain `cp` could follow a planted link and"
+            " deposit coordinator-readable bytes from outside the directory into the store as a regular file;",
+            text,
+        )
+        self.assertIn("the writer then refuses a copy that is a link", text)
+        self.assertLess(
+            text.index("copies nothing unless both exit 0"), text.index("`test ! -e"), "the validation comes first"
+        )
+        # round 11 (verdict U597-2bebb5ae P2 at :25): the final head check reads `git rev-parse HEAD` with its exit
+        # status and compares the one line with the TASK's head; a grep count of generated metadata attests nothing
+        self.assertIn(
+            "`git -C ~/.local/state/omp-seats/<repository>/<seat> rev-parse HEAD` exits 0 and prints exactly `<head>`"
+            " (its exit status read and its one line compared whole with the TASK's `<head>`; no grep count:",
+            text,
+        )
+        self.assertNotIn("grep -c <head>", text, "the grep count is gone (round 11)")
+        self.assertNotIn("run-metadata.json` prints 1 or more", text)
+        # round 11: the GOAL names no server policy and no U613; the row stands for the day's sweep alone
+        for word in ("strict_required_status_checks_policy", "U613", "ruleset"):
+            self.assertNotIn(word, text, f"the template names no {word} (round 11)")
+        self.assertIn("a day without its sweep keeps the per-head rule for every head", text)
         # round 7 (verdict U597-301eba2e P2 at :26 and P2 at ledger-row.py:435): the clean-checkout acceptance reads
         # `git status --porcelain`'s exit status, so a failed read is a refusal to start and never a clean checkout;
         # the recording step copies the coverage ledger beside the findings, since the writer runs both validators
@@ -128,7 +163,7 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         self.assertIn(
             "copied into a private directory of the writer and the copy hashed against its"
             " `assets.security-audit-skill.validators_sha256` pin in `~/.agents/agent-config.yaml`, the one manifest the"
-            " writer reads, before `node` runs the copies",
+            " writer reads for a daily row, before `node` runs the copies",
             text,
         )
         self.assertIn("with the `report-schema.json` the first loads", text)
@@ -195,8 +230,8 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         anything but `<head>`, a refusal to start whose RESULT is `status=partial` with a note naming the exit status
         or the printed sha, and the same for the status read, with nothing of steps 2 to 5 run; the REPORT paragraph
         writes no daily row and copies nothing for a `status=partial` RESULT and writes the row for
-        `status=ready_for_review` alone; the TIMEBOX path sends `status=partial` too; and the GOAL names the ruleset
-        policy the exemption rests on, with the unit that asks the operator for it (U613)."""
+        `status=ready_for_review` alone; the TIMEBOX path sends `status=partial` too; and the GOAL names the day's
+        sweep as what a head outside every class merges on, with no server policy and no U613 (round 11)."""
         text = (TEMPLATES / "daily-sweep-brief.md").read_text()
         step_one = text[text.index("\n1. `mkdir -p") : text.index("\n2. Read")]
         self.assertIn(
@@ -220,10 +255,14 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         )
         goal = text[text.index("\nGOAL\n") : text.index("\nSCOPE\n")]
         self.assertIn(
-            "which it does only while the main ruleset requires branches to be up to date before merging,"
-            " `strict_required_status_checks_policy`, the setting U613 asks the operator for",
+            "a head whose changed paths touch no lever, policy, credential handling or deployed executable merges on its"
+            " Codex audit, CI and the day's sweep of main, and `pr-merge.sh` reads the day's row from the store's"
+            " `daily-sweeps.tsv` before it skips such a head's own sweep row; a day without its sweep keeps the"
+            " per-head rule for every head",
             goal,
         )
+        for word in ("ruleset", "strict_required_status_checks_policy", "U613"):
+            self.assertNotIn(word, goal, f"the GOAL names no {word} (round 11)")
 
 
 class RegimeInitTest(unittest.TestCase):

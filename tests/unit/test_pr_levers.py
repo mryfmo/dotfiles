@@ -1323,87 +1323,54 @@ def listing_text(paths, merge_base=BASE_TIP):
 COMPARE_CALL = compare_call()
 COMPARE_MATCH = compare_match()
 
-# The main ruleset's up-to-date policy (round 9, the mechanism change: the exemption exists only while the server
-# guarantees the basis). Before the tip read the lever lists the rulesets, `gh api repos/{owner}/{repo}/rulesets`, and
-# reads each active branch ruleset by id for its `conditions.ref_name` and its `required_status_checks` rule's
-# `strict_required_status_checks_policy`. The fixtures answer with the repository's one ruleset, `main integration
-# gate` (24397953) on `~DEFAULT_BRANCH`, strict true by default, so every earlier case keeps its shape and the daily
-# rule applies as rounds 4 to 8 built it; the repository's live value is false until U613, the lever's behaviour under
-# `strict=False`: no head is exempt.
-RULESET_ID = 24397953
-RULESETS_JQ = '(if type == "array" then . else error("rulesets is " + type + ", not an array") end) | .[] | [(.id | if type == "number" then tostring else error("id is " + type + ", not a number") end), (.enforcement | if type == "string" then . else error("enforcement is " + type + ", not a string") end), (.target | if type == "string" then . else error("target is " + type + ", not a string") end)] | @tsv'
-RULESET_JQ = '((.conditions.ref_name.include | if type == "array" then . else error("conditions.ref_name.include is " + type + ", not an array") end) | .[] | "include " + (if type == "string" then . else error("a ref_name.include entry is " + type + ", not a string") end)), ((.conditions.ref_name.exclude | if type == "array" then . elif . == null then [] else error("conditions.ref_name.exclude is " + type + ", not an array") end) | .[] | "exclude " + (if type == "string" then . else error("a ref_name.exclude entry is " + type + ", not a string") end)), ((.rules | if type == "array" then . else error("rules is " + type + ", not an array") end) | .[] | select(.type == "required_status_checks") | "strict " + (.parameters.strict_required_status_checks_policy | if type == "boolean" then tostring else error("strict_required_status_checks_policy is " + type + ", not a boolean") end))'
-RULESETS_CALL = ["api", "repos/{owner}/{repo}/rulesets", "--jq", RULESETS_JQ]
-RULESETS_MATCH = r"^api repos/\{owner\}/\{repo\}/rulesets$"
+# Main's tip and its line (round 11, gate one; the round-10 P1 and the mechanism-change decisions row of
+# 2026-11-19T15:21:36Z: no read of a ruleset, policy or actor). Before the head's listing the lever reads the tip's first
+# parent, `gh api repos/{owner}/{repo}/git/commits/<tip> --jq '[.parents[].sha] | join(" ")'`, and classifies the tip's
+# landed diff `compare/<parent>...<tip>` through the pinned reader as it classifies the head's listing; the fixtures'
+# tip landed a docs-only diff, so every earlier case keeps its shape. The trees (gate three): the same `git/commits/<sha>`
+# answer serves `--jq .tree.sha`, and the fixtures' merge commit SHA_B carries the head SHA_A's tree, the squash of an
+# up-to-date head onto an unmoved tip.
+TIP_PARENT = "d" * 40
+TREE_TIP = "1" * 40
+TREE_HEAD = "2" * 40
+TREE_OTHER = "3" * 40
+PARENTS_JQ = '[.parents[].sha] | join(" ")'
+TREE_JQ = ".tree.sha"
 
 
-def ruleset_call(ruleset=RULESET_ID):
-    return ["api", f"repos/{{owner}}/{{repo}}/rulesets/{ruleset}", "--jq", RULESET_JQ]
+def git_commit_call(sha, jq):
+    return ["api", f"repos/{{owner}}/{{repo}}/git/commits/{sha}", "--jq", jq]
 
 
-def ruleset_match(ruleset=RULESET_ID):
-    return rf"^api repos/\{{owner\}}/\{{repo\}}/rulesets/{ruleset}$"
+def git_commit_match(sha):
+    return rf"^api repos/\{{owner\}}/\{{repo\}}/git/commits/{sha}$"
 
 
-RULESET_CALL = ruleset_call()
-# The two reads every merge makes before the tip read (round 9).
-POLICY_CALLS = [RULESETS_CALL, RULESET_CALL]
-
-
-def ruleset_summary(ruleset=RULESET_ID, name="main integration gate", enforcement="active", target="branch"):
-    """One entry of the rulesets listing, as GitHub shapes it (no conditions and no rules on the listing)."""
+def git_commit_answer(sha, tree, parents):
+    """The git commits API's answer for `sha`, as GitHub shapes it: its tree and its parents (the lever reads
+    `.tree.sha` of the merge commit and the head, and `[.parents[].sha]` of main's tip)."""
     return {
-        "id": ruleset,
-        "name": name,
-        "target": target,
-        "source_type": "Repository",
-        "source": "acme/widgets",
-        "enforcement": enforcement,
-        "node_id": f"RRS_{ruleset}",
-        "_links": {"self": {"href": f"https://api.github.com/repos/acme/widgets/rulesets/{ruleset}"}},
-        "created_at": "2025-11-01T00:00:00Z",
-        "updated_at": "2026-11-07T03:34:00Z",
-    }
-
-
-def rulesets_answer(*summaries):
-    """The rulesets listing: the given summaries, or the main ruleset alone."""
-    return {"match": RULESETS_MATCH, "json": list(summaries) if summaries else [ruleset_summary()]}
-
-
-def ruleset_rules(strict=True):
-    """The main ruleset's rules as GitHub lists them, the `required_status_checks` rule's policy as `strict`."""
-    return [
-        {"type": "deletion"},
-        {"type": "non_fast_forward"},
-        {
-            "type": "pull_request",
-            "parameters": {"required_approving_review_count": 0, "dismiss_stale_reviews_on_push": False},
-        },
-        {
-            "type": "required_status_checks",
-            "parameters": {
-                "strict_required_status_checks_policy": strict,
-                "do_not_enforce_on_create": False,
-                "required_status_checks": [{"context": name} for name in RULESET_REQUIRED_CHECKS],
-            },
-        },
-    ]
-
-
-def ruleset_answer(
-    ruleset=RULESET_ID, strict=True, include=("~DEFAULT_BRANCH",), exclude=(), rules=None, enforcement="active"
-):
-    """The per-id read of a ruleset, as GitHub shapes it: the summary, its `conditions.ref_name` and its rules."""
-    return {
-        "match": ruleset_match(ruleset),
+        "match": git_commit_match(sha),
         "json": {
-            **ruleset_summary(ruleset, enforcement=enforcement),
-            "conditions": {"ref_name": {"include": list(include), "exclude": list(exclude)}},
-            "rules": ruleset_rules(strict) if rules is None else rules,
+            "sha": sha,
+            "node_id": "C_x",
+            "url": f"https://api.github.com/repos/acme/widgets/git/commits/{sha}",
+            "tree": {"sha": tree, "url": f"https://api.github.com/repos/acme/widgets/git/trees/{tree}"},
+            "parents": [
+                {"sha": parent, "url": f"https://api.github.com/repos/acme/widgets/git/commits/{parent}"}
+                for parent in parents
+            ],
         },
     }
 
+
+TIP_COMMIT_CALL = git_commit_call(BASE_TIP, PARENTS_JQ)
+TIP_COMPARE_CALL = compare_call(BASE_TIP, TIP_PARENT)
+TIP_COMPARE_MATCH = compare_match(BASE_TIP, TIP_PARENT)
+# The api calls every merge makes before the head's listing (the tip read, the tip's parents, the tip's landed diff)
+# and after the merge (the merge commit's first parent, the merge commit's tree, the head's tree).
+PRE_CALLS = [REF_CALL, TIP_COMMIT_CALL, TIP_COMPARE_CALL]
+POST_CALLS = [COMMIT_CALL, git_commit_call(SHA_B, TREE_JQ), git_commit_call(SHA_A, TREE_JQ)]
 
 # The three validator pins of the manifest (round 9; round 10 added report-schema.json's): a daily row's `validators
 # sha256 <8 hex> <8 hex> <8 hex>` field carries their first 8 hex, and the lever requires each to be a prefix of its
@@ -1602,27 +1569,73 @@ class PrMergeTest(PrLeverTestCase):
         merge_parent=BASE_TIP,
         parent_json=None,
         parent_exit=0,
-        strict=True,
-        rulesets=None,
-        rulesets_exit=0,
-        ruleset_json=None,
-        ruleset_exit=0,
-        rulesets_extra=(),
+        tip_parents=(TIP_PARENT,),
+        tip_commit_exit=0,
+        tip_files=None,
+        tip_paths=None,
+        tip_merge_base=None,
+        tip_paths_exit=0,
+        commit_tree=TREE_HEAD,
+        tree_exit=0,
+        head_tree=TREE_HEAD,
+        head_tree_exit=0,
+        landed_files=None,
+        landed_paths=None,
+        landed_merge_base=None,
+        landed_exit=0,
+        extra=(),
     ):
-        # The main ruleset's up-to-date policy (round 9): the rulesets listing (`rulesets`, summaries as given, else
-        # the main ruleset alone, or a failed read) and the per-id read of the main ruleset (`ruleset_json` as given,
-        # run through the lever's jq, else the fixture's ruleset with the policy `strict`, or a failed read); any
-        # other ruleset the listing names is answered by `rulesets_extra` entries, or not at all.
-        if rulesets_exit:
-            rulesets_listing = {"match": RULESETS_MATCH, "exit": rulesets_exit, "stderr": "HTTP 502"}
+        # Main's tip and its line (round 11, gate one): the git commit of the tip the lever read (`tip_parents` its
+        # parents, or a failed read), and the compare of the tip's landed diff `<parent>...<tip>` (`tip_files` as
+        # api_file objects through the lever's jq, `tip_paths` as the jq form prints them, else one docs file; the
+        # merge base the parent unless `tip_merge_base` says otherwise; or a failed read), keyed by the tip the lever
+        # read so a tip the fixture did not key still reaches the head's listing.
+        read_tip = tip or base_tip
+        if tip_commit_exit:
+            tip_commit = {"match": git_commit_match(read_tip), "exit": tip_commit_exit, "stderr": "HTTP 502"}
         else:
-            rulesets_listing = rulesets_answer(*(rulesets or ()))
-        if ruleset_exit:
-            main_ruleset = {"match": ruleset_match(), "exit": ruleset_exit, "stderr": "HTTP 502"}
-        elif ruleset_json is not None:
-            main_ruleset = {"match": ruleset_match(), "json": ruleset_json}
+            tip_commit = git_commit_answer(read_tip, TREE_TIP, tip_parents)
+        tip_parent = tip_parents[0] if tip_parents else TIP_PARENT
+        if tip_merge_base is None:
+            tip_merge_base = tip_parent
+        tip_keyed = compare_match(read_tip, tip_parent)
+        if tip_paths is not None:
+            tip_diff = {"match": tip_keyed, "stdout": listing_text(tip_paths, tip_merge_base)}
         else:
-            main_ruleset = ruleset_answer(strict=strict)
+            tip_diff = {
+                "match": tip_keyed,
+                "json": compare_response(tip_files or [api_file("docs/changelog.md")], tip_merge_base),
+            }
+        if tip_paths_exit:
+            tip_diff = {"match": tip_keyed, "exit": tip_paths_exit, "stderr": "HTTP 502"}
+        # The trees (round 11, gate three): the merge commit's (`commit_tree`, or a failed read) and the head's
+        # (`head_tree`, or a failed read), each a `git/commits/<sha>` answer; the landed diff `<parent>...<merge
+        # commit>` the lever classifies when the parent is not the tip (`landed_files`, `landed_paths`, else one docs
+        # file; its merge base the parent unless `landed_merge_base` says otherwise; or a failed read).
+        if tree_exit:
+            commit_tree_entry = {"match": git_commit_match(SHA_B), "exit": tree_exit, "stderr": "HTTP 502"}
+        else:
+            commit_tree_entry = git_commit_answer(SHA_B, commit_tree, [merge_parent])
+        if head_tree_exit:
+            head_tree_entry = {"match": git_commit_match(head), "exit": head_tree_exit, "stderr": "HTTP 502"}
+        else:
+            head_tree_entry = git_commit_answer(head, head_tree, [base_tip])
+        landed = []
+        if merge_parent != base_tip:
+            landed_keyed = compare_match(SHA_B, merge_parent)
+            if landed_merge_base is None:
+                landed_merge_base = merge_parent
+            if landed_paths is not None:
+                landed = [{"match": landed_keyed, "stdout": listing_text(landed_paths, landed_merge_base)}]
+            else:
+                landed = [
+                    {
+                        "match": landed_keyed,
+                        "json": compare_response(landed_files or [api_file("docs/changelog.md")], landed_merge_base),
+                    }
+                ]
+            if landed_exit:
+                landed = [{"match": landed_keyed, "exit": landed_exit, "stderr": "HTTP 502"}]
         if checks is None:
             # every required check passes (U330), and a check that is not required may skip
             checks = [*GREEN_CHECKS, {"bucket": "skipping", "name": "docs"}]
@@ -1678,11 +1691,12 @@ class PrMergeTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": draft},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
-            rulesets_listing,
-            main_ruleset,
-            *rulesets_extra,
             ref,
+            tip_commit,
+            tip_diff,
             diff,
+            *landed,
+            *extra,
             other,
             listing,
             {
@@ -1700,6 +1714,8 @@ class PrMergeTest(PrLeverTestCase):
                 },
             },
             parent,
+            commit_tree_entry,
+            head_tree_entry,
         )
 
     def count_calls(self):
@@ -3175,7 +3191,7 @@ class PrMergeTest(PrLeverTestCase):
             compares = [call for call in calls if call[:1] == ["api"]]
             self.assertEqual(
                 compares,
-                [*POLICY_CALLS, REF_CALL, COMPARE_CALL],
+                [*PRE_CALLS, COMPARE_CALL],
                 "the tip read, then one listing call keyed by it and the pinned head",
             )
             self.assertEqual(compares[3][1], pinned)
@@ -3243,9 +3259,7 @@ class PrMergeTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SKIP_LINE, run.stderr)
         calls = self.gh_calls()
-        self.assertEqual(
-            [call for call in calls if call[:1] == ["api"]], [*POLICY_CALLS, REF_CALL, COMPARE_CALL, COMMIT_CALL]
-        )
+        self.assertEqual([call for call in calls if call[:1] == ["api"]], [*PRE_CALLS, COMPARE_CALL, *POST_CALLS])
         self.assertEqual(self.count_calls(), [], "no count of the pull request is read (round 5)")
         self.calls.unlink()
         # the two-file listing, whole, merges on the daily sweep the same way
@@ -3255,7 +3269,7 @@ class PrMergeTest(PrLeverTestCase):
         self.assertIn(SKIP_LINE, run.stderr)
         self.assertEqual(
             [call for call in self.gh_calls() if call[:1] == ["api"]],
-            [*POLICY_CALLS, REF_CALL, COMPARE_CALL, COMMIT_CALL],
+            [*PRE_CALLS, COMPARE_CALL, *POST_CALLS],
         )
 
     def test_a_files_listing_that_is_not_the_api_s_data_refuses_with_no_merge(self):
@@ -3377,9 +3391,18 @@ class PrMergeTest(PrLeverTestCase):
         reader refuses, a reader missing from the checkout, a reader that exits 2 and an exit-0 answer of another
         shape (empty, another word, `required` without its class, a class that is no lowercase word, a second line)
         are refusals naming the reader; a reader that exits with another status is exit 1. None writes, and none
-        prints the skip line."""
+        prints the skip line. Round 11: the tip's docs-only landed diff goes through the same reader first, so each
+        fake answers `not-required` to the tip's listing (the fixture's `docs/changelog.md`) and misbehaves on the
+        head's listing alone."""
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
         docs = files_listing("docs/plan.md")
+        tip_passes = (
+            "import sys\n"
+            "listing = sys.stdin.read()\n"
+            "if 'docs/changelog.md' in listing:\n"
+            "    sys.stdout.write('not-required\\n')\n"
+            "    sys.exit(0)\n"
+        )
 
         def check(run, code, message):
             self.assertEqual(run.returncode, code, run.stdout + run.stderr)
@@ -3431,17 +3454,21 @@ class PrMergeTest(PrLeverTestCase):
             ("required with a second line", "required lever\nnote\n"),
         ):
             with self.subTest(name):
-                self.scope.write_text(f"import sys\nsys.stdout.write({answer!r})\n")
+                self.scope.write_text(tip_passes + f"sys.stdout.write({answer!r})\n")
                 self.pin_reader("sweep-scope.py", self.scope)  # round 8: the lever holds the reader to its pin
                 self.github(paths=docs)
-                check(self.merge(), 2, f"refused: {self.scope} answered the sweep scope question for pull request 7")
+                check(
+                    self.merge(),
+                    2,
+                    f"refused: {self.scope} answered the sweep scope question for the head {SHA_A} of pull request 7",
+                )
         self.scope.write_text(
-            "import sys\nsys.stderr.write('sweep-scope: the listing could not be read\\n')\nsys.exit(2)\n"
+            tip_passes + "sys.stderr.write('sweep-scope: the listing could not be read\\n')\nsys.exit(2)\n"
         )
         self.pin_reader("sweep-scope.py", self.scope)
         self.github(paths=docs)
         check(self.merge(), 2, "refused: the listing could not be read")
-        self.scope.write_text("import sys\nsys.exit(3)\n")
+        self.scope.write_text(tip_passes + "sys.exit(3)\n")
         self.pin_reader("sweep-scope.py", self.scope)
         self.github(paths=docs)
         check(self.merge(), 1, f"{self.scope} exited 3 reading the changed paths of the head {SHA_A} of pull request 7")
@@ -3750,7 +3777,7 @@ class PrMergeTest(PrLeverTestCase):
                 calls = self.gh_calls()
                 self.assertEqual(
                     [call for call in calls if call[:1] == ["api"]],
-                    [*POLICY_CALLS, REF_CALL, COMPARE_CALL],
+                    [*PRE_CALLS, COMPARE_CALL],
                     "the tip, one compare",
                 )
                 self.assertNotIn(checks_call, [call[: len(checks_call)] for call in calls], "before CI")
@@ -3784,7 +3811,9 @@ class PrMergeTest(PrLeverTestCase):
         behind = "f" * 40
         stale = (
             f"the head {SHA_A} of pull request 7 is not up to date with main (merge base {behind}, main tip {BASE_TIP});"
-            " rebase the branch onto main and re-run the audit, so the listing is the diff the squash lands"
+            " bring the branch up to date with pr-update-branch.sh (GitHub's merge of main into the branch, never a"
+            " rebase; the hcom-orchestration SKILL step 6) and re-run the audit, so the listing is the diff the squash"
+            " lands"
         )
 
         def stopped(run, code, message):
@@ -3806,7 +3835,7 @@ class PrMergeTest(PrLeverTestCase):
         self.assertIn(SKIP_LINE, run.stderr)
         self.assertEqual(
             [call for call in self.gh_calls() if call[:1] == ["api"]],
-            [*POLICY_CALLS, REF_CALL, COMPARE_CALL, COMMIT_CALL],
+            [*PRE_CALLS, COMPARE_CALL, *POST_CALLS],
         )
         self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
         self.calls.unlink()
@@ -3824,16 +3853,14 @@ class PrMergeTest(PrLeverTestCase):
                 self.github(**kwargs)
                 run = self.merge()
                 self.assert_refused(run, stale)
-                self.assertEqual(
-                    stopped(run, 2, "is not up to date with main"), [*POLICY_CALLS, REF_CALL, COMPARE_CALL]
-                )
+                self.assertEqual(stopped(run, 2, "is not up to date with main"), [*PRE_CALLS, COMPARE_CALL])
         # the unit's sweep row at the head changes nothing: the listing is held before the row is asked
         self.ledger(ledger_row(SHA_A))
         self.github(merge_base=behind)
         run = self.merge()
         self.assert_refused(run, stale)
         stopped(run, 2, "is not up to date with main")
-        self.assertNotIn("sweep row", run.stderr)
+        self.assertNotIn("has no sweep row", run.stderr, "the unit's row is not asked before the listing")
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
         # a failed tip read: exit 1 naming the read, no compare asked
         self.github(paths=docs, tip_exit=1)
@@ -3841,7 +3868,7 @@ class PrMergeTest(PrLeverTestCase):
         calls = stopped(
             run, 1, "pr-merge.sh: cannot read the tip of main (gh api repos/{owner}/{repo}/git/ref/heads/main)"
         )
-        self.assertEqual(calls, [*POLICY_CALLS, REF_CALL], "the tip read fails before any compare")
+        self.assertEqual(calls, [REF_CALL], "the tip read fails before any compare")
         # a tip that is not 40 hex: exit 1 naming the value, no compare asked
         for name, response, value in (
             ("object null", {"ref": "refs/heads/main", "object": None}, "null"),
@@ -3859,7 +3886,7 @@ class PrMergeTest(PrLeverTestCase):
                     1,
                     f"the tip of main read from gh api repos/{{owner}}/{{repo}}/git/ref/heads/main is not 40 hex: '{value}'",
                 )
-                self.assertEqual(calls, [*POLICY_CALLS, REF_CALL])
+                self.assertEqual(calls, [REF_CALL])
         # a tip the fixture did not key: the lever asks the compare of that tip and the head, which the fake refuses,
         # so the read fails (the compare is keyed by the tip the lever read, never by the name `main`)
         self.github(paths=docs, tip=SHA_C)
@@ -3870,7 +3897,11 @@ class PrMergeTest(PrLeverTestCase):
             f"cannot list the changed paths of the head {SHA_A} of pull request 7 (gh api"
             f" repos/{{owner}}/{{repo}}/compare/{SHA_C}...{SHA_A})",
         )
-        self.assertEqual(calls, [*POLICY_CALLS, REF_CALL, compare_call(SHA_A, SHA_C)])
+        self.assertEqual(
+            calls,
+            [REF_CALL, git_commit_call(SHA_C, PARENTS_JQ), compare_call(SHA_C, TIP_PARENT), compare_call(SHA_A, SHA_C)],
+            "the tip's own line is read and classified under the tip the lever read, then the head's compare keyed by it",
+        )
         # a merge base that is no string is the jq's own error, exit 1 naming the type, never a listing
         record = api_file("docs/plan.md")
         for name, response, kind in (
@@ -3907,10 +3938,15 @@ class PrMergeTest(PrLeverTestCase):
         )
         self.assertIn("[[ ${base_tip} =~ ^[0-9a-f]{40}$ ]] ||", text)
         self.assertIn(
-            f"gh_bounded api \"repos/{{owner}}/{{repo}}/compare/${{base_tip}}...${{head}}\" --jq '{FILES_JQ}'", text
+            f"gh_bounded api \"repos/{{owner}}/{{repo}}/compare/${{from}}...${{to}}\" --jq '{FILES_JQ}'", text
         )
-        self.assertIn("[[ ${merge_base} =~ ^merge-base\\ ([0-9a-f]{40})$ ]] ||", text)
-        self.assertIn('[[ ${merge_base} == "${base_tip}" ]] ||', text)
+        self.assertIn("[[ ${first} =~ ^merge-base\\ ([0-9a-f]{40})$ ]] ||", text)
+        self.assertIn('[[ ${listing_merge_base} == "${from}" ]] || listing_fault', text)
+        self.assertIn(
+            '    classify_diff "${base_tip}" "${head}" "the head ${head} of pull request ${pr}" refuse \\\n', text
+        )
+        self.assertIn("bring the branch up to date with pr-update-branch.sh", text)
+        self.assertNotIn("rebase the branch onto", text, "the route is pr-update-branch.sh, never a rebase (round 11)")
         self.assertNotIn("compare/${base}...${head}", text, "the compare is keyed by the tip, never by the name")
 
     def test_a_failed_physical_path_read_of_the_store_or_the_findings_directory_never_merges(self):
@@ -4080,9 +4116,9 @@ class PrMergeTest(PrLeverTestCase):
         runs = [json.loads(line) for line in log.read_text().splitlines()]
         self.assertEqual(
             [os.path.basename(entry["argv0"]) for entry in runs],
-            ["ledger.py", "sweep-scope.py", "ledger.py", "ledger.py"],
-            "the verdict question, the scope question, the daily question and its recheck before the merge write (round 9):"
-            " each from its copy",
+            ["ledger.py", "sweep-scope.py", "sweep-scope.py", "ledger.py", "ledger.py"],
+            "the verdict question, the tip's listing (round 11), the head's listing, the daily question and its recheck"
+            " before the merge request (round 9): each from its copy",
         )
         directories = {entry["dir"] for entry in runs}
         self.assertEqual(len(directories), 1, "one private directory for the run")
@@ -4101,47 +4137,129 @@ class PrMergeTest(PrLeverTestCase):
         self.assertIn("trap reader_copies_remove EXIT\n", text)
         self.assertIn('reader_copy ledger.py "${ledger_reader}"\nledger_copy=${reader_copy_path}\n', text)
         self.assertIn('reader_copy sweep-scope.py "${scope_reader}"\nscope_copy=${reader_copy_path}\n', text)
-        self.assertEqual(text.count('"${python}" -I -S "${ledger_copy}"'), 3, "the three ledger questions")
+        self.assertEqual(
+            text.count('"${python}" -I -S "${ledger_copy}"'),
+            5,
+            "the five ledger questions: the verdict, the unit's sweep row, the daily row, sweep-any and merge-of",
+        )
         self.assertIn('"${python}" -I -S "${scope_copy}" --files-json <<< "${files}"', text)
         self.assertNotIn('-I -S "${ledger_reader}"', text, "the checkout's path is never run")
         self.assertNotIn('-I -S "${scope_reader}"', text, "the checkout's path is never run")
         self.assertIn('[[ ${digest} == "${pin}" ]] ||', text)
 
-    def test_a_merge_whose_first_parent_is_not_the_tip_read_earlier_is_exit_1_with_no_receipt(self):
-        """U597 round 8 (verdict U597-a28e4793 P3 at pr-merge.sh:782): `--match-head-commit` pins the head alone and
-        the main ruleset's strict up-to-date policy is off (round 9 reads it and grants no exemption then), so main may move between the tip read of
-        require_sweep_scope and the merge, and the classified listing may not be the diff the squash landed. After the
-        merge the lever reads the merge commit's first parent (`gh api repos/{owner}/{repo}/commits/<commit> --jq
-        .parents[0].sha`, status read, 40 hex) and requires it to equal the tip read earlier: another parent is exit
-        1 with one line naming the merge commit, its parent and that tip and no receipt (the merge happened, so the
-        line says the coordinator must sweep the merge commit); a failed read, no parents, a short parent are exit 1
-        with no receipt too; the matching parent prints the receipt, after the tip read, the one compare and the
-        parent read."""
+    def test_after_the_merge_the_trees_decide_whether_the_classified_listing_is_the_landed_diff(self):
+        """U597 round 11 (verdict U597-2bebb5ae P1 at pr-merge.sh:981 and :1609; the mechanism-change decisions row of
+        2026-11-19T15:21:36Z): round 8 read the merge commit's first parent and exited 1 with no receipt when it was
+        not the tip read earlier, and rounds 9 and 10 inferred from a server policy whether that could happen, an
+        inference nothing client-side can make. Now the lever reads the parent, the merge commit's tree and the head's
+        tree (`gh api repos/{owner}/{repo}/git/commits/<sha> --jq .tree.sha`, each status read, 40 hex) and judges by
+        them alone: an unmoved tip (the parent the tip read before the checks) with equal trees merges with the
+        receipt, one stderr line and no compare after the merge; an unmoved tip with unequal trees exits 1 after the
+        receipt naming both trees; a moved tip has the landed diff `compare/<parent>...<merge commit>` classified
+        through the pinned reader: docs only exits 0 with the receipt and one stderr line saying main moved and the
+        landed diff touches no sweep class, a lever path (and the cap) prints the receipt and then exits 1 naming the
+        merge commit, its parent, the class and the sweep row to record; a failed tree read, a tree that is not 40
+        hex, a failed parent read, a parent that is not 40 hex, a landed listing whose merge base is not the parent,
+        one the reader refuses, an empty one and a failed one each exit 1 after the receipt (the commits are on main,
+        so nothing in the pull request is refused). Every exit after MERGED prints the receipt first, so
+        `ledger-row.py merged` records the merge whatever follows."""
         moved = "f" * 40
-        self.github(merge_parent=moved)
+        receipt = f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z\n"
+        docs = [api_file("docs/plan.md")]
+        lever = [api_file("scripts/orchestrator/pr-merge.sh")]
+        landed_call = compare_call(SHA_B, moved)
+
+        def after_merge(run):
+            self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+            self.assertEqual(run.stdout, receipt, "the receipt is printed first, whatever follows")
+            calls = [call for call in self.gh_calls() if call[:1] == ["api"]]
+            self.calls.unlink(missing_ok=True)
+            return calls
+
+        # an unmoved tip with equal trees: the receipt, the three post-merge reads and no compare after the merge
+        self.github()
         run = self.merge()
-        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
-        self.assertEqual(run.stdout, "", "no receipt")
+        self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(
-            f"pr-merge.sh: pull request 7 merged as {SHA_B}, whose first parent {moved} is not the tip {BASE_TIP} of main"
-            " read before the listing: main moved between the tip read and the merge, so the classified listing may not"
-            f" be the landed diff; the coordinator must sweep the merge commit {SHA_B}\n",
+            f"pr-merge.sh: merged onto the tip {BASE_TIP} read before the checks, and the merge commit's tree is the"
+            " head's: the classified listing is the landed diff\n",
             run.stderr,
         )
-        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
-        self.assertEqual(
-            [call for call in self.gh_calls() if call[:1] == ["api"]],
-            [*POLICY_CALLS, REF_CALL, COMPARE_CALL, COMMIT_CALL],
-            "the tip read, the one compare, then the merge commit's parent",
+        self.assertEqual(after_merge(run), [*PRE_CALLS, COMPARE_CALL, *POST_CALLS])
+        # an unmoved tip with unequal trees: exit 1 after the receipt naming both trees, no compare after the merge
+        self.github(commit_tree=TREE_OTHER)
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn(
+            f"pr-merge.sh: pull request 7 merged as {SHA_B} onto the tip {BASE_TIP} of main read before the checks, but"
+            f" the merge commit's tree {TREE_OTHER} is not the head's tree {TREE_HEAD}: a squash onto an unmoved tip"
+            " whose tree differs from the head is a shape this lever does not know, so the classified listing may not"
+            f" be the landed diff; sweep the merge commit {SHA_B} and record it before the next merge\n",
+            run.stderr,
         )
-        self.calls.unlink()
+        self.assertEqual(after_merge(run), [*PRE_CALLS, COMPARE_CALL, *POST_CALLS])
+        # a moved tip with a docs-only landed diff: exit 0 with the receipt and the line, the landed compare keyed by
+        # the parent and the merge commit
+        self.github(merge_parent=moved, landed_files=docs, commit_tree=TREE_OTHER)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertIn(
+            f"pr-merge.sh: main moved from {BASE_TIP} to {moved} between the tip read and the merge, and the landed"
+            f" diff of the merge commit {SHA_B} touches no sweep class (no lever, policy, credential or"
+            " deployed-executable path changed); the pre-merge decision stands\n",
+            run.stderr,
+        )
+        self.assertEqual(after_merge(run), [*PRE_CALLS, COMPARE_CALL, *POST_CALLS, landed_call])
+        # a moved tip with a lever-path landed diff: the receipt, then exit 1 naming the commit, its parent and the class
+        self.github(merge_parent=moved, landed_files=lever, commit_tree=TREE_OTHER)
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn(
+            f"pr-merge.sh: pull request 7 merged as {SHA_B} onto {moved}, not the tip {BASE_TIP} of main read before"
+            " the checks: main moved between the tip read and the merge, and the landed diff touches a lever path"
+            f" (required lever); sweep the merge commit {SHA_B} and record it as a sweep row of U71 at {SHA_B}"
+            " (ledger-row.py sweep) before the next merge, which this lever refuses until the row stands (the"
+            " hcom-orchestration SKILL step 6)\n",
+            run.stderr,
+        )
+        self.assertNotIn("refused:", run.stderr)
+        self.assertEqual(after_merge(run), [*PRE_CALLS, COMPARE_CALL, *POST_CALLS, landed_call])
+        # the cap on the landed diff is a required class too
+        self.github(merge_parent=moved, landed_paths=files_listing(*(f"docs/f{n}.md" for n in range(CAP))))
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn(
+            "the landed diff touches 300 or more files, the compare API's cap, whose listing may be cut short"
+            f" (required cap); sweep the merge commit {SHA_B}",
+            run.stderr,
+        )
+        after_merge(run)
+        # the failures: each exit 1 after the receipt, never a refusal
         for name, kwargs, message in (
             (
-                "a failed read",
+                "a failed tree read of the merge commit",
+                {"tree_exit": 1},
+                f"pr-merge.sh: cannot read the tree of the merge commit {SHA_B} (gh api"
+                f" repos/{{owner}}/{{repo}}/git/commits/{SHA_B} --jq .tree.sha); whether the landed diff is the"
+                f" classified one is unknown: sweep the merge commit {SHA_B} and record it before the next merge",
+            ),
+            (
+                "a tree that is not 40 hex",
+                {"commit_tree": "abc"},
+                f"the tree of the merge commit {SHA_B} read from gh api repos/{{owner}}/{{repo}}/git/commits/{SHA_B}"
+                " is not 40 hex: 'abc'",
+            ),
+            (
+                "a failed tree read of the head",
+                {"head_tree_exit": 1},
+                f"cannot read the tree of the head {SHA_A} (gh api",
+            ),
+            (
+                "a failed parent read",
                 {"parent_exit": 1},
                 f"pr-merge.sh: pull request 7 is MERGED as {SHA_B}, but the first parent of that commit could not be read"
                 f" (gh api repos/{{owner}}/{{repo}}/commits/{SHA_B}); whether the merge landed on the tip {BASE_TIP} of"
-                " main the listing was classified against is unknown",
+                " main read before the checks is unknown",
             ),
             ("no parents", {"parent_json": {"sha": SHA_B, "parents": []}}, "is not 40 hex: 'null'"),
             ("parents null", {"parent_json": {"sha": SHA_B, "parents": None}}, "is not 40 hex: 'null'"),
@@ -4150,403 +4268,326 @@ class PrMergeTest(PrLeverTestCase):
                 {"parent_json": {"sha": SHA_B, "parents": [{"sha": BASE_TIP[:8]}]}},
                 f"is not 40 hex: '{BASE_TIP[:8]}'",
             ),
+            (
+                "a landed listing whose merge base is not the parent",
+                {"merge_parent": moved, "landed_files": docs, "landed_merge_base": BASE_TIP},
+                f"pr-merge.sh: the compare API (gh api repos/{{owner}}/{{repo}}/compare/{moved}...{SHA_B}) answered a"
+                f" merge base that is not the merge commit's first parent {moved}; the landed diff is the diff from"
+                f" the parent, so the listing is not it: sweep the merge commit {SHA_B}",
+            ),
+            (
+                "a landed listing the reader refuses",
+                {"merge_parent": moved, "landed_paths": files_listing("docs/plan.md", "../etc/passwd")},
+                "pr-merge.sh: a listed path holds a '.', '..' or empty component",
+            ),
+            (
+                "an empty landed listing",
+                {"merge_parent": moved, "landed_paths": ""},
+                f"listed no changed path of the merge commit {SHA_B} of pull request 7; a diff that changes nothing",
+            ),
+            (
+                "a failed landed listing",
+                {"merge_parent": moved, "landed_exit": 1},
+                f"cannot list the changed paths of the merge commit {SHA_B} of pull request 7 (gh api"
+                f" repos/{{owner}}/{{repo}}/compare/{moved}...{SHA_B})",
+            ),
         ):
             with self.subTest(name):
                 self.github(**kwargs)
                 run = self.merge()
                 self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
-                self.assertEqual(run.stdout, "", "no receipt")
                 self.assertIn(message, run.stderr)
-                self.assertIn(f"sweep the merge commit {SHA_B}", run.stderr)
-                self.assertIn(COMMIT_CALL, self.gh_calls())
-                self.calls.unlink()
-        # the matching parent prints the receipt
-        self.github()
-        run = self.merge()
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z\n")
-        self.assertEqual(
-            [call for call in self.gh_calls() if call[:1] == ["api"]],
-            [*POLICY_CALLS, REF_CALL, COMPARE_CALL, COMMIT_CALL],
-        )
-        # the lever spells the read and the check, and its header names the ruleset's policy
+                self.assertNotIn("refused:", run.stderr)
+                after_merge(run)
+        # the lever spells the reads, the branch on the parent, the receipt set before them and printed by both exits
         text = (LEVERS / "pr-merge.sh").read_text()
         self.assertIn(
             "parent=$(gh_bounded api \"repos/{owner}/{repo}/commits/${commit}\" --jq '.parents[0].sha') ||", text
         )
         self.assertIn("[[ ${parent} =~ ^[0-9a-f]{40}$ ]] ||", text)
-        self.assertIn('[[ ${parent} == "${base_tip}" ]] ||', text)
-        self.assertIn("`strict_required_status_checks_policy` (require branches to be up to date before merging)", text)
-        self.assertIn("this\n# check never fires", text)
-        self.assertIn("the lever's own record of what it merged onto", text)
+        self.assertIn(
+            "tree_sha=$(gh_bounded api \"repos/{owner}/{repo}/git/commits/${sha}\" --jq '.tree.sha') ||", text
+        )
+        receipt_line = 'echo "merged pr=${pr} head=${head} commit=${commit} verdict=${verdict_ts}"\n'
+        self.assertEqual(text.count(receipt_line), 1, "the receipt is printed once")
+        self.assertLess(
+            text.index(receipt_line),
+            text.index('parent=$(gh_bounded api "repos/{owner}/{repo}/commits/${commit}"'),
+            "the receipt comes before the post-merge reads, so every exit after MERGED follows it",
+        )
+        self.assertGreater(text.index(receipt_line), text.index("[[ ${merged_base} == main ]] ||"))
+        self.assertIn('if [[ ${parent} == "${base_tip}" ]]; then\n    [[ ${merged_tree} == "${head_tree}" ]] ||', text)
+        self.assertIn(
+            '    classify_diff "${parent}" "${commit}" "the merge commit ${commit} of pull request ${pr}" fail \\\n',
+            text,
+        )
+        self.assertIn('fail() {\n    echo "${lever}: $*" >&2\n    exit 1\n}\n', text, "the refusal grammar stands")
+        self.assertNotIn("strict_required_status_checks_policy", text, "no policy is read (round 11)")
+        self.assertNotIn("ruleset", text, "no ruleset is read or named (round 11)")
+        self.assertNotIn("U613", text)
+        self.assertNotIn("require_ruleset_policy", text)
+        self.assertNotIn("ref_pattern_matches", text)
 
-    def test_no_head_is_exempt_while_the_main_ruleset_does_not_require_branches_to_be_up_to_date(self):
-        """U597 round 9 (verdict U597-c37800e3 P1 at pr-merge.sh:1282, the second strike of the diff-basis class; the
-        mechanism-change decisions row of 2026-11-19T11:56:54Z): the lever classifies the diff against a snapshot of
-        main, and no client-side read holds main still while GitHub writes the squash, so the classified listing is
-        the landed diff only while the server refuses a merge of a head behind main, the main ruleset's
-        `strict_required_status_checks_policy`. The lever reads it once before the listing (`gh api
-        repos/{owner}/{repo}/rulesets`, then the active branch rulesets by id) and prints it. With the policy true the
-        daily rule applies as rounds 4 to 8 built it: a docs head with a fresh daily row merges with the skip line.
-        With it false no head is exempt: the same head is refused without the unit's sweep row, naming the policy and
-        U613, the daily file is not read (a file of garbage changes nothing), there is no skip line and no CI read;
-        with the unit's sweep row the head merges under the false policy, with no skip line and the parent check
-        still made; a lever head is refused naming the class under either policy, never the policy."""
-        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
-        docs = files_listing("docs/plan.md")
-        daily_file = self.records / "daily-sweeps.tsv"
+    def test_main_s_tip_must_be_swept_or_exempt_before_the_next_merge_lands_on_it(self):
+        """U597 round 11 (gate one; verdict U597-2bebb5ae P1 at pr-merge.sh:981 and :1609): a squash onto a moved main
+        leaves a landed diff the lever classifies only after the merge, and the sweep it asks for is enforced at the
+        next merge from immutable commits and store rows alone. After the dispositions and before the head's listing
+        the lever reads the tip's first parent (`gh api repos/{owner}/{repo}/git/commits/<tip> --jq '[.parents[].sha]
+        | join(" ")'`), classifies `compare/<parent>...<tip>` through the pinned reader, and: a docs-only tip passes
+        with one stderr line and no ledger question about it; a lever tip with a sweep row of any unit at the tip
+        passes naming the unit; a lever tip with no row at the tip but a merge row (`ledger-row.py merged`'s, the
+        receipt naming `commit=<tip>`) whose head's tree equals the tip's tree and a sweep row at that head passes
+        after the two tree reads; the same with unequal trees refuses naming the tip, the class, the head and both
+        trees; a lever tip with no merge row and no sweep row refuses naming the tip, the class and the missing sweep,
+        before the head's listing and with no CI read; a merge row with equal trees and no sweep row at the head
+        refuses too; the cap is a required tip; the sweep row at the tip is held as every sweep row is (a pin that is
+        no prefix refuses); and a failed parents read, a root commit, two parents, a short parent, a failed or empty
+        tip listing, a tip listing whose merge base is not the parent and a failed tree read each exit 1 with no
+        merge (standing order 21)."""
+        lever_tip = [api_file("scripts/orchestrator/ledger.py")]
+        squashed = "9" * 40  # the head main's tip was squashed from
         checks_call = ["pr", "checks", "7", "--json", "bucket,name"]
-        no_row = f"has no sweep row for U71 (or a fix unit of it) at the audited head {SHA_A}"
-        policy = (
-            "this head changes no sweep-class path, but the main ruleset does not require branches to be up to date"
-            " before merging (strict_required_status_checks_policy false), so the diff the squash lands is not the"
-            " diff classified and no head is exempt; the per-head sweep stands (U613)"
+        no_sweep = (
+            f"main's tip {BASE_TIP} landed a lever path (required lever) and has no sweep row; sweep the merge commit"
+            f" and record it before the next merge (a row with verdict sweep, pr -, head {BASE_TIP}, written by"
+            " ledger-row.py sweep; the hcom-orchestration SKILL step 6)"
         )
-        row = daily_row()
-        self.daily(row)
-        # true: the daily rule applies, the docs head merges on the daily row, the policy printed as read
-        self.github(paths=docs, strict=True)
-        run = self.merge()
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn(SKIP_LINE, run.stderr)
-        self.assertIn(
-            "pr-merge.sh: ruleset: strict_required_status_checks_policy true (active ruleset(s) on main with a"
-            f" required_status_checks rule: {RULESET_ID})\n",
-            run.stderr,
-        )
-        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
-        self.assertEqual(
-            [call for call in self.gh_calls() if call[:1] == ["api"]],
-            [*POLICY_CALLS, REF_CALL, COMPARE_CALL, COMMIT_CALL],
-            "the rulesets listing and the main ruleset's read come before the tip read",
-        )
-        self.calls.unlink()
-        # false: refused without the unit's sweep row, naming the policy and U613; the daily file is not read
+        tip_trees = [git_commit_call(BASE_TIP, TREE_JQ), git_commit_call(squashed, TREE_JQ)]
 
-        def refused_under_the_policy(run):
-            self.assert_refused(run, no_row)
-            self.assertIn(policy, run.stderr)
-            self.assertIn(
-                f"pr-merge.sh: ruleset: strict_required_status_checks_policy false (active ruleset(s) on main with a"
-                f" required_status_checks rule: {RULESET_ID})\n",
-                run.stderr,
-            )
-            self.assertNotIn("sweep: not required", run.stderr)
-            self.assertNotIn("daily-sweeps.tsv", run.stderr, "the daily row is not read while the policy is false")
-            self.assertEqual(run.stdout, "", "no receipt")
-            self.assertNotIn(checks_call, [call[: len(checks_call)] for call in self.gh_calls()], "before CI")
-            self.assertEqual(
-                [call for call in self.gh_calls() if call[:1] == ["api"]], [*POLICY_CALLS, REF_CALL, COMPARE_CALL]
-            )
-            self.calls.unlink(missing_ok=True)
-
-        self.github(paths=docs, strict=False)
-        refused_under_the_policy(self.merge())
-        self.daily(text="garbage\n")
-        self.github(paths=docs, strict=False)
-        refused_under_the_policy(self.merge())
-        daily_file.unlink()
-        self.github(paths=docs, strict=False)
-        refused_under_the_policy(self.merge())
-        # with the unit's sweep row the docs head merges under the false policy: no skip line, the parent check made
-        self.ledger(ledger_row(SHA_A))  # the fixture's sweep row at the head
-        self.github(paths=docs, strict=False)
-        run = self.merge()
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertNotIn("sweep: not required", run.stderr)
-        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z\n")
-        self.assertEqual(
-            [call for call in self.gh_calls() if call[:1] == ["api"]],
-            [*POLICY_CALLS, REF_CALL, COMPARE_CALL, COMMIT_CALL],
-        )
-        self.calls.unlink()
-        # a lever head: the class decides under either policy, and the policy is never the reason named
-        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
-        for strict in (True, False):
-            with self.subTest(strict=strict):
-                self.github(strict=strict)
-                run = self.merge()
-                self.assert_refused(run, no_row)
-                self.assertIn("this head changes a lever path", run.stderr)
-                self.assertNotIn("(U613)", run.stderr)
-                self.calls.unlink()
-        # the lever spells the read before the listing, the two jq forms and the branch on the policy
-        text = (LEVERS / "pr-merge.sh").read_text()
-        self.assertIn(
-            "require_ruleset_policy\nrequire_sweep_scope\n[[ -z ${sweep_reason} ]] || require_sweep_row\n", text
-        )
-        self.assertIn(f"""gh_bounded api "repos/{{owner}}/{{repo}}/rulesets" --jq '{RULESETS_JQ}'""", text)
-        self.assertIn(f"""gh_bounded api "repos/{{owner}}/{{repo}}/rulesets/${{id}}" --jq '{RULESET_JQ}'""", text)
-        self.assertIn(
-            "        if [[ ${strict_policy} == true ]]; then\n            require_daily_sweep\n        else\n", text
-        )
-        self.assertIn(f'sweep_reason="{policy}"', text)
-        self.assertNotIn("`strict_required_status_checks_policy: false`", text, "the header states no fixed value")
-
-    def test_a_rulesets_read_of_another_shape_is_exit_1_and_a_ruleset_off_the_default_branch_does_not_count(self):
-        """U597 round 9: the policy is read from a shape the lever knows alone, and never read as true from any
-        other (standing order 21). A failed listing, a failed per-id read, a listing that is no array, an id that is
-        no number, an enforcement that is none of GitHub's three, a `strict_required_status_checks_policy` that is a
-        string, a number or null (the jq's own error naming the type), two `required_status_checks` rules in one
-        ruleset and a default-branch ruleset without the rule are each exit 1 with no merge, no compare and no CI
-        read, before the tip read. A ruleset counts only when active, a branch ruleset, and applying to the default
-        branch (round 10: an include pattern matching `refs/heads/main` and no exclude pattern matching it): a strict
-        ruleset on `refs/heads/release`, one in `evaluate` enforcement, one excluding main and a tag ruleset (never
-        read) leave the policy false beside a non-strict main ruleset, while a strict ruleset naming `refs/heads/main`
-        itself turns it true."""
-        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
-        docs = files_listing("docs/plan.md")
-        checks_call = ["pr", "checks", "7", "--json", "bucket,name"]
-        self.daily(daily_row())
-
-        def failed(run, *messages):
-            self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
-            for message in messages:
-                self.assertIn(message, run.stderr)
-            self.assertNotIn("refused:", run.stderr)
-            self.assertEqual(run.stdout, "", "no receipt")
-            self.assertEqual(self.writes(), [])
-            self.assertNotIn("sweep: not required", run.stderr)
+        def before_listing(run):
             calls = self.gh_calls()
-            self.assertNotIn(checks_call, [call[: len(checks_call)] for call in calls], "before CI")
-            self.assertNotIn(REF_CALL, calls, "before the tip read")
-            self.assertNotIn(COMPARE_CALL, calls, "before the listing")
+            self.assertNotIn(COMPARE_CALL, calls, "stopped before the head's listing")
+            self.assertNotIn(checks_call, [call[: len(checks_call)] for call in calls], "no CI read")
+            self.assertEqual(self.writes(), [])
+            self.assertEqual(run.stdout, "", "no receipt")
             api_calls = [call for call in calls if call[:1] == ["api"]]
             self.calls.unlink(missing_ok=True)
             return api_calls
 
-        unread = "so an unread policy admits no exemption and no merge"
-        self.github(paths=docs, rulesets_exit=1)
-        self.assertEqual(
-            failed(self.merge(), "cannot list the rulesets (gh api repos/{owner}/{repo}/rulesets)", unread),
-            [RULESETS_CALL],
+        def merge_row(head=squashed, commit=BASE_TIP, unit="U70", pr="6", ts="2026-10-25T08:00:00Z"):
+            """The row `ledger-row.py merged` writes for the squash of `head` into `commit`."""
+            return (
+                f"{ts}\t{unit}\t{pr}\t{head}\t-\tpr-merge.sh\tmerged pr={pr} head={head} commit={commit}"
+                " verdict=2026-10-25T07:00:00Z\n"
+            )
+
+        def store(*rows):
+            """The ledger: the head's correct row and U71's sweep row at it (the head is a lever path), then `rows`,
+            with a findings file for every sweep row among them."""
+            self.sweeps.mkdir(exist_ok=True)
+            (self.sweeps / f"U71-{SHA_A[:8]}.json").write_text("{}\n")
+            for row in rows:
+                cells = row.rstrip("\n").split("\t")
+                if cells[4] == "sweep":
+                    (self.sweeps / f"{cells[1]}-{cells[3][:8]}.json").write_text("{}\n")
+            (self.records / "ledger.tsv").write_text(
+                LEDGER_HEADER + ledger_row(SHA_A) + sweep_row(SHA_A) + "".join(rows)
+            )
+
+        # a docs-only tip: the line, no ledger question about the tip, the merge goes through
+        store()
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(
+            f"pr-merge.sh: tip: {BASE_TIP} of main landed a diff that touches no sweep class (no lever, policy,"
+            " credential or deployed-executable path changed); it needs no sweep row before this merge\n",
+            run.stderr,
         )
-        self.github(paths=docs, ruleset_exit=1)
         self.assertEqual(
-            failed(
-                self.merge(),
-                f"cannot read ruleset {RULESET_ID} (gh api repos/{{owner}}/{{repo}}/rulesets/{RULESET_ID}), or its shape",
-                unread,
-            ),
-            POLICY_CALLS,
+            [call for call in self.gh_calls() if call[:1] == ["api"]], [*PRE_CALLS, COMPARE_CALL, *POST_CALLS]
         )
-        # a listing of another shape: the jq's own error, or the lever's check of the fields
+        self.calls.unlink()
+        # a lever tip with no sweep row at it and no merge row: refused before the listing, naming the missing sweep
+        self.github(tip_files=lever_tip)
+        run = self.merge()
+        self.assert_refused(run, no_sweep)
+        self.assertIn(
+            f": {self.records}/ledger.tsv holds no sweep row at {BASE_TIP} and no pr-merge.sh merge row whose receipt"
+            f" names commit={BASE_TIP}, so no head the tip was squashed from can stand for it",
+            run.stderr,
+        )
+        self.assertEqual(before_listing(run), PRE_CALLS)
+        # a lever tip with a sweep row of another unit at the tip: passes naming the unit
+        store(sweep_row(BASE_TIP, unit="U70", ts="2026-10-25T08:30:00Z"))
+        self.github(tip_files=lever_tip)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(
+            f"pr-merge.sh: tip: {BASE_TIP} of main landed a lever path, and the sweep row of U70 at it stands\n",
+            run.stderr,
+        )
+        self.assertEqual(
+            [call for call in self.gh_calls() if call[:1] == ["api"]], [*PRE_CALLS, COMPARE_CALL, *POST_CALLS]
+        )
+        self.calls.unlink()
+        # the newest sweep row at the tip by ts, of any unit; a fix unit's too
+        store(
+            sweep_row(BASE_TIP, unit="U70", ts="2026-10-25T08:30:00Z"),
+            sweep_row(BASE_TIP, unit="U72b", ts="2026-10-25T08:45:00Z"),
+        )
+        self.github(tip_files=lever_tip)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("the sweep row of U72b at it stands", run.stderr)
+        self.calls.unlink()
+        # the row at the tip is held as every sweep row is: a pin that is no prefix refuses naming the row
+        store(sweep_row(BASE_TIP, unit="U70", verifier="security-audit-skill deadbeef"))
+        self.github(tip_files=lever_tip)
+        run = self.merge()
+        self.assert_refused(
+            run,
+            f"the sweep row of U70 at the tip {BASE_TIP} of main names pin deadbeef, which is not a prefix of the"
+            f" manifest's assets.security-audit-skill.pin {MANIFEST_PIN}",
+        )
+        before_listing(run)
+        # no row at the tip, but a merge row whose head's tree equals the tip's tree and a sweep row at that head: passes
+        # after the two tree reads
+        store(merge_row(), sweep_row(squashed, unit="U70", ts="2026-10-25T07:30:00Z"))
+        self.github(tip_files=lever_tip, extra=(git_commit_answer(squashed, TREE_TIP, [TIP_PARENT]),))
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(
+            f"pr-merge.sh: tip: {BASE_TIP} of main landed a lever path; the sweep row of U70 at the head {squashed} it"
+            " was squashed from stands (the two trees are one)\n",
+            run.stderr,
+        )
+        self.assertEqual(
+            [call for call in self.gh_calls() if call[:1] == ["api"]],
+            [*PRE_CALLS, *tip_trees, COMPARE_CALL, *POST_CALLS],
+        )
+        self.calls.unlink()
+        # the same with unequal trees: refused naming the tip, the class, the head and both trees
+        self.github(tip_files=lever_tip, extra=(git_commit_answer(squashed, TREE_OTHER, [TIP_PARENT]),))
+        run = self.merge()
+        self.assert_refused(
+            run,
+            f"{no_sweep}: its merge row names the head {squashed}, whose tree {TREE_OTHER} is not the tip's tree"
+            f" {TREE_TIP}, so a sweep at that head does not cover the tip (main moved under the squash)",
+        )
+        self.assertEqual(before_listing(run), [*PRE_CALLS, *tip_trees])
+        # a merge row with equal trees and no sweep row at the head either: refused naming both
+        store(merge_row())
+        self.github(tip_files=lever_tip, extra=(git_commit_answer(squashed, TREE_TIP, [TIP_PARENT]),))
+        run = self.merge()
+        self.assert_refused(
+            run,
+            f"{no_sweep}: its merge row names the head {squashed}, whose tree is the tip's, and"
+            f" {self.records}/ledger.tsv holds no sweep row at that head either",
+        )
+        self.assertEqual(before_listing(run), [*PRE_CALLS, *tip_trees])
+        # the newest merge row for the tip decides (a later receipt naming another head), and a pr-merge.sh row of the
+        # pre-U222 shape or a receipt naming another commit is no merge row for the tip
+        other_head = "8" * 40
+        store(
+            merge_row(),
+            merge_row(head=other_head, ts="2026-10-25T08:10:00Z"),
+            merge_row(head=SHA_C, commit=SHA_C, ts="2026-10-25T08:20:00Z"),
+            f"2026-10-25T08:25:00Z\tU69\t5\t{SHA_C}\t-\tpr-merge.sh\tmerged as {BASE_TIP} (squash) on the correct row\n",
+            sweep_row(other_head, unit="U70", ts="2026-10-25T07:30:00Z"),
+        )
+        self.github(tip_files=lever_tip, extra=(git_commit_answer(other_head, TREE_TIP, [TIP_PARENT]),))
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"the sweep row of U70 at the head {other_head} it was squashed from stands", run.stderr)
+        self.calls.unlink()
+        # the cap: a tip of 300 or more files is a required tip
+        store()
+        self.github(tip_paths=files_listing(*(f"docs/f{n}.md" for n in range(CAP))))
+        run = self.merge()
+        self.assert_refused(
+            run,
+            f"main's tip {BASE_TIP} landed 300 or more files, the compare API's cap, whose listing may be cut short"
+            " (required cap) and has no sweep row",
+        )
+        before_listing(run)
+        # the failures: exit 1 with no merge, before the head's listing
         for name, kwargs, message in (
             (
-                "a listing that is an object",
-                {"rulesets_exit": 0, "rulesets": None},
-                "cannot list the rulesets",
+                "a failed parents read",
+                {"tip_commit_exit": 1},
+                f"pr-merge.sh: cannot read the parents of the tip {BASE_TIP} of main (gh api"
+                f" repos/{{owner}}/{{repo}}/git/commits/{BASE_TIP}); the tip's landed diff is classified against its"
+                " first parent, so an unread parent decides nothing",
             ),
             (
-                "an id that is a string",
-                {"rulesets": ({**ruleset_summary(), "id": str(RULESET_ID)},)},
-                "id is string, not a number",
+                "a root commit",
+                {"tip_parents": ()},
+                f"pr-merge.sh: the tip {BASE_TIP} of main has no parent (a root commit); the program's main is a line"
+                " of squash commits, each with one parent, so the tip's landed diff cannot be classified",
             ),
             (
-                "an enforcement of another word",
-                {"rulesets": ({**ruleset_summary(), "enforcement": "on"},)},
-                f"names an enforcement that is none of active, evaluate or disabled for ruleset {RULESET_ID}: 'on'",
+                "two parents",
+                {"tip_parents": (TIP_PARENT, SHA_C)},
+                f"pr-merge.sh: the tip {BASE_TIP} of main has more than one parent ({TIP_PARENT} {SHA_C}); the"
+                " program's main is a line of squash commits",
+            ),
+            (
+                "a short parent",
+                {"tip_parents": (TIP_PARENT[:8],)},
+                f"the first parent of the tip {BASE_TIP} of main read from gh api"
+                f" repos/{{owner}}/{{repo}}/git/commits/{BASE_TIP} is not 40 hex: '{TIP_PARENT[:8]}'",
+            ),
+            (
+                "a failed tip listing",
+                {"tip_paths_exit": 1},
+                f"cannot list the changed paths of the tip {BASE_TIP} of main (gh api"
+                f" repos/{{owner}}/{{repo}}/compare/{TIP_PARENT}...{BASE_TIP})",
+            ),
+            (
+                "an empty tip listing",
+                {"tip_paths": ""},
+                f"pr-merge.sh: the compare API (gh api repos/{{owner}}/{{repo}}/compare/{TIP_PARENT}...{BASE_TIP})"
+                f" listed no changed path of the tip {BASE_TIP} of main",
+            ),
+            (
+                "a tip listing the reader refuses",
+                {"tip_paths": files_listing("../etc/passwd")},
+                "pr-merge.sh: a listed path holds a '.', '..' or empty component",
+            ),
+            (
+                "a tip listing whose merge base is not the parent",
+                {"tip_merge_base": SHA_C},
+                f"pr-merge.sh: the compare API (gh api repos/{{owner}}/{{repo}}/compare/{TIP_PARENT}...{BASE_TIP})"
+                f" answered a merge base that is not the tip's first parent {TIP_PARENT}; the tip's landed diff is the"
+                " diff from its parent, so the listing is not it and the tip cannot be classified",
             ),
         ):
             with self.subTest(name):
-                if name == "a listing that is an object":
-                    self.github(paths=docs)
-                    table = json.loads(self.responses.read_text())
-                    for entry in table:
-                        if entry["match"] == RULESETS_MATCH:
-                            entry["json"] = ruleset_summary()
-                    self.responses.write_text(json.dumps(table))
-                    message = "rulesets is object, not an array"
-                else:
-                    self.github(paths=docs, **kwargs)
-                failed(self.merge(), message)
-        # a non-boolean policy: the jq's error naming the type, exit 1
-        base = ruleset_answer()["json"]
-        for name, value, kind in (("a string", "true", "string"), ("a number", 1, "number"), ("null", None, "null")):
-            with self.subTest(name):
-                rules = ruleset_rules()
-                rules[-1]["parameters"]["strict_required_status_checks_policy"] = value
-                self.github(paths=docs, ruleset_json={**base, "rules": rules})
-                failed(
-                    self.merge(),
-                    f"cannot read ruleset {RULESET_ID}",
-                    f"strict_required_status_checks_policy is {kind}, not a boolean",
-                )
-        # a rules array of another shape, and the rule's parameters missing (null, not a boolean)
-        self.github(paths=docs, ruleset_json={**base, "rules": {"type": "required_status_checks"}})
-        failed(self.merge(), "rules is object, not an array")
-        self.github(paths=docs, ruleset_json={**base, "rules": [{"type": "required_status_checks"}]})
-        failed(self.merge(), "strict_required_status_checks_policy is null, not a boolean")
-        # two required_status_checks rules in one ruleset
-        self.github(paths=docs, ruleset_json={**base, "rules": ruleset_rules(True) + ruleset_rules(False)[-1:]})
-        failed(self.merge(), f"ruleset {RULESET_ID} holds two required_status_checks rules")
-        # a ruleset without the rule, alone on the default branch
-        self.github(paths=docs, ruleset_json={**base, "rules": [{"type": "deletion"}]})
-        failed(
-            self.merge(),
-            "no active branch ruleset applying to refs/heads/main (an include pattern matching it, ~DEFAULT_BRANCH, ~ALL"
-            f" or a glob, and no exclude pattern matching it; applying: {RULESET_ID}) holds a required_status_checks rule",
-        )
-        # conditions of another shape
-        self.github(paths=docs, ruleset_json={**base, "conditions": {"ref_name": {"include": "~DEFAULT_BRANCH"}}})
-        failed(self.merge(), "conditions.ref_name.include is string, not an array")
-        self.github(paths=docs, ruleset_json={**base, "conditions": {"ref_name": {"include": [1]}}})
-        failed(self.merge(), "a ref_name.include entry is number, not a string")
-        # which rulesets count: beside a non-strict main ruleset, a strict one off the default branch, one in
-        # evaluate enforcement, one excluding main and a tag ruleset (never read) leave the policy false; a strict
-        # one naming refs/heads/main turns it true
-        policy_false = "strict_required_status_checks_policy false"
-        for name, summaries, extra, expected in (
-            (
-                "a strict ruleset on another branch",
-                (ruleset_summary(), ruleset_summary(7, "release gate")),
-                (ruleset_answer(7, strict=True, include=("refs/heads/release",)),),
-                policy_false,
-            ),
-            (
-                "a strict ruleset in evaluate enforcement",
-                (ruleset_summary(), ruleset_summary(7, "trial", enforcement="evaluate")),
-                (),
-                policy_false,
-            ),
-            (
-                "a strict ruleset excluding main",
-                (ruleset_summary(), ruleset_summary(7, "all but main")),
-                (ruleset_answer(7, strict=True, include=("~ALL",), exclude=("refs/heads/main",)),),
-                policy_false,
-            ),
-            (
-                "a strict ruleset including ~DEFAULT_BRANCH but excluding ~DEFAULT_BRANCH",
-                (ruleset_summary(), ruleset_summary(7, "odd")),
-                (ruleset_answer(7, strict=True, exclude=("~DEFAULT_BRANCH",)),),
-                policy_false,
-            ),
-            (
-                "a strict tag ruleset, never read",
-                (ruleset_summary(), ruleset_summary(8, "tags", target="tag")),
-                (),
-                policy_false,
-            ),
-            (
-                "a disabled strict ruleset, never read",
-                (ruleset_summary(), ruleset_summary(9, "off", enforcement="disabled")),
-                (),
-                policy_false,
-            ),
-            (
-                "a strict ruleset naming refs/heads/main",
-                (ruleset_summary(), ruleset_summary(7, "main too")),
-                (ruleset_answer(7, strict=True, include=("refs/heads/main",)),),
-                f"strict_required_status_checks_policy true (active ruleset(s) on main with a required_status_checks"
-                f" rule: {RULESET_ID}, 7)",
-            ),
-        ):
-            with self.subTest(name):
-                self.github(paths=docs, strict=False, rulesets=summaries, rulesets_extra=extra)
+                store()
+                self.github(**kwargs)
                 run = self.merge()
-                self.assertIn(f"pr-merge.sh: ruleset: {expected}", run.stderr)
-                if expected == policy_false:
-                    self.assert_refused(run, "(U613)")
-                    self.assertNotIn("sweep: not required", run.stderr)
-                else:
-                    self.assertEqual(run.returncode, 0, run.stderr)
-                    self.assertIn(SKIP_LINE, run.stderr)
-                self.calls.unlink()
-        # a ruleset the listing names and the per-id read of which fails
-        self.github(paths=docs, rulesets=(ruleset_summary(), ruleset_summary(7, "unreadable")))
-        failed(self.merge(), "cannot read ruleset 7 (gh api repos/{owner}/{repo}/rulesets/7)")
-
-    def test_a_ruleset_applies_to_main_by_github_s_include_and_exclude_matching(self):
-        """U597 round 10 (verdict U597-67e1eea8 P1 at pr-merge.sh:921): round 9 compared each include and exclude
-        entry with the two literals `~DEFAULT_BRANCH` and `refs/heads/main` alone, so a ruleset including
-        `~DEFAULT_BRANCH` and excluding `refs/heads/main` counted (GitHub applies it to no branch named main) and a
-        glob never did, and a strict rule that did not apply to main could grant the exemption without the
-        server-side protection it rests on. A ruleset applies to main the way GitHub decides it: some
-        `conditions.ref_name.include` pattern matches `refs/heads/main` and no `exclude` pattern does,
-        `~DEFAULT_BRANCH` the default branch, `~ALL` every branch, any other pattern an fnmatch glob over the full ref
-        name (`**` across `/`). Beside a non-strict main ruleset, a strict ruleset including `~DEFAULT_BRANCH` and
-        excluding `refs/heads/main` counts nothing (the P1 case: the policy reads false, the per-head sweep stands
-        naming U613, the daily file is not read); one including `refs/heads/ma*` counts, one including `~ALL`
-        counts, one including `refs/heads/**` counts (the policy true, the docs head merges on the daily row with
-        the skip line); one including another branch does not count, an exclude glob that matches main
-        (`refs/heads/m*`) removes a ruleset including `~ALL`, and an exclude glob matching another branch alone
-        removes nothing; the lever spells the match in bash's own pattern with `**` turned into `*`."""
-        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
-        docs = files_listing("docs/plan.md")
-        policy_false = (
-            "strict_required_status_checks_policy false (active ruleset(s) on main with a required_status_checks"
-            f" rule: {RULESET_ID})"
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertNotIn("refused:", run.stderr)
+                before_listing(run)
+        # a failed tree read on the merge-row route: exit 1 naming the head whose tree could not be read
+        store(merge_row(), sweep_row(squashed, unit="U70", ts="2026-10-25T07:30:00Z"))
+        self.github(tip_files=lever_tip)  # no answer for git/commits/<squashed>: the fake refuses the call
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn(
+            f"pr-merge.sh: cannot read the tree of the head {squashed} (gh api repos/{{owner}}/{{repo}}/git/commits/"
+            f"{squashed} --jq .tree.sha); whether a sweep at the head {squashed} the tip {BASE_TIP} was squashed from"
+            " covers it is unknown, so the tip is not read as swept",
+            run.stderr,
         )
-        policy_true = (
-            "strict_required_status_checks_policy true (active ruleset(s) on main with a required_status_checks"
-            f" rule: {RULESET_ID}, 7)"
-        )
-        for name, extra, expected in (
-            (
-                "including ~DEFAULT_BRANCH and excluding refs/heads/main (the P1 case)",
-                ruleset_answer(7, strict=True, include=("~DEFAULT_BRANCH",), exclude=("refs/heads/main",)),
-                policy_false,
-            ),
-            (
-                "an include glob refs/heads/ma*",
-                ruleset_answer(7, strict=True, include=("refs/heads/ma*",)),
-                policy_true,
-            ),
-            ("~ALL", ruleset_answer(7, strict=True, include=("~ALL",)), policy_true),
-            (
-                "an include naming another branch",
-                ruleset_answer(7, strict=True, include=("refs/heads/release",)),
-                policy_false,
-            ),
-            ("refs/heads/**", ruleset_answer(7, strict=True, include=("refs/heads/**",)), policy_true),
-            (
-                "an exclude glob matching main",
-                ruleset_answer(7, strict=True, include=("~ALL",), exclude=("refs/heads/m*",)),
-                policy_false,
-            ),
-            (
-                "an exclude glob matching another branch alone",
-                ruleset_answer(7, strict=True, include=("~ALL",), exclude=("refs/heads/release/**",)),
-                policy_true,
-            ),
-        ):
-            with self.subTest(name):
-                if expected == policy_false:
-                    self.daily(text="not a daily file\n")  # not read while the policy is false
-                else:
-                    self.daily(daily_row())
-                self.github(
-                    paths=docs,
-                    strict=False,
-                    rulesets=(ruleset_summary(), ruleset_summary(7, "by pattern")),
-                    rulesets_extra=(extra,),
-                )
-                run = self.merge()
-                self.assertIn(f"pr-merge.sh: ruleset: {expected}\n", run.stderr)
-                if expected == policy_false:
-                    self.assert_refused(run, "(U613)")
-                    self.assertNotIn("sweep: not required", run.stderr)
-                    self.assertNotIn("daily-sweeps.tsv", run.stderr, "the daily file is not read")
-                    self.assertEqual(self.writes(), [])
-                else:
-                    self.assertEqual(run.returncode, 0, run.stderr)
-                    self.assertIn(SKIP_LINE, run.stderr)
-                    self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
-                self.calls.unlink()
-        # the lever spells the match: the two tilde words first, then bash's pattern with `**` turned into `*`
+        self.assertEqual(before_listing(run), [*PRE_CALLS, *tip_trees])
+        # the lever spells the gate's place and its two ledger questions
         text = (LEVERS / "pr-merge.sh").read_text()
-        self.assertEqual(text.count("ref_pattern_matches() {"), 1)
-        self.assertIn("""    '~DEFAULT_BRANCH') [[ ${ref} == "refs/heads/${base}" ]] ;;""", text)
-        self.assertIn("    '~ALL') return 0 ;;", text)
-        self.assertIn("        [[ ${ref} == ${pattern//\\*\\*/\\*} ]]", text)
-        self.assertIn('            include) ! ref_pattern_matches "${value}" "${ref}" || includes=1 ;;', text)
-        self.assertIn('            exclude) ! ref_pattern_matches "${value}" "${ref}" || excluded=1 ;;', text)
-        self.assertIn('    local ref="refs/heads/${base}"', text)
-        self.assertNotIn(
-            """[[ ${value} == '~DEFAULT_BRANCH' || ${value} == "refs/heads/${base}" ]]""",
+        self.assertIn(
+            "read_base_tip\nrequire_tip_swept\nrequire_sweep_scope\n[[ -z ${sweep_reason} ]] || require_sweep_row\n",
             text,
-            "the round-9 literal compare is gone",
         )
+        self.assertIn('"${store}" sweep-any "${head}" 2>&1) || status=$?', text)
+        self.assertIn('"${store}" merge-of "${tip}" 2>&1) || status=$?', text)
+        self.assertIn(
+            'parents=$(gh_bounded api "repos/{owner}/{repo}/git/commits/${tip}" --jq \'[.parents[].sha] | join(" ")\') ||',
+            text,
+        )
+        self.assertIn('    classify_diff "${tip_parent}" "${base_tip}" "${what}" fail \\\n', text)
+        self.assertIn('[[ ${tree_tip} == "${tree_sha}" ]] ||', text)
+        self.assertEqual(text.count("require_tip_swept() {"), 1)
 
     def test_a_daily_row_of_a_unit_s_shape_or_with_other_validator_digests_admits_nothing(self):
         """U597 round 9 (verdict U597-c37800e3 P2 at ledger.py:393 and P2 at ledger-row.py:821): the daily reader
@@ -4803,8 +4844,8 @@ class PrMergeTest(PrLeverTestCase):
                 self.assert_refused(
                     run,
                     f"the daily sweep of main's head {SHA_B} at {ts}, which this head rested on, no longer stands within"
-                    " 86400 seconds (24 hours) at the merge write: its window closed during the checks, so the per-head"
-                    " rule stands",
+                    " 86400 seconds (24 hours) at the lever's last read before the merge request: its window closed"
+                    " during the checks, so the per-head rule stands",
                 )
                 self.assertIn(SKIP_LINE, run.stderr, "the first read stood")
                 self.assertNotIn("still stands", run.stderr)
@@ -4824,7 +4865,7 @@ class PrMergeTest(PrLeverTestCase):
         self.assertIn(f"the daily sweep of main's head {SHA_B} at {ts} stands within 86400 seconds", run.stderr)
         self.assertIn(
             f"pr-merge.sh: sweep: the daily sweep of main's head {SHA_C} at {newer.split(chr(9))[0]} still stands within"
-            " 86400 seconds at the merge write\n",
+            " 86400 seconds at the lever's last read before the merge request\n",
             run.stderr,
         )
         self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
@@ -4848,7 +4889,7 @@ class PrMergeTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(
             f"pr-merge.sh: sweep: the daily sweep of main's head {SHA_B} at {ts} still stands within 86400 seconds at"
-            " the merge write\n",
+            " the lever's last read before the merge request\n",
             run.stderr,
         )
         self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
@@ -4860,8 +4901,10 @@ class PrMergeTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertNotIn("still stands", run.stderr)
         self.assertNotIn("sweep: not required", run.stderr)
-        # the lever spells the recheck right before the one write, after the CI read and the reread
+        # the lever spells the recheck right before the one write, after the CI read and the reread, and names the
+        # window at its last read before the merge request, never at the write (round 11, the round-10 P3 at :1183)
         text = (LEVERS / "pr-merge.sh").read_text()
+        self.assertNotIn("at the merge write", text)
         self.assertIn(
             "[[ -n ${sweep_reason} ]] || recheck_daily_sweep\n\nmerge_status=0\n"
             'gh_bounded pr merge "${pr}" --squash --match-head-commit "${head}" >&2 || merge_status=$?\n',

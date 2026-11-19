@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file pr-merge.sh
-# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, with the unit's `sweep` row at that head when the head's changed paths touch a sweep class (a lever, a policy, credential handling or a deployed executable), when no daily sweep of main's head stands within 24 hours at the lever's last read before the merge request, or when the main ruleset does not require branches to be up to date before merging (U613), and CI passed, the orchestrator seat's merge lever.
+# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, when CI passed and the three sweep gates hold (regime-cutover U597 round 11): main's tip is swept or exempt (its landed diff classified at the tip; a sweep row at it when a class is touched), the head's classified diff has the unit's `sweep` row when it touches a sweep class (a lever, a policy, credential handling or a deployed executable) or rests on a daily sweep of main's head within 24 hours at the lever's last read before the merge request when it touches none, and after the merge the merge commit's tree is the head's (an unmoved tip) or the landed diff is classified again at the merge commit; the orchestrator seat's merge lever. It reads no server-side protection setting, policy or actor.
 # @description
 #   Regime-cutover U71 (finding F010), the orchestrator seat's only merge path: `home/dot_agents/omp/policies/orchestrator.yml`
 #   allows `~/.local/bin/common/pr-merge.sh *` and denies the `gh pr merge` command text (a speed bump: text rows do
@@ -93,11 +93,12 @@
 #   exiting 0; a pending, failed or cancelled check is a refusal naming it, and a required check that is not listed, or
 #   is listed with any bucket but `pass` (`skipping` satisfies only a check that is not required), is a refusal naming
 #   it apart from the red ones (`CI has no result for: ...`). REQUIRED_CHECKS (regime-cutover U330) is the eight
-#   required status contexts of the main ruleset `main integration gate` (24397953), copied as GitHub names them
-#   (measured 2026-11-07T03:34Z, decisions row 2026-11-07T03:35:00Z): a constant in the lever and not a read of the
-#   rulesets API at merge time, because that read would be one more `gh` call in the merge window and a ruleset the
-#   operator edits is not the program's record of what a merge needs; `tests.unit.test_pr_merge` holds the array equal
-#   to the contexts recorded from that measurement, so a drift between the lever and the ruleset fails CI, not a merge.
+#   required status contexts of `main`'s branch protection, `main integration gate` (24397953), copied as GitHub
+#   names them (measured 2026-11-07T03:34Z, decisions row 2026-11-07T03:35:00Z): a constant in the lever and not a
+#   read of the protection settings at merge time, because that read would be one more `gh` call in the merge window
+#   and a setting the operator edits is not the program's record of what a merge needs; `tests.unit.test_pr_merge`
+#   holds the array equal to the contexts recorded from that measurement, so a drift between the lever and the
+#   protection fails CI, not a merge.
 #   Before U330 the gate asked only that every listed check be green, so PR 708's head 792604f9, which conflicted with
 #   main and got none of its `pull_request` workflows (GitHub runs them on the merge ref), would have merged on
 #   `regime`, GitGuardian and CodeRabbit alone with no test leg run (decisions row 2026-11-07T01:45:00Z). The one
@@ -134,7 +135,8 @@
 #   the three-dot compare lists the diff from the merge base, and when `main` moved after the branch point the two
 #   differ (a base-side rename can carry an exempt edit into a sweep-class path), so the lever pins the tip it read,
 #   compares against it and requires the response's `merge_base_commit.sha` to equal it, else refuses naming both
-#   shas (rebase the branch onto `main` and re-run the audit); with the head up to date the three-dot diff equals the
+#   shas (bring the branch up to date with `pr-update-branch.sh` and re-run the audit; round 11 named the route in
+#   place of a rebase); with the head up to date the three-dot diff equals the
 #   two-dot diff against the tip, the diff the squash lands, and that invariant is what the listing rests on. Round 5
 #   (the round-4 P1 and its first P2): the compare response carries `files` on its first page alone, at most 300
 #   entries, and paging walks its commits, not its files (docs.github.com, REST API, commits, compare two commits,
@@ -192,38 +194,46 @@
 #   both digests before the first `gh` read, and the copy is the one read of the file, so a file swapped after the
 #   hash is not the file run; `sweep-scope.py` gets its pin and its deployed twin `~/.local/bin/common/sweep-scope.py`
 #   from the generator as `ledger.py` has them (`claude.levers.sha256.sweep-scope.py`). Round 9 (the round-8 P1 at
-#   :1282, the second strike of the diff-basis class; the mechanism-change decisions row of 2026-11-19T11:56:54Z):
-#   `--match-head-commit` pins the head alone, and no client-side read can hold `main` still between the tip read in
-#   require_sweep_scope and the moment GitHub writes the squash, so the classified listing is the landed diff only
-#   when the server itself refuses a merge of a head that is not up to date, the main ruleset's
-#   `strict_required_status_checks_policy` (require branches to be up to date before merging). The lever reads it
-#   once, before the listing (require_ruleset_policy): `gh api "repos/{owner}/{repo}/rulesets"` lists the rulesets
-#   (each `id`, `enforcement` and `target`, held to their types by the jq), and for each active branch ruleset the
-#   per-id read `gh api "repos/{owner}/{repo}/rulesets/<id>"` gives its `conditions.ref_name.include` and
-#   `exclude` lists and the `strict_required_status_checks_policy` of its `required_status_checks` rule; a ruleset
-#   applies to `main` the way GitHub decides it (round 10, the round-9 P1 at :921, where a ruleset including
-#   `~DEFAULT_BRANCH` and excluding `refs/heads/main` counted, and a glob never did): some include pattern matches
-#   `refs/heads/<base>` and no exclude pattern does, `~DEFAULT_BRANCH` matching the default branch, `~ALL` every
-#   branch and any other pattern an fnmatch glob over the full ref name (`refs/heads/ma*`, `refs/heads/**`;
-#   ref_pattern_matches), and `strict_policy` is `true` when at least one applying ruleset's rule has it true, else
-#   `false`. A failed read, a value that is not a boolean, an id that is no number, an enforcement that is none of
-#   GitHub's three, two such rules in one ruleset, a shape the jq cannot hold, and no applying ruleset holding the
-#   rule at all are failures (exit 1, never read as true). While the policy is `false` (today's value, measured
-#   2026-11-19; only the repository's admin can change it, asked in U613) the lever grants no exemption: a
-#   `not-required` head reads no daily row, `sweep_reason` names the policy and U613, and require_sweep_row runs as
-#   for a required head, so every head gets its per-head sweep as before U597 and the daily machinery is dormant;
-#   when it is `true` GitHub refuses a merge of a head behind `main`, the classified listing is the landed diff by
-#   construction (the window is closed by the server, not by a check), and the daily rule applies as rounds 4 to 8
-#   built it. The post-merge first-parent read (`gh api repos/{owner}/{repo}/commits/<commit> --jq '.parents[0].sha'`,
-#   status read, 40 hex) stays as the lever's own record of what it merged onto: a parent other than the tip read
-#   earlier is exit 1 with no receipt naming the merge commit, its parent and that tip, and the
-#   coordinator sweeps the merge commit (the hcom-orchestration SKILL step 6). Round 9 also reads the daily
-#   freshness again right before the merge request, after the CI read and the final pull request reread, with the
-#   same window (recheck_daily_sweep): a head that rested on a daily row whose window closed during the checks is
-#   refused, never merged on a sweep that no longer stands. The window is measured at that read, the lever's last
-#   before the merge request, which precedes GitHub's write by one API round trip (round 10, the round-9 P3 at
-#   :1556): the daily sweep stands within 24 hours at the lever's last read before the merge request, not at the
-#   moment GitHub writes the squash. And the daily row is read by its own grammar (daily_row_fields), the verifier
+#   :1282, the second strike of the diff-basis class) and round 10 inferred, client-side, whether GitHub would hold
+#   `main` still at the squash (the up-to-date policy of its branch protection) and granted the exemption only then;
+#   round 11 (the round-10 P1 at :907, :981 and :1609; the mechanism-change decisions row of 2026-11-19T15:21:36Z)
+#   removed every such read: nothing client-side can know whether the server will enforce a policy, and this lever
+#   reads no protection setting, policy or actor. What it can know exactly are shas, trees and store rows, so three
+#   gates hold every merge, each on immutable commits and the store alone. Gate one, main's tip swept or exempt
+#   (require_tip_swept, after the dispositions and before the head's listing): the tip of `main` is read once
+#   (read_base_tip, `gh api 'repos/{owner}/{repo}/git/ref/heads/main' --jq '.object.sha'`, status read, 40 hex), its
+#   first parent through `gh api 'repos/{owner}/{repo}/git/commits/<tip>' --jq '[.parents[].sha] | join(" ")'` (a
+#   root commit or a tip with two parents is a failure naming it: the program's `main` is a line of squash commits),
+#   and the tip's landed diff, `compare/<tip's parent>...<tip>`, is classified through the pinned scope reader exactly
+#   as the head's listing is (classify_diff: the same jq, the same reader, the merge base held to the parent).
+#   `not-required` needs nothing; `required <class>` or `required cap` needs a sweep row at the tip, the newest
+#   sweep row of any unit there (`ledger.py <store> sweep-any <tip>`, round 11's form, with the strictness of `sweep`)
+#   held by sweep_row_fields, else the ledger's merge row for the tip (`ledger.py <store> merge-of <tip>`, the row
+#   `ledger-row.py merged` wrote, whose receipt names `pr=<n> head=<sha> commit=<tip>`, answering `<head>` or `none`)
+#   names the head the squash came from, and when that head's tree equals the tip's tree (two `git/commits` reads,
+#   `.tree.sha`, status read, 40 hex) the sweep row at that head counts (`sweep-any <head>`, held the same way);
+#   otherwise the refusal names the tip, the class and the missing sweep (sweep the merge commit and record it before
+#   the next merge). Gate two, the head's own class (require_sweep_scope, as rounds 4 to 10 left it): the compare of
+#   `<tip>...<head>` whose merge base must be the tip (a head behind `main` is refused naming both shas and the
+#   `pr-update-branch.sh` route), the cap, and for `not-required` the daily row of main's head within 24 hours at the
+#   lever's last read before the merge request (require_daily_sweep, recheck_daily_sweep, daily_row_fields), read for
+#   every such head since no policy decides it any more. Gate three, the post-merge check by trees: after `gh pr
+#   merge` the merge commit's first parent (`gh api repos/{owner}/{repo}/commits/<commit> --jq '.parents[0].sha'`),
+#   the merge commit's tree and the head's tree (`gh api repos/{owner}/{repo}/git/commits/<sha> --jq .tree.sha`, each
+#   status read and held to 40 hex) are read. A parent equal to the tip read before the checks means `main` did not
+#   move under the squash, and then the two trees must be equal (the squash of an up-to-date head reproduces the
+#   head's tree; a tree that differs is a shape this lever does not know, exit 1 naming both trees), the pre-merge
+#   classification and sweep stand, and the receipt is printed. A parent that differs means `main` moved between the
+#   tip read and the merge (nothing server-side is assumed to hold it still), so the landed diff,
+#   `compare/<parent>...<merge commit>` (two immutable shas; its merge base must be the parent), is classified through
+#   the pinned reader as the pre-merge listing was: `not-required` prints the receipt and exits 0 with one stderr line
+#   saying `main` moved and the landed diff touches no sweep class; `required <class>` or `required cap` prints the
+#   receipt first, then exits 1 with one stderr line naming the merge commit, its parent, the class and the
+#   instruction to sweep the merge commit before the next merge (the hcom-orchestration SKILL step 6: the row is a
+#   `sweep` row of the unit at the merge commit, and gate one refuses the next merge until it is written). Since the
+#   merge is a fact once `MERGED` at the audited head into `main` is read, the receipt line is printed on stdout at
+#   that point, before the post-merge reads, so every exit after it, a failure included, follows the receipt and
+#   `ledger-row.py merged` records the merge. The daily row is read by its own grammar (daily_row_fields), the verifier
 #   `security-audit-skill <pin> (full audit mode on the srt worker seat <seat>, run-<n>; TASK daily-<YYYY-MM-DD>)`
 #   and the evidence `sweeps/<path>.json; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs
 #   PASS; validators sha256 <8 hex> <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>`, the three
@@ -232,7 +242,13 @@
 #   (validators_pin_probe), and the two artifact digests (the writer's copies of the findings file and the coverage
 #   ledger, the bytes its count and PASS words attest; round 10, the P2 at ledger-row.py:574) required by shape alone
 #   (two 8-hex words; the lever never opens the findings file), so a row of a unit's sweep shape (`TASK U<n>`, no
-#   validators) or one whose validators were held to other pins admits nothing.
+#   validators) or one whose validators were held to other pins admits nothing. Round 9 also reads the daily
+#   freshness again right before the merge request, after the CI read and the final pull request reread, with the
+#   same window (recheck_daily_sweep): a head that rested on a daily row whose window closed during the checks is
+#   refused, never merged on a sweep that no longer stands. The window is measured at that read, the lever's last
+#   before the merge request, which precedes GitHub's write by one API round trip (round 10, the round-9 P3 at
+#   :1556): the daily sweep stands within 24 hours at the lever's last read before the merge request, not at the
+#   moment GitHub writes the squash.
 # @arg $1 int The pull request number.
 # @option --records <dir> The program store holding `ledger.tsv`, `verdicts/`, `dispositions.tsv` and `units.tsv`
 #   (required; must resolve to the store `store_resolve` chose: `${REGIME_STORE_ROOT}/<program>` when it exists, else
@@ -240,18 +256,21 @@
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
-# @exitcode 1 A `gh` or `git` read (the rulesets listing or a ruleset's read, a ruleset id, enforcement, target,
-#   `conditions.ref_name.include` or `exclude` or `strict_required_status_checks_policy` of another shape than the
-#   lever reads, two `required_status_checks` rules in one ruleset, no active ruleset applying to the base holding that
-#   rule (round 9; round 10: applying by GitHub's include and exclude matching), the tip
-#   of `main` that fails or is not 40 hex, the compare listing, a response
-#   whose `files` is not an array or whose `merge_base_commit.sha` is no string, and a first line that is not
-#   `merge-base <40 hex>` among its failures), the manifest pin probes, the scope reader or the ledger reader (any
-#   status but 0 or 2), or the merge, failed; or the merge commit's first parent could not be read, is not 40 hex, or
-#   is not the tip of `main` read before the listing (round 8: the merge happened on a moved `main`; no receipt, and
-#   the coordinator sweeps the merge commit).
+# @exitcode 1 A `gh` or `git` read (the tip of `main` that fails or is not 40 hex, the tip's parents that fail, name
+#   a root commit or two parents or are not 40 hex, a compare listing (the tip's landed diff, the head's, or the merge
+#   commit's), a response whose `files` is not an array or whose `merge_base_commit.sha` is no string, a first line
+#   that is not `merge-base <40 hex>`, a merge base that is not the commit a listing of commits already on `main` is
+#   asked against (the tip's and the merge commit's; the head's is a refusal), a tree read that fails or is not 40 hex,
+#   among its failures), the manifest pin probes, the scope reader or the ledger reader (any status but 0 or 2), or
+#   the merge, failed; or, after `MERGED` at the audited head (the receipt printed first, round 11), the merge
+#   commit's first parent could not be read or is not 40 hex, it is the tip read before the checks but the merge
+#   commit's tree is not the head's, or it is not that tip and the landed diff `compare/<parent>...<merge commit>`
+#   touches a sweep class or the cap (round 8: the merge happened on a moved `main`; round 11: the coordinator sweeps
+#   the merge commit and records the row before the next merge, which gate one refuses until then).
 # @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a head whose merge
-#   base with `main` is not `main`'s tip (not up to date: rebase onto `main` and re-run the audit; round 7), a compare
+#   base with `main` is not `main`'s tip (not up to date: bring it up to date with `pr-update-branch.sh` and re-run
+#   the audit; round 7, round 11), main's tip whose landed diff touches a class or the cap with no sweep row at it and
+#   none at a head whose tree is the tip's through its merge row (round 11, gate one), a compare
 #   listing that names no file, a scope answer the checkout's `sweep-scope.py` refuses (its exit 2: a listing that is not one
 #   JSON array of status, filename and previous_filename per file, a `previous_filename` neither a string nor null, a
 #   rename without its source, or a path git would not list) or that is neither `not-required` nor `required
@@ -263,9 +282,8 @@
 #   daily-<YYYY-MM-DD>`, the evidence's seven fields, the three validator digest prefixes held to the manifest's
 #   `validators_sha256` pins, the two artifact digests by shape; round 9, round 10), a daily row whose window closed
 #   between the first read and the merge request (recheck_daily_sweep), no `sweep` row of
-#   the unit or a fix unit of it at the audited head when the sweep row is required (a class, no daily sweep of
-#   main's head within 86400 seconds, or the main ruleset's `strict_required_status_checks_policy` false, U613,
-#   under which no head is exempt), a sweep answer of the reader that is
+#   the unit or a fix unit of it at the audited head when the sweep row is required (a class, the cap, or no daily
+#   sweep of main's head within 86400 seconds), a sweep answer of the reader that is
 #   neither `none` nor one row of four tab-separated fields with a ts, a sweep row whose verifier is not
 #   `security-audit-skill <pin>` with the
 #   pin word a prefix (8 or more characters) of the manifest's `assets.security-audit-skill.pin`, whose evidence does
@@ -381,13 +399,13 @@ dispositions_header=$'ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\tref
 units_header=$'id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote'
 # The body's program marker, the grammar regime-ci.py and pr-body-edit.sh read; the unit names the verdict file.
 program_unit_re='^Program-Unit: ([a-z0-9][a-z0-9_-]{0,63})/(U[0-9]+)$'
-# The checks a merge needs, by name (regime-cutover U330): the required status contexts of the main ruleset `main
-# integration gate` (`gh api repos/mryfmo/dotfiles/rulesets/24397953`, the `required_status_checks` rule), the exact
-# strings GitHub lists them under (`<job> (<matrix values>)` for a matrix job), measured 2026-11-07T03:34Z (decisions
-# row 2026-11-07T03:35:00Z). A constant, not a rulesets API read per merge: the list is the program's record of what a
-# merge needs, a ruleset the operator edits is not, and the read would be one more `gh` call in the merge window.
+# The checks a merge needs, by name (regime-cutover U330): the required status contexts of `main`'s branch protection
+# `main integration gate` (id 24397953, its `required_status_checks` rule), the exact strings GitHub lists them under
+# (`<job> (<matrix values>)` for a matrix job), measured 2026-11-07T03:34Z (decisions row 2026-11-07T03:35:00Z). A
+# constant, not a read of the protection settings per merge: the list is the program's record of what a merge needs,
+# a setting the operator edits is not, and the read would be one more `gh` call in the merge window.
 # tests.unit.test_pr_merge holds this array equal to the contexts recorded from that measurement, so a drift between
-# the lever and the ruleset fails CI, not a merge; a change to the ruleset is a change here and in that test. Every
+# the lever and the protection fails CI, not a merge; a change to the protection is a change here and in that test. Every
 # name must be listed by `gh pr checks` with bucket `pass`: a pull request that conflicts with main gets none of its
 # `pull_request` workflows (GitHub runs them on the merge ref), and before U330 its three passing checks (`regime`, a
 # `pull_request_target` workflow; GitGuardian; CodeRabbit, skipping) satisfied the gate with no test leg run (PR 708
@@ -586,14 +604,16 @@ correct_re='^correct($|[[:space:](;,])'
 carried_re='^carried($|[[:space:](;,])'
 carried_evidence_re='(^|[[:space:]])carried ([0-9a-f]{40}) ([0-9a-f]{40}) ([0-9a-f]{64})($|[[:space:];,.)])'
 
-# @description Print the refusal on stderr and exit 2; nothing was merged.
+# @description Print the refusal on stderr and exit 2; nothing was merged (after the receipt line, which the lever
+#   prints as soon as MERGED at the audited head is read, a refusal is of what followed the merge; round 11).
 # @arg $@ string The reason.
 refuse() {
     echo "${lever}: refused: $*" >&2
     exit 2
 }
 
-# @description Print the failure on stderr and exit 1: a read or the merge failed.
+# @description Print the failure on stderr and exit 1: a read or the merge failed, or, after the receipt line, what
+#   followed the merge (round 11).
 # @arg $@ string The reason.
 fail() {
     echo "${lever}: $*" >&2
@@ -881,199 +901,288 @@ require_dispositions() {
     done
 }
 
-# @description Whether one `conditions.ref_name` pattern of a ruleset matches a ref the way GitHub matches it
-#   (regime-cutover U597 round 10; the round-9 P1 at :921, where require_ruleset_policy compared each include and
-#   exclude entry with the two literals `~DEFAULT_BRANCH` and `refs/heads/<base>` alone, so a ruleset including
-#   `~DEFAULT_BRANCH` and excluding `refs/heads/main` counted, one including `refs/heads/ma*` never did, and a strict
-#   rule that did not apply to `main` could grant the exemption without the server-side protection it rests on).
-#   GitHub's documented syntax for ruleset targets (docs.github.com, "Creating rulesets for a repository", read
-#   2026-11-19): `~DEFAULT_BRANCH` matches the default branch (`main`, the base this lever requires at the top),
-#   `~ALL` matches every branch, and any other pattern is an fnmatch glob over the full ref name, `refs/heads/ma*`,
-#   `refs/heads/**`, where `**` matches across `/`. The two tilde words are handled first; the glob is bash's own
-#   `[[ == ]]` pattern match over the ref with `**` turned into `*`: bash's pattern `*` has no `/` boundary either, so
-#   `*` already crosses `/` and the two spell one match (`?` and `[...]` are fnmatch's in both), and the right-hand
-#   side stays unquoted on purpose, since it is the pattern.
-# @arg $1 string The pattern as GitHub lists it.
-# @arg $2 string The ref name, `refs/heads/<base>`.
-# @exitcode 0 The pattern matches the ref.
-# @exitcode 1 It does not.
-ref_pattern_matches() {
-    local pattern=$1 ref=$2
-    case ${pattern} in
-    '~DEFAULT_BRANCH') [[ ${ref} == "refs/heads/${base}" ]] ;; # lint-comparisons: allow the ref name is compared as the text GitHub lists, never resolved
-    '~ALL') return 0 ;;
-    *)
-        # shellcheck disable=SC2053
-        [[ ${ref} == ${pattern//\*\*/\*} ]] # lint-comparisons: allow the ref name is matched against GitHub's glob as text, never resolved
-        ;;
-    esac
-}
-
-# @description Read the main ruleset's up-to-date policy once, before the listing (regime-cutover U597 round 9; the
-#   round-8 P1 at :1282, the second strike of the diff-basis class, and the mechanism-change decisions row of
-#   2026-11-19T11:56:54Z): the lever classifies the diff against a snapshot of `main`, and no client-side read can pin
-#   `main` at the moment GitHub writes the squash, so the only pre-merge control is the server's own, the main
-#   ruleset's `strict_required_status_checks_policy` (require branches to be up to date before merging). The rulesets
-#   are listed once, `gh api "repos/{owner}/{repo}/rulesets"` with a jq that holds the response to an array and each
-#   ruleset's `id` to a number, `enforcement` and `target` to strings (`<id>\t<enforcement>\t<target>` per ruleset);
-#   an enforcement that is none of `active`, `evaluate` or `disabled` is a failure, and the active branch rulesets are
-#   read one by one, `gh api "repos/{owner}/{repo}/rulesets/<id>"` with a jq that prints `include <ref>` for each entry
-#   of `conditions.ref_name.include` (an array of strings, else its error), `exclude <ref>` for each of `exclude`
-#   (an array of strings; null read as none; else its error), and `strict <true|false>` for each
-#   `required_status_checks` rule's `strict_required_status_checks_policy` (a boolean, else its error). A ruleset
-#   applies to the base when some include pattern matches `refs/heads/<base>` and no exclude pattern does, each
-#   pattern read as GitHub reads it (ref_pattern_matches, round 10: `~DEFAULT_BRANCH`, `~ALL`, else a glob over the
-#   full ref name); `strict_policy` is `true` when at least one applying ruleset's rule has it true, else `false`.
-#   Two such rules in one ruleset, a line the lever did not ask for, a failed read and no applying ruleset holding
-#   the rule at all are failures (exit 1): the policy is never read as true from a shape the lever does not know,
-#   and never read as false by default either, since an unread policy would hide a ruleset the operator set
-#   (standing order 21). The value is printed once on stderr.
-# @set strict_policy `true` or `false`, the policy as read; nothing else (every other outcome is a failure).
-require_ruleset_policy() {
-    local listing line id enforcement target rules kind value includes excluded strict rest listed='' with_rule=''
-    local ref="refs/heads/${base}"
-    listing=$(gh_bounded api "repos/{owner}/{repo}/rulesets" --jq '(if type == "array" then . else error("rulesets is " + type + ", not an array") end) | .[] | [(.id | if type == "number" then tostring else error("id is " + type + ", not a number") end), (.enforcement | if type == "string" then . else error("enforcement is " + type + ", not a string") end), (.target | if type == "string" then . else error("target is " + type + ", not a string") end)] | @tsv') ||
-        fail "cannot list the rulesets (gh api repos/{owner}/{repo}/rulesets), or the listing is not an array of rulesets with a numeric id and string enforcement and target (the jq's own error names the field); whether the main ruleset requires branches to be up to date before merging (strict_required_status_checks_policy) decides whether any head is exempt from its per-head sweep, so an unread policy admits no exemption and no merge"
-    strict_policy=false
-    # One ruleset per line, `<id>\t<enforcement>\t<target>`, each cell the text up to the next tab.
-    while IFS= read -r line; do
-        [[ -n ${line} ]] || continue
-        id=${line%%$'\t'*}
-        rest=${line#*$'\t'}
-        enforcement=${rest%%$'\t'*}
-        target=${rest#*$'\t'}
-        [[ ${id} =~ ^[1-9][0-9]*$ ]] ||
-            fail "the rulesets listing (gh api repos/{owner}/{repo}/rulesets) names a ruleset id that is not a decimal number: '${id}'; the policy is read from a shape the lever knows alone"
-        case ${enforcement} in
-        active) ;;
-        evaluate | disabled) continue ;;
-        *) fail "the rulesets listing names an enforcement that is none of active, evaluate or disabled for ruleset ${id}: '${enforcement}'; the policy is read from a shape the lever knows alone" ;;
-        esac
-        [[ ${target} == branch ]] || continue
-        rules=$(gh_bounded api "repos/{owner}/{repo}/rulesets/${id}" --jq '((.conditions.ref_name.include | if type == "array" then . else error("conditions.ref_name.include is " + type + ", not an array") end) | .[] | "include " + (if type == "string" then . else error("a ref_name.include entry is " + type + ", not a string") end)), ((.conditions.ref_name.exclude | if type == "array" then . elif . == null then [] else error("conditions.ref_name.exclude is " + type + ", not an array") end) | .[] | "exclude " + (if type == "string" then . else error("a ref_name.exclude entry is " + type + ", not a string") end)), ((.rules | if type == "array" then . else error("rules is " + type + ", not an array") end) | .[] | select(.type == "required_status_checks") | "strict " + (.parameters.strict_required_status_checks_policy | if type == "boolean" then tostring else error("strict_required_status_checks_policy is " + type + ", not a boolean") end))') ||
-            fail "cannot read ruleset ${id} (gh api repos/{owner}/{repo}/rulesets/${id}), or its shape is not the one the lever reads (conditions.ref_name.include and exclude arrays of strings, rules an array whose required_status_checks rule has a boolean strict_required_status_checks_policy; the jq's own error names the field); the policy decides whether any head is exempt from its per-head sweep, so an unread policy admits no exemption and no merge"
-        includes='' excluded='' strict=''
-        while IFS= read -r line; do
-            [[ -n ${line} ]] || continue
-            kind=${line%% *}
-            value=${line#* }
-            case ${kind} in
-            include) ! ref_pattern_matches "${value}" "${ref}" || includes=1 ;;
-            exclude) ! ref_pattern_matches "${value}" "${ref}" || excluded=1 ;;
-            strict)
-                case ${value} in
-                true | false) ;;
-                *) fail "ruleset ${id} answered a strict_required_status_checks_policy that is neither true nor false: '${value}'; the policy is never read as true from a shape the lever does not know" ;;
-                esac
-                [[ -z ${strict} ]] ||
-                    fail "ruleset ${id} holds two required_status_checks rules; the lever reads one strict_required_status_checks_policy per ruleset and takes no side"
-                strict=${value}
-                ;;
-            *) fail "the read of ruleset ${id} (gh api repos/{owner}/{repo}/rulesets/${id}) printed a line the lever did not ask for: '${line}'" ;;
-            esac
-        done <<< "${rules}"
-        # The ruleset applies to the base as GitHub applies it: some include pattern matches the ref and no exclude
-        # pattern does (round 10).
-        [[ -n ${includes} && -z ${excluded} ]] || continue
-        listed+="${listed:+, }${id}"
-        [[ -n ${strict} ]] || continue
-        with_rule+="${with_rule:+, }${id}"
-        [[ ${strict} != true ]] || strict_policy=true
-    done <<< "${listing}"
-    [[ -n ${with_rule} ]] ||
-        fail "no active branch ruleset applying to ${ref} (an include pattern matching it, ~DEFAULT_BRANCH, ~ALL or a glob, and no exclude pattern matching it; applying: ${listed:-none}) holds a required_status_checks rule, so strict_required_status_checks_policy cannot be read (gh api repos/{owner}/{repo}/rulesets); the policy decides whether any head is exempt from its per-head sweep, and an unread policy admits no exemption and no merge (the main ruleset 'main integration gate', 24397953, holds the rule; U613 asks the operator to set it)"
-    echo "${lever}: ruleset: strict_required_status_checks_policy ${strict_policy} (active ruleset(s) on ${base} with a required_status_checks rule: ${with_rule})" >&2
-}
-
-# @description Decide whether the head needs its sweep row (regime-cutover U597, the operator's sweep rule C of
-#   2026-11-18): the audited head's changed files as data, the diff the squash lands, listed by the GitHub compare
-#   API keyed by two shas. First the tip of the base is read once, `gh api "repos/{owner}/{repo}/git/ref/heads/${base}"
-#   --jq '.object.sha'`, with its status read and the value held to 40 hex (anything else, `null` for a missing
-#   object included, is a failure; round 7). Then one compare call, `gh api
-#   "repos/{owner}/{repo}/compare/${base_tip}...${head}" --jq '("merge-base " + (.merge_base_commit.sha | if type ==
-#   "string" then . else error("merge_base_commit.sha is " + type + ", not a string") end)), ((if (.files | type) ==
-#   "array" then .files else error("files is " + (.files | type) + ", not an array") end) | .[] | [.status,
-#   .filename, (if has("previous_filename") then .previous_filename else null end)] | @json)'`, whose first line is
-#   `merge-base <sha>`, the response's `merge_base_commit.sha`, and whose other lines are one JSON array per file.
-#   The merge base must equal the base tip, else the head is refused naming both shas: `pr merge --squash` lands the
-#   diff against the base's tip, while the three-dot compare lists the diff from the merge base, and when the base
-#   moved after the branch point the two differ (round 7, the round-6 P1: a base-side rename can carry an exempt
-#   edit into a sweep-class path, and rounds 4 to 6 compared `main...<head>` with neither check nor pin of the tip).
-#   With the head up to date (the merge base the tip itself) the three-dot diff equals the two-dot diff against the
-#   tip, the diff the squash lands, and the compare keyed by the two shas is that listing or a failure. Round 4 (the
-#   mechanism change): rounds 1 to 3 listed the pull request's files by its number, `gh pr diff --name-only` and then
-#   the files endpoint, and no reread around a number-keyed listing binds it to the audited head, since the pull
-#   request's head can move between the listing and the read; the compare request names the shas, so its answer is
-#   that head's diff or a failure, and a listing of another head cannot be substituted. `base` is the pull request's
-#   base the first view read and required to be `main`, `head` the pinned full sha. Round 5 (the round-4 P1 and its
-#   first P2): the compare response carries `files` on its first page alone, at most 300 entries, and `per_page`
-#   pages its commits, not its files (docs.github.com, REST API, commits, compare two commits, read 2026-11-19), so
-#   the call is one, with no paging, and completeness is read from the listing itself: the reader counts the entries
-#   and answers `required cap` for 300 or more, a listing that may be cut short, which this function treats as
-#   `required <class>` does (`sweep_class=cap`, the cap's reason), and under 300 the listing is whole and the classes
-#   decide; the pull request's file count of rounds 3 and 4 was a read keyed by the pull request's number that no pin
-#   bound to the audited head, and it is gone with the reader's count option. A response whose `files` is not an
-#   array (null for a key missing from a later page or a shape the API changed; an object, a string, a number or a
-#   boolean) is the jq's own error, `(if (.files | type) == "array" then .files else error("files is " + (.files |
-#   type) + ", not an array") end)`, so the call fails and the failure names it with the type, never an empty listing
-#   read as "not required" (round 6, the round-5 P1: round 5's `(.files // error("no files key")) | .[]` iterated an
-#   object's values, so a response whose `files` was one file record as an object was read as a listing of that one
-#   file; the type is checked before anything iterates), and a `merge_base_commit.sha` that is no string is the jq's
-#   error the same way. This lever reads no local git object, so no planted replace ref or graft can narrow the
-#   listing. A listing that fails is a failure, a first line that is not `merge-base <40 hex>` a failure, and a
-#   listing that names no file a refusal (standing order 21: a head that changes nothing is nothing to merge, and a
-#   listing cut short is never "not required"). The file lines go on stdin to the checkout's
-#   `sweep-scope.py --files-json`, the one definition of the classes, run as `python3 -I -S` as the ledger reader is, with its status
-#   read as ledger_verdict reads it: 2 a refusal carrying its line (a line of another shape, a rename without its
-#   source, a `previous_filename` that is neither a string nor null, which the jq passes through as it is and never
-#   maps to null, round 4), any other non-zero a failure. The exit-0 answer is read by its shape: `required cap` sets
-#   `sweep_class` to `cap` and `sweep_reason` to the cap's clause; `required <class>` with the class one lowercase
-#   word (letters and hyphens) sets `sweep_class` to it and `sweep_reason` to the class clause; `not-required` alone
-#   sets `sweep_class` empty and, while `strict_policy` is `true`, asks require_daily_sweep whether the standing
-#   control stands (round 4: the exemption is bound to the daily sweep; round 9: and to the main ruleset's up-to-date
-#   policy, read by require_ruleset_policy before this function runs, since the classified listing is the landed diff
-#   only while the server refuses a merge of a head behind `main`; while the policy is `false` the daily row is not
-#   read, `sweep_reason` names the policy and U613, and require_sweep_row runs as for a required head, so no head is
-#   exempt); anything else, a second line included, is a refusal naming the reader and the
-#   answer. The lever reads the listing as text it passes on and judges no class itself. The reader run is the
-#   lever's pinned copy, `scope_copy` (reader_copy, round 8); the refusals name the checkout's path.
-# @set base_tip The tip of the base read before the listing, 40 hex; after the merge the merge commit's first parent must equal it (round 8).
-# @set sweep_class The class that requires the sweep (`credential`, `policy`, `lever`, `deployed-executable`), `cap` for a listing at the compare API's cap, or empty when none does.
-# @set sweep_reason Why require_sweep_row runs, named in its refusal: the class clause, the cap clause, or the missing daily sweep (require_daily_sweep); empty when the head skips the row.
-require_sweep_scope() {
-    local status=0 listing merge_base files answer class
+# @description Read the tip of the base once (regime-cutover U597 round 7; round 11 moved the read ahead of
+#   require_tip_swept, which judges the tip before the head's listing is asked against it): `gh api
+#   "repos/{owner}/{repo}/git/ref/heads/${base}" --jq '.object.sha'`, its status read and the value held to 40 hex
+#   (anything else, `null` for a missing object included, is a failure). Everything after it is keyed by this sha: the
+#   tip's own landed diff, the head's listing, and the merge commit's first parent after the merge.
+# @set base_tip The tip of the base, 40 hex.
+read_base_tip() {
     base_tip=$(gh_bounded api "repos/{owner}/{repo}/git/ref/heads/${base}" --jq '.object.sha') ||
         fail "cannot read the tip of ${base} (gh api repos/{owner}/{repo}/git/ref/heads/${base}); the head's changed paths are listed against it, so the listing is the diff the squash lands"
     [[ ${base_tip} =~ ^[0-9a-f]{40}$ ]] ||
         fail "the tip of ${base} read from gh api repos/{owner}/{repo}/git/ref/heads/${base} is not 40 hex: '${base_tip}'; the head's changed paths are listed against it, so the listing is the diff the squash lands"
-    listing=$(gh_bounded api "repos/{owner}/{repo}/compare/${base_tip}...${head}" --jq '("merge-base " + (.merge_base_commit.sha | if type == "string" then . else error("merge_base_commit.sha is " + type + ", not a string") end)), ((if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end) | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json)') ||
-        fail "cannot list the changed paths of the head ${head} of pull request ${pr} (gh api repos/{owner}/{repo}/compare/${base_tip}...${head}); the sweep scope is decided from them, and a response whose files is not an array (null for a key missing from a later page or a shape the API changed; an object, a string, a number or a boolean) or whose merge_base_commit.sha is no string is this failure through the jq's error(\"files is <type>, not an array\") or error(\"merge_base_commit.sha is <type>, not a string\"), never an empty listing"
-    merge_base=${listing%%$'\n'*}
-    [[ ${merge_base} =~ ^merge-base\ ([0-9a-f]{40})$ ]] ||
-        fail "the compare API (gh api repos/{owner}/{repo}/compare/${base_tip}...${head}) answered with a first line that is not 'merge-base <40 hex>': '${merge_base}'; the merge base is read beside the files, in the same call, so the listing can be held to the diff the squash lands"
-    merge_base=${BASH_REMATCH[1]}
-    [[ ${merge_base} == "${base_tip}" ]] ||
-        refuse "the head ${head} of pull request ${pr} is not up to date with ${base} (merge base ${merge_base}, ${base} tip ${base_tip}); rebase the branch onto ${base} and re-run the audit, so the listing is the diff the squash lands"
+}
+
+# @description End classify_diff on a fault of the listing or of the reader's answer the way its caller asked: `refuse`
+#   (exit 2) for the head's listing, where the pull request can be fixed, `fail` (exit 1) for a listing of commits
+#   already on `main`, where nothing in the pull request can be.
+# @arg $1 string `refuse` or `fail`.
+# @arg $@ string The reason.
+listing_fault() {
+    local how=$1
+    shift
+    [[ ${how} != refuse ]] || refuse "$@"
+    fail "$@"
+}
+
+# @description Classify the diff of two fixed commits through the pinned scope reader (regime-cutover U597; round 11
+#   made it the one function for the three listings the lever classifies: the head's against main's tip (gate two),
+#   the tip's against its first parent (gate one) and the merge commit's against its first parent (gate three)). One
+#   compare call, `gh api "repos/{owner}/{repo}/compare/${from}...${to}" --jq '("merge-base " +
+#   (.merge_base_commit.sha | if type == "string" then . else error("merge_base_commit.sha is " + type + ", not a
+#   string") end)), ((if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an
+#   array") end) | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] |
+#   @json)'`, whose first line is `merge-base <sha>`, the response's `merge_base_commit.sha`, and whose other lines are
+#   one JSON array per file. The merge base must equal `${from}` (the commit the diff is asked from), else the caller's
+#   fault text ends the run through listing_fault: for the head, `pr merge --squash` lands the diff against the base's
+#   tip, while the three-dot compare lists the diff from the merge base, and when the base moved after the branch point
+#   the two differ (round 7, the round-6 P1: a base-side rename can carry an exempt edit into a sweep-class path, and
+#   rounds 4 to 6 compared `main...<head>` with neither check nor pin of the tip); with the head up to date (the merge
+#   base the tip itself) the three-dot diff equals the two-dot diff against the tip, the diff the squash lands, and
+#   the compare keyed by the two shas is that listing or a failure; for a commit on `main` and its first parent the
+#   merge base is the parent by construction, and another answer is a shape the lever does not know. Round 4 (the
+#   mechanism change): rounds 1 to 3 listed the pull request's files by its number, `gh pr diff --name-only` and then
+#   the files endpoint, and no reread around a number-keyed listing binds it to the audited head, since the pull
+#   request's head can move between the listing and the read; the compare request names the shas, so its answer is
+#   that diff or a failure, and a listing of another head cannot be substituted. Round 5 (the round-4 P1 and its first
+#   P2): the compare response carries `files` on its first page alone, at most 300 entries, and `per_page` pages its
+#   commits, not its files (docs.github.com, REST API, commits, compare two commits, read 2026-11-19), so the call is
+#   one, with no paging, and completeness is read from the listing itself: the reader counts the entries and answers
+#   `required cap` for 300 or more, a listing that may be cut short, which the callers treat as `required <class>`
+#   (`cap`), and under 300 the listing is whole and the classes decide; the pull request's file count of rounds 3 and
+#   4 was a read keyed by the pull request's number that no pin bound to the audited head, and it is gone with the
+#   reader's count option. A response whose `files` is not an array (null for a key missing from a later page or a
+#   shape the API changed; an object, a string, a number or a boolean) is the jq's own error, `(if (.files | type) ==
+#   "array" then .files else error("files is " + (.files | type) + ", not an array") end)`, so the call fails and the
+#   failure names it with the type, never an empty listing read as "not required" (round 6, the round-5 P1: round 5's
+#   `(.files // error("no files key")) | .[]` iterated an object's values, so a response whose `files` was one file
+#   record as an object was read as a listing of that one file; the type is checked before anything iterates), and a
+#   `merge_base_commit.sha` that is no string is the jq's error the same way. This lever reads no local git object,
+#   so no planted replace ref or graft can narrow the listing. A listing that fails is a failure, a first line that is
+#   not `merge-base <40 hex>` a failure, and a listing that names no file the caller's fault (standing order 21: a
+#   head that changes nothing is nothing to merge, and a listing cut short is never "not required"). The file lines go
+#   on stdin to the checkout's `sweep-scope.py --files-json`, the one definition of the classes, run as `python3 -I -S`
+#   as the ledger reader is, with its status read as ledger_verdict reads it: 2 the caller's fault carrying its line
+#   (a line of another shape, a rename without its source, a `previous_filename` that is neither a string nor null,
+#   which the jq passes through as it is and never maps to null, round 4), any other non-zero a failure. The exit-0
+#   answer is read by its shape: `required cap` sets `listing_class` to `cap`; `required <class>` with the class one
+#   lowercase word (letters and hyphens) sets it to the class; `not-required` alone sets it empty; anything else, a
+#   second line included, is the caller's fault naming the reader and the answer. The lever reads the listing as text
+#   it passes on and judges no class itself. The reader run is the lever's pinned copy, `scope_copy` (reader_copy,
+#   round 8); the refusals name the checkout's path.
+# @arg $1 string The commit the diff is asked from, 40 hex (the base side; the merge base must be it).
+# @arg $2 string The commit the diff is asked to, 40 hex.
+# @arg $3 string What the diff is, as the failures and faults name it (`the head <sha> of pull request <n>`, `the tip <sha> of main`, `the merge commit <sha> of pull request <n>`).
+# @arg $4 string `refuse` or `fail`: how a merge base that is not $1, an empty listing, a line the reader refuses and an answer of another shape end (listing_fault).
+# @arg $5 string The fault text for a merge base that is not $1, its `<merge base>` token replaced by the one read.
+# @set listing_merge_base The response's `merge_base_commit.sha`, equal to $1.
+# @set listing_answer The reader's answer: `not-required`, `required cap` or `required <class>`.
+# @set listing_class Empty for `not-required`, `cap` for the cap, else the class word (`credential`, `policy`, `lever`, `deployed-executable`).
+classify_diff() {
+    local from=$1 to=$2 what=$3 on_fault=$4 base_fault=$5 status=0 listing first files answer class
+    listing=$(gh_bounded api "repos/{owner}/{repo}/compare/${from}...${to}" --jq '("merge-base " + (.merge_base_commit.sha | if type == "string" then . else error("merge_base_commit.sha is " + type + ", not a string") end)), ((if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end) | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json)') ||
+        fail "cannot list the changed paths of ${what} (gh api repos/{owner}/{repo}/compare/${from}...${to}); the sweep scope is decided from them, and a response whose files is not an array (null for a key missing from a later page or a shape the API changed; an object, a string, a number or a boolean) or whose merge_base_commit.sha is no string is this failure through the jq's error(\"files is <type>, not an array\") or error(\"merge_base_commit.sha is <type>, not a string\"), never an empty listing"
+    first=${listing%%$'\n'*}
+    [[ ${first} =~ ^merge-base\ ([0-9a-f]{40})$ ]] ||
+        fail "the compare API (gh api repos/{owner}/{repo}/compare/${from}...${to}) answered with a first line that is not 'merge-base <40 hex>': '${first}'; the merge base is read beside the files, in the same call, so the listing can be held to the diff it is asked for"
+    listing_merge_base=${BASH_REMATCH[1]}
+    [[ ${listing_merge_base} == "${from}" ]] || listing_fault "${on_fault}" "${base_fault//<merge base>/${listing_merge_base}}"
     files=''
     [[ ${listing} != *$'\n'* ]] || files=${listing#*$'\n'}
     [[ -n ${files} ]] ||
-        refuse "the compare API (gh api repos/{owner}/{repo}/compare/${base_tip}...${head}) listed no changed path of the head ${head} of pull request ${pr}; a head that changes nothing is nothing to merge, and a listing cut short is never 'not required' (standing order 21)"
+        listing_fault "${on_fault}" "the compare API (gh api repos/{owner}/{repo}/compare/${from}...${to}) listed no changed path of ${what}; a diff that changes nothing is nothing to merge or to classify, and a listing cut short is never 'not required' (standing order 21)"
     answer=$("${python}" -I -S "${scope_copy}" --files-json <<< "${files}" 2>&1) || status=$?
     case ${status} in
     0) ;;
-    2) refuse "${answer#sweep-scope: }" ;;
-    *) fail "${scope_reader} exited ${status} reading the changed paths of the head ${head} of pull request ${pr}: ${answer:-no output}" ;;
+    2) listing_fault "${on_fault}" "${answer#sweep-scope: }" ;;
+    *) fail "${scope_reader} exited ${status} reading the changed paths of ${what}: ${answer:-no output}" ;;
     esac
     case ${answer} in
+    not-required) listing_class='' ;;
+    'required cap') listing_class=cap ;;
+    'required '*)
+        class=${answer#required }
+        [[ ${class} =~ ^[a-z][a-z-]*$ ]] ||
+            listing_fault "${on_fault}" "${scope_reader} answered the sweep scope question for ${what} with 'required ${class}', not required <class> with the class one lowercase word"
+        listing_class=${class}
+        ;;
+    *) listing_fault "${on_fault}" "${scope_reader} answered the sweep scope question for ${what} with neither not-required nor required <class>: ${answer:-nothing}" ;;
+    esac
+    listing_answer=${answer}
+}
+
+# @description The words a refusal or failure uses for what a classified diff touches: `a <class> path` for a class,
+#   the cap spelled out for `cap` (round 11).
+# @arg $1 string listing_class, non-empty.
+# @set change_words The words.
+change_words_of() {
+    if [[ $1 == cap ]]; then
+        change_words="300 or more files, the compare API's cap, whose listing may be cut short"
+    else
+        change_words="a $1 path"
+    fi
+}
+
+# @description Read the tree of a commit (regime-cutover U597 round 11): `gh api "repos/{owner}/{repo}/git/commits/<sha>"
+#   --jq '.tree.sha'`, status read, 40 hex. Two trees equal is the one exact statement the lever can make about the
+#   content of two commits, so the post-merge check (gate three) and the merge-row route of require_tip_swept (gate
+#   one) rest on it; a read that fails or answers no 40-hex sha is a failure naming the commit and the consequence.
+# @arg $1 string The commit, 40 hex.
+# @arg $2 string What the commit is, as the failure names it (`the merge commit`, `the head`, `the tip`).
+# @arg $3 string What follows from an unread tree, as the failure says it.
+# @set tree_sha The tree, 40 hex.
+tree_of() {
+    local sha=$1 what=$2 consequence=$3
+    tree_sha=$(gh_bounded api "repos/{owner}/{repo}/git/commits/${sha}" --jq '.tree.sha') ||
+        fail "cannot read the tree of ${what} ${sha} (gh api repos/{owner}/{repo}/git/commits/${sha} --jq .tree.sha); ${consequence}"
+    [[ ${tree_sha} =~ ^[0-9a-f]{40}$ ]] ||
+        fail "the tree of ${what} ${sha} read from gh api repos/{owner}/{repo}/git/commits/${sha} is not 40 hex: '${tree_sha}'; ${consequence}"
+}
+
+# @description Read the first parent of main's tip (regime-cutover U597 round 11): `gh api
+#   "repos/{owner}/{repo}/git/commits/<tip>" --jq '[.parents[].sha] | join(" ")'`, status read. The program's `main`
+#   is a line of squash commits, so exactly one parent is the shape the lever knows: a root commit (no parent) and a
+#   merge commit (two or more) are failures naming the tip, and a parent that is not 40 hex too.
+# @arg $1 string The tip, 40 hex.
+# @set tip_parent The first parent, 40 hex.
+tip_parent_of() {
+    local tip=$1 parents
+    parents=$(gh_bounded api "repos/{owner}/{repo}/git/commits/${tip}" --jq '[.parents[].sha] | join(" ")') ||
+        fail "cannot read the parents of the tip ${tip} of ${base} (gh api repos/{owner}/{repo}/git/commits/${tip}); the tip's landed diff is classified against its first parent, so an unread parent decides nothing"
+    case ${parents} in
+    '') fail "the tip ${tip} of ${base} has no parent (a root commit); the program's ${base} is a line of squash commits, each with one parent, so the tip's landed diff cannot be classified" ;;
+    *' '*) fail "the tip ${tip} of ${base} has more than one parent (${parents}); the program's ${base} is a line of squash commits, each with one parent, so the tip's landed diff cannot be classified" ;;
+    esac
+    [[ ${parents} =~ ^[0-9a-f]{40}$ ]] ||
+        fail "the first parent of the tip ${tip} of ${base} read from gh api repos/{owner}/{repo}/git/commits/${tip} is not 40 hex: '${parents}'; the tip's landed diff is classified against it, so an unread parent decides nothing"
+    tip_parent=${parents}
+}
+
+# @description Ask the pinned ledger copy for the newest sweep row of any unit at a head (regime-cutover U597 round 11,
+#   `ledger.py <store> sweep-any <head>`, the form gate one reads with: the sweep of main's tip may be any unit's,
+#   the merged unit's or the coordinator's sweep of a merge commit, the hcom-orchestration SKILL step 6), its status
+#   read as ledger_verdict reads it (2 a refusal carrying its line, any other non-zero a failure) and its exit-0
+#   answer read by its shape as require_sweep_row reads a row (`none`, or one row of four tab-separated fields with a
+#   ts), the row's verifier and evidence then held by sweep_row_fields (the pin word a prefix of the manifest's pin,
+#   the findings file a regular file of this user under the store, never opened).
+# @arg $1 string The head, 40 hex.
+# @arg $2 string What the head is, as the refusals name it.
+# @set sweep_any_row `none`, or the row as the reader printed it.
+# @set sweep_any_unit The row's unit when sweep_any_row is a row, else empty.
+ledger_sweep_any() {
+    local head=$1 what=$2 status=0 row rest verifier evidence
+    row=$("${python}" -I -S "${ledger_copy}" "${store}" sweep-any "${head}" 2>&1) || status=$?
+    case ${status} in
+    0) ;;
+    2) refuse "${row#ledger: }" ;;
+    *) fail "${ledger_reader} exited ${status} reading ${ledger} for a sweep row at ${what}: ${row:-no output}" ;;
+    esac
+    sweep_any_row=${row}
+    sweep_any_unit=''
+    [[ ${row} != none ]] || return 0
+    case ${row//[!$'\t']/} in
+    $'\t\t\t') ;;
+    *) refuse "${ledger_reader} answered the sweep-any question for ${what} with neither none nor one row of four tab-separated fields (ts, unit, verifier, evidence): ${row:-nothing}" ;;
+    esac
+    [[ ${row} != *$'\n'* && -n ${row%%$'\t'*} ]] ||
+        refuse "${ledger_reader} answered the sweep-any question for ${what} with text beside the row or an empty ts, not one row of four tab-separated fields: ${row}"
+    rest=${row#*$'\t'}
+    sweep_any_unit=${rest%%$'\t'*}
+    rest=${rest#*$'\t'}
+    verifier=${rest%%$'\t'*}
+    evidence=${rest#*$'\t'}
+    sweep_row_fields "the sweep row of ${sweep_any_unit} at ${what}" "${verifier}" "${evidence}"
+}
+
+# @description Ask the pinned ledger copy which head main's tip was squashed from (regime-cutover U597 round 11,
+#   `ledger.py <store> merge-of <tip>`): the `head_sha` of the newest `pr-merge.sh` row whose receipt names
+#   `commit=<tip>` (the row `ledger-row.py merged` writes), or `none`; the status read as ledger_verdict reads it and
+#   the exit-0 answer held to `none` or 40 hex.
+# @arg $1 string The tip, 40 hex.
+# @set merge_of_head `none`, or the head, 40 hex.
+ledger_merge_of() {
+    local tip=$1 status=0 answer
+    answer=$("${python}" -I -S "${ledger_copy}" "${store}" merge-of "${tip}" 2>&1) || status=$?
+    case ${status} in
+    0) ;;
+    2) refuse "${answer#ledger: }" ;;
+    *) fail "${ledger_reader} exited ${status} reading ${ledger} for the merge row of the tip ${tip}: ${answer:-no output}" ;;
+    esac
+    [[ ${answer} == none || ${answer} =~ ^[0-9a-f]{40}$ ]] ||
+        refuse "${ledger_reader} answered the merge-of question for the tip ${tip} with neither none nor a 40-hex head: ${answer:-nothing}"
+    merge_of_head=${answer}
+}
+
+# @description Gate one: main's tip is swept or exempt before the next merge lands on it (regime-cutover U597 round
+#   11; the round-10 P1 at :981 and :1609 and the mechanism-change decisions row of 2026-11-19T15:21:36Z). A squash
+#   that landed on a moved `main` left a landed diff this lever classified only after the merge (gate three), and the
+#   sweep it asked for is enforced here, at the next merge, from immutable commits and store rows alone. The tip's
+#   first parent is read (tip_parent_of) and the tip's landed diff `compare/<parent>...<tip>` is classified through the
+#   pinned reader as the head's listing is (classify_diff with `fail`: the commits are on `main` already, so nothing in
+#   the pull request can be fixed for them; a merge base that is not the parent is a shape the lever does not know).
+#   `not-required` needs nothing and says so on stderr. `required <class>` or `required cap` needs a sweep row at the
+#   tip: the newest sweep row of any unit at the tip (ledger_sweep_any, held by sweep_row_fields); when there is none,
+#   the ledger's merge row for the tip (ledger_merge_of) names the head the squash came from, that head's tree must
+#   equal the tip's tree (tree_of on both: the squash of an up-to-date head reproduces the head's tree, so equal trees
+#   mean a sweep at that head covered the bytes the tip holds, while a tip that landed on a moved `main` holds other
+#   bytes and no sweep of the head covers them), and then the newest sweep row of any unit at that head counts
+#   (ledger_sweep_any again, held the same way). No merge row, unequal trees and no sweep row at either head refuse
+#   naming the tip, the class and the missing sweep: sweep the merge commit and record it before the next merge (the
+#   hcom-orchestration SKILL step 6). A failed read anywhere is a failure (standing order 21).
+require_tip_swept() {
+    local what="the tip ${base_tip} of ${base}" tree_tip missing
+    tip_parent_of "${base_tip}"
+    classify_diff "${tip_parent}" "${base_tip}" "${what}" fail \
+        "the compare API (gh api repos/{owner}/{repo}/compare/${tip_parent}...${base_tip}) answered a merge base that is not the tip's first parent ${tip_parent}; the tip's landed diff is the diff from its parent, so the listing is not it and the tip cannot be classified"
+    if [[ -z ${listing_class} ]]; then
+        echo "${lever}: tip: ${base_tip} of ${base} landed a diff that touches no sweep class (no lever, policy, credential or deployed-executable path changed); it needs no sweep row before this merge" >&2
+        return 0
+    fi
+    change_words_of "${listing_class}"
+    missing="main's tip ${base_tip} landed ${change_words} (${listing_answer}) and has no sweep row; sweep the merge commit and record it before the next merge (a row with verdict sweep, pr -, head ${base_tip}, written by ledger-row.py sweep; the hcom-orchestration SKILL step 6)"
+    ledger_sweep_any "${base_tip}" "${what}"
+    if [[ ${sweep_any_row} != none ]]; then
+        echo "${lever}: tip: ${base_tip} of ${base} landed ${change_words}, and the sweep row of ${sweep_any_unit} at it stands" >&2
+        return 0
+    fi
+    ledger_merge_of "${base_tip}"
+    [[ ${merge_of_head} != none ]] ||
+        refuse "${missing}: ${ledger} holds no sweep row at ${base_tip} and no pr-merge.sh merge row whose receipt names commit=${base_tip}, so no head the tip was squashed from can stand for it"
+    tree_of "${base_tip}" "the tip" "whether a sweep at the head ${merge_of_head} the tip was squashed from covers it is unknown, so the tip is not read as swept"
+    tree_tip=${tree_sha}
+    tree_of "${merge_of_head}" "the head" "whether a sweep at the head ${merge_of_head} the tip ${base_tip} was squashed from covers it is unknown, so the tip is not read as swept"
+    [[ ${tree_tip} == "${tree_sha}" ]] ||
+        refuse "${missing}: its merge row names the head ${merge_of_head}, whose tree ${tree_sha} is not the tip's tree ${tree_tip}, so a sweep at that head does not cover the tip (main moved under the squash)"
+    ledger_sweep_any "${merge_of_head}" "the head ${merge_of_head} the tip ${base_tip} was squashed from"
+    [[ ${sweep_any_row} != none ]] ||
+        refuse "${missing}: its merge row names the head ${merge_of_head}, whose tree is the tip's, and ${ledger} holds no sweep row at that head either"
+    echo "${lever}: tip: ${base_tip} of ${base} landed ${change_words}; the sweep row of ${sweep_any_unit} at the head ${merge_of_head} it was squashed from stands (the two trees are one)" >&2
+}
+
+# @description Gate two: decide whether the head needs its sweep row (regime-cutover U597, the operator's sweep rule C
+#   of 2026-11-18): the audited head's changed files as data, the diff the squash lands, listed by the GitHub compare
+#   API keyed by two shas, main's tip (read_base_tip) and the head, and classified through the pinned reader
+#   (classify_diff with `refuse`: the pull request is where a fault is fixed). The merge base must equal the base tip,
+#   else the head is refused naming both shas and the route (round 7, the round-6 P1; round 11: `pr-update-branch.sh`,
+#   GitHub's merge of `main` into the branch, the hcom-orchestration SKILL step 6 route, never a rebase): `pr merge
+#   --squash` lands the diff against the base's tip, while the three-dot compare lists the diff from the merge base,
+#   and when the base moved after the branch point the two differ. `base` is the pull request's base the first view
+#   read and required to be `main`, `head` the pinned full sha. The exit-0 answer decides: `required cap` sets
+#   `sweep_class` to `cap` and `sweep_reason` to the cap's clause; `required <class>` sets `sweep_class` to the class
+#   and `sweep_reason` to the class clause; `not-required` sets `sweep_class` empty and asks require_daily_sweep
+#   whether the standing control stands (round 4: the exemption is bound to the daily sweep of main's head; rounds 9
+#   and 10 bound it to a server policy as well, and round 11 removed that read: the daily row is read for every such
+#   head, and the landed diff is verified by trees after the merge, gate three).
+# @set sweep_class The class that requires the sweep (`credential`, `policy`, `lever`, `deployed-executable`), `cap` for a listing at the compare API's cap, or empty when none does.
+# @set sweep_reason Why require_sweep_row runs, named in its refusal: the class clause, the cap clause, or the missing daily sweep (require_daily_sweep); empty when the head skips the row.
+require_sweep_scope() {
+    classify_diff "${base_tip}" "${head}" "the head ${head} of pull request ${pr}" refuse \
+        "the head ${head} of pull request ${pr} is not up to date with ${base} (merge base <merge base>, ${base} tip ${base_tip}); bring the branch up to date with pr-update-branch.sh (GitHub's merge of ${base} into the branch, never a rebase; the hcom-orchestration SKILL step 6) and re-run the audit, so the listing is the diff the squash lands"
+    case ${listing_answer} in
     not-required)
         sweep_class=''
-        if [[ ${strict_policy} == true ]]; then
-            require_daily_sweep
-        else
-            # Round 9: while the main ruleset does not hold `main` still at the merge, the classified listing is not
-            # known to be the landed diff, so no head is exempt and the daily row is not read (U613).
-            sweep_reason="this head changes no sweep-class path, but the main ruleset does not require branches to be up to date before merging (strict_required_status_checks_policy false), so the diff the squash lands is not the diff classified and no head is exempt; the per-head sweep stands (U613)"
-        fi
+        require_daily_sweep
         ;;
     'required cap')
         # The listing is at the compare API's cap (round 5): 300 or more entries, so it may be cut short and the
@@ -1081,14 +1190,10 @@ require_sweep_scope() {
         sweep_class=cap
         sweep_reason="the head changes 300 or more files, the compare API's cap, so the listing may be cut short and the per-head sweep stands"
         ;;
-    'required '*)
-        class=${answer#required }
-        [[ ${class} =~ ^[a-z][a-z-]*$ ]] ||
-            refuse "${scope_reader} answered the sweep scope question for pull request ${pr} with 'required ${class}', not required <class> with the class one lowercase word"
-        sweep_class=${class}
+    *)
+        sweep_class=${listing_class}
         sweep_reason="this head changes a ${sweep_class} path"
         ;;
-    *) refuse "${scope_reader} answered the sweep scope question for pull request ${pr} with neither not-required nor required <class>: ${answer:-nothing}" ;;
     esac
 }
 
@@ -1149,8 +1254,8 @@ daily_sweep_read() {
 # @description Bind the exemption to its standing control (regime-cutover U597 round 4; the round-2 and round-3 P2 at
 #   AGENTS.md:71): a head outside every sweep class skips its per-head sweep row only while the store holds a daily
 #   sweep of main's head within the last DAILY_SWEEP_MAX_AGE seconds (24 hours), the standing control rule C rests on,
-#   which until round 4 no merge gate read, so an exempt head could merge with no sweep anywhere near it; since round
-#   9 only while require_ruleset_policy read the main ruleset's up-to-date policy as `true` (the caller's test). The
+#   which until round 4 no merge gate read, so an exempt head could merge with no sweep anywhere near it (rounds 9
+#   and 10 asked it only under a server policy; round 11 asks it for every head outside the classes). The
 #   row is daily_sweep_read's: `none` sets `sweep_reason` so that require_sweep_row runs as for a required head (its
 #   refusal names both: no daily sweep within the window, so the per-head rule stands); a row skips the per-head row
 #   with one stderr line naming the daily row's ts and head, and recheck_daily_sweep reads the file again right
@@ -1179,8 +1284,8 @@ recheck_daily_sweep() {
     local rested_ts=${daily_ts} rested_head=${daily_head}
     daily_sweep_read
     [[ ${daily_row} != none ]] ||
-        refuse "the daily sweep of main's head ${rested_head} at ${rested_ts}, which this head rested on, no longer stands within ${DAILY_SWEEP_MAX_AGE} seconds (24 hours) at the merge write: its window closed during the checks, so the per-head rule stands; run the day's sweep and write its row (ledger-row.py daily), or write the unit's sweep row, then run the lever again"
-    echo "${lever}: sweep: the daily sweep of main's head ${daily_head} at ${daily_ts} still stands within ${DAILY_SWEEP_MAX_AGE} seconds at the merge write" >&2
+        refuse "the daily sweep of main's head ${rested_head} at ${rested_ts}, which this head rested on, no longer stands within ${DAILY_SWEEP_MAX_AGE} seconds (24 hours) at the lever's last read before the merge request: its window closed during the checks, so the per-head rule stands; run the day's sweep and write its row (ledger-row.py daily), or write the unit's sweep row, then run the lever again"
+    echo "${lever}: sweep: the daily sweep of main's head ${daily_head} at ${daily_ts} still stands within ${DAILY_SWEEP_MAX_AGE} seconds at the lever's last read before the merge request" >&2
 }
 
 # @description Hold a daily sweep row to its own grammar (regime-cutover U597 round 9; the round-8 P2 at ledger.py:393:
@@ -1197,9 +1302,13 @@ recheck_daily_sweep() {
 #   pins, 2 a refusal carrying its line, anything else a failure), so a row whose validators or schema were held to
 #   other pins than the manifest's admits nothing. The artifact digests are required by shape alone (two 8-hex
 #   words), never compared: they are the writer's attestation that its count and PASS words were earned over one set
-#   of bytes (the round-9 P2 at ledger-row.py:574), and the lever opens neither the findings file nor the coverage
-#   ledger. `ledger.py` already refuses a daily row of another shape as a malformed store; the lever reads the answer
-#   by its shape all the same. Every other shape is a refusal naming the row and the field.
+#   of bytes (the round-9 P2 at ledger-row.py:574); the lever never opens the findings file, nor the coverage ledger
+#   beside it (sweep_row_fields stats the findings file under the store and reads nothing of it), so it has nothing
+#   to compare a content digest with, and a digest it did compare would attest the store's bytes at the lever's read,
+#   not the bytes the writer validated (round 11, the round-10 P2 at :1210: the artifact digests stay by shape; the
+#   writer's copy is the one place where the count, the PASS words and the digests meet one set of bytes).
+#   `ledger.py` already refuses a daily row of another shape as a malformed store; the lever reads the answer by its
+#   shape all the same. Every other shape is a refusal naming the row and the field.
 # @arg $1 string The row, as the refusals name it (`the daily sweep row of <ts> at main's head <head>`).
 # @arg $2 string The row's verifier.
 # @arg $3 string The row's evidence.
@@ -1555,8 +1664,10 @@ resolve_store
 
 require_verdict_row "${head}"
 require_dispositions "${audited_head}" "${audited_unit}" "${head}"
-# The main ruleset's up-to-date policy, read once before the listing (round 9): while it is false no head is exempt.
-require_ruleset_policy
+# The tip of main, read once (round 7), then the first two of the three gates (round 11): the tip swept or exempt, and
+# the head's own class with the unit's sweep row or the daily row.
+read_base_tip
+require_tip_swept
 require_sweep_scope
 [[ -z ${sweep_reason} ]] || require_sweep_row
 
@@ -1600,7 +1711,7 @@ for required in "${REQUIRED_CHECKS[@]}"; do
     [[ ${found} == pass ]] || missing+="${missing:+, }${required}${found:+=${found}}"
 done
 [[ -z ${missing} ]] ||
-    refuse "CI has no result for: ${missing}; every check of REQUIRED_CHECKS (the main ruleset's required contexts) must pass on the head ${head}, and a pull request whose pull_request workflows never ran (a conflict with main) lists none of them"
+    refuse "CI has no result for: ${missing}; every check of REQUIRED_CHECKS (the required status contexts of main) must pass on the head ${head}, and a pull request whose pull_request workflows never ran (a conflict with main) lists none of them"
 ((status == 0)) || fail "gh pr checks ${pr} exited ${status} although every listed check passed"
 # The daily freshness again, right before the merge request (round 9; the round-8 P3 at :1282): a head that rested on
 # a daily row (an empty `sweep_reason`) rests on it only while it is still within the window after the CI read and the
@@ -1624,19 +1735,39 @@ IFS=$'\t' read -r state commit merged_base merged_head <<< "${after}"
 # reported here, loudly, with the base it landed on; it cannot be undone by the lever.
 [[ ${merged_base} == main ]] ||
     fail "pull request ${pr} merged into ${merged_base:-an unreadable base}, not main: it was retargeted after the last read; tell the operator"
-# The merge landed on the tip the listing was classified against (round 8; the round-7 P3 at :782): `--match-head-commit`
-# pins the head alone. While the main ruleset's `strict_required_status_checks_policy` is false (round 9: read before
-# the listing by require_ruleset_policy, and no head is exempt then) nothing server-side holds `main` still between the
-# tip read in require_sweep_scope and the merge; when it is true GitHub refuses a merge of a head behind `main` and this
-# check never fires. The merge commit's first parent is the `main` the squash landed on, read with its status and held
-# to 40 hex, and it must be the tip read earlier; a merge onto a moved `main` is exit 1 with no receipt naming the
-# commit, its parent and that tip, since the classified listing may not be the landed diff and the coordinator must
-# sweep the merge commit (the hcom-orchestration SKILL step 6): the lever's own record of what it merged onto.
-parent=$(gh_bounded api "repos/{owner}/{repo}/commits/${commit}" --jq '.parents[0].sha') ||
-    fail "pull request ${pr} is MERGED as ${commit}, but the first parent of that commit could not be read (gh api repos/{owner}/{repo}/commits/${commit}); whether the merge landed on the tip ${base_tip} of main the listing was classified against is unknown, so the classified listing may not be the landed diff: the coordinator must sweep the merge commit ${commit}"
-[[ ${parent} =~ ^[0-9a-f]{40}$ ]] ||
-    fail "pull request ${pr} is MERGED as ${commit}, but its first parent read from gh api repos/{owner}/{repo}/commits/${commit} is not 40 hex: '${parent}'; whether the merge landed on the tip ${base_tip} of main the listing was classified against is unknown, so the classified listing may not be the landed diff: the coordinator must sweep the merge commit ${commit}"
-[[ ${parent} == "${base_tip}" ]] ||
-    fail "pull request ${pr} merged as ${commit}, whose first parent ${parent} is not the tip ${base_tip} of main read before the listing: main moved between the tip read and the merge, so the classified listing may not be the landed diff; the coordinator must sweep the merge commit ${commit}"
-((merge_status == 0)) || echo "${lever}: the merge command exited ${merge_status}, but the pull request is MERGED" >&2
+# Gate three (round 11; round 8 read the first parent alone and printed no receipt on a mismatch): the merge is a
+# fact from here on, so the receipt is printed first, before the post-merge reads, and every exit after it follows the
+# receipt (`ledger-row.py merged` records the merge from it whatever the check says); what landed is judged by
+# immutable shas and trees, never by a server policy. The merge commit's first parent is the `main` the squash
+# landed on (read with its status, 40 hex), the merge commit's tree and the head's tree are read the same way, and
+# then: a parent equal to the tip read before the checks means `main` did not move, so the trees must be equal (the
+# squash of an up-to-date head reproduces the head's tree; a difference is a shape this lever does not know, exit 1
+# naming both trees) and the pre-merge classification and sweep stand; a parent that differs means `main` moved
+# between the tip read and the merge, so the landed diff `compare/<parent>...<merge commit>` is classified through the
+# pinned reader as the pre-merge listing was: no class touched is exit 0 with one stderr line saying so, a class or
+# the cap is exit 1 with one stderr line naming the merge commit, its parent, the class and the sweep to run (the
+# hcom-orchestration SKILL step 6), which gate one requires at the next merge.
 echo "merged pr=${pr} head=${head} commit=${commit} verdict=${verdict_ts}"
+parent=$(gh_bounded api "repos/{owner}/{repo}/commits/${commit}" --jq '.parents[0].sha') ||
+    fail "pull request ${pr} is MERGED as ${commit}, but the first parent of that commit could not be read (gh api repos/{owner}/{repo}/commits/${commit}); whether the merge landed on the tip ${base_tip} of main read before the checks is unknown, so the classified listing may not be the landed diff: sweep the merge commit ${commit} and record it before the next merge"
+[[ ${parent} =~ ^[0-9a-f]{40}$ ]] ||
+    fail "pull request ${pr} is MERGED as ${commit}, but its first parent read from gh api repos/{owner}/{repo}/commits/${commit} is not 40 hex: '${parent}'; whether the merge landed on the tip ${base_tip} of main read before the checks is unknown, so the classified listing may not be the landed diff: sweep the merge commit ${commit} and record it before the next merge"
+tree_of "${commit}" "the merge commit" "whether the landed diff is the classified one is unknown: sweep the merge commit ${commit} and record it before the next merge"
+merged_tree=${tree_sha}
+tree_of "${head}" "the head" "whether the landed diff is the classified one is unknown: sweep the merge commit ${commit} and record it before the next merge"
+head_tree=${tree_sha}
+if [[ ${parent} == "${base_tip}" ]]; then
+    [[ ${merged_tree} == "${head_tree}" ]] ||
+        fail "pull request ${pr} merged as ${commit} onto the tip ${base_tip} of main read before the checks, but the merge commit's tree ${merged_tree} is not the head's tree ${head_tree}: a squash onto an unmoved tip whose tree differs from the head is a shape this lever does not know, so the classified listing may not be the landed diff; sweep the merge commit ${commit} and record it before the next merge"
+    echo "${lever}: merged onto the tip ${base_tip} read before the checks, and the merge commit's tree is the head's: the classified listing is the landed diff" >&2
+else
+    classify_diff "${parent}" "${commit}" "the merge commit ${commit} of pull request ${pr}" fail \
+        "the compare API (gh api repos/{owner}/{repo}/compare/${parent}...${commit}) answered a merge base that is not the merge commit's first parent ${parent}; the landed diff is the diff from the parent, so the listing is not it: sweep the merge commit ${commit} and record it before the next merge"
+    if [[ -z ${listing_class} ]]; then
+        echo "${lever}: main moved from ${base_tip} to ${parent} between the tip read and the merge, and the landed diff of the merge commit ${commit} touches no sweep class (no lever, policy, credential or deployed-executable path changed); the pre-merge decision stands" >&2
+    else
+        change_words_of "${listing_class}"
+        fail "pull request ${pr} merged as ${commit} onto ${parent}, not the tip ${base_tip} of main read before the checks: main moved between the tip read and the merge, and the landed diff touches ${change_words} (${listing_answer}); sweep the merge commit ${commit} and record it as a sweep row of ${unit} at ${commit} (ledger-row.py sweep) before the next merge, which this lever refuses until the row stands (the hcom-orchestration SKILL step 6)"
+    fi
+fi
+((merge_status == 0)) || echo "${lever}: the merge command exited ${merge_status}, but the pull request is MERGED" >&2

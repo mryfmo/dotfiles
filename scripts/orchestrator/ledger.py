@@ -54,6 +54,20 @@ head (`pr-merge.sh`'s sweep gate for a trust-boundary unit, U147), or `none`. Ea
 naming the file and line when the store cannot
 be read as data (standing order 21: a failed read is never "no row").
 
+Two more questions since regime-cutover U597 round 11, for the merge lever's first gate (main's tip swept or exempt
+before the next merge lands on it, read from immutable commits and store rows alone): `newest_sweep_any(head)` is the
+newest sweep row of any unit at the head (the sweep of main's tip may be the merged unit's or the coordinator's sweep
+of a merge commit), with the strictness of `newest_sweep` over every sweep row of the ledger (one of another shape, of
+any unit, is Malformed naming the line and the field); `merge_of(commit)` is the head the squash at `commit` came
+from, the `head_sha` of the newest merge row whose receipt names `commit=<commit>`, a merge row being the row
+`ledger-row.py merged` writes (verifier exactly `pr-merge.sh`, `MERGE_VERIFIER`, the word rounds-check.py reads a merge
+row by since U222; evidence starting with the lever's receipt `merged pr=<n> head=<sha> commit=<40 hex>`,
+`MERGE_RECEIPT`), whose `head_sha` must be 40 hex and whose receipt's head must be that sha or its first 8 (else
+Malformed naming the line); a `pr-merge.sh` row of another evidence shape (the rows written by hand before U222,
+`merged as <sha> (squash) ...`, and a refusal recorded as a row) is no merge row to this question, so the installed
+ledgers that hold them keep reading. `ledger.py <store> sweep-any <head>` prints the sweep row's four columns or
+`none`; `ledger.py <store> merge-of <commit>` prints `<head>` or `none`.
+
 The daily sweep (regime-cutover U597 round 4; the operator's sweep rule C of 2026-11-18): main's head gets one full
 sweep of the `security-audit` skill per UTC day, the standing control a head outside every sweep class rests on, and
 its rows live in the store's own file `daily-sweeps.tsv` (header `ts head_sha verifier evidence`), written by
@@ -124,6 +138,15 @@ SWEEP_VERIFIER = re.compile(r"^security-audit-skill ([0-9a-f]{8,})(?:$|\s)")
 SWEEP_PR = "-"
 SWEEP_EVIDENCE_DIR = "sweeps"
 SWEEP_EVIDENCE_SUFFIX = ".json"
+# A merge row (regime-cutover U597 round 11): the row `ledger-row.py merged` writes, verifier exactly `pr-merge.sh`
+# (rounds-check.py's merge row since U222) and evidence starting with the lever's receipt `merged pr=<n> head=<sha>
+# commit=<40 hex>` (the writer's MERGE_RECEIPT, whose head word is the row's head_sha or its first 8). `merge_of`
+# answers the head the squash at a commit came from. A `pr-merge.sh` row of another evidence shape (the rows written by
+# hand before U222, `merged as <sha> (squash) ...`, and a refusal recorded as a row) is no merge row to this question,
+# so the installed ledgers that hold them keep reading; a receipt row whose head_sha is not 40 hex or whose receipt
+# names another head than its head_sha is Malformed naming the line (standing order 21).
+MERGE_VERIFIER = "pr-merge.sh"
+MERGE_RECEIPT = re.compile(r"^merged pr=(\S+) head=(\S+) commit=([0-9a-f]{40})(?:$|[\s;,.)])")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 UNIT = re.compile(r"^U[0-9]+$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
@@ -322,6 +345,28 @@ class Row:
             return f"the pr of a sweep row is not {SWEEP_PR!r}: {self.pr!r}"
         return sweep_fields_fault(self.verifier, self.evidence, "a sweep row")
 
+    @property
+    def merge_commit(self):
+        """The 40-hex commit a merge row's receipt names (`commit=<sha>`), or None when this is no merge row (U597
+        round 11): the verifier MERGE_VERIFIER and an evidence starting with MERGE_RECEIPT."""
+        if self.verifier != MERGE_VERIFIER:
+            return None
+        match = MERGE_RECEIPT.match(self.evidence)
+        return None if match is None else match.group(3)
+
+    def merge_fault(self):
+        """Why this merge row is not the row `ledger-row.py merged` composes, naming the field, or None: a 40-hex
+        head_sha, and a receipt whose head word is that sha or its first 8 (the writer's own two refusals)."""
+        if not SHA.match(self.head_sha):
+            return f"the head_sha of a merge row is not 40 hex: {self.head_sha!r}"
+        match = MERGE_RECEIPT.match(self.evidence)
+        if match.group(2) not in (self.head_sha, self.head_sha[:8]):
+            return (
+                f"the receipt of a merge row names head={match.group(2)}, neither its head_sha {self.head_sha} nor "
+                "its first 8"
+            )
+        return None
+
 
 def newest(rows):
     """The row with the latest ts, the later line at an equal ts, or None."""
@@ -360,25 +405,51 @@ class Ledger:
         ledger judged is never carried)."""
         return newest(row for row in self.audits(unit, pr) if row.head_sha == head)
 
-    def newest_sweep(self, unit, head):
-        """The newest sweep row of `unit` or a fix unit of it (`U<n>[a-z]`) at `head`, or None (U147: the merge gate's
-        sweep row for a trust-boundary unit); a sweep row of those units whose head_sha is not 40 hex, or that is not
-        the exact row the AGENTS.md Audit sweep rule defines (pr `-`, verifier `security-audit-skill <pin>`, evidence
-        a findings file under `sweeps/`; round 4), is Malformed naming the line and the field, as an audit row is, so
-        neither a short sha nor a hand-written row is ever read as "no sweep" (standing order 21)."""
-        own = re.compile(rf"^{re.escape(unit)}[a-z]?$")
+    def sweep_rows(self, own=None):
+        """Every sweep row of the units `own` matches (a compiled pattern), or of every unit when None, in file order,
+        each held to a 40-hex head and to the exact row the AGENTS.md Audit sweep rule defines (pr `-`, verifier
+        `security-audit-skill <pin>`, evidence a findings file under `sweeps/`; round 4) and Malformed naming the line
+        and the field otherwise, as an audit row is, so neither a short sha nor a hand-written row is ever read as "no
+        sweep" (standing order 21)."""
         found = []
         for row in self.rows:
-            if not row.sweep or not own.match(row.unit):
+            if not row.sweep or (own is not None and not own.match(row.unit)):
                 continue
             if not SHA.match(row.head_sha):
                 raise Malformed(f"{self.name}:{row.line}: the head_sha of a sweep row is not 40 hex: {row.head_sha!r}")
             fault = row.sweep_fault()
             if fault is not None:
                 raise Malformed(f"{self.name}:{row.line}: {fault}")
-            if row.head_sha == head:
+            found.append(row)
+        return found
+
+    def newest_sweep(self, unit, head):
+        """The newest sweep row of `unit` or a fix unit of it (`U<n>[a-z]`) at `head`, or None (U147: the merge gate's
+        sweep row for a trust-boundary unit); the units' sweep rows are held by sweep_rows."""
+        own = re.compile(rf"^{re.escape(unit)}[a-z]?$")
+        return newest(row for row in self.sweep_rows(own) if row.head_sha == head)
+
+    def newest_sweep_any(self, head):
+        """The newest sweep row of any unit at `head`, or None (U597 round 11: the merge gate's question about main's
+        tip, whose sweep may be the merged unit's or the coordinator's sweep of a merge commit); every sweep row of the
+        ledger is held by sweep_rows, so a hand-written sweep row of any unit is Malformed, never "no sweep"."""
+        return newest(row for row in self.sweep_rows() if row.head_sha == head)
+
+    def merge_of(self, commit):
+        """The head the squash at `commit` came from, the `head_sha` of the newest merge row (`Row.merge_commit`: the
+        row `ledger-row.py merged` writes) whose receipt names `commit=<commit>`, or None (U597 round 11); a merge row
+        whose head_sha is not 40 hex or whose receipt names another head is Malformed naming the line."""
+        found = []
+        for row in self.rows:
+            if row.merge_commit is None:
+                continue
+            fault = row.merge_fault()
+            if fault is not None:
+                raise Malformed(f"{self.name}:{row.line}: {fault}")
+            if row.merge_commit == commit:
                 found.append(row)
-        return newest(found)
+        row = newest(found)
+        return None if row is None else row.head_sha
 
 
 def control_check(name, number, header, fields):
@@ -592,6 +663,18 @@ def main(argv=None):
     )
     sweep.add_argument("unit", help="the body's unit, U<n>; its fix units U<n>[a-z] count with it")
     sweep.add_argument("head", help="the audited head, 40 hex")
+    sweep_any = forms.add_parser(
+        "sweep-any",
+        help="the newest sweep row of any unit at the head: <ts>\\t<unit>\\t<verifier>\\t<evidence>, or none",
+    )
+    sweep_any.add_argument(
+        "head", help="the head, 40 hex (main's tip, the merge gate's first question since U597 round 11)"
+    )
+    merge_of = forms.add_parser(
+        "merge-of",
+        help="the head the squash at the commit came from (the newest pr-merge.sh receipt row naming commit=<sha>): <head>, or none",
+    )
+    merge_of.add_argument("commit", help="the merge commit, 40 hex (main's tip)")
     daily = forms.add_parser(
         "daily",
         help=(
@@ -601,7 +684,9 @@ def main(argv=None):
     )
     daily.add_argument("max_age", help="the window in seconds before now; a row older than it is not within")
     args = parser.parse_args(argv)
-    if args.form != "daily" and not SHA.match(args.head):
+    if args.form == "merge-of" and not SHA.match(args.commit):
+        parser.error(f"the commit {args.commit!r} is not 40 hex")
+    if args.form not in ("daily", "merge-of") and not SHA.match(args.head):
         parser.error(f"the head {args.head!r} is not 40 hex")
     if args.form == "verdict" and not PULL_REQUEST.match(args.pr):
         parser.error(f"the pull request {args.pr!r} is not a decimal number")
@@ -625,6 +710,12 @@ def main(argv=None):
         elif args.form == "sweep":
             row = ledger.newest_sweep(args.unit, args.head)
             print(NONE if row is None else "\t".join((row.ts_text, row.unit, row.verifier, row.evidence)))
+        elif args.form == "sweep-any":
+            row = ledger.newest_sweep_any(args.head)
+            print(NONE if row is None else "\t".join((row.ts_text, row.unit, row.verifier, row.evidence)))
+        elif args.form == "merge-of":
+            head = ledger.merge_of(args.commit)
+            print(NONE if head is None else head)
         else:
             row = ledger.newest_audit_at_another_head(args.unit, args.head, args.pr)
             print(NONE if row is None else "\t".join((row.head_sha, row.verdict, row.unit)))

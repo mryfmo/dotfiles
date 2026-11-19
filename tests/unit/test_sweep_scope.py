@@ -380,9 +380,20 @@ class SweepScopePredicateTest(unittest.TestCase):
         text = LEVER.read_text()
         self.assertIn("scope_reader=${toplevel}/scripts/orchestrator/sweep-scope.py", text)
         self.assertIn(READER_CALL, text)
+        self.assertIn(f'gh_bounded api "repos/{{owner}}/{{repo}}/compare/${{from}}...${{to}}" --jq {FILES_JQ}', text)
+        self.assertEqual(
+            text.count('"${scope_copy}" --files-json <<< "${files}"'),
+            1,
+            "one run of the reader, in classify_diff (round 11)",
+        )
         self.assertIn(
-            f'gh_bounded api "repos/{{owner}}/{{repo}}/compare/${{base_tip}}...${{head}}" --jq {FILES_JQ}',
+            '    classify_diff "${base_tip}" "${head}" "the head ${head} of pull request ${pr}" refuse \\\n', text
+        )
+        self.assertIn('    classify_diff "${tip_parent}" "${base_tip}" "${what}" fail \\\n', text, "the tip (round 11)")
+        self.assertIn(
+            '    classify_diff "${parent}" "${commit}" "the merge commit ${commit} of pull request ${pr}" fail \\\n',
             text,
+            "the landed diff (round 11)",
         )
         self.assertIn(
             "base_tip=$(gh_bounded api \"repos/{owner}/{repo}/git/ref/heads/${base}\" --jq '.object.sha') ||", text
@@ -645,8 +656,11 @@ class SweepRuleDocumentsTest(unittest.TestCase):
     hcom-orchestration skill's step 4 and the orchestrator README's pr-merge.sh row name the four classes and the
     module; round 3: the listing as data (status, filename, previous_filename); round 4: the listing keyed by the
     head's sha and the daily row; round 5: one compare call, no count of the pull request, the cap answer, in
-    AGENTS.md's line and the README's row. The regime template `home/dot_agents/regime/AGENTS-audit-section.md` is
-    AGENTS.md's section byte for byte (tests.unit.test_regime_init), so it is not read here."""
+    AGENTS.md's line and the README's row; round 11: the three gates in place of every server-policy inference (main's
+    tip swept or exempt through `ledger.py sweep-any` and `merge-of`, the head's class and its sweep row or the daily
+    row, the post-merge check by trees with the landed diff classified again at the merge commit), and no word of a
+    ruleset, a policy or U613. The regime template `home/dot_agents/regime/AGENTS-audit-section.md` is AGENTS.md's
+    section byte for byte (tests.unit.test_regime_init), so it is not read here."""
 
     def setUp(self):
         self.reader = load_reader()
@@ -724,16 +738,30 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("task id `daily-<YYYY-MM-DD>` alone naming the UTC day", line)
         self.assertIn("from private copies hashed against their `claude.levers.sha256` pins", line)
         self.assertIn("the merge commit's first parent", line)
-        # round 9: the exemption exists only while the server guarantees the basis (U613), the daily row's own
-        # grammar, the task's day or the day before, the validators from private copies, the recheck before the write
-        self.assertIn("reads the main ruleset's `strict_required_status_checks_policy`", line)
-        self.assertIn("grants no exemption while it is false", line)
-        self.assertIn("U613", line)
+        # round 9: the daily row's own grammar, the task's day or the day before, the validators from private copies,
+        # the recheck before the merge request
         self.assertIn("or the day before it", line)
         self.assertNotIn("`validators pass`", line, "the round-6 word is gone from the rule (round 9)")
-        # round 10: GitHub's own matching of a ruleset to main, the seven fields with the schema's digest and the
-        # artifacts, the window measured at the lever's last read before the merge request
-        self.assertIn("`~DEFAULT_BRANCH`, `~ALL` or a glob such as `refs/heads/ma*`, and no exclude pattern does", line)
+        # round 11 (the mechanism-change decisions row of 2026-11-19T15:21:36Z): the rule in the three gates' terms,
+        # and no server-policy inference: every unit's head that touches a class gets its sweep, a head outside every
+        # class merges on its audit, CI and the day's sweep of main, main's tip is swept or exempt before the next
+        # merge, and a landed diff that differs from the classified one is classified again at the merge commit
+        self.assertIn("every unit's head that touches a class gets its sweep before the merge", line)
+        self.assertIn("A head outside every class merges on its audit, CI and the day's sweep of main", line)
+        self.assertIn("main's tip must be swept or exempt", line)
+        self.assertIn("`gh api 'repos/{owner}/{repo}/compare/<tip's first parent>...<tip>'`", line)
+        self.assertIn("`ledger.py sweep-any <tip>`", line)
+        self.assertIn("`ledger.py merge-of <tip>`", line)
+        self.assertIn("`.tree.sha`", line)
+        self.assertIn("is classified again at the merge commit", line)
+        self.assertIn("swept and recorded as a `sweep` row of the unit before the next merge", line)
+        self.assertIn("the mechanism-change decisions row of 2026-11-19T15:21:36Z", line)
+        self.assertIn("brought up to date with `pr-update-branch.sh`", line)
+        self.assertIn("the lever never opens the findings file", line)
+        for word in ("ruleset", "strict_required_status_checks_policy", "U613", "rebased onto main"):
+            self.assertNotIn(word, line, f"the rule names no {word} (round 11)")
+        # round 10: the seven fields with the schema's digest and the artifacts, the window measured at the lever's
+        # last read before the merge request
         self.assertIn(
             "`validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex> <8 hex> <8 hex>;"
             " artifacts sha256 <8 hex> <8 hex>`",
@@ -762,9 +790,13 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("once per UTC day", step)
         self.assertIn("`~/.agents/regime/daily-sweep-brief.md`", step)
         self.assert_describes_the_daily_sweep(step, "the skill's step 4")
-        # round 9: the policy that turns the exemption on, named with its unit
-        self.assertIn("`strict_required_status_checks_policy`", step)
-        self.assertIn("U613", step)
+        # round 11: no policy decides the exemption; the tip gate and the tree check are named with their forms
+        self.assertIn("the lever reads no server policy to decide it", step)
+        self.assertIn("requires main's tip to be swept or exempt", step)
+        self.assertIn("`ledger.py sweep-any`, `ledger.py merge-of`", step)
+        self.assertIn("classified again at the merge commit and swept before the next merge", step)
+        for word in ("ruleset", "strict_required_status_checks_policy", "U613"):
+            self.assertNotIn(word, step, f"step 4 names no {word} (round 11)")
 
     def test_the_readme_s_pr_merge_row_names_the_four_classes_and_the_module(self):
         rows = [
@@ -780,15 +812,18 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("private copies", row)
         self.assertIn("`claude.levers.sha256`", row)
         self.assertIn("first parent", row)
-        self.assertIn("`strict_required_status_checks_policy`", row)
-        # round 9: the policy read before the listing, no exemption while it is false, the daily row's grammar
-        self.assertIn("grants no exemption while it is false", row)
-        self.assertIn("U613", row)
-        # round 10: GitHub's matching, the three digests and the artifacts, the window at the lever's last read
-        # (prettier drops the spaces around inline code in the table, so the words are asserted apart)
-        self.assertIn("`~DEFAULT_BRANCH`, `~ALL`", row)
-        self.assertIn("`refs/heads/ma*`", row)
-        self.assertIn("no exclude pattern matching it", row)
+        # round 11: no policy, ruleset or actor read; the tip gate with its two ledger forms, the trees, the route
+        self.assertIn("the lever reads no server policy, ruleset or actor", row)
+        self.assertIn("`require_tip_swept`", row)
+        self.assertIn("`ledger.py sweep-any <tip>`", row)
+        self.assertIn("`ledger.py merge-of <tip>`", row)
+        self.assertIn("--jq .tree.sha`", row)
+        self.assertIn("classified again at the merge commit", row)
+        self.assertIn("the `pr-update-branch.sh` route", row)
+        self.assertNotIn("U613", row)
+        self.assertNotIn("strict_required_status_checks_policy", row)
+        # round 10: the three digests and the artifacts, the window at the lever's last read (prettier drops the
+        # spaces around inline code in the table, so the words are asserted apart)
         self.assertIn("`validators sha256 <8 hex> <8 hex> <8 hex>`", row)
         self.assertIn("`artifacts sha256 <8 hex> <8 hex>`", row)
         self.assertIn("read again right before the merge request", row)
@@ -823,18 +858,22 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("reader_copy", text)
         self.assertIn("`~/.local/bin/common/sweep-scope.py`", text)
         self.assertIn("--jq '.parents[0].sha'`", text)
-        # round 9: the policy read before the listing and the exemption dormant while it is false; no fixed value
-        self.assertIn("`strict_required_status_checks_policy`", text)
-        self.assertNotIn("`strict_required_status_checks_policy: false`", text, "the header states no fixed value")
-        self.assertIn("require_ruleset_policy", text)
-        self.assertIn('`gh api "repos/{owner}/{repo}/rulesets"`', text)
-        self.assertIn("U613", text)
+        # round 9: the daily row's grammar, the recheck and the probe
         self.assertIn("recheck_daily_sweep", text)
         self.assertIn("daily_row_fields", text)
         self.assertIn("validators_pin_probe", text)
-        # round 10: GitHub's matching named with its function, the seven fields, the window at the last read
-        self.assertIn("ref_pattern_matches", text)
-        self.assertIn("`~DEFAULT_BRANCH` matching the default branch, `~ALL` every", text)
+        # round 11: the three gates named with their functions and forms, and no word of a ruleset, a policy or U613
+        self.assertIn("require_tip_swept", text)
+        self.assertIn("classify_diff", text)
+        self.assertIn("`ledger.py <store> sweep-any <tip>`", text)
+        self.assertIn("`ledger.py <store> merge-of <tip>`", text)
+        self.assertIn("--jq .tree.sha`", text)
+        self.assertIn("`compare/<parent>...<merge commit>`", text)
+        self.assertIn("the lever never opens the findings file", text)
+        self.assertIn("the mechanism-change decisions row of 2026-11-19T15:21:36Z", text)
+        for word in ("ruleset", "strict_required_status_checks_policy", "U613", "ref_pattern_matches"):
+            self.assertNotIn(word, text, f"the lever names no {word} (round 11)")
+        # round 10: the seven fields, the window at the last read
         self.assertIn("within 24 hours at the lever's last read before the merge request", text)
         self.assertIn(
             "validators sha256 <8 hex> <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>", text

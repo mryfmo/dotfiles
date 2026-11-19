@@ -1246,13 +1246,17 @@ class LedgerRowTest(unittest.TestCase):
         """U597 round 9 (verdict U597-c37800e3 P2 at ledger-row.py:821): the deployed writer accepted a caller-selected
         manifest for the validator digests while the lever checked only the skill commit prefix in the row, so a row
         could carry the expected pin while its validators were checked against other digests. `--manifest` is gone
-        (argparse refuses it for the daily and the sweep kind, nothing run, nothing written), the writer reads
-        `~/.agents/agent-config.yaml` alone (a missing one is refused by name for both kinds, with no fall-through to
-        the checkout's copy), and the daily row's evidence carries `validators sha256 <8 hex> <8 hex> <8 hex>`, the
-        first 8 hex of the three pins the copies were held to in the writer's order (round 10, verdict U597-67e1eea8
-        P2 at :575: the schema's third, since a row validated under another schema still authorised an exemption),
-        which the reader exposes and pr-merge.sh compares with the manifest's; with other pins in the manifest and
-        the installed files rewritten to match, the row records those."""
+        (argparse refuses it for the daily and the sweep kind, nothing run, nothing written), the daily kind reads
+        `~/.agents/agent-config.yaml` alone (a missing one is refused by name, with no fall-through to the checkout's
+        copy; round 11, verdict U597-2bebb5ae P2 at :302: the sweep kind regains the base's fall-through to the
+        checkout's `home/dot_agents/agent-config.yaml` two directories above the writer when the deployed one is
+        missing, since a source checkout with a valid manifest must record the required sweep from a fresh home, and
+        a sweep row carries the skill's pin word alone, which the merge lever compares with its own manifest), and the
+        daily row's evidence carries `validators sha256 <8 hex> <8 hex> <8 hex>`, the first 8 hex of the three pins
+        the copies were held to in the writer's order (round 10, verdict U597-67e1eea8 P2 at :575: the schema's third,
+        since a row validated under another schema still authorised an exemption), which the reader exposes and
+        pr-merge.sh compares with the manifest's; with other pins in the manifest and the installed files rewritten to
+        match, the row records those."""
         daily = self.store / "daily-sweeps.tsv"
         other = Path(self.temp.name).resolve() / "other-manifest.yaml"
         other.write_text(MANIFEST)
@@ -1264,13 +1268,27 @@ class LedgerRowTest(unittest.TestCase):
         self.assertFalse(daily.exists())
         self.assertEqual(self.node_calls(), [])
         self.assertEqual(self.ledger.read_text(), HEADER + "".join(ROWS))
-        # HOME's manifest alone: a missing one refuses naming it, for both kinds
+        # HOME's manifest alone for the daily kind: a missing one refuses naming it, with no node run; the sweep kind
+        # falls through to the checkout's copy (round 11), its pin word the real manifest's
         self.manifest.unlink()
         self.assertEqual(
             self.refused_daily(self.DAILY_ARGS, f"cannot read the manifest {self.manifest}: No such file or directory"),
             [],
         )
-        self.assert_refused(self.sweep_args(), f"cannot read the manifest {self.manifest}: No such file or directory")
+        checkout_pin = re.search(
+            r"^  security-audit-skill:\n(?:    .*\n)*?    pin: ([0-9a-f]{40})$",
+            (ROOT / "home/dot_agents/agent-config.yaml").read_text(),
+            re.MULTILINE,
+        ).group(1)
+        self.assert_appended(
+            self.sweep_args(),
+            "U7",
+            "-",
+            B,
+            "sweep",
+            f"security-audit-skill {checkout_pin[:8]} (full audit mode on the srt worker seat s, run-1; TASK U9)",
+            "sweeps/U9-bbbbbbbb/findings.json; pr none; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS",
+        )
         self.manifest.write_text(MANIFEST)
         # the row carries the three digests' first 8 hex in the writer's order, and the reader exposes them
         cells = self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
@@ -1313,7 +1331,11 @@ class LedgerRowTest(unittest.TestCase):
         text = WRITER.read_text()
         self.assertNotIn('"--manifest"', text, "the option is gone (round 9)")
         self.assertIn('MANIFEST_PARTS = (".agents", "agent-config.yaml")', text)
-        self.assertNotIn("../../home/dot_agents/agent-config.yaml", text, "no fall-through to the checkout's copy")
+        self.assertIn('CHECKOUT_MANIFEST_PARTS = ("..", "..", "home", "dot_agents", "agent-config.yaml")', text)
+        self.assertIn("manifest, lines = manifest_lines(False)  # the daily kind", text, "the daily kind reads one")
+        self.assertIn("verifier = sweep_verifier(args, False)", text, "the daily verifier's pin from the deployed one")
+        self.assertIn("verifier = sweep_verifier(args, True)", text, "the sweep verifier's pin with the fall-through")
+        self.assertIn("    except FileNotFoundError:\n        if not fallback:\n", text, "ENOENT alone falls through")
         self.assertIn('validator_digests = " ".join(pins[name][:8] for name in VALIDATOR_FILES)', text)
         self.assertIn('f"validators sha256 {validator_digests}",', text)
 
@@ -2431,20 +2453,42 @@ class LedgerRowTest(unittest.TestCase):
             self.sweep_args("sweeps/U9;note/findings.json"), "sweeps/<dir>/findings.json", "[A-Za-z0-9._-]"
         )
 
-    def test_r2d_an_unreadable_manifest_directory_refuses_and_so_does_an_absent_manifest(self):
-        """(d) a failed open of `~/.agents/agent-config.yaml` is a refusal naming it (standing order 21), a missing one
-        included: U597 round 9 removed the fall-through to the checkout's manifest with `--manifest`, so the deployed
-        manifest is the one the writer reads, for the sweep kind as for the daily one."""
+    def test_r2d_an_unreadable_manifest_directory_refuses_and_an_absent_one_falls_through_for_the_sweep_kind(self):
+        """(d) a failed open of `~/.agents/agent-config.yaml` is a refusal naming it (standing order 21), for the sweep
+        kind as for the daily one, and EACCES never falls through; a missing one is a refusal for the daily kind
+        alone, while the sweep kind falls through to the checkout's `home/dot_agents/agent-config.yaml` (U597 round
+        11, verdict U597-2bebb5ae P2 at ledger-row.py:302: the base's rule restored for the one kind whose row carries
+        no digest a checkout could choose), and a writer copied away from a checkout, with no manifest in either
+        place, is refused naming the checkout's path, never silently pinned."""
         if os.geteuid() == 0:
             self.skipTest("root reads a mode-000 directory")
         agents = self.home / ".agents"
         agents.chmod(0)
         self.addCleanup(agents.chmod, 0o700)
-        self.assert_refused(self.sweep_args(), str(self.manifest), "cannot read the manifest")
+        self.assert_refused(self.sweep_args(), str(self.manifest), "cannot read the manifest", "Permission denied")
+        self.assertEqual(
+            self.refused_daily(self.DAILY_ARGS, str(self.manifest), "cannot read the manifest", "Permission denied"), []
+        )
         agents.chmod(0o700)
         self.manifest.unlink()
-        self.assert_refused(self.sweep_args(), f"cannot read the manifest {self.manifest}: No such file or directory")
-        self.assertFalse((ROOT / "home/dot_agents/agent-config.yaml").read_text() == "", "the checkout's copy exists")
+        run = self.run_writer(*self.sweep_args())
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+        self.assertTrue((ROOT / "home/dot_agents/agent-config.yaml").is_file(), "the checkout's copy, the fall-through")
+        self.assertEqual(
+            self.refused_daily(self.DAILY_ARGS, f"cannot read the manifest {self.manifest}: No such file or directory"),
+            [],
+            "the daily kind never falls through",
+        )
+        copy = Path(self.temp.name).resolve() / "elsewhere/common"
+        copy.mkdir(parents=True)
+        shutil.copy2(WRITER, copy / "ledger-row.py")
+        shutil.copy2(READER, copy / "ledger.py")
+        self.writer = copy / "ledger-row.py"
+        self.assert_refused(
+            self.sweep_args(),
+            f"cannot read the manifest {copy.parent.parent / 'home/dot_agents/agent-config.yaml'}: No such file or"
+            " directory (no deployed manifest under HOME either)",
+        )
 
     def test_r2e_a_non_breaking_space_before_carried_or_after_the_digest_refuses(self):
         """(e) the gate's `[[:space:]]` in the C locale is ASCII; a U+00A0 is no separator."""

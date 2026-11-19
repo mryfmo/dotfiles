@@ -149,26 +149,39 @@ class WorkerRoot:
 
     Attribution (U625). A detected open is the consumer's read when the scan names a holder: every process whose
     descriptor table this user can read is this user's (the consumer step's thread, a subprocess it started, or any
-    other process of this user), and the lever under test and its descendants run as this user, so a read the lever
-    makes always has a nameable holder. An open that still has no nameable holder after HOLDER_WAIT_S, on a host
-    whose PROC_ROOT lists this user's processes, is `unattributed` only when the scan found at least one descriptor
-    table this user could not read (`unreadable >= 1`): the holder can then be a process of another user, which is
-    not the lever's; the open goes to `unattributed` with the count of descriptor tables the scan could not read and
-    the UTC time, is printed on stderr so a recurrence is diagnosable from the job log, and does not fail
-    assert_untouched. With zero unreadable tables the scan read every descriptor table on the host and none holds
-    the sentinel, so there is no process the holder could be but one of this user's, whose open had not returned or
-    had closed again inside the scan's poll window: that open is recorded as a read exactly as before this unit
-    (`by no process whose descriptors this user can read (0 unreadable)`) and assert_untouched fails on it. Nine
-    Unit test jobs on GitHub's Ubuntu runners between 2026-10-28 and 2026-11-19 (both flavours, never a macOS leg)
-    saw such an open of the compliant consumer's sentinel with 146 to 159 unreadable tables; the base directory is
-    0700 (tempfile.mkdtemp), so the holder was root's or otherwise unreadable to this user, and no place for the
-    FIFO keeps such a process out. On a host without /proc (macOS) nothing can name a holder, so every detected open
-    stays a read of the consumer's, as before (the record ends `reader not identified (no /proc)`). The rule does
-    not cover a lever that handed the input to a process of another user, which trusted_exec has no way to do (the
-    lever runs as this user, with no privilege step). A reader of this user whose open had not returned, or that
-    closed again, within HOLDER_WAIT_S while at least one table was unreadable is the residual below: the scan's
-    poll window, the same window the probe had before this unit; with zero unreadable tables that reader is caught,
-    as before.
+    other process of this user), and the lever under test and its descendants run as this user. Nine Unit test jobs
+    on GitHub's Ubuntu runners between 2026-10-28 and 2026-11-19 (both flavours, never a macOS leg) failed the
+    compliant consumer of test_metadata_reads_and_other_files_are_not_reads_of_the_input with an open of the
+    sentinel that named nobody and 146 to 159 unreadable tables (root's: the base directory is 0700, so no place for
+    the FIFO keeps such a process out). Rounds 1 (21e0da60) and 2 (e3bff483) of U625 sent an open with no named
+    holder to an `unattributed` list on the premise that the /proc scan names every reader of this user. CI at
+    21e0da60 refuted the premise (run 44599355380, job 135826206740, the ubuntu-24.04 client leg): in
+    test_worker_root_probe [read with os.open] the test's own same-user reader, `os.close(os.open(input,
+    O_RDONLY))`, opened the sentinel and closed again before the scan listed it; the scan named nobody with 177
+    unreadable tables, the open went to `unattributed`, and the read the test expects went unrecorded. A runner
+    always has unreadable tables, so the scan cannot attribute an open that closes at once, and a lever that opens
+    and closes the input at once would have been waved through. The rule rests on something else.
+
+    A directory scanner opens what it finds; the lever opens the input it was given. So a control FIFO,
+    `.probe-control`, lies beside the input (same directory, same mode, created and removed with the worker root)
+    and is watched the same way at every attempt: a non-blocking write-open that does not fail with ENXIO means a
+    reader has it open, and the descriptor is closed at once, which gives that reader EOF. An open of the input with
+    a named holder is a read, as before. An open with no named holder is a read too, recorded as the pre-U625 string
+    with `(control silent)` before it (`<input> (control silent) opened for reading by no process whose descriptors
+    this user can read (N unreadable)`), unless the control also had a reader inside the open's window: from
+    CONTROL_WINDOW_S before the write-open that detected the open to CONTROL_WINDOW_S after the holder scan ended
+    (the writer closes right then, and a scanner that took the input first reaches the control only after that
+    close; one that took the control first blocks on the input until the next attempt). Then both opens are a
+    scanner's: the record names both, with the unreadable count, the attempts and the UTC time, goes to
+    `scanner_opens`, is printed on stderr as `worker root: scanner open: ...` so the job log keeps the case, and
+    fails nothing. consume() settles such an open after its last attempt, watching the control until the window has
+    closed. The rule is the same on a host without /proc (macOS): nothing names a holder there, so every open is a
+    read (`<input> (control silent) opened for reading reader not identified (no /proc)`) unless the control was
+    opened too. Left out, what the rule cannot tell: a scanner that opens only files whose names it knows (the input
+    alone, never the control) is reported as the lever's read with the control's silence in the record, so the log
+    shows the case; a scanner of this user is named by the scan and reported as a read, as before; and on a host
+    without /proc a read the lever made while a scanner happened to open the control passes, since no holder can be
+    named there (no macOS host has opened a FIFO of the probe so far).
 
     Scope. The probe detects a blocking read open of the input by the consumer step, and a replacement or removal of
     the input that is present at any poll or at the check. The consumer under test is repository code reviewed in
@@ -181,53 +194,64 @@ class WorkerRoot:
 
     POLL_S, DEADLINE_S, GRACE_S = 0.001, 30.0, 2.0
     HOLDER_WAIT_S = 0.2  # how long a holder scan keeps rescanning before it settles for naming no holder
+    CONTROL_WINDOW_S = 0.2  # how far either side of an input open with no named holder a control open reaches
     PROC_ROOT = "/proc"  # an instance attribute points a test's scan at a scratch tree of the same shape
 
     def __init__(self, base):
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
+        self.control = seat / ".probe-control"  # a FIFO beside the input that the lever has no reason to touch (U625)
         self.reads, self.errors, self.replaced, self.attempts = [], [], [], 0
-        self.unattributed = []  # detected opens no process this user can read holds (U625): recorded, never a failure
+        self.scanner_opens = []  # input opens with no named holder and a control open in their window: no failure
+        self._pending, self._control_opens = [], []  # input opens awaiting _settle; (attempt, clock) of control opens
         os.mkfifo(self.input, 0o600)
+        os.mkfifo(self.control, 0o600)
         self.output.write_text(LEGIT)
         os.utime(self.output, ns=(BASELINE_NS, BASELINE_NS))
         self._identity = {path: (os.lstat(path).st_ino, os.lstat(path).st_mode) for path in (self.input, self.output)}
         st = os.lstat(self.input)
         self._dev_ino = (st.st_dev, st.st_ino)  # what os.stat of a /proc descriptor link reports for a holder
+        self._control_ino = os.lstat(self.control).st_ino
         self._self_test()
 
-    def _open_writer(self):
-        """One write-open attempt on the input: a descriptor when a reader holds it, None when none does (ENXIO)."""
+    def _open_writer(self, path=None):
+        """One write-open attempt on PATH, the input by default: a descriptor when a reader holds it, None when none
+        does (ENXIO)."""
         try:
-            return os.open(self.input, os.O_WRONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+            return os.open(self.input if path is None else path, os.O_WRONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
         except OSError as error:
             if error.errno == errno.ENXIO:
                 return None
             raise
 
     def _self_test(self):
-        """Synchronous: no reader means ENXIO; the probe's own reader makes the write-open succeed on this very
-        FIFO; closing it brings ENXIO back. Any other answer refuses the probe, since reads would not be seen."""
-        if (fd := self._open_writer()) is not None:
+        """Synchronous, on the input and then on the control: no reader means ENXIO; the probe's own reader makes the
+        write-open succeed on this very FIFO; closing it brings ENXIO back. Any other answer refuses the probe, since
+        reads would not be seen (a control whose reads went unseen would lay a scanner's open on the lever)."""
+        self._fifo_self_test(self.input, self._open_writer, self._identity[self.input][0])
+        self._fifo_self_test(self.control, functools.partial(self._open_writer, self.control), self._control_ino)
+
+    def _fifo_self_test(self, path, open_writer, inode):
+        if (fd := open_writer()) is not None:
             os.close(fd)
-            raise RuntimeError(f"{self.input} has a reader before the consumer ran")
-        reader = os.open(self.input, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+            raise RuntimeError(f"{path} has a reader before the consumer ran")
+        reader = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
         try:
-            writer = self._open_writer()
+            writer = open_writer()
             if writer is None:
-                raise RuntimeError(f"a reader of {self.input} did not make the write-open succeed")
+                raise RuntimeError(f"a reader of {path} did not make the write-open succeed")
             try:
                 st = os.fstat(writer)
-                if not (stat.S_ISFIFO(st.st_mode) and st.st_ino == self._identity[self.input][0]):
-                    raise RuntimeError(f"the write-open of {self.input} reached another file")
+                if not (stat.S_ISFIFO(st.st_mode) and st.st_ino == inode):
+                    raise RuntimeError(f"the write-open of {path} reached another file")
             finally:
                 os.close(writer)
         finally:
             os.close(reader)
-        if (fd := self._open_writer()) is not None:
+        if (fd := open_writer()) is not None:
             os.close(fd)
-            raise RuntimeError(f"{self.input} still has a reader after the self-test closed its own")
+            raise RuntimeError(f"{path} still has a reader after the self-test closed its own")
 
     def _not_sentinel(self, error=None, fd=None):
         """Whether the input is not the probe's FIFO at this poll, recorded, so the check fails even if the FIFO is
@@ -258,9 +282,8 @@ class WorkerRoot:
         return self._attribution(writer)[0]
 
     def _attribution(self, writer):
-        """The record of _holders and, beside it, the number of descriptor tables the scan could not read when the
-        tree was listed and no holder is named (_record_read decides on that count), or None when a holder is named
-        or the tree itself cannot be listed (the open then stays the consumer's read)."""
+        """The record of _holders and whether it names a holder (False once the scan settled on nobody, or when the
+        tree cannot be listed at all); _record_read decides on the second."""
         root = self.PROC_ROOT
         me = str(os.getpid())
 
@@ -272,12 +295,11 @@ class WorkerRoot:
                 return "?"
 
         def scan():
-            """One pass over the tree: the record when it names a holder, else the no-holder or no-root record, and
-            the unreadable count of a listed tree that names nobody."""
+            """One pass over the tree: the record when it names a holder, else the no-holder or no-root record."""
             try:
                 entries = os.listdir(root)
             except OSError:
-                return None, f"reader not identified (no {root})", None
+                return f"reader not identified (no {root})", False
             holders, unreadable = [], 0
             for pid in entries:
                 if not pid.isdigit():
@@ -304,39 +326,86 @@ class WorkerRoot:
                     holders.append(f"by pid {pid} ({field(pid, 'comm').strip()}, ppid {ppid}: {cmdline})")
                     break
             if holders:
-                return ", ".join(holders), None, None
-            return None, f"by no process whose descriptors this user can read ({unreadable} unreadable)", unreadable
+                return ", ".join(holders), True
+            return f"by no process whose descriptors this user can read ({unreadable} unreadable)", False
 
         settle = time.monotonic() + self.HOLDER_WAIT_S
         while True:
-            named, none_named, unreadable = scan()
-            if named is not None:
-                return named, None
-            if time.monotonic() >= settle:
-                return none_named, unreadable
+            record, named = scan()
+            if named or time.monotonic() >= settle:
+                return record, named
             time.sleep(self.POLL_S)
 
     def _record_read(self, writer):
-        """One detected open of the sentinel, attributed: the consumer's read when a holder is named, when no tree
-        can name one, or when the tree listed this user's processes, none holds the sentinel after HOLDER_WAIT_S and
-        every descriptor table was readable (zero unreadable: no process the holder could be but this user's, so the
-        record is the pre-U625 `(0 unreadable)` string and assert_untouched fails on it); unattributed only when at
-        least one descriptor table could not be read (the class docstring says why that is not the lever's read). The
-        unattributed record carries the unreadable count, the UTC time and the attempt, and is printed at once so
-        the job log keeps it."""
-        record, unreadable = self._attribution(writer)
-        entry = f"{self.input} opened for reading {record}"
-        if unreadable is None or unreadable == 0:
-            self.reads.append(entry)
+        """One detected open of the sentinel. A named holder is the consumer's read at once. An open with no named
+        holder (the scan settled on nobody, or no tree could name one) waits in `_pending` with the clocks of its
+        window, the write-open that detected it and the end of the holder scan (the writer closes right after that,
+        and a reader that waited for EOF moves on only then); _settle attributes it once the window has closed."""
+        opened = time.monotonic()
+        record, named = self._attribution(writer)
+        if named:
+            self.reads.append(f"{self.input} opened for reading {record}")
             return
         when = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        entry = f"{entry} at {when} (attempt {self.attempts}, scanned for {self.HOLDER_WAIT_S} s)"
-        self.unattributed.append(entry)
-        print(f"worker root: unattributed open: {entry}", file=sys.stderr, flush=True)
+        self._pending.append((self.attempts, record, when, opened, time.monotonic()))
+
+    def _note_control(self):
+        """Whether the control FIFO has a reader now, by the input's own test (a non-blocking write-open that does
+        not fail with ENXIO): the attempt and the clock go to `_control_opens`, and the descriptor is closed, which
+        gives the reader EOF. A write-open that fails otherwise, or reaches another file, is recorded once as an
+        error: a control that is gone cannot tell a scanner from the lever, so the check fails closed."""
+        try:
+            fd = self._open_writer(self.control)
+        except OSError as error:
+            entry = f"cannot tell whether {self.control} is being read: {error!r}"
+            self.errors += [] if entry in self.errors else [entry]
+            return
+        if fd is None:
+            return
+        try:
+            st = os.fstat(fd)
+            if stat.S_ISFIFO(st.st_mode) and st.st_ino == self._control_ino:
+                self._control_opens.append((self.attempts, time.monotonic()))
+                return
+            entry = f"{self.control} was another file (inode {st.st_ino}, mode {stat.filemode(st.st_mode)})"
+            self.errors += [] if entry in self.errors else [entry]
+        finally:
+            os.close(fd)
+
+    def _control_opens_inside(self, opened, released):
+        """The attempts at which the control had a reader inside the window of an input open detected at the clock
+        OPENED whose holder scan ended at RELEASED: CONTROL_WINDOW_S either side."""
+        first, last = opened - self.CONTROL_WINDOW_S, released + self.CONTROL_WINDOW_S
+        return [attempt for attempt, at in self._control_opens if first <= at <= last]
+
+    def _settle(self):
+        """Attribute every input open still waiting. The control is watched until the last window has closed (or a
+        control open lies inside every window), then an open with a control open inside its window is a scanner's:
+        the record names both, goes to `scanner_opens` and is printed on stderr as `worker root: scanner open: ...`,
+        no failure; any other is the consumer's read, the pre-U625 record with `(control silent)` before it, and
+        assert_untouched fails on it (the class docstring's rule)."""
+        while self._pending:
+            silent = [p for p in self._pending if not self._control_opens_inside(p[3], p[4])]
+            remaining = max((p[4] for p in silent), default=0.0) + self.CONTROL_WINDOW_S - time.monotonic()
+            if not silent or remaining <= 0:
+                break
+            self._note_control()
+            time.sleep(min(self.POLL_S, remaining))
+        for attempt, record, when, opened, released in self._pending:
+            if control := self._control_opens_inside(opened, released):
+                entry = f"{self.input} opened for reading {record}, and {self.control} opened for reading inside its"
+                entry += f" window at {when} (attempt {attempt}; control at attempt {', '.join(map(str, control))})"
+                self.scanner_opens.append(entry)
+                print(f"worker root: scanner open: {entry}", file=sys.stderr, flush=True)
+            else:
+                self.reads.append(f"{self.input} (control silent) opened for reading {record}")
+        self._pending = []
 
     def _attempt(self):
-        """One attempt while the consumer runs: record a reader, then release any writer waiting for a reader."""
+        """One attempt while the consumer runs: note a reader of the control, record a reader of the input, then
+        release any writer waiting for a reader."""
         self.attempts += 1
+        self._note_control()
         try:
             fd = self._open_writer()
         except OSError as error:
@@ -367,7 +436,8 @@ class WorkerRoot:
     def consume(self, target, deadline=None):
         """Run the consumer step TARGET in a worker thread while observing the input; return its result or raise
         its exception. A step still running GRACE_S after DEADLINE seconds fails with AssertionError ("consumer
-        thread still running after the deadline"); the thread itself is left running (it cannot be stopped)."""
+        thread still running after the deadline"); the thread itself is left running (it cannot be stopped). After
+        the last attempt the input opens with no named holder are settled (_settle: at most CONTROL_WINDOW_S)."""
         outcome = {}
         worker = threading.Thread(target=lambda: outcome.update(value=target()), name="consumer", daemon=True)
         _CONSUMER_ERRORS[worker] = outcome
@@ -386,6 +456,7 @@ class WorkerRoot:
                 self._attempt()
                 worker.join(self.POLL_S)
             self._attempt()
+            self._settle()
         finally:
             _CONSUMER_ERRORS.pop(worker, None)
         if "error" in outcome:
@@ -395,8 +466,9 @@ class WorkerRoot:
     def assert_untouched(self):
         """Nothing opened the input for reading during consume(), or replaced or removed it; nothing wrote, replaced
         or removed the output, or created the new output's directory. The output's content is compared too, since a
-        write in place can keep the inode, the size and a coarse clock's mtime. An open in `unattributed` is no
-        failure (the class docstring's attribution rule); it stays readable there and was printed when detected."""
+        write in place can keep the inode, the size and a coarse clock's mtime. An open in `scanner_opens` is no
+        failure (the class docstring's attribution rule); it stays readable there and was printed when settled."""
+        self._settle()
         found = []
         for path, identity in self._identity.items():
             if not os.path.lexists(path):

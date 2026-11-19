@@ -531,91 +531,140 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         shutil.rmtree(holder)
         self.assertEqual("by no process whose descriptors this user can read (1 unreadable)", self.holder_scan(probe))
 
-    def test_an_open_no_process_this_user_can_read_holds_is_unattributed_and_does_not_fail(self):
-        """U625: nine Unit test jobs on GitHub's Ubuntu runners (2026-10-28 to 2026-11-19, both flavours) failed the
-        compliant consumer of test_metadata_reads_and_other_files_are_not_reads_of_the_input with `opened for
-        reading by no process whose descriptors this user can read (146 to 159 unreadable)`: the probe counted an
-        open it could attribute to nobody as the consumer's read. The scan's tree here is a scratch PROC_ROOT with
-        one pid whose descriptor table is unreadable (mode 0000, as the runner's root-owned tables are), and the
-        real holder, this process's own thread, is absent from that tree, so the open has no nameable holder: it
-        goes to `unattributed` with the count and the time, is printed, and assert_untouched passes. A second probe
-        on the same tree with a readable holder named still fails naming its pid; a third whose tree does not exist
-        keeps the no-/proc rule (every detected open fails), so each side of the rule is proven on every host."""
+    def unnamed_record(self):
+        """What _holders says when no holder is named on this host: the no-holder count on a host with /proc, the
+        no-tree form elsewhere; as a regex."""
+        if os.path.isdir("/proc"):
+            return r"by no process whose descriptors this user can read \(\d+ unreadable\)"
+        return r"reader not identified \(no /proc\)"
+
+    def hold_the_scan_until(self, probe, event):
+        """Patch os.listdir for the test so the scan's listings of the proc root wait for EVENT (set by a reader after
+        its close): the holder is gone when the scan looks, on any scheduler, as it was on the runner."""
+        listdir = os.listdir
+
+        def listing(path, *args, **kwargs):
+            if path == probe.PROC_ROOT:
+                event.wait(30)
+            return listdir(path, *args, **kwargs)
+
+        self.enter(mock.patch.object, tec.os, "listdir", listing)
+
+    def test_an_input_open_with_no_holder_and_the_control_silent_is_the_consumers_read(self):
+        """U625 round 3, the CI case: at 21e0da60 (run 44599355380, job 135826206740, the ubuntu-24.04 client leg)
+        test_worker_root_probe [read with os.open] failed because the test's own same-user reader opened the sentinel
+        and closed again before the scan listed it; the scan named nobody with 177 unreadable tables, the round-1 rule
+        sent the open to `unattributed`, and the read the test expects went unrecorded. The reader here is that one, a
+        thread that opens and closes at once, and the scan's listing of the proc root is held until it has closed, so
+        no holder is named on Linux either (a host without /proc names nobody anyway). The control FIFO is untouched,
+        so the open is the consumer's read, recorded with `(control silent)` before the pre-U625 record, and
+        assert_untouched fails naming it; nothing is a scanner open and nothing is printed."""
         import contextlib
         import io
         import re
+        import threading
 
         probe = self.worker_root_probe()
-        proc = probe.base / "proc"
-        probe.PROC_ROOT = str(proc)
-        blocked = proc / "4343" / "fd"
-        blocked.mkdir(parents=True)
-        blocked.chmod(0o000)
-        self.addCleanup(blocked.chmod, 0o700)
-        with self.assertRaises(PermissionError):  # root could list it, and the count below would be 0 instead
-            os.listdir(blocked)
-        with contextlib.redirect_stderr(io.StringIO()) as printed:
-            self.assertEqual(b"", probe.consume(lambda: in_thread(lambda: Path(probe.input).read_bytes())))
-        probe.assert_untouched()
-        self.assertEqual(([], []), (probe.reads, probe.errors))
-        self.assertGreaterEqual(len(probe.unattributed), 1, printed.getvalue())  # the reader's close may span a poll
-        form = r" opened for reading by no process whose descriptors this user can read \(1 unreadable\) at "
-        form += r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ \(attempt \d+, scanned for 0\.2 s\)$"
-        form = re.escape(str(probe.input)) + form
-        for entry in probe.unattributed:
-            self.assertRegex(entry, form)
-            self.assertIn(f"worker root: unattributed open: {entry}\n", printed.getvalue())
-        named = self.worker_root_probe()
-        named.PROC_ROOT = str(proc)
-        holder = proc / "4242"
-        (holder / "fd").mkdir(parents=True)
-        os.symlink(named.input, holder / "fd" / "7")
-        (holder / "comm").write_text("cat\n")
-        (holder / "status").write_text("Name:\tcat\nPPid:\t77\n")
-        (holder / "cmdline").write_bytes(b"/bin/cat\0" + os.fsencode(named.input) + b"\0")
-        self.assertEqual(b"", named.consume(lambda: in_thread(lambda: Path(named.input).read_bytes())))
-        with self.assertRaisesRegex(AssertionError, "worker root: read ") as by_pid:
-            named.assert_untouched()
-        record = f"{named.input} opened for reading by pid 4242 (cat, ppid 77: /bin/cat {named.input} )"
-        self.assertIn(record, str(by_pid.exception))
-        self.assertEqual([], named.unattributed)
-        no_tree = self.worker_root_probe()
-        no_tree.PROC_ROOT = str(no_tree.base / "no-proc")
-        self.assertEqual(b"", no_tree.consume(lambda: in_thread(lambda: Path(no_tree.input).read_bytes())))
-        with self.assertRaisesRegex(AssertionError, "worker root: read ") as unnamed:
-            no_tree.assert_untouched()
-        self.assertIn(f"opened for reading reader not identified (no {no_tree.PROC_ROOT})", str(unnamed.exception))
-        self.assertEqual([], no_tree.unattributed)
+        closed = threading.Event()
+        self.hold_the_scan_until(probe, closed)
 
-    def test_an_open_with_no_holder_and_every_table_readable_is_the_consumers_read(self):
-        """U625 round 2 (verdict on 21e0da60, P1): with zero unreadable tables the scan read every descriptor table
-        on the host and none holds the sentinel, so there is no process the holder could be but one of this user's,
-        whose open had not returned, or had closed again, inside the scan's poll window; that open is the consumer's
-        read, recorded as before U625 (`by no process whose descriptors this user can read (0 unreadable)`), and
-        assert_untouched fails on it. The tree is the scratch PROC_ROOT of the unattributed test with its 0000 table
-        made readable: one pid whose descriptor table this user can list and that holds another file, and the real
-        holder (this process's own thread) absent from the tree. Against the round-1 probe (21e0da60) this test
-        fails, because that probe sent every no-holder open to `unattributed` and assert_untouched passed."""
+        def open_and_close():
+            os.close(os.open(probe.input, os.O_RDONLY))
+            closed.set()
+
+        with contextlib.redirect_stderr(io.StringIO()) as printed:
+            probe.consume(lambda: in_thread(open_and_close))
+        self.assertTrue(closed.is_set(), "the reader never closed")
+        with self.assertRaisesRegex(AssertionError, "worker root: read ") as silent:
+            probe.assert_untouched()
+        form = re.escape(f"{probe.input} (control silent) opened for reading ") + self.unnamed_record() + "$"
+        self.assertRegex(str(silent.exception), form)
+        self.assertGreaterEqual(len(probe.reads), 1)  # the reader's close may span a poll
+        for entry in probe.reads:
+            self.assertRegex(entry, form)
+        self.assertEqual(([], []), (probe.scanner_opens, probe.errors))
+        self.assertEqual("", printed.getvalue())
+
+    def test_an_input_open_with_no_holder_beside_a_control_open_is_a_scanner_open(self):
+        """U625 round 3: a directory scanner opens what it finds, so one that opened the sentinel opens the control
+        FIFO beside it too. The scanner here is a thread that opens and closes each FIFO at once, the control first and
+        then, in a second probe, the input first (a listing's order is the filesystem's), with the scan's listing held
+        until the input's reader has closed as in the test above, so no holder is named on any host. Each input open
+        lies beside a control open inside CONTROL_WINDOW_S: it is a scanner open, recorded naming both FIFOs with the
+        unreadable count, the attempts and the time, printed as `worker root: scanner open: ...`, and assert_untouched
+        passes; nothing is a read."""
         import contextlib
         import io
+        import re
+        import threading
+
+        for name, control_first in (("control first", True), ("input first", False)):
+            with self.subTest(name):
+                probe = self.worker_root_probe()
+                input_closed = threading.Event()
+                self.hold_the_scan_until(probe, input_closed)
+                order = (probe.control, probe.input) if control_first else (probe.input, probe.control)
+
+                def scanner(order=order, closed=input_closed, input=probe.input):
+                    for path in order:
+                        os.close(os.open(path, os.O_RDONLY))
+                        if path == input:
+                            closed.set()
+
+                with contextlib.redirect_stderr(io.StringIO()) as printed:
+                    probe.consume(lambda: in_thread(scanner))
+                self.assertTrue(input_closed.is_set(), "the scanner never closed the input")
+                probe.assert_untouched()
+                self.assertEqual(([], []), (probe.reads, probe.errors))
+                self.assertGreaterEqual(len(probe.scanner_opens), 1, printed.getvalue())
+                form = re.escape(f"{probe.input} opened for reading ") + self.unnamed_record()
+                form += re.escape(f", and {probe.control} opened for reading inside its window at ")
+                form += r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ \(attempt \d+; control at attempt \d+(, \d+)*\)$"
+                for entry in probe.scanner_opens:
+                    self.assertRegex(entry, form)
+                    self.assertIn(f"worker root: scanner open: {entry}\n", printed.getvalue())
+
+    def test_a_named_holder_fails_naming_its_pid_even_when_the_control_was_opened_too(self):
+        """U625 round 3: a lever that happens to read beside a scanner is still a read. The reader is a thread of this
+        process that reads the sentinel to EOF, so it holds its descriptor through the holder scan and is named by its
+        pid on a host with /proc, while another thread opens the control at the same time. A host without /proc names
+        nobody, so there the scan is pointed at a scratch tree of /proc's shape that names pid 4242 (the tree of
+        test_the_holder_scan_names_a_holder_from_the_descriptor_table) while both readers stay real. The named pid is
+        asserted in each case; the control open was seen, and nothing is a scanner open."""
+        import contextlib
+        import io
+        import re
+        import threading
 
         probe = self.worker_root_probe()
-        proc = probe.base / "proc"
-        probe.PROC_ROOT = str(proc)
-        bystander = proc / "4343" / "fd"
-        bystander.mkdir(parents=True)
-        os.symlink(probe.output, bystander / "3")  # a readable table on another file: read, not counted unreadable
-        self.assertEqual(["3"], os.listdir(bystander))
+        if os.path.isdir("/proc"):
+            named = rf"opened for reading by pid {os.getpid()} \("
+        else:
+            proc = probe.base / "proc"
+            probe.PROC_ROOT = str(proc)
+            holder = proc / "4242"
+            (holder / "fd").mkdir(parents=True)
+            os.symlink(probe.input, holder / "fd" / "7")
+            (holder / "comm").write_text("cat\n")
+            (holder / "status").write_text("Name:\tcat\nPPid:\t77\n")
+            (holder / "cmdline").write_bytes(b"/bin/cat\0" + os.fsencode(probe.input) + b"\0")
+            named = r"opened for reading by pid 4242 \(cat, ppid 77: /bin/cat "
+
+        def lever_beside_a_scanner():
+            control = threading.Thread(target=lambda: os.close(os.open(probe.control, os.O_RDONLY)), daemon=True)
+            control.start()
+            data = Path(probe.input).read_bytes()
+            control.join(30)
+            return data, control.is_alive()
+
         with contextlib.redirect_stderr(io.StringIO()) as printed:
-            self.assertEqual(b"", probe.consume(lambda: in_thread(lambda: Path(probe.input).read_bytes())))
-        with self.assertRaisesRegex(AssertionError, "worker root: read ") as zero:
+            self.assertEqual((b"", False), probe.consume(lambda: in_thread(lever_beside_a_scanner)))
+        with self.assertRaisesRegex(AssertionError, "worker root: read ") as by_pid:
             probe.assert_untouched()
-        record = f"{probe.input} opened for reading by no process whose descriptors this user can read (0 unreadable)"
-        self.assertIn(f"read {record}", str(zero.exception))
-        self.assertGreaterEqual(len(probe.reads), 1)  # the reader's close may span a poll
-        self.assertEqual([record] * len(probe.reads), probe.reads)
-        self.assertEqual(([], []), (probe.unattributed, probe.errors))
-        self.assertNotIn("unattributed open", printed.getvalue())
+        self.assertRegex(str(by_pid.exception), re.escape(str(probe.input)) + " " + named)
+        self.assertGreaterEqual(len(probe._control_opens), 1, "the control's reader was not seen")
+        self.assertEqual(([], []), (probe.scanner_opens, probe.errors))
+        self.assertEqual("", printed.getvalue())
 
     def test_the_holder_scan_tolerates_a_pid_that_exits_mid_scan(self):
         # Round 1 finding f1 s4: a pid that exits between its fd listing and its field reads answers ESRCH, which

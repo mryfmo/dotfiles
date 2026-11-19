@@ -1,14 +1,16 @@
 """Exercise scripts/orchestrator/stall-watch.sh (regime-cutover U621, standing orders 57 and 59; round 2 after verdict
-U621-942e9a16), the schedule and the record around `stall-check.py`: one tick runs the checker beside the lever over a
-store with `<store>/progress` as the progress root, appends one `decisions.tsv` row of phase `stall` per new stall and
-prints the checker's row on stdout, once per stall by a marker file `<store>/progress/<unit>-stalled-<ts>` that is
-created under a `.partial` name before the row and renamed after it; a unit without a file is a stall only once the
-deadline has passed since the tick that first saw it (the `<unit>-seen-<ts>` marker); `--until-stall` exits 1 on the
-first new stall; `reset <unit>` removes a unit's markers; the row is appended through a descriptor opened with
-O_NOFOLLOW; a failed checker or a failed record is printed on stderr. Every test runs the lever as a subprocess over a
-scratch store under a scratch HOME with the real wall clock (the checker takes no injected clock through this lever,
-so the progress lines and the `seen` markers are written relative to now); nothing reads the live store or the real
-`~/.agents`.
+U621-942e9a16, round 3 after verdict U621-b368fced), the schedule and the record around `stall-check.py`: one tick runs
+the checker beside the lever over a store with `<store>/progress` as the progress root, appends one `decisions.tsv` row
+of phase `stall` per new stall and prints the checker's row on stdout, once per stall by a marker file
+`<store>/progress/<unit>-stalled-<ts>` that is created under a `.partial` name before the row and renamed after it; a
+unit without a file is a stall only once the deadline has passed since the tick that first saw it (the
+`<unit>-seen-<ts>` marker); `--until-stall` exits 1 at the end of the first tick that records a new stall, every stall
+of that tick recorded and printed; `reset <unit>` removes a unit's markers and moves its progress file aside, and takes
+no option; the row is appended through a descriptor opened with O_NOFOLLOW; a failed checker, a failed record or a
+failed read of a partial marker's age is printed on stderr and is exit 3. Every test runs the lever as a subprocess
+over a scratch store under a scratch HOME with the real wall clock (the checker takes no injected clock through this
+lever, so the progress lines and the `seen` markers are written relative to now); nothing reads the live store or the
+real `~/.agents`.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from __future__ import annotations
 import errno
 import hashlib
 import os
+import re
 import select
 import shutil
 import subprocess
@@ -627,6 +630,9 @@ class StallWatchTest(unittest.TestCase):
             (("reset", "U4", "U5"), None, "reset takes one unit, not two (U4 and U5)"),
             (("reset", "U4", "--once"), None, "reset takes no option"),
             (("reset", "U4", "--until-stall"), None, "reset takes no option"),
+            # Round 3 (verdict U621-b368fced P3 at :247): reset refuses every option, naming it, wherever it stands.
+            (("reset", "U4", "--deadline-minutes", "5"), None, "reset takes no option (--deadline-minutes given)"),
+            (("--interval-seconds", "5", "reset", "U4"), None, "reset takes no option (--interval-seconds given)"),
             (("--once", "x\ty"), None, "an argument holds a tab, a newline or a carriage return"),
             (("--once",), str(self.dir / "absent"), "is not a directory that can be entered"),
             (("--once",), str(no_record), "decisions.tsv is not a regular file"),
@@ -661,6 +667,138 @@ class StallWatchTest(unittest.TestCase):
         (row,) = self.decisions()
         self.assert_stalled_row(row, "U2", age, self.stalled_line)
         self.assertEqual(self.markers(), [f"U2-stalled-{self.stalled_line[:20]}"])
+
+    def test_reset_archives_the_progress_file_and_the_replacements_first_tick_is_seen_not_a_stall(self) -> None:
+        # Round 3 (verdict U621-b368fced P1 at :275): a reset that left the stale file in place made the replacement
+        # stalled the moment the watcher restarted, before it could write a line.
+        file = self.progress / "U2-progress.txt"
+        previous = file.read_bytes()
+        marker = f"U2-stalled-{self.stalled_line[:20]}"
+        run = self.run_lever("--once")
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertEqual(self.markers(), [marker])
+        # A failed clock read refuses the reset before anything is removed (standing order 21).
+        failed = self.run_lever("reset", "U2", env=self.fake_tool("date"))
+        self.assertEqual((failed.returncode, failed.stdout), (3, ""), failed.stderr)
+        self.assertEqual(
+            failed.stderr,
+            f"stall-watch.sh: the clock cannot be read (date -u failed); the progress file {file} is not archived and "
+            "no marker of U2 is removed\n",
+        )
+        self.assertEqual(file.read_bytes(), previous)
+        self.assertEqual(self.markers(), [marker])
+        # The reset: the marker goes and the file is moved aside under the reset's clock, each printed, nothing deleted.
+        reset = self.run_lever("reset", "U2")
+        self.assertEqual(reset.returncode, 0, reset.stderr)
+        self.assertEqual(reset.stderr, "")
+        lines = reset.stdout.splitlines()
+        self.assertEqual(len(lines), 2, reset.stdout)
+        self.assertEqual(lines[0], f"{self.progress}/{marker}")
+        archived = Path(lines[1])
+        self.assertEqual(archived.parent, self.progress)
+        name = re.fullmatch(r"U2-progress\.(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)\.txt", archived.name)
+        self.assertIsNotNone(name, archived.name)
+        self.assertLess(seconds_since(name.group(1)), 60, "the archive is named by the reset's clock")
+        self.assertFalse(file.exists(), "the replacement has no file")
+        self.assertEqual(archived.read_bytes(), previous, "the previous worker's lines are kept")
+        self.assertEqual(
+            sorted(path.name for path in self.progress.iterdir()), sorted([archived.name, "U3-progress.txt"])
+        )
+        self.assertEqual(len(self.decisions()), 1, "reset touches no row")
+        # The replacement's first tick: no file, so the first-seen rule applies, a `seen` marker, no row, nothing
+        # printed, exit 0 (at b368fced the old file's 40-minute line was a stall at once).
+        fresh = self.run_lever("--once")
+        self.assertEqual((fresh.returncode, fresh.stdout, fresh.stderr), (0, "", ""))
+        (seen,) = self.seen()
+        self.assertTrue(seen.startswith("U2-seen-"), seen)
+        self.assertLess(seconds_since(seen[len("U2-seen-") :]), 60)
+        self.assertEqual((self.markers(), len(self.decisions())), ([], 1))
+        self.assertEqual(archived.read_bytes(), previous, "the archive is not the checker's file")
+        # A reset when no file exists is quiet about the file: the `seen` marker alone is removed and printed.
+        again = self.run_lever("reset", "U2")
+        self.assertEqual((again.returncode, again.stdout, again.stderr), (0, f"{self.progress}/{seen}\n", ""))
+        self.assertTrue(archived.exists(), "the archive is never deleted")
+
+    def test_two_units_stalling_in_one_tick_both_get_rows_and_both_rows_are_printed_before_the_one_exit_1(self) -> None:
+        # Round 3 (verdict U621-b368fced P1 at SKILL:26, f3): the tick records every new stall it finds, prints every
+        # row, then exits 1 once; the coordinator handles each row.
+        other = f"{stamp(35)} U3: item 1 done"
+        self.write_progress("U3", other)
+        run = self.run_lever("--until-stall", "--interval-seconds", "1")
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertEqual(run.stderr, "")
+        rows = run.stdout.splitlines()
+        self.assertEqual(len(rows), 2, run.stdout)
+        age_two = self.assert_row(rows[0], "U2", "stalled", self.stalled_line)
+        age_three = self.assert_row(rows[1], "U3", "stalled", other)
+        recorded = self.decisions()
+        self.assertEqual(len(recorded), 2)
+        self.assert_stalled_row(recorded[0], "U2", age_two, self.stalled_line)
+        self.assert_stalled_row(recorded[1], "U3", age_three, other)
+        self.assertEqual(self.markers(), sorted([f"U2-stalled-{self.stalled_line[:20]}", f"U3-stalled-{other[:20]}"]))
+        # Both recorded: the next tick appends and prints nothing.
+        again = self.run_lever("--once")
+        self.assertEqual((again.returncode, again.stdout, again.stderr), (0, "", ""))
+        self.assertEqual(len(self.decisions()), 2)
+        # A stalled file and a no-file stall in one tick, under --once: two rows, two records, one exit 1.
+        self.write_units(unit_row("U2"), unit_row("U3"), unit_row("U4", track="dsh"))
+        first = stamp(30)
+        self.write_seen("U4", first)
+        later = f"{stamp(28)} U2: item 2 done"
+        self.write_progress("U2", self.stalled_line, later)
+        both = self.run_lever("--once")
+        self.assertEqual(both.returncode, 1, both.stderr)
+        self.assertEqual(both.stderr, "")
+        rows = both.stdout.splitlines()
+        self.assertEqual(len(rows), 2, both.stdout)
+        age_two = self.assert_row(rows[0], "U2", "stalled", later)
+        self.assertEqual(rows[1], "U4\tno-file\t-\t-")
+        recorded = self.decisions()
+        self.assertEqual(len(recorded), 4)
+        self.assert_stalled_row(recorded[2], "U2", age_two, later)
+        self.assert_no_file_row(recorded[3], "U4", first)
+
+    def test_a_failed_partial_marker_age_read_is_exit_3_with_its_stderr_line_and_leaves_the_marker_for_the_next_tick(
+        self,
+    ) -> None:
+        # Round 3 (verdict U621-b368fced P2 at :341): a failed `date -r` was read as a young marker, so a stale partial
+        # marker could suppress its stall for ever. The wrapper fails `-r` alone and passes the tick's clock read
+        # through to the real date.
+        marker = self.progress / f"U2-stalled-{self.stalled_line[:20]}"
+        partial = marker.with_name(marker.name + ".partial")
+        partial.touch()
+        old = time.time() - 120
+        os.utime(partial, (old, old))
+        real = shutil.which("date", path=os.environ["PATH"])
+        self.assertIsNotNone(real, "the real date")
+        env = self.fake_tool("date", f'for arg in "$@"; do case "$arg" in -r) exit 3 ;; esac; done\nexec "{real}" "$@"')
+        complaint = (
+            f"stall-watch.sh: the age of the partial marker {partial} cannot be read (date -r failed); it is left for "
+            "the next tick and the stall of U2 is not recorded this tick\n"
+        )
+        before = self.listing()
+        run = self.run_lever("--once", env=env)
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertEqual(run.stderr, complaint)
+        self.assertEqual(self.decisions(), [])
+        self.assertEqual(self.markers(), [partial.name], "the marker is left for the next tick")
+        self.assertEqual(self.listing(), before, "nothing written, the marker untouched")
+        # Under --until-stall the same failure ends the loop with exit 3 and no row.
+        loop = self.run_lever("--until-stall", "--interval-seconds", "1", env=env)
+        self.assertEqual((loop.returncode, loop.stdout, loop.stderr), (3, "", complaint))
+        self.assertEqual(self.listing(), before)
+        # The next tick with a working date reads the marker as stale, removes it and records the stall.
+        again = self.run_lever("--once")
+        self.assertEqual(again.returncode, 1, again.stderr)
+        self.assertEqual(
+            again.stderr,
+            f"stall-watch.sh: the partial marker {partial} was older than one interval (60 s); removed, the stall "
+            "of U2 is recorded again\n",
+        )
+        age = self.assert_row(again.stdout.rstrip("\n"), "U2", "stalled", self.stalled_line)
+        (row,) = self.decisions()
+        self.assert_stalled_row(row, "U2", age, self.stalled_line)
+        self.assertEqual(self.markers(), [marker.name])
 
     def test_the_deployed_twin_equals_the_source_and_hashes_to_its_pin(self) -> None:
         source = LEVER.read_bytes()

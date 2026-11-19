@@ -991,12 +991,13 @@ claude:
       pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
       pr-threads-check.sh: 984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c
       records-sync.sh: c7e32bfdff7f50a6b9caa62aad7e5fafa607a63ebe8ea6b1bc112729744fbd24
-      pr-merge.sh: ce0a3c6d2a04e6bbbab0f1587ef54867cb8b3f0f2d2650fee56ed6607b9d6566
+      pr-merge.sh: 8f80f84e7ebfc4a084be41205f62e105d0af80955e8771dc7bacf9aab160704c
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: 1eba892d08bfc45a996a5d0d9e70fae6759bdd2079b82f4e4e1b597046be58f1
       brief-check.py: 2e7381a738a59ff1075754221189704f48a39e3af5ded6d697acc895d6224948
-      ledger-row.py: 5106f0726a2c989768bd6c309668397ddf9ac40cfee8ac8f62ac27ed41fbd474
-      ledger.py: 931a79c5ccb9ad63d704883232300fa3b354b26f00b4e5394afe25c6ce6a010a
+      ledger-row.py: ae258f78514ab3e1d2114d10ed324b63c5868d219029cdff97f8c97bebbae048
+      ledger.py: 447d5d78ab0055a34b9197b69ab24ad2168a6b2a0d167b0cb80dc15a52c790b0
+      sweep-scope.py: 8c74ade57c6dfe1f977fa77735a30a2933deff449eeafbb5a4ed6044401839be
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       acp-broker: 70d1e3cbe87fae92fc675399b2c0ba8688a7f7759adc4b6356f6e0b63b6f241a
@@ -1462,6 +1463,14 @@ assets:
     pin: c1c8a8c1471069fb0e188eeaff69b8e8db6564a8
     verify: sha256
     sha256: 53e708ebf770dfe35b57df0586a5058707081a870cd149ce30a2d57c51ed29b6
+    # The two validators the daily sweep writer runs (`ledger-row.py daily`, U597 round 8): the sha256 of each
+    # installed file under install_path, as the pinned commit holds it; the writer hashes the installed file against
+    # its digest before `node` runs it, and refuses a differing digest, a missing pin or a missing file with nothing
+    # written. Bump them with pin and sha256 after reviewing the upstream diff; scripts/validate-agent-assets.py
+    # requires both keys as 64 hex.
+    validators_sha256:
+      validate-findings.cjs: e85f232e36bfac0f866f244da50376692d6b45c690beadcb00608b0e6c8b5283
+      validate-coverage-ledger.cjs: 2eb280bd2e33c002916f86db9b29f9edfedb6454e5db973c766290465b868ac8
     note: >-
       sha256 is GitHub's source archive of the commit
       (https://codeload.github.com/cloudflare/security-audit-skill/tar.gz/<pin>), downloaded twice on

@@ -16,7 +16,9 @@ is still a field; U119 round 3), must have the header's column count, a ts of th
 (`TS_SHAPE`: four digits, then two in every other field; U597 round 6, where `strptime` alone read `2026-11-9T4:5:6Z`
 under a form that spells two digits) that `datetime.strptime` then reads under `%Y-%m-%dT%H:%M:%SZ` (hour 25 is a
 ValueError, so a malformed row), no cell holding a control character (`CONTROL`, `\\x00` to `\\x1f` and `\\x7f`; U597
-round 7, where a NUL in a daily row's evidence path was data to the reader and dropped by the lever's `$(...)`), and
+round 7, where a NUL in a daily row's evidence path was data to the reader and dropped by the lever's `$(...)`; round
+8: a carriage return is one of them wherever it stands, never stripped, so a row ends in LF alone and a row ending in
+CR LF or CR CR LF is Malformed naming the line and the last field, where round 7 stripped every trailing CR first), and
 no empty `ts`, `unit`, `pr`, `head_sha` or `verdict` cell (round 2: an empty cell matched no pull request and read as
 "no row"). A `Row` carries its ts parsed (`ts`, a datetime, the order every
 choice of a newest row is made in) and as written (`ts_text`, for the lines that name the row), its seven cells and
@@ -55,7 +57,8 @@ its rows live in the store's own file `daily-sweeps.tsv` (header `ts head_sha ve
 exists at the path (the day's first sweep is not yet recorded: `none` to the lever, never a refusal), or raises
 Malformed with the ledger's strictness: the header exact, four cells per row split on the tab alone, a ts of the one
 shape `timestamp` reads (`TS_SHAPE`, then `strptime`; round 6: `2026-11-9T4:5:6Z` is Malformed naming the line, where
-round 5's `strptime` alone read it), no cell holding a control character (round 7), no empty cell, a `head_sha` of 40
+round 5's `strptime` alone read it), no cell holding a control character (round 7; a carriage return included and
+never stripped, round 8, so a row ends in LF alone), no empty cell, a `head_sha` of 40
 hex, and the verifier and the evidence the exact fields of the sweep rule (`security-audit-skill <pin>`, a findings
 file `sweeps/<path>.json`), each fault naming the line and the field. `Daily.newest_within(now, max_age)` is the
 newest row by `(ts, line)` whose ts lies within the window `now - max_age <= ts <= now + DAILY_FUTURE_SLACK` (60
@@ -84,9 +87,12 @@ TS_FORM = "YYYY-MM-DDThh:mm:ssZ"  # the same form as the refusals spell it
 # other fields, the literals in their places; `strptime` alone accepts one digit where the form spells two.
 TS_SHAPE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 # No cell of either file holds a control character (U597 round 7: `\x00` to `\x1f` and `\x7f`; a tab is the separator
-# and a line break the row's end, so neither is in a cell, and a NUL in an evidence path is dropped by bash's `$(...)`
+# and a line feed the row's end, so neither is in a cell, and a NUL in an evidence path is dropped by bash's `$(...)`
 # when pr-merge.sh captures the row, so the lever would check another file than the one the row names). A cell that
-# holds one is Malformed naming the line and the field.
+# holds one is Malformed naming the line and the field. A carriage return is one of them wherever it stands (round 8,
+# verdict U597-a28e4793 P3 at :373: the parsers stripped every trailing CR before the cells were checked, so a row
+# ending in CR CR LF carried an extra control byte and passed): a row ends in LF alone, and a file written with CR LF
+# ends is Malformed at its first line.
 CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 # A verdict column that starts with the word `correct` or `incorrect` (pr-merge.sh's correct_re, both words).
 AUDIT_VERDICT = re.compile(r"^(correct|incorrect)(?:$|[\s(;,])")
@@ -284,17 +290,18 @@ def control_check(name, number, header, fields):
 
 
 def parse_ledger(name, text):
-    """The Ledger of one `ledger.tsv` text, or Malformed naming `name` and the line."""
+    """The Ledger of one `ledger.tsv` text, or Malformed naming `name` and the line. The rows are split on the line
+    feed alone: a carriage return is a control character in its cell, never a line's end (round 8)."""
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
     expected = "\t".join(HEADER)
-    if not lines or lines[0].rstrip("\r") != expected:
+    if not lines or lines[0] != expected:
         found = lines[0] if lines else ""
         raise Malformed(f"{name}:1: the header is {found!r}, not {expected!r}")
     rows = []
     for number, line in enumerate(lines[1:], 2):
-        fields = line.rstrip("\r").split("\t")
+        fields = line.split("\t")
         if len(fields) != len(HEADER):
             raise Malformed(f"{name}:{number}: {len(fields)} columns, not {len(HEADER)}")
         control_check(name, number, HEADER, fields)
@@ -360,17 +367,18 @@ class Daily:
 def parse_daily(name, text):
     """The Daily of one `daily-sweeps.tsv` text, or Malformed naming `name`, the line and the field, with the
     ledger's strictness: the header exact, four cells split on the tab alone, a ts under the one form, no empty cell,
-    a 40-hex head, and the verifier and the evidence the exact fields of the sweep rule (U597 round 4)."""
+    no control character in a cell (a carriage return included: a row ends in LF alone, round 8), a 40-hex head, and
+    the verifier and the evidence the exact fields of the sweep rule (U597 round 4)."""
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
     expected = "\t".join(DAILY_HEADER)
-    if not lines or lines[0].rstrip("\r") != expected:
+    if not lines or lines[0] != expected:
         found = lines[0] if lines else ""
         raise Malformed(f"{name}:1: the header is {found!r}, not {expected!r}")
     rows = []
     for number, line in enumerate(lines[1:], 2):
-        fields = line.rstrip("\r").split("\t")
+        fields = line.split("\t")
         if len(fields) != len(DAILY_HEADER):
             raise Malformed(f"{name}:{number}: {len(fields)} columns, not {len(DAILY_HEADER)}")
         control_check(name, number, DAILY_HEADER, fields)

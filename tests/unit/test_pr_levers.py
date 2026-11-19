@@ -7,6 +7,7 @@ The tests assert the receipts, the refusals (exit 2, no write call), the failed 
 `<owner>/<repo>` comes from `gh repo view` and that `--delete-branch` never appears. The real `gh` is never called.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -23,6 +24,7 @@ from scratch_git import git_clone, git_init, quiet_git_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 LEVERS = ROOT / "scripts/orchestrator"
+MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 FAKE_GH = ROOT / "tests/fixtures/pr-levers/fake-gh.py"
 FOOTER = "🤖 Generated with [Claude Code](https://claude.com/claude-code)"
 SHA_A = "a" * 40
@@ -158,6 +160,8 @@ class PrLeverTestCase(unittest.TestCase):
         self.repo.mkdir()
         git_init(self.repo, env=self.env)
         self.git("commit", "-q", "--allow-empty", "-m", "initial")
+        # A lever run from a checkout-shaped copy of its own (lever_checkout) instead of the checkout's file.
+        self.lever_paths = {}
 
     def git(self, *args, cwd=None, env=None):
         return subprocess.run(
@@ -172,9 +176,38 @@ class PrLeverTestCase(unittest.TestCase):
     def answer(self, *entries):
         self.responses.write_text(json.dumps([REPO_VIEW, *entries]))
 
+    def lever_checkout(self, name, *sourced):
+        """A checkout-shaped copy of the lever `name` and the files it sources (`<root>/lever-checkout/scripts/
+        orchestrator/`) with a copy of the checkout's manifest two levels up, the place lever_self_check reads the
+        manifest from, so a test can pin a reader of its own: since U597 round 8 pr-merge.sh hashes the checkout's
+        `ledger.py` and `sweep-scope.py` against the manifest's `claude.levers.sha256` pins before it runs their
+        copies, and a test that replaces a reader re-pins it in this manifest (pin_reader). run_lever then runs the
+        copy for `name`; the bytes are the checkout's, so every other assertion on the lever holds."""
+        checkout = self.root / "lever-checkout"
+        levers = checkout / "scripts/orchestrator"
+        levers.mkdir(parents=True)
+        for file in (name, *sourced):
+            shutil.copy2(LEVERS / file, levers / file)
+        (checkout / "home/dot_agents").mkdir(parents=True)
+        self.manifest = checkout / "home/dot_agents/agent-config.yaml"
+        shutil.copy2(MANIFEST, self.manifest)
+        # the manifest as lever_self_check spells it in the refusals: `<lever dir>/../../home/dot_agents/agent-config.yaml`
+        self.manifest_named = f"{levers}/../../home/dot_agents/agent-config.yaml"
+        self.lever_paths[name] = levers / name
+        return levers / name
+
+    def pin_reader(self, name, path):
+        """Rewrite the copy's manifest line `claude.levers.sha256.<name>` to the sha256 of `path`'s bytes, or drop
+        the line when `path` is None (a manifest without the pin)."""
+        text = self.manifest.read_text()
+        line = re.compile(rf"^      {re.escape(name)}: [0-9a-f]{{64}}\n", re.MULTILINE)
+        self.assertEqual(len(line.findall(text)), 1, f"one pin line for {name}")
+        replacement = "" if path is None else f"      {name}: {hashlib.sha256(Path(path).read_bytes()).hexdigest()}\n"
+        self.manifest.write_text(line.sub(replacement.replace("\\", "\\\\"), text))
+
     def run_lever(self, name, *args, cwd=None):
         return subprocess.run(
-            [str(LEVERS / name), *args],
+            [str(self.lever_paths.get(name, LEVERS / name)), *args],
             cwd=cwd or self.repo,
             env=self.env,
             capture_output=True,
@@ -1246,6 +1279,26 @@ def ref_answer(sha=BASE_TIP):
     }
 
 
+# The merge commit's first parent (round 8): after the merge the lever reads `gh api repos/{owner}/{repo}/commits/
+# <merge commit> --jq '.parents[0].sha'` and requires it to equal the tip it read before the listing; the fixtures'
+# default parent is that tip, the merge that landed on the main the listing was classified against.
+COMMIT_CALL = ["api", f"repos/{{owner}}/{{repo}}/commits/{SHA_B}", "--jq", ".parents[0].sha"]
+COMMIT_MATCH = rf"^api repos/\{{owner\}}/\{{repo\}}/commits/{SHA_B}$"
+
+
+def commit_answer(parent=BASE_TIP, commit=SHA_B):
+    """The commits API's answer for the merge commit, as GitHub shapes it (`parents[0].sha` the first parent)."""
+    return {
+        "match": COMMIT_MATCH,
+        "json": {
+            "sha": commit,
+            "node_id": "C_x",
+            "url": f"https://api.github.com/repos/acme/widgets/commits/{commit}",
+            "parents": [{"sha": parent, "url": f"https://api.github.com/repos/acme/widgets/commits/{parent}"}],
+        },
+    }
+
+
 def compare_response(files, merge_base=BASE_TIP):
     """A compare API response holding `files` and `merge_base_commit.sha` (the fields the lever's jq reads)."""
     return {"url": "https://api.github.com/x", "merge_base_commit": {"sha": merge_base}, "files": files}
@@ -1363,6 +1416,9 @@ class PrMergeTest(PrLeverTestCase):
         self.scope = self.repo / "scripts/orchestrator/sweep-scope.py"
         shutil.copy2(LEVERS / "sweep-scope.py", self.scope)
         (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
+        # The lever runs from a copy with a manifest of its own (round 8): the readers above are hashed against
+        # that manifest's pins, which a test that replaces a reader rewrites (pin_reader).
+        self.lever_checkout("pr-merge.sh", "git-isolated.sh", "read-lib.sh", "regime-env")
         self.sweeps = self.records / "sweeps"
         self.ledger(ledger_row(SHA_A))
         self.verdict()
@@ -1431,6 +1487,9 @@ class PrMergeTest(PrLeverTestCase):
         tip_json=None,
         tip_exit=0,
         merge_base=None,
+        merge_parent=BASE_TIP,
+        parent_json=None,
+        parent_exit=0,
     ):
         if checks is None:
             # every required check passes (U330), and a check that is not required may skip
@@ -1473,6 +1532,14 @@ class PrMergeTest(PrLeverTestCase):
         if paths_exit:
             diff = {"match": keyed, "exit": paths_exit, "stderr": "HTTP 502"}
         other = {"match": COMPARE_OTHER_MATCH, "exit": 1, "stderr": "HTTP 404: No commit found for the basehead\n"}
+        # The merge commit's first parent (round 8): `merge_parent` the sha it names, `parent_json` the whole response
+        # as given (run through the lever's jq), or a failed read.
+        if parent_json is not None:
+            parent = {"match": COMMIT_MATCH, "json": parent_json}
+        else:
+            parent = commit_answer(merge_parent)
+        if parent_exit:
+            parent = {"match": COMMIT_MATCH, "exit": parent_exit, "stderr": "HTTP 502"}
         self.answer(
             {
                 "match": r"^pr view 7 --json state,baseRefName,headRefOid,isDraft$",
@@ -1497,6 +1564,7 @@ class PrMergeTest(PrLeverTestCase):
                     "headRefOid": merged_head or head,
                 },
             },
+            parent,
         )
 
     def count_calls(self):
@@ -3040,7 +3108,7 @@ class PrMergeTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SKIP_LINE, run.stderr)
         calls = self.gh_calls()
-        self.assertEqual([call for call in calls if call[:1] == ["api"]], [REF_CALL, COMPARE_CALL])
+        self.assertEqual([call for call in calls if call[:1] == ["api"]], [REF_CALL, COMPARE_CALL, COMMIT_CALL])
         self.assertEqual(self.count_calls(), [], "no count of the pull request is read (round 5)")
         self.calls.unlink()
         # the two-file listing, whole, merges on the daily sweep the same way
@@ -3048,7 +3116,9 @@ class PrMergeTest(PrLeverTestCase):
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SKIP_LINE, run.stderr)
-        self.assertEqual([call for call in self.gh_calls() if call[:1] == ["api"]], [REF_CALL, COMPARE_CALL])
+        self.assertEqual(
+            [call for call in self.gh_calls() if call[:1] == ["api"]], [REF_CALL, COMPARE_CALL, COMMIT_CALL]
+        )
 
     def test_a_files_listing_that_is_not_the_api_s_data_refuses_with_no_merge(self):
         """U597 round 3 (verdict finding 2): the lever passes each file as one JSON array `[status, filename,
@@ -3224,25 +3294,29 @@ class PrMergeTest(PrLeverTestCase):
         ):
             with self.subTest(name):
                 self.scope.write_text(f"import sys\nsys.stdout.write({answer!r})\n")
+                self.pin_reader("sweep-scope.py", self.scope)  # round 8: the lever holds the reader to its pin
                 self.github(paths=docs)
                 check(self.merge(), 2, f"refused: {self.scope} answered the sweep scope question for pull request 7")
         self.scope.write_text(
             "import sys\nsys.stderr.write('sweep-scope: the listing could not be read\\n')\nsys.exit(2)\n"
         )
+        self.pin_reader("sweep-scope.py", self.scope)
         self.github(paths=docs)
         check(self.merge(), 2, "refused: the listing could not be read")
         self.scope.write_text("import sys\nsys.exit(3)\n")
+        self.pin_reader("sweep-scope.py", self.scope)
         self.github(paths=docs)
         check(self.merge(), 1, f"{self.scope} exited 3 reading the changed paths of the head {SHA_A} of pull request 7")
         # the reader restored, the docs-only head merges without a sweep row on the daily sweep, the reader run in
         # its files form
         self.scope.write_text(real)
+        self.pin_reader("sweep-scope.py", self.scope)
         self.daily(daily_row())
         self.github(paths=docs)
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SKIP_LINE, run.stderr)
-        self.assertIn('"${scope_reader}" --files-json <<< "${files}"', (LEVERS / "pr-merge.sh").read_text())
+        self.assertIn('"${scope_copy}" --files-json <<< "${files}"', (LEVERS / "pr-merge.sh").read_text())
 
     def test_a_head_outside_every_class_skips_its_sweep_row_only_on_a_daily_sweep_of_main_within_24_hours(self):
         """U597 round 4 (the mechanism change, part 2; the round-2 and round-3 P2 at AGENTS.md:71): the exemption of
@@ -3590,7 +3664,9 @@ class PrMergeTest(PrLeverTestCase):
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SKIP_LINE, run.stderr)
-        self.assertEqual([call for call in self.gh_calls() if call[:1] == ["api"]], [REF_CALL, COMPARE_CALL])
+        self.assertEqual(
+            [call for call in self.gh_calls() if call[:1] == ["api"]], [REF_CALL, COMPARE_CALL, COMMIT_CALL]
+        )
         self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
         self.calls.unlink()
         # a merge base behind the tip: refused naming both shas, whatever the paths and however the listing arrives
@@ -3770,6 +3846,193 @@ class PrMergeTest(PrLeverTestCase):
         text = (LEVERS / "pr-merge.sh").read_text()
         self.assertIn('resolved_store=$(cd "${store}" 2> /dev/null && pwd -P) || fail', text)
         self.assertIn('resolved_dir=$(cd "${findings_file%/*}" 2> /dev/null && pwd -P) || fail', text)
+
+    def test_the_readers_run_from_private_copies_held_to_their_pins(self):
+        """U597 round 8 (verdict U597-a28e4793 P1 at pr-merge.sh:1123): the lever held its own bytes to
+        `claude.levers.sha256.pr-merge.sh` but ran `ledger.py` and `sweep-scope.py` from the checkout after an
+        existence check alone, so a modified or stale reader could waive a required sweep whatever the compare listed.
+        Now each reader is copied into a private directory (`mktemp -d` under TMPDIR, mode 0700, removed on exit),
+        the copy is hashed against the reader's `claude.levers.sha256.<name>` pin in the manifest the self-check
+        read, and the copy is what `python3 -I -S` runs (hcom-seat's helper-copy idiom): a reader whose bytes differ
+        from the pin refuses naming the reader and both digests, both readers, before the first `gh` read and with
+        the directory gone; a manifest without the pin, or with it twice, refuses naming the reader; and the readers
+        that run are the copies, shown by readers of the test's own that record `sys.argv[0]`, their directory's
+        mode and its entries, pinned in the copy's manifest: every recorded path lies under TMPDIR in one
+        `pr-merge.readers.*` directory of mode 0700 holding the two copies, never under the checkout, and nothing
+        remains after the run."""
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
+        self.daily(daily_row())  # a docs head rests on the daily sweep, so both readers run
+        docs = files_listing("docs/plan.md")
+        manifest_text = self.manifest.read_text()
+
+        def leftovers():
+            return sorted(path.name for path in self.tmp.glob("pr-merge.readers.*"))
+
+        def refused_before_github(run, *messages):
+            self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+            self.assertIn("refused:", run.stderr)
+            for message in messages:
+                self.assertIn(message, run.stderr)
+            self.assertEqual(run.stdout, "", "no receipt")
+            self.assertEqual(self.gh_calls(), [], "refused before the first gh read")
+            self.assertEqual(leftovers(), [], "the private directory is removed on exit")
+            self.calls.unlink(missing_ok=True)
+
+        # a reader whose bytes differ from the pin: each reader, named with both digests
+        for name, path in (("ledger.py", self.reader), ("sweep-scope.py", self.scope)):
+            with self.subTest(reader=name):
+                original = path.read_bytes()
+                changed = original + b"# one more line\n"
+                path.write_bytes(changed)
+                try:
+                    self.github(paths=docs)
+                    refused_before_github(
+                        self.merge(),
+                        f"refused: sha256 {hashlib.sha256(changed).hexdigest()} of the reader {path} (hashed as its"
+                        f" copy {self.tmp}/pr-merge.readers.",
+                        f"/{name}) differs from the pin {hashlib.sha256(original).hexdigest()} of"
+                        f" claude.levers.sha256.{name} in {self.manifest_named}; the reader is not the pinned one",
+                    )
+                finally:
+                    path.write_bytes(original)
+        # a manifest without the pin, and one with the pin twice
+        for name, path in (("ledger.py", self.reader), ("sweep-scope.py", self.scope)):
+            with self.subTest(pin=name):
+                try:
+                    self.pin_reader(name, None)
+                    self.github(paths=docs)
+                    refused_before_github(
+                        self.merge(),
+                        f"refused: no single sha256 pin for {name} in {self.manifest_named}"
+                        f" (claude.levers.sha256.{name}); the reader {path} runs only from a copy held to that pin",
+                    )
+                    pin_line = next(line for line in manifest_text.splitlines() if line.startswith(f"      {name}: "))
+                    self.manifest.write_text(manifest_text + pin_line + "\n")
+                    self.github(paths=docs)
+                    refused_before_github(
+                        self.merge(), f"refused: no single sha256 pin for {name} in {self.manifest_named}"
+                    )
+                finally:
+                    self.manifest.write_text(manifest_text)
+        # the readers that run are the copies: readers of the test's own record where they ran from
+        log = self.root / "reader-runs.jsonl"
+        record = (
+            "import json, os, sys\n"
+            "here = os.path.dirname(sys.argv[0])\n"
+            f"with open({str(log)!r}, 'a', encoding='utf-8') as handle:\n"
+            "    handle.write(json.dumps({'argv0': sys.argv[0], 'file': __file__, 'dir': here,"
+            " 'mode': oct(os.stat(here).st_mode & 0o777), 'entries': sorted(os.listdir(here))}) + '\\n')\n"
+        )
+        self.scope.write_text(record + "sys.stdin.read()\nsys.stdout.write('not-required\\n')\n")
+        self.pin_reader("sweep-scope.py", self.scope)
+        self.reader.write_text(
+            record + f"import runpy\nrunpy.run_path({str(LEVERS / 'ledger.py')!r}, run_name='__main__')\n"
+        )
+        self.pin_reader("ledger.py", self.reader)
+        self.github(paths=docs)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(SKIP_LINE, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        runs = [json.loads(line) for line in log.read_text().splitlines()]
+        self.assertEqual(
+            [os.path.basename(entry["argv0"]) for entry in runs],
+            ["ledger.py", "sweep-scope.py", "ledger.py"],
+            "the verdict question, the scope question, the daily question: each from its copy",
+        )
+        directories = {entry["dir"] for entry in runs}
+        self.assertEqual(len(directories), 1, "one private directory for the run")
+        directory = directories.pop()
+        self.assertTrue(directory.startswith(f"{self.tmp}/pr-merge.readers."), directory)
+        for entry in runs:
+            self.assertEqual(entry["argv0"], entry["file"])
+            self.assertNotIn(str(self.repo), entry["argv0"], "never the checkout's file")
+            self.assertEqual(entry["mode"], "0o700")
+            self.assertEqual(entry["entries"], ["ledger.py", "sweep-scope.py"])
+        self.assertEqual(leftovers(), [], "the private directory is removed on exit")
+        self.calls.unlink()
+        # the lever spells the copies, their hashing and their run, and never runs the checkout's path
+        text = (LEVERS / "pr-merge.sh").read_text()
+        self.assertIn('reader_dir=$(umask 077 && mktemp -d "${base%/}/pr-merge.readers.XXXXXX") ||', text)
+        self.assertIn("trap reader_copies_remove EXIT\n", text)
+        self.assertIn('reader_copy ledger.py "${ledger_reader}"\nledger_copy=${reader_copy_path}\n', text)
+        self.assertIn('reader_copy sweep-scope.py "${scope_reader}"\nscope_copy=${reader_copy_path}\n', text)
+        self.assertEqual(text.count('"${python}" -I -S "${ledger_copy}"'), 3, "the three ledger questions")
+        self.assertIn('"${python}" -I -S "${scope_copy}" --files-json <<< "${files}"', text)
+        self.assertNotIn('-I -S "${ledger_reader}"', text, "the checkout's path is never run")
+        self.assertNotIn('-I -S "${scope_reader}"', text, "the checkout's path is never run")
+        self.assertIn('[[ ${digest} == "${pin}" ]] ||', text)
+
+    def test_a_merge_whose_first_parent_is_not_the_tip_read_earlier_is_exit_1_with_no_receipt(self):
+        """U597 round 8 (verdict U597-a28e4793 P3 at pr-merge.sh:782): `--match-head-commit` pins the head alone and
+        the main ruleset's strict up-to-date policy is off, so main may move between the tip read of
+        require_sweep_scope and the merge, and the classified listing may not be the diff the squash landed. After the
+        merge the lever reads the merge commit's first parent (`gh api repos/{owner}/{repo}/commits/<commit> --jq
+        .parents[0].sha`, status read, 40 hex) and requires it to equal the tip read earlier: another parent is exit
+        1 with one line naming the merge commit, its parent and that tip and no receipt (the merge happened, so the
+        line says the coordinator must sweep the merge commit); a failed read, no parents, a short parent are exit 1
+        with no receipt too; the matching parent prints the receipt, after the tip read, the one compare and the
+        parent read."""
+        moved = "f" * 40
+        self.github(merge_parent=moved)
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertEqual(run.stdout, "", "no receipt")
+        self.assertIn(
+            f"pr-merge.sh: pull request 7 merged as {SHA_B}, whose first parent {moved} is not the tip {BASE_TIP} of main"
+            " read before the listing: main moved between the tip read and the merge, so the classified listing may not"
+            f" be the landed diff; the coordinator must sweep the merge commit {SHA_B}\n",
+            run.stderr,
+        )
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        self.assertEqual(
+            [call for call in self.gh_calls() if call[:1] == ["api"]],
+            [REF_CALL, COMPARE_CALL, COMMIT_CALL],
+            "the tip read, the one compare, then the merge commit's parent",
+        )
+        self.calls.unlink()
+        for name, kwargs, message in (
+            (
+                "a failed read",
+                {"parent_exit": 1},
+                f"pr-merge.sh: pull request 7 is MERGED as {SHA_B}, but the first parent of that commit could not be read"
+                f" (gh api repos/{{owner}}/{{repo}}/commits/{SHA_B}); whether the merge landed on the tip {BASE_TIP} of"
+                " main the listing was classified against is unknown",
+            ),
+            ("no parents", {"parent_json": {"sha": SHA_B, "parents": []}}, "is not 40 hex: 'null'"),
+            ("parents null", {"parent_json": {"sha": SHA_B, "parents": None}}, "is not 40 hex: 'null'"),
+            (
+                "a short parent",
+                {"parent_json": {"sha": SHA_B, "parents": [{"sha": BASE_TIP[:8]}]}},
+                f"is not 40 hex: '{BASE_TIP[:8]}'",
+            ),
+        ):
+            with self.subTest(name):
+                self.github(**kwargs)
+                run = self.merge()
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "", "no receipt")
+                self.assertIn(message, run.stderr)
+                self.assertIn(f"sweep the merge commit {SHA_B}", run.stderr)
+                self.assertIn(COMMIT_CALL, self.gh_calls())
+                self.calls.unlink()
+        # the matching parent prints the receipt
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z\n")
+        self.assertEqual(
+            [call for call in self.gh_calls() if call[:1] == ["api"]], [REF_CALL, COMPARE_CALL, COMMIT_CALL]
+        )
+        # the lever spells the read and the check, and its header names the ruleset's policy
+        text = (LEVERS / "pr-merge.sh").read_text()
+        self.assertIn(
+            "parent=$(gh_bounded api \"repos/{owner}/{repo}/commits/${commit}\" --jq '.parents[0].sha') ||", text
+        )
+        self.assertIn("[[ ${parent} =~ ^[0-9a-f]{40}$ ]] ||", text)
+        self.assertIn('[[ ${parent} == "${base_tip}" ]] ||', text)
+        self.assertIn("`strict_required_status_checks_policy: false`", text)
+        self.assertIn("this check would then never fire", text)
 
 
 class DispositionDriftTest(unittest.TestCase):

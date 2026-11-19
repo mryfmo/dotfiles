@@ -906,6 +906,76 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         self.module.validate_assets(self.asset_manifest())
 
+    def security_audit_asset(self) -> dict:
+        """The `security-audit-skill` asset as the manifest declares it (U597 round 8: with the two validators' sha256
+        pins `ledger-row.py daily` holds the installed files to)."""
+        return {
+            "source": "git-commit",
+            "upstream": "cloudflare/security-audit-skill",
+            "pin": "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8",
+            "verify": "sha256",
+            "sha256": "53e708ebf770dfe35b57df0586a5058707081a870cd149ce30a2d57c51ed29b6",
+            "reason": "fixture: the publisher signs nothing",
+            "install_path": "~/.agents/skills/security-audit",
+            "installer": "scripts/update-agent-assets.sh#update_security_audit_skill",
+            "validators_sha256": {
+                "validate-findings.cjs": "e" * 64,
+                "validate-coverage-ledger.cjs": "2" * 64,
+            },
+        }
+
+    def test_the_security_audit_skill_asset_requires_both_validators_sha256_pins_as_64_hex(self) -> None:
+        """U597 round 8: `assets.security-audit-skill.validators_sha256` maps exactly `validate-findings.cjs` and
+        `validate-coverage-ledger.cjs` to 64 lowercase hex each; the complete declaration passes, and a missing block,
+        a missing key, an extra key, a short digest, an upper-case digest and a non-string digest each fail naming the
+        key, while another asset without the block passes."""
+        self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
+        manifest = self.asset_manifest()
+        manifest["assets"]["security-audit-skill"] = self.security_audit_asset()
+        self.module.validate_assets(manifest)
+        cases = {
+            "no validators_sha256 block": (lambda a: a.pop("validators_sha256"), "validators_sha256 must map exactly"),
+            "a missing key": (
+                lambda a: a["validators_sha256"].pop("validate-coverage-ledger.cjs"),
+                "validators_sha256 must map exactly",
+            ),
+            "an extra key": (
+                lambda a: a["validators_sha256"].update({"report-schema.json": "a" * 64}),
+                "validators_sha256 must map exactly",
+            ),
+            "a list, not a mapping": (
+                lambda a: a.update(validators_sha256=["e" * 64, "2" * 64]),
+                "validators_sha256 must map exactly",
+            ),
+            "a short digest": (
+                lambda a: a["validators_sha256"].update({"validate-findings.cjs": "e" * 63}),
+                "validators_sha256.validate-findings.cjs must be 64 lowercase hex",
+            ),
+            "an upper-case digest": (
+                lambda a: a["validators_sha256"].update({"validate-coverage-ledger.cjs": "E" * 64}),
+                "validators_sha256.validate-coverage-ledger.cjs must be 64 lowercase hex",
+            ),
+            "a number": (
+                lambda a: a["validators_sha256"].update({"validate-findings.cjs": 1}),
+                "validators_sha256.validate-findings.cjs must be 64 lowercase hex",
+            ),
+        }
+        for name, (breaks, message) in cases.items():
+            with self.subTest(case=name):
+                manifest = self.asset_manifest()
+                asset = self.security_audit_asset()
+                breaks(asset)
+                manifest["assets"]["security-audit-skill"] = asset
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_assets(manifest)
+                self.assertIn(f"assets.security-audit-skill.{message}", stderr.getvalue())
+        # the committed manifest declares both pins as the installed validators' digests, 64 hex each
+        committed = load_manifest_fixture(self.temp_dir)["assets"]["security-audit-skill"]["validators_sha256"]
+        self.assertEqual(sorted(committed), ["validate-coverage-ledger.cjs", "validate-findings.cjs"])
+        for digest in committed.values():
+            self.assertRegex(digest, r"^[0-9a-f]{64}$")
+
     def test_assets_reject_each_incomplete_declaration(self) -> None:
         cases = {
             "missing pin": lambda assets: assets["mise"].pop("pin"),

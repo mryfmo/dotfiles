@@ -11,7 +11,8 @@ ledger's strictness (a missing file None, a malformed row naming the line and th
 <store> daily <max-age-seconds>` printing `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of the newest row within the
 window against the clock, or `none`; round 5: the window is bounded above by 60 seconds, so a row dated further in
 the future does not count (and is not refused as malformed); round 7: a cell holding a control byte is Malformed to
-both parsers, naming the line and the field."""
+both parsers, naming the line and the field; round 8: a carriage return is such a byte wherever it stands, never
+stripped, so a row ends in LF alone."""
 
 import importlib.util
 import os
@@ -355,10 +356,12 @@ class LedgerDailyTest(unittest.TestCase):
         header_alone = self.write()
         self.assertEqual(header_alone.rows, ())
         self.assertIsNone(header_alone.newest_within(now, 86400))
-        with_cr = self.write(
-            daily("2026-11-19T10:00:00Z", B).replace("\n", "\r\n"), header=DAILY_HEADER.replace("\n", "\r\n")
-        )
-        self.assertEqual(with_cr.rows[0].evidence, "sweeps/daily-2026-11-19/findings.json; 0 findings", "CR stripped")
+        # round 8: a file with CR LF ends is Malformed at its header; the CR is never stripped
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.write(
+                daily("2026-11-19T10:00:00Z", B).replace("\n", "\r\n"), header=DAILY_HEADER.replace("\n", "\r\n")
+            )
+        self.assertTrue(str(caught.exception).startswith(f"{self.daily_file}:1: the header is "), caught.exception)
 
     def test_a_row_dated_more_than_60_seconds_ahead_is_not_within_the_window(self):
         """Round 5 (verdict U597-1b3c4b1d P2 at ledger.py:316): round 4's window had a floor alone, so a row dated in
@@ -436,7 +439,7 @@ class LedgerDailyTest(unittest.TestCase):
         reader, and bash's `$(...)` drops a NUL when pr-merge.sh captures the row, so the lever would have checked
         another file than the one the row names. `CONTROL` (`\\x00` to `\\x1f`, `\\x7f`) in any cell of either file is
         Malformed naming the line, the column and the character: a NUL in the evidence path, a `\\x01` in the verifier,
-        a DEL in the head, a carriage return inside the ts (a trailing one is the line's, stripped), an escape in a
+        a DEL in the head, a carriage return inside the ts (and a trailing one too, round 8), an escape in a
         ledger row's unit; the same text without the byte parses; the CLI exits 2 naming the line, never `none` and
         never the row beside it; and the writer's test holds its own rule to this one."""
         name = str(self.daily_file)
@@ -473,8 +476,13 @@ class LedgerDailyTest(unittest.TestCase):
                 with self.assertRaises(self.reader.Malformed) as caught:
                     self.write(text)
                 self.assertEqual(str(caught.exception)[: len(message)], message)
-        # a trailing carriage return is the line's end, not a cell's: the row parses
-        self.assertEqual(len(self.write(daily(ts, A).rstrip("\n") + "\r\n").rows), 1)
+        # round 8: a trailing carriage return is a control byte of the last cell, never the line's end
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.write(daily(ts, A).rstrip("\n") + "\r\n")
+        self.assertTrue(
+            str(caught.exception).startswith(f"{name}:2: column 4 (evidence) holds a control character U+000D"),
+            caught.exception,
+        )
         # the ledger's parser, the same rule
         for case, line, message in (
             (
@@ -514,6 +522,57 @@ class LedgerDailyTest(unittest.TestCase):
         run = self.cli("daily", "86400")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(f"{name}:3: column 4 (evidence) holds a control character U+0000", run.stderr)
+
+    def test_a_carriage_return_is_a_control_byte_never_stripped_so_a_row_ends_in_lf_alone(self):
+        """U597 round 8 (verdict U597-a28e4793 P3 at ledger.py:373): round 7's parsers stripped every trailing
+        carriage return before the cells were checked, so a row ending in CR CR LF carried an extra control byte
+        before a valid-looking terminator and parsed. A carriage return is a control character wherever it stands:
+        a daily row ending in CR CR LF and one ending in CR LF are each Malformed naming line 2, the evidence column
+        and U+000D, to the parser and to the CLI (exit 2, never `none`), as is a ledger row ending either way; a
+        header ending in CR LF is Malformed at line 1; the same rows ending in LF alone parse."""
+        ts = "2026-11-19T10:00:00Z"
+        name = str(self.daily_file)
+        plain = daily(ts, A)
+        for case, ending in (("CR CR LF", "\r\r\n"), ("CR LF", "\r\n")):
+            with self.subTest(case):
+                text = plain.rstrip("\n") + ending
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.reader.parse_daily(name, DAILY_HEADER + text)
+                self.assertEqual(
+                    str(caught.exception),
+                    f"{name}:2: column 4 (evidence) holds a control character U+000D; no cell holds one",
+                )
+                self.daily_file.write_text(DAILY_HEADER + text, newline="")
+                run = self.cli("daily", "86400")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"{name}:2: column 4 (evidence) holds a control character U+000D", run.stderr)
+                self.assertNotIn("none", run.stdout)
+                # the ledger's parser, the same rule, naming its last column
+                ledger_line = row(ts, "U7", "7", A, "pushed", "coordinator", "x").rstrip("\n") + ending
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.reader.parse_ledger("ledger.tsv", HEADER + ledger_line)
+                self.assertEqual(
+                    str(caught.exception),
+                    "ledger.tsv:2: column 7 (evidence) holds a control character U+000D; no cell holds one",
+                )
+        # a header ending in CR LF is Malformed at line 1, before any row
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.reader.parse_daily(name, DAILY_HEADER.rstrip("\n") + "\r\n" + plain)
+        self.assertTrue(str(caught.exception).startswith(f"{name}:1: the header is "), caught.exception)
+        # the rows ending in LF alone parse
+        self.assertEqual(len(self.reader.parse_daily(name, DAILY_HEADER + plain).rows), 1)
+        self.assertEqual(
+            len(
+                self.reader.parse_ledger(
+                    "ledger.tsv", HEADER + row(ts, "U7", "7", A, "pushed", "coordinator", "x")
+                ).rows
+            ),
+            1,
+        )
+        # the parsers strip nothing from a line before the cells are checked
+        source = READER.read_text()
+        self.assertNotIn('rstrip("\\r")', source, "no carriage return is stripped (round 8)")
+        self.assertEqual(source.count('fields = line.split("\\t")'), 2, "both parsers split the line as it is")
 
     def test_a_malformed_daily_file_is_malformed_naming_the_line_and_the_field(self):
         ts = "2026-11-19T10:00:00Z"

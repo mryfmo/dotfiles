@@ -1343,6 +1343,13 @@ ASSET_VERIFY_BY_SOURCE = {
 }
 # `release: latest` resolves at install time; only these sources can do that.
 ROLLING_ASSET_SOURCES = {"github-release", "https-download", "crates"}
+# The `security-audit-skill` asset (regime-cutover U597 round 8) pins the two validators `ledger-row.py daily` runs:
+# `validators_sha256` maps exactly these file names to the sha256 of each installed file, and the writer hashes the
+# installed file against its digest before `node` runs it, so a manifest without both keys as 64 hex earns no
+# `validators pass`.
+SECURITY_AUDIT_SKILL_ASSET = "security-audit-skill"
+SECURITY_AUDIT_VALIDATORS = ("validate-findings.cjs", "validate-coverage-ledger.cjs")
+SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 # A rolling asset carries no version or checksum of its own.
 ROLLING_ASSET_FORBIDDEN_FIELDS = ("pin", "ref", "ref_commit", "sha256")
 # A rolling asset needs a check independent of the release page it comes from: a release attestation,
@@ -1424,6 +1431,24 @@ def asset_pin_values(asset: dict[str, Any]) -> list[tuple[str, Any]]:
     return values
 
 
+def validate_security_audit_validators(asset: dict[str, Any]) -> None:
+    """`assets.security-audit-skill.validators_sha256` holds exactly the two validators' sha256 digests, each 64
+    lowercase hex (U597 round 8): `ledger-row.py daily` reads them as text and refuses a validator whose installed
+    bytes hash to anything else, so a missing, extra or malformed key is refused here, before any row depends on it."""
+    digests = asset.get("validators_sha256")
+    if not isinstance(digests, dict) or sorted(digests) != sorted(SECURITY_AUDIT_VALIDATORS):
+        fail(
+            f"assets.{SECURITY_AUDIT_SKILL_ASSET}.validators_sha256 must map exactly {list(SECURITY_AUDIT_VALIDATORS)} "
+            f"to sha256 digests (ledger-row.py daily holds the installed validators to them), not {digests!r}"
+        )
+    for validator, digest in digests.items():
+        if not isinstance(digest, str) or not SHA256_HEX.match(digest):
+            fail(
+                f"assets.{SECURITY_AUDIT_SKILL_ASSET}.validators_sha256.{validator} must be 64 lowercase hex, "
+                f"not {digest!r}"
+            )
+
+
 def validate_assets(manifest: dict[str, Any]) -> None:
     """Require one complete declaration per asset and no hand-written installer versions."""
     assets = manifest.get("assets")
@@ -1487,6 +1512,8 @@ def validate_assets(manifest: dict[str, Any]) -> None:
             fail(f"assets.{name} must record sha256 for verify {asset['verify']!r}")
         if asset["verify"] == "gpg" and not asset.get("gpg_fingerprint"):
             fail(f"assets.{name} must record gpg_fingerprint for verify 'gpg'")
+        if name == SECURITY_AUDIT_SKILL_ASSET:
+            validate_security_audit_validators(asset)
         if asset["source"] in INSTALLING_ASSET_SOURCES:
             absent = [key for key in ("install_path", "installer") if not asset.get(key)]
             if absent:

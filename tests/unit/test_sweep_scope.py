@@ -101,7 +101,8 @@ FILES_JQ = (
     ' | type) + ", not an array") end) | .[] | [.status, .filename, (if has("previous_filename") then'
     " .previous_filename else null end)] | @json)'"
 )
-READER_CALL = '"${scope_reader}" --files-json <<< "${files}"'
+# The reader run is the lever's pinned copy of the checkout's file (round 8: reader_copy).
+READER_CALL = '"${scope_copy}" --files-json <<< "${files}"'
 # The compare API's cap on `files` (round 5), as the reader names it.
 CAP = 300
 
@@ -405,7 +406,7 @@ class SweepScopePredicateTest(unittest.TestCase):
         self.assertIn("sweep: not required (no lever, policy, credential or deployed-executable path changed)", text)
         self.assertEqual(text.count("require_sweep_scope\n"), 1, "called once")
         self.assertEqual(text.count("        require_daily_sweep\n"), 1, "the daily sweep asked once, on not-required")
-        self.assertIn('"${ledger_reader}" "${store}" daily "${DAILY_SWEEP_MAX_AGE}"', text)
+        self.assertIn('"${ledger_copy}" "${store}" daily "${DAILY_SWEEP_MAX_AGE}"', text)
         self.assertIn("DAILY_SWEEP_MAX_AGE=86400\n", text)
         self.assertIn("[[ -z ${sweep_reason} ]] || require_sweep_row\n", text)
         self.assertEqual(self.reader.USAGE, "usage: sweep-scope.py <base> <head> | sweep-scope.py --files-json")
@@ -718,6 +719,11 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("`home/dot_agents/regime/daily-sweep-brief.md`", line)
         self.assertIn("`ledger.py daily 86400`", line)
         self.assertNotIn("briefs/daily-sweep.md", line, "the template is the kit's, not a store file")
+        # round 8: the validators' pins, the daily task's day, the readers' pinned copies and the parent check
+        self.assertIn("`assets.security-audit-skill.validators_sha256`", line)
+        self.assertIn("task id `daily-<YYYY-MM-DD>` alone naming the UTC day", line)
+        self.assertIn("from private copies hashed against their `claude.levers.sha256` pins", line)
+        self.assertIn("the merge commit's first parent", line)
 
     def test_the_skill_s_step_four_names_the_four_classes_and_the_module(self):
         text = SKILL.read_text()
@@ -746,6 +752,11 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertNotIn("`gh pr diff <pr> --name-only`", row)
         self.assert_describes_the_listing_keyed_by_the_head(row, "the README's pr-merge.sh row", "<pr>")
         self.assert_describes_the_daily_sweep(row, "the README's pr-merge.sh row")
+        # round 8: the readers' pinned copies and the merge commit's parent check
+        self.assertIn("private copies", row)
+        self.assertIn("`claude.levers.sha256`", row)
+        self.assertIn("first parent", row)
+        self.assertIn("`strict_required_status_checks_policy`", row)
 
     def test_the_lever_s_comments_describe_the_listing_as_it_is(self):
         """The lever's header and the three functions' descriptions name the jq form, the reader's form, the one
@@ -770,6 +781,12 @@ class SweepRuleDocumentsTest(unittest.TestCase):
             "the round-5 projection, which iterated an object's values, is named once as history and runs nowhere",
         )
         self.assertIn("`sweep-scope.py --files-json`", text)
+        # round 8: the readers' pins and copies, and the parent check with the ruleset's policy
+        self.assertIn("`claude.levers.sha256.sweep-scope.py`", text)
+        self.assertIn("reader_copy", text)
+        self.assertIn("`~/.local/bin/common/sweep-scope.py`", text)
+        self.assertIn("--jq '.parents[0].sha'`", text)
+        self.assertIn("`strict_required_status_checks_policy: false`", text)
         self.assertIn("`required cap`", text)
         self.assertIn("`daily-sweeps.tsv`", text)
         self.assertIn("`ledger-row.py daily`", text)

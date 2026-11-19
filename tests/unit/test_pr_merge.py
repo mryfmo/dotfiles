@@ -32,6 +32,7 @@ from test_pr_levers import (  # noqa: E402
     SHA_A,
     SHA_B,
     PrLeverTestCase,
+    commit_answer,
     compare_response,
     ledger_row,
     ref_answer,
@@ -87,6 +88,9 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         shutil.copy2(LEVERS / "ledger.py", self.reader)
         shutil.copy2(LEVERS / "sweep-scope.py", self.reader.parent / "sweep-scope.py")
         (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
+        # The lever runs from a copy with a manifest of its own (round 8): a test that replaces the reader re-pins
+        # it there (pin_reader), since the lever hashes the reader against the manifest before it runs its copy.
+        self.lever_checkout("pr-merge.sh", "git-isolated.sh", "read-lib.sh", "regime-env")
         self.briefs = self.records / "briefs"
         self.briefs.mkdir()
         self.brief = self.briefs / "U71-fixture.md"
@@ -134,6 +138,7 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "match": r"^pr view 7 --json state,mergeCommit,baseRefName,headRefOid$",
                 "json": {"state": "MERGED", "mergeCommit": {"oid": SHA_B}, "baseRefName": "main", "headRefOid": head},
             },
+            commit_answer(),
         )
 
     def merge(self):
@@ -214,6 +219,7 @@ class PrMergeSweepGateTest(PrLeverTestCase):
     def test_a_reader_that_fails_on_the_sweep_question_is_a_failure_with_no_write(self):
         self.ledger(ledger_row(SHA_A), sweep_row())
         self.reader.write_text(FAILING_SWEEP_READER.format(real=str(LEVERS / "ledger.py")))
+        self.pin_reader("ledger.py", self.reader)  # round 8: the lever holds the reader to its pin
         run = self.merge()
         self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
         self.assertIn("exited 3 reading", run.stderr)
@@ -237,11 +243,13 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         ):
             with self.subTest(name):
                 self.reader.write_text(ANSWERING_SWEEP_READER.format(answer=answer, real=str(LEVERS / "ledger.py")))
+                self.pin_reader("ledger.py", self.reader)
                 run = self.merge()
                 self.assert_refused_before_ci(run, f"answered the sweep question for U71 at {SHA_A}")
                 self.assertIn(f"{self.reader}", run.stderr)
                 self.assertIn(answer.strip() or "nothing", run.stderr)
         self.reader.write_text(ANSWERING_SWEEP_READER.format(answer=answer_row + "\n", real=str(LEVERS / "ledger.py")))
+        self.pin_reader("ledger.py", self.reader)
         self.assert_merged(self.merge())
 
     def test_a_carried_head_needs_the_sweep_row_at_the_earlier_head(self):
@@ -378,6 +386,7 @@ class PrMergeSweepGateTest(PrLeverTestCase):
             with self.subTest(name):
                 answer = f"{ts}\tU71\t{verifier}\t{evidence}\n"
                 self.reader.write_text(ANSWERING_SWEEP_READER.format(answer=answer, real=str(LEVERS / "ledger.py")))
+                self.pin_reader("ledger.py", self.reader)
                 run = self.merge()
                 self.assert_refused_before_ci(run, message)
                 self.assertEqual(run.stdout, "", "no receipt")
@@ -489,6 +498,7 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
                 "match": r"^pr view 7 --json state,mergeCommit,baseRefName,headRefOid$",
                 "json": {"state": "MERGED", "mergeCommit": {"oid": SHA_B}, "baseRefName": "main", "headRefOid": SHA_A},
             },
+            commit_answer(),
         )
         return self.run_lever("pr-merge.sh", "7", "--records", str(self.records))
 

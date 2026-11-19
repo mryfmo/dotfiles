@@ -104,7 +104,8 @@
 #   write is `gh pr merge <pr> --squash --match-head-commit <head>`, so GitHub
 #   refuses the merge if the head moved after these reads; it never passes `--admin`, `--auto` or
 #   `--delete-branch`. After the merge, or after a merge error, `gh pr view <pr> --json
-#   state,mergeCommit,baseRefName,headRefOid` decides: `MERGED` into `main` at the audited head prints the receipt (the
+#   state,mergeCommit,baseRefName,headRefOid` decides: `MERGED` into `main` at the audited head, whose merge commit's
+#   first parent is the tip of `main` read before the listing (round 8, below), prints the receipt (the
 #   merge happened; never run the merge twice); another state, another base, or another merged head (a merge someone
 #   else made after the pinned one failed) is a failure with no receipt that names both shas. The
 #   thread check (`pr-threads-check.sh`) stays a separate step before this lever (`hcom-orchestration` SKILL step 6).
@@ -180,6 +181,27 @@
 #   or another user's is a refusal naming it, so a row written by hand with another verifier admits nothing. The
 #   audited head is the one `require_verdict_row` set, so a head moved under a `carried` row needs no second sweep.
 #   The lever reads no brief, never the findings file a sweep row names, and judges no sweep's content.
+#   Round 8 (the round-7 P1 at :1123 and P3 at :782). The two readers the lever runs, `ledger.py` and `sweep-scope.py`,
+#   ran from `${toplevel}/scripts/orchestrator/` after an existence check alone while the lever held its own bytes to
+#   `claude.levers.sha256.pr-merge.sh`, so a rewritten or stale reader could waive a required sweep whatever the
+#   compare listed. Now each reader is copied into a private directory the lever makes (`mktemp -d` under `TMPDIR`,
+#   mode 0700, removed on every exit by the EXIT trap), the copy is hashed (sha256sum, else shasum -a 256, as
+#   lever_self_check hashes this file) against the reader's `claude.levers.sha256.<name>` pin in the manifest the
+#   self-check read, and the copy is what `python3 -I -S` runs (reader_copy; hcom-seat's helper_copy_make and
+#   helper_pin_check idiom, U310f): a differing digest or a missing or doubled pin is a refusal naming the reader and
+#   both digests before the first `gh` read, and the copy is the one read of the file, so a file swapped after the
+#   hash is not the file run; `sweep-scope.py` gets its pin and its deployed twin `~/.local/bin/common/sweep-scope.py`
+#   from the generator as `ledger.py` has them (`claude.levers.sha256.sweep-scope.py`). The window between the tip
+#   read and the merge: `--match-head-commit` pins the head alone, and the main ruleset `main integration gate` has
+#   `strict_required_status_checks_policy: false` (read 2026-11-19 through the rulesets API), so nothing server-side
+#   requires the head to be up to date with `main` at merge time and `main` may move after require_sweep_scope read
+#   its tip; after the merge the lever reads the merge commit's first parent (`gh api
+#   repos/{owner}/{repo}/commits/<commit> --jq '.parents[0].sha'`, status read, 40 hex) and requires it to equal the
+#   tip read earlier, else exits 1 with one line naming the merge commit, its parent and that tip and no receipt:
+#   the merge happened on a moved `main`, the classified listing may not be the landed diff, and the coordinator
+#   must sweep the merge commit. Were the operator to enable the ruleset's strict policy, GitHub would refuse a merge
+#   of a head behind `main` and close the window server-side, and this check would then never fire; it stays as the
+#   lever's own record of what it merged onto.
 # @arg $1 int The pull request number.
 # @option --records <dir> The program store holding `ledger.tsv`, `verdicts/`, `dispositions.tsv` and `units.tsv`
 #   (required; must resolve to the store `store_resolve` chose: `${REGIME_STORE_ROOT}/<program>` when it exists, else
@@ -190,7 +212,9 @@
 # @exitcode 1 A `gh` or `git` read (the tip of `main` that fails or is not 40 hex, the compare listing, a response
 #   whose `files` is not an array or whose `merge_base_commit.sha` is no string, and a first line that is not
 #   `merge-base <40 hex>` among its failures), the manifest pin probe, the scope reader or the ledger reader (any
-#   status but 0 or 2), or the merge, failed.
+#   status but 0 or 2), or the merge, failed; or the merge commit's first parent could not be read, is not 40 hex, or
+#   is not the tip of `main` read before the listing (round 8: the merge happened on a moved `main`; no receipt, and
+#   the coordinator sweeps the merge commit).
 # @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a head whose merge
 #   base with `main` is not `main`'s tip (not up to date: rebase onto `main` and re-run the audit; round 7), a compare
 #   listing that names no file, a scope answer the checkout's `sweep-scope.py` refuses (its exit 2: a listing that is not one
@@ -213,7 +237,8 @@
 #   `sweep` row that is not the exact row of the Audit sweep rule, pr `-`, verifier `security-audit-skill <pin>` and
 #   evidence `sweeps/<path>.json`: the reader's exit 2), no python3 or no `scripts/orchestrator/ledger.py` or
 #   `scripts/orchestrator/sweep-scope.py` in the
-#   checkout, a `carried` row whose evidence names no `carried <earlier> <head> <sha256>` for this head or whose
+#   checkout, a reader whose copy's sha256 differs from its `claude.levers.sha256.<name>` pin or whose pin is missing
+#   or doubled in the manifest, a private directory or a copy the lever cannot make (round 8), a `carried` row whose evidence names no `carried <earlier> <head> <sha256>` for this head or whose
 #   earlier head has no `correct` row, no verdict file for the audited head, a P2 or P3 finding of weight 10 or more
 #   without its `residual` disposition row, a malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path
 #   that is a symlink or outside the checkout, CI that is not green on the head, or CI that lists no passing result
@@ -463,11 +488,13 @@ gh_bounded() {
 #   outranked a valid `incorrect` one), a header that is not the store's, a column count other than the header's or
 #   an empty required cell is the reader's exit 2, a refusal naming the file and line; any other failure of the reader
 #   exits 1. The reader compares every cell as text, so two different all-digit shas never match (U71 audit round 1).
+#   The file run is the lever's pinned copy of the reader, `ledger_copy` (reader_copy, round 8); the refusals name
+#   the checkout's path.
 # @arg $1 int The pull request number.
 # @arg $2 string The 40-hex head sha.
 ledger_verdict() {
     local out status=0
-    out=$("${python}" -I -S "${ledger_reader}" "${store}" verdict "$1" "$2" 2>&1) || status=$?
+    out=$("${python}" -I -S "${ledger_copy}" "${store}" verdict "$1" "$2" 2>&1) || status=$?
     case ${status} in
     0) [[ ${out} == none ]] || printf '%s' "${out}" ;;
     2) refuse "${out#ledger: }" ;;
@@ -774,11 +801,13 @@ require_dispositions() {
 #   word (letters and hyphens) sets `sweep_class` to it and `sweep_reason` to the class clause; `not-required` alone
 #   sets `sweep_class` empty and asks require_daily_sweep whether the standing control stands (round 4: the exemption
 #   is bound to the daily sweep); anything else, a second line included, is a refusal naming the reader and the
-#   answer. The lever reads the listing as text it passes on and judges no class itself.
+#   answer. The lever reads the listing as text it passes on and judges no class itself. The reader run is the
+#   lever's pinned copy, `scope_copy` (reader_copy, round 8); the refusals name the checkout's path.
+# @set base_tip The tip of the base read before the listing, 40 hex; after the merge the merge commit's first parent must equal it (round 8).
 # @set sweep_class The class that requires the sweep (`credential`, `policy`, `lever`, `deployed-executable`), `cap` for a listing at the compare API's cap, or empty when none does.
 # @set sweep_reason Why require_sweep_row runs, named in its refusal: the class clause, the cap clause, or the missing daily sweep (require_daily_sweep); empty when the head skips the row.
 require_sweep_scope() {
-    local status=0 base_tip listing merge_base files answer class
+    local status=0 listing merge_base files answer class
     base_tip=$(gh_bounded api "repos/{owner}/{repo}/git/ref/heads/${base}" --jq '.object.sha') ||
         fail "cannot read the tip of ${base} (gh api repos/{owner}/{repo}/git/ref/heads/${base}); the head's changed paths are listed against it, so the listing is the diff the squash lands"
     [[ ${base_tip} =~ ^[0-9a-f]{40}$ ]] ||
@@ -795,7 +824,7 @@ require_sweep_scope() {
     [[ ${listing} != *$'\n'* ]] || files=${listing#*$'\n'}
     [[ -n ${files} ]] ||
         refuse "the compare API (gh api repos/{owner}/{repo}/compare/${base_tip}...${head}) listed no changed path of the head ${head} of pull request ${pr}; a head that changes nothing is nothing to merge, and a listing cut short is never 'not required' (standing order 21)"
-    answer=$("${python}" -I -S "${scope_reader}" --files-json <<< "${files}" 2>&1) || status=$?
+    answer=$("${python}" -I -S "${scope_copy}" --files-json <<< "${files}" 2>&1) || status=$?
     case ${status} in
     0) ;;
     2) refuse "${answer#sweep-scope: }" ;;
@@ -851,7 +880,7 @@ require_daily_sweep() {
         [[ ! -L ${daily_file} && -f ${daily_file} && -O ${daily_file} && -r ${daily_file} ]] ||
             refuse "${daily_file} is not a readable regular file of this user (a symlink or another kind of entry); the daily sweep rows are read from the store alone"
     fi
-    row=$("${python}" -I -S "${ledger_reader}" "${store}" daily "${DAILY_SWEEP_MAX_AGE}" 2>&1) || status=$?
+    row=$("${python}" -I -S "${ledger_copy}" "${store}" daily "${DAILY_SWEEP_MAX_AGE}" 2>&1) || status=$?
     case ${status} in
     0) ;;
     2) refuse "${row#ledger: }" ;;
@@ -971,7 +1000,7 @@ sweep_row_fields() {
 #   opened). The lever reads neither the findings file the row names nor the sweep's content.
 require_sweep_row() {
     local status=0 row rest verifier evidence
-    row=$("${python}" -I -S "${ledger_reader}" "${store}" sweep "${unit}" "${audited_head}" 2>&1) || status=$?
+    row=$("${python}" -I -S "${ledger_copy}" "${store}" sweep "${unit}" "${audited_head}" 2>&1) || status=$?
     case ${status} in
     0) ;;
     2) refuse "${row#ledger: }" ;;
@@ -1089,6 +1118,63 @@ resolve_store() {
         refuse "${ledger} is not a readable regular file of this user"
 }
 
+# @description Make the private directory the readers' copies live in (regime-cutover U597 round 8; the round-7 P1 at
+#   :1123): `mktemp -d` under TMPDIR (`/tmp` when unset) with `umask 077`, a directory of this user and no symlink,
+#   mode 0700, removed on every exit by reader_copies_remove through the EXIT trap, which the signal traps reach too.
+#   A directory that cannot be made or held is a refusal naming the place; nothing was read from GitHub yet.
+# @set reader_dir The directory, empty until made and after its removal.
+reader_copies_make() {
+    local base=${TMPDIR:-/tmp}
+    reader_dir=$(umask 077 && mktemp -d "${base%/}/pr-merge.readers.XXXXXX") ||
+        refuse "cannot make the private directory for the readers' copies under ${base} (mktemp -d); the readers run from copies held to their pins alone"
+    [[ -n ${reader_dir} && ! -L ${reader_dir} && -d ${reader_dir} && -O ${reader_dir} ]] ||
+        refuse "the private directory ${reader_dir} for the readers' copies is not a directory of this user"
+    chmod 0700 "${reader_dir}" || refuse "cannot set mode 0700 on the private directory ${reader_dir} for the readers' copies"
+}
+
+# @description Remove the readers' copy directory (reader_copies_make) when one exists; a removal that fails is named,
+#   and the function returns 0 either way, so the status the lever exits with is the gate's. Idempotent: the variable
+#   is cleared first, so a refusal inside a removal cannot recurse into it (hcom-seat's helper_copy_remove).
+reader_copies_remove() {
+    local dir=${reader_dir:-}
+    [[ -n ${dir} ]] || return 0
+    reader_dir=''
+    rm -rf -- "${dir}" || echo "${lever}: the readers' copy directory ${dir} remains after its removal; remove it by hand" >&2
+}
+
+# @description Read the reader $2 once into the lever's own copy `<reader_dir>/$1` (0600 under `umask 077`), hash the
+#   copy and refuse unless its sha256 equals the `claude.levers.sha256.$1` pin of LEVER_MANIFEST, the manifest the
+#   self-check read, with the readers lever_self_check uses (sed for the pin line; sha256sum, else shasum -a 256;
+#   hcom-seat's helper_copy_make and helper_pin_check, U310f). What is hashed is what runs (`python3 -I -S <copy>`,
+#   `ledger_copy` and `scope_copy`), and the path beside the checkout is never read again, so a file swapped after the
+#   hash is not the file run (round 8; until then the lever ran the checkout's readers after an existence check alone,
+#   so a rewritten reader could waive a required sweep). A copy that cannot be made, a pin that is missing or doubled,
+#   a copy that cannot be hashed and a digest that differs from the pin are refusals naming the reader and, for a
+#   differing digest, both digests.
+# @arg $1 string The reader's name, the key of its pin.
+# @arg $2 string The reader's path in the checkout, named in the refusals.
+# @set reader_copy_path The copy, the file the lever runs.
+reader_copy() {
+    local name=$1 origin=$2 copy pin digest
+    copy=${reader_dir}/${name}
+    (umask 077 && cat -- "${origin}" > "${copy}") ||
+        refuse "cannot copy the reader ${origin} into ${reader_dir}; the reader runs from a copy held to its pin alone"
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") ||
+        refuse "cannot read ${LEVER_MANIFEST} for the pin of ${name}"
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] ||
+        refuse "no single sha256 pin for ${name} in ${LEVER_MANIFEST} (claude.levers.sha256.${name}); the reader ${origin} runs only from a copy held to that pin"
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${copy}") || digest='' # producer-status: allow the regex test below refuses an empty digest
+    else
+        digest=$(shasum -a 256 < "${copy}") || digest='' # producer-status: allow the regex test below refuses an empty digest
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash the reader ${origin} (its copy ${copy})"
+    [[ ${digest} == "${pin}" ]] ||
+        refuse "sha256 ${digest} of the reader ${origin} (hashed as its copy ${copy}) differs from the pin ${pin} of claude.levers.sha256.${name} in ${LEVER_MANIFEST}; the reader is not the pinned one, so the lever does not run it"
+    reader_copy_path=${copy}
+}
+
 [[ $# -ge 1 ]] || refuse "${usage}"
 pr=$1
 shift
@@ -1122,6 +1208,18 @@ ledger_reader=${toplevel}/scripts/orchestrator/ledger.py
 # The one definition of the sweep classes (U597), run from the checkout as the ledger reader is.
 scope_reader=${toplevel}/scripts/orchestrator/sweep-scope.py
 [[ -f ${scope_reader} ]] || refuse "no ${scope_reader} in the checkout; whether a head needs its sweep row is read through it alone"
+# The readers run from the lever's own copies, each held to its `claude.levers.sha256.<name>` pin (round 8): the copies
+# are made and hashed here, before the first `gh` read, and the directory goes on every exit.
+reader_dir=''
+trap reader_copies_remove EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+reader_copies_make
+reader_copy ledger.py "${ledger_reader}"
+ledger_copy=${reader_copy_path}
+reader_copy sweep-scope.py "${scope_reader}"
+scope_copy=${reader_copy_path}
 
 view=$(gh_bounded pr view "${pr}" --json state,baseRefName,headRefOid,isDraft \
     --jq '[.state, .baseRefName, .headRefOid, (.isDraft | tostring)] | @tsv') || fail "cannot read pull request ${pr}"
@@ -1196,5 +1294,18 @@ IFS=$'\t' read -r state commit merged_base merged_head <<< "${after}"
 # reported here, loudly, with the base it landed on; it cannot be undone by the lever.
 [[ ${merged_base} == main ]] ||
     fail "pull request ${pr} merged into ${merged_base:-an unreadable base}, not main: it was retargeted after the last read; tell the operator"
+# The merge landed on the tip the listing was classified against (round 8; the round-7 P3 at :782): `--match-head-commit`
+# pins the head alone, and the main ruleset's `strict_required_status_checks_policy` is false (read 2026-11-19), so
+# nothing server-side holds `main` still between the tip read in require_sweep_scope and the merge. The merge commit's
+# first parent is the `main` the squash landed on, read with its status and held to 40 hex, and it must be the tip
+# read earlier; a merge onto a moved `main` is exit 1 with no receipt naming the commit, its parent and that tip,
+# since the classified listing may not be the landed diff and the coordinator must sweep the merge commit. Were the
+# operator to enable the strict policy, GitHub would refuse such a merge and this check would never fire.
+parent=$(gh_bounded api "repos/{owner}/{repo}/commits/${commit}" --jq '.parents[0].sha') ||
+    fail "pull request ${pr} is MERGED as ${commit}, but the first parent of that commit could not be read (gh api repos/{owner}/{repo}/commits/${commit}); whether the merge landed on the tip ${base_tip} of main the listing was classified against is unknown, so the classified listing may not be the landed diff: the coordinator must sweep the merge commit ${commit}"
+[[ ${parent} =~ ^[0-9a-f]{40}$ ]] ||
+    fail "pull request ${pr} is MERGED as ${commit}, but its first parent read from gh api repos/{owner}/{repo}/commits/${commit} is not 40 hex: '${parent}'; whether the merge landed on the tip ${base_tip} of main the listing was classified against is unknown, so the classified listing may not be the landed diff: the coordinator must sweep the merge commit ${commit}"
+[[ ${parent} == "${base_tip}" ]] ||
+    fail "pull request ${pr} merged as ${commit}, whose first parent ${parent} is not the tip ${base_tip} of main read before the listing: main moved between the tip read and the merge, so the classified listing may not be the landed diff; the coordinator must sweep the merge commit ${commit}"
 ((merge_status == 0)) || echo "${lever}: the merge command exited ${merge_status}, but the pull request is MERGED" >&2
 echo "merged pr=${pr} head=${head} commit=${commit} verdict=${verdict_ts}"

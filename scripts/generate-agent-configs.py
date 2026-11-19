@@ -99,11 +99,13 @@ def parse_manifest(text: str) -> dict[str, Any]:
 LEVER_SOURCE_DIR = "scripts/orchestrator"
 LEVER_INSTALL_DIR = "home/dot_local/bin/common"
 LEVER_PIN_LINE = re.compile(r"^(      )([A-Za-z0-9][A-Za-z0-9_.-]*): ([0-9a-f]{64})$")
-# A lever that is a module: another lever imports it from its own directory and nothing runs it (ledger.py, the one
-# ledger reader, imported by ledger-row.py; regime-cutover U418). Its chezmoi copy carries no `executable_` prefix, so
-# chezmoi installs it at mode 0644 under ~/.local/bin/common beside the lever that imports it; it is pinned like every
-# lever, so the generator holds the copy byte-identical to the checkout's reader.
-LEVER_MODULES = frozenset({"ledger.py"})
+# A lever that is a module: a file no seat runs by path. `ledger.py`, the one ledger reader, is imported by
+# ledger-row.py from its own directory (regime-cutover U418); `sweep-scope.py`, the one definition of the sweep
+# classes, is run by pr-merge.sh from a private copy the lever hashes against this pin first (U597 round 8), never by
+# path. Each chezmoi copy carries no `executable_` prefix, so chezmoi installs it at mode 0644 under
+# ~/.local/bin/common beside the lever that reads it; each is pinned like every lever, so the generator holds the copy
+# byte-identical to the checkout's file and the pin is the digest pr-merge.sh and ledger-row.py's importer hold it to.
+LEVER_MODULES = frozenset({"ledger.py", "sweep-scope.py"})
 
 
 def lever_install_name(name: str) -> str:

@@ -107,8 +107,28 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         self.assertNotIn("status --porcelain` prints nothing", text, "no sentence accepts empty output alone")
         self.assertIn("a failed read is a refusal to start, never a clean checkout", text)
         self.assertIn("A failed read is never read as a clean checkout.", text)
-        self.assertIn("A status read that exits non-zero, or prints anything, is a refusal to start", text)
+        self.assertIn("and so is a status read that exits non-zero, or prints anything", text)
         self.assertIn("status=partial pr=none head=<head> note=preflight refused: git status exited <n>", text)
+        # round 8 (verdict U597-a28e4793 P2 at :14): the head read requires its exit status too, so a failed read is
+        # a refusal to start with a `status=partial` RESULT, never a full sweep of a head the seat never confirmed
+        head_read = (
+            "`git -C ~/.local/state/omp-seats/<repository>/<seat> log -1 --format=%H` exits 0 and prints `<head>`"
+        )
+        self.assertIn(head_read, text)
+        self.assertNotIn("log -1 --format=%H` prints `<head>`", text, "no sentence accepts the output alone")
+        self.assertIn("A head read that exits non-zero, or prints anything but `<head>`, is a refusal to start", text)
+        self.assertIn("status=partial pr=none head=<head> note=preflight refused: git log exited <n>", text)
+        self.assertIn("note=preflight refused: git log printed <sha>, not <head>", text)
+        self.assertIn("A failed head read is never read as the checkout at `<head>`.", text)
+        step_one = text[text.index("\n1. `mkdir -p") : text.index("\n2. Read")]
+        self.assertIn(head_read, step_one)
+        self.assertIn("status=partial", step_one)
+        # the recording step names the validators' pins and the task's day (round 8)
+        self.assertIn(
+            "hashed against its `assets.security-audit-skill.validators_sha256` pin in the manifest before it runs",
+            text,
+        )
+        self.assertIn("whose UTC day the task id `daily-<YYYY-MM-DD>` must name", text)
         acceptance = text[text.index("\nACCEPTANCE\n") : text.index("\nVERIFY\n")]
         self.assertIn(porcelain, acceptance)
         self.assertIn("then runs the installed skill's two validators itself over the two copies", text)

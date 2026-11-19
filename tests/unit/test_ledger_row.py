@@ -2,11 +2,13 @@
 `ledger.tsv`: each kind composes its row from named arguments and the clock, the verdict and the verifier's fixed
 words chosen by the kind, the ledger plus the new line re-read through `ledger.parse_ledger` before anything is
 written, and the four shapes that cost a round refused by name. Every test runs over a scratch store (a ledger with
-the header and three rows, `verdicts/`, `sweeps/`, a scratch HOME whose `.agents/agent-config.yaml` holds the pin) as
-a subprocess under `python3 -I -S`, the form the coordinator runs."""
+the header and three rows, `verdicts/`, `sweeps/`, a scratch HOME whose `.agents/agent-config.yaml` holds the pin and
+whose `.agents/skills/security-audit/` holds the two validators the `daily` kind runs through a fake `node` first on
+PATH; U597 round 7) as a subprocess under `python3 -I -S`, the form the coordinator runs."""
 
 import concurrent.futures
 import gc
+import json
 import os
 import re
 import resource
@@ -66,6 +68,31 @@ VERDICT_INCORRECT = (
 )
 
 
+# The fake `node` the daily kind's validators run under (U597 round 7): it logs its argv, its working directory, its
+# environment and its stdin as one JSON line, then answers by the mode file beside the log (absent: exit 0 with a PASS
+# line; `fail <validator>`: exit 1 with two stderr lines for that validator; `silent <validator>`: exit 3 with no
+# stderr). The log and the mode are spelled into the script, since the writer hands node no environment but PATH.
+FAKE_NODE = """#!{python}
+import json, os, sys
+with open({log!r}, "a", encoding="utf-8") as log:
+    log.write(json.dumps({{"argv": sys.argv[1:], "cwd": os.getcwd(), "env": dict(os.environ), "stdin": sys.stdin.read()}}) + "\\n")
+mode = ""
+try:
+    with open({mode!r}, encoding="utf-8") as handle:
+        mode = handle.read().strip()
+except FileNotFoundError:
+    pass
+name = os.path.basename(sys.argv[1]) if len(sys.argv) > 1 else ""
+if mode == "fail " + name:
+    sys.stderr.write(name + ": 2 validation errors\\nfindings[0]: severity is required\\n")
+    sys.exit(1)
+if mode == "silent " + name:
+    sys.exit(3)
+print("PASS " + name)
+"""
+VALIDATORS = ("validate-findings.cjs", "validate-coverage-ledger.cjs")
+
+
 def row(ts, unit, pr, head, verdict, verifier, evidence):
     return "\t".join((ts, unit, pr, head, verdict, verifier, evidence)) + "\n"
 
@@ -92,16 +119,50 @@ class LedgerRowTest(unittest.TestCase):
         root = Path(self.temp.name).resolve()
         self.store = root / "regime-cutover"
         (self.store / "verdicts").mkdir(parents=True)
-        (self.store / "sweeps/U9-bbbbbbbb").mkdir(parents=True)
-        (self.store / "sweeps/U9-bbbbbbbb/findings.json").write_text("[]\n")
+        (self.store / "sweeps").mkdir()
+        self.findings_dir("U9-bbbbbbbb")
         self.ledger = self.store / "ledger.tsv"
         self.ledger.write_text(HEADER + "".join(ROWS))
         self.home = root / "home"
         (self.home / ".agents").mkdir(parents=True)
         self.manifest = self.home / ".agents/agent-config.yaml"
         self.manifest.write_text(MANIFEST)
-        self.env = {"PATH": os.environ["PATH"], "HOME": str(self.home), "LC_ALL": "C"}
+        # The installed skill's validators at the manifest's install path under the scratch HOME, and the fake node
+        # first on PATH (round 7); the caller's NODE_OPTIONS and a canary must reach no validator.
+        self.skill = self.home / ".agents/skills/security-audit"
+        self.skill.mkdir(parents=True)
+        for validator in VALIDATORS:
+            (self.skill / validator).write_text("// the fake node answers for this file\n")
+        self.bin = root / "bin"
+        self.bin.mkdir()
+        self.node_log = root / "node-calls.jsonl"
+        self.node_mode = root / "node-mode"
+        node = self.bin / "node"
+        node.write_text(FAKE_NODE.format(python=sys.executable, log=str(self.node_log), mode=str(self.node_mode)))
+        node.chmod(0o755)
+        self.env = {
+            "PATH": f"{self.bin}:{os.environ['PATH']}",
+            "HOME": str(self.home),
+            "LC_ALL": "C",
+            "NODE_OPTIONS": "--require /nonexistent/preload.js",
+            "SECRET_OF_THE_CALLER": "never reaches node",
+        }
         self.writer = WRITER
+
+    def findings_dir(self, name, content="[]\n"):
+        """`sweeps/<name>/` with its findings file holding `content` and the coverage ledger beside it (round 7: the
+        daily kind runs the skill's validator over each)."""
+        directory = self.store / "sweeps" / name
+        directory.mkdir()
+        (directory / "findings.json").write_text(content)
+        (directory / "coverage-ledger.json").write_text('{"units": []}\n')
+        return directory
+
+    def node_calls(self):
+        """The fake node's calls so far, oldest first, each a dict of argv, cwd, env and stdin."""
+        if not self.node_log.exists():
+            return []
+        return [json.loads(line) for line in self.node_log.read_text().splitlines()]
 
     def run_writer(self, *args, store=None, preexec_fn=None):
         return subprocess.run(
@@ -276,10 +337,23 @@ class LedgerRowTest(unittest.TestCase):
         daily = self.store / "daily-sweeps.tsv"
         ledger_before = self.ledger.read_bytes()
         before = daily.read_bytes() if daily.exists() else DAILY_HEADER.encode()
+        calls_before = len(self.node_calls())
         start = datetime.now(timezone.utc).replace(microsecond=0)
         run = self.run_writer(*args)
         end = datetime.now(timezone.utc)
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+        # round 7: the row is written after both validators ran, in order, over the findings file and the coverage
+        # ledger beside it, from the skill directory the arguments name (`--skill-dir`, else the installed one)
+        skill = Path(args[args.index("--skill-dir") + 1]) if "--skill-dir" in args else self.skill
+        findings = self.store / args[args.index("--findings") + 1]
+        self.assertEqual(
+            [call["argv"] for call in self.node_calls()[calls_before:]],
+            [
+                [str(skill / "validate-findings.cjs"), str(findings)],
+                [str(skill / "validate-coverage-ledger.cjs"), str(findings.parent / "coverage-ledger.json")],
+            ],
+            "the two validators ran, in order, before the row was written",
+        )
         after = daily.read_bytes()
         self.assertTrue(after.startswith(before), "the file is appended, never rewritten")
         added = after[len(before) :].decode()
@@ -335,8 +409,7 @@ class LedgerRowTest(unittest.TestCase):
         self.assertTrue(text.startswith(DAILY_HEADER), text)
         self.assertEqual(text.count("\n"), 2, "the header and one row")
         self.assertFalse(daily.is_symlink())
-        (self.store / "sweeps/U9-cccccccc").mkdir()
-        (self.store / "sweeps/U9-cccccccc/findings.json").write_text('[{"id": "F1"}, {"id": "F2"}]\n')
+        self.findings_dir("U9-cccccccc", '[{"id": "F1"}, {"id": "F2"}]\n')
         cells = self.assert_daily_appended(
             (*args[:5], "--run", "171", "--task", "U9", "--findings", "sweeps/U9-cccccccc/findings.json", *args[11:]),
             A,
@@ -488,8 +561,7 @@ class LedgerRowTest(unittest.TestCase):
                 )
                 self.assertEqual(daily.read_bytes(), before, "the daily file is unchanged")
         # another findings file of another run is another sweep: appended
-        (self.store / "sweeps/daily-2026-11-20").mkdir()
-        (self.store / "sweeps/daily-2026-11-20/findings.json").write_text('[{"id": "F1"}]\n')
+        self.findings_dir("daily-2026-11-20", '[{"id": "F1"}]\n')
         other = (
             *self.DAILY_ARGS[:5],
             "--run",
@@ -531,8 +603,7 @@ class LedgerRowTest(unittest.TestCase):
         first = self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
         before = daily.read_bytes()
         for directory in ("daily-2026-11-19-run-170", "daily-2026-11-19-run-171", "daily-2026-11-19-run-170-b"):
-            (self.store / "sweeps" / directory).mkdir()
-            (self.store / "sweeps" / directory / "findings.json").write_text("[]\n")
+            self.findings_dir(directory)
         copied = (
             *self.DAILY_ARGS[:9],
             "--findings",
@@ -584,10 +655,12 @@ class LedgerRowTest(unittest.TestCase):
         a delayed first recording granted a fresh 24-hour window to a sweep that finished outside it. The row's ts is
         `--swept-at`, the RESULT message's timestamp (the appended row and the receipt carry it; the recording time
         goes into the evidence as `recorded <ts>`), and `ledger.py daily` answers the row by it; a value later than
-        the clock plus 60 seconds is refused as in the future, one more than 24 hours before the clock as born stale,
-        and a value off the strict form (one digit in a field, no `Z`, a space, hour 25, a word, nothing) is refused
-        naming the form, each with one stderr line and no file made; 30 seconds ahead and 23 hours past are
-        recorded."""
+        the clock at the write is refused as in the future (round 7, verdict U597-301eba2e P3 at :453: round 6 let
+        the writer accept 60 seconds ahead, the reader's allowance for rows another host's clock wrote, and this test
+        accepted +30 s; the writer has no future slack, and the refusal says whose the allowance is), one more than 24
+        hours before the clock as born stale, and a value off the strict form (one digit in a field, no `Z`, a space,
+        hour 25, a word, nothing) is refused naming the form, each with one stderr line and no file made; the clock
+        itself and 23 hours past are recorded."""
         daily = self.store / "daily-sweeps.tsv"
 
         def refused(value, *reasons):
@@ -600,8 +673,13 @@ class LedgerRowTest(unittest.TestCase):
                 self.assertIn(reason, run.stderr)
             self.assertFalse(daily.exists(), "a refusal makes no file")
 
-        refused(ts_ago(-120), "is in the future: later than the clock ", " plus 60 seconds")
+        refused(ts_ago(-120), "is in the future: later than the clock ", "another host's clock, not for this writer")
+        refused(ts_ago(-30), "is in the future: later than the clock ")
+        refused(ts_ago(-2), "is in the future: later than the clock ")
         refused(ts_ago(-86400), "is in the future")
+        self.assertNotIn(
+            "plus 60", self.run_writer(*self.DAILY_ARGS[:-1], ts_ago(-30)).stderr, "no slack in the writer"
+        )
         refused(ts_ago(86400 + 120), "is more than 86400 seconds (24 hours) before the clock ", "born stale")
         refused("2026-01-01T00:00:00Z", "born stale")
         for value in (
@@ -619,12 +697,11 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(cells[0], SWEPT_AT)
         run = self.read("daily", "86400")
         self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "\t".join(cells) + "\n", ""))
-        # within the reader's slack, and within the window: recorded under their own runs and findings files
-        for run_number, age in (("171", -30), ("172", 23 * 3600)):
+        # the clock itself (read before the run, so never after the writer's), and within the window: recorded under
+        # their own runs and findings files
+        for run_number, age in (("171", 0), ("172", 23 * 3600)):
             with self.subTest(age=age):
-                directory = self.store / f"sweeps/daily-2026-11-19-run-{run_number}"
-                directory.mkdir()
-                (directory / "findings.json").write_text("[]\n")
+                self.findings_dir(f"daily-2026-11-19-run-{run_number}")
                 self.assert_daily_appended(
                     (
                         *self.DAILY_ARGS[:5],
@@ -640,6 +717,234 @@ class LedgerRowTest(unittest.TestCase):
                     self.DAILY_VERIFIER.replace("run-170", f"run-{run_number}"),
                     f"sweeps/daily-2026-11-19-run-{run_number}/findings.json; 0 findings; validators pass",
                 )
+
+    def test_a_daily_row_runs_the_installed_skill_s_two_validators_and_refuses_a_failing_or_missing_one(self):
+        """U597 round 7 (verdict U597-301eba2e P2 at ledger-row.py:435): round 6 wrote `validators pass` after a
+        JSON-shape check alone, so a findings set without the skill's required fields backed a daily exemption. After
+        that check the writer runs the installed skill's validators itself, `node <skill>/validate-findings.cjs
+        <findings>` and `node <skill>/validate-coverage-ledger.cjs <coverage-ledger.json beside it>`, `<skill>`
+        `~/.agents/skills/security-audit` (the manifest's install) or `--skill-dir`, `node` the first on PATH, each
+        from `/` with the environment reduced to PATH, stdin closed and its status read: both exiting 0 writes the
+        row; a validator exiting non-zero is refused naming it, the file and its first stderr line (or `no stderr`),
+        no daily file written and the second validator never run after the first failed; a missing coverage ledger, a
+        missing skill directory (the default or `--skill-dir`), a skill directory without one validator and no node
+        on PATH are refused the same way with no node run."""
+        daily = self.store / "daily-sweeps.tsv"
+        findings = self.store / "sweeps/U9-bbbbbbbb/findings.json"
+        coverage = self.store / "sweeps/U9-bbbbbbbb/coverage-ledger.json"
+        # `--skill-dir` names the directory the validators are read from
+        other = Path(self.temp.name).resolve() / "other-skill"
+        other.mkdir()
+        for validator in VALIDATORS:
+            shutil.copy2(self.skill / validator, other / validator)
+        self.assert_daily_appended(
+            (*self.DAILY_ARGS, "--skill-dir", str(other)), A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE
+        )
+        daily.unlink()
+        self.node_log.unlink()
+        # the default, the installed skill under HOME: two runs, in order, from `/`, PATH alone, stdin closed
+        self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
+        calls = self.node_calls()
+        self.assertEqual(
+            [call["argv"] for call in calls],
+            [
+                [str(self.skill / "validate-findings.cjs"), str(findings)],
+                [str(self.skill / "validate-coverage-ledger.cjs"), str(coverage)],
+            ],
+        )
+        for call in calls:
+            self.assertEqual(call["cwd"], "/", "a neutral working directory")
+            self.assertEqual(call["stdin"], "", "stdin is closed")
+            self.assertEqual(call["env"]["PATH"], self.env["PATH"])
+            self.assertNotIn("NODE_OPTIONS", call["env"], "the caller's node options reach no validator")
+            self.assertNotIn("SECRET_OF_THE_CALLER", call["env"], "the caller's environment reaches no validator")
+            self.assertNotIn("HOME", call["env"])
+        daily.unlink()
+        self.node_log.unlink()
+
+        def refused(arguments, *reasons):
+            """Exit 2, one stderr line naming each reason, no daily file; returns the validators the fake ran."""
+            run = self.run_writer(*arguments)
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+            self.assertTrue(run.stderr.startswith("ledger-row: refused: "), run.stderr)
+            for reason in reasons:
+                self.assertIn(reason, run.stderr)
+            self.assertFalse(daily.exists(), "a refusal makes no file")
+            ran = [os.path.basename(call["argv"][0]) for call in self.node_calls()]
+            self.node_log.unlink(missing_ok=True)
+            return ran
+
+        # a failing validator: named with the file and its first stderr line; the second never runs after the first
+        self.node_mode.write_text("fail validate-findings.cjs\n")
+        self.assertEqual(
+            refused(
+                self.DAILY_ARGS,
+                "validate-findings.cjs exited 1 on sweeps/U9-bbbbbbbb/findings.json: validate-findings.cjs: 2 validation"
+                " errors; nothing is written",
+            ),
+            ["validate-findings.cjs"],
+        )
+        self.node_mode.write_text("fail validate-coverage-ledger.cjs\n")
+        self.assertEqual(
+            refused(
+                self.DAILY_ARGS,
+                "validate-coverage-ledger.cjs exited 1 on sweeps/U9-bbbbbbbb/coverage-ledger.json:"
+                " validate-coverage-ledger.cjs: 2 validation errors; nothing is written",
+            ),
+            list(VALIDATORS),
+        )
+        self.node_mode.write_text("silent validate-findings.cjs\n")
+        self.assertEqual(
+            refused(self.DAILY_ARGS, "validate-findings.cjs exited 3 on sweeps/U9-bbbbbbbb/findings.json: no stderr"),
+            ["validate-findings.cjs"],
+        )
+        self.node_mode.unlink()
+        # no coverage ledger beside the findings file: refused by the store's path rule, no node run
+        coverage.unlink()
+        self.assertEqual(
+            refused(
+                self.DAILY_ARGS,
+                f"the coverage ledger path {coverage} is not a regular file under the store: No such file or directory",
+            ),
+            [],
+        )
+        coverage.write_text('{"units": []}\n')
+        # a missing skill directory, through --skill-dir and through the default under HOME; a validator missing
+        nowhere = self.home / "nowhere"
+        self.assertEqual(
+            refused(
+                (*self.DAILY_ARGS, "--skill-dir", str(nowhere)),
+                f"the skill directory {nowhere} is not a directory; the installed security-audit skill",
+            ),
+            [],
+        )
+        aside = self.home / "skill-aside"
+        shutil.move(self.skill, aside)
+        self.assertEqual(
+            refused(
+                self.DAILY_ARGS,
+                f"the skill directory {self.skill} is not a directory; the installed security-audit skill",
+            ),
+            [],
+        )
+        self.skill.mkdir()
+        shutil.copy2(aside / "validate-findings.cjs", self.skill / "validate-findings.cjs")
+        self.assertEqual(
+            refused(
+                self.DAILY_ARGS,
+                f"the validator {self.skill}/validate-coverage-ledger.cjs is not a regular file; the daily row states"
+                " 'validators pass' only after it ran",
+            ),
+            [],
+        )
+        shutil.rmtree(self.skill)
+        shutil.move(aside, self.skill)
+        # no node on PATH: refused naming it, nothing run
+        empty = Path(self.temp.name).resolve() / "empty-bin"
+        empty.mkdir()
+        path = self.env["PATH"]
+        self.env["PATH"] = str(empty)
+        self.assertEqual(refused(self.DAILY_ARGS, "no node on PATH; the skill's validators run under it"), [])
+        self.env["PATH"] = path
+        # with everything in place the row is written
+        self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
+        # the writer spells the run as this test describes it
+        text = WRITER.read_text()
+        self.assertIn('SKILL_DIR = "~/.agents/skills/security-audit"', text)
+        self.assertIn('VALIDATOR_CWD = "/"', text)
+        self.assertIn('env={"PATH": os.environ.get("PATH", "")},', text)
+        self.assertIn("stdin=subprocess.DEVNULL,", text)
+        self.assertIn("timeout=VALIDATOR_TIMEOUT,", text)
+
+    def test_a_failed_findings_read_is_refused_and_leaves_no_daily_file(self):
+        """U597 round 7 (verdict U597-301eba2e P3 at ledger-row.py:509): the writer caught a failed findings read, and
+        round 6 tested malformed bytes and failed writes, not the read. A findings file this user cannot open (mode
+        000; skipped for root, who opens anything) and an `os.read` raising EIO under the descriptor are each refused
+        with one stderr line naming the file and the error, exit 2, no daily file written, no validator run, the
+        store's entries as they were."""
+        daily = self.store / "daily-sweeps.tsv"
+        findings = self.store / "sweeps/U9-bbbbbbbb/findings.json"
+        before = self.store_listing()
+        if os.geteuid() != 0:
+            findings.chmod(0)
+            run = self.run_writer(*self.DAILY_ARGS)
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertEqual(
+                run.stderr,
+                "ledger-row: refused: cannot open the findings file sweeps/U9-bbbbbbbb/findings.json: Permission denied\n",
+            )
+            self.assertFalse(daily.exists(), "a failed findings read leaves no daily file")
+            self.assertEqual(self.node_calls(), [], "no validator ran over a file that could not be read")
+            findings.chmod(0o644)
+        run = self.inject("read", *self.DAILY_ARGS)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            "ledger-row: refused: cannot read the findings file sweeps/U9-bbbbbbbb/findings.json: Input/output error\n",
+        )
+        self.assertFalse(daily.exists(), "a failed findings read leaves no daily file")
+        self.assertEqual(self.node_calls(), [])
+        self.assertEqual(self.store_listing(), before, "no file but the ledger, nothing changed")
+        # without the fault the same arguments write the row
+        self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
+
+    def test_a_control_character_in_an_argument_or_a_cell_is_refused_by_the_writer_and_the_reader_alike(self):
+        """U597 round 7 (verdict U597-301eba2e P2 at ledger.py:361): a NUL in a daily row's evidence path was data to
+        the reader, and bash's `$(...)` drops a NUL when pr-merge.sh captures the row, so the lever would have checked
+        another file than the one the row names. The reader refuses any cell holding `\\x00` to `\\x1f` or `\\x7f` as
+        Malformed naming the line and the column, and the writer's argument rule refuses such a character before
+        argparse runs, naming it (a `\\x01` in `--what`, a DEL in a note, an escape in the seat; the tab and the line
+        breaks keep their names); a daily file or a ledger holding one is a malformed store to the writer and to
+        `ledger.py`, named with its line and column, nothing written."""
+        daily = self.store / "daily-sweeps.tsv"
+        before = self.ledger.read_bytes()
+        for name, arguments, label in (
+            ("U+0001 in --what", (*self.PUSHED, "--what", "a\x01b"), "a control character U+0001"),
+            (
+                "a DEL in a note",
+                ("merged", "--pr", "8", "--head", B, "--unit", "U7", "--receipt", "r", "--note", "x\x7fy"),
+                "a control character U+007F",
+            ),
+            (
+                "an escape in the seat",
+                (*self.DAILY_ARGS[:4], "sweep\x1b3", *self.DAILY_ARGS[5:]),
+                "a control character U+001B",
+            ),
+            ("a tab, by its name", (*self.PUSHED, "--what", "a\tb"), "a tab"),
+        ):
+            with self.subTest(name):
+                run = self.run_writer(*arguments)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                self.assertIn(
+                    f"holds {label}; a cell holds neither a tab, a newline nor a control character", run.stderr
+                )
+                self.assertEqual(self.ledger.read_bytes(), before)
+                self.assertFalse(daily.exists())
+        # a daily file holding a NUL in an evidence path: a malformed store to the writer and to the reader
+        daily.write_text(
+            DAILY_HEADER
+            + f"2026-11-19T01:00:00Z\t{B}\t{self.DAILY_VERIFIER}\tsweeps/U9-bbbbbbbb/find\x00ings.json; 0 findings\n"
+        )
+        malformed = f"{daily}:2: column 4 (evidence) holds a control character U+0000; no cell holds one"
+        run = self.run_writer(*self.DAILY_ARGS)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(run.stderr, f"ledger-row: refused: {malformed}\n")
+        self.assertEqual(daily.read_text().count("\n"), 2, "unchanged")
+        run = self.read("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(malformed, run.stderr)
+        # the ledger too: a NUL in an evidence cell is named with its line, and nothing is written
+        self.ledger.write_text(HEADER + ROWS[0] + row("2026-11-01T02:00:00Z", "U7", "7", A, "pushed", "c", "x\x00y"))
+        held = self.ledger.read_bytes()
+        run = self.run_writer(*self.PUSHED, "--what", "w")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"ledger-row: refused: {self.ledger}:3: column 7 (evidence) holds a control character U+0000; no cell holds one\n",
+        )
+        self.assertEqual(self.ledger.read_bytes(), held)
 
     def test_a_daily_row_reads_its_count_from_the_findings_file_and_refuses_another_shape(self):
         """U597 round 6 (verdict U597-10d46fe0 P2 at ledger-row.py:416): round 5 took `--count` as an argument and
@@ -679,13 +984,15 @@ class LedgerRowTest(unittest.TestCase):
                 )
                 self.assertIn(reason, run.stderr)
                 self.assertFalse(daily.exists(), "a refusal makes no file")
+                self.assertEqual(self.node_calls(), [], "the shape check is the first gate: no validator ran (round 7)")
         # --count is gone from the daily kind: argparse refuses it before anything is read
         findings.write_text("[]\n")
         run = self.run_writer(*self.DAILY_ARGS, "--count", "0")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("unrecognized arguments: --count 0", run.stderr)
         self.assertFalse(daily.exists())
-        # three objects are three findings, whatever their fields
+        # three objects are three findings to the count, whatever their fields; the fields are the validators' to judge
+        # (round 7), and the fake passes them here
         findings.write_text('[{"id": "F1"}, {"id": "F2", "severity": "P3"}, {}]\n')
         self.assert_daily_appended(
             self.DAILY_ARGS, A, self.DAILY_VERIFIER, "sweeps/U9-bbbbbbbb/findings.json; 3 findings; validators pass"
@@ -763,8 +1070,7 @@ class LedgerRowTest(unittest.TestCase):
         # a later row is appended as one write to the existing file; a short append truncates back (the ledger's
         # own recovery), the first file whole
         whole = daily.read_bytes()
-        (self.store / "sweeps/daily-2026-11-20").mkdir()
-        (self.store / "sweeps/daily-2026-11-20/findings.json").write_text("[]\n")
+        self.findings_dir("daily-2026-11-20")
         other = (
             *self.DAILY_ARGS[:5],
             "--run",
@@ -1637,7 +1943,14 @@ class LedgerRowTest(unittest.TestCase):
     # Round 4 (U222d, verdicts/U222-238f0f55.md): no file but the ledger; the lock, the read and the write through
     # the ledger's own descriptor; one argument rule before argparse.
 
-    STORE_ENTRIES = ["ledger.tsv", "sweeps", "sweeps/U9-bbbbbbbb", "sweeps/U9-bbbbbbbb/findings.json", "verdicts"]
+    STORE_ENTRIES = [
+        "ledger.tsv",
+        "sweeps",
+        "sweeps/U9-bbbbbbbb",
+        "sweeps/U9-bbbbbbbb/coverage-ledger.json",
+        "sweeps/U9-bbbbbbbb/findings.json",
+        "verdicts",
+    ]
 
     def store_listing(self):
         """Every entry under the store, recursively, with the ledger's mode and owner: what a write may not change."""

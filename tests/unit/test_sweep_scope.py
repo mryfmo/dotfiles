@@ -4,10 +4,13 @@ one predicate `sweep_required(paths)` over the four path classes (`credential`, 
 mixed head's class, a docs-only head that requires nothing, and the CLI forms pr-merge.sh and the coordinator run
 under `python3 -I -S`: `<base> <head>` (the paths `git diff --name-only --no-renames <base>...<head>` lists, from the
 toplevel whatever `diff.relative` says or where the command runs; round 3) and `--files-json` (the audited head's
-files as the lever's one read of the compare API prints them, `gh api 'repos/{owner}/{repo}/compare/main...<head>'
---jq '(if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end) |
-.[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json'`, one JSON
-array per file, keyed by the head's sha (round 4; round 6 holds `files` to an array before iterating); round 5:
+files as the lever's one read of the compare API prints them after the merge-base line the lever strips, `gh api
+'repos/{owner}/{repo}/compare/<main tip>...<head>' --jq '("merge-base " + (.merge_base_commit.sha | if type == "string"
+then . else error("merge_base_commit.sha is " + type + ", not a string") end)), ((if (.files | type) == "array" then
+.files else error("files is " + (.files | type) + ", not an array") end) | .[] | [.status, .filename, (if
+has("previous_filename") then .previous_filename else null end)] | @json)'`, one JSON array per file, keyed by main's
+tip and the head's sha (round 4; round 6 holds `files` to an array before iterating; round 7 reads the tip once and
+holds the merge base to it, so the listing is the diff the squash lands); round 5:
 completeness read from the listing itself, 300 or more entries, the API's cap, answering `required cap`, and the
 `--changed-files <n>` count of rounds 3 and 4 gone), each printing `required <class>`, `required cap` or
 `not-required`, and exit 2 with one stderr line on a failed git read, an empty listing, a path git would not list, a
@@ -15,7 +18,8 @@ C-quoted name (round 2), a line that is not the API's shape, a rename without it
 is neither a string nor null (round 4), or usage (standing order 21: never `not-required` by failure). The documents
 that state the rule (AGENTS.md, the hcom-orchestration skill, the orchestrator README) are read against CLASSES, the
 one definition (round 2), against the listing keyed by the head and the daily sweep row (round 4), and against the
-one call and the cap answer (round 5)."""
+one call and the cap answer (round 5), and against the compare keyed by main's tip with the up-to-date requirement
+(round 7)."""
 
 import importlib.util
 import json
@@ -88,12 +92,16 @@ CLASSES_LITERAL = (
 # The lever's jq form and the reader's call, as pr-merge.sh spells them (round 3; round 4 passes previous_filename
 # through as it is, so a boolean reaches the reader and is refused instead of being mapped to null; round 5 requires
 # the `files` key; round 6 holds `files` to an array before `.[]` iterates it, so an object, a string, a number, a
-# boolean or null there is the jq's error naming the type and never a listing).
+# boolean or null there is the jq's error naming the type and never a listing; round 7 emits the response's merge base
+# as the first line, `merge-base <sha>`, which the lever holds equal to main's tip before the file lines reach the
+# reader).
 FILES_JQ = (
-    '\'(if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end)'
-    ' | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json\''
+    '\'("merge-base " + (.merge_base_commit.sha | if type == "string" then . else error("merge_base_commit.sha is "'
+    ' + type + ", not a string") end)), ((if (.files | type) == "array" then .files else error("files is " + (.files'
+    ' | type) + ", not an array") end) | .[] | [.status, .filename, (if has("previous_filename") then'
+    " .previous_filename else null end)] | @json)'"
 )
-READER_CALL = '"${scope_reader}" --files-json <<< "${listing}"'
+READER_CALL = '"${scope_reader}" --files-json <<< "${files}"'
 # The compare API's cap on `files` (round 5), as the reader names it.
 CAP = 300
 
@@ -372,9 +380,13 @@ class SweepScopePredicateTest(unittest.TestCase):
         self.assertIn("scope_reader=${toplevel}/scripts/orchestrator/sweep-scope.py", text)
         self.assertIn(READER_CALL, text)
         self.assertIn(
-            f'gh_bounded api "repos/{{owner}}/{{repo}}/compare/${{base}}...${{head}}" --jq {FILES_JQ}',
+            f'gh_bounded api "repos/{{owner}}/{{repo}}/compare/${{base_tip}}...${{head}}" --jq {FILES_JQ}',
             text,
         )
+        self.assertIn(
+            "base_tip=$(gh_bounded api \"repos/{owner}/{repo}/git/ref/heads/${base}\" --jq '.object.sha') ||", text
+        )
+        self.assertNotIn("compare/${base}...${head}", text, "the compare is keyed by the tip read once (round 7)")
         self.assertNotIn("--paginate", text, "one compare call: the files are on the first page alone (round 5)")
         self.assertNotIn("changedFiles", text, "no count of the pull request is read (round 5)")
         self.assertNotIn("--changed-files", text, "the reader's count option is gone (round 5)")
@@ -661,12 +673,20 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         """The listing keyed by the head's sha (round 4), its three fields as data, one call whose completeness is
         the listing's own, the cap answer (round 5), and no number-keyed listing, head reread or count read."""
         self.assertIn(
-            "`gh api 'repos/{owner}/{repo}/compare/main...<head>'`",
+            "`gh api 'repos/{owner}/{repo}/compare/<main tip>...<head>'`",
             text,
-            f"{where} names the compare API keyed by the sha",
+            f"{where} names the compare API keyed by main's tip and the sha",
         )
+        self.assertNotIn("compare/main...<head>", text, f"{where} no longer names the compare keyed by the name main")
         self.assertIn("one call", text, f"{where} names the one call")
-        self.assertNotIn("compare/main...<head>' --paginate", text, f"{where} names no paging of the compare call")
+        self.assertNotIn(
+            "compare/<main tip>...<head>' --paginate", text, f"{where} names no paging of the compare call"
+        )
+        # round 7: main's tip pinned, the merge base held to it, the up-to-date requirement
+        self.assertIn("main's tip", text, f"{where} names main's tip as the base side of the compare")
+        self.assertIn("`merge_base_commit.sha`", text, f"{where} names the merge base read beside the files")
+        self.assertIn("up to date", text, f"{where} names the up-to-date requirement")
+        self.assertIn("the diff the squash lands", text, f"{where} names what the listing is")
         for field in ("`status`", "`filename`", "`previous_filename`"):
             self.assertIn(field, text, f"{where} names the field {field}")
         self.assertIn("`required cap`", text, f"{where} names the cap answer")
@@ -732,6 +752,14 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         call, the cap answer, the daily row, the symlink-free components and no retired form."""
         text = LEVER.read_text()
         self.assertIn(f"--jq {FILES_JQ}", text, "the jq form, in the call")
+        self.assertIn("`gh api 'repos/{owner}/{repo}/git/ref/heads/main' --jq '.object.sha'`", text, "the tip read")
+        self.assertIn(
+            "`gh api 'repos/{owner}/{repo}/compare/<main tip>...<head>'", text, "the compare keyed by the tip"
+        )
+        self.assertIn(
+            "the three-dot diff equals the\n#   two-dot diff against the tip, the diff the squash lands", text
+        )
+        self.assertNotIn("compare/main...<head>", text, "no compare keyed by the name main (round 7)")
         self.assertIn('[.status, .filename, (if has("previous_filename") then .previous_filename else null end)]', text)
         self.assertIn(
             'error("files is " + (.files | type) + ", not an array")', text, "the array check named in the prose"

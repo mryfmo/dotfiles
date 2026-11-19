@@ -32,7 +32,9 @@ from test_pr_levers import (  # noqa: E402
     SHA_A,
     SHA_B,
     PrLeverTestCase,
+    compare_response,
     ledger_row,
+    ref_answer,
     sweep_row,
 )
 
@@ -44,9 +46,10 @@ RULE = (
     "a head whose changed paths touch a lever, a policy, credential handling or a deployed executable gets one sweep "
     "of the security-audit skill before its pull request merges"
 )
-# The files the fake `gh api repos/{owner}/{repo}/compare/main...<head>` lists (U597 round 4: the compare API keyed by
-# the head's sha, run through the lever's `--jq` by the fake; round 3: status, filename and previous_filename as one
-# array per file; round 5: one call, no count of the pull request read): a lever path, so the sweep is required (U597).
+# The files the fake `gh api repos/{owner}/{repo}/compare/<main tip>...<head>` lists (U597 round 4: the compare API
+# keyed by the head's sha, run through the lever's `--jq` by the fake; round 3: status, filename and previous_filename
+# as one array per file; round 5: one call, no count of the pull request read; round 7: keyed by main's tip, read once
+# through the refs API, with the response's merge base the tip itself): a lever path, so the sweep is required (U597).
 LEVER_FILES = [{"status": "modified", "filename": "scripts/orchestrator/pr-merge.sh"}]
 COMPARE_OTHER = {"match": COMPARE_OTHER_MATCH, "exit": 1, "stderr": "HTTP 404: No commit found for the basehead\n"}
 RECEIPT = f"merged pr=7 head={SHA_A} commit={SHA_B} verdict={{ts}}\n"
@@ -118,7 +121,8 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
-            {"match": COMPARE_MATCH, "json": {"files": LEVER_FILES}},
+            ref_answer(),
+            {"match": COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
             COMPARE_OTHER,
             {"match": r"^pr checks 7 --json bucket,name$", "json": GREEN_CHECKS},
             {
@@ -472,7 +476,8 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": SHA_A, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
-            {"match": COMPARE_MATCH, "json": {"files": LEVER_FILES}},
+            ref_answer(),
+            {"match": COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
             COMPARE_OTHER,
             {"match": r"^pr checks 7 --json bucket,name$", "json": checks},
             {

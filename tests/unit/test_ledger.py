@@ -10,7 +10,8 @@ three audit questions, a sweep row with a short head is a malformed store naming
 ledger's strictness (a missing file None, a malformed row naming the line and the field), and the CLI form `ledger.py
 <store> daily <max-age-seconds>` printing `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of the newest row within the
 window against the clock, or `none`; round 5: the window is bounded above by 60 seconds, so a row dated further in
-the future does not count (and is not refused as malformed)."""
+the future does not count (and is not refused as malformed); round 7: a cell holding a control byte is Malformed to
+both parsers, naming the line and the field."""
 
 import importlib.util
 import os
@@ -429,6 +430,90 @@ class LedgerDailyTest(unittest.TestCase):
         run = self.cli("daily", "86400")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(f"{name}:3: the ts '2026-11-9T4:5:6Z' is not YYYY-MM-DDThh:mm:ssZ", run.stderr)
+
+    def test_a_cell_holding_a_control_byte_is_malformed_to_both_parsers_naming_the_line_and_the_field(self):
+        """U597 round 7 (verdict U597-301eba2e P2 at ledger.py:361): a NUL in a daily row's evidence path was data to the
+        reader, and bash's `$(...)` drops a NUL when pr-merge.sh captures the row, so the lever would have checked
+        another file than the one the row names. `CONTROL` (`\\x00` to `\\x1f`, `\\x7f`) in any cell of either file is
+        Malformed naming the line, the column and the character: a NUL in the evidence path, a `\\x01` in the verifier,
+        a DEL in the head, a carriage return inside the ts (a trailing one is the line's, stripped), an escape in a
+        ledger row's unit; the same text without the byte parses; the CLI exits 2 naming the line, never `none` and
+        never the row beside it; and the writer's test holds its own rule to this one."""
+        name = str(self.daily_file)
+        self.assertEqual(self.reader.CONTROL.pattern, r"[\x00-\x1f\x7f]")
+        ts = "2026-11-19T10:00:00Z"
+        for case, text, message in (
+            (
+                "a NUL in the evidence path",
+                daily(ts, A, evidence="sweeps/daily-2026-11-19/find\x00ings.json; 0 findings"),
+                f"{name}:2: column 4 (evidence) holds a control character U+0000; no cell holds one",
+            ),
+            (
+                "a \\x01 in the verifier",
+                daily(ts, A, verifier=SKILL + " (\x01)"),
+                f"{name}:2: column 3 (verifier) holds a control character U+0001; no cell holds one",
+            ),
+            (
+                "a DEL in the head",
+                daily(ts, A[:-1] + "\x7f"),
+                f"{name}:2: column 2 (head_sha) holds a control character U+007F",
+            ),
+            (
+                "a carriage return inside the ts",
+                daily(ts + "\r", A),
+                f"{name}:2: column 1 (ts) holds a control character U+000D",
+            ),
+            (
+                "a NUL in a second row",
+                daily(ts, A) + daily(ts, B, evidence="sweeps/x/y.json\x00"),
+                f"{name}:3: column 4 (evidence) holds a control character U+0000",
+            ),
+        ):
+            with self.subTest(case):
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.write(text)
+                self.assertEqual(str(caught.exception)[: len(message)], message)
+        # a trailing carriage return is the line's end, not a cell's: the row parses
+        self.assertEqual(len(self.write(daily(ts, A).rstrip("\n") + "\r\n").rows), 1)
+        # the ledger's parser, the same rule
+        for case, line, message in (
+            (
+                "a NUL in the evidence",
+                "\t".join((ts, "U7", "7", A, "pushed", "coordinator", "x\x00y")) + "\n",
+                "ledger.tsv:2: column 7 (evidence) holds a control character U+0000; no cell holds one",
+            ),
+            (
+                "an escape in the unit",
+                "\t".join((ts, "U7\x1b", "7", A, "pushed", "coordinator", "x")) + "\n",
+                "ledger.tsv:2: column 2 (unit) holds a control character U+001B; no cell holds one",
+            ),
+            (
+                "a vertical tab in the verdict",
+                "\t".join((ts, "U7", "7", A, "correct\x0b", "pr-audit.sh", "x")) + "\n",
+                "ledger.tsv:2: column 5 (verdict) holds a control character U+000B; no cell holds one",
+            ),
+        ):
+            with self.subTest(case):
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.reader.parse_ledger("ledger.tsv", HEADER + line)
+                self.assertEqual(str(caught.exception), message)
+        self.assertEqual(
+            len(
+                self.reader.parse_ledger(
+                    "ledger.tsv", HEADER + "\t".join((ts, "U7", "7", A, "pushed", "c", "x")) + "\n"
+                ).rows
+            ),
+            1,
+        )
+        # the CLI: a malformed store naming the line, never `none` and never the clean row beside it
+        self.daily_file.write_text(
+            DAILY_HEADER
+            + daily(ago(3600), A)
+            + daily(ago(600), B, evidence="sweeps/daily-2026-11-19/find\x00ings.json")
+        )
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"{name}:3: column 4 (evidence) holds a control character U+0000", run.stderr)
 
     def test_a_malformed_daily_file_is_malformed_naming_the_line_and_the_field(self):
         ts = "2026-11-19T10:00:00Z"

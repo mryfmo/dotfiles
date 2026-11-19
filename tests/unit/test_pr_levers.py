@@ -1202,10 +1202,15 @@ SKIP_LINE = "sweep: not required (no lever, policy, credential or deployed-execu
 # 300), the `files` key required by the jq so a response without one is its error and never an empty listing, and
 # no count of the pull request read beside it (the round-4 P1: a number-keyed count no pin bound). Round 6: `files`
 # held to an array before `.[]` iterates it (the round-5 P1: `.[]` over an object iterated its values, so a one-record
-# object read as that file's listing), the jq's error naming the type.
+# object read as that file's listing), the jq's error naming the type. Round 7 (the round-6 P1): the compare is keyed
+# by main's tip, read once through the refs API, and the jq emits the response's `merge_base_commit.sha` as its first
+# line, `merge-base <sha>`, before the file arrays, so the lever can require the merge base to be the tip itself (the
+# diff the squash lands) in the same call.
 FILES_JQ = (
-    '(if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end)'
-    ' | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json'
+    '("merge-base " + (.merge_base_commit.sha | if type == "string" then . else error("merge_base_commit.sha is "'
+    ' + type + ", not a string") end)), ((if (.files | type) == "array" then .files else error("files is " + (.files'
+    ' | type) + ", not an array") end) | .[] | [.status, .filename, (if has("previous_filename") then'
+    " .previous_filename else null end)] | @json)"
 )
 # Any compare request the fixture did not key: GitHub's answer to a basehead it does not hold is an error.
 COMPARE_OTHER_MATCH = r"^api repos/\{owner\}/\{repo\}/compare/"
@@ -1216,16 +1221,50 @@ CAP = 300
 # The daily sweep file of the store (round 4): the header and one row of main's head, its ts `age` seconds before now.
 DAILY_HEADER = "ts\thead_sha\tverifier\tevidence\n"
 DAILY_FINDINGS = "sweeps/daily-2026-11-19/findings.json"
+# Main's tip as the fake's refs API answers it (round 7): the lever reads it once, `gh api
+# repos/{owner}/{repo}/git/ref/heads/main --jq .object.sha`, and keys the compare by it; the fixtures' default merge
+# base is the tip itself, the up-to-date head.
+BASE_TIP = "e" * 40
+REF_CALL = ["api", "repos/{owner}/{repo}/git/ref/heads/main", "--jq", ".object.sha"]
+REF_MATCH = r"^api repos/\{owner\}/\{repo\}/git/ref/heads/main$"
 
 
-def compare_call(head=SHA_A):
-    """The lever's listing call for `head`, as the fake records it: one call, no `--paginate` (round 5)."""
-    return ["api", f"repos/{{owner}}/{{repo}}/compare/main...{head}", "--jq", FILES_JQ]
+def ref_answer(sha=BASE_TIP):
+    """The refs API's answer for `heads/main`, as GitHub shapes it (`object.sha` the tip)."""
+    return {
+        "match": REF_MATCH,
+        "json": {
+            "ref": "refs/heads/main",
+            "node_id": "REF_x",
+            "url": "https://api.github.com/repos/acme/widgets/git/refs/heads/main",
+            "object": {
+                "sha": sha,
+                "type": "commit",
+                "url": f"https://api.github.com/repos/acme/widgets/git/commits/{sha}",
+            },
+        },
+    }
 
 
-def compare_match(head=SHA_A):
-    """The fake's match for the compare of `main...<head>` alone."""
-    return rf"^api repos/\{{owner\}}/\{{repo\}}/compare/main\.\.\.{head}$"
+def compare_response(files, merge_base=BASE_TIP):
+    """A compare API response holding `files` and `merge_base_commit.sha` (the fields the lever's jq reads)."""
+    return {"url": "https://api.github.com/x", "merge_base_commit": {"sha": merge_base}, "files": files}
+
+
+def compare_call(head=SHA_A, base_tip=BASE_TIP):
+    """The lever's listing call for `head`, as the fake records it: one call keyed by main's tip and the head, no
+    `--paginate` (round 5), the merge base read in the same call (round 7)."""
+    return ["api", f"repos/{{owner}}/{{repo}}/compare/{base_tip}...{head}", "--jq", FILES_JQ]
+
+
+def compare_match(head=SHA_A, base_tip=BASE_TIP):
+    """The fake's match for the compare of `<main tip>...<head>` alone."""
+    return rf"^api repos/\{{owner\}}/\{{repo\}}/compare/{base_tip}\.\.\.{head}$"
+
+
+def listing_text(paths, merge_base=BASE_TIP):
+    """The listing as the lever's jq form prints it: the merge-base line, then `paths` (the file arrays' text)."""
+    return f"merge-base {merge_base}\n{paths}"
 
 
 COMPARE_CALL = compare_call()
@@ -1386,6 +1425,12 @@ class PrMergeTest(PrLeverTestCase):
         files=None,
         compare_json=None,
         compare_head=None,
+        raw=None,
+        base_tip=BASE_TIP,
+        tip=None,
+        tip_json=None,
+        tip_exit=0,
+        merge_base=None,
     ):
         if checks is None:
             # every required check passes (U330), and a check that is not required may skip
@@ -1393,21 +1438,38 @@ class PrMergeTest(PrLeverTestCase):
         listing = {"match": r"^pr checks 7 --json bucket,name$", "json": checks}
         if checks_exit:
             listing = {"match": listing["match"], "exit": checks_exit, "stderr": "HTTP 502"}
+        # Main's tip (round 7): the refs API's answer, `tip` the sha it names (the key of the compare the fixture
+        # answers is `base_tip`, so a tip read that names another sha meets no listing), `tip_json` the whole
+        # response as given (run through the lever's jq), or a failed read.
+        if tip_json is not None:
+            ref = {"match": REF_MATCH, "json": tip_json}
+        else:
+            ref = ref_answer(tip or base_tip)
+        if tip_exit:
+            ref = {"match": REF_MATCH, "exit": tip_exit, "stderr": "HTTP 502"}
         # The audited head's files (U597 round 4): the compare API keyed by the head's sha, `files` (a list of
         # `api_file` objects under the API's `files` key, run through the lever's `--jq` by the fake), `compare_json`
-        # (the whole response as given, run through the jq: a response without a `files` key, round 5) or `paths`
-        # (the listing text as the jq form prints it, for the shapes the reader must refuse), or a failed read,
-        # answered for `main...<compare_head or head>` alone; any other basehead is refused as GitHub refuses a sha
-        # it does not hold. No count of the pull request is read (round 5).
-        if files is None and paths is None and compare_json is None:
+        # (the whole response as given, run through the jq, with the fixture's merge base added when the response
+        # names none: a response without a `files` key, round 5) or `paths` (the file arrays' text as the jq form
+        # prints them, after the merge-base line the fixture prepends, for the shapes the reader must refuse), or a
+        # failed read, answered for `<base_tip>...<compare_head or head>` alone; any other basehead is refused as
+        # GitHub refuses a sha it does not hold. No count of the pull request is read (round 5). The merge base is
+        # the tip itself unless `merge_base` says otherwise (round 7: a head behind main's tip).
+        if merge_base is None:
+            merge_base = base_tip
+        if files is None and paths is None and compare_json is None and raw is None:
             files = [api_file("scripts/orchestrator/pr-merge.sh")]
-        keyed = compare_match(compare_head or head)
-        if compare_json is not None:
+        keyed = compare_match(compare_head or head, base_tip)
+        if raw is not None:
+            diff = {"match": keyed, "stdout": raw}  # the whole stdout as given, no merge-base line prepended
+        elif compare_json is not None:
+            if "merge_base_commit" not in compare_json:
+                compare_json = {"merge_base_commit": {"sha": merge_base}, **compare_json}
             diff = {"match": keyed, "json": compare_json}
         elif files is not None:
-            diff = {"match": keyed, "json": {"files": files}}
+            diff = {"match": keyed, "json": compare_response(files, merge_base)}
         else:
-            diff = {"match": keyed, "stdout": paths}
+            diff = {"match": keyed, "stdout": listing_text(paths, merge_base)}
         if paths_exit:
             diff = {"match": keyed, "exit": paths_exit, "stderr": "HTTP 502"}
         other = {"match": COMPARE_OTHER_MATCH, "exit": 1, "stderr": "HTTP 404: No commit found for the basehead\n"}
@@ -1417,6 +1479,7 @@ class PrMergeTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": draft},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
+            ref,
             diff,
             other,
             listing,
@@ -2763,7 +2826,7 @@ class PrMergeTest(PrLeverTestCase):
 
     def test_a_head_outside_every_sweep_class_merges_without_a_sweep_row_and_names_the_skip(self):
         """U597 (the operator's sweep rule C of 2026-11-18): the audited head's files, `gh api
-        repos/{owner}/{repo}/compare/main...<head>` through the lever's jq form (one JSON array per file; round 4
+        repos/{owner}/{repo}/compare/<main tip>...<head>` through the lever's jq form (one JSON array per file; round 4
         keyed the listing by the sha itself; round 5 made it one call and read no count of the pull request), go to
         the checkout's sweep-scope.py on stdin; a head of docs, tests and workflow paths alone needs no sweep row
         while the daily sweep of main's head stands (round 4), the lever prints one stderr line naming the skip and
@@ -2875,8 +2938,9 @@ class PrMergeTest(PrLeverTestCase):
 
     def test_the_listing_is_keyed_by_the_pinned_head_and_complete_under_the_compare_cap(self):
         """U597 round 4 (the mechanism change; the round-3 P1): the files are listed by the compare API keyed by the
-        head's sha itself, `gh api repos/{owner}/{repo}/compare/main...<head>`, so no listing of another head can be
-        substituted: the fake answers the compare of `main...<pinned head>` alone and refuses any other basehead,
+        head's sha itself, `gh api repos/{owner}/{repo}/compare/<main tip>...<head>` (round 7 keyed the base side by
+        main's tip, read once), so no listing of another head can be substituted: the fake answers the compare of
+        `<main tip>...<pinned head>` alone and refuses any other basehead,
         the lever's one listing call names the pinned head, and when the fake holds the listing under another head's
         key the lever's read fails (exit 1, no merge) instead of reading it; the number-keyed files endpoint and the
         `headRefOid,changedFiles` reread are gone. Round 5 (the round-4 P1 and its first P2): the compare response
@@ -2890,7 +2954,7 @@ class PrMergeTest(PrLeverTestCase):
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
         self.daily(daily_row())
         docs = files_listing("docs/plan.md", "docs/other.md")
-        pinned = f"repos/{{owner}}/{{repo}}/compare/main...{SHA_A}"
+        pinned = f"repos/{{owner}}/{{repo}}/compare/{BASE_TIP}...{SHA_A}"
         no_row = f"has no sweep row for U71 (or a fix unit of it) at the audited head {SHA_A}"
         cap_reason = (
             "the head changes 300 or more files, the compare API's cap, so the listing may be cut short and the"
@@ -2906,8 +2970,12 @@ class PrMergeTest(PrLeverTestCase):
             self.assertEqual(self.writes(), [])
             calls = self.gh_calls()
             compares = [call for call in calls if call[:1] == ["api"]]
-            self.assertEqual(compares, [COMPARE_CALL], "one listing call, keyed by the pinned head, no --paginate")
-            self.assertEqual(compares[0][1], pinned)
+            self.assertEqual(
+                compares,
+                [REF_CALL, COMPARE_CALL],
+                "the tip read, then one listing call keyed by it and the pinned head",
+            )
+            self.assertEqual(compares[1][1], pinned)
             self.assertFalse(any("pulls/7/files" in word for call in calls for word in call), "no number key")
             self.assertEqual(self.count_calls(), [], "no count of the pull request is read (round 5)")
             self.assertNotIn(["pr", "view", "7", "--json", "headRefOid,changedFiles"], [call[:5] for call in calls])
@@ -2972,7 +3040,7 @@ class PrMergeTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SKIP_LINE, run.stderr)
         calls = self.gh_calls()
-        self.assertEqual([call for call in calls if call[:1] == ["api"]], [COMPARE_CALL])
+        self.assertEqual([call for call in calls if call[:1] == ["api"]], [REF_CALL, COMPARE_CALL])
         self.assertEqual(self.count_calls(), [], "no count of the pull request is read (round 5)")
         self.calls.unlink()
         # the two-file listing, whole, merges on the daily sweep the same way
@@ -2980,7 +3048,7 @@ class PrMergeTest(PrLeverTestCase):
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SKIP_LINE, run.stderr)
-        self.assertEqual([call for call in self.gh_calls() if call[:1] == ["api"]], [COMPARE_CALL])
+        self.assertEqual([call for call in self.gh_calls() if call[:1] == ["api"]], [REF_CALL, COMPARE_CALL])
 
     def test_a_files_listing_that_is_not_the_api_s_data_refuses_with_no_merge(self):
         """U597 round 3 (verdict finding 2): the lever passes each file as one JSON array `[status, filename,
@@ -3118,13 +3186,14 @@ class PrMergeTest(PrLeverTestCase):
             self.merge(),
             1,
             f"cannot list the changed paths of the head {SHA_A} of pull request 7 (gh api"
-            f" repos/{{owner}}/{{repo}}/compare/main...{SHA_A})",
+            f" repos/{{owner}}/{{repo}}/compare/{BASE_TIP}...{SHA_A})",
         )
         self.github(paths="")
         check(
             self.merge(),
             2,
-            f"refused: the compare API (gh api repos/{{owner}}/{{repo}}/compare/main...{SHA_A}) listed no changed path"
+            f"refused: the compare API (gh api repos/{{owner}}/{{repo}}/compare/{BASE_TIP}...{SHA_A}) listed no changed"
+            " path"
             f" of the head {SHA_A} of pull request 7",
         )
         self.assertEqual(self.count_calls(), [], "no count of the pull request is read (round 5)")
@@ -3173,7 +3242,7 @@ class PrMergeTest(PrLeverTestCase):
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SKIP_LINE, run.stderr)
-        self.assertIn('"${scope_reader}" --files-json <<< "${listing}"', (LEVERS / "pr-merge.sh").read_text())
+        self.assertIn('"${scope_reader}" --files-json <<< "${files}"', (LEVERS / "pr-merge.sh").read_text())
 
     def test_a_head_outside_every_class_skips_its_sweep_row_only_on_a_daily_sweep_of_main_within_24_hours(self):
         """U597 round 4 (the mechanism change, part 2; the round-2 and round-3 P2 at AGENTS.md:71): the exemption of
@@ -3441,7 +3510,7 @@ class PrMergeTest(PrLeverTestCase):
         the docs head merges on the daily sweep."""
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
         self.daily(daily_row())  # the daily sweep stands, so the listing alone decides
-        pinned = f"repos/{{owner}}/{{repo}}/compare/main...{SHA_A}"
+        pinned = f"repos/{{owner}}/{{repo}}/compare/{BASE_TIP}...{SHA_A}"
         checks_call = ["pr", "checks", "7", "--json", "bucket,name"]
         record = {"status": "modified", "filename": "docs/plan.md"}
         for name, files, kind in (
@@ -3467,7 +3536,9 @@ class PrMergeTest(PrLeverTestCase):
                 self.assertEqual(run.stdout, "", "no receipt")
                 self.assertEqual(self.writes(), [])
                 calls = self.gh_calls()
-                self.assertEqual([call for call in calls if call[:1] == ["api"]], [COMPARE_CALL], "one call, the jq")
+                self.assertEqual(
+                    [call for call in calls if call[:1] == ["api"]], [REF_CALL, COMPARE_CALL], "the tip, one compare"
+                )
                 self.assertNotIn(checks_call, [call[: len(checks_call)] for call in calls], "before CI")
         # the record inside an array is a listing of one docs file: the head merges on the daily sweep
         self.calls.unlink(missing_ok=True)
@@ -3477,6 +3548,151 @@ class PrMergeTest(PrLeverTestCase):
         self.assertIn(SKIP_LINE, run.stderr)
         self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
         self.assertIn(f"--jq '{FILES_JQ}'", (LEVERS / "pr-merge.sh").read_text(), "the call spells the check")
+
+    def test_the_listing_is_the_diff_the_squash_lands_so_a_head_behind_main_s_tip_is_refused(self):
+        """U597 round 7 (verdict U597-301eba2e P1 at pr-merge.sh:756): rounds 4 to 6 compared `main...<head>`, the
+        diff from the merge base, while `pr merge --squash` lands the diff against main's tip; when main moved after
+        the branch point the two differ, and a base-side rename can carry an exempt edit into a sweep-class path. The
+        lever reads main's tip once (`gh api repos/{owner}/{repo}/git/ref/heads/main --jq .object.sha`, 40 hex),
+        compares `<tip>...<head>` and reads the response's `merge_base_commit.sha` in the same call as the listing's
+        first line, `merge-base <sha>`: a merge base equal to the tip merges (the fixtures' default, the three-dot
+        diff then being the two-dot diff against the tip); a merge base behind the tip is refused naming both shas,
+        through the listing text and through the lever's own jq, with no merge, no skip line and no CI read, and the
+        unit's sweep row at the head changes nothing, since the listing is held before the row; a tip read that
+        fails, or answers no 40-hex sha (null, a short sha, upper case, a word, a number, no `object`), is exit 1
+        naming the read with no compare asked; a tip the fixture did not key meets no listing, so the compare is keyed
+        by the tip the lever read; a response whose merge base is no string, or a listing whose first line is not
+        `merge-base <40 hex>`, is exit 1 with no merge."""
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
+        self.daily(daily_row())
+        docs = files_listing("docs/plan.md")
+        checks_call = ["pr", "checks", "7", "--json", "bucket,name"]
+        behind = "f" * 40
+        stale = (
+            f"the head {SHA_A} of pull request 7 is not up to date with main (merge base {behind}, main tip {BASE_TIP});"
+            " rebase the branch onto main and re-run the audit, so the listing is the diff the squash lands"
+        )
+
+        def stopped(run, code, message):
+            self.assertEqual(run.returncode, code, run.stdout + run.stderr)
+            self.assertIn(message, run.stderr)
+            self.assertNotIn("sweep: not required", run.stderr)
+            self.assertEqual(run.stdout, "", "no receipt")
+            self.assertEqual(self.writes(), [])
+            self.assertNotIn(checks_call, [call[: len(checks_call)] for call in self.gh_calls()], "before CI")
+            api_calls = [call for call in self.gh_calls() if call[:1] == ["api"]]
+            self.calls.unlink(missing_ok=True)
+            return api_calls
+
+        # the merge base equal to the tip: the listing is the diff the squash lands, and the docs head merges on the
+        # daily sweep after the tip read and the one compare keyed by it
+        self.github(paths=docs)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(SKIP_LINE, run.stderr)
+        self.assertEqual([call for call in self.gh_calls() if call[:1] == ["api"]], [REF_CALL, COMPARE_CALL])
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        self.calls.unlink()
+        # a merge base behind the tip: refused naming both shas, whatever the paths and however the listing arrives
+        for name, kwargs in (
+            ("the listing text, docs paths", {"paths": docs, "merge_base": behind}),
+            ("the API's JSON through the jq, docs paths", {"files": [api_file("docs/plan.md")], "merge_base": behind}),
+            ("a lever path", {"merge_base": behind}),
+            (
+                "a response with a merge base of its own",
+                {"compare_json": compare_response([api_file("docs/plan.md")], behind)},
+            ),
+        ):
+            with self.subTest(name):
+                self.github(**kwargs)
+                run = self.merge()
+                self.assert_refused(run, stale)
+                self.assertEqual(stopped(run, 2, "is not up to date with main"), [REF_CALL, COMPARE_CALL])
+        # the unit's sweep row at the head changes nothing: the listing is held before the row is asked
+        self.ledger(ledger_row(SHA_A))
+        self.github(merge_base=behind)
+        run = self.merge()
+        self.assert_refused(run, stale)
+        stopped(run, 2, "is not up to date with main")
+        self.assertNotIn("sweep row", run.stderr)
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+        # a failed tip read: exit 1 naming the read, no compare asked
+        self.github(paths=docs, tip_exit=1)
+        run = self.merge()
+        calls = stopped(
+            run, 1, "pr-merge.sh: cannot read the tip of main (gh api repos/{owner}/{repo}/git/ref/heads/main)"
+        )
+        self.assertEqual(calls, [REF_CALL], "the tip read fails before any compare")
+        # a tip that is not 40 hex: exit 1 naming the value, no compare asked
+        for name, response, value in (
+            ("object null", {"ref": "refs/heads/main", "object": None}, "null"),
+            ("no object", {"ref": "refs/heads/main"}, "null"),
+            ("a short sha", {"object": {"sha": BASE_TIP[:8], "type": "commit"}}, BASE_TIP[:8]),
+            ("upper case", {"object": {"sha": BASE_TIP.upper(), "type": "commit"}}, BASE_TIP.upper()),
+            ("a word", {"object": {"sha": "main", "type": "commit"}}, "main"),
+            ("a number", {"object": {"sha": 7, "type": "commit"}}, "7"),
+        ):
+            with self.subTest(name):
+                self.github(paths=docs, tip_json=response)
+                run = self.merge()
+                calls = stopped(
+                    run,
+                    1,
+                    f"the tip of main read from gh api repos/{{owner}}/{{repo}}/git/ref/heads/main is not 40 hex: '{value}'",
+                )
+                self.assertEqual(calls, [REF_CALL])
+        # a tip the fixture did not key: the lever asks the compare of that tip and the head, which the fake refuses,
+        # so the read fails (the compare is keyed by the tip the lever read, never by the name `main`)
+        self.github(paths=docs, tip=SHA_C)
+        run = self.merge()
+        calls = stopped(
+            run,
+            1,
+            f"cannot list the changed paths of the head {SHA_A} of pull request 7 (gh api"
+            f" repos/{{owner}}/{{repo}}/compare/{SHA_C}...{SHA_A})",
+        )
+        self.assertEqual(calls, [REF_CALL, compare_call(SHA_A, SHA_C)])
+        # a merge base that is no string is the jq's own error, exit 1 naming the type, never a listing
+        record = api_file("docs/plan.md")
+        for name, response, kind in (
+            ("sha null", {"merge_base_commit": {"sha": None}, "files": [record]}, "null"),
+            ("merge_base_commit null", {"merge_base_commit": None, "files": [record]}, "null"),
+            ("sha a number", {"merge_base_commit": {"sha": 1}, "files": [record]}, "number"),
+            ("no sha", {"merge_base_commit": {"url": "x"}, "files": [record]}, "null"),
+        ):
+            with self.subTest(name):
+                self.github(compare_json=response)
+                run = self.merge()
+                stopped(run, 1, f"cannot list the changed paths of the head {SHA_A} of pull request 7")
+                self.assertIn(f"merge_base_commit.sha is {kind}, not a string", run.stderr, "the jq's own error")
+        # a listing whose first line is not `merge-base <40 hex>`: exit 1 naming the line
+        for name, raw, line in (
+            ("no merge-base line", docs, docs.splitlines()[0]),
+            ("a short merge base", f"merge-base {behind[:8]}\n{docs}", f"merge-base {behind[:8]}"),
+            ("a merge base with a trailer", f"merge-base {BASE_TIP} extra\n{docs}", f"merge-base {BASE_TIP} extra"),
+            ("an empty first line", f"\n{docs}", ""),
+        ):
+            with self.subTest(name):
+                self.github(raw=raw)
+                run = self.merge()
+                stopped(
+                    run,
+                    1,
+                    f"answered with a first line that is not 'merge-base <40 hex>': '{line}'; the merge base is read"
+                    " beside the files, in the same call",
+                )
+        # the lever spells the read, the compare and the check as this test describes them
+        text = (LEVERS / "pr-merge.sh").read_text()
+        self.assertIn(
+            "base_tip=$(gh_bounded api \"repos/{owner}/{repo}/git/ref/heads/${base}\" --jq '.object.sha') ||", text
+        )
+        self.assertIn("[[ ${base_tip} =~ ^[0-9a-f]{40}$ ]] ||", text)
+        self.assertIn(
+            f"gh_bounded api \"repos/{{owner}}/{{repo}}/compare/${{base_tip}}...${{head}}\" --jq '{FILES_JQ}'", text
+        )
+        self.assertIn("[[ ${merge_base} =~ ^merge-base\\ ([0-9a-f]{40})$ ]] ||", text)
+        self.assertIn('[[ ${merge_base} == "${base_tip}" ]] ||', text)
+        self.assertNotIn("compare/${base}...${head}", text, "the compare is keyed by the tip, never by the name")
 
     def test_a_failed_physical_path_read_of_the_store_or_the_findings_directory_never_merges(self):
         """U597 round 6 (verdict U597-10d46fe0 P3 at pr-merge.sh:901; standing order 21): `sweep_row_fields` reads

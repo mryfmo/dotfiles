@@ -15,8 +15,10 @@ header `ts unit pr head_sha verdict verifier evidence`; every other line is spli
 is still a field; U119 round 3), must have the header's column count, a ts of the one shape `YYYY-MM-DDThh:mm:ssZ`
 (`TS_SHAPE`: four digits, then two in every other field; U597 round 6, where `strptime` alone read `2026-11-9T4:5:6Z`
 under a form that spells two digits) that `datetime.strptime` then reads under `%Y-%m-%dT%H:%M:%SZ` (hour 25 is a
-ValueError, so a malformed row), and no empty `ts`, `unit`, `pr`, `head_sha` or `verdict` cell (round 2: an empty
-cell matched no pull request and read as "no row"). A `Row` carries its ts parsed (`ts`, a datetime, the order every
+ValueError, so a malformed row), no cell holding a control character (`CONTROL`, `\\x00` to `\\x1f` and `\\x7f`; U597
+round 7, where a NUL in a daily row's evidence path was data to the reader and dropped by the lever's `$(...)`), and
+no empty `ts`, `unit`, `pr`, `head_sha` or `verdict` cell (round 2: an empty cell matched no pull request and read as
+"no row"). A `Row` carries its ts parsed (`ts`, a datetime, the order every
 choice of a newest row is made in) and as written (`ts_text`, for the lines that name the row), its seven cells and
 its line number.
 
@@ -53,12 +55,13 @@ its rows live in the store's own file `daily-sweeps.tsv` (header `ts head_sha ve
 exists at the path (the day's first sweep is not yet recorded: `none` to the lever, never a refusal), or raises
 Malformed with the ledger's strictness: the header exact, four cells per row split on the tab alone, a ts of the one
 shape `timestamp` reads (`TS_SHAPE`, then `strptime`; round 6: `2026-11-9T4:5:6Z` is Malformed naming the line, where
-round 5's `strptime` alone read it), no empty cell, a `head_sha` of 40 hex, and the verifier and the evidence the
-exact fields of the sweep rule (`security-audit-skill <pin>`, a findings file `sweeps/<path>.json`), each fault naming
-the line and the field. `Daily.newest_within(now, max_age)` is the newest row by `(ts, line)` whose ts lies within
-the window `now - max_age <= ts <= now + DAILY_FUTURE_SLACK` (60 seconds, the clocks' skew; round 5: a row dated
-further in the future is not within the window, so it does not count and is not refused as malformed, where round 4's
-floor alone let a future-dated row waive per-head sweeps until a day after its ts). `ledger.py <store> daily
+round 5's `strptime` alone read it), no cell holding a control character (round 7), no empty cell, a `head_sha` of 40
+hex, and the verifier and the evidence the exact fields of the sweep rule (`security-audit-skill <pin>`, a findings
+file `sweeps/<path>.json`), each fault naming the line and the field. `Daily.newest_within(now, max_age)` is the
+newest row by `(ts, line)` whose ts lies within the window `now - max_age <= ts <= now + DAILY_FUTURE_SLACK` (60
+seconds, the reader's allowance for a row another host's clock wrote; the writer refuses a ts after its own clock,
+round 7; round 5: a row dated further in the future is not within the window, so it does not count and is not refused
+as malformed, where round 4's floor alone let a future-dated row waive per-head sweeps until a day after its ts). `ledger.py <store> daily
 <max-age-seconds>` prints `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of that row against the clock (UTC), or `none`
 (no file, or no row within the window); `pr-merge.sh` asks it with 86400 and skips a head's own sweep row only on a
 row, so the exemption of rule C is bound to the control it rests on.
@@ -80,6 +83,11 @@ TS_FORM = "YYYY-MM-DDThh:mm:ssZ"  # the same form as the refusals spell it
 # The shape every ts cell has before the calendar check (U597 round 6): four ASCII digits, then two in each of the five
 # other fields, the literals in their places; `strptime` alone accepts one digit where the form spells two.
 TS_SHAPE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+# No cell of either file holds a control character (U597 round 7: `\x00` to `\x1f` and `\x7f`; a tab is the separator
+# and a line break the row's end, so neither is in a cell, and a NUL in an evidence path is dropped by bash's `$(...)`
+# when pr-merge.sh captures the row, so the lever would check another file than the one the row names). A cell that
+# holds one is Malformed naming the line and the field.
+CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 # A verdict column that starts with the word `correct` or `incorrect` (pr-merge.sh's correct_re, both words).
 AUDIT_VERDICT = re.compile(r"^(correct|incorrect)(?:$|[\s(;,])")
 # A verdict column that starts with the word `sweep` (the security-audit skill's advisory row, AGENTS.md Audit sweep
@@ -100,8 +108,10 @@ NONE = "none"
 DAILY_FILE = "daily-sweeps.tsv"
 DAILY_HEADER = ("ts", "head_sha", "verifier", "evidence")
 DAILY_REQUIRED = range(1, 5)  # every cell: a row without a verifier or an evidence is no sweep
-# The window's upper bound (round 5): a daily row may be dated this many seconds after now (the clocks' skew) and no
-# further; a row dated later is not within the window.
+# The window's upper bound (round 5): a daily row may be dated this many seconds after now and no further; a row dated
+# later is not within the window. The allowance is the reader's alone, for a row another host's clock wrote and this
+# host reads (the clocks' skew): the writer, `ledger-row.py daily`, refuses a `--swept-at` after its own clock (round
+# 7), so a row this host wrote is never dated ahead.
 DAILY_FUTURE_SLACK = 60
 MAX_AGE = re.compile(r"^[1-9][0-9]*$")
 
@@ -261,6 +271,18 @@ class Ledger:
         return newest(found)
 
 
+def control_check(name, number, header, fields):
+    """Malformed naming the line, the column and the character when a cell holds a control character (U597 round 7;
+    CONTROL): one rule for the ledger's rows and the daily file's."""
+    for column, field in enumerate(fields, 1):
+        found = CONTROL.search(field)
+        if found is not None:
+            raise Malformed(
+                f"{name}:{number}: column {column} ({header[column - 1]}) holds a control character "
+                f"U+{ord(found.group()):04X}; no cell holds one"
+            )
+
+
 def parse_ledger(name, text):
     """The Ledger of one `ledger.tsv` text, or Malformed naming `name` and the line."""
     lines = text.split("\n")
@@ -275,6 +297,7 @@ def parse_ledger(name, text):
         fields = line.rstrip("\r").split("\t")
         if len(fields) != len(HEADER):
             raise Malformed(f"{name}:{number}: {len(fields)} columns, not {len(HEADER)}")
+        control_check(name, number, HEADER, fields)
         at = timestamp(fields[0])
         if at is None:
             raise Malformed(f"{name}:{number}: the ts {fields[0]!r} is not {TS_FORM}")
@@ -350,6 +373,7 @@ def parse_daily(name, text):
         fields = line.rstrip("\r").split("\t")
         if len(fields) != len(DAILY_HEADER):
             raise Malformed(f"{name}:{number}: {len(fields)} columns, not {len(DAILY_HEADER)}")
+        control_check(name, number, DAILY_HEADER, fields)
         at = timestamp(fields[0])
         if at is None:
             raise Malformed(f"{name}:{number}: the ts {fields[0]!r} is not {TS_FORM}")

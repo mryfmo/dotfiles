@@ -93,9 +93,26 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         # the findings file itself
         self.assertIn(
             "`test ! -e <store>/sweeps/daily-<YYYY-MM-DD>-run-<n> && mkdir <store>/sweeps/daily-<YYYY-MM-DD>-run-<n> "
-            "&& cp <output-dir>/findings.json <store>/sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json`",
+            "&& cp <output-dir>/findings.json <store>/sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json && cp "
+            "<output-dir>/coverage-ledger.json <store>/sweeps/daily-<YYYY-MM-DD>-run-<n>/coverage-ledger.json`",
             text,
         )
+        # round 7 (verdict U597-301eba2e P2 at :26 and P2 at ledger-row.py:435): the clean-checkout acceptance reads
+        # `git status --porcelain`'s exit status, so a failed read is a refusal to start and never a clean checkout;
+        # the recording step copies the coverage ledger beside the findings, since the writer runs both validators
+        porcelain = (
+            "`git -C ~/.local/state/omp-seats/<repository>/<seat> status --porcelain` exits 0 and prints nothing"
+        )
+        self.assertEqual(text.count(porcelain), 3, "SCOPE, step 1 and ACCEPTANCE 5 each read the exit status")
+        self.assertNotIn("status --porcelain` prints nothing", text, "no sentence accepts empty output alone")
+        self.assertIn("a failed read is a refusal to start, never a clean checkout", text)
+        self.assertIn("A failed read is never read as a clean checkout.", text)
+        self.assertIn("A status read that exits non-zero, or prints anything, is a refusal to start", text)
+        self.assertIn("status=partial pr=none head=<head> note=preflight refused: git status exited <n>", text)
+        acceptance = text[text.index("\nACCEPTANCE\n") : text.index("\nVERIFY\n")]
+        self.assertIn(porcelain, acceptance)
+        self.assertIn("then runs the installed skill's two validators itself over the two copies", text)
+        self.assertIn("`validators pass` in the row is the writer's own result", text)
         self.assertIn(
             "`~/.local/bin/common/ledger-row.py <store> daily --head <head> --seat <seat> --run <n> --task "
             "daily-<YYYY-MM-DD> --findings sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json --swept-at <ts>`",

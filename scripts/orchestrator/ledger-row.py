@@ -40,19 +40,25 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
   the lever name alone, one of `pr-update-branch.sh`, `pr-close.sh`, `records-sync.sh`; evidence the receipt then `;
   <note>`.
 - `daily --head <40 hex> --seat <seat> --run <n> --task <U<n> or daily-<YYYY-MM-DD>> --findings
-  sweeps/<dir>/findings.json --swept-at <YYYY-MM-DDTHH:MM:SSZ>` (regime-cutover U597 round 4): not a ledger row but the
-  one row of the store's `daily-sweeps.tsv` (header `ts head_sha verifier evidence`, the file `ledger.py daily` reads
-  and `pr-merge.sh` requires within 24 hours before a head outside every sweep class skips its own sweep row), ts the
-  sweep's own time (round 6, verdicts/U597-10d46fe0.md: `--swept-at`, the RESULT message's bus timestamp the
-  coordinator passes, under the reader's strict form, refused when later than the clock plus 60 seconds, the reader's
-  slack, or more than 24 hours before it, since such a row would be born stale; round 5 dated the row by the clock, so
+  sweeps/<dir>/findings.json --swept-at <YYYY-MM-DDTHH:MM:SSZ> [--skill-dir <dir>]` (regime-cutover U597 round 4): not
+  a ledger row but the one row of the store's `daily-sweeps.tsv` (header `ts head_sha verifier evidence`, the file
+  `ledger.py daily` reads and `pr-merge.sh` requires within 24 hours before a head outside every sweep class skips its
+  own sweep row), ts the sweep's own time (round 6, verdicts/U597-10d46fe0.md: `--swept-at`, the RESULT message's bus
+  timestamp the coordinator passes, under the reader's strict form, refused when later than the clock at the write
+  (round 7: no future slack in the writer; the reader's 60-second allowance is for rows written by another host's
+  clock) or more than 24 hours before it, since such a row would be born stale; round 5 dated the row by the clock, so
   a delayed recording granted a fresh window), head main's head the sweep ran at, verifier as the `sweep` kind
   composes it (`security-audit-skill <pin8> (full audit mode on the srt worker seat <seat>, run-<n>; TASK <task>)`),
   evidence `<findings>; <count> findings; validators pass; recorded <ts>` with the findings path a regular file of this
   user under the store that the writer opens itself (round 6: `O_NOFOLLOW`, `fstat` a regular file of this uid, strict
   UTF-8, JSON, a list whose every element is an object, else a refusal naming the file; `<count>` is that list's length
-  and `--count` is gone from this kind; `validators pass` is the coordinator's statement that both validators exited
-  0, which no reader depends on; `recorded <ts>` the clock at the write). Round 5 (verdicts/U597-1b3c4b1d.md): the
+  and `--count` is gone from this kind; `validators pass` is earned, round 7: after that shape check the writer runs the
+  installed skill's two validators itself, `node <skill>/validate-findings.cjs <findings>` and `node
+  <skill>/validate-coverage-ledger.cjs <coverage-ledger.json beside it>`, `<skill>` the `--skill-dir` or the manifest's
+  `assets.security-audit-skill` install `~/.agents/skills/security-audit`, each from `/` with the environment reduced
+  to PATH, stdin closed and a timeout, its status read, and a missing skill directory, a missing validator, no `node`
+  on PATH, a missing coverage ledger or a validator exiting non-zero is a refusal naming the validator's first stderr
+  line with nothing written; `recorded <ts>` the clock at the write). Round 5 (verdicts/U597-1b3c4b1d.md): the
   day's first file, the header and the first row, is written whole through a temporary file of the store directory
   and `os.replace` under the ledger's lock (so two first writers serialise and the second appends), and appears whole
   or not at all, where round 4's `O_CREAT | O_EXCL` header write left a malformed file after a short write that no
@@ -66,7 +72,8 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
 Two refusals cross rows, before any write (standing order 21): a `pushed` or `receipt` row whose head is 40 hex while
 `ledger.already_audited` names an audit row of the same pull request at that head is refused naming that row's ts (the
 `merged` kind is exempt: the merge is the last row of a head); and any cell holding a tab, a newline or a carriage
-return is refused naming the cell, the store argument included. A store whose ledger does not parse is exit 2 naming
+return, or any other control character (round 7, with the reader), is refused naming the cell, the store argument
+included. A store whose ledger does not parse is exit 2 naming
 the line. Exit 0 prints one line, `appended <ts> line <n>`; every refusal is exit 2 with one stderr line; a write that
 fails is exit 1 naming the file. Round 2 (U222b, verdicts/U222-9187830e.md): every file read under the store
 (`ledger.tsv`, the verdict file, the findings file) follows one path rule, its `os.path.realpath` under the realpath of
@@ -108,7 +115,9 @@ import json
 import math
 import os
 import re
+import shutil
 import stat
+import subprocess
 import sys
 import tempfile
 import time
@@ -124,8 +133,23 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 # for LOCK_WAIT seconds (`--lock-wait` sets the wait); advisory, so the readers, which take no lock, are unaffected.
 LOCK_WAIT = 30.0
 LOCK_POLL = 0.1
-# The three characters no cell and no argument holds: the ledger is tab-separated lines.
+# The characters no cell and no argument holds: a tab or a line break (the ledger is tab-separated lines) and, since
+# U597 round 7, every other control character (`\x00` to `\x1f`, `\x7f`: a NUL in a cell is dropped by bash's `$(...)`
+# when a lever captures the row, so the lever would read another text than the file holds), the reader's CONTROL rule.
 CONTROL = (("\t", "a tab"), ("\n", "a newline"), ("\r", "a carriage return"))
+CONTROL_CHARACTER = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def control_label(value):
+    """How a refusal names the first control character of `value`, or None when it holds none: the three named
+    characters by their names, any other as `a control character U+00xx`."""
+    for character, label in CONTROL:
+        if character in value:
+            return label
+    found = CONTROL_CHARACTER.search(value)
+    if found is None:
+        return None
+    return f"a control character U+{ord(found.group()):04X}"
 
 
 def refuse(reason):
@@ -183,6 +207,18 @@ SWEEP_SEAT_RUN = re.compile(r"\(full audit mode on the srt worker seat (\S+), ru
 # The oldest `--swept-at` the daily kind records (round 6): the window pr-merge.sh reads with (its DAILY_SWEEP_MAX_AGE,
 # 86400 seconds); a row dated earlier would be born stale and stand for no head.
 SWEPT_AT_MAX_AGE = 86400
+# The installed `security-audit` skill (round 7): the manifest's `assets.security-audit-skill` install path, written
+# by scripts/update-agent-assets.sh's update_security_audit_skill as `${HOME}/.agents/skills/security-audit`; the
+# `daily` kind's `--skill-dir` names another directory. Its two validators run over the findings file the row names
+# and the coverage ledger beside it, each as `node <skill>/<validator> <file>`, before `validators pass` is written.
+SKILL_DIR = "~/.agents/skills/security-audit"
+COVERAGE_LEDGER = "coverage-ledger.json"
+VALIDATORS = (("validate-findings.cjs", "findings.json"), ("validate-coverage-ledger.cjs", COVERAGE_LEDGER))
+# Seconds one validator may run; the skill's own tests finish in well under one.
+VALIDATOR_TIMEOUT = 120
+# The one directory the validators run from, and the one variable they get: neither the store nor the checkout, and
+# none of the caller's `NODE_OPTIONS`, `NODE_PATH` or other environment (the `-I` of a python run, for node).
+VALIDATOR_CWD = "/"
 # The manifest, read as text by one indentation rule (pr-merge.sh `sweep_pin_probe`, brief-check.py `manifest_levers`):
 # a bare `<key>:` line opens a mapping, a line indented no deeper closes it, and the pin is the one `pin: <40 hex>`
 # line at the indentation of the `security-audit-skill` asset's first field under the top-level `assets:`.
@@ -251,10 +287,11 @@ def manifest_pin(manifest, lines):
 
 
 def cell_check(name, value):
-    """A cell holds neither a tab nor a line break: the ledger is tab-separated lines."""
-    for character, label in CONTROL:
-        if character in value:
-            refuse(f"the {name} holds {label}; a cell holds neither a tab nor a newline")
+    """A cell holds neither a tab, a line break nor any other control character (round 7): the ledger is
+    tab-separated lines, and the reader refuses a control character in any cell."""
+    label = control_label(value)
+    if label is not None:
+        refuse(f"the {name} holds {label}; a cell holds neither a tab, a newline nor a control character")
 
 
 def check_unit(unit):
@@ -423,25 +460,89 @@ def sweep_verifier(args):
 
 def daily_row(args, store):
     """`daily` (U597 round 4): the one row of `daily-sweeps.tsv`, main's head the sweep ran at, the verifier of the
-    `sweep` kind, the evidence the findings file (a regular file under the store, read for the count; round 6), the
-    coordinator's `validators pass` and the recording time; the ts the sweep's own, `--swept-at` (round 6); the task
-    the coordinator's daily id `daily-<YYYY-MM-DD>` or a unit."""
+    `sweep` kind, the evidence the findings file (a regular file under the store, read for the count; round 6),
+    `validators pass` earned by running the installed skill's two validators over the findings file and the coverage
+    ledger beside it (round 7), and the recording time; the ts the sweep's own, `--swept-at` (round 6); the task the
+    coordinator's daily id `daily-<YYYY-MM-DD>` or a unit."""
     check_head(args.head)
     if not UNIT.match(args.task) and not DAILY_TASK.match(args.task):
         refuse(f"the task {args.task!r} is not daily-<YYYY-MM-DD> or U<n>")
     swept_at = check_swept_at(args.swept_at)
     verifier = sweep_verifier(args)
-    count = findings_count(store_file(store, args.findings, "findings path"), args.findings)
+    findings_path = store_file(store, args.findings, "findings path")
+    count = findings_count(findings_path, args.findings)
+    run_validators(args, store, findings_path)
     evidence = f"{args.findings}; {count} findings; validators pass; recorded {now()}"
     return ledger.DailyRow(swept_at, args.head, verifier, evidence, 0, args.swept_at)
 
 
+def run_validators(args, store, findings_path):
+    """The installed skill's two validators, run by this writer before it states `validators pass` (round 7; the
+    round-6 P2 at daily_row: the statement was the coordinator's word after a JSON-shape check, so a findings set
+    without the skill's required fields backed a daily exemption). `<skill>` is `--skill-dir`, else SKILL_DIR
+    expanded under HOME, a directory holding both validators as regular files; `node` is the first on PATH
+    (`shutil.which`); the coverage ledger is `coverage-ledger.json` beside the findings file, under the store's path
+    rule. Each validator runs as `node <skill>/<validator> <file>` from VALIDATOR_CWD with the environment reduced to
+    PATH, stdin closed and a VALIDATOR_TIMEOUT, its status read: a node that cannot run, a run that expires, or an
+    exit other than 0 is a refusal naming the validator, the file and the validator's first stderr line, and nothing
+    is written. A missing skill directory, a missing validator or no node on PATH refuses the same way."""
+    skill_dir = os.path.expanduser(SKILL_DIR) if args.skill_dir is None else args.skill_dir
+    if not os.path.isdir(skill_dir):
+        refuse(
+            f"the skill directory {skill_dir} is not a directory; the installed security-audit skill (the manifest's "
+            "assets.security-audit-skill, ~/.agents/skills/security-audit, or --skill-dir) holds the validators that "
+            "earn 'validators pass'"
+        )
+    scripts = {}
+    for validator, _ in VALIDATORS:
+        script = os.path.join(skill_dir, validator)
+        if not os.path.isfile(script):
+            refuse(
+                f"the validator {script} is not a regular file; the daily row states 'validators pass' only after it ran"
+            )
+        scripts[validator] = script
+    node = shutil.which("node", path=os.environ.get("PATH", ""))
+    if node is None:
+        refuse(
+            "no node on PATH; the skill's validators run under it, and the daily row states 'validators pass' only after they ran"
+        )
+    directory = args.findings.rsplit("/", 1)[0]
+    targets = {
+        "findings.json": (findings_path, args.findings),
+        COVERAGE_LEDGER: (
+            store_file(store, f"{directory}/{COVERAGE_LEDGER}", "coverage ledger path"),
+            f"{directory}/{COVERAGE_LEDGER}",
+        ),
+    }
+    for validator, target in VALIDATORS:
+        path, relative = targets[target]
+        try:
+            run = subprocess.run(
+                [node, scripts[validator], path],
+                cwd=VALIDATOR_CWD,
+                env={"PATH": os.environ.get("PATH", "")},
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                timeout=VALIDATOR_TIMEOUT,
+                check=False,
+            )
+        except OSError as error:
+            refuse(f"cannot run {node} {scripts[validator]} {relative}: {error.strerror}; nothing is written")
+        except subprocess.TimeoutExpired:
+            refuse(f"{validator} did not finish within {VALIDATOR_TIMEOUT} seconds on {relative}; nothing is written")
+        if run.returncode != 0:
+            first = run.stderr.decode("utf-8", "replace").splitlines()
+            reason = first[0] if first else "no stderr"
+            refuse(f"{validator} exited {run.returncode} on {relative}: {reason}; nothing is written")
+
+
 def check_swept_at(text):
     """`--swept-at` as a time (round 6): the RESULT message's bus timestamp under the reader's one form
-    (`ledger.timestamp`: the shape, two digits in every field, then the calendar), no later than the clock plus the
-    reader's slack (`DAILY_FUTURE_SLACK`, 60 seconds: a sweep's RESULT is never ahead of its recording) and no earlier
-    than the clock minus SWEPT_AT_MAX_AGE (24 hours, the window `pr-merge.sh` reads with: a row dated earlier would be
-    born stale and stand for no head). Any other value is a refusal naming it and the clock."""
+    (`ledger.timestamp`: the shape, two digits in every field, then the calendar), no later than the clock at the
+    write (round 7: no future slack here; a sweep's RESULT is never ahead of its recording, and the reader's
+    `DAILY_FUTURE_SLACK` of 60 seconds is for rows another host's clock wrote, read on this one) and no earlier than
+    the clock minus SWEPT_AT_MAX_AGE (24 hours, the window `pr-merge.sh` reads with: a row dated earlier would be born
+    stale and stand for no head). Any other value is a refusal naming it and the clock."""
     at = ledger.timestamp(text)
     if at is None:
         refuse(
@@ -450,11 +551,11 @@ def check_swept_at(text):
         )
     clock = ledger.utc_now()
     clock_text = clock.strftime(ledger.TS_FORMAT)
-    if at > clock + timedelta(seconds=ledger.DAILY_FUTURE_SLACK):
+    if at > clock:
         refuse(
-            f"--swept-at {text} is in the future: later than the clock {clock_text} plus {ledger.DAILY_FUTURE_SLACK} "
-            "seconds; a sweep's RESULT time is never ahead of its recording, and a row dated ahead would stand longer "
-            "than its sweep"
+            f"--swept-at {text} is in the future: later than the clock {clock_text}; a sweep's RESULT time is never "
+            "ahead of its recording, and a row dated ahead would stand longer than its sweep (the reader's 60-second "
+            "allowance is for rows written by another host's clock, not for this writer)"
         )
     if at < clock - timedelta(seconds=SWEPT_AT_MAX_AGE):
         refuse(
@@ -609,8 +710,15 @@ def parser():
         metavar="TS",
         help=(
             "the sweep's RESULT timestamp, YYYY-MM-DDTHH:MM:SSZ in UTC, written as the row's ts; refused later than "
-            f"the clock plus {ledger.DAILY_FUTURE_SLACK} seconds or more than {SWEPT_AT_MAX_AGE} seconds (24 hours) "
-            "before it"
+            f"the clock or more than {SWEPT_AT_MAX_AGE} seconds (24 hours) before it"
+        ),
+    )
+    daily.add_argument(
+        "--skill-dir",
+        metavar="DIR",
+        help=(
+            f"the installed security-audit skill whose validate-findings.cjs and validate-coverage-ledger.cjs run over "
+            f"the findings file and the coverage-ledger.json beside it (default {SKILL_DIR})"
         ),
     )
     audit = kind("audit", "the audit verdict: the word read from the verdict file's last line")
@@ -738,8 +846,9 @@ def store_file(store, relative, label):
 def argument_rule(argv):
     """The one rule every element of argv passes before argparse runs (round 3 finding 2, round 4 finding 4): the
     element round-trips through strict UTF-8 (Python decodes argv with surrogateescape, so a byte that is not UTF-8
-    arrives as a lone surrogate that would fail only at the write) and holds neither a tab, a newline nor a carriage
-    return (a check of the parsed strings alone let `--lock-wait`, which argparse converts to a float, escape it). The
+    arrives as a lone surrogate that would fail only at the write) and holds neither a tab, a newline, a carriage
+    return nor any other control character (round 7; a check of the parsed strings alone let `--lock-wait`, which
+    argparse converts to a float, escape it). The
     refusal names the element's position and the option before it, or the store and the kind for the first two
     positional elements."""
     positional = 0
@@ -755,9 +864,9 @@ def argument_rule(argv):
             value.encode("utf-8")
         except UnicodeEncodeError as error:
             refuse(f"{where} holds a byte that is not UTF-8 at offset {error.start}: {value!r}")
-        for character, label in CONTROL:
-            if character in value:
-                refuse(f"{where} holds {label}; a cell holds neither a tab nor a newline")
+        label = control_label(value)
+        if label is not None:
+            refuse(f"{where} holds {label}; a cell holds neither a tab, a newline nor a control character")
 
 
 def open_ledger(ledger_path, wait):

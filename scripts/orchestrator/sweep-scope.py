@@ -12,10 +12,16 @@ standing control, whose newest row (`daily-sweeps.tsv`, read through `ledger.py 
 
 `sweep_required(paths)` is the predicate, defined here alone and read by `pr-merge.sh` (as `python3 -I -S
 scripts/orchestrator/sweep-scope.py --files-json` over the audited head's changed files as the GitHub compare API
-lists them keyed by the head's sha, one call, `gh api 'repos/{owner}/{repo}/compare/main...<head>' --jq '(.files //
-error("no files key")) | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null
-end)] | @json'`, one JSON array per file, both paths of a rename counting, the lever reading no local git object) and
-by `tests/unit/test_sweep_scope.py`.
+lists them keyed by main's tip and the head's sha: the lever reads the tip once, `gh api
+'repos/{owner}/{repo}/git/ref/heads/main' --jq '.object.sha'`, then makes one call, `gh api
+'repos/{owner}/{repo}/compare/<main tip>...<head>' --jq '("merge-base " + (.merge_base_commit.sha | if type ==
+"string" then . else error("merge_base_commit.sha is " + type + ", not a string") end)), ((if (.files | type) ==
+"array" then .files else error("files is " + (.files | type) + ", not an array") end) | .[] | [.status, .filename, (if
+has("previous_filename") then .previous_filename else null end)] | @json)'`, whose first line `merge-base <sha>` the
+lever holds equal to the tip (round 7: a head not up to date with main is refused, so the three-dot listing is the
+two-dot diff the squash lands) and whose other lines, one JSON array per file with `files` held to an array before
+anything iterates (round 6), reach this reader, both paths of a rename counting, the lever reading no local git
+object) and by `tests/unit/test_sweep_scope.py`.
 The classes are one frozen tuple of path prefixes each (CLASSES, in order of precedence): `credential` (the seat
 launcher, the broker, the token placer and the login preflight, in `scripts/orchestrator/` and as their deployed
 twins, and `home/.chezmoiscripts/`), `policy`
@@ -277,10 +283,13 @@ def files_answer(text: str) -> str:
 
 
 def changed_files_json(options: list[str]) -> str:
-    """The files listing on stdin as the lever's compare API read prints it (`gh api
-    'repos/{owner}/{repo}/compare/main...<head>' --jq '(.files // error("no files key")) | .[] | [.status,
-    .filename, (if has("previous_filename") then .previous_filename else null end)] | @json'`), `options` empty
-    (round 5: the `--changed-files <n>` count is gone), read as text."""
+    """The files listing on stdin as the lever's compare API read prints it after its `merge-base <sha>` first
+    line, which the lever strips and holds to main's tip (`gh api 'repos/{owner}/{repo}/compare/<main tip>...<head>'
+    --jq '("merge-base " + (.merge_base_commit.sha | if type == "string" then . else error("merge_base_commit.sha is
+    " + type + ", not a string") end)), ((if (.files | type) == "array" then .files else error("files is " + (.files |
+    type) + ", not an array") end) | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename
+    else null end)] | @json)'`; round 6 holds `files` to an array, round 7 keys the compare by the tip), `options`
+    empty (round 5: the `--changed-files <n>` count is gone), read as text."""
     if options:
         raise Unreadable(USAGE)
     try:

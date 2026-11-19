@@ -76,13 +76,17 @@
 #   the body's program (the derived store, or the checkout's own store while no derived one exists). The
 #   lever reads no local git objects or refs; it decides from `gh` reads and the store alone, and git only names the
 #   checkout (`rev-parse --show-toplevel`, `--absolute-git-dir`, `--git-common-dir`); the head's changed paths, which
-#   decide whether the sweep is required (below), are the compare API keyed by the head's sha as data, one call, `gh api
-#   'repos/{owner}/{repo}/compare/main...<head>' --jq '(if (.files | type) == "array" then .files else error("files is "
-#   + (.files | type) + ", not an array") end) | .[] | [.status, .filename, (if has("previous_filename") then
-#   .previous_filename else null end)] | @json'`, one JSON array per file, whose completeness the reader takes from
-#   the listing itself (300 or more entries, the API's cap, is `required cap`) and whose `files` the jq holds to an
-#   array first (round 6: an object, a string, a number, a boolean or null there is the jq's own error and the call's
-#   failure, never a listing), a `gh` read like the others. CI is `gh pr checks <pr>
+#   decide whether the sweep is required (below), are the compare API keyed by two shas as data: the tip of `main`
+#   read once, `gh api 'repos/{owner}/{repo}/git/ref/heads/main' --jq '.object.sha'` (40 hex, else a failure), then
+#   one call, `gh api 'repos/{owner}/{repo}/compare/<main tip>...<head>' --jq '("merge-base " +
+#   (.merge_base_commit.sha | if type == "string" then . else error("merge_base_commit.sha is " + type + ", not a
+#   string") end)), ((if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an
+#   array") end) | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] |
+#   @json)'`, the merge base as its first line and one JSON array per file after it, whose merge base must equal the
+#   tip (else the head is refused as not up to date with `main`, naming both shas; round 7), whose completeness the
+#   reader takes from the listing itself (300 or more entries, the API's cap, is `required cap`) and whose `files`
+#   the jq holds to an array first (round 6: an object, a string, a number, a boolean or null there is the jq's own
+#   error and the call's failure, never a listing), `gh` reads like the others. CI is `gh pr checks <pr>
 #   --json bucket,name` between two reads of `headRefOid` that must both equal
 #   the head (and whose second read must still report base `main`: `--match-head-commit` pins only the head): at least
 #   one check, every bucket `pass` or `skipping`, every name of REQUIRED_CHECKS listed with bucket `pass`, and `gh`
@@ -110,31 +114,40 @@
 #   rule as the operator set it on 2026-11-18, sweep rule C: a lever, a policy, credential handling or a deployed
 #   executable; every other head merges on its Codex audit and CI alone while the standing control stands, one full
 #   sweep of main's head per day, whose row this lever reads since round 4; U147 read the unit's brief for the
-#   trust-boundary mark, and with one class that reading is gone). After `require_dispositions` the lever lists the
-#   audited head's changed files through the GitHub compare API keyed by the head's sha itself, one call, `gh api
-#   'repos/{owner}/{repo}/compare/main...<head>' --jq '(if (.files | type) == "array" then .files else error("files is "
-#   + (.files | type) + ", not an array") end) | .[] | [.status, .filename, (if has("previous_filename") then
-#   .previous_filename else null end)] | @json'`, one JSON array per file (U597
-#   round 4, the mechanism change after three rounds on a listing keyed by the pull request's number: round 1's `gh pr
-#   diff <pr> --name-only` printed a rename's destination alone and kept git's C quoting of a name with a tab; round
-#   2's files endpoint listed both paths of a rename as JSON, and round 3 made each file one array the reader parses
-#   and refuses in any other shape, but the files endpoint is keyed by the number alone, so a head reread and a count
-#   of the pull request around it never bound the listing to the audited head: the pull request's head can move
-#   between the listing and the read; the compare request names the sha, so its answer is that head's diff from the
-#   merge base with `main`, the three-dot form, or a failure, and a listing of another head cannot be substituted;
-#   `main` is the base the first view read and required; gh fills `{owner}` and `{repo}` from the checkout's remote).
-#   Round 5 (the round-4 P1 and its first P2): the compare response carries `files` on its first page alone, at most
-#   300 entries, and paging walks its commits, not its files (docs.github.com, REST API, commits, compare two
-#   commits, read 2026-11-19), so the call is one, with no paging, and completeness is read from the listing
-#   itself and from nothing keyed by the number: the reader counts the entries and answers `required cap` for 300 or
-#   more (the listing may be cut short, so the per-head sweep stands), the classes decide under 300, and no count of
-#   the pull request is read beside it. A response whose `files` is not an array (null for a key missing from a later
-#   page or a shape the API changed; an object, a string, a number or a boolean: round 6, the round-5 P1, where
-#   `.files // error(...) | .[]` iterated an object's values and read a one-record object as that file's listing) is
-#   the jq's own error, `(if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not
-#   an array") end)`, which fails the call and the lever names with the type, never an empty listing; a failed
-#   listing is a failure, an empty one a refusal: a head that changes nothing is nothing to merge,
-#   and a listing cut short is never "not required" (standing order 21). The listing goes on stdin to the checkout's
+#   trust-boundary mark, and with one class that reading is gone). After `require_dispositions` the lever reads the
+#   tip of `main` once (`gh api 'repos/{owner}/{repo}/git/ref/heads/main' --jq '.object.sha'`, status read, 40 hex)
+#   and lists the audited head's changed files through the GitHub compare API keyed by that tip and the head's sha,
+#   one call, `gh api 'repos/{owner}/{repo}/compare/<main tip>...<head>' --jq '("merge-base " + (.merge_base_commit.sha
+#   | if type == "string" then . else error("merge_base_commit.sha is " + type + ", not a string") end)), ((if (.files
+#   | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end) | .[] | [.status,
+#   .filename, (if has("previous_filename") then .previous_filename else null end)] | @json)'`, the response's merge
+#   base as the first line and one JSON array per file after it (U597 round 4, the mechanism change after three rounds
+#   on a listing keyed by the pull request's number: round 1's `gh pr diff <pr> --name-only` printed a rename's
+#   destination alone and kept git's C quoting of a name with a tab; round 2's files endpoint listed both paths of a
+#   rename as JSON, and round 3 made each file one array the reader parses and refuses in any other shape, but the
+#   files endpoint is keyed by the number alone, so a head reread and a count of the pull request around it never
+#   bound the listing to the audited head: the pull request's head can move between the listing and the read; the
+#   compare request names the shas, so its answer is that head's diff or a failure, and a listing of another head
+#   cannot be substituted; `main` is the base the first view read and required; gh fills `{owner}` and `{repo}` from
+#   the checkout's remote). Round 7 (the round-6 P1): `pr merge --squash` lands the diff against `main`'s tip, while
+#   the three-dot compare lists the diff from the merge base, and when `main` moved after the branch point the two
+#   differ (a base-side rename can carry an exempt edit into a sweep-class path), so the lever pins the tip it read,
+#   compares against it and requires the response's `merge_base_commit.sha` to equal it, else refuses naming both
+#   shas (rebase the branch onto `main` and re-run the audit); with the head up to date the three-dot diff equals the
+#   two-dot diff against the tip, the diff the squash lands, and that invariant is what the listing rests on. Round 5
+#   (the round-4 P1 and its first P2): the compare response carries `files` on its first page alone, at most 300
+#   entries, and paging walks its commits, not its files (docs.github.com, REST API, commits, compare two commits,
+#   read 2026-11-19), so the call is one, with no paging, and completeness is read from the listing itself and from
+#   nothing keyed by the number: the reader counts the entries and answers `required cap` for 300 or more (the listing
+#   may be cut short, so the per-head sweep stands), the classes decide under 300, and no count of the pull request
+#   is read beside it. A response whose `files` is not an array (null for a key missing from a later page or a shape
+#   the API changed; an object, a string, a number or a boolean: round 6, the round-5 P1, where `.files // error(...)
+#   | .[]` iterated an object's values and read a one-record object as that file's listing) is the jq's own error,
+#   `(if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end)`,
+#   which fails the call and the lever names with the type, never an empty listing; a failed tip read, a tip that is
+#   not 40 hex, a failed listing and a first line that is not `merge-base <40 hex>` are failures, an empty listing a
+#   refusal: a head that changes nothing is nothing to merge, and a listing cut short is never "not required"
+#   (standing order 21). The file lines go on stdin to the checkout's
 #   `scripts/orchestrator/sweep-scope.py --files-json`, the one definition of the classes (one frozen tuple of path
 #   prefixes per class), run as `python3 -I -S` with its status read: exit 2 is a refusal carrying its line (a line of
 #   another shape, a rename without its source, a `previous_filename` that is neither a string nor null, which the jq
@@ -174,11 +187,13 @@
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
-# @exitcode 1 A `gh` or `git` read (the compare listing included, a response whose `files` is not an array among its
-#   failures), the manifest pin probe, the scope reader or the ledger reader (any status but 0 or 2), or the merge,
-#   failed.
-# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a compare listing
-#   that names no file, a scope answer the checkout's `sweep-scope.py` refuses (its exit 2: a listing that is not one
+# @exitcode 1 A `gh` or `git` read (the tip of `main` that fails or is not 40 hex, the compare listing, a response
+#   whose `files` is not an array or whose `merge_base_commit.sha` is no string, and a first line that is not
+#   `merge-base <40 hex>` among its failures), the manifest pin probe, the scope reader or the ledger reader (any
+#   status but 0 or 2), or the merge, failed.
+# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a head whose merge
+#   base with `main` is not `main`'s tip (not up to date: rebase onto `main` and re-run the audit; round 7), a compare
+#   listing that names no file, a scope answer the checkout's `sweep-scope.py` refuses (its exit 2: a listing that is not one
 #   JSON array of status, filename and previous_filename per file, a `previous_filename` neither a string nor null, a
 #   rename without its source, or a path git would not list) or that is neither `not-required` nor `required
 #   <class>` (`required cap`, the listing at the compare API's cap, is a required class to this gate), a `daily-sweeps.tsv` that is
@@ -714,50 +729,73 @@ require_dispositions() {
 }
 
 # @description Decide whether the head needs its sweep row (regime-cutover U597, the operator's sweep rule C of
-#   2026-11-18): the audited head's changed files as data, listed by the GitHub compare API keyed by the head's sha
-#   itself, one call, `gh api "repos/{owner}/{repo}/compare/${base}...${head}" --jq '(if (.files | type) == "array"
-#   then .files else error("files is " + (.files | type) + ", not an array") end) | .[] | [.status, .filename, (if
-#   has("previous_filename") then .previous_filename else null end)] | @json'`, one
-#   JSON array per file (round 4, the mechanism change: rounds 1 to 3 listed the pull request's files by its number,
-#   `gh pr diff --name-only` and then the files endpoint, and no reread around a number-keyed listing binds it to the
-#   audited head, since the pull request's head can move between the listing and the read; the compare request names
-#   the sha, so its answer is that head's diff from the merge base with `main`, the three-dot form, or a failure, and
-#   a listing of another head cannot be substituted). `base` is the pull request's base the first view read and
-#   required to be `main`, `head` the pinned full sha. Round 5 (the round-4 P1 and its first P2): the compare response
-#   carries `files` on its first page alone, at most 300 entries, and `per_page` pages its commits, not its files
-#   (docs.github.com, REST API, commits, compare two commits, read 2026-11-19), so the call is one, with no
-#   paging, and completeness is read from the listing itself: the reader counts the entries and answers
-#   `required cap` for 300 or more, a listing that may be cut short, which this function treats as `required <class>`
-#   does (`sweep_class=cap`, the cap's reason), and under 300 the listing is whole and the classes decide; the
-#   pull request's file count of rounds 3 and 4 was a read keyed by the pull request's number that no pin bound to
-#   the audited head, and it is gone with the reader's count option. A response whose `files` is not an array (null
-#   for a key missing from a later page or a shape the API changed; an object, a string, a number or a boolean) is
-#   the jq's own error, `(if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not
-#   an array") end)`, so the call fails and the failure names it with the type, never an empty listing read as "not
-#   required" (round 6, the round-5 P1: round 5's `(.files // error("no files key")) | .[]` iterated an object's
-#   values, so a response whose `files` was one file record as an object was read as a listing of that one file; the
-#   type is checked before anything iterates). This lever reads no local git object, so no
-#   planted replace ref or graft can narrow the listing. A listing that fails is a failure and one that names no file
-#   a refusal (standing order 21: a head that changes nothing is nothing to merge, and a listing cut short is never
-#   "not required"). The listing goes on stdin to the checkout's `sweep-scope.py --files-json`, the one definition of
-#   the classes, run as `python3 -I -S` as the ledger reader is, with its status read as ledger_verdict reads it: 2 a
-#   refusal carrying its line (a line of another shape, a rename without its source, a `previous_filename` that is
-#   neither a string nor null, which the jq passes through as it is and never maps to null, round 4), any other
-#   non-zero a failure. The exit-0 answer is read by its shape: `required cap` sets `sweep_class` to `cap` and
-#   `sweep_reason` to the cap's clause; `required <class>` with the class one lowercase word (letters and hyphens)
-#   sets `sweep_class` to it and `sweep_reason` to the class clause; `not-required` alone sets `sweep_class` empty
-#   and asks require_daily_sweep whether the standing control stands (round 4: the exemption is bound to the daily
-#   sweep); anything else, a second line included, is a refusal naming the reader and the answer. The lever reads the
-#   listing as text it passes on and judges no class itself.
+#   2026-11-18): the audited head's changed files as data, the diff the squash lands, listed by the GitHub compare
+#   API keyed by two shas. First the tip of the base is read once, `gh api "repos/{owner}/{repo}/git/ref/heads/${base}"
+#   --jq '.object.sha'`, with its status read and the value held to 40 hex (anything else, `null` for a missing
+#   object included, is a failure; round 7). Then one compare call, `gh api
+#   "repos/{owner}/{repo}/compare/${base_tip}...${head}" --jq '("merge-base " + (.merge_base_commit.sha | if type ==
+#   "string" then . else error("merge_base_commit.sha is " + type + ", not a string") end)), ((if (.files | type) ==
+#   "array" then .files else error("files is " + (.files | type) + ", not an array") end) | .[] | [.status,
+#   .filename, (if has("previous_filename") then .previous_filename else null end)] | @json)'`, whose first line is
+#   `merge-base <sha>`, the response's `merge_base_commit.sha`, and whose other lines are one JSON array per file.
+#   The merge base must equal the base tip, else the head is refused naming both shas: `pr merge --squash` lands the
+#   diff against the base's tip, while the three-dot compare lists the diff from the merge base, and when the base
+#   moved after the branch point the two differ (round 7, the round-6 P1: a base-side rename can carry an exempt
+#   edit into a sweep-class path, and rounds 4 to 6 compared `main...<head>` with neither check nor pin of the tip).
+#   With the head up to date (the merge base the tip itself) the three-dot diff equals the two-dot diff against the
+#   tip, the diff the squash lands, and the compare keyed by the two shas is that listing or a failure. Round 4 (the
+#   mechanism change): rounds 1 to 3 listed the pull request's files by its number, `gh pr diff --name-only` and then
+#   the files endpoint, and no reread around a number-keyed listing binds it to the audited head, since the pull
+#   request's head can move between the listing and the read; the compare request names the shas, so its answer is
+#   that head's diff or a failure, and a listing of another head cannot be substituted. `base` is the pull request's
+#   base the first view read and required to be `main`, `head` the pinned full sha. Round 5 (the round-4 P1 and its
+#   first P2): the compare response carries `files` on its first page alone, at most 300 entries, and `per_page`
+#   pages its commits, not its files (docs.github.com, REST API, commits, compare two commits, read 2026-11-19), so
+#   the call is one, with no paging, and completeness is read from the listing itself: the reader counts the entries
+#   and answers `required cap` for 300 or more, a listing that may be cut short, which this function treats as
+#   `required <class>` does (`sweep_class=cap`, the cap's reason), and under 300 the listing is whole and the classes
+#   decide; the pull request's file count of rounds 3 and 4 was a read keyed by the pull request's number that no pin
+#   bound to the audited head, and it is gone with the reader's count option. A response whose `files` is not an
+#   array (null for a key missing from a later page or a shape the API changed; an object, a string, a number or a
+#   boolean) is the jq's own error, `(if (.files | type) == "array" then .files else error("files is " + (.files |
+#   type) + ", not an array") end)`, so the call fails and the failure names it with the type, never an empty listing
+#   read as "not required" (round 6, the round-5 P1: round 5's `(.files // error("no files key")) | .[]` iterated an
+#   object's values, so a response whose `files` was one file record as an object was read as a listing of that one
+#   file; the type is checked before anything iterates), and a `merge_base_commit.sha` that is no string is the jq's
+#   error the same way. This lever reads no local git object, so no planted replace ref or graft can narrow the
+#   listing. A listing that fails is a failure, a first line that is not `merge-base <40 hex>` a failure, and a
+#   listing that names no file a refusal (standing order 21: a head that changes nothing is nothing to merge, and a
+#   listing cut short is never "not required"). The file lines go on stdin to the checkout's
+#   `sweep-scope.py --files-json`, the one definition of the classes, run as `python3 -I -S` as the ledger reader is, with its status
+#   read as ledger_verdict reads it: 2 a refusal carrying its line (a line of another shape, a rename without its
+#   source, a `previous_filename` that is neither a string nor null, which the jq passes through as it is and never
+#   maps to null, round 4), any other non-zero a failure. The exit-0 answer is read by its shape: `required cap` sets
+#   `sweep_class` to `cap` and `sweep_reason` to the cap's clause; `required <class>` with the class one lowercase
+#   word (letters and hyphens) sets `sweep_class` to it and `sweep_reason` to the class clause; `not-required` alone
+#   sets `sweep_class` empty and asks require_daily_sweep whether the standing control stands (round 4: the exemption
+#   is bound to the daily sweep); anything else, a second line included, is a refusal naming the reader and the
+#   answer. The lever reads the listing as text it passes on and judges no class itself.
 # @set sweep_class The class that requires the sweep (`credential`, `policy`, `lever`, `deployed-executable`), `cap` for a listing at the compare API's cap, or empty when none does.
 # @set sweep_reason Why require_sweep_row runs, named in its refusal: the class clause, the cap clause, or the missing daily sweep (require_daily_sweep); empty when the head skips the row.
 require_sweep_scope() {
-    local status=0 listing answer class
-    listing=$(gh_bounded api "repos/{owner}/{repo}/compare/${base}...${head}" --jq '(if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end) | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json') ||
-        fail "cannot list the changed paths of the head ${head} of pull request ${pr} (gh api repos/{owner}/{repo}/compare/${base}...${head}); the sweep scope is decided from them, and a response whose files is not an array (null for a key missing from a later page or a shape the API changed; an object, a string, a number or a boolean) is this failure through the jq's error(\"files is <type>, not an array\"), never an empty listing"
-    [[ -n ${listing} ]] ||
-        refuse "the compare API (gh api repos/{owner}/{repo}/compare/${base}...${head}) listed no changed path of the head ${head} of pull request ${pr}; a head that changes nothing is nothing to merge, and a listing cut short is never 'not required' (standing order 21)"
-    answer=$("${python}" -I -S "${scope_reader}" --files-json <<< "${listing}" 2>&1) || status=$?
+    local status=0 base_tip listing merge_base files answer class
+    base_tip=$(gh_bounded api "repos/{owner}/{repo}/git/ref/heads/${base}" --jq '.object.sha') ||
+        fail "cannot read the tip of ${base} (gh api repos/{owner}/{repo}/git/ref/heads/${base}); the head's changed paths are listed against it, so the listing is the diff the squash lands"
+    [[ ${base_tip} =~ ^[0-9a-f]{40}$ ]] ||
+        fail "the tip of ${base} read from gh api repos/{owner}/{repo}/git/ref/heads/${base} is not 40 hex: '${base_tip}'; the head's changed paths are listed against it, so the listing is the diff the squash lands"
+    listing=$(gh_bounded api "repos/{owner}/{repo}/compare/${base_tip}...${head}" --jq '("merge-base " + (.merge_base_commit.sha | if type == "string" then . else error("merge_base_commit.sha is " + type + ", not a string") end)), ((if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end) | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json)') ||
+        fail "cannot list the changed paths of the head ${head} of pull request ${pr} (gh api repos/{owner}/{repo}/compare/${base_tip}...${head}); the sweep scope is decided from them, and a response whose files is not an array (null for a key missing from a later page or a shape the API changed; an object, a string, a number or a boolean) or whose merge_base_commit.sha is no string is this failure through the jq's error(\"files is <type>, not an array\") or error(\"merge_base_commit.sha is <type>, not a string\"), never an empty listing"
+    merge_base=${listing%%$'\n'*}
+    [[ ${merge_base} =~ ^merge-base\ ([0-9a-f]{40})$ ]] ||
+        fail "the compare API (gh api repos/{owner}/{repo}/compare/${base_tip}...${head}) answered with a first line that is not 'merge-base <40 hex>': '${merge_base}'; the merge base is read beside the files, in the same call, so the listing can be held to the diff the squash lands"
+    merge_base=${BASH_REMATCH[1]}
+    [[ ${merge_base} == "${base_tip}" ]] ||
+        refuse "the head ${head} of pull request ${pr} is not up to date with ${base} (merge base ${merge_base}, ${base} tip ${base_tip}); rebase the branch onto ${base} and re-run the audit, so the listing is the diff the squash lands"
+    files=''
+    [[ ${listing} != *$'\n'* ]] || files=${listing#*$'\n'}
+    [[ -n ${files} ]] ||
+        refuse "the compare API (gh api repos/{owner}/{repo}/compare/${base_tip}...${head}) listed no changed path of the head ${head} of pull request ${pr}; a head that changes nothing is nothing to merge, and a listing cut short is never 'not required' (standing order 21)"
+    answer=$("${python}" -I -S "${scope_reader}" --files-json <<< "${files}" 2>&1) || status=$?
     case ${status} in
     0) ;;
     2) refuse "${answer#sweep-scope: }" ;;
